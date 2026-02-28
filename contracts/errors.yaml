@@ -1,0 +1,99 @@
+# Unified error codes for opifex ecosystem
+# All CLI tools return these as exit codes or JSON error.code fields.
+#
+# Ranges:
+#   1-9     Common (all projects)
+#   10-99   Reserved
+#   100-199 larva (persona compiler)
+#   200-299 tela (MCP gateway)
+#   300-399 anima (agent runtime)
+#   400-499 nervus (swarm daemon)
+
+errors:
+  # --- Common (all projects) ---
+  INVALID_INPUT:
+    code: 1
+    description: "Malformed input or missing required field"
+  NOT_FOUND:
+    code: 2
+    description: "Requested resource not found"
+  TIMEOUT:
+    code: 3
+    description: "Operation timed out"
+  INTERNAL:
+    code: 10
+    description: "Unexpected internal error"
+
+  # --- larva (persona compiler) ---
+  PERSONA_NOT_FOUND:
+    code: 100
+    description: "Persona name not found in registry"
+  PERSONA_INVALID:
+    code: 101
+    description: "PersonaSpec validation failed"
+  PERSONA_CYCLE:
+    code: 102
+    description: "Circular inheritance detected"
+  VARIABLE_UNRESOLVED:
+    code: 103
+    description: "Unresolved variable in template"
+  TARGET_UNKNOWN:
+    code: 104
+    description: "Install target not recognized"
+
+  # --- tela (MCP gateway) ---
+  AUTHZ_DENY:
+    code: 200
+    description: "Tool call not authorized for current profile"
+  PROFILE_NOT_FOUND:
+    code: 201
+    description: "Named profile does not exist"
+  TOKEN_INVALID:
+    code: 202
+    description: "Capability token invalid or expired"
+  TOKEN_EXPIRED:
+    code: 203
+    description: "Capability token TTL exceeded"
+  DOWNSTREAM_ERROR:
+    code: 210
+    description: "Downstream MCP server returned error"
+  DOWNSTREAM_UNAVAILABLE:
+    code: 211
+    description: "Downstream MCP server unreachable"
+
+  # --- anima (agent runtime) ---
+  AGENT_NOT_FOUND:
+    code: 300
+    description: "Agent ID not found"
+  AGENT_ALREADY_EXISTS:
+    code: 301
+    description: "Agent with this instance_id already running (idempotent)"
+  BUDGET_EXHAUSTED:
+    code: 310
+    description: "Token budget exceeded"
+  MAX_TURNS_REACHED:
+    code: 311
+    description: "Max turns safety valve triggered"
+  MAX_DEPTH_EXCEEDED:
+    code: 312
+    description: "Sub-agent nesting depth exceeded"
+  AGENT_TERMINATED:
+    code: 313
+    description: "Agent was killed or interrupted"
+  UNSUPPORTED_MODEL:
+    code: 320
+    description: "Model not available via LLM gateway"
+
+  # --- nervus (swarm daemon) ---
+  ROUTE_NOT_MATCHED:
+    code: 400
+    description: "No route matches event type"
+  DISPATCH_FAILED:
+    code: 401
+    description: "Failed to dispatch agent (node unreachable or spawn error)"
+  DUPLICATE_EVENT:
+    code: 402
+    description: "Event idempotency_key already processed"
+  NODE_UNAVAILABLE:
+    code: 410
+    description: "Target node not reachable"
