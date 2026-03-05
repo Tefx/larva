@@ -1,38 +1,42 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaSpec",
-  "description": "Agent capability specification. Compiled by larva from YAML persona definitions into canonical JSON.",
+  "description": "Agent capability specification. Validated and assembled by larva into canonical JSON.",
   "type": "object",
-  "required": ["name", "system_prompt", "model", "spec_version"],
+  "required": ["name", "model", "spec_version"],
   "properties": {
     "name": {
       "type": "string",
       "description": "Human-readable persona name"
     },
-    "base": {
-      "type": "string",
-      "description": "Parent persona for inheritance. Resolved recursively by larva."
-    },
     "system_prompt": {
-      "type": "string",
-      "description": "Fully resolved system prompt after template expansion and inheritance merge"
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "System prompt text. Assembled from prompt components or provided directly. Null omits system prompt from LLM context."
     },
     "model": {
       "type": "string",
       "description": "Primary LLM model identifier, e.g. 'claude-sonnet-4-20250514'"
     },
     "tools_profile": {
-      "type": "string",
-      "description": "tela profile name. Determines which MCP tools this agent can access."
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Standalone mode: comma-separated tool preset names resolved from config.toml [tools.*] sections (e.g., 'filesystem,shell'). Combined mode (with CapabilityToken): passed through to tela unchanged as a single profile name. Null or omitted = no tool profile resolution."
     },
     "node": {
       "type": "string",
       "description": "Target execution node. Used by nervus for dispatch routing."
     },
     "sandbox": {
-      "type": "string",
-      "enum": ["docker", "bubblewrap", "none"],
-      "description": "Sandbox strategy for agent execution"
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Sandbox strategy reserved for future agent-process sandboxing. Does NOT participate in MCP sandbox decisions. Use --sandbox CLI flags for MCP server isolation."
     },
     "scratchpad_ref": {
       "type": "string",
@@ -61,6 +65,20 @@
       },
       "additionalProperties": false
     },
+    "model_params": {
+      "type": "object",
+      "properties": {
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+        "top_p": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-turn max output tokens. Distinct from budget (total token limit across all turns)."
+        }
+      },
+      "additionalProperties": true,
+      "description": "LLM inference parameters passed to model provider. additionalProperties allows provider-specific params."
+    },
     "budget": {
       "type": "integer",
       "description": "Token budget limit. Enforced by anima runtime.",
@@ -76,11 +94,11 @@
     },
     "spec_id": {
       "type": "string",
-      "description": "Stable identifier. Survives prompt edits; changes only on structural mutation."
+      "description": "Stable identifier ({name}@{short_hash}). Computed by larva; optional in raw input, always present in larva output. Survives prompt edits; changes only on structural mutation."
     },
     "spec_digest": {
       "type": "string",
-      "description": "SHA-256 of canonical (sorted-key, no-whitespace) JSON output"
+      "description": "SHA-256 of canonical (sorted-key, no-whitespace) JSON output. Computed by larva; optional in raw input, always present in larva output."
     },
     "spec_version": {
       "type": "string",

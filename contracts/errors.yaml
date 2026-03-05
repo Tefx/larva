@@ -4,7 +4,7 @@
 # Ranges:
 #   1-9     Common (all projects)
 #   10-99   Reserved
-#   100-199 larva (persona compiler)
+#   100-199 larva (PersonaSpec toolkit)
 #   200-299 tela (MCP gateway)
 #   300-399 anima (agent runtime)
 #   400-499 nervus (swarm daemon)
@@ -24,7 +24,7 @@ errors:
     code: 10
     description: "Unexpected internal error"
 
-  # --- larva (persona compiler) ---
+  # --- larva (PersonaSpec toolkit) ---
   PERSONA_NOT_FOUND:
     code: 100
     description: "Persona name not found in registry"
@@ -33,13 +33,19 @@ errors:
     description: "PersonaSpec validation failed"
   PERSONA_CYCLE:
     code: 102
-    description: "Circular inheritance detected"
+    description: "Circular reference detected (reserved)"
   VARIABLE_UNRESOLVED:
     code: 103
-    description: "Unresolved variable in template"
+    description: "Unresolved variable in prompt text"
   TARGET_UNKNOWN:
     code: 104
-    description: "Install target not recognized"
+    description: "Export target format not recognized"
+  COMPONENT_NOT_FOUND:
+    code: 105
+    description: "Component referenced in assembly not found"
+  COMPONENT_CONFLICT:
+    code: 106
+    description: "Multiple components set the same scalar field without explicit override"
 
   # --- tela (MCP gateway) ---
   AUTHZ_DENY:

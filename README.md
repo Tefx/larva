@@ -1,105 +1,88 @@
 # larva
 
-Persona compiler for LLM applications. Manage, validate, and compile YAML persona definitions into structured PersonaSpec JSON artifacts — then install them into any AI coding tool.
+PersonaSpec toolkit for LLM agents. Validate, assemble, register, and export agent persona specifications.
 
-larva treats agent personas as source code: version-controlled YAML files that compile into deterministic, content-addressed build artifacts.
+Part of the [opifex](https://github.com/tefx/opifex) system — four independent Unix tools composing into an autonomous agent OS.
 
-## Features
+## What larva Does
 
-- **YAML persona definitions** with inheritance and composition
-- **Variable injection** with whitelist enforcement
-- **Install** into Claude Code, OpenCode, Codex, Goose, Cursor, Windsurf, Cline
-- **Format normalization** (`larva fmt`) for byte-stable hashing
-- **Content-addressed locking** (`larva lock`) with `spec_id` + `spec_digest`
-- **Static validation** for catching errors before runtime
-- **Custom templates** (Jinja2) for new export targets
+- **Validate** any PersonaSpec JSON (schema + semantic checks)
+- **Assemble** PersonaSpec from reusable components (prompt fragments, toolsets, constraints)
+- **Register** pre-compiled personas in a global registry (`~/.larva/`)
+- **Resolve** personas by name with optional runtime overrides
+- **Export** to CLAUDE.md, AGENTS.md, and other tool-native formats
+- **MCP server** for programmatic access by nervus, anima, and other tools
 
-## Quick Start
+## Key Design Decisions
+
+- **Composition, not inheritance.** No `base:` field. Components are orthogonal building blocks assembled explicitly.
+- **Personas are LLM-generated, not hand-written.** larva's value is validation and consistency, not authoring ergonomics.
+- **Error-on-conflict.** When two components set the same scalar field, assembly fails. Explicit overrides resolve conflicts.
+- **Global registry.** Personas live in `~/.larva/registry/`. anima loads one persona per instance — registry size has zero context cost.
+- **MCP-first interface.** Other opifex components call larva tools via MCP.
+
+## Interfaces
+
+### MCP Server (primary)
+
+```
+larva.validate(spec)          → Ok | ValidationErrors
+larva.assemble(components)    → PersonaSpec JSON
+larva.resolve(name)           → PersonaSpec JSON (from registry)
+larva.register(spec)          → spec_id
+larva.list()                  → [{name, spec_id, spec_digest, model}]
+larva.export(name, format)    → formatted content
+```
+
+### CLI
+
+```bash
+larva validate <spec.json>
+larva assemble --prompt <name> --toolset <name> --constraints <name> -o <output>
+larva register <spec.json>
+larva resolve <name> [--override key=value]
+larva list
+larva export <name> --format claude-md
+larva component list
+larva component show <type>/<name>
+```
+
+### Python Library
+
+```python
+from larva import assemble, validate, resolve
+
+spec = assemble(
+    name="code-reviewer",
+    prompts=["code-reviewer", "careful-reasoning"],
+    toolset="code-tools",
+    constraints="strict",
+    overrides={"model": "claude-opus-4-20250514"},
+)
+
+result = validate(some_json)
+spec = resolve("code-reviewer", overrides={"budget": 100000})
+```
+
+## Component Library
+
+```
+~/.larva/
+  components/
+    prompts/           # Prompt text fragments (.md files)
+    toolsets/           # tools_profile values (.yaml)
+    constraints/        # Runtime constraint bundles (.yaml)
+    models/             # Model + inference params (.yaml)
+  registry/             # Pre-compiled PersonaSpec JSON
+```
+
+Components are simple, single-concern files. A prompt component is just a markdown file. A constraint component is a yaml with 2-3 fields.
+
+## Install
 
 ```bash
 pip install larva
 ```
-
-### Define a persona
-
-```yaml
-# personas/code-reviewer.yaml
-spec_version: "1"
-base: base-engineer
-system_prompt: |
-  You are a senior code reviewer for the {project_name} project.
-  Review code for correctness, security, and maintainability.
-model: claude-sonnet-4-20250514
-tools_profile: read-only
-budget:
-  max_tokens: 8192
-```
-
-### Compile it
-
-```bash
-larva compile code-reviewer --vars project_name=myapp
-```
-
-### Install into Claude Code
-
-```bash
-# Writes .claude/agents/code-reviewer.md with proper frontmatter
-larva install claude-code code-reviewer --vars project_name=myapp
-```
-
-### Install into other tools
-
-```bash
-larva install opencode code-reviewer --vars project_name=myapp
-larva install codex code-reviewer --vars project_name=myapp
-larva install cursor code-reviewer --vars project_name=myapp
-larva install goose code-reviewer --vars project_name=myapp
-```
-
-### Dynamic injection (piping)
-
-```bash
-# Inject into Claude Code at launch without writing files
-claude --agents "$(larva install claude-code code-reviewer --stdout)"
-```
-
-## Persona Inheritance
-
-Personas can inherit from a base, overriding specific fields:
-
-```yaml
-# personas/base-engineer.yaml
-spec_version: "1"
-system_prompt: |
-  You are a software engineer. Write clean, tested code.
-model: claude-sonnet-4-20250514
-
-# personas/senior-engineer.yaml
-base: base-engineer
-system_prompt: |
-  You are a senior software engineer. Write clean, tested code.
-  Mentor junior developers. Make architecture decisions.
-budget:
-  max_tokens: 16384
-```
-
-## CLI Reference
-
-```
-larva compile <name> [--vars key=val...] [--output path] [--json]
-larva validate <name_or_file> [--json]
-larva fmt <name_or_file>
-larva lock <name> [--output path] [--json]
-larva list [--json]
-larva show <name> [--json]
-larva install <target> <name> [--vars key=val...] [--project | --user] [--stdout] [--json]
-larva install --template <path> <name> --output <path>
-```
-
-Targets: `claude-code`, `opencode`, `codex`, `goose`, `cursor`, `windsurf`, `cline`.
-
-All commands support `--json` for machine-readable output.
 
 ## License
 

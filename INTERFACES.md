@@ -1,461 +1,387 @@
-# larva Interface Specification
+# larva -- Interface Specification
 
-This document defines the public interfaces of the larva persona compiler.
+This document defines the public interfaces of the larva PersonaSpec toolkit.
 
-larva is a **pure compiler**. It reads persona YAML definitions, resolves
-inheritance, injects variables, validates schemas, and outputs PersonaSpec
-JSON or tool-native agent configurations. It does not call LLMs, does not
-run agents, and has no runtime dependencies on the other opifex components.
+larva validates, assembles, normalizes, and registers PersonaSpec JSON.
+It provides a component library for reusable prompt fragments, tool configs,
+and constraint bundles. It does not call LLMs, does not run agents, and has
+no runtime dependencies on the other opifex components.
+
+Personas are typically LLM-generated or programmatically assembled, not
+hand-written by humans.
 
 ---
 
-## A. CLI Interface
+## A. MCP Server Interface (primary)
+
+larva runs as an MCP server (stdio or SSE). Other opifex components
+(nervus, anima serve) call larva tools via MCP.
+
+### larva.validate(spec)
+
+Validate a PersonaSpec JSON object.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `spec` | object | yes | PersonaSpec JSON to validate |
+
+**Returns:**
+```json
+{
+  "valid": true,
+  "warnings": ["model 'gpt-6' not in known models list"]
+}
+```
+or
+```json
+{
+  "valid": false,
+  "errors": ["spec_version must be '0.1.0'", "budget must be >= 0"]
+}
+```
+
+### larva.assemble(components)
+
+Assemble a PersonaSpec from named components.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `name` | string | yes | Persona name |
+| `prompts` | list[string] | no | Prompt component names (concatenated in order) |
+| `toolset` | string | no | Toolset component name |
+| `constraints` | string | no | Constraint component name |
+| `model` | string | no | Model component name |
+| `overrides` | object | no | Field overrides (wins over components) |
+| `variables` | object | no | Variable substitution in prompt text |
+
+**Returns:** Complete PersonaSpec JSON (validated, with spec_id and spec_digest).
+
+**Error:** `COMPONENT_NOT_FOUND` if a referenced component does not exist.
+`COMPONENT_CONFLICT` if two components set the same scalar field without
+an explicit override.
+
+### larva.resolve(name, overrides?)
+
+Resolve a pre-registered persona by name.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `name` | string | yes | Persona name in registry |
+| `overrides` | object | no | Field overrides applied to the resolved spec |
+
+**Returns:** PersonaSpec JSON. If overrides are applied, spec_digest is recomputed.
+
+**Error:** `PERSONA_NOT_FOUND` if name not in registry.
+
+### larva.register(spec)
+
+Register a PersonaSpec in the global registry.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `spec` | object | yes | PersonaSpec JSON (must pass validation) |
+
+**Returns:**
+```json
+{
+  "spec_id": "code-reviewer@a1b2c3d4",
+  "registered": true
+}
+```
+
+### larva.list()
+
+List all registered personas.
+
+**Returns:**
+```json
+[
+  {
+    "name": "code-reviewer",
+    "spec_id": "code-reviewer@a1b2c3d4",
+    "spec_digest": "sha256:e3b0c442...",
+    "model": "claude-opus-4-20250514"
+  }
+]
+```
+
+### larva.export(name, format)
+
+Export a persona to a human-readable or tool-native format.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `name` | string | yes | Persona name in registry |
+| `format` | string | yes | `claude-md`, `agents-md`, `summary` |
+
+**Returns:**
+```json
+{
+  "format": "claude-md",
+  "content": "---\nname: code-reviewer\n..."
+}
+```
+
+---
+
+## B. CLI Interface
 
 All commands support `--json` for machine-readable JSON output on stdout.
 
-### `larva compile <name> [--vars key=val...] [--output path] [--json]`
+**Exit code strategy:** CLI uses standard small exit codes (0/1/2) for
+shell scripting compatibility. With `--json`, errors include the full
+error code from `errors.yaml` (100-106) in the JSON body. See Section H.
 
-Compile a persona YAML definition into a PersonaSpec JSON artifact.
+### `larva validate <spec.json> [--json]`
 
-- `<name>` -- persona name (resolved from registry) or path to `.yaml` file
-- `--vars key=val` -- runtime variable injection (repeatable)
-- `--output path` -- write output to file (default: stdout)
-- `--json` -- JSON output format
-
-Exit codes: 0 success, 1 error.
-
-### `larva validate <name_or_file> [--json]`
-
-Static validation of a persona definition. Checks schema conformance,
-inheritance resolution, variable completeness (without injecting values),
-and cycle detection.
-
-- `<name_or_file>` -- persona name or path to `.yaml` file
-- `--json` -- JSON output: `{valid: bool, errors: [...]}`
+Validate a PersonaSpec JSON file. Checks schema conformance and semantic rules.
 
 Exit codes: 0 valid, 1 invalid, 2 not found.
 
-### `larva fmt <name_or_file>`
+### `larva assemble [OPTIONS] -o <output>`
 
-Normalize persona YAML format for byte-stable hashing. Applies canonical
-key ordering, consistent quoting, and normalized whitespace. Preserves
-comments (uses ruamel.yaml round-trip mode). Writes result back to the
-source file (in-place).
+Assemble a PersonaSpec from components.
 
-- `<name_or_file>` -- persona name or path to `.yaml` file
-
-Exit codes: 0 success, 1 error.
-
-### `larva lock <name> [--output path] [--json]`
-
-Generate a lock file with content-addressed artifact identification.
-Compiles the persona, computes `spec_id` (deterministic identifier) and
-`spec_digest` (sha256 of canonical JSON).
-
-- `<name>` -- persona name
-- `--output path` -- write lock file to path (default: `<name>.lock.json`)
-- `--json` -- JSON output on stdout instead of file
+| Flag | Type | Description |
+| ---- | ---- | ----------- |
+| `--name` | str | Persona name (required) |
+| `--prompt` | str (repeatable) | Prompt component name |
+| `--toolset` | str | Toolset component name |
+| `--constraints` | str | Constraint component name |
+| `--model` | str | Model component name or literal model identifier |
+| `--override` | str (repeatable) | Field override: `key=value` |
+| `--var` | str (repeatable) | Variable substitution: `key=value` |
+| `-o, --output` | path | Output file (default: stdout) |
 
 Exit codes: 0 success, 1 error.
 
-### `larva list [--json]`
+### `larva register <spec.json> [--json]`
 
-List all available personas in the registry.
-
-- `--json` -- JSON output: `[{name, base, model, ...}]`
+Register a PersonaSpec in the global registry.
 
 Exit codes: 0 success, 1 error.
 
-### `larva show <name> [--json]`
+### `larva resolve <name> [--override key=value...] [--json]`
 
-Show detailed information about a persona definition (pre-compilation).
-
-- `<name>` -- persona name
-- `--json` -- JSON output
+Resolve a persona from the registry, optionally with overrides.
 
 Exit codes: 0 success, 1 not found.
 
-### `larva install <target> <name> [OPTIONS]`
+### `larva list [--json]`
 
-Compile a persona and install it into a target tool's configuration
-directory in that tool's native format.
+List all registered personas.
 
-```
-larva install <target> <name> [--vars key=val...] [--project | --user] [--stdout] [--json]
-```
+Exit codes: 0 success.
 
-- `<target>` -- one of: `claude-code`, `opencode`, `codex`, `goose`,
-  `cursor`, `windsurf`, `cline`
-- `<name>` -- persona name
-- `--vars key=val` -- variable injection (repeatable)
-- `--project` -- install to project-level config (default)
-- `--user` -- install to user-level config
-- `--stdout` -- print generated content to stdout instead of writing file
-  (for piping into other tools or dynamic injection)
-- `--json` -- output `{"target": "...", "path": "...", "content": "..."}`
+### `larva export <name> --format <format> [--json]`
 
-Exit codes: 0 success, 1 error, 2 target not recognized.
+Export a persona to a target format.
 
-#### Target details
+Formats: `claude-md`, `agents-md`, `summary`.
 
-| Target | Project path | User path | Format |
-|--------|-------------|-----------|--------|
-| `claude-code` | `.claude/agents/<name>.md` | `~/.claude/agents/<name>.md` | Markdown + YAML frontmatter |
-| `opencode` | `.opencode/agents/<name>.md` | `~/.config/opencode/agents/<name>.md` | Markdown + YAML frontmatter |
-| `codex` | `.agents/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | Agent Skills SKILL.md |
-| `goose` | `.goose/recipes/<name>.yaml` | `~/.config/goose/recipes/<name>.yaml` | Goose recipe YAML |
-| `cursor` | `.cursor/rules/<name>.mdc` | — | MDC (Markdown + YAML frontmatter) |
-| `windsurf` | `.windsurf/rules/<name>.md` | — | Markdown |
-| `cline` | `.clinerules/<name>.md` | — | Markdown |
+Exit codes: 0 success, 1 not found, 2 format not recognized.
 
-#### PersonaSpec → target format mapping
+### `larva component list [--json]`
 
-| PersonaSpec field | Claude Code | OpenCode | Codex (SKILL.md) | Goose recipe |
-|-------------------|------------|----------|-------------------|-------------|
-| `name` | frontmatter `name` | filename | frontmatter `name` | `name` |
-| `system_prompt` | Markdown body | Markdown body | Markdown body | `instructions` |
-| `model` | frontmatter `model` | frontmatter `model` | — (not in spec) | `settings.goose_model` |
-| `tools_profile` | frontmatter `tools` | frontmatter `tools` | frontmatter `allowed-tools` | `extensions` |
-| `budget` | — | — | — | — |
-| `can_spawn` | — (implicit via tools) | — | — | `sub_recipes` |
+List all available components.
 
-### `larva install --template <path> <name> [OPTIONS]`
+### `larva component show <type>/<name> [--json]`
 
-Install using a custom Jinja2 template. The template receives the compiled
-PersonaSpec as context.
-
-- `--template path` -- path to a `.j2` template file
-- `--output path` -- write result to this path (required with `--template`)
+Show a component's content. Type is one of: `prompts`, `toolsets`,
+`constraints`, `models`.
 
 ---
 
-## B. Persona YAML Format
+## C. Component Library
 
-Persona definitions are YAML files stored in the persona registry.
+Components are stored in `~/.larva/components/` organized by type.
 
-### Full Schema
+### Component Types
+
+| Type | Directory | File Format | Contributes to |
+|------|-----------|-------------|----------------|
+| Prompt | `prompts/` | `.md` (plain text) | `system_prompt` |
+| Toolset | `toolsets/` | `.yaml` | `tools_profile` |
+| Constraint | `constraints/` | `.yaml` | `budget`, `can_spawn`, `scratchpad_*` |
+| Model | `models/` | `.yaml` | `model`, `model_params` |
+
+### Prompt Component
+
+Just a markdown file. No wrapper, no metadata. The content IS the prompt.
+
+```markdown
+You are a senior code reviewer. Focus on correctness over style.
+Always cite specific line numbers when pointing out issues.
+```
+
+### Toolset Component
 
 ```yaml
-# Required
-spec_version: "0.1.0"                # Schema version (semver)
-system_prompt: |                     # System prompt text
-  You are a {role} for {project}.    # Supports {variable} injection
-
-# Optional -- inheritance
-base: parent-persona-name            # Inherits from parent, overrides listed fields
-
-# Optional -- model configuration
-model: claude-sonnet-4-20250514      # Target LLM model identifier
-
-# Optional -- tool access
-tools_profile: coder                 # tela profile name or tool set identifier
-
-# Optional -- execution context
-node: default                        # Execution node identifier
-sandbox: docker                      # Sandbox strategy: "docker", "bubblewrap", or "none"
-
-# Optional -- scratchpad
-scratchpad_ref: shared-notes         # Logical scratchpad reference
-scratchpad_policy:                   # Scratchpad access policy (object)
-  mode: append                       #   Write mode: "append", "overwrite", "versioned"
-  max_size: "1MB"                    #   Maximum size (optional)
-  format: markdown                   #   Content format (optional)
-  retention: "7d"                    #   Retention policy (optional)
-
-# Optional -- resource limits
-budget: 8192                         # Token budget limit (integer)
-
-# Optional -- agent spawning
-can_spawn:                           # true = any, false = none, list = named allowlist
-  - sub-agent-name
-  - another-agent
-# can_spawn: true                   # Alternative: allow spawning any persona
+tools_profile: "filesystem,shell,git"
 ```
 
-### Field Semantics
+### Constraint Component
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `spec_version` | `str` | required | Schema version (semver). Must be `"0.1.0"`. |
-| `system_prompt` | `str` | required | System prompt text. May contain `{variable}` placeholders. |
-| `base` | `str \| null` | `null` | Parent persona name for inheritance. |
-| `model` | `str \| null` | `null` | Target LLM model identifier. |
-| `tools_profile` | `str \| null` | `null` | Tool access profile name. |
-| `node` | `str \| null` | `null` | Execution node identifier. |
-| `sandbox` | `str \| null` | `null` | Sandbox strategy: `docker`, `bubblewrap`, or `none`. |
-| `scratchpad_ref` | `str \| null` | `null` | Scratchpad reference. |
-| `scratchpad_policy` | `object \| null` | `null` | Scratchpad access policy. Object with `mode`, `max_size`, `format`, `retention`. |
-| `budget` | `int \| null` | `null` | Token budget limit. |
-| `can_spawn` | `bool \| list[str] \| null` | `null` | Spawn permission. `true` = any, `false`/`null` = forbidden, `list` = named allowlist. |
+```yaml
+budget: 30000
+can_spawn: false
+```
 
-### Inheritance Rules
+### Model Component
 
-1. `base: parent_name` resolves `parent_name.yaml` in the same registry directory.
-2. All fields except `spec_version` and `base` are inherited from the parent.
-3. Child fields override parent fields (no deep merge -- full replacement at field level).
-4. `system_prompt` is fully replaced, not appended.
-5. Inheritance chains are resolved recursively (grandparent -> parent -> child).
-6. Circular inheritance is a compile-time error (`PERSONA_CYCLE`).
+```yaml
+model: "claude-opus-4-20250514"
+model_params:
+  temperature: 0.3
+  max_tokens: 4096
+```
+
+### Assembly Rules
+
+- **Prompts**: Concatenated in declared order (`\n\n` separator) → `system_prompt`
+- **Scalars** (model, budget, tools_profile, can_spawn, sandbox, node,
+  scratchpad_ref): Multiple sources for same field → error (`COMPONENT_CONFLICT`).
+  Resolve via `overrides`.
+- **model_params**: Deep-merged from model component. `overrides` can patch keys.
+- **scratchpad_policy**: No merge. Single source or explicit override.
 
 ---
 
-## C. PersonaSpec Output Format
+## D. Global Registry
 
-The compiled output artifact. All optional fields that were `null` after
-compilation are omitted from the output.
+### Location
+
+`~/.larva/registry/`
+
+Each registered persona is a JSON file: `<name>.json`.
+An `index.json` maps names to spec_ids.
+
+### Resolution
+
+1. `larva resolve <name>` reads `~/.larva/registry/<name>.json`
+2. If `overrides` are provided, fields are patched and spec_digest recomputed
+3. Returns complete PersonaSpec JSON
+
+### Name Rules
+
+Names must match `[a-z0-9][a-z0-9-]*[a-z0-9]` (lowercase, hyphens,
+no leading/trailing hyphens, minimum 2 characters).
+
+---
+
+## E. PersonaSpec Output Format
+
+The output artifact. All assembly machinery is erased — the output is
+a flat, self-contained PersonaSpec JSON.
 
 ```json
 {
   "spec_version": "0.1.0",
   "name": "code-reviewer",
-  "system_prompt": "You are a senior code reviewer for the myapp project.\n...",
-  "model": "claude-sonnet-4-20250514",
-  "tools_profile": "read-only",
-  "budget": 8192
-}
-```
-
-### Lock File Format
-
-```json
-{
+  "system_prompt": "You are a senior code reviewer...",
+  "model": "claude-opus-4-20250514",
+  "model_params": {
+    "temperature": 0.3,
+    "max_tokens": 4096
+  },
+  "tools_profile": "filesystem,shell,git",
+  "budget": 50000,
+  "can_spawn": false,
   "spec_id": "code-reviewer@a1b2c3d4",
-  "spec_digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "locked_at": "2026-02-28T10:30:00Z",
-  "spec": { "...PersonaSpec as above..." }
+  "spec_digest": "sha256:e3b0c442..."
 }
 ```
 
-- `spec_id`: `<name>@<first 8 hex chars of spec_digest>`
-- `spec_digest`: `sha256:<hex digest of canonical JSON of spec>`
-- `locked_at`: ISO 8601 UTC timestamp
-- `spec`: the full PersonaSpec object
+No `base`, no component references, no assembly metadata in the output.
+
+`spec_id` and `spec_digest` are optional in raw input (e.g., hand-written
+or LLM-generated JSON passed to `larva.validate`). larva computes them
+during normalization. All larva output (assemble, resolve, register)
+always includes both fields.
+
+### Normalization
+
+- `spec_id`: `{name}@{short_hash}` where hash is derived from structural
+  fields (name + model + tools_profile + can_spawn). Survives prompt edits.
+- `spec_digest`: SHA-256 of canonical JSON (sorted keys, no whitespace,
+  excluding the spec_digest field itself).
+- `spec_version`: Set to `"0.1.0"` if not present.
 
 ---
 
-## D. Persona Registry
-
-### Resolution
-
-1. Check `$LARVA_PERSONAS` environment variable for registry directory path.
-2. Fall back to `./personas/` relative to the current working directory.
-3. Persona name `foo` resolves to `<registry_dir>/foo.yaml`.
-
-### File Naming
-
-- File names are the persona name with `.yaml` extension.
-- Names must match `[a-z0-9][a-z0-9-]*[a-z0-9]` (lowercase, hyphens,
-  no leading/trailing hyphens, minimum 2 characters).
-
-### Inheritance Resolution
-
-- `base: parent_name` resolves to `<registry_dir>/parent_name.yaml`.
-- Parent must exist in the same registry directory.
-- Maximum inheritance depth: 10 (to prevent deep chains).
-
----
-
-## E. Variable Injection
+## F. Variable Injection
 
 ### Syntax
 
-Variables in `system_prompt` use `{variable_name}` syntax (Python
+Variables in prompt text use `{variable_name}` syntax (Python
 `str.format_map` compatible).
 
-```yaml
-system_prompt: |
-  You are a {role} working on {project_name}.
+```markdown
+You are a {role} working on {project_name}.
 ```
 
 ### Injection
 
-- CLI: `larva compile my-persona --vars role=reviewer project_name=myapp`
-- Python: `larva.compile("my-persona", vars={"role": "reviewer", "project_name": "myapp"})`
+- CLI: `larva assemble --prompt my-prompt --var role=reviewer --var project_name=myapp`
+- MCP: `larva.assemble(prompts=["my-prompt"], variables={"role": "reviewer"})`
 
-### Whitelist Enforcement
+### Enforcement
 
-Variable injection is **whitelist-only**:
-- All `{variable_name}` placeholders in the system_prompt are extracted
-  at compile time.
-- All extracted variables must be provided via `--vars` or the `vars`
-  parameter.
-- Unresolved variables produce a `VARIABLE_UNRESOLVED` error with the
-  list of missing variable names.
+- All `{variable}` placeholders must be provided.
+- Missing variables → `VARIABLE_UNRESOLVED` error.
 - Extra variables (provided but not referenced) are silently ignored.
 
 ---
 
-## F. Install Templates
+## G. Export Formats
 
-larva uses Jinja2 templates to render PersonaSpec into tool-native formats.
-Templates are bundled with the package in `src/larva/templates/`.
+### Supported Formats
 
-### Bundled templates
+| Format | Output | Use case |
+|--------|--------|----------|
+| `claude-md` | Markdown + YAML frontmatter | Claude Code `.claude/agents/` |
+| `agents-md` | AGENTS.md section | General agent docs |
+| `summary` | One-line summary | Listing, dashboards |
 
-| File | Target | Output format |
-|------|--------|---------------|
-| `claude-code.md.j2` | Claude Code | `.claude/agents/<name>.md` with YAML frontmatter |
-| `opencode.md.j2` | OpenCode | `.opencode/agents/<name>.md` with YAML frontmatter |
-| `codex-skill.md.j2` | Codex CLI | `.agents/skills/<name>/SKILL.md` (Agent Skills format) |
-| `goose-recipe.yaml.j2` | Goose | Goose recipe YAML |
-| `cursor.mdc.j2` | Cursor | `.cursor/rules/<name>.mdc` with frontmatter |
-| `windsurf.md.j2` | Windsurf | `.windsurf/rules/<name>.md` |
-| `cline.md.j2` | Cline | `.clinerules/<name>.md` |
-
-### Example: Claude Code output
-
-For a persona named `code-reviewer`, `larva install claude-code code-reviewer`
-generates:
-
-```markdown
----
-name: code-reviewer
-description: Senior code reviewer for the myapp project
-model: sonnet
-tools: Read, Grep, Glob, Bash
-maxTurns: 50
----
-
-You are a senior code reviewer for the myapp project.
-Review code for correctness, security, and maintainability.
-Be thorough but constructive.
-```
-
-### Example: Codex SKILL.md output
-
-```markdown
----
-name: code-reviewer
-description: |
-  Senior code reviewer. Use when reviewing PRs or code changes.
-allowed-tools: Bash(git:*) Read
----
-
-## Instructions
-
-You are a senior code reviewer for the myapp project.
-Review code for correctness, security, and maintainability.
-Be thorough but constructive.
-```
-
-### Custom templates
-
-`larva install --template <path> <name>` renders a user-provided Jinja2
-template with the compiled PersonaSpec as context. This enables
-project-specific or new-tool export formats without modifying larva.
-
-Available template variables:
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `spec` | PersonaSpec | The full compiled PersonaSpec object |
-| `spec.name` | str | Persona name |
-| `spec.system_prompt` | str | Compiled system prompt (variables injected) |
-| `spec.model` | str \| None | Model identifier |
-| `spec.tools_profile` | str \| None | Tool profile name |
-| `spec.budget` | int \| None | Token budget limit |
-| `spec.can_spawn` | bool \| list[str] \| None | Spawn permission |
-| `spec.sandbox` | bool \| None | Sandbox flag |
-| `spec.scratchpad_ref` | str \| None | Scratchpad reference |
+Export is for human auditing of LLM-generated personas, not runtime use.
 
 ---
 
-## G. Dynamic Persona Injection (via other tools)
+## H. Error Codes
 
-larva itself does not call LLMs or inject personas at runtime. Dynamic
-injection is achieved by piping larva output into tools that support it.
+larva uses the 100-range from `contracts/errors.yaml`.
 
-### Claude Code: `--agents` flag
+| Code | Name | Description |
+|------|------|-------------|
+| 100 | `PERSONA_NOT_FOUND` | Persona name not found in registry |
+| 101 | `PERSONA_INVALID` | PersonaSpec validation failed |
+| 102 | `PERSONA_CYCLE` | Circular reference detected (reserved) |
+| 103 | `VARIABLE_UNRESOLVED` | Unresolved variable in prompt text |
+| 104 | `TARGET_UNKNOWN` | Export format not recognized |
+| 105 | `COMPONENT_NOT_FOUND` | Component referenced in assembly not found |
+| 106 | `COMPONENT_CONFLICT` | Multiple components set the same scalar field |
 
-```bash
-# Compile persona and inject into Claude Code at launch
-larva install claude-code reviewer --stdout | \
-  claude --agents "$(cat)"  --task "Review PR #123"
-```
-
-Or programmatically (nervus / anima):
-
-```bash
-SPEC=$(larva compile reviewer --json)
-claude --agents "{\"reviewer\": $(larva install claude-code reviewer --json | jq .content)}" \
-  --task "Review PR #123"
-```
-
-### OpenCode: `OPENCODE_CONFIG_INLINE` env var
-
-```bash
-AGENT_JSON=$(larva install opencode reviewer --json | jq -c '{agent: {(.target_name): .content_parsed}}')
-OPENCODE_CONFIG_INLINE="$AGENT_JSON" opencode
-```
-
-### Codex: file-based (write then run)
-
-```bash
-larva install codex reviewer --project
-codex --enable skills "Review the latest PR"
-```
-
-### anima: direct PersonaSpec consumption
-
-```bash
-larva compile reviewer --output /tmp/reviewer.json
-anima run --persona-file /tmp/reviewer.json --task "Review PR #123"
-```
-
-anima accepts PersonaSpec JSON natively — no install step needed.
-
----
-
-## H. Dynamic Persona Generation (outside larva)
-
-larva does not generate personas. Dynamic generation is the responsibility
-of the runtime layer (anima / nervus):
-
-1. nervus dispatches an anima agent with a meta-task: "generate a
-   persona YAML for: <description>"
-2. The anima agent (which has pydantic-ai / LLM access) produces a
-   persona YAML file
-3. nervus calls `larva validate` to verify the generated YAML
-4. nervus calls `larva compile` to produce the PersonaSpec
-5. nervus dispatches the actual agent using the compiled PersonaSpec
-
-This keeps larva as a pure compiler with zero LLM dependencies. The
-PersonaSpec schema supports optional provenance fields for generated
-personas:
-
-```yaml
-# These fields are set by the generator, not by larva
-_generated: true                     # Marks this as LLM-generated
-_source_description: "a code reviewer that focuses on security"
-_generated_by: "anima:ag_abc123"     # Which agent generated this
-_generated_at: "2026-02-28T10:30:00Z"
-```
-
-Fields prefixed with `_` are metadata preserved through compilation but
-not included in the PersonaSpec output JSON. They are recorded in lock
-files for audit purposes.
-
----
-
-## I. Error Codes
-
-| Code | Description | Context |
-|------|-------------|---------|
-| `PERSONA_NOT_FOUND` | Persona name does not resolve to a file in the registry. | compile, validate, lock, show, install |
-| `PERSONA_INVALID` | Persona YAML fails schema validation. | compile, validate |
-| `PERSONA_CYCLE` | Circular inheritance detected in `base` chain. | compile, validate |
-| `VARIABLE_UNRESOLVED` | One or more `{variable}` placeholders have no provided value. | compile |
-| `TARGET_UNKNOWN` | Install target not recognized. | install |
-
-### Error Response Format (JSON mode)
+### Error Response Format (--json / MCP)
 
 ```json
 {
   "error": {
-    "code": "VARIABLE_UNRESOLVED",
-    "message": "Unresolved variables in system_prompt: role, project_name",
+    "code": "COMPONENT_CONFLICT",
+    "numeric_code": 106,
+    "message": "Field 'budget' set by both 'constraints/strict' and 'constraints/autonomous'",
     "details": {
-      "missing_variables": ["role", "project_name"]
+      "field": "budget",
+      "sources": ["constraints/strict", "constraints/autonomous"]
     }
   }
 }
