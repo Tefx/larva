@@ -18,6 +18,20 @@ phases:
   status: pending
   gate: Authoritative module inventory is frozen with citations to the chosen source
     documents.
+  steps:
+  - id: meta.discovery.freeze-authoritative-planning-basis
+    name: Freeze authoritative planning basis
+    status: pending
+    description: Verify that `ARCHITECTURE.md` is the authoritative module-boundary
+      source, use `INTERFACES.md` as interface-detail support, and record the chosen
+      basis plus any conflict check evidence. Stop and surface any material boundary
+      conflict before planning continues.
+    verification: Evidence cites the exact sections used for module inventory, dependency
+      order, and conflict check outcome.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - README.md
 - id: meta.prep
   name: Define Planning Rubric
   status: pending
