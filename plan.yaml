@@ -25,3 +25,8 @@ phases:
   status: locked
   depends_on:
   - meta.prep
+- id: meta.review
+  name: Review
+  status: locked
+  depends_on:
+  - meta.plan_creation
