@@ -555,3 +555,26 @@ phases:
     depends_on:
     - meta.review.cli
     agent: software-architect
+  - id: meta.review.final
+    name: Run final cross-module plan review
+    status: pending
+    description: Perform the final overall review of all module-level plans after
+      the per-module reviews complete. Confirm the full plan set covers every module,
+      preserves the documented dependency graph and layer boundaries, handles cross-module
+      touchpoints consistently, and leaves no uncovered planning gaps.
+    verification: Final review explicitly states whether the complete module-plan
+      set is coherent, complete, and ready for dispatch to implementation planners.
+    evidence_template: '- Reviewed modules: <list>
+
+      - Coverage gaps: <none | list>
+
+      - Boundary conflicts: <none | list>
+
+      - Sequencing conflicts: <none | list>
+
+      - Final decision: <ready | rework>
+
+      - Follow-up actions: <none | list>'
+    depends_on:
+    - meta.review.mcp
+    agent: software-architect
