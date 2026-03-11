@@ -20,3 +20,8 @@ phases:
   status: locked
   depends_on:
   - meta.discovery
+- id: meta.plan_creation
+  name: Module Plan Creation
+  status: locked
+  depends_on:
+  - meta.prep
