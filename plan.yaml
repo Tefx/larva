@@ -68,6 +68,137 @@ phases:
   name: Author Module Plans
   status: pending
   gate: Every architecture module has a detailed implementation plan in vectl.
+  steps:
+  - id: meta.module_plans.draft-module-plan-for-larva-core-spec
+    name: Draft module plan for larva.core.spec
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.core.spec`
+      using the frozen architecture basis and planning rubric. Capture the module
+      boundary, required contracts, downstream dependencies, and evidence expectations
+      only.
+    verification: The plan covers `larva.core.spec` only and is sufficient for a worker
+      to implement without redefining boundaries.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+  - id: meta.module_plans.draft-module-plan-for-larva-core-normalize
+    name: Draft module plan for larva.core.normalize
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.core.normalize`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.core.normalize` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-core-spec
+  - id: meta.module_plans.draft-module-plan-for-larva-core-validate
+    name: Draft module plan for larva.core.validate
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.core.validate`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.core.validate` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-core-normalize
+  - id: meta.module_plans.draft-module-plan-for-larva-core-assemble
+    name: Draft module plan for larva.core.assemble
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.core.assemble`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.core.assemble` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-core-validate
+  - id: meta.module_plans.draft-module-plan-for-larva-shell-components
+    name: Draft module plan for larva.shell.components
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.shell.components`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.shell.components` responsibility and
+      dependency direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-core-assemble
+  - id: meta.module_plans.draft-module-plan-for-larva-shell-registry
+    name: Draft module plan for larva.shell.registry
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.shell.registry`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.shell.registry` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-shell-components
+  - id: meta.module_plans.draft-module-plan-for-larva-app-facade
+    name: Draft module plan for larva.app.facade
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.app.facade`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.app.facade` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-shell-registry
+  - id: meta.module_plans.draft-module-plan-for-larva-shell-python-api
+    name: Draft module plan for larva.shell.python_api
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.shell.python_api`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.shell.python_api` responsibility and
+      dependency direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-app-facade
+  - id: meta.module_plans.draft-module-plan-for-larva-shell-cli
+    name: Draft module plan for larva.shell.cli
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.shell.cli`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.shell.cli` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-shell-python-api
+  - id: meta.module_plans.draft-module-plan-for-larva-shell-mcp
+    name: Draft module plan for larva.shell.mcp
+    status: pending
+    description: Author the detailed vectl implementation plan for `larva.shell.mcp`
+      with refs, acceptance boundaries, and dependencies aligned to the architecture.
+    verification: The plan matches the `larva.shell.mcp` responsibility and dependency
+      direction.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_plans.draft-module-plan-for-larva-shell-cli
 - id: meta.module_review
   name: Review Module Plans
   status: pending
