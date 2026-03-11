@@ -18,7 +18,7 @@ phases:
   steps:
   - id: meta.discovery.authoritative_basis
     name: Confirm authoritative planning basis
-    status: claimed
+    status: pending
     description: Verify the authoritative design/module-boundary documents for larva,
       extract the module inventory and dependency order, and record an explicit no-conflict
       conclusion before any module planning starts.
@@ -35,8 +35,6 @@ phases:
 
       - Ready for downstream planning: <yes/no>'
     agent: doc-reviewer
-    claimed_by: doc-reviewer
-    claimed_at: '2026-03-11T20:00:10.302177+00:00'
 - id: meta.prep
   name: Planning Prep
   status: locked
