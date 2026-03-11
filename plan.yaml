@@ -204,6 +204,137 @@ phases:
   status: pending
   gate: Each module-level implementation plan has been reviewed against the shared
     rubric.
+  steps:
+  - id: meta.module_review.review-plan-for-larva-core-spec
+    name: Review plan for larva.core.spec
+    status: pending
+    description: Review the module-level implementation plan for `larva.core.spec`
+      against the frozen basis and shared planning rubric. Confirm scope isolation,
+      dependency correctness, and evidence quality; reject any drift into implementation
+      work.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+  - id: meta.module_review.review-plan-for-larva-core-normalize
+    name: Review plan for larva.core.normalize
+    status: pending
+    description: Review the module-level implementation plan for `larva.core.normalize`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-core-spec
+  - id: meta.module_review.review-plan-for-larva-core-validate
+    name: Review plan for larva.core.validate
+    status: pending
+    description: Review the module-level implementation plan for `larva.core.validate`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-core-normalize
+  - id: meta.module_review.review-plan-for-larva-core-assemble
+    name: Review plan for larva.core.assemble
+    status: pending
+    description: Review the module-level implementation plan for `larva.core.assemble`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-core-validate
+  - id: meta.module_review.review-plan-for-larva-shell-components
+    name: Review plan for larva.shell.components
+    status: pending
+    description: Review the module-level implementation plan for `larva.shell.components`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-core-assemble
+  - id: meta.module_review.review-plan-for-larva-shell-registry
+    name: Review plan for larva.shell.registry
+    status: pending
+    description: Review the module-level implementation plan for `larva.shell.registry`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-shell-components
+  - id: meta.module_review.review-plan-for-larva-app-facade
+    name: Review plan for larva.app.facade
+    status: pending
+    description: Review the module-level implementation plan for `larva.app.facade`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-shell-registry
+  - id: meta.module_review.review-plan-for-larva-shell-python-api
+    name: Review plan for larva.shell.python_api
+    status: pending
+    description: Review the module-level implementation plan for `larva.shell.python_api`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-app-facade
+  - id: meta.module_review.review-plan-for-larva-shell-cli
+    name: Review plan for larva.shell.cli
+    status: pending
+    description: Review the module-level implementation plan for `larva.shell.cli`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-shell-python-api
+  - id: meta.module_review.review-plan-for-larva-shell-mcp
+    name: Review plan for larva.shell.mcp
+    status: pending
+    description: Review the module-level implementation plan for `larva.shell.mcp`
+      against the frozen basis and shared planning rubric.
+    verification: Review outcome clearly states pass, required fixes, or rejection
+      with cited reasons.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+    depends_on:
+    - meta.module_review.review-plan-for-larva-shell-cli
 - id: meta.final_review
   name: Cross-Module Plan Review
   status: pending
