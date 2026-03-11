@@ -32,3 +32,7 @@ phases:
   status: pending
   gate: Each module-level implementation plan has been reviewed against the shared
     rubric.
+- id: meta.final_review
+  name: Cross-Module Plan Review
+  status: pending
+  gate: The full plan set is internally consistent and ready for durable handoff.
