@@ -21,6 +21,21 @@ phases:
 - id: meta.discovery
   name: Discovery
   status: pending
+  steps:
+  - id: meta.discovery.confirm_basis
+    name: Confirm authoritative planning basis
+    status: pending
+    description: Verify that `ARCHITECTURE.md` is the authoritative module-boundary
+      source, confirm that `INTERFACES.md` aligns as the public-interface companion,
+      and record any conflict that would block downstream planning work.
+    verification: Document the authoritative source set, the extracted module inventory,
+      and any blocking conflicts on module boundaries or dependency direction.
+    evidence_template: '- authoritative docs used
+
+      - module inventory extracted
+
+      - conflict check result'
+    agent: software-architect
 - id: meta.module_plans
   name: Module Plan Creation
   status: pending
