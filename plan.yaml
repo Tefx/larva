@@ -339,3 +339,17 @@ phases:
   name: Cross-Module Plan Review
   status: pending
   gate: The full plan set is internally consistent and ready for durable handoff.
+  steps:
+  - id: meta.final_review.perform-final-cross-module-plan-review
+    name: Perform final cross-module plan review
+    status: pending
+    description: Review the full set of drafted and individually reviewed module plans
+      as one system. Confirm module coverage, dependency sequencing, interface alignment
+      between modules, and absence of duplicate or conflicting implementation work
+      across plans.
+    verification: Final review explicitly states whether the full module-plan set
+      is internally consistent and ready for durable handoff.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
