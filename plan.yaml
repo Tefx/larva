@@ -365,3 +365,29 @@ phases:
     - ARCHITECTURE.md
     - INTERFACES.md
     agent: software-architect
+  - id: meta.review.final_cross_module_review
+    name: Perform final cross-module plan review
+    status: pending
+    description: Perform the final overall review across all module-level plans and
+      module-level reviews. Check for dependency consistency, coverage of every architecture-defined
+      module, sequencing coherence, and any remaining planning gaps before downstream
+      execution begins.
+    verification: The overall review confirms full module coverage, dependency alignment,
+      rubric compliance, and identifies any remaining cross-module planning risks.
+    evidence_template: '- coverage check across all modules
+
+      - cross-module dependency findings
+
+      - final readiness assessment'
+    depends_on:
+    - meta.review.review-larva-core-spec-plan
+    - meta.review.review-larva-core-validate-plan
+    - meta.review.review-larva-core-assemble-plan
+    - meta.review.review-larva-core-normalize-plan
+    - meta.review.review-larva-app-facade-plan
+    - meta.review.review-larva-shell-components-plan
+    - meta.review.review-larva-shell-registry-plan
+    - meta.review.review-larva-shell-cli-plan
+    - meta.review.review-larva-shell-mcp-plan
+    - meta.review.review-larva-shell-python-api-plan
+    agent: software-architect
