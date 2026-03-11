@@ -17,7 +17,9 @@ project_guidance: Planning/review work only. Use ARCHITECTURE.md as the authorit
 phases:
 - id: meta.prep
   name: Planning Prep
-  status: pending
+  status: locked
+  depends_on:
+  - meta.discovery
   steps:
   - id: meta.prep.define_rubric
     name: Define module plan rubric
