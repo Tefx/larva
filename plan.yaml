@@ -20,11 +20,11 @@ clipboard:
 phases:
 - id: meta.discovery
   name: Discovery
-  status: in_progress
+  status: done
   steps:
   - id: meta.discovery.authoritative_basis
     name: Confirm authoritative planning basis
-    status: claimed
+    status: done
     description: Verify the authoritative design/module-boundary documents for larva,
       extract the module inventory and dependency order, and record an explicit no-conflict
       conclusion before any module planning starts.
@@ -43,9 +43,28 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-11T20:01:45.118254+00:00'
+    done_at: '2026-03-11T20:03:05.218238+00:00'
+    evidence: "- Authoritative docs:\n  - ARCHITECTURE.md (Section 3 \"Layer Model\"\
+      , Section 5 \"Proposed File Structure\", Section 6 \"Module Specifications\"\
+      , Section 9 \"Dependency Analysis\", Section 10 \"Implementation Handoff\")\n\
+      \  - INTERFACES.md (Section A \"MCP Server Interface\", Section B \"CLI Interface\"\
+      , Section C \"Component Library\", Section D \"Global Registry\", Section E\
+      \ \"PersonaSpec Output Format\", Section G \"Error Codes\")\n  - README.md (high-level\
+      \ overview)\n  - contracts/errors.yaml (error code definitions)\n- Module inventory:\n\
+      \  - Core: larva.core.spec, larva.core.validate, larva.core.assemble, larva.core.normalize\n\
+      \  - App: larva.app.facade, larva.app.types\n  - Shell: larva.shell.components,\
+      \ larva.shell.registry, larva.shell.cli, larva.shell.mcp, larva.shell.python_api,\
+      \ larva.shell.errors\n- Dependency order:\n  1. core/spec\n  2. core/normalize\
+      \ -> core/spec\n  3. core/validate -> core/spec\n  4. core/assemble -> core/spec\n\
+      \  5. shell/components -> core/spec; shell/registry -> core/spec\n  6. app/facade\
+      \ -> core/spec, core/validate, core/assemble, core/normalize, shell/components,\
+      \ shell/registry\n  7. shell/cli -> app/facade; shell/mcp -> app/facade; shell/python_api\
+      \ -> app/facade\n- Conflict check: none. ARCHITECTURE.md module boundaries/dependency\
+      \ rules align with INTERFACES.md and contracts/errors.yaml.\n- Ready for downstream\
+      \ planning: yes"
 - id: meta.prep
   name: Planning Prep
-  status: locked
+  status: pending
   depends_on:
   - meta.discovery
   steps:
