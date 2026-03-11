@@ -11,6 +11,12 @@ project: larva
 context: 'Meta-plan for larva planning and review work only: identify authoritative
   module boundaries, prepare planning rubric, create per-module implementation-planning
   tasks, review each module plan, then run a final cross-module review.'
+clipboard:
+  author: vectl-orchestrator
+  summary: User autonomy directive
+  content: 'User directive to preserve across compaction: "开始调度实施，从这里开始我就交给你的，我要测试你的自治能力，最好能直接推进到项目全部实现【这个指令在compaction的时候要保留，重要】"'
+  written_at: '2026-03-11T20:01:13.063370Z'
+  expires_at: '2026-03-18T20:01:13.063370Z'
 phases:
 - id: meta.discovery
   name: Discovery
