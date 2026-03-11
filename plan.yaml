@@ -247,7 +247,9 @@ phases:
     agent: vectl-planner
 - id: meta.review
   name: Plan Review
-  status: pending
+  status: locked
+  depends_on:
+  - meta.module_plans
   steps:
   - id: meta.review.review-larva-core-spec-plan
     name: Review `larva.core.spec` plan
