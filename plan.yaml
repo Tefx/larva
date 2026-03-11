@@ -18,6 +18,21 @@ phases:
 - id: meta.prep
   name: Planning Prep
   status: pending
+  steps:
+  - id: meta.prep.define_rubric
+    name: Define module plan rubric
+    status: pending
+    description: Create the rubric that every module-level plan must satisfy before
+      review, including module scope, architecture refs, dependency coverage, evidence
+      expectations, and an explicit ban on product implementation work in this meta-plan.
+    verification: Rubric lists required plan sections, review checks, and evidence
+      expectations for downstream module plan creation and review.
+    evidence_template: '- rubric criteria
+
+      - required refs/evidence
+
+      - review checks'
+    agent: doc-reviewer
 - id: meta.discovery
   name: Discovery
   status: pending
