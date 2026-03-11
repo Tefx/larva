@@ -509,3 +509,26 @@ phases:
     depends_on:
     - meta.review.facade
     agent: software-architect
+  - id: meta.review.cli
+    name: Review plan for larva.shell.cli
+    status: pending
+    description: Review the module-level vectl plan for `larva.shell.cli` against
+      the authoritative docs, the shared planning rubric, and the review checklist.
+      Confirm boundary fidelity, dependency assumptions, evidence requirements, and
+      execution-agent assignment before downstream work proceeds.
+    verification: Review result explicitly accepts or rejects the module plan and
+      records any required corrections before broader synthesis.
+    evidence_template: '- Reviewed module: larva.shell.cli
+
+      - Decision: <accept | rework>
+
+      - Boundary issues: <none | list>
+
+      - Dependency issues: <none | list>
+
+      - Evidence gaps: <none | list>
+
+      - Agent assignment gaps: <none | list>'
+    depends_on:
+    - meta.review.python_api
+    agent: software-architect
