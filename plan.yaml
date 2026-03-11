@@ -33,6 +33,22 @@ phases:
 
       - review checks'
     agent: doc-reviewer
+  - id: meta.prep.sequence_planning
+    name: Set module planning sequence
+    status: pending
+    description: Translate the architecture dependency graph into a planning sequence
+      and concurrency policy for module-level plan creation and review, so downstream
+      planners do not create cross-module plan churn.
+    verification: A clear plan-order policy exists for foundation modules, orchestration
+      modules, transport modules, and final synthesis review.
+    evidence_template: '- planning order
+
+      - allowed parallelism
+
+      - dependency rationale'
+    depends_on:
+    - meta.prep.define_rubric
+    agent: software-architect
 - id: meta.discovery
   name: Discovery
   status: pending
