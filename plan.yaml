@@ -8,7 +8,9 @@
 # =============================================================
 version: 1
 project: larva
-context: Implementation plan for larva.
+context: 'Meta-plan for larva planning and review work only: identify authoritative
+  module boundaries, prepare planning rubric, create per-module implementation-planning
+  tasks, review each module plan, then run a final cross-module review.'
 phases:
 - id: meta.discovery
   name: Discovery
