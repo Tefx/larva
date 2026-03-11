@@ -48,3 +48,19 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM", "TCH"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# Invar Configuration
+[tool.invar.guard]
+core_paths = ["src/core"]
+shell_paths = ["src/shell"]
+max_file_lines = 500
+max_function_lines = 50
+require_contracts = true
+require_doctests = true
+forbidden_imports = ["os", "sys", "socket", "requests", "urllib", "subprocess", "shutil", "io", "pathlib"]
+exclude_paths = ["tests", "test", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules", "dist", "build"]
+
+[dependency-groups]
+dev = [
+    "invar-tools>=1.19.7",
+]
