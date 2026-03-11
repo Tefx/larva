@@ -1,0 +1,886 @@
+# =============================================================
+# MANAGED FILE — DO NOT EDIT DIRECTLY
+# This file is owned by vectl. Direct edits bypass CAS write
+# protection, lock recalculation, and schema validation.
+#
+# Use: uvx vectl <command>  OR  vectl_* MCP tools
+# Docs: uvx vectl guide
+# =============================================================
+version: 1
+project: larva
+context: Implementation plan for larva.
+phases:
+- id: identify
+  name: Identify Modules
+  status: pending
+  steps:
+  - id: identify.module-inventory
+    name: module-inventory
+    status: pending
+    description: 'Derive the authoritative larva module set from `ARCHITECTURE.md`,
+      confirm the planning scope is planning/review only, and record the module ordering
+      to be used for downstream per-module vectl plans.
+
+
+      Architecture anchors:
+
+      - `ARCHITECTURE.md` module specification sections for each module
+
+      - `ARCHITECTURE.md` "Module Graph"
+
+      - `ARCHITECTURE.md` "Suggested Build Order"
+
+
+      Expected output:
+
+      - canonical list of architecture modules to plan
+
+      - module grouping rationale for later phases
+
+      - explicit note that this meta-plan does not cover module implementation'
+    verification: '- Output lists all architecture modules exactly once
+
+      - Ordering is justified from `ARCHITECTURE.md`
+
+      - Scope statement explicitly excludes implementation work'
+    evidence_template: '## Module Inventory Evidence
+
+
+      - Source architecture sections consulted
+
+      - Final ordered module list
+
+      - Grouping rationale
+
+      - Planning-only scope note'
+    agent: vectl-planner
+  - id: identify.planning-rubric
+    name: planning-rubric
+    status: pending
+    description: Define the standard rubric that every per-module detailed vectl plan
+      must follow. The rubric must require concise module scope, module-specific phases/steps,
+      dependency handling, verification expectations, and a follow-up review target
+      while keeping the work strictly in planning territory.
+    verification: '- Rubric defines what a valid per-module plan must contain
+
+      - Rubric distinguishes planning tasks from implementation tasks
+
+      - Rubric includes review expectations for each module plan'
+    evidence_template: '## Planning Rubric Evidence
+
+
+      - Required sections for each module plan
+
+      - Required dependency and verification fields
+
+      - Review checklist for module plan quality'
+    depends_on:
+    - identify.module-inventory
+    agent: vectl-planner
+  - id: identify.gate
+    name: gate
+    status: pending
+    description: 'Gate review: confirm the module inventory and planning rubric are
+      sufficient to begin per-module detailed planning and that the meta-plan is still
+      scoped to planning/review only.
+
+
+      review_depth: STANDARD'
+    verification: '- Module inventory is complete and architecture-derived
+
+      - Planning rubric is actionable for downstream module planning
+
+      - No implementation scope has leaked into the meta-plan'
+    evidence_template: '## Gate Review Report
+
+
+      - Inventory completeness assessment
+
+      - Rubric adequacy assessment
+
+      - Scope control assessment
+
+      - Go/no-go for per-module planning'
+    depends_on:
+    - identify.module-inventory
+    - identify.planning-rubric
+    agent: gate-reviewer
+- id: plan-foundations
+  name: Plan Foundation Modules
+  status: pending
+  steps:
+  - id: plan-foundations.core-spec-plan
+    name: core-spec-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.core.spec` based
+      on its architecture section and its role as the schema foundation for downstream
+      modules.
+
+
+      Plan content must stay in planning scope only and should include:
+
+      - internal planning phases/steps needed for `larva.core.spec`
+
+      - verification expectations for the future module plan
+
+      - explicit downstream dependency notes for modules that rely on this plan
+
+      - module-specific review target after planning completes'
+    verification: '- Detailed vectl plan exists for `larva.core.spec`
+
+      - Plan references the module''s responsibility, non-responsibility, and interface
+      sections
+
+      - Plan does not contain implementation work items'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.core.spec`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    agent: vectl-planner
+  - id: plan-foundations.core-normalize-plan
+    name: core-normalize-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.core.normalize`
+      using its architecture specification and its placement immediately after `larva.core.spec`
+      in the suggested module order.
+
+
+      The resulting plan must stay planning-only and capture the module''s future
+      planning steps, verification expectations, and dependencies on `larva.core.spec`
+      and downstream consumers.'
+    verification: '- Detailed vectl plan exists for `larva.core.normalize`
+
+      - Plan captures architecture-defined responsibilities and dependencies
+
+      - Plan stays limited to planning/review activities'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.core.normalize`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-foundations.core-spec-plan
+    agent: vectl-planner
+  - id: plan-foundations.core-validate-plan
+    name: core-validate-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.core.validate`
+      using its architecture specification and the cross-module contract that places
+      validation after assembly and before normalization checks are consumed.
+
+
+      The module plan must stay in planning scope and capture its own future phase/step
+      structure, verification expectations, and explicit interfaces with adjacent
+      core modules.'
+    verification: '- Detailed vectl plan exists for `larva.core.validate`
+
+      - Plan captures architecture-defined interfaces and ordering assumptions
+
+      - Plan excludes implementation tasks'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.core.validate`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-foundations.core-normalize-plan
+    agent: vectl-planner
+  - id: plan-foundations.core-assemble-plan
+    name: core-assemble-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.core.assemble`
+      using its architecture specification and the documented assemble -> validate
+      -> normalize contract.
+
+
+      The module plan must remain planning-only and specify module-local planning
+      phases/steps, verification expectations, and dependency notes that connect assembly
+      with validation, normalization, and upstream component loading.'
+    verification: '- Detailed vectl plan exists for `larva.core.assemble`
+
+      - Plan references architecture-defined contracts with adjacent modules
+
+      - Plan excludes product implementation work'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.core.assemble`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-foundations.core-validate-plan
+    agent: vectl-planner
+  - id: plan-foundations.gate
+    name: gate
+    status: pending
+    description: 'Gate review: confirm the foundation-module planning set is complete,
+      architecture-aligned, and still limited to planning/review activities.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - build-order consistency across `larva.core.*`
+
+      - planning-only scope control'
+    verification: '- All four foundation module plans exist and are reviewable
+
+      - Dependency assumptions are consistent across the foundation set
+
+      - No implementation scope appears in the module plans'
+    evidence_template: '## Gate Review Report
+
+
+      - Coverage across foundation modules
+
+      - Dependency consistency findings
+
+      - Scope-control findings
+
+      - Go/no-go for next planning phase'
+    depends_on:
+    - plan-foundations.core-spec-plan
+    - plan-foundations.core-normalize-plan
+    - plan-foundations.core-validate-plan
+    - plan-foundations.core-assemble-plan
+    agent: gate-reviewer
+- id: plan-orchestration
+  name: Plan Orchestration Modules
+  status: pending
+  steps:
+  - id: plan-orchestration.shell-components-plan
+    name: shell-components-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.shell.components`
+      using its architecture specification and its contract with `larva.core.assemble`.
+
+
+      The module plan must stay in planning scope and define the future planning structure,
+      verification expectations, and dependency notes for component loading behavior
+      without introducing implementation work.'
+    verification: '- Detailed vectl plan exists for `larva.shell.components`
+
+      - Plan reflects architecture-defined boundaries with core assembly
+
+      - Plan stays limited to planning/review activities'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.shell.components`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    agent: vectl-planner
+  - id: plan-orchestration.shell-registry-plan
+    name: shell-registry-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.shell.registry`
+      using its architecture specification and its relationship to canonical spec
+      storage and override-aware flows.
+
+
+      The module plan must remain planning-only and define module-local phases/steps,
+      verification expectations, and dependency notes for interactions with `larva.app.facade`.'
+    verification: '- Detailed vectl plan exists for `larva.shell.registry`
+
+      - Plan references architecture-defined storage and dependency boundaries
+
+      - Plan excludes implementation work items'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.shell.registry`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-orchestration.shell-components-plan
+    agent: vectl-planner
+  - id: plan-orchestration.app-facade-plan
+    name: app-facade-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.app.facade` using
+      its architecture specification and its role as the orchestration boundary between
+      core logic and shell transports.
+
+
+      The module plan must stay in planning scope and define future planning phases/steps,
+      verification expectations, and explicit dependency handling for assembly, validation,
+      normalization, registry access, and override application.'
+    verification: '- Detailed vectl plan exists for `larva.app.facade`
+
+      - Plan covers the module''s orchestration responsibilities and dependency rules
+
+      - Plan remains limited to planning/review activities'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.app.facade`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-orchestration.shell-registry-plan
+    agent: vectl-planner
+  - id: plan-orchestration.gate
+    name: gate
+    status: pending
+    description: 'Gate review: confirm the orchestration-module planning set is complete,
+      dependency-aligned, and still scoped to planning/review activities.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - shell-to-app boundary correctness
+
+      - planning-only scope control'
+    verification: '- All orchestration module plans exist and are reviewable
+
+      - Dependency boundaries across shell support and app facade are coherent
+
+      - No implementation scope appears in the plans'
+    evidence_template: '## Gate Review Report
+
+
+      - Coverage across orchestration modules
+
+      - Boundary consistency findings
+
+      - Scope-control findings
+
+      - Go/no-go for transport planning'
+    depends_on:
+    - plan-orchestration.shell-components-plan
+    - plan-orchestration.shell-registry-plan
+    - plan-orchestration.app-facade-plan
+    agent: gate-reviewer
+- id: plan-transports
+  name: Plan Transport Modules
+  status: pending
+  steps:
+  - id: plan-transports.shell-python-api-plan
+    name: shell-python-api-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.shell.python_api`
+      using its architecture specification and its role as the thin Python-facing
+      transport over `larva.app.facade`.
+
+
+      The module plan must stay in planning scope and define future planning phases/steps,
+      verification expectations, and dependency notes for the transport boundary.'
+    verification: '- Detailed vectl plan exists for `larva.shell.python_api`
+
+      - Plan reflects the thin-facade transport role from architecture
+
+      - Plan excludes implementation tasks'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.shell.python_api`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    agent: vectl-planner
+  - id: plan-transports.shell-cli-plan
+    name: shell-cli-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.shell.cli` using
+      its architecture specification and its transport responsibilities over `larva.app.facade`.
+
+
+      The module plan must stay in planning scope and define future planning phases/steps,
+      verification expectations, and dependency notes for CLI-facing behavior.'
+    verification: '- Detailed vectl plan exists for `larva.shell.cli`
+
+      - Plan reflects architecture-defined CLI boundaries
+
+      - Plan remains limited to planning/review work'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.shell.cli`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-transports.shell-python-api-plan
+    agent: vectl-planner
+  - id: plan-transports.shell-mcp-plan
+    name: shell-mcp-plan
+    status: pending
+    description: 'Create the detailed vectl plan for module `larva.shell.mcp` using
+      its architecture specification and its transport responsibilities over `larva.app.facade`.
+
+
+      The module plan must stay in planning scope and define future planning phases/steps,
+      verification expectations, and dependency notes for MCP-facing behavior.'
+    verification: '- Detailed vectl plan exists for `larva.shell.mcp`
+
+      - Plan reflects architecture-defined MCP boundaries
+
+      - Plan remains limited to planning/review work'
+    evidence_template: '## Module Plan Evidence
+
+
+      - Module: `larva.shell.mcp`
+
+      - Architecture sections used
+
+      - Resulting plan structure
+
+      - Planning-only scope confirmation'
+    depends_on:
+    - plan-transports.shell-cli-plan
+    agent: vectl-planner
+  - id: plan-transports.gate
+    name: gate
+    status: pending
+    description: 'Gate review: confirm the transport-module planning set is complete,
+      upstream-aware, and still limited to planning/review activities.
+
+
+      review_depth: STANDARD
+
+      cross_cutting_focus:
+
+      - transport consistency across python_api, cli, and mcp
+
+      - dependence on `larva.app.facade`
+
+      - planning-only scope control'
+    verification: '- All transport module plans exist and are reviewable
+
+      - Upstream app-facade assumptions are handled consistently
+
+      - No implementation scope appears in the plans'
+    evidence_template: '## Gate Review Report
+
+
+      - Coverage across transport modules
+
+      - Interface consistency findings
+
+      - Scope-control findings
+
+      - Go/no-go for module-plan reviews'
+    depends_on:
+    - plan-transports.shell-python-api-plan
+    - plan-transports.shell-cli-plan
+    - plan-transports.shell-mcp-plan
+    agent: gate-reviewer
+- id: module-reviews
+  name: Review Module Plans
+  status: pending
+  steps:
+  - id: module-reviews.review-core-spec-plan
+    name: review-core-spec-plan
+    status: pending
+    description: 'As an independent reviewer, review the detailed plan produced for
+      `larva.core.spec`.
+
+
+      Check for:
+
+      - alignment with the module''s architecture responsibility and interface sections
+
+      - clear planning phases/steps and verification expectations
+
+      - planning-only scope with no hidden implementation work
+
+      - readiness for downstream modules to rely on this plan'
+    verification: '- Review records concrete strengths, gaps, and ambiguities for
+      the `larva.core.spec` plan
+
+      - Review explicitly confirms or rejects planning-only scope compliance
+
+      - Review outcome is actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.core.spec`
+
+      - Plan adequacy findings
+
+      - Scope-control findings
+
+      - Required follow-ups, if any'
+    agent: doc-reviewer
+  - id: module-reviews.review-core-normalize-plan
+    name: review-core-normalize-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.core.normalize` for architecture alignment, execution clarity, verification
+      quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.core.normalize`
+
+      - Review checks dependency alignment with adjacent core modules
+
+      - Review remains specific enough to drive replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.core.normalize`
+
+      - Plan adequacy findings
+
+      - Dependency findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-core-spec-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-core-validate-plan
+    name: review-core-validate-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.core.validate` for architecture alignment, contract awareness, verification
+      quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.core.validate`
+
+      - Review checks interface assumptions with adjacent core modules
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.core.validate`
+
+      - Plan adequacy findings
+
+      - Dependency findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-core-normalize-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-core-assemble-plan
+    name: review-core-assemble-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.core.assemble` for architecture alignment, cross-module contract handling,
+      verification quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.core.assemble`
+
+      - Review checks use of assemble -> validate -> normalize assumptions
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.core.assemble`
+
+      - Plan adequacy findings
+
+      - Dependency findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-core-validate-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-shell-components-plan
+    name: review-shell-components-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.shell.components` for architecture alignment, upstream/downstream boundary
+      clarity, verification quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.shell.components`
+
+      - Review checks component-loading boundary clarity
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.shell.components`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-core-assemble-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-shell-registry-plan
+    name: review-shell-registry-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.shell.registry` for architecture alignment, registry-boundary clarity,
+      verification quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.shell.registry`
+
+      - Review checks canonical-storage and override-boundary assumptions
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.shell.registry`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-shell-components-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-app-facade-plan
+    name: review-app-facade-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.app.facade` for architecture alignment, orchestration-boundary clarity,
+      verification quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.app.facade`
+
+      - Review checks consistency of app-level orchestration assumptions
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.app.facade`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-shell-registry-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-shell-python-api-plan
+    name: review-shell-python-api-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.shell.python_api` for architecture alignment, transport-boundary clarity,
+      verification quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.shell.python_api`
+
+      - Review checks consistency with thin-facade transport assumptions
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.shell.python_api`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-app-facade-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-shell-cli-plan
+    name: review-shell-cli-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.shell.cli` for architecture alignment, transport-boundary clarity, verification
+      quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.shell.cli`
+
+      - Review checks consistency with transport-layer expectations
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.shell.cli`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-shell-python-api-plan
+    agent: doc-reviewer
+  - id: module-reviews.review-shell-mcp-plan
+    name: review-shell-mcp-plan
+    status: pending
+    description: As an independent reviewer, review the detailed plan produced for
+      `larva.shell.mcp` for architecture alignment, transport-boundary clarity, verification
+      quality, and planning-only scope.
+    verification: '- Review captures plan quality findings for `larva.shell.mcp`
+
+      - Review checks consistency with MCP transport expectations
+
+      - Review remains actionable for replanning if needed'
+    evidence_template: '## Module Plan Review
+
+
+      - Module reviewed: `larva.shell.mcp`
+
+      - Plan adequacy findings
+
+      - Boundary findings
+
+      - Required follow-ups, if any'
+    depends_on:
+    - module-reviews.review-shell-cli-plan
+    agent: doc-reviewer
+  - id: module-reviews.gate
+    name: gate
+    status: pending
+    description: 'Gate review: confirm every module-specific plan has been independently
+      reviewed and that identified gaps are explicit before final overall review.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - ten module plans reviewed in one phase
+
+      - cross-module consistency matters for the final planning set
+
+      cross_cutting_focus:
+
+      - planning-only scope across all module plans
+
+      - dependency consistency across all reviews'
+    verification: '- Every module plan has an independent review artifact
+
+      - Review findings are specific enough to support replanning where needed
+
+      - The full review set is ready for final cross-module assessment'
+    evidence_template: '## Gate Review Report
+
+
+      - Review coverage across all module plans
+
+      - Cross-module planning findings
+
+      - Remaining blockers or gaps
+
+      - Go/no-go for final overall review'
+    depends_on:
+    - module-reviews.review-core-spec-plan
+    - module-reviews.review-core-normalize-plan
+    - module-reviews.review-core-validate-plan
+    - module-reviews.review-core-assemble-plan
+    - module-reviews.review-shell-components-plan
+    - module-reviews.review-shell-registry-plan
+    - module-reviews.review-app-facade-plan
+    - module-reviews.review-shell-python-api-plan
+    - module-reviews.review-shell-cli-plan
+    - module-reviews.review-shell-mcp-plan
+    agent: gate-reviewer
+- id: overall-review
+  name: Overall Plan Review
+  status: pending
+  steps:
+  - id: overall-review.cross-module-final-review
+    name: cross-module-final-review
+    status: pending
+    description: 'Perform the final overall review of the complete planning set after
+      all module plans and per-module reviews are available.
+
+
+      This review must assess:
+
+      - complete coverage of all architecture modules
+
+      - consistency of per-module plan boundaries and dependency assumptions
+
+      - review findings that indicate missing replanning work
+
+      - whether the resulting planning portfolio is ready for execution module by
+      module'
+    verification: '- Final review covers all architecture modules in the portfolio
+
+      - Cross-module inconsistencies or omissions are explicitly called out
+
+      - Outcome clearly states whether the planning set is execution-ready'
+    evidence_template: '## Final Overall Review
+
+
+      - Coverage summary across all modules
+
+      - Cross-module consistency findings
+
+      - Remaining planning gaps
+
+      - Overall readiness assessment'
+    agent: doc-reviewer
+  - id: overall-review.gate
+    name: gate
+    status: pending
+    description: 'Gate review: make the final quality decision on the planning meta-plan
+      and confirm the per-module planning portfolio is ready for downstream execution.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - this is the final overall review of the planning portfolio
+
+      - all module plans and all module-plan reviews must be coherent together
+
+      cross_cutting_focus:
+
+      - full architecture coverage
+
+      - dependency coherence across module plans
+
+      - planning-only scope preserved end to end'
+    verification: '- Final overall review exists and covers the full portfolio
+
+      - The planning portfolio either passes with clear readiness evidence or blocks
+      with explicit gaps
+
+      - No unresolved scope confusion remains between planning and implementation'
+    evidence_template: '## Final Gate Review
+
+
+      - Overall coverage decision
+
+      - Cross-module coherence decision
+
+      - Final blockers, if any
+
+      - Release/no-release decision for the planning portfolio'
+    depends_on:
+    - overall-review.cross-module-final-review
+    agent: gate-reviewer

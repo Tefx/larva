@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "invar": {
+      "command": "uvx",
+      "args": [
+        "invar-tools",
+        "mcp"
+      ]
+    }
+  }
+}

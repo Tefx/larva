@@ -27,7 +27,7 @@ errors:
   # --- larva (PersonaSpec toolkit) ---
   PERSONA_NOT_FOUND:
     code: 100
-    description: "Persona name not found in registry"
+    description: "Persona id not found in registry"
   PERSONA_INVALID:
     code: 101
     description: "PersonaSpec validation failed"
@@ -37,9 +37,6 @@ errors:
   VARIABLE_UNRESOLVED:
     code: 103
     description: "Unresolved variable in prompt text"
-  TARGET_UNKNOWN:
-    code: 104
-    description: "Export target format not recognized"
   COMPONENT_NOT_FOUND:
     code: 105
     description: "Component referenced in assembly not found"

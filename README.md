@@ -1,6 +1,6 @@
 # larva
 
-PersonaSpec toolkit for LLM agents. Validate, assemble, register, and export agent persona specifications.
+PersonaSpec toolkit for LLM agents. Validate, assemble, normalize, register, and resolve canonical persona specifications.
 
 Part of the [opifex](https://github.com/tefx/opifex) system — four independent Unix tools composing into an autonomous agent OS.
 
@@ -9,8 +9,8 @@ Part of the [opifex](https://github.com/tefx/opifex) system — four independent
 - **Validate** any PersonaSpec JSON (schema + semantic checks)
 - **Assemble** PersonaSpec from reusable components (prompt fragments, toolsets, constraints)
 - **Register** pre-compiled personas in a global registry (`~/.larva/`)
-- **Resolve** personas by name with optional runtime overrides
-- **Export** to CLAUDE.md, AGENTS.md, and other tool-native formats
+- **Resolve** personas by id with optional runtime overrides
+- **Admit canonical personas** via validate + register (no separate staging or governance step)
 - **MCP server** for programmatic access by nervus, anima, and other tools
 
 ## Key Design Decisions
@@ -20,6 +20,10 @@ Part of the [opifex](https://github.com/tefx/opifex) system — four independent
 - **Error-on-conflict.** When two components set the same scalar field, assembly fails. Explicit overrides resolve conflicts.
 - **Global registry.** Personas live in `~/.larva/registry/`. anima loads one persona per instance — registry size has zero context cost.
 - **MCP-first interface.** Other opifex components call larva tools via MCP.
+- **Authority, not runtime.** larva owns canonical persona definitions; runtime execution and gateway enforcement belong elsewhere.
+- **No cross-run mutable persona memory.** Lasting persona change happens through explicit `validate` + `register`, not through hidden mutable state layers.
+- **Minimal semantics, not heavy taxonomy.** PersonaSpec should stay small; fine-grained MCP call semantics belong to the gateway/enforcement layer, not to larva.
+- **Compaction is persona-level.** If a persona needs a custom compaction/summarization prompt, that belongs in the canonical definition rather than runtime-local config.
 
 ## Interfaces
 
@@ -28,10 +32,9 @@ Part of the [opifex](https://github.com/tefx/opifex) system — four independent
 ```
 larva.validate(spec)          → Ok | ValidationErrors
 larva.assemble(components)    → PersonaSpec JSON
-larva.resolve(name)           → PersonaSpec JSON (from registry)
-larva.register(spec)          → spec_id
-larva.list()                  → [{name, spec_id, spec_digest, model}]
-larva.export(name, format)    → formatted content
+larva.resolve(id)             → PersonaSpec JSON (from registry)
+larva.register(spec)          → id
+larva.list()                  → [{id, spec_digest, model}]
 ```
 
 ### CLI
@@ -40,9 +43,8 @@ larva.export(name, format)    → formatted content
 larva validate <spec.json>
 larva assemble --prompt <name> --toolset <name> --constraints <name> -o <output>
 larva register <spec.json>
-larva resolve <name> [--override key=value]
+larva resolve <id> [--override key=value]
 larva list
-larva export <name> --format claude-md
 larva component list
 larva component show <type>/<name>
 ```
@@ -53,7 +55,7 @@ larva component show <type>/<name>
 from larva import assemble, validate, resolve
 
 spec = assemble(
-    name="code-reviewer",
+    id="code-reviewer",
     prompts=["code-reviewer", "careful-reasoning"],
     toolset="code-tools",
     constraints="strict",
@@ -61,7 +63,7 @@ spec = assemble(
 )
 
 result = validate(some_json)
-spec = resolve("code-reviewer", overrides={"budget": 100000})
+spec = resolve("code-reviewer")
 ```
 
 ## Component Library
@@ -70,8 +72,8 @@ spec = resolve("code-reviewer", overrides={"budget": 100000})
 ~/.larva/
   components/
     prompts/           # Prompt text fragments (.md files)
-    toolsets/           # tools_profile values (.yaml)
-    constraints/        # Runtime constraint bundles (.yaml)
+    toolsets/           # tool declarations / posture defaults (.yaml)
+    constraints/        # Runtime posture bundles (.yaml)
     models/             # Model + inference params (.yaml)
   registry/             # Pre-compiled PersonaSpec JSON
 ```
