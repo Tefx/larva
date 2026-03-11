@@ -15,3 +15,8 @@ phases:
 - id: meta.discovery
   name: Discovery
   status: pending
+- id: meta.prep
+  name: Planning Prep
+  status: locked
+  depends_on:
+  - meta.discovery
