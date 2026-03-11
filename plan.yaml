@@ -297,6 +297,30 @@ phases:
     depends_on:
     - meta.plan.python_api
     agent: vectl-planner
+  - id: meta.plan.mcp
+    name: Plan module larva.shell.mcp
+    status: pending
+    description: Produce the detailed vectl implementation plan for `larva.shell.mcp`
+      in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
+      use contract -> test -> implementation ordering for non-trivial new work, allow
+      contract + implementation only under an explicit narrow simple-feature exception,
+      keep contract steps acceptance-only, batch only within the `larva.shell.mcp`
+      boundary, and assign a concrete execution agent to every produced step.
+    verification: The produced module plan cites the authoritative docs, stays inside
+      the `larva.shell.mcp` boundary, respects dependency direction, and names a concrete
+      execution agent on every created step.
+    evidence_template: '- Added step IDs: <list>
+
+      - Boundary citations: <sections>
+
+      - Downstream ordering used: <contract/test/implementation>
+
+      - Concrete execution agents assigned: <yes/no>
+
+      - Open module questions: <none | list>'
+    depends_on:
+    - meta.plan.cli
+    agent: vectl-planner
 - id: meta.review
   name: Review
   status: locked
