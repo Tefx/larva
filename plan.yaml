@@ -695,3 +695,42 @@ phases:
 - id: core_spec
   name: larva.core.spec
   status: pending
+  steps:
+  - id: core_spec.core-spec-contract
+    name: core.spec.contract
+    status: pending
+    description: "Create the contract-only `larva.core.spec` module at `src/larva/core/spec.py`.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the canonical\
+      \ type aliases `ToolPosture` and `SideEffectPolicy`\n- define `PersonaSpec`\
+      \ as the authoritative `TypedDict(total=False)` with exactly the documented\
+      \ keys and `spec_version: Literal[\"0.1.0\"]`\n- keep the module pure and typing-focused\
+      \ so downstream modules can import these contracts without pulling I/O or transport\
+      \ concerns\n- include only contract-level module docs/examples that clarify\
+      \ the accepted shape\n\nNon-goals:\n- no validation logic\n- no normalization\
+      \ logic\n- no assembly helpers\n- no registry lookup or persistence code\n-\
+      \ no export wiring in shared registries such as `src/larva/__init__.py`\n\n\
+      Boundary citations:\n- ARCHITECTURE.md :: 5. Proposed File Structure\n- ARCHITECTURE.md\
+      \ :: Module: `larva.core.spec`\n- ARCHITECTURE.md :: 4. Dependency Rules / Forbidden\n\
+      - README.md :: Key Design Decisions"
+    verification: '- `src/larva/core/spec.py` exists and stays inside the `larva.core.spec`
+      boundary
+
+      - Public names match the authoritative interface: `ToolPosture`, `SideEffectPolicy`,
+      `PersonaSpec`
+
+      - The file imports only typing-level dependencies
+
+      - The contract remains acceptance-only: no business logic, I/O, parsing, or
+      transport helpers'
+    evidence_template: '## Contract Evidence
+
+
+      - File created: `src/larva/core/spec.py`
+
+      - Public names declared: `ToolPosture`, `SideEffectPolicy`, `PersonaSpec`
+
+      - Exact PersonaSpec keys listed from code
+
+      - Purity check: list imports and confirm no I/O/runtime imports'
+    agent: python-senior
