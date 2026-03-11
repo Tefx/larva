@@ -244,3 +244,124 @@ phases:
 - id: meta.review
   name: Plan Review
   status: pending
+  steps:
+  - id: meta.review.review-larva-core-spec-plan
+    name: Review `larva.core.spec` plan
+    status: pending
+    description: Review the module-level plan for `larva.core.spec` against the planning
+      rubric, architecture boundary, and dependency expectations. Confirm the step
+      set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-core-validate-plan
+    name: Review `larva.core.validate` plan
+    status: pending
+    description: Review the module-level plan for `larva.core.validate` against the
+      planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-core-assemble-plan
+    name: Review `larva.core.assemble` plan
+    status: pending
+    description: Review the module-level plan for `larva.core.assemble` against the
+      planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-core-normalize-plan
+    name: Review `larva.core.normalize` plan
+    status: pending
+    description: Review the module-level plan for `larva.core.normalize` against the
+      planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-app-facade-plan
+    name: Review `larva.app.facade` plan
+    status: pending
+    description: Review the module-level plan for `larva.app.facade` against the planning
+      rubric, architecture boundary, and dependency expectations. Confirm the step
+      set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-shell-components-plan
+    name: Review `larva.shell.components` plan
+    status: pending
+    description: Review the module-level plan for `larva.shell.components` against
+      the planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-shell-registry-plan
+    name: Review `larva.shell.registry` plan
+    status: pending
+    description: Review the module-level plan for `larva.shell.registry` against the
+      planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-shell-cli-plan
+    name: Review `larva.shell.cli` plan
+    status: pending
+    description: Review the module-level plan for `larva.shell.cli` against the planning
+      rubric, architecture boundary, and dependency expectations. Confirm the step
+      set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-shell-mcp-plan
+    name: Review `larva.shell.mcp` plan
+    status: pending
+    description: Review the module-level plan for `larva.shell.mcp` against the planning
+      rubric, architecture boundary, and dependency expectations. Confirm the step
+      set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
+  - id: meta.review.review-larva-shell-python-api-plan
+    name: Review `larva.shell.python_api` plan
+    status: pending
+    description: Review the module-level plan for `larva.shell.python_api` against
+      the planning rubric, architecture boundary, and dependency expectations. Confirm
+      the step set stays in planning/review scope and does not execute product work.
+    verification: The review records whether the module plan is complete, correctly
+      scoped, dependency-aware, and ready for downstream execution by planners/workers.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: software-architect
