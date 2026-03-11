@@ -37,6 +37,33 @@ phases:
   status: pending
   gate: A shared planning rubric exists before any module-level implementation plan
     is drafted.
+  steps:
+  - id: meta.prep.define-module-planning-rubric
+    name: Define module planning rubric
+    status: pending
+    description: 'Create the shared checklist for drafting module-level implementation
+      plans: required refs, module boundary checks, acceptance boundaries, dependency
+      sequencing, evidence expectations, and review criteria. Keep the rubric limited
+      to planning and review work.'
+    verification: Rubric is explicit enough that different planners would produce
+      comparable module plans.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
+  - id: meta.prep.define-module-review-pass-criteria
+    name: Define module review pass criteria
+    status: pending
+    description: Define how each module plan will be reviewed after drafting, including
+      completeness, alignment with architecture, interface coverage, and dependency
+      correctness. Require reviewers to reject plans that drift into implementation
+      work.
+    verification: Review criteria clearly distinguish planning defects from implementation
+      work.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - plan.yaml
 - id: meta.module_plans
   name: Author Module Plans
   status: pending
