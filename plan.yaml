@@ -692,3 +692,6 @@ phases:
     depends_on:
     - meta.review.mcp
     agent: software-architect
+- id: core_spec
+  name: larva.core.spec
+  status: pending
