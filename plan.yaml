@@ -59,6 +59,24 @@ phases:
 
       - Agent assignment rule captured: <yes/no>'
     agent: doc-reviewer
+  - id: meta.prep.review_checklist
+    name: Define module-plan review checklist
+    status: pending
+    description: Define the checklist and acceptance gate for reviewing module-level
+      plans, including boundary alignment, dependency correctness, sequencing, cross-module
+      touchpoints, and evidence sufficiency.
+    verification: Checklist is explicit enough for consistent per-module review and
+      final cross-module review.
+    evidence_template: '- Review checklist items: <list>
+
+      - Boundary checks: <list>
+
+      - Cross-module checks: <list>
+
+      - Final-review gate: <list>'
+    depends_on:
+    - meta.prep.planning_rubric
+    agent: software-architect
 - id: meta.plan_creation
   name: Module Plan Creation
   status: locked
