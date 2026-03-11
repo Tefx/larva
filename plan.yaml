@@ -23,3 +23,7 @@ phases:
   status: pending
   gate: A shared planning rubric exists before any module-level implementation plan
     is drafted.
+- id: meta.module_plans
+  name: Author Module Plans
+  status: pending
+  gate: Every architecture module has a detailed implementation plan in vectl.
