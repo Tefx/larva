@@ -214,6 +214,10 @@ phases:
       - Concrete execution agents assigned: <yes/no>
 
       - Open module questions: <none | list>'
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - README.md
     depends_on:
     - meta.plan.assemble
     agent: vectl-planner
