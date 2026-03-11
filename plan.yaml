@@ -18,3 +18,6 @@ phases:
 - id: meta.prep
   name: Planning Prep
   status: pending
+- id: meta.discovery
+  name: Discovery
+  status: pending
