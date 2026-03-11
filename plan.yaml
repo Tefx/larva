@@ -27,3 +27,8 @@ phases:
   name: Author Module Plans
   status: pending
   gate: Every architecture module has a detailed implementation plan in vectl.
+- id: meta.module_review
+  name: Review Module Plans
+  status: pending
+  gate: Each module-level implementation plan has been reviewed against the shared
+    rubric.
