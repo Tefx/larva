@@ -70,7 +70,7 @@ phases:
   steps:
   - id: meta.prep.planning_rubric
     name: Create module planning rubric
-    status: claimed
+    status: done
     description: Create the shared rubric that downstream module planners must follow
       when producing vectl plans, including required document citations, dependency
       handling, evidence expectations, and the rule that every produced step must
@@ -88,6 +88,35 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-11T20:03:11.308571+00:00'
+    done_at: '2026-03-11T20:05:06.529936+00:00'
+    evidence: "- Rubric sections:\n  - Completeness Requirements (phase breakdown,\
+      \ step granularity, dependencies, verification criteria, evidence templates,\
+      \ interface definitions, error handling, state transitions)\n  - Module Boundary\
+      \ Fidelity (boundary compliance, no scope creep, interface contracts, access\
+      \ patterns, contract stability)\n  - Dependency Handling Rules (declaration\
+      \ requirement, direction enforcement, no circular dependencies, layer isolation,\
+      \ facade gateway, upstream completion)\n  - Evidence Requirements (concrete\
+      \ proof, citations, gap documentation, verification alignment)\n  - Execution\
+      \ Agent Assignment (mandatory concrete agent per step, capability matching,\
+      \ single ownership, agent declaration)\n  - Contract-First Implementation Ordering\
+      \ (contract -> test -> implementation for non-trivial work, exception allowed\
+      \ with justification)\n  - Required Document Citations (ARCHITECTURE.md sections,\
+      \ INTERFACES.md sections, contracts/errors.yaml)\n  - Planning Deliverables\
+      \ Checklist (agent assignments, dependencies, evidence templates, citations,\
+      \ boundaries, verification, circular deps, ordering)\n- Required citations:\n\
+      \  - ARCHITECTURE.md Section 3 \"Layer Model\"\n  - ARCHITECTURE.md Section\
+      \ 5 \"Proposed File Structure\"\n  - ARCHITECTURE.md Section 6 \"Module Specifications\"\
+      \n  - ARCHITECTURE.md Section 9 \"Dependency Analysis\"\n  - ARCHITECTURE.md\
+      \ Section 10 \"Implementation Handoff\"\n  - INTERFACES.md Section A \"MCP Server\
+      \ Interface\"\n  - INTERFACES.md Section B \"CLI Interface\"\n  - INTERFACES.md\
+      \ Section C \"Component Library\"\n  - INTERFACES.md Section D \"Global Registry\"\
+      \n  - INTERFACES.md Section E \"PersonaSpec Output Format\"\n  - INTERFACES.md\
+      \ Section G \"Error Codes\"\n  - contracts/errors.yaml\n- Required evidence\
+      \ for downstream planners:\n  - Boundary alignment proof\n  - Dependency correctness\
+      \ proof\n  - Interface contract compliance\n  - Test coverage evidence\n  -\
+      \ Agent assignment verification\n  - Conflict check results\n  - Authoritative\
+      \ document citations with specific section references\n- Agent assignment rule\
+      \ captured: yes"
   - id: meta.prep.review_checklist
     name: Define module-plan review checklist
     status: pending
