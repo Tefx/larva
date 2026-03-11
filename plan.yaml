@@ -71,7 +71,9 @@ phases:
     agent: software-architect
 - id: meta.module_plans
   name: Module Plan Creation
-  status: pending
+  status: locked
+  depends_on:
+  - meta.prep
   steps:
   - id: meta.module_plans.plan-larva-core-spec
     name: Plan `larva.core.spec`
