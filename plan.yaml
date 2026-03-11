@@ -14,3 +14,7 @@ context: Meta-plan for per-module planning and review work derived from the repo
 project_guidance: Planning/review work only. Use ARCHITECTURE.md as the authoritative
   module-boundary source and INTERFACES.md as the authoritative public-interface companion.
   Do not add code-implementation steps in this meta-plan.
+phases:
+- id: meta.prep
+  name: Planning Prep
+  status: pending
