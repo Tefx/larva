@@ -64,13 +64,13 @@ phases:
       \ planning: yes"
 - id: meta.prep
   name: Planning Prep
-  status: pending
+  status: in_progress
   depends_on:
   - meta.discovery
   steps:
   - id: meta.prep.planning_rubric
     name: Create module planning rubric
-    status: pending
+    status: claimed
     description: Create the shared rubric that downstream module planners must follow
       when producing vectl plans, including required document citations, dependency
       handling, evidence expectations, and the rule that every produced step must
@@ -86,6 +86,8 @@ phases:
 
       - Agent assignment rule captured: <yes/no>'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-11T20:03:11.308571+00:00'
   - id: meta.prep.review_checklist
     name: Define module-plan review checklist
     status: pending
