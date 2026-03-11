@@ -18,3 +18,8 @@ phases:
   status: pending
   gate: Authoritative module inventory is frozen with citations to the chosen source
     documents.
+- id: meta.prep
+  name: Define Planning Rubric
+  status: pending
+  gate: A shared planning rubric exists before any module-level implementation plan
+    is drafted.
