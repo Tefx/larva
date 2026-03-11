@@ -151,13 +151,13 @@ phases:
       \  - G4 implementation sequence verified\n  - G5 reviewer sign-off captured"
 - id: meta.plan_creation
   name: Module Plan Creation
-  status: pending
+  status: in_progress
   depends_on:
   - meta.prep
   steps:
   - id: meta.plan.spec
     name: Plan module larva.core.spec
-    status: pending
+    status: claimed
     description: Produce the detailed vectl implementation plan for `larva.core.spec`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -181,6 +181,8 @@ phases:
     - INTERFACES.md
     - README.md
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-11T20:08:31.966840+00:00'
   - id: meta.plan.normalize
     name: Plan module larva.core.normalize
     status: pending
