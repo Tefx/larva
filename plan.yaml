@@ -64,7 +64,7 @@ phases:
       \ planning: yes"
 - id: meta.prep
   name: Planning Prep
-  status: in_progress
+  status: done
   depends_on:
   - meta.discovery
   steps:
@@ -119,7 +119,7 @@ phases:
       \ captured: yes"
   - id: meta.prep.review_checklist
     name: Define module-plan review checklist
-    status: claimed
+    status: done
     description: Define the checklist and acceptance gate for reviewing module-level
       plans, including boundary alignment, dependency correctness, sequencing, cross-module
       touchpoints, and evidence sufficiency.
@@ -137,9 +137,21 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-11T20:05:16.982801+00:00'
+    done_at: '2026-03-11T20:08:24.449090+00:00'
+    evidence: "- Review checklist items:\n  - B1..B4 boundary and scope checks\n \
+      \ - D1..D4 dependency declaration/direction/cycle/port checks\n  - I1..I5 interface\
+      \ and contract checks\n  - E1..E5 evidence and assignment checks\n- Boundary\
+      \ checks:\n  - Responsibility single\n  - Non-responsibility explicit\n  - Core/Shell\
+      \ classification correct\n  - Scope matches ARCHITECTURE.md Section 6\n- Cross-module\
+      \ checks:\n  - Dependency graph complete\n  - Build sequence valid\n  - Touchpoints\
+      \ aligned\n  - Error propagation coherent\n  - No redundant implementations\n\
+      \  - Facade pattern respected\n  - Core purity verified\n  - Implementation\
+      \ order justified\n- Final-review gate:\n  - G1 all per-module checks passed\n\
+      \  - G2 all cross-module checks passed\n  - G3 unresolved questions documented\n\
+      \  - G4 implementation sequence verified\n  - G5 reviewer sign-off captured"
 - id: meta.plan_creation
   name: Module Plan Creation
-  status: locked
+  status: pending
   depends_on:
   - meta.prep
   steps:
