@@ -40,6 +40,25 @@ phases:
   status: locked
   depends_on:
   - meta.discovery
+  steps:
+  - id: meta.prep.planning_rubric
+    name: Create module planning rubric
+    status: pending
+    description: Create the shared rubric that downstream module planners must follow
+      when producing vectl plans, including required document citations, dependency
+      handling, evidence expectations, and the rule that every produced step must
+      name a concrete execution agent.
+    verification: Rubric covers completeness, module boundary fidelity, dependency
+      handling, evidence requirements, and explicit agent assignment for downstream
+      steps.
+    evidence_template: '- Rubric sections: <list>
+
+      - Required citations: <list>
+
+      - Required evidence for downstream planners: <list>
+
+      - Agent assignment rule captured: <yes/no>'
+    agent: doc-reviewer
 - id: meta.plan_creation
   name: Module Plan Creation
   status: locked
