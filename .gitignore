@@ -56,3 +56,14 @@ Thumbs.db
 
 # Lock files (output artifacts, not source)
 *.lock.json
+
+# Local agent/tooling artifacts
+.claude/
+.gemini/
+.invar/
+.opencode/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+plan-dashboard.html
