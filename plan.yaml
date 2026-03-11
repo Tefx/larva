@@ -886,3 +886,49 @@ phases:
     depends_on:
     - core_spec.core-spec-implement
     agent: integration-verifier
+  - id: core_spec.core-spec-freeze
+    name: core.spec.freeze
+    status: pending
+    description: 'Freeze the `larva.core.spec` snapshot before gate review.
+
+
+      step_type: verification
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between verification and gate
+
+
+      Required freeze evidence:
+
+      - `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `core.spec.gate`
+      completes'
+    verification: '- Snapshot commit recorded
+
+      - Working tree clean
+
+      - Environment declared
+
+      - Freeze statement recorded'
+    evidence_template: '## Freeze Evidence
+
+
+      - Commit: `<git rev-parse HEAD>`
+
+      - Working tree: `<git status --short>`
+
+      - Environment: `<python version / relevant env>`
+
+      - Freeze statement: `No code changes after freeze until core.spec.gate completes.`'
+    depends_on:
+    - core_spec.core-spec-verify
+    agent: integration-verifier
