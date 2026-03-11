@@ -104,6 +104,10 @@ phases:
       - Concrete execution agents assigned: <yes/no>
 
       - Open module questions: <none | list>'
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    - README.md
     agent: vectl-planner
   - id: meta.plan.normalize
     name: Plan module larva.core.normalize
