@@ -70,6 +70,177 @@ phases:
 - id: meta.module_plans
   name: Module Plan Creation
   status: pending
+  steps:
+  - id: meta.module_plans.plan-larva-core-spec
+    name: Plan `larva.core.spec`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.core.spec`. This is planning
+      work only: define the module-scoped planning structure, required refs, review
+      checkpoints, and downstream planning expectations. If this step delegates to
+      `vectl-planner`, require `contract -> test -> implementation` ordering for non-trivial
+      new features, allow `contract + implementation` only under an explicit narrow
+      simple-feature exception, keep contract steps acceptance-only, and assign a
+      concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.core.spec` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-core-validate
+    name: Plan `larva.core.validate`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.core.validate`. This is
+      planning work only: define the module-scoped planning structure, required refs,
+      review checkpoints, and downstream planning expectations. If this step delegates
+      to `vectl-planner`, require `contract -> test -> implementation` ordering for
+      non-trivial new features, allow `contract + implementation` only under an explicit
+      narrow simple-feature exception, keep contract steps acceptance-only, and assign
+      a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.core.validate` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-core-assemble
+    name: Plan `larva.core.assemble`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.core.assemble`. This is
+      planning work only: define the module-scoped planning structure, required refs,
+      review checkpoints, and downstream planning expectations. If this step delegates
+      to `vectl-planner`, require `contract -> test -> implementation` ordering for
+      non-trivial new features, allow `contract + implementation` only under an explicit
+      narrow simple-feature exception, keep contract steps acceptance-only, and assign
+      a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.core.assemble` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-core-normalize
+    name: Plan `larva.core.normalize`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.core.normalize`. This
+      is planning work only: define the module-scoped planning structure, required
+      refs, review checkpoints, and downstream planning expectations. If this step
+      delegates to `vectl-planner`, require `contract -> test -> implementation` ordering
+      for non-trivial new features, allow `contract + implementation` only under an
+      explicit narrow simple-feature exception, keep contract steps acceptance-only,
+      and assign a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.core.normalize` is written into
+      vectl with explicit refs, evidence expectations, and no product implementation
+      steps executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-app-facade
+    name: Plan `larva.app.facade`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.app.facade`. This is planning
+      work only: define the module-scoped planning structure, required refs, review
+      checkpoints, and downstream planning expectations. If this step delegates to
+      `vectl-planner`, require `contract -> test -> implementation` ordering for non-trivial
+      new features, allow `contract + implementation` only under an explicit narrow
+      simple-feature exception, keep contract steps acceptance-only, and assign a
+      concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.app.facade` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-shell-components
+    name: Plan `larva.shell.components`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.shell.components`. This
+      is planning work only: define the module-scoped planning structure, required
+      refs, review checkpoints, and downstream planning expectations. If this step
+      delegates to `vectl-planner`, require `contract -> test -> implementation` ordering
+      for non-trivial new features, allow `contract + implementation` only under an
+      explicit narrow simple-feature exception, keep contract steps acceptance-only,
+      and assign a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.shell.components` is written into
+      vectl with explicit refs, evidence expectations, and no product implementation
+      steps executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-shell-registry
+    name: Plan `larva.shell.registry`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.shell.registry`. This
+      is planning work only: define the module-scoped planning structure, required
+      refs, review checkpoints, and downstream planning expectations. If this step
+      delegates to `vectl-planner`, require `contract -> test -> implementation` ordering
+      for non-trivial new features, allow `contract + implementation` only under an
+      explicit narrow simple-feature exception, keep contract steps acceptance-only,
+      and assign a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.shell.registry` is written into
+      vectl with explicit refs, evidence expectations, and no product implementation
+      steps executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-shell-cli
+    name: Plan `larva.shell.cli`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.shell.cli`. This is planning
+      work only: define the module-scoped planning structure, required refs, review
+      checkpoints, and downstream planning expectations. If this step delegates to
+      `vectl-planner`, require `contract -> test -> implementation` ordering for non-trivial
+      new features, allow `contract + implementation` only under an explicit narrow
+      simple-feature exception, keep contract steps acceptance-only, and assign a
+      concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.shell.cli` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-shell-mcp
+    name: Plan `larva.shell.mcp`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.shell.mcp`. This is planning
+      work only: define the module-scoped planning structure, required refs, review
+      checkpoints, and downstream planning expectations. If this step delegates to
+      `vectl-planner`, require `contract -> test -> implementation` ordering for non-trivial
+      new features, allow `contract + implementation` only under an explicit narrow
+      simple-feature exception, keep contract steps acceptance-only, and assign a
+      concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.shell.mcp` is written into vectl
+      with explicit refs, evidence expectations, and no product implementation steps
+      executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
+  - id: meta.module_plans.plan-larva-shell-python-api
+    name: Plan `larva.shell.python_api`
+    status: pending
+    description: 'Create the detailed vectl plan for `larva.shell.python_api`. This
+      is planning work only: define the module-scoped planning structure, required
+      refs, review checkpoints, and downstream planning expectations. If this step
+      delegates to `vectl-planner`, require `contract -> test -> implementation` ordering
+      for non-trivial new features, allow `contract + implementation` only under an
+      explicit narrow simple-feature exception, keep contract steps acceptance-only,
+      and assign a concrete execution agent to every produced step.'
+    verification: A module-scoped plan for `larva.shell.python_api` is written into
+      vectl with explicit refs, evidence expectations, and no product implementation
+      steps executed.
+    refs:
+    - ARCHITECTURE.md
+    - INTERFACES.md
+    agent: vectl-planner
 - id: meta.review
   name: Plan Review
   status: pending
