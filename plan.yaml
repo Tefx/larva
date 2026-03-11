@@ -12,3 +12,9 @@ context: 'Meta-plan for planning and review work only. Goal: use authoritative d
   documents to create detailed module-level vectl implementation plans for every architecture
   module, review each module plan, then perform a final cross-module review. This
   plan does not include any production implementation steps.'
+phases:
+- id: meta.discovery
+  name: Freeze Planning Basis
+  status: pending
+  gate: Authoritative module inventory is frozen with citations to the chosen source
+    documents.
