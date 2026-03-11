@@ -15,6 +15,26 @@ phases:
 - id: meta.discovery
   name: Discovery
   status: pending
+  steps:
+  - id: meta.discovery.authoritative_basis
+    name: Confirm authoritative planning basis
+    status: pending
+    description: Verify the authoritative design/module-boundary documents for larva,
+      extract the module inventory and dependency order, and record an explicit no-conflict
+      conclusion before any module planning starts.
+    verification: Evidence cites the exact sections that define module boundaries,
+      interface responsibilities, and dependency order, and states whether any source
+      conflict exists.
+    evidence_template: '- Authoritative docs: <paths + sections>
+
+      - Module inventory: <ordered list>
+
+      - Dependency order: <ordered list>
+
+      - Conflict check: <none | describe conflict>
+
+      - Ready for downstream planning: <yes/no>'
+    agent: doc-reviewer
 - id: meta.prep
   name: Planning Prep
   status: locked
