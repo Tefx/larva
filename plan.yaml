@@ -21,3 +21,6 @@ phases:
 - id: meta.discovery
   name: Discovery
   status: pending
+- id: meta.module_plans
+  name: Module Plan Creation
+  status: pending
