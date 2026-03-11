@@ -932,3 +932,84 @@ phases:
     depends_on:
     - core_spec.core-spec-verify
     agent: integration-verifier
+  - id: core_spec.core-spec-gate
+    name: core.spec.gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `core_spec` phase meets the quality bar for proceeding to downstream modules.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if the contract is inaccurate, evidence
+      is vague, or the module boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - foundational core module for every downstream larva module
+
+      - public contract must match authoritative docs exactly
+
+      - phase is narrow and self-contained, so standard depth is sufficient
+
+
+      cross_cutting_focus:
+
+      - exact fidelity to the documented `PersonaSpec` public interface
+
+      - core purity: no shell/app/runtime imports
+
+      - evidence quality for downstream-safe imports and contract tests'
+    verification: '- All phase steps completed successfully
+
+      - Evidence is specific, verifiable, and boundary-limited
+
+      - No unresolved blockers remain
+
+      - `larva.core.spec` is ready to unblock downstream `core.normalize`, `core.validate`,
+      `core.assemble`, and later facade/shell modules'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer
+
+      **Phase**: core_spec
+
+
+      ### Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      |---------|--------|------------------|----------|
+
+      | core_spec.core-spec-contract | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | core_spec.core-spec-tests | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | core_spec.core-spec-implement | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | core_spec.core-spec-verify | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+      | core_spec.core-spec-freeze | ✅/⚠️/❌ | excellent/adequate/insufficient/missing
+      | <notes> |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED'
+    depends_on:
+    - core_spec.core-spec-contract
+    - core_spec.core-spec-tests
+    - core_spec.core-spec-implement
+    - core_spec.core-spec-verify
+    - core_spec.core-spec-freeze
+    agent: gate-reviewer
