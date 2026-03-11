@@ -842,3 +842,47 @@ phases:
     depends_on:
     - core_spec.core-spec-tests
     agent: python-executor
+  - id: core_spec.core-spec-verify
+    name: core.spec.verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.core.spec` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      Test for:
+
+      - Happy path: downstream-safe import and exact public contract surface
+
+      - Edge cases: literal-domain drift, accidental required keys, and version-literal
+      drift
+
+      - Error scenarios: forbidden imports or widened surface that would leak app/shell
+      concerns into core
+
+
+      Document ALL findings. A verification step that discovers issues is a success.'
+    verification: '- Run `invar guard` against the changed files
+
+      - Run an independent import/inspection check that enumerates the public type
+      names and `PersonaSpec` fields
+
+      - Record any contract mismatches, purity violations, or undocumented additions'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\n\
+      **Scope**: `src/larva/core/spec.py`, `tests/core/test_spec.py`\n**Independence\
+      \ Level**: L1\n\n### Test Execution\n- Commands executed:\n  ```bash\n  invar\
+      \ guard\n  python -c \"from larva.core.spec import PersonaSpec, ToolPosture,\
+      \ SideEffectPolicy; print(PersonaSpec.__annotations__.keys())\"\n  ```\n\n###\
+      \ Issues Found\n| Severity | Description | Location | Reproduction |\n|----------|-------------|----------|--------------|\n\
+      | blocker | <issue> | <file:line> | <steps> |\n| should_fix | <issue> | <file:line>\
+      \ | <steps> |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - core_spec.core-spec-implement
+    agent: integration-verifier
