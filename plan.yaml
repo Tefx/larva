@@ -3127,3 +3127,40 @@ phases:
     depends_on:
     - app_facade.app-facade-implement
     agent: integration-verifier
+  - id: app_facade.app-facade-freeze
+    name: app-facade-freeze
+    status: pending
+    description: 'Freeze the `larva.app.facade` snapshot before gate review.
+
+
+      step_type: verification
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between independent verification and
+      gate review
+
+      - preserve the verified facade orchestration evidence for downstream transport
+      phases
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order'
+    verification: '- `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `app_facade.app-facade-gate`
+      completes'
+    depends_on:
+    - app_facade.app-facade-verify
+    - app_facade.app-facade-seam-proof
+    agent: integration-verifier
