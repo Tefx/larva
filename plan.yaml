@@ -3047,3 +3047,83 @@ phases:
     depends_on:
     - app_facade.app-facade-implement
     agent: integration-verifier
+  - id: app_facade.app-facade-seam-proof
+    name: app-facade-seam-proof
+    status: pending
+    description: 'Integration companion: provide seam-level real path evidence for
+      `larva.app.facade`.
+
+
+      step_type: verification
+
+
+      Changed seams require at least ONE real execution proof:
+
+      - facade assemble path: `larva.app.facade` -> component-store seam -> core assemble/validate/normalize
+
+      - facade resolve path: `larva.app.facade` -> registry-store seam -> override
+      application -> core validate/normalize
+
+      - facade register/list path: `larva.app.facade` -> registry-store seam with
+      facade-owned success/error shaping
+
+
+      Mock-heavy unit tests alone are insufficient for this step. Provide at least
+      one end-to-end facade invocation with concrete command output proving the seam
+      works across the full app-layer path while staying transport-agnostic.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.app.facade`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - README.md :: Key Design Decisions'
+    verification: '- At least one real facade execution path is captured with concrete
+      command output
+
+      - Evidence names the exact source-to-sink path exercised through facade plus
+      dependent core/shell seams
+
+      - Remaining mocks in related tests are justified if they remain necessary'
+    evidence_template: '## Seam-Level Integration Evidence
+
+
+      **Changed seam path**: <e.g. `src/larva/app/facade.py`: facade assemble|resolve|register|list>
+
+
+      **Exact command executed**:
+
+      ```
+
+      <paste actual command, not a summary>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste stdout/stderr or test output>
+
+      ```
+
+
+      **Path exercised**: `larva.app.facade` -> <core/shell collaborators>
+
+
+      **Remaining mocks in related tests**: <count>
+
+
+      **Justification for remaining mocks**: <why acceptable>
+
+      '
+    depends_on:
+    - app_facade.app-facade-implement
+    agent: integration-verifier
