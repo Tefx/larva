@@ -6330,3 +6330,47 @@ phases:
       - `tests/core/test_assemble.py` asserts concrete outcomes/failure signals and
       contains no broad exception-pass masking pattern for the covered paths'
     agent: python-senior
+  - id: core_exec_remediation.retest-core-verification-blockers-b1-b3
+    name: Retest core verification blockers B1-B3
+    status: pending
+    description: 'Re-run the verification criteria for `core_normalize.core-normalize-verify`,
+      `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`
+      after the batched fix step.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), validate that the batched
+      remediation closed all three blocker families.
+
+
+      Test for:
+
+      - B1 main path: direct imports, doctests, and normal runtime invocation in normalize/validate/assemble
+      execute without contract-layer `AttributeError`
+
+      - B2 reachability: verification context resolves to committed executable implementation
+      state for all three modules
+
+      - B3 realism: assemble tests now assert concrete outcomes/failure signals and
+      do not mask incorrect behavior with permissive exception handling
+
+
+      Document any residual blockers by module and blocker family.'
+    verification: '- Re-run the effective criteria from `core_normalize.core-normalize-verify`,
+      `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`
+
+      - Main path evidence covers successful executable runtime invocation for all
+      three modules
+
+      - Failure-path evidence confirms stale placeholder state is not what verification
+      sees and assemble tests expose real failures rather than swallowing them
+
+      - Findings are grouped by B1/B2/B3 so downstream phases can rely on a single
+      consolidated retest result'
+    depends_on:
+    - core_exec_remediation.fix-core-verification-blockers-b1-b3
+    agent: integration-verifier
