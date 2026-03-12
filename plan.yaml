@@ -1408,7 +1408,7 @@ phases:
       - none'
   - id: meta.review.meta-review-fix-b1-validationreport-shape
     name: meta.review.fix-b1-validationreport-shape
-    status: pending
+    status: claimed
     description: 'Resolve remaining B1 schema mismatch: align `ValidationIssue` shape
       between authoritative docs and `src/larva/core/validate.py`.
 
@@ -1432,6 +1432,8 @@ phases:
     depends_on:
     - meta.review.meta-review-fix-contract-artifacts
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T14:48:01.015843+00:00'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
