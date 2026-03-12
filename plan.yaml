@@ -536,7 +536,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.cli
     name: Plan module larva.shell.cli
-    status: claimed
+    status: done
     description: Produce the detailed vectl implementation plan for `larva.shell.cli`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -564,6 +564,24 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-03-12T09:55:55.841298+00:00'
+    done_at: '2026-03-12T10:01:15.963304+00:00'
+    evidence: '- Added step IDs: shell_cli.shell-cli-clarify, shell_cli.shell-cli-contract,
+      shell_cli.shell-cli-tests, shell_cli.shell-cli-implement, shell_cli.shell-cli-verify,
+      shell_cli.shell-cli-seam-proof, shell_cli.shell-cli-freeze, shell_cli.shell-cli-gate
+
+      - Boundary citations: ARCHITECTURE.md shell.cli module + shell error boundary
+      + build order; INTERFACES.md CLI interface + error response format; README CLI
+      interface + key decisions
+
+      - Downstream ordering used: clarify -> contract -> test -> implementation ->
+      verification/seam-proof -> freeze -> gate
+
+      - Concrete execution agents assigned: yes
+
+      - Open module questions: seam for `component list/show` vs facade-only dependency
+      statement captured by added clarify step
+
+      - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.mcp
     name: Plan module larva.shell.mcp
     status: pending
