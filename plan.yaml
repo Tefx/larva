@@ -6432,7 +6432,7 @@ phases:
   steps:
   - id: core_exec_remediation.fix-core-verification-blockers-b1-b3
     name: Fix core verification blockers B1-B3
-    status: claimed
+    status: done
     description: "Fix ALL of these, not just the first, for `core_normalize.core-normalize-verify`,\
       \ `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`.\n\
       \nstep_type: implementation\nprior_loop:\n  - core_normalize.core-normalize-verify\n\
@@ -6494,6 +6494,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T17:38:56.673489+00:00'
+    done_at: '2026-03-12T17:48:52.782245+00:00'
+    evidence: 'Artifact:
+
+      - PR: 68b5e11 (squash merge on main)
+
+      - Source remediation commit: 1b327f0
+
+      - Files changed: src/larva/core/{normalize,validate,assemble}.py, tests/core/{test_normalize.py,test_validate.py,test_assemble.py}
+
+
+      Verification:
+
+      - Run: MCP invar guard during commit hook -> PASSED
+
+      - Run: uv run pytest -q tests/core -> 81 passed (per worker evidence)
+
+      - Sibling search evidence included for decorator/runtime family and permissive
+      test patterns
+
+
+      Spec link:
+
+      - core_exec_remediation.fix-core-verification-blockers-b1-b3
+
+      - INTERFACES.md (assembly + normalization contracts)
+
+      - ARCHITECTURE.md (core module boundaries)
+
+
+      Closure Matrix:
+
+      - B1: closed (runtime contract-layer crash remediated)
+
+      - B2: closed (implementations now committed and reachable)
+
+      - B3: closed (assemble tests tightened; no permissive exception-pass masking)'
   - id: core_exec_remediation.retest-core-verification-blockers-b1-b3
     name: Retest core verification blockers B1-B3
     status: pending
