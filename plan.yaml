@@ -6099,7 +6099,7 @@ phases:
     agent: integration-verifier
   - id: core_assemble.core-assemble-verify
     name: core-assemble-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.assemble` module from a fresh perspective.
 
@@ -6152,6 +6152,51 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:28:26.841166+00:00'
+    done_at: '2026-03-12T17:38:44.345196+00:00'
+    evidence: 'Artifact:
+
+      - PR: none
+
+
+      Verification:
+
+      - Run: MCP invar_guard(path=.vectl/worktrees/core_assemble.core-assemble-verify,
+      changed=false) -> FAIL globally due normalize doctest contract-layer error
+
+      - Run: MCP invar_guard(path=.vectl/worktrees/core_assemble.core-assemble-verify/src/larva/core/assemble.py,
+      changed=false) -> PASS (0 errors, 0 warnings)
+
+      - Run: uv run pytest -v tests/core/test_assemble.py -> 29 passed
+
+      - Run: coverage focused on assemble.py -> 88%
+
+      - Run: direct assemble invocations -> FAIL at contract-layer AttributeError
+      before functional assertions
+
+
+      Spec link:
+
+      - ARCHITECTURE.md larva.core.assemble
+
+      - INTERFACES.md component library + assembly rules
+
+
+      Decision: ISSUES_FOUND
+
+      Findings:
+
+      - Runtime contract-layer failure blocks executable functional verification.
+
+      - Tests pass but verification reports realism weakness in exception-handling
+      patterns.
+
+      - Boundary purity passes.
+
+
+      Follow-up:
+
+      - Included in batched remediation chain: core_exec_remediation.fix-core-verification-blockers-b1-b3
+      -> core_exec_remediation.retest-core-verification-blockers-b1-b3'
   - id: core_assemble.core-assemble-implement
     name: core-assemble-implement
     status: done
