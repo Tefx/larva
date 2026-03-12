@@ -2454,7 +2454,7 @@ phases:
       completes.'
   - id: shell_components.shell-components-gate
     name: shell-components-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_components` phase meets the quality bar for proceeding to downstream
       facade and transport work.
@@ -2522,6 +2522,8 @@ phases:
     - shell_components.retest-shell-components-verify-blockers-b1-b3
     - shell_components.shell-components-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T19:54:05.103666+00:00'
   - id: shell_components.fix-shell-components-verify-blockers-b1-b3
     name: Fix shell-components verification blockers B1-B3
     status: done
