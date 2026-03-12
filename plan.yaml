@@ -1279,7 +1279,7 @@ phases:
       - ARCHITECTURE.md / INTERFACES.md / meta.review gate findings"
   - id: meta.review.retest-gate-blockers
     name: Re-review all blockers from meta.review.meta-review-gate
-    status: pending
+    status: claimed
     description: 'Re-review ALL blockers from `meta.review.meta-review-gate` after
       `meta.review.fix-gate-blockers` completes.
 
@@ -1320,6 +1320,8 @@ phases:
     depends_on:
     - meta.review.fix-gate-blockers
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T13:14:47.134820+00:00'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
