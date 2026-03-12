@@ -3269,3 +3269,6 @@ phases:
     - app_facade.app-facade-seam-proof
     - app_facade.app-facade-freeze
     agent: gate-reviewer
+- id: shell_python_api
+  name: larva.shell.python_api
+  status: pending
