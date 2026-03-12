@@ -1312,6 +1312,8 @@ phases:
 - id: core_normalize
   name: larva.core.normalize
   status: in_progress
+  depends_on:
+  - meta.gate
   steps:
   - id: core_normalize.core-normalize-contract
     name: core.normalize.contract
