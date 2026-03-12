@@ -781,7 +781,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.assemble
     name: Review plan for larva.core.assemble
-    status: rejected
+    status: claimed
     description: Review the module-level vectl plan for `larva.core.assemble` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -803,7 +803,7 @@ phases:
     - meta.review.validate
     agent: software-architect
     claimed_by: software-architect
-    claimed_at: '2026-03-12T12:29:11.070834+00:00'
+    claimed_at: '2026-03-12T14:58:37.883444+00:00'
     done_at: '2026-03-12T12:31:36.872195+00:00'
     rejection_reason: Refresh review evidence after B2/B3 remediation.
     rejection_history:
