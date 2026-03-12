@@ -2915,6 +2915,53 @@ phases:
     depends_on:
     - shell_components.shell-components-gate
     agent: python-senior
+  - id: shell_components.retest-shell-components-gate-findings-b1-s2
+    name: retest-shell-components-gate-findings-b1-s2
+    status: pending
+    description: "Re-test and gate ALL findings from `shell_components.shell-components-gate`\
+      \ together after the batched remediation.\n\nstep_type: gate\npriority: HIGH\n\
+      spec_refs:\n- ARCHITECTURE.md :: Module: `larva.shell.components`\n- ARCHITECTURE.md\
+      \ :: 8. Error Boundary Model / Shell\n- INTERFACES.md :: G. Error Codes / Error\
+      \ Response Format (--json / MCP)\n\ntouch_paths:\n- src/larva/shell/components.py\n\
+      - tests/shell/test_components.py\n\nharness_refs:\n- tests/shell/test_components.py\n\
+      \nAs an INDEPENDENT REVIEWER (`gate-reviewer`), validate blocker closure and\
+      \ should_fix handling together.\n\nReview ALL findings as one blocker family:\n\
+      - B1 transport-shaped serialization leakage removed from shell scope\n- S1 documentation/comments\
+      \ aligned with actual filesystem-backed shell responsibility\n- S2 bounded maintainability\
+      \ improvement applied to the mixed protocol/error/store sections\n\nRequired\
+      \ sibling-search checks:\n- B1 grep: `to_dict\\(|\\{\"error\"|numeric_code|ComponentStoreError`\n\
+      - S1 grep: `Contract purity|ENFORCED|filesystem|file-loading`\n- S2 grep: `class\
+      \ ComponentStore|class FilesystemComponentStore|ComponentStoreError`\n\nThe\
+      \ review must reject partial closure. If B1 is fixed but S1/S2 are ignored,\
+      \ or if grep/evidence covers only one reported location and not siblings, keep\
+      \ the phase blocked.\n\nreview_depth: THOROUGH\nreview_depth_rationale:\n- Gate\
+      \ already found one shell-boundary contract breach plus two follow-on should_fix\
+      \ issues in the same module\n- The module defines shell-facing error behavior\
+      \ consumed by downstream facade and transport phases\n- Prior remediation loops\
+      \ in this phase mean cross-cutting review is warranted before phase closure\n\
+      \ncross_cutting_focus:\n- typed shell `Result[T, E]` errors with no transport-shaped\
+      \ serialization in-module\n- documentation accuracy about filesystem-backed\
+      \ shell responsibilities\n- bounded maintainability cleanup across protocol/error/store\
+      \ seams\n\nevidence_template: |\n  ## Gate Remediation Review\n\n  **Reviewer**:\
+      \ gate-reviewer\n  **Scope**: shell_components gate remediation for B1 + S1\
+      \ + S2\n\n  ### Sibling Search Evidence\n  - B1 grep results:\n    ```\n   \
+      \ <paste actual grep command/output>\n    ```\n  - S1 grep results:\n    ```\n\
+      \    <paste actual grep command/output>\n    ```\n  - S2 grep results:\n   \
+      \ ```\n    <paste actual grep command/output>\n    ```\n\n  ### Blocker Family\
+      \ Assessment\n  - B1 closed: yes/no with file references\n  - S1 handled: yes/no\
+      \ with file references\n  - S2 handled: yes/no with file references\n\n  ###\
+      \ Gate Decision\n  - OPEN only if all three items are handled together and evidence\
+      \ covers siblings, not just cited lines.\n"
+    verification: '- Review evidence covers all three issue families together
+
+      - B1 closure is proven with code/test references plus sibling-search output
+
+      - S1 and S2 are explicitly assessed, not silently deferred
+
+      - If any item remains unresolved, keep `shell_components` blocked'
+    depends_on:
+    - shell_components.fix-shell-components-gate-findings-b1-s2
+    agent: gate-reviewer
 - id: shell_registry
   name: larva.shell.registry
   status: done
