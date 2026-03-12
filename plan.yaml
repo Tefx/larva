@@ -5711,7 +5711,7 @@ phases:
   steps:
   - id: core_validate.core-validate-gate
     name: core.validate.gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_validate` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -5757,6 +5757,8 @@ phases:
     - core_validate.core-validate-verify
     - core_validate.core-validate-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T18:14:16.989569+00:00'
   - id: core_validate.core-validate-freeze
     name: core.validate.freeze
     status: done
