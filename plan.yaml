@@ -5307,7 +5307,7 @@ phases:
     agent: python-executor
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
-    status: claimed
+    status: done
     description: 'Add focused contract-driven tests for `larva.core.normalize` in
       `tests/core/test_normalize.py`.
 
@@ -5371,6 +5371,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:06:18.963116+00:00'
+    done_at: '2026-03-12T17:12:19.187559+00:00'
+    evidence: 'Artifact:
+
+      - PR: 7431f09
+
+      - Files changed: tests/core/test_normalize.py
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_normalize.py -v -> 11 passed, 3 warnings
+
+      - Run: MCP invar guard -> passed (0 errors, 0 warnings)
+
+
+      Spec link:
+
+      - INTERFACES.md normalization section
+
+      - ARCHITECTURE.md module larva.core.normalize'
 - id: core_validate_exec
   name: larva.core.validate execution
   status: in_progress
