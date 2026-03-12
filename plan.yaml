@@ -733,7 +733,7 @@ phases:
       - Agent assignment present and concrete.'
   - id: meta.review.validate
     name: Review plan for larva.core.validate
-    status: rejected
+    status: claimed
     description: Review the module-level vectl plan for `larva.core.validate` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -755,7 +755,7 @@ phases:
     - meta.review.normalize
     agent: software-architect
     claimed_by: software-architect
-    claimed_at: '2026-03-12T12:26:38.304002+00:00'
+    claimed_at: '2026-03-12T14:53:41.586232+00:00'
     done_at: '2026-03-12T12:29:05.094906+00:00'
     rejection_reason: Refresh review evidence after B1/B2/B3/B4/B5 remediation.
     rejection_history:
