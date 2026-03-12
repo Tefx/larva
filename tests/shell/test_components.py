@@ -203,14 +203,13 @@ class TestComponentStoreProtocolCompliance:
         store: ComponentStore = temp_component_store
         assert store is not None
 
-    def test_component_store_error_to_dict(self) -> None:
+    def test_component_store_error_is_typed_shell_error(self) -> None:
         error = ComponentStoreError(
             "Test error",
             component_type="prompt",
             component_name="test",
         )
-        data = error.to_dict()
-        assert data["code"] == COMPONENT_NOT_FOUND_CODE
-        assert data["message"] == "Test error"
-        assert data["component_type"] == "prompt"
-        assert data["component_name"] == "test"
+        assert error.code == COMPONENT_NOT_FOUND_CODE
+        assert str(error) == "Test error"
+        assert error.component_type == "prompt"
+        assert error.component_name == "test"

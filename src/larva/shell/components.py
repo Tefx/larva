@@ -1,9 +1,8 @@
-"""Contract-only shell-side protocols for component loading.
+"""Filesystem-backed shell adapter for component loading.
 
-This module defines the shell boundary contracts for loading external
-prompt, toolset, constraint, and model components from the filesystem.
-
-Contract purity: ENFORCED (no runnable file-loading logic)
+This module defines the shell boundary protocol and its filesystem-backed
+implementation for loading external prompt, toolset, constraint, and model
+components.
 
 See:
 - ARCHITECTURE.md :: Module: larva.shell.components
@@ -33,8 +32,8 @@ COMPONENT_NOT_FOUND_CODE: int = 105
 class ComponentStoreError(Exception):
     """Shell error raised when component loading fails.
 
-    This typed shell error maps to the documented `COMPONENT_NOT_FOUND`
-    transport error (code 105) for downstream error handling.
+    This typed shell error maps to documented shell boundary failures and is
+    converted to transport responses by higher layers.
     """
 
     code: int = COMPONENT_NOT_FOUND_CODE
@@ -45,15 +44,6 @@ class ComponentStoreError(Exception):
         self.component_type = component_type
         self.component_name = component_name
         super().__init__(message)
-
-    def to_dict(self) -> dict[str, object]:
-        """Convert to error dictionary for transport formatting."""
-        return {
-            "code": self.code,
-            "message": str(self),
-            "component_type": self.component_type,
-            "component_name": self.component_name,
-        }
 
 
 # -----------------------------------------------------------------------------
@@ -161,17 +151,36 @@ class FilesystemComponentStore:
             components_dir = Path.home() / ".larva" / "components"
         self.components_dir = Path(components_dir)
 
+    def _error(
+        self,
+        message: str,
+        *,
+        component_type: str | None = None,
+        component_name: str | None = None,
+    ) -> ComponentStoreError:
+        return ComponentStoreError(
+            message,
+            component_type=component_type,
+            component_name=component_name,
+        )
+
     def _ensure_components_dir(self) -> Result[Path, ComponentStoreError]:
         """Ensure the components directory exists."""
         if not self.components_dir.exists():
             return Failure(
-                ComponentStoreError(
+                self._error(
                     f"Components directory not found: {self.components_dir}",
                     component_type=None,
                     component_name=None,
                 )
             )
         return Success(self.components_dir)
+
+    def _read_yaml(self, path: Path) -> object:
+        import yaml
+
+        with open(path, encoding="utf-8") as file:
+            return yaml.safe_load(file)
 
     def _resolve_component_path(
         self,
@@ -190,7 +199,7 @@ class FilesystemComponentStore:
             or ".." in Path(component_name).parts
         ):
             return Failure(
-                ComponentStoreError(
+                self._error(
                     f"Invalid {component_type} component name: {component_name}",
                     component_type=component_type,
                     component_name=component_name,
@@ -205,7 +214,7 @@ class FilesystemComponentStore:
             resolved_target = target_path.resolve(strict=False)
         except Exception as e:
             return Failure(
-                ComponentStoreError(
+                self._error(
                     f"Failed to resolve {component_type} component path {component_name}: {e}",
                     component_type=component_type,
                     component_name=component_name,
@@ -214,7 +223,7 @@ class FilesystemComponentStore:
 
         if resolved_target.parent != resolved_dir:
             return Failure(
-                ComponentStoreError(
+                self._error(
                     f"Invalid {component_type} component path: {component_name}",
                     component_type=component_type,
                     component_name=component_name,
@@ -246,7 +255,7 @@ class FilesystemComponentStore:
             prompt_path = path_result.unwrap()
             if not prompt_path.exists():
                 return Failure(
-                    ComponentStoreError(
+                    self._error(
                         f"Prompt not found: {name}",
                         component_type="prompt",
                         component_name=name,
@@ -256,9 +265,41 @@ class FilesystemComponentStore:
             return Success(PromptComponent(text=text))
         except Exception as e:
             return Failure(
-                ComponentStoreError(
+                self._error(
                     f"Failed to load prompt {name}: {e}",
                     component_type="prompt",
+                    component_name=name,
+                )
+            )
+
+    def _load_yaml_component(
+        self, *, name: str, component_type: str, subdirectory: str
+    ) -> Result[object, ComponentStoreError]:
+        try:
+            path_result = self._resolve_component_path(
+                component_type=component_type,
+                component_name=name,
+                subdirectory=subdirectory,
+                extension=".yaml",
+            )
+            if isinstance(path_result, Failure):
+                return path_result
+
+            component_path = path_result.unwrap()
+            if not component_path.exists():
+                return Failure(
+                    self._error(
+                        f"{component_type.capitalize()} not found: {name}",
+                        component_type=component_type,
+                        component_name=name,
+                    )
+                )
+            return Success(self._read_yaml(component_path))
+        except Exception as e:
+            return Failure(
+                self._error(
+                    f"Failed to load {component_type} {name}: {e}",
+                    component_type=component_type,
                     component_name=name,
                 )
             )
@@ -273,38 +314,17 @@ class FilesystemComponentStore:
             Ok(ToolsetComponent) with posture mappings.
             Err(ComponentStoreError) if not found or parse error.
         """
-        try:
-            import yaml
+        yaml_result = self._load_yaml_component(
+            name=name,
+            component_type="toolset",
+            subdirectory="toolsets",
+        )
+        if isinstance(yaml_result, Failure):
+            return yaml_result
 
-            path_result = self._resolve_component_path(
-                component_type="toolset",
-                component_name=name,
-                subdirectory="toolsets",
-                extension=".yaml",
-            )
-            if isinstance(path_result, Failure):
-                return path_result
-
-            toolset_path = path_result.unwrap()
-            if not toolset_path.exists():
-                return Failure(
-                    ComponentStoreError(
-                        f"Toolset not found: {name}",
-                        component_type="toolset",
-                        component_name=name,
-                    )
-                )
-            with open(toolset_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            return Success(ToolsetComponent(tools=data.get("tools", {})))
-        except Exception as e:
-            return Failure(
-                ComponentStoreError(
-                    f"Failed to load toolset {name}: {e}",
-                    component_type="toolset",
-                    component_name=name,
-                )
-            )
+        data = yaml_result.unwrap()
+        tools = data.get("tools", {}) if isinstance(data, dict) else {}
+        return Success(ToolsetComponent(tools=tools))
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
@@ -316,38 +336,18 @@ class FilesystemComponentStore:
             Ok(ConstraintComponent) with policy values.
             Err(ComponentStoreError) if not found or parse error.
         """
-        try:
-            import yaml
+        yaml_result = self._load_yaml_component(
+            name=name,
+            component_type="constraint",
+            subdirectory="constraints",
+        )
+        if isinstance(yaml_result, Failure):
+            return yaml_result
 
-            path_result = self._resolve_component_path(
-                component_type="constraint",
-                component_name=name,
-                subdirectory="constraints",
-                extension=".yaml",
-            )
-            if isinstance(path_result, Failure):
-                return path_result
-
-            constraint_path = path_result.unwrap()
-            if not constraint_path.exists():
-                return Failure(
-                    ComponentStoreError(
-                        f"Constraint not found: {name}",
-                        component_type="constraint",
-                        component_name=name,
-                    )
-                )
-            with open(constraint_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            return Success(ConstraintComponent(**data))
-        except Exception as e:
-            return Failure(
-                ComponentStoreError(
-                    f"Failed to load constraint {name}: {e}",
-                    component_type="constraint",
-                    component_name=name,
-                )
-            )
+        data = yaml_result.unwrap()
+        if not isinstance(data, dict):
+            data = {}
+        return Success(ConstraintComponent(**data))
 
     def load_model(self, name: str) -> Result[ModelComponent, ComponentStoreError]:
         """Load a model component by name.
@@ -359,38 +359,18 @@ class FilesystemComponentStore:
             Ok(ModelComponent) with model configuration.
             Err(ComponentStoreError) if not found or parse error.
         """
-        try:
-            import yaml
+        yaml_result = self._load_yaml_component(
+            name=name,
+            component_type="model",
+            subdirectory="models",
+        )
+        if isinstance(yaml_result, Failure):
+            return yaml_result
 
-            path_result = self._resolve_component_path(
-                component_type="model",
-                component_name=name,
-                subdirectory="models",
-                extension=".yaml",
-            )
-            if isinstance(path_result, Failure):
-                return path_result
-
-            model_path = path_result.unwrap()
-            if not model_path.exists():
-                return Failure(
-                    ComponentStoreError(
-                        f"Model not found: {name}",
-                        component_type="model",
-                        component_name=name,
-                    )
-                )
-            with open(model_path, encoding="utf-8") as f:
-                data = yaml.safe_load(f)
-            return Success(ModelComponent(**data))
-        except Exception as e:
-            return Failure(
-                ComponentStoreError(
-                    f"Failed to load model {name}: {e}",
-                    component_type="model",
-                    component_name=name,
-                )
-            )
+        data = yaml_result.unwrap()
+        if not isinstance(data, dict):
+            data = {}
+        return Success(ModelComponent(**data))
 
     def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
         """List all available components by type.
@@ -429,7 +409,7 @@ class FilesystemComponentStore:
 
             return Success(result)
         except Exception as e:
-            return Failure(ComponentStoreError(f"Failed to list components: {e}"))
+            return Failure(self._error(f"Failed to list components: {e}"))
 
 
 # -----------------------------------------------------------------------------
