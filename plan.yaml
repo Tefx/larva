@@ -4017,7 +4017,7 @@ phases:
       - Confirm the module stays inside the CLI transport boundary with no leaked
       business logic'
     depends_on:
-    - shell_cli.shell-cli-implement
+    - shell_cli.shell-cli-component-implement
     agent: blind-tester
   - id: shell_cli.shell-cli-seam-proof
     name: shell-cli-seam-proof
