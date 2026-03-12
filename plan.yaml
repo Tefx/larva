@@ -2743,3 +2743,9 @@ phases:
     - shell_registry.shell-registry-verify
     - shell_registry.shell-registry-freeze
     agent: gate-reviewer
+- id: app_facade
+  name: larva.app.facade
+  status: locked
+  depends_on:
+  - shell_components
+  - shell_registry
