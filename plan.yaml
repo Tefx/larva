@@ -3541,3 +3541,40 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-implement
     agent: integration-verifier
+  - id: shell_python_api.shell-python-api-freeze
+    name: shell-python-api-freeze
+    status: pending
+    description: 'Freeze the `larva.shell.python_api` snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between independent verification and
+      gate review
+
+      - preserve the verified thin-adapter evidence for the Python API phase handoff
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order'
+    verification: '- Record `git rev-parse HEAD`
+
+      - Record clean `git status`
+
+      - Record environment declaration and no-code-changes freeze statement before
+      gate review'
+    depends_on:
+    - shell_python_api.shell-python-api-verify
+    - shell_python_api.shell-python-api-seam-proof
+    agent: integration-verifier
