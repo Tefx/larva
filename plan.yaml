@@ -1265,3 +1265,50 @@ phases:
     depends_on:
     - core_normalize.core-normalize-verify
     agent: integration-verifier
+  - id: core_normalize.core-normalize-gate
+    name: core.normalize.gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `core_normalize` phase meets the quality bar for proceeding to downstream facade
+      work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if canonical normalization semantics
+      drift from the docs, evidence is vague, or the module boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - core normalization semantics are externally visible through assemble/resolve/register
+      flows
+
+      - the phase is narrow and pure-core, so standard depth is sufficient
+
+      - digest correctness and deterministic output deserve explicit scrutiny
+
+
+      cross_cutting_focus:
+
+      - fidelity to the documented normalization rules in `INTERFACES.md`
+
+      - core purity: no shell/app/runtime imports
+
+      - evidence quality for deterministic canonical output and stale-digest replacement'
+    verification: '- All phase steps completed successfully
+
+      - Evidence is specific, verifiable, and boundary-limited
+
+      - No unresolved blockers remain
+
+      - `larva.core.normalize` is ready to unblock downstream facade and shell planning'
+    depends_on:
+    - core_normalize.core-normalize-contract
+    - core_normalize.core-normalize-tests
+    - core_normalize.core-normalize-implement
+    - core_normalize.core-normalize-verify
+    - core_normalize.core-normalize-freeze
+    agent: gate-reviewer
