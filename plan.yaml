@@ -3304,3 +3304,84 @@ phases:
       - The contract explicitly documents thin delegation to `larva.app.facade` and
       defers shared package-export wiring'
     agent: python-executor
+  - id: shell_python_api.shell-python-api-tests
+    name: shell-python-api-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.shell.python_api` in `tests/shell/test_python_api.py`.
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Scope:
+
+      - define focused tests proving the module stays a thin in-process adapter over
+      `larva.app.facade` for the five documented use-cases: `validate`, `assemble`,
+      `register`, `resolve`, and `list`
+
+      - prove `validate(spec)` returns the same facade-owned validation report shape
+      without Python-API-specific reshaping
+
+      - prove `assemble(...)` forwards documented Python-library arguments to the
+      facade boundary and returns the canonical PersonaSpec result unchanged
+
+      - prove `register(spec)`, `resolve(id, overrides=None)`, and `list()` surface
+      the same success shapes owned by `larva.app.facade`
+
+      - prove the module does not add CLI/MCP error envelopes, filesystem behavior,
+      or registry/component access of its own
+
+      - keep tests scoped to `larva.shell.python_api` only, using facade doubles or
+      fixtures as needed but avoiding package-top-level import/export assertions
+
+
+      Non-goals:
+
+      - no `src/larva/__init__.py` import tests
+
+      - no CLI or MCP transport formatting tests
+
+      - no shell component-store or registry adapter tests
+
+      - no new behavior beyond thin facade delegation
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.python_api`
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - README.md :: Interfaces / Python Library
+
+      - README.md :: Key Design Decisions
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.validate(spec)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.resolve(id, overrides?)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.register(spec)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.list()`
+
+
+      Failure-path expectations:
+
+      - add a focused regression for facade error passthrough so Python API calls
+      do not wrap or rename app-layer failures
+
+      - add a focused regression for `resolve(..., overrides=...)` forwarding explicit
+      null/falsey override values unchanged to the facade layer'
+    verification: '- Tests cover thin delegation for all five documented use-cases
+
+      - Tests stay inside `larva.shell.python_api` and its direct facade seam
+
+      - Failure-path regressions cover passthrough errors and explicit override forwarding'
+    depends_on:
+    - shell_python_api.shell-python-api-contract
+    agent: python-executor
