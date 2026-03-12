@@ -1647,3 +1647,63 @@ phases:
       - Public contract matches the cited `larva.core.assemble` and assembly-rule
       documentation'
     agent: python-executor
+  - id: core_assemble.core-assemble-tests
+    name: core-assemble-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.core.assemble` in `tests/core/test_assemble.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - define focused tests for the documented `AssemblyInput` and `assemble_candidate`
+      contract
+
+      - prove prompts concatenate in declared order with `\n\n` separators
+
+      - prove scalar collisions for model and constraint fields fail deterministically
+      with `COMPONENT_CONFLICT` unless resolved by `overrides`
+
+      - prove toolset merges succeed only when tool posture values do not contradict,
+      and contradictions surface deterministically
+
+      - prove `overrides` win over component-provided scalar and nested `model_params`
+      values while keeping output inside the PersonaSpec candidate shape
+
+      - keep tests scoped to `larva.core.assemble` only, with minimal fixtures and
+      no facade, registry, CLI, or MCP coverage
+
+
+      Non-goals:
+
+      - no normalization-module assertions beyond the documented candidate shape boundary
+
+      - no component file loading or registry lookup tests
+
+      - no package export or transport tests
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.core.assemble` / Public Interface
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`
+
+      - INTERFACES.md :: C. Component Library / Assembly Rules
+
+      - INTERFACES.md :: E. PersonaSpec Output Format'
+    verification: '- Tests encode the documented assembly rules and candidate PersonaSpec
+      boundary without adding production implementation
+
+      - Failure-path coverage includes deterministic conflict handling and override
+      precedence
+
+      - Test scope stays inside `tests/core/test_assemble.py` plus minimal helpers'
+    depends_on:
+    - core_assemble.core-assemble-contract
+    agent: python-executor
