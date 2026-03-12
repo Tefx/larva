@@ -2985,3 +2985,65 @@ phases:
     depends_on:
     - app_facade.app-facade-tests
     agent: python-senior
+  - id: app_facade.app-facade-verify
+    name: app-facade-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.app.facade` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: the five documented facade use-cases execute through the intended
+      app-layer orchestration and return the documented success shapes
+
+      - Edge cases: empty registry list summary shaping, explicit null override preservation,
+      falsey override values, and validation-only passthrough behavior
+
+      - Error scenarios: component miss, component conflict, persona miss, validation
+      failure after overrides, and registry save failure all surface as app-level
+      errors suitable for downstream transports
+
+      - Boundary discipline: no CLI parsing, MCP envelopes, Python API exports, or
+      filesystem implementation details appear in `larva.app.facade`
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.app.facade`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions'
+    verification: '- Run independent verification against the real facade test path,
+      not mock-only spot checks
+
+      - Capture whether override application remains in the facade and always re-enters
+      validation plus normalization before success
+
+      - Record whether app-level errors are transport-ready without embedding transport-specific
+      JSON envelopes'
+    depends_on:
+    - app_facade.app-facade-implement
+    agent: integration-verifier
