@@ -13,6 +13,9 @@ Behavioral notes (contract-only):
 
 from typing import TypedDict
 
+from invar import post
+from invar import pre
+
 
 # Assembly-facing TypedDict contracts
 
@@ -77,6 +80,8 @@ class AssemblyInput(TypedDict, total=False):
     variables: dict[str, str]
 
 
+@pre(lambda data: isinstance(data, dict) and "id" in data)
+@post(lambda result: isinstance(result, dict) and "id" in result)
 def assemble_candidate(data: AssemblyInput) -> dict:
     """Assemble a PersonaSpec candidate from component inputs.
 
@@ -96,6 +101,12 @@ def assemble_candidate(data: AssemblyInput) -> dict:
 
     Raises:
         NotImplementedError: Stub - implementation pending
+
+    Examples:
+        >>> assemble_candidate({"id": "test"})  # pragma: no cover
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: assemble_candidate implementation pending core_assemble.core-assemble-implement
     """
     raise NotImplementedError(
         "assemble_candidate implementation pending core_assemble.core-assemble-implement"
