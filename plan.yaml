@@ -803,7 +803,7 @@ phases:
       \ contract alignment."
   - id: meta.review.components
     name: Review plan for larva.shell.components
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.components` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -824,6 +824,8 @@ phases:
     depends_on:
     - meta.review.assemble
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:31:43.131590+00:00'
   - id: meta.review.registry
     name: Review plan for larva.shell.registry
     status: pending
