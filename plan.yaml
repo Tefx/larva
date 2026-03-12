@@ -1347,7 +1347,7 @@ phases:
       - Only mark PASS when the plan is executable, dependency-safe, and ready for
       `meta.review.meta-review-gate` to proceed'
     depends_on:
-    - meta.review.meta-review-fix-b1-validationreport-shape
+    - meta.review.meta-review-fix-validationissue-canonical-schema
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:14:47.134820+00:00'
