@@ -4662,7 +4662,7 @@ phases:
     agent: gate-reviewer
   - id: app_facade.app-facade-implement-register-list
     name: app-facade-implement-register-list
-    status: claimed
+    status: done
     description: "Implement the `register()` and `list()` facade flows in `src/larva/app/facade.py`\
       \ after the validate/assemble path is in place.\n\nstep_type: implementation\n\
       tags:\n  - integration\n\nScope:\n- implement `register(spec)` so facade-owned\
@@ -4707,6 +4707,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:38:04.909707+00:00'
+    done_at: '2026-03-12T20:43:20.854777+00:00'
+    evidence: "Commit hash(es):\n- f6abad2\n- fcb33bf\n- squash merged to main as\
+      \ commit 1d0fa65\n\nFiles changed:\n- src/larva/app/facade.py\n- tests/app/test_facade.py\n\
+      \nVerification:\n- Commands run:\n  - `uv run pytest -q tests/app/test_facade.py`\n\
+      \  - `uv run pytest -q tests/app/test_facade.py -k resolve_remains_deferred`\n\
+      \  - `invar_guard(path=<worktree>, changed=false)`\n- Key outputs/results:\n\
+      \  - full facade test file: `12 passed`\n  - deferred-scope check: `resolve_remains_deferred`\
+      \ test passed\n  - `invar_guard`: passed with 0 errors / 0 warnings\n  - `register()`\
+      \ now validates -> normalizes -> persists and returns facade `{id, registered}`\n\
+      \  - explicit falsey/null values preserved through register flow\n  - `list()`\
+      \ projects only `id`, `spec_digest`, `model` from canonical registry records\n\
+      \  - registry save/list failures map to app-level `LarvaError` (typed fields,\
+      \ no transport envelope shaping)\n\nSpec link:\n- ARCHITECTURE.md :: app facade\
+      \ + app error boundary\n- INTERFACES.md :: A (`register`, `list`) + G\n\nGaps/Notes:\n\
+      - `resolve()` intentionally remains deferred/unimplemented per step scope.\n\
+      - No shell storage implementation edits; no CLI/MCP/Python API shaping changes;\
+      \ no orchestrator state file changes."
   - id: app_facade.app-facade-implement-resolve
     name: app-facade-implement-resolve
     status: pending
