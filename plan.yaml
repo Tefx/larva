@@ -2354,3 +2354,87 @@ phases:
       - No filesystem I/O, JSON persistence logic, or transport formatting is introduced
       in the contract step'
     agent: python-senior
+  - id: shell_registry.shell-registry-tests
+    name: shell-registry-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.shell.registry` in `tests/shell/test_registry.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - define focused tests for the filesystem-backed registry contract using temporary
+      `~/.larva/registry/`-shaped fixtures with real `<id>.json` persona files and
+      `index.json`
+
+      - prove `save()` persists a canonical PersonaSpec by id and updates `index.json`
+      to map the id to the saved `spec_digest`
+
+      - prove `get()` returns the exact stored PersonaSpec for a valid kebab-case
+      id and surfaces a typed shell error for missing personas suitable for downstream
+      `PERSONA_NOT_FOUND` mapping
+
+      - prove `list()` returns complete canonical PersonaSpec records from the registry
+      boundary, leaving downstream summary shaping (`id`, `spec_digest`, `model`)
+      to facade/transports
+
+      - prove invalid ids violating `^[a-z0-9]+(-[a-z0-9]+)*$` are rejected at the
+      shell boundary with a typed error
+
+      - prove index/spec consistency checks fail loudly through typed shell errors
+      when `index.json` and `<id>.json` disagree or when a referenced persona file
+      is missing
+
+      - keep tests scoped to `larva.shell.registry` only, with no facade override,
+      revalidation, normalization, CLI, MCP, or Python API coverage
+
+
+      Non-goals:
+
+      - no override patching tests
+
+      - no validation-module assertions
+
+      - no transport JSON response formatting tests
+
+      - no package export or shared-registry wiring tests
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.registry` / Public Interface
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.register(spec)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.resolve(id, overrides?)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.list()`
+
+      - INTERFACES.md :: D. Global Registry / Location
+
+      - INTERFACES.md :: D. Global Registry / Resolution
+
+      - INTERFACES.md :: D. Global Registry / Id Rules
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions
+
+
+      Failure-path expectations:
+
+      - add a focused regression for missing persona lookup returning a typed shell
+      error suitable for downstream `PERSONA_NOT_FOUND` mapping
+
+      - add a focused regression for index/spec divergence returning a typed error
+      instead of silently trusting stale registry state'
+    depends_on:
+    - shell_registry.shell-registry-contract
+    agent: python-senior
