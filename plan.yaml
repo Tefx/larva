@@ -2031,7 +2031,7 @@ phases:
   steps:
   - id: shell_components.shell-components-contract
     name: shell-components-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.shell.components` module at `src/larva/shell/components.py`.\n\
       \nCanonical type-ownership decision for planning freeze:\n- Component TypedDicts\
       \ used by assembly (`PromptComponent`, `ToolsetComponent`, `ConstraintComponent`,\
@@ -2057,6 +2057,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T18:40:41.446102+00:00'
+    done_at: '2026-03-12T18:43:04.531622+00:00'
+    evidence: '**Contract artifact created**: `src/larva/shell/components.py` (146
+      lines)
+
+
+      **Contract purity verified**: ENFORCED - protocol signatures, type definitions,
+      typed error class only. No runnable file-loading logic.
+
+
+      **Contract elements implemented**:
+
+      - `ComponentStore` Protocol with 5 method signatures (`load_prompt`, `load_toolset`,
+      `load_constraint`, `load_model`, `list_components`) returning `Result[T, ComponentStoreError]`
+
+      - `ComponentStoreError` typed shell error with `COMPONENT_NOT_FOUND_CODE = 105`
+      mapping per `contracts/errors.yaml`
+
+      - Imports canonical component types from `larva.core.spec` (`PromptComponent`,
+      `ToolsetComponent`, `ConstraintComponent`, `ModelComponent`)
+
+      - `Result[T, E]` boundary imports from `returns` library
+
+
+      **Verification**:
+
+      - MCP invar guard: PASSED (1 file checked, 0 errors, 0 warnings)
+
+      - Contract matches ARCHITECTURE.md `ComponentStore` protocol signature
+
+      - Contract matches INTERFACES.md component-library documentation
+
+
+      **Commit hash**: `4dda36c`
+
+
+      **Files changed**: `src/larva/shell/components.py`'
   - id: shell_components.shell-components-tests
     name: shell-components-tests
     status: pending
