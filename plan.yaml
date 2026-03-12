@@ -1195,7 +1195,6 @@ phases:
     - meta.review.cli
     - meta.review.mcp
     - meta.review.final
-    - meta.review.retest-gate-blockers
     - meta.review.meta-review-retest-gate-blockers-b1-family-residual
     agent: gate-reviewer
     claimed_by: gate-reviewer
