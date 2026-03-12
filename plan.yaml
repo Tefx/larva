@@ -2438,3 +2438,123 @@ phases:
     depends_on:
     - shell_registry.shell-registry-contract
     agent: python-senior
+  - id: shell_registry.shell-registry-implement
+    name: shell-registry-implement
+    status: pending
+    description: 'Implement `larva.shell.registry` in `src/larva/shell/registry.py`
+      so it persists and retrieves canonical PersonaSpec records without widening
+      module scope.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - implement the filesystem-backed `RegistryStore` adapter and typed shell errors
+      using `Result[T, E]`
+
+      - persist canonical PersonaSpec JSON at the documented `~/.larva/registry/<id>.json`
+      location and maintain `index.json` as an id -> `spec_digest` map
+
+      - enforce the documented flat kebab-case id rule before any read/write operation
+
+      - implement `get()` and `list()` over stored canonical PersonaSpec records only;
+      leave override application, revalidation, renormalization, and list-summary
+      shaping to downstream facade/transport phases
+
+      - constrain changes to `src/larva/shell/registry.py` and `tests/shell/test_registry.py`
+      only
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior: adapter must resolve the registry root
+      deterministically and operate only within the configured/documented registry
+      directory, never by caller CWD accident
+
+      - missing-file fallback behavior: absent `<id>.json` or `index.json` must return
+      typed shell errors or documented empty-registry behavior explicitly covered
+      by tests, never implicit silent synthesis beyond the contract
+
+      - explicit clear / null overwrite semantics: saving a PersonaSpec must preserve
+      explicit JSON `null` values exactly when present and must not drop fields through
+      truthy filtering
+
+      - stale-definition vs new-state precedence: when `index.json` and `<id>.json`
+      disagree, the operation must surface a typed inconsistency error rather than
+      silently choosing one source of truth
+
+      - partial-write / CAS-conflict behavior: save/update flow must avoid leaving
+      `index.json` and `<id>.json` half-updated; any write failure must surface a
+      typed error and preserve a recoverable consistent state as covered by targeted
+      regression tests
+
+
+      State semantics:
+
+      - last-writer-wins applies only at the successful whole-save operation boundary
+      for a given persona id
+
+      - canonical PersonaSpec file content and its `spec_digest` mapping must be preserved
+      exactly once a save succeeds
+
+      - backward-compatible legacy behavior for v1 is limited to the documented registry
+      layout (`~/.larva/registry/`, `<id>.json`, `index.json`) and flat kebab-case
+      ids
+
+
+      Known risks:
+
+      - persistence boundary drift: do not add override patching, semantic validation,
+      normalization, or transport formatting here
+
+      - path semantics drift: the adapter must honor the documented registry location
+      and file naming exactly
+
+      - shell error drift: external I/O and decode failures must remain typed shell
+      errors carried in `Result`, not transport-shaped JSON payloads
+
+      - shared-registry conflict: do not modify `src/larva/__init__.py` or other shared
+      export/router files
+
+
+      Out of scope:
+
+      - call-site migration in `larva.app.facade`, `larva.shell.cli`, `larva.shell.mcp`,
+      or `larva.shell.python_api`
+
+      - compatibility wrappers for override application or list-summary shaping
+
+      - removal of downstream legacy helpers outside `larva.shell.registry`
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.registry`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: D. Global Registry / Location
+
+      - INTERFACES.md :: D. Global Registry / Resolution
+
+      - INTERFACES.md :: D. Global Registry / Id Rules
+
+      - README.md :: Key Design Decisions'
+    verification: '- Main path: targeted tests for save/get/list against real temporary
+      registry files pass and prove canonical PersonaSpec persistence plus `index.json`
+      maintenance
+
+      - Failure path: focused regressions cover missing persona lookup, invalid ids,
+      index/spec divergence, and write-failure handling without silent stale-state
+      fallback
+
+      - Proof: no override, revalidation, normalization, CLI, MCP, Python API, or
+      package-export wiring is introduced outside `src/larva/shell/registry.py`'
+    depends_on:
+    - shell_registry.shell-registry-tests
+    agent: python-senior
