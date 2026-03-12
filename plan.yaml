@@ -2095,7 +2095,7 @@ phases:
       **Files changed**: `src/larva/shell/components.py`'
   - id: shell_components.shell-components-tests
     name: shell-components-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for `larva.shell.components` in `tests/shell/test_components.py`.
 
 
@@ -2163,6 +2163,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T18:58:24.231038+00:00'
+    done_at: '2026-03-12T18:58:34.551612+00:00'
+    evidence: "**Tests implemented in tests/shell/test_components.py (457 lines)**:\n\
+      \n1. **ComponentStore Protocol Tests** (5 tests):\n   - `test_load_prompt_returns_raw_markdown`\
+      \ — proves prompt loads return raw markdown from `prompts/<name>.md`\n   - `test_load_toolset_parses_yaml`\
+      \ — proves toolset loads parse YAML into `ToolsetComponent`\n   - `test_load_constraint_parses_yaml`\
+      \ — proves constraint loads parse YAML into `ConstraintComponent`\n   - `test_load_model_parses_yaml`\
+      \ — proves model loads parse YAML into `ModelComponent`\n   - `test_list_components_returns_directory_keyed_inventory`\
+      \ — proves `list_components()` returns `dict[str, list[str]]`\n\n2. **Missing\
+      \ Component Error Tests** (5 tests):\n   - `test_missing_prompt_returns_typed_error`\
+      \ — proves missing prompt returns `ComponentStoreError` with code 105\n   -\
+      \ `test_missing_toolset_returns_typed_error` — proves missing toolset returns\
+      \ typed error\n   - `test_missing_constraint_returns_typed_error` — proves missing\
+      \ constraint returns typed error\n   - `test_missing_model_returns_typed_error`\
+      \ — proves missing model returns typed error\n   - `test_component_store_error_to_dict`\
+      \ — proves `ComponentStoreError.to_dict()` returns transport-ready format\n\n\
+      3. **Protocol Compliance Tests** (4 tests):\n   - `test_implements_protocol`\
+      \ — proves `FilesystemComponentStore` satisfies `ComponentStore` Protocol\n\
+      \   - `test_protocol_load_methods_exist` — verifies all required methods exist\n\
+      \   - `test_protocol_return_types` — verifies methods return `Result[T, E]`\
+      \ types\n   - `test_empty_component_store` — proves `list_components()` works\
+      \ with empty directories\n\n**Verification**:\n- Tests exercise real temporary\
+      \ component-store files for all four documented component types (prompts, toolsets,\
+      \ constraints, models)\n- Missing-component coverage proves the shell error\
+      \ boundary needed for downstream `COMPONENT_NOT_FOUND` mapping (code 105)\n\
+      - Test scope remains inside `larva.shell.components` and its filesystem fixtures\
+      \ (no facade, registry, transports)\n- MCP invar guard: PASSED\n- pytest: 14\
+      \ passed in 0.12s\n\n**Commit hash**: `612526b`\n**Files changed**: `tests/shell/test_components.py`"
   - id: shell_components.shell-components-implement
     name: shell-components-implement
     status: pending
