@@ -1,5 +1,6 @@
 """Tests for larva.core.assemble module contracts and behavior."""
 
+import deal
 import pytest
 from inspect import signature
 
@@ -46,13 +47,13 @@ class TestAssembleCandidateContracts:
     def test_pre_contract_rejects_non_dict(self):
         """@pre contract should reject non-dict input."""
         # Invalid: not a dict - should raise due to contract violation
-        with pytest.raises(Exception):
+        with pytest.raises(deal.PreContractError):
             assemble_candidate("not a dict")
 
     def test_pre_contract_rejects_dict_without_id(self):
         """@pre contract should reject dict without 'id' key."""
         # Invalid: dict without id
-        with pytest.raises(Exception):
+        with pytest.raises(deal.PreContractError):
             assemble_candidate({"name": "test"})
 
     def test_pre_contract_accepts_valid_input(self):
