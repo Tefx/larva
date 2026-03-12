@@ -1333,59 +1333,6 @@ phases:
     depends_on:
     - core_assemble.core-assemble-tests
     agent: python-executor
-  - id: core_assemble.core-assemble-verify
-    name: core-assemble-verify
-    status: pending
-    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
-      `larva.core.assemble` module from a fresh perspective.
-
-
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
-
-
-      step_type: verification
-
-      Independence Level: L1
-
-
-      Test for:
-
-      - Happy path: component inputs assemble into the expected PersonaSpec candidate
-      with prompt ordering, compatible tool merge behavior, and override precedence
-      matching the docs
-
-      - Edge cases: repeated assembly of the same `AssemblyInput` is deterministic;
-      nested model parameter overrides remain stable; candidate output does not leak
-      assembly metadata
-
-      - Error scenarios: contradictory scalar fields and tool postures surface deterministic
-      conflicts; normalization-only fields such as `spec_digest` are not computed
-      here; no shell/app imports leak into core
-
-
-      Document ALL findings. A verification step that discovers issues is a success.
-
-
-      Boundary citations:
-
-      - ARCHITECTURE.md :: Module: `larva.core.assemble`
-
-      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
-      -> Normalization
-
-      - INTERFACES.md :: C. Component Library / Assembly Rules
-
-      - INTERFACES.md :: E. PersonaSpec Output Format'
-    verification: '- Independent evidence covers documented happy path, determinism,
-      and conflict failure paths
-
-      - Verification explicitly checks that `larva.core.assemble` stops at candidate
-      generation and does not absorb normalization or transport duties
-
-      - Findings are reported with concrete reproduction details'
-    depends_on:
-    - core_assemble.core-assemble-implement
-    agent: integration-verifier
 - id: shell_components
   name: larva.shell.components
   status: locked
@@ -4714,4 +4661,55 @@ phases:
 
       - explicit statement that no code changes are allowed until `core_assemble.core-assemble-gate`
       completes'
+    agent: integration-verifier
+  - id: core_assemble.core-assemble-verify
+    name: core-assemble-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.core.assemble` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      Test for:
+
+      - Happy path: component inputs assemble into the expected PersonaSpec candidate
+      with prompt ordering, compatible tool merge behavior, and override precedence
+      matching the docs
+
+      - Edge cases: repeated assembly of the same `AssemblyInput` is deterministic;
+      nested model parameter overrides remain stable; candidate output does not leak
+      assembly metadata
+
+      - Error scenarios: contradictory scalar fields and tool postures surface deterministic
+      conflicts; normalization-only fields such as `spec_digest` are not computed
+      here; no shell/app imports leak into core
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.core.assemble`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - INTERFACES.md :: C. Component Library / Assembly Rules
+
+      - INTERFACES.md :: E. PersonaSpec Output Format'
+    verification: '- Independent evidence covers documented happy path, determinism,
+      and conflict failure paths
+
+      - Verification explicitly checks that `larva.core.assemble` stops at candidate
+      generation and does not absorb normalization or transport duties
+
+      - Findings are reported with concrete reproduction details'
     agent: integration-verifier
