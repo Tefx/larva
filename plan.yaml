@@ -584,7 +584,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.mcp
     name: Plan module larva.shell.mcp
-    status: pending
+    status: claimed
     description: Produce the detailed vectl implementation plan for `larva.shell.mcp`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -610,6 +610,8 @@ phases:
     depends_on:
     - meta.plan.cli
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-12T10:01:21.269454+00:00'
 - id: meta.review
   name: Review
   status: locked
