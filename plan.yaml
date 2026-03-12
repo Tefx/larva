@@ -4065,7 +4065,7 @@ phases:
       - Show `--json` output remains machine-readable and free of human-formatting
       leakage'
     depends_on:
-    - shell_cli.shell-cli-implement
+    - shell_cli.shell-cli-component-implement
     agent: integration-verifier
   - id: shell_cli.shell-cli-freeze
     name: shell-cli-freeze
