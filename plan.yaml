@@ -4906,7 +4906,7 @@ phases:
     agent: gate-reviewer
   - id: core_spec.core-spec-freeze
     name: core.spec.freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.core.spec` snapshot before gate review.
 
 
@@ -4952,6 +4952,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:02:28.957710+00:00'
+    done_at: '2026-03-12T18:04:19.281556+00:00'
+    evidence: 'Freeze evidence collected in isolated worktree `/Users/tefx/Projects/larva/.vectl/worktrees/core_spec.core-spec-freeze`.
+
+      - commit: `810d956bd3e7cd3708db8e5c9d4db4cecbfe853f` (`git rev-parse HEAD`)
+
+      - branch: `vectl/step-core_spec.core-spec-freeze`
+
+      - git status: clean (`## vectl/step-core_spec.core-spec-freeze` from `git status
+      --short --branch`)
+
+      - env: `Darwin 25.1.0`, `macOS 26.1 (25B78)`, `Python 3.14.3`, `node v25.8.0`
+
+      - timestamp (UTC): `2026-03-12T18:04:01Z`
+
+      Freeze assertion: no code changes are permitted after this freeze until `core.spec.gate`
+      completes.'
   - id: core_spec.core-spec-verify
     name: core.spec.verify
     status: done
