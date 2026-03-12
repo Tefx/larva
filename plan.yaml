@@ -4662,7 +4662,7 @@ phases:
     agent: gate-reviewer
 - id: meta.gate
   name: Meta Freeze Gate
-  status: pending
+  status: in_progress
   depends_on:
   - meta.review
   steps:
@@ -4711,7 +4711,7 @@ phases:
     agent: gate-reviewer
   - id: meta.gate.meta-gate-future-stage-plan-review
     name: meta.gate.future-stage-plan-review
-    status: pending
+    status: claimed
     description: 'Review all future non-`meta.*` phases against the updated planner
       prompt before implementation execution begins.
 
@@ -4772,6 +4772,8 @@ phases:
       - Confirm all reviewed future non-meta phases remain blocked on meta completion
       until this review and `meta.gate.complete` finish'
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-12T16:58:02.667012+00:00'
 - id: core_spec_exec
   name: larva.core.spec execution
   status: locked
