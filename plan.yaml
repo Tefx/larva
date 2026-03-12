@@ -6576,3 +6576,39 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:49:01.580309+00:00'
+  - id: core_exec_remediation.fix-core-verification-blockers-b3-residual
+    name: Fix residual B3 exception specificity
+    status: pending
+    description: "Fix the residual B3 blocker in `tests/core/test_assemble.py` without\
+      \ expanding scope beyond the failed realism assertion gap.\n\nstep_type: implementation\n\
+      prior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
+      \  - core_exec_remediation.retest-core-verification-blockers-b1-b3\nremaining_blocker:\
+      \ `tests/core/test_assemble.py` still uses permissive `pytest.raises(Exception)`\
+      \ assertions at lines 49 and 55, which masks the exact failure signal for precondition\
+      \ rejection.\nwhy_new_loop: The prior batched remediation materially closed\
+      \ the broader B1/B2 families, but B3 still has a narrow residual in one test\
+      \ file; a focused test-only fix is safer than reopening the broader remediation\
+      \ scope.\n\nScope:\n- Replace the broad exception assertions at `tests/core/test_assemble.py:49`\
+      \ and `tests/core/test_assemble.py:55` with assertions against the specific\
+      \ expected contract failure signal, error type, or error code already emitted\
+      \ by the runtime path.\n- Preserve existing intent of the two tests; do not\
+      \ broaden module behavior, contracts, or production code in this loop.\n- If\
+      \ helper assertions are needed, keep them local to `tests/core/test_assemble.py`.\n\
+      \nSystemic sibling search:\n- Search `tests/core/test_assemble.py` for any remaining\
+      \ `pytest.raises(Exception)` or equivalent broad exception assertions.\n- Do\
+      \ not expand into unrelated test modules unless the same anti-pattern is in\
+      \ this same file.\n\nGrep hints:\n- `pytest\\.raises\\(Exception\\)`\n- `test_pre_contract_`\n\
+      \n## Completion Criteria\n- The two residual broad exception assertions are\
+      \ replaced with specific expected failure signals.\n- `tests/core/test_assemble.py`\
+      \ no longer masks precondition failures with catch-all exception assertions.\n\
+      - No scope expansion into B1/B2 implementation surfaces or unrelated test modules."
+    verification: '- `tests/core/test_assemble.py` asserts the concrete expected failure
+      signal at the two residual sites
+
+      - Sibling search in `tests/core/test_assemble.py` shows no remaining `pytest.raises(Exception)`
+      anti-pattern for this B3 family
+
+      - Proof states that B1/B2 code paths were left untouched in this focused loop'
+    depends_on:
+    - core_exec_remediation.retest-core-verification-blockers-b1-b3
+    agent: python-executor
