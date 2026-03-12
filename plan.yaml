@@ -6069,7 +6069,7 @@ phases:
     agent: gate-reviewer
   - id: core_assemble.core-assemble-freeze
     name: core-assemble-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.core.assemble` snapshot before gate review.
 
 
@@ -6103,6 +6103,8 @@ phases:
     depends_on:
     - core_assemble.core-assemble-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T18:03:02.530739+00:00'
   - id: core_assemble.core-assemble-verify
     name: core-assemble-verify
     status: done
