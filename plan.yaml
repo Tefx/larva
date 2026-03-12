@@ -1614,6 +1614,8 @@ phases:
 - id: core_validate
   name: larva.core.validate
   status: in_progress
+  depends_on:
+  - meta.gate
   steps:
   - id: core_validate.core-validate-contract
     name: core.validate.contract
