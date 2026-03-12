@@ -2192,7 +2192,7 @@ phases:
       \ passed in 0.12s\n\n**Commit hash**: `612526b`\n**Files changed**: `tests/shell/test_components.py`"
   - id: shell_components.shell-components-implement
     name: shell-components-implement
-    status: pending
+    status: claimed
     description: 'Implement `larva.shell.components` in `src/larva/shell/components.py`
       so it loads documented component files into typed in-memory objects without
       widening module scope.
@@ -2265,6 +2265,8 @@ phases:
     depends_on:
     - shell_components.shell-components-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T19:00:45.491680+00:00'
   - id: shell_components.shell-components-verify
     name: shell-components-verify
     status: pending
