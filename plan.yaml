@@ -5573,9 +5573,10 @@ phases:
     agent: python-executor
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: pending
+  status: locked
   depends_on:
   - meta.gate
+  - core_assemble
   steps:
   - id: core_assemble.core-assemble-gate
     name: core-assemble-gate
