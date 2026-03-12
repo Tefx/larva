@@ -488,7 +488,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.python_api
     name: Plan module larva.shell.python_api
-    status: pending
+    status: claimed
     description: Produce the detailed vectl implementation plan for `larva.shell.python_api`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -514,6 +514,8 @@ phases:
     depends_on:
     - meta.plan.facade
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-12T09:49:58.040605+00:00'
   - id: meta.plan.cli
     name: Plan module larva.shell.cli
     status: pending
