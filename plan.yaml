@@ -3654,7 +3654,7 @@ phases:
       \ targeting false-not-found behavior in `get()`."
   - id: shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2
     name: retest-shell-registry-gate-blockers-b1-b2-s1-s2
-    status: pending
+    status: claimed
     description: 'Re-test ALL registry gate findings together after `fix-shell-registry-gate-blockers-b1-b2-s1-s2`.
 
 
@@ -3744,6 +3744,8 @@ phases:
     depends_on:
     - shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T19:54:14.259095+00:00'
 - id: app_facade
   name: larva.app.facade
   status: locked
