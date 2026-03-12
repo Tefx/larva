@@ -1123,6 +1123,121 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T12:52:22.491168+00:00'
+  - id: meta.review.fix-gate-blockers
+    name: Fix all gate blockers from meta.review.meta-review-gate
+    status: pending
+    description: 'Fix ALL blockers found by `meta.review.meta-review-gate`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: core.validate interface mismatch with `ARCHITECTURE.md`
+
+      Locations: `core_validate` planning steps and related contract/test/implement
+      expectations
+
+      Remediation: align public names/signature to `ValidationIssue` / `ValidationReport`
+      / `validate_spec`, or update the authoritative docs so one canonical source
+      remains.
+
+      Grep hint: `core_validate.core-validate-contract`
+
+      IMPORTANT: search sibling `core_validate` execution steps (`tests`, `implement`,
+      `verify`, `freeze`, `gate`) and any meta review evidence that repeats the old
+      names/signature.
+
+
+      ### B2: core.assemble contract shape/document conflict
+
+      Locations: `core_assemble` planning steps and `meta.review` evidence
+
+      Remediation: resolve `ARCHITECTURE.md` vs `INTERFACES.md` conflict on `AssemblyInput`
+      by-name vs by-value and return type `PersonaSpec` vs `dict`; make one canonical
+      contract source and align all dependent steps.
+
+      Grep hint: `core_assemble.core-assemble-contract`
+
+      IMPORTANT: search sibling `core_assemble` execution steps and final review evidence
+      for repeated contract-shape assumptions.
+
+
+      ### B3: shell.components component type ownership ambiguity
+
+      Locations: `shell_components` planning steps
+
+      Remediation: decide whether component types live in `core.spec` or `core.assemble`,
+      then align dependencies, step text, and contract/test/implementation sequencing
+      accordingly.
+
+      Grep hint: `shell_components.shell-components-contract`
+
+      IMPORTANT: search sibling `shell_components` steps plus upstream `core_spec`
+      / `core_assemble` plan text for duplicated or conflicting ownership statements.
+
+
+      ### B4: shell.python_api missing `app_facade` execution dependency
+
+      Locations: phase `shell_python_api` depends_on / execution sequencing
+
+      Remediation: add the missing `app_facade` dependency anywhere execution can
+      otherwise start too early.
+
+      Grep hint: `phase shell_python_api`
+
+      IMPORTANT: search all `shell_python_api` steps for first-step and cross-phase
+      dependency omissions, not just one line.
+
+
+      ### B5: shell.cli missing `app_facade` execution dependency
+
+      Locations: phase `shell_cli` depends_on / execution sequencing
+
+      Remediation: add the missing `app_facade` dependency anywhere execution can
+      otherwise start too early.
+
+      Grep hint: `phase shell_cli`
+
+      IMPORTANT: search all `shell_cli` steps for first-step and cross-phase dependency
+      omissions, not just one line.
+
+
+      ### B6: final cross-module review remains rework until B1-B5 resolved
+
+      Locations: `meta.review.final`
+
+      Remediation: rerun the final cross-module review after the blocker fixes land,
+      and ensure the updated review evidence explicitly covers B1-B5 closure.
+
+      Grep hint: `meta.review.final`
+
+      IMPORTANT: search adjacent `meta.review` steps for stale review conclusions
+      that would bypass the rerun.
+
+
+      ## Completion Criteria
+
+      - Fix ALL of these, not just the first
+
+      - Perform systemic sibling searches for every blocker family
+
+      - Keep plan executable and dependency-safe
+
+      - Preserve independent review by routing verification back to `gate-reviewer`
+
+      - Update downstream phase dependencies so no execution phase can bypass the
+      corrected sequencing'
+    verification: '- Every blocker family above is resolved in the plan, not partially
+      addressed
+
+      - Sibling-search evidence shows no remaining conflicting step text or missing
+      dependency within the affected families
+
+      - `meta.review.meta-review-gate` is updated to wait for the follow-up review
+      before meta freeze can pass'
+    depends_on:
+    - meta.review.final
+    agent: software-architect
 - id: core_spec
   name: larva.core.spec
   status: in_progress
