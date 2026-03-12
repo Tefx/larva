@@ -803,7 +803,7 @@ phases:
       \ contract alignment."
   - id: meta.review.components
     name: Review plan for larva.shell.components
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.shell.components` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -826,6 +826,16 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:31:43.131590+00:00'
+    done_at: '2026-03-12T12:40:30.866085+00:00'
+    evidence: "- Reviewed module: larva.shell.components\n- Decision: rework\n- Boundary\
+      \ issues:\n  - Step text references component objects under larva.core.spec,\
+      \ while architecture places these under larva.core.assemble.\n  - Module boundary\
+      \ docs currently inconsistent on where component TypedDict ownership lives.\n\
+      - Dependency issues:\n  - Dependency declaration likely incomplete/inconsistent\
+      \ until component type ownership is resolved.\n- Evidence gaps:\n  - Plan does\
+      \ not yet encode explicit resolution path for the core.assemble vs core.spec\
+      \ component-type ownership conflict.\n- Agent assignment gaps: none\n\nRequired\
+      \ corrections recorded before downstream execution."
   - id: meta.review.registry
     name: Review plan for larva.shell.registry
     status: pending
