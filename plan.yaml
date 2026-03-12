@@ -6267,3 +6267,66 @@ phases:
   - core_normalize
   - core_validate
   - core_assemble
+  steps:
+  - id: core_exec_remediation.fix-core-verification-blockers-b1-b3
+    name: Fix core verification blockers B1-B3
+    status: pending
+    description: "Fix ALL of these, not just the first, for `core_normalize.core-normalize-verify`,\
+      \ `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`.\n\
+      \nstep_type: implementation\nprior_loop:\n  - core_normalize.core-normalize-verify\n\
+      \  - core_validate.core-validate-verify\n  - core_assemble.core-assemble-verify\n\
+      remaining_blocker: Runtime contract wiring, verification reachability, and test\
+      \ realism still prevent reliable execution across normalize/validate/assemble.\n\
+      why_new_loop: A single systemic remediation is required because the three failures\
+      \ share core contract/runtime and verification-surface causes; splitting would\
+      \ risk partial fixes and repeated rework.\n\n## Blockers to Fix (ALL of these,\
+      \ not just the first)\n\n### B1: Contract/decorator runtime wiring crash\nLocations:\n\
+      - `src/larva/core/normalize.py`\n- `src/larva/core/validate.py`\n- `src/larva/core/assemble.py`\n\
+      Remediation:\n- Fix contract/decorator wiring so functions execute under normal\
+      \ runtime without `deal.disable` or equivalent bypass.\n- Ensure doctests and\
+      \ direct invocation no longer crash at the contract layer before core logic\
+      \ executes.\nSystemic sibling search:\n- Search all `@pre` / `@post` usage and\
+      \ any decorator helper imported or wrapped by these three modules.\n- Do not\
+      \ stop at the listed call sites; verify sibling core entry points using the\
+      \ same contract pattern.\nGrep hints:\n- `\"function' object has no attribute\
+      \ 'check\"`\n- `@pre`\n- `@post`\n\n### B2: Verification reachability / committed-state\
+      \ gap\nLocations:\n- verify evidence and implementation surfaces for normalize/validate/assemble\n\
+      - `src/larva/core/normalize.py`\n- `src/larva/core/validate.py`\n- `src/larva/core/assemble.py`\n\
+      Remediation:\n- Ensure implementation behavior exercised by verification is\
+      \ represented in committed repository state reachable from verification worktrees.\n\
+      - Eliminate any path where verification only sees placeholder or unstaged-only\
+      \ behavior.\nSystemic sibling search:\n- Search for placeholder bodies, feature\
+      \ stubs, or contract-only artifacts in the three modules and any adjacent helper\
+      \ imported by them.\n- Confirm the runtime path used by doctests and direct\
+      \ imports resolves to real implementation, not transient local state.\nGrep\
+      \ hints:\n- `NotImplementedError`\n- `TODO`\n- `pass`\n\n### B3: Assemble test\
+      \ realism weakness\nLocations:\n- `tests/core/test_assemble.py`\nRemediation:\n\
+      - Tighten tests to assert expected outcomes and failure codes/messages instead\
+      \ of permissive exception-pass patterns.\n- Verification must be able to distinguish\
+      \ implementation truth from masked failures.\nSystemic sibling search:\n- Search\
+      \ the full file for broad `except` or exception handlers that silently pass.\n\
+      - If similar realism gaps exist in closely related assemble tests, fix them\
+      \ in the same loop.\nGrep hints:\n- `pass` inside exception handlers in `tests/core/test_assemble.py`\n\
+      - `except`\n\n## Completion Criteria\n- ALL blockers fixed across the three\
+      \ core modules and the assemble tests, not just B1.\n- Sibling search completed\
+      \ for each blocker family with evidence of what was checked.\n- Normal runtime\
+      \ invocation and doctests no longer fail at the contract layer.\n- Verification\
+      \ worktrees can observe executable implementation state for normalize/validate/assemble.\n\
+      - Assemble tests fail for the right reasons and no longer mask truth with broad\
+      \ exception-pass patterns.\n\nKnown risks / gate preview:\n- Gate will reject\
+      \ any residual contract wrapper crash in any of the three modules, even if one\
+      \ module is fixed.\n- Gate will reject placeholder or uncommitted-only behavior\
+      \ still visible to verification context.\n- Gate will reject permissive test\
+      \ handling that can hide incorrect assemble behavior."
+    verification: '- Each blocker family is addressed with concrete code/test updates
+      and sibling-search evidence
+
+      - Focused regression coverage exists for direct invocation/doctest execution
+      in `src/larva/core/normalize.py`, `src/larva/core/validate.py`, and `src/larva/core/assemble.py`
+
+      - Verification context now reaches committed executable behavior instead of
+      placeholders or unstaged-only state
+
+      - `tests/core/test_assemble.py` asserts concrete outcomes/failure signals and
+      contains no broad exception-pass masking pattern for the covered paths'
+    agent: python-senior
