@@ -2095,7 +2095,7 @@ phases:
       **Files changed**: `src/larva/shell/components.py`'
   - id: shell_components.shell-components-tests
     name: shell-components-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.shell.components` in `tests/shell/test_components.py`.
 
 
@@ -2161,6 +2161,8 @@ phases:
     depends_on:
     - shell_components.shell-components-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T18:58:24.231038+00:00'
   - id: shell_components.shell-components-implement
     name: shell-components-implement
     status: pending
