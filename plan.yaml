@@ -6612,3 +6612,40 @@ phases:
     depends_on:
     - core_exec_remediation.retest-core-verification-blockers-b1-b3
     agent: python-executor
+  - id: core_exec_remediation.retest-core-verification-blockers-b3-residual
+    name: Retest residual B3 closure with B1/B2 regressions
+    status: pending
+    description: "Re-test the residual B3 blocker after `core_exec_remediation.fix-core-verification-blockers-b3-residual`,\
+      \ while preserving regression coverage for the already-remediated B1/B2 families.\n\
+      \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
+      \  - core_exec_remediation.retest-core-verification-blockers-b1-b3\nremaining_blocker:\
+      \ B3 residual broad exception assertions in `tests/core/test_assemble.py` must\
+      \ be closed without regressing B1/B2.\nwhy_new_loop: A fresh independent retest\
+      \ is required because the previous retest found a remaining realism defect;\
+      \ downstream continuation must wait for explicit evidence that B3 is now closed\
+      \ and B1/B2 remain closed.\n\nAs an INDEPENDENT TESTER (`integration-verifier`),\
+      \ validate:\n- B3 closure: `tests/core/test_assemble.py` now asserts the specific\
+      \ expected failure signal(s) instead of `pytest.raises(Exception)` at the former\
+      \ residual sites\n- B1 regression: normalize/validate/assemble runtime invocation\
+      \ still avoids contract-layer crash paths\n- B2 regression: verification context\
+      \ still exercises committed executable implementation state rather than placeholder\
+      \ or transient state\n\nDocument findings by blocker family and explicitly call\
+      \ out whether any residual broad exception assertions remain in `tests/core/test_assemble.py`."
+    verification: '- B3 main path: targeted evidence confirms the two former residual
+      assertions now check concrete failure signals/codes/messages
+
+      - B3 failure path: file-level scan of `tests/core/test_assemble.py` confirms
+      no residual `pytest.raises(Exception)` remains for this assemble precondition
+      family
+
+      - B1 regression check: direct imports/doctests/runtime invocation for normalize/validate/assemble
+      still avoid contract-layer `AttributeError`
+
+      - B2 regression check: verification still sees committed executable implementation
+      state across the three modules
+
+      - Findings are grouped under B1/B2/B3 so downstream phases remain gated on a
+      single acyclic remediation chain'
+    depends_on:
+    - core_exec_remediation.fix-core-verification-blockers-b3-residual
+    agent: integration-verifier
