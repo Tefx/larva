@@ -10,9 +10,10 @@ See:
 - INTERFACES.md :: C. Component Library
 """
 
+from pathlib import Path
 from typing import Protocol
 
-from returns.result import Result
+from returns.result import Result, Success, Failure
 
 from larva.core.spec import (
     ConstraintComponent,
@@ -136,11 +137,230 @@ class ComponentStore(Protocol):
 
 
 # -----------------------------------------------------------------------------
+# Filesystem-backed ComponentStore Implementation
+# -----------------------------------------------------------------------------
+
+
+class FilesystemComponentStore:
+    """Filesystem-backed ComponentStore implementation.
+
+    Loads components from the documented `~/.larva/components/` layout:
+    - prompts/<name>.md     -> PromptComponent with raw markdown text
+    - toolsets/<name>.yaml  -> ToolsetComponent with posture mappings
+    - constraints/<name>.yaml -> ConstraintComponent with policy values
+    - models/<name>.yaml   -> ModelComponent with model config
+    """
+
+    def __init__(self, components_dir: Path | None = None) -> None:
+        """Initialize the component store.
+
+        Args:
+            components_dir: Root directory for components. Defaults to ~/.larva/components/
+        """
+        if components_dir is None:
+            components_dir = Path.home() / ".larva" / "components"
+        self.components_dir = Path(components_dir)
+
+    def _ensure_components_dir(self) -> Result[Path, ComponentStoreError]:
+        """Ensure the components directory exists."""
+        if not self.components_dir.exists():
+            return Failure(
+                ComponentStoreError(
+                    f"Components directory not found: {self.components_dir}",
+                    component_type=None,
+                    component_name=None,
+                )
+            )
+        return Success(self.components_dir)
+
+    def load_prompt(self, name: str) -> Result[PromptComponent, ComponentStoreError]:
+        """Load a prompt component by name.
+
+        Args:
+            name: Component name (without .md extension).
+
+        Returns:
+            Ok(PromptComponent) with raw markdown text.
+            Err(ComponentStoreError) if not found or read error.
+        """
+        try:
+            prompt_path = self.components_dir / "prompts" / f"{name}.md"
+            if not prompt_path.exists():
+                return Failure(
+                    ComponentStoreError(
+                        f"Prompt not found: {name}",
+                        component_type="prompt",
+                        component_name=name,
+                    )
+                )
+            text = prompt_path.read_text(encoding="utf-8")
+            return Success(PromptComponent(text=text))
+        except ComponentStoreError:
+            raise
+        except Exception as e:
+            return Failure(
+                ComponentStoreError(
+                    f"Failed to load prompt {name}: {e}",
+                    component_type="prompt",
+                    component_name=name,
+                )
+            )
+
+    def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
+        """Load a toolset component by name.
+
+        Args:
+            name: Component name (without .yaml extension).
+
+        Returns:
+            Ok(ToolsetComponent) with posture mappings.
+            Err(ComponentStoreError) if not found or parse error.
+        """
+        try:
+            import yaml
+
+            toolset_path = self.components_dir / "toolsets" / f"{name}.yaml"
+            if not toolset_path.exists():
+                return Failure(
+                    ComponentStoreError(
+                        f"Toolset not found: {name}",
+                        component_type="toolset",
+                        component_name=name,
+                    )
+                )
+            with open(toolset_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            return Success(ToolsetComponent(tools=data.get("tools", {})))
+        except ComponentStoreError:
+            raise
+        except Exception as e:
+            return Failure(
+                ComponentStoreError(
+                    f"Failed to load toolset {name}: {e}",
+                    component_type="toolset",
+                    component_name=name,
+                )
+            )
+
+    def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
+        """Load a constraint component by name.
+
+        Args:
+            name: Component name (without .yaml extension).
+
+        Returns:
+            Ok(ConstraintComponent) with policy values.
+            Err(ComponentStoreError) if not found or parse error.
+        """
+        try:
+            import yaml
+
+            constraint_path = self.components_dir / "constraints" / f"{name}.yaml"
+            if not constraint_path.exists():
+                return Failure(
+                    ComponentStoreError(
+                        f"Constraint not found: {name}",
+                        component_type="constraint",
+                        component_name=name,
+                    )
+                )
+            with open(constraint_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            return Success(ConstraintComponent(**data))
+        except ComponentStoreError:
+            raise
+        except Exception as e:
+            return Failure(
+                ComponentStoreError(
+                    f"Failed to load constraint {name}: {e}",
+                    component_type="constraint",
+                    component_name=name,
+                )
+            )
+
+    def load_model(self, name: str) -> Result[ModelComponent, ComponentStoreError]:
+        """Load a model component by name.
+
+        Args:
+            name: Component name (without .yaml extension).
+
+        Returns:
+            Ok(ModelComponent) with model configuration.
+            Err(ComponentStoreError) if not found or parse error.
+        """
+        try:
+            import yaml
+
+            model_path = self.components_dir / "models" / f"{name}.yaml"
+            if not model_path.exists():
+                return Failure(
+                    ComponentStoreError(
+                        f"Model not found: {name}",
+                        component_type="model",
+                        component_name=name,
+                    )
+                )
+            with open(model_path, encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            return Success(ModelComponent(**data))
+        except ComponentStoreError:
+            raise
+        except Exception as e:
+            return Failure(
+                ComponentStoreError(
+                    f"Failed to load model {name}: {e}",
+                    component_type="model",
+                    component_name=name,
+                )
+            )
+
+    def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
+        """List all available components by type.
+
+        Returns:
+            Ok(dict[str, list[str]]) mapping directory keys to component names:
+                - "prompts": list of available prompt names
+                - "toolsets": list of available toolset names
+                - "constraints": list of available constraint names
+                - "models": list of available model names
+            Err(ComponentStoreError) if directory read fails.
+        """
+        try:
+            result: dict[str, list[str]] = {
+                "prompts": [],
+                "toolsets": [],
+                "constraints": [],
+                "models": [],
+            }
+
+            prompts_dir = self.components_dir / "prompts"
+            if prompts_dir.exists():
+                result["prompts"] = sorted([p.stem for p in prompts_dir.glob("*.md")])
+
+            toolsets_dir = self.components_dir / "toolsets"
+            if toolsets_dir.exists():
+                result["toolsets"] = sorted([p.stem for p in toolsets_dir.glob("*.yaml")])
+
+            constraints_dir = self.components_dir / "constraints"
+            if constraints_dir.exists():
+                result["constraints"] = sorted([p.stem for p in constraints_dir.glob("*.yaml")])
+
+            models_dir = self.components_dir / "models"
+            if models_dir.exists():
+                result["models"] = sorted([p.stem for p in models_dir.glob("*.yaml")])
+
+            return Success(result)
+        except Exception as e:
+            return Failure(ComponentStoreError(f"Failed to list components: {e}"))
+
+
+# -----------------------------------------------------------------------------
 # Public API
 # -----------------------------------------------------------------------------
 
 __all__ = [
     "ComponentStore",
     "ComponentStoreError",
+    "FilesystemComponentStore",
     "COMPONENT_NOT_FOUND_CODE",
 ]
