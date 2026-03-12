@@ -5459,6 +5459,8 @@ phases:
 
       - Findings explicitly note report-shape fidelity, deterministic output, and
       boundary purity'
+    depends_on:
+    - core_validate.core-validate-implement
     agent: integration-verifier
   - id: core_validate.core-validate-implement
     name: core.validate.implement
