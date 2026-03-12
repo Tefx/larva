@@ -5982,7 +5982,7 @@ phases:
     agent: integration-verifier
   - id: core_assemble.core-assemble-verify
     name: core-assemble-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.assemble` module from a fresh perspective.
 
@@ -6033,6 +6033,8 @@ phases:
     depends_on:
     - core_assemble.core-assemble-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T17:28:26.841166+00:00'
   - id: core_assemble.core-assemble-implement
     name: core-assemble-implement
     status: done
