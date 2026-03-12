@@ -1916,9 +1916,10 @@ phases:
       - Gaps/Notes: none'
 - id: core_validate
   name: larva.core.validate
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
+  evidence: Contract phase completed; remaining execution moved to core_validate_exec.
   steps:
   - id: core_validate.core-validate-contract
     name: core.validate.contract
@@ -5347,7 +5348,7 @@ phases:
     agent: python-executor
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   - core_validate
