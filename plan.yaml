@@ -637,7 +637,7 @@ phases:
   steps:
   - id: meta.review.spec
     name: Review plan for larva.core.spec
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.core.spec` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -658,6 +658,30 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T10:30:27.429268+00:00'
+    done_at: '2026-03-12T10:30:37.191916+00:00'
+    evidence: '- Review outcome: accept
+
+      - Boundary fidelity: pass
+
+      - Dependency assumptions: pass
+
+      - Evidence sufficiency: pass
+
+      - Agent assignment check: pass
+
+      - Required corrections: none
+
+      - Commit hash(es): none (plan review)
+
+      - Files changed: none
+
+      - Verification: reviewed against authoritative docs, planning rubric, and review
+      checklist
+
+      - Spec link: ARCHITECTURE.md sections 4 and 6; INTERFACES.md sections C and
+      E; prep rubric/checklist
+
+      - Gaps/Notes: none'
   - id: meta.review.normalize
     name: Review plan for larva.core.normalize
     status: pending
