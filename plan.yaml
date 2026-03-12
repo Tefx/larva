@@ -1600,6 +1600,67 @@ phases:
       \ message, code), ValidationResult, warnings as ValidationWarning[]\n- NEW:\
       \ ValidationIssue(code, message, details), ValidationReport, warnings as list[str]\n\
       \nNo remaining divergence across checked artifacts."
+  - id: meta.review.meta-review-fix-b1-family-residual-contract-text
+    name: meta.review.fix-b1-family-residual-contract-text
+    status: pending
+    description: 'Fix ALL residual B1-family stale conflicting contract text found
+      after `meta.review.retest-gate-blockers`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1-family residual: stale `validate.py` required-fields contract text
+
+      Locations: `src/larva/core/validate.py` around lines ~70 and ~83
+
+      Remediation: update docstring/comment text to the canonical PersonaSpec field
+      expectations, remove stale `spec_id` mentions, and align any `required fields`
+      wording with the authoritative PersonaSpec/docs contract.
+
+      Grep hint: search `spec_id` and `required fields` in `src/larva/core/validate.py`
+
+      IMPORTANT: search sibling occurrences in this blocker family beyond the listed
+      lines and fix ALL stale/conflicting mentions, not just the first match.
+
+
+      ## Completion Criteria
+
+      - ALL stale B1-family occurrences in `src/larva/core/validate.py` are corrected
+
+      - `spec_id` is removed from this stale-conflict family where it contradicts
+      the canonical contract
+
+      - sibling search evidence is provided for the blocker family
+
+      - scope remains limited to residual B1-family contract-text cleanup and does
+      not reopen unrelated blockers
+
+
+      prior_loop:
+
+      - meta.review.fix-gate-blockers
+
+      - meta.review.retest-gate-blockers
+
+      remaining_blocker: residual stale conflicting contract text in `src/larva/core/validate.py`
+      docstring/comments still mentions `spec_version, spec_id, name` as required
+      fields
+
+      why_new_loop: the prior batched remediation closed the main blocker family but
+      left residual stale text in source-level contract commentary, so a focused cleanup
+      + fresh independent retest is required'
+    verification: '- `src/larva/core/validate.py` docstring/comments reflect canonical
+      PersonaSpec field expectations
+
+      - grep-based sibling search for `spec_id` and `required fields` in `src/larva/core/validate.py`
+      shows no remaining stale conflicting B1-family text
+
+      - evidence maps the exact corrected occurrences and confirms all occurrences
+      were fixed, not just the first'
+    depends_on:
+    - meta.review.retest-gate-blockers
+    agent: python-executor
 - id: core_spec
   name: larva.core.spec
   status: in_progress
