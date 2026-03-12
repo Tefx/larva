@@ -5031,6 +5031,8 @@ phases:
       \ -c \"from larva.core.spec import ToolPosture, SideEffectPolicy, PersonaSpec\"\
       \n  ```\n- `invar guard` result for changed files\n- Confirmation that no non-boundary\
       \ files were edited"
+    depends_on:
+    - core_spec.core-spec-tests
     agent: python-executor
   - id: core_spec.core-spec-tests
     name: core.spec.tests
