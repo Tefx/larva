@@ -1238,6 +1238,49 @@ phases:
     depends_on:
     - meta.review.final
     agent: software-architect
+  - id: meta.review.retest-gate-blockers
+    name: Re-review all blockers from meta.review.meta-review-gate
+    status: pending
+    description: 'Re-review ALL blockers from `meta.review.meta-review-gate` after
+      `meta.review.fix-gate-blockers` completes.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), verify that B1-B6 are all resolved,
+      not just the first issue encountered.
+
+
+      Review scope:
+
+      - `core_validate` public names/signature and canonical documentation source
+      are aligned
+
+      - `core_assemble` contract shape and authoritative docs agree on `AssemblyInput`
+      and return type
+
+      - `shell_components` type ownership and dependency text are unambiguous
+
+      - `shell_python_api` execution sequencing includes `app_facade`
+
+      - `shell_cli` execution sequencing includes `app_facade`
+
+      - `meta.review.final` has been rerun or refreshed so the cross-module review
+      no longer relies on stale pre-fix evidence
+
+
+      Systemic sibling search is required across all related steps, execution phases,
+      and review evidence before passing this step.'
+    verification: '- Verify ALL blockers B1-B6 are closed
+
+      - Confirm grep-hint families and sibling steps no longer contain conflicting
+      contract text or missing `app_facade` dependencies
+
+      - Confirm updated cross-module review evidence is present and specific
+
+      - Only mark PASS when the plan is executable, dependency-safe, and ready for
+      `meta.review.meta-review-gate` to proceed'
+    depends_on:
+    - meta.review.fix-gate-blockers
+    agent: gate-reviewer
 - id: core_spec
   name: larva.core.spec
   status: in_progress
