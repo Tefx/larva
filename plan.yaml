@@ -2192,7 +2192,7 @@ phases:
       \ passed in 0.12s\n\n**Commit hash**: `612526b`\n**Files changed**: `tests/shell/test_components.py`"
   - id: shell_components.shell-components-implement
     name: shell-components-implement
-    status: claimed
+    status: done
     description: 'Implement `larva.shell.components` in `src/larva/shell/components.py`
       so it loads documented component files into typed in-memory objects without
       widening module scope.
@@ -2267,6 +2267,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T19:00:45.491680+00:00'
+    done_at: '2026-03-12T19:04:34.937671+00:00'
+    evidence: "## Implementation Complete\n\n**Files Modified**:\n- `src/larva/shell/components.py`\
+      \ — Added `FilesystemComponentStore` implementation with 5 methods:\n  - `load_prompt()`\
+      \ - reads markdown from prompts/<name>.md\n  - `load_toolset()` - parses YAML\
+      \ from toolsets/<name>.yaml\n  - `load_constraint()` - parses YAML from constraints/<name>.yaml\n\
+      \  - `load_model()` - parses YAML from models/<name>.yaml\n  - `list_components()`\
+      \ - returns directory-keyed inventory dict\n\n**Sibling Search**: N/A - only\
+      \ file in scope (components.py)\n\n**Verification**:\n- Type check: ✅ Passed\
+      \ (invar guard: 0 errors, 0 warnings)\n- Tests: ✅ 14 passed, 0 failed (pytest)\n\
+      - Step criteria:\n  - ✅ Main path: prompt/toolset/constraint/model loads tested\
+      \ and pass\n  - ✅ Failure path: missing component tests pass (COMPONENT_NOT_FOUND\
+      \ code 105)\n  - ✅ Proof: no assembly/registry/CLI/MCP logic added\n\n**NOT\
+      \ Done**: None\n\n**Discovered Siblings (out of scope)**: None"
   - id: shell_components.shell-components-verify
     name: shell-components-verify
     status: pending
