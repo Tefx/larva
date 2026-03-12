@@ -2628,7 +2628,7 @@ phases:
       \ payloads added to shell boundary.\n- No out-of-scope files modified."
   - id: shell_components.retest-shell-components-verify-blockers-b1-b3
     name: Retest shell-components verification blockers B1-B3
-    status: pending
+    status: claimed
     description: 'Re-test ALL blockers from `shell_components.shell-components-verify`
       together after the batched remediation.
 
@@ -2665,6 +2665,8 @@ phases:
     depends_on:
     - shell_components.fix-shell-components-verify-blockers-b1-b3
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:31:41.540845+00:00'
 - id: shell_registry
   name: larva.shell.registry
   status: in_progress
