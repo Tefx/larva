@@ -6894,7 +6894,7 @@ phases:
   steps:
   - id: fix-core-gate-blockers-b1-b5
     name: Fix core gate blockers B1-B5
-    status: claimed
+    status: done
     description: "Fix ALL blockers found by core gate review across `core_spec.core-spec-gate`,\
       \ `core_normalize.core-normalize-gate`, `core_validate.core-validate-gate`,\
       \ and `core_assemble.core-assemble-gate`.\n\nstep_type: implementation\nprior_loop:\n\
@@ -6979,6 +6979,51 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:19:43.999508+00:00'
+    done_at: '2026-03-12T18:31:26.811212+00:00'
+    evidence: 'Artifact:
+
+      - PR: 02ad4b7 (squash merge on main)
+
+      - Source remediation commit: e5ed96dc36b44f1aded533e8929a0ff203727ce1
+
+      - Files changed: pyproject.toml, src/larva/cli.py, src/larva/core/{assemble,normalize,spec,validate}.py,
+      tests/core/test_validate.py
+
+
+      Verification:
+
+      - Run: MCP invar_guard(changed=false) in worktree -> passed (0 errors, 0 warnings)
+
+      - Run: pytest tests/core/test_normalize.py tests/core/test_validate.py tests/core/test_assemble.py
+      -> 57 passed
+
+      - Run: ruff check src/larva/core src/larva/cli.py -> passed
+
+      - Run: mypy src/larva/core src/larva/cli.py -> passed
+
+      - Commit hook Invar Guard on merge commit -> passed
+
+
+      Spec link:
+
+      - INTERFACES.md error code contract
+
+      - contracts/errors.yaml
+
+      - ARCHITECTURE.md module boundaries
+
+
+      Closure Matrix:
+
+      - B1 closed (invar guard path alignment)
+
+      - B2 closed (CLI entrypoint target implemented)
+
+      - B3 closed (VARIABLE_UNRESOLVED alignment + regression test)
+
+      - B4 closed (core lint/type blockers resolved in scoped core set)
+
+      - B5 closed (core behavior preserved with focused tests)'
   - id: retest-core-gate-blockers-b1-b5
     name: Retest core gate blockers B1-B5
     status: pending
