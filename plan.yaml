@@ -4239,6 +4239,52 @@ phases:
     depends_on:
     - shell_cli.shell-cli-tests
     agent: python-executor
+  - id: shell_cli.shell-cli-component-implement
+    name: shell-cli-component-implement
+    status: pending
+    description: "Implement the `component list` and `component show` subcommands\
+      \ in `src/larva/shell/cli.py` after the facade-backed command family is stable.\n\
+      \nstep_type: implementation\nagent_source: default\ntags:\n  - integration\n\
+      \nScope:\n- implement command parsing, downstream delegation, stdout/stderr\
+      \ shaping, and exit-code handling for `component list` and `component show`\n\
+      - use the clarified component-read seam exactly as defined by `shell_cli.shell-cli-clarify`,\
+      \ without moving component-store business logic into the CLI module\n- preserve\
+      \ the documented text/`--json` output split and error-envelope fidelity for\
+      \ the component subcommands\n- keep changes constrained to `src/larva/shell/cli.py`\
+      \ and `tests/shell/test_cli.py` only\n\nFailure-mode checklist:\n- missing-file\
+      \ fallback behavior: missing component targets must return the documented not-found\
+      \ behavior rather than empty success payloads\n- explicit clear / null overwrite\
+      \ semantics: `--json` mode must preserve explicit falsey and empty collection\
+      \ values returned by the downstream component-read seam\n- stale-definition\
+      \ vs new-state precedence: the clarified component-read seam remains authoritative\
+      \ for component lookup semantics; CLI must not invent fallback discovery behavior\n\
+      - partial-write / CAS-conflict behavior: this subcommand family is read-only\
+      \ and must not introduce transport-local mutation side effects\n\nKnown risks:\n\
+      - JSON/text mode confusion: verify both output modes and ensure no human-formatting\
+      \ leakage in `--json`\n- boundary drift: do not add direct component loading\
+      \ logic, registry logic, or facade business rules inside `larva.shell.cli`\n\
+      - command-surface drift: do not invent undocumented flags, aliases, or subcommands\
+      \ beyond `component list/show`\n- shared-registry conflict: do not modify `src/larva/__init__.py`,\
+      \ shared export files, or downstream router/registry files from this phase\n\
+      \nOut of scope:\n- implementation changes for `validate`, `assemble`, `register`,\
+      \ `resolve`, or `list`\n- component-store implementation changes in `larva.shell.components`\n\
+      - MCP transport behavior\n- Python API export wiring\n\nBoundary citations:\n\
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`\n- ARCHITECTURE.md :: 8. Error\
+      \ Boundary Model / Shell\n- INTERFACES.md :: B. CLI Interface\n- INTERFACES.md\
+      \ :: G. Error Codes / Error Response Format (--json / MCP)\n- README.md :: Interfaces\
+      \ / CLI"
+    verification: '- Main path: targeted CLI tests prove `component list/show` parsing,
+      delegation, output shaping, and exit-code handling through the clarified read
+      seam
+
+      - Failure path: focused regressions cover missing component targets and generic
+      downstream failures without false success or JSON/text leakage
+
+      - Proof: no direct component-store business logic is introduced outside `src/larva/shell/cli.py`'
+    depends_on:
+    - shell_cli.shell-cli-component-tests
+    - shell_cli.shell-cli-implement
+    agent: python-senior
 - id: shell_mcp
   name: larva.shell.mcp
   status: locked
