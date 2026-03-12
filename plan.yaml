@@ -1888,6 +1888,8 @@ phases:
 - id: core_assemble
   name: larva.core.assemble
   status: in_progress
+  depends_on:
+  - meta.gate
   steps:
   - id: core_assemble.core-assemble-contract
     name: core-assemble-contract
