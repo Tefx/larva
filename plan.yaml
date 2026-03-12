@@ -6653,7 +6653,7 @@ phases:
       - B3 residual fixed: yes'
   - id: core_exec_remediation.retest-core-verification-blockers-b3-residual
     name: Retest residual B3 closure with B1/B2 regressions
-    status: pending
+    status: claimed
     description: "Re-test the residual B3 blocker after `core_exec_remediation.fix-core-verification-blockers-b3-residual`,\
       \ while preserving regression coverage for the already-remediated B1/B2 families.\n\
       \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
@@ -6688,3 +6688,5 @@ phases:
     depends_on:
     - core_exec_remediation.fix-core-verification-blockers-b3-residual
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T18:00:11.781412+00:00'
