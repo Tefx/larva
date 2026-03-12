@@ -2492,7 +2492,7 @@ phases:
     agent: gate-reviewer
   - id: shell_components.fix-shell-components-verify-blockers-b1-b3
     name: Fix shell-components verification blockers B1-B3
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by `shell_components.shell-components-verify`.
 
 
@@ -2606,6 +2606,8 @@ phases:
     depends_on:
     - shell_components.shell-components-verify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:31:08.049594+00:00'
   - id: shell_components.retest-shell-components-verify-blockers-b1-b3
     name: Retest shell-components verification blockers B1-B3
     status: pending
