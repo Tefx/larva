@@ -3047,7 +3047,7 @@ phases:
       - Record whether app-level errors are transport-ready without embedding transport-specific
       JSON envelopes'
     depends_on:
-    - app_facade.app-facade-implement
+    - app_facade.app-facade-implement-resolve
     agent: integration-verifier
   - id: app_facade.app-facade-seam-proof
     name: app-facade-seam-proof
