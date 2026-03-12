@@ -1492,7 +1492,7 @@ phases:
       - Alignment status: pass across docs+code'
   - id: meta.review.meta-review-fix-validationissue-canonical-schema
     name: meta.review.fix-validationissue-canonical-schema
-    status: pending
+    status: claimed
     description: 'Resolve the remaining canonical-schema conflict for ValidationIssue.
 
 
@@ -1522,6 +1522,8 @@ phases:
     depends_on:
     - meta.review.meta-review-fix-b1-validationreport-shape
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T15:14:33.761037+00:00'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
