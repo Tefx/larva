@@ -4892,6 +4892,11 @@ phases:
       - [ ] OPEN
 
       - [ ] BLOCKED'
+    depends_on:
+    - core_spec.core-spec-tests
+    - core_spec.core-spec-implement
+    - core_spec.core-spec-verify
+    - core_spec.core-spec-freeze
     agent: gate-reviewer
   - id: core_spec.core-spec-freeze
     name: core.spec.freeze
