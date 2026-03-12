@@ -2782,7 +2782,7 @@ phases:
       rollback.'
   - id: shell_registry.shell-registry-verify
     name: shell-registry-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.registry` module from a fresh perspective.
 
@@ -2840,6 +2840,8 @@ phases:
     depends_on:
     - shell_registry.shell-registry-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:10:27.658708+00:00'
   - id: shell_registry.shell-registry-freeze
     name: shell-registry-freeze
     status: pending
