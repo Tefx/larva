@@ -5877,7 +5877,7 @@ phases:
     agent: python-executor
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for `larva.core.assemble` in `tests/core/test_assemble.py`.
 
 
@@ -5935,3 +5935,23 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:06:33.907381+00:00'
+    done_at: '2026-03-12T17:12:38.205231+00:00'
+    evidence: 'Artifact:
+
+      - PR: c5c757a
+
+      - Files changed: tests/core/test_assemble.py
+
+
+      Verification:
+
+      - Run: .venv/bin/pytest tests/core/test_assemble.py -v -> 29 passed
+
+      - Run: MCP invar guard / invar guard target file -> passed (0 errors, 0 warnings)
+
+
+      Spec link:
+
+      - ARCHITECTURE.md larva.core.assemble
+
+      - INTERFACES.md larva.assemble + component library'
