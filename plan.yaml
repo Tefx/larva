@@ -4819,14 +4819,14 @@ phases:
       - planner remediation summary from ses_31d1250efffe6oje57sRqaiw79'
 - id: core_spec_exec
   name: larva.core.spec execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_spec
   steps:
   - id: core_spec.core-spec-gate
     name: core.spec.gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_spec` phase meets the quality bar for proceeding to downstream modules.
 
@@ -4906,6 +4906,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:05:23.365187+00:00'
+    done_at: '2026-03-12T18:12:58.804249+00:00'
+    evidence: 'Gate decision: BLOCKED.
+
+
+      Findings summary:
+
+      - Ruff and mypy failures present; type-safety issues in src/larva/core/assemble.py.
+
+      - Invar guard core/shell path config appears mis-scoped, reducing confidence
+      in deeper checks.
+
+      - Declared CLI entrypoint larva.cli:main missing implementation.
+
+      - Potential spec/implementation drift on variable handling and error code naming.
+
+
+      Action: batched remediation chain requested to fix all blocker families before
+      reopening core gates.'
   - id: core_spec.core-spec-freeze
     name: core.spec.freeze
     status: done
