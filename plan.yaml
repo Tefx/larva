@@ -5671,6 +5671,8 @@ phases:
 
       - explicit statement that no code changes are allowed until `core_assemble.core-assemble-gate`
       completes'
+    depends_on:
+    - core_assemble.core-assemble-verify
     agent: integration-verifier
   - id: core_assemble.core-assemble-verify
     name: core-assemble-verify
