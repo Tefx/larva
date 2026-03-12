@@ -1322,6 +1322,53 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:14:47.134820+00:00'
+  - id: meta.review.meta-review-fix-contract-artifacts
+    name: meta.review.fix-contract-artifacts
+    status: pending
+    description: 'Resolve blocker artifacts B1/B2/B3 at source level before meta freeze
+      retest.
+
+
+      Scope (fix ALL, not just first):
+
+      - B1: Align `src/larva/core/validate.py` public contract names/signature with
+      canonical decision (`ValidationIssue`, `ValidationReport`, `validate_spec(spec:
+      PersonaSpec) -> ValidationReport`) or update canonical docs to one authoritative
+      shape.
+
+      - B2: Align `src/larva/core/assemble.py` contract shape and return type with
+      canonical core decision for `AssemblyInput` and `PersonaSpec` output.
+
+      - B3: Remove component-type ownership ambiguity by making ownership explicit
+      and consistent across ARCHITECTURE.md/INTERFACES.md and planning text.
+
+
+      Rules:
+
+      - keep changes minimal and consistency-focused
+
+      - no scope expansion beyond B1/B2/B3 closures
+
+      - provide grep-based sibling search evidence across affected files
+
+
+      Expected evidence:
+
+      - files changed
+
+      - exact symbols renamed/updated
+
+      - consistency check commands and outcomes
+
+      - explicit closure mapping for B1/B2/B3'
+    verification: '- B1/B2/B3 artifacts align across code and authoritative docs
+
+      - no conflicting naming/signature remains in searched sibling locations
+
+      - retest can validate closure without stale contradiction'
+    depends_on:
+    - meta.review.fix-gate-blockers
+    agent: python-senior
 - id: core_spec
   name: larva.core.spec
   status: in_progress
