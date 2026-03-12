@@ -3494,7 +3494,9 @@ phases:
     agent: gate-reviewer
 - id: shell_python_api
   name: larva.shell.python_api
-  status: pending
+  status: locked
+  depends_on:
+  - meta.gate
   steps:
   - id: shell_python_api.shell-python-api-contract
     name: shell-python-api-contract
