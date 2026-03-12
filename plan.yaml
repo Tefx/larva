@@ -3825,9 +3825,10 @@ phases:
     - shell_cli.shell-cli-clarify
     agent: python-senior
   - id: shell_cli.shell-cli-tests
-    name: shell-cli-tests
+    name: shell-cli-facade-command-tests
     status: pending
-    description: 'Add contract-driven tests for `larva.shell.cli` in `tests/shell/test_cli.py`.
+    description: 'Add contract-driven tests for the facade-backed portion of `larva.shell.cli`
+      in `tests/shell/test_cli.py`.
 
 
       step_type: test
@@ -3837,19 +3838,21 @@ phases:
 
       Scope:
 
-      - define focused tests for all documented commands and subcommands: `validate`,
-      `assemble`, `register`, `resolve`, `list`, `component list`, and `component
-      show`
+      - define focused tests for the documented facade-backed commands: `validate`,
+      `assemble`, `register`, `resolve`, and `list`
 
-      - prove CLI argument parsing delegates to the clarified downstream seams without
-      absorbing facade/component business logic
+      - prove CLI argument parsing delegates to `larva.app.facade` without absorbing
+      facade business logic
 
       - prove success-path text output, `--json` output, and exit-code mapping follow
       the documented CLI contract for valid, invalid, not-found, and generic-error
-      cases
+      cases across the facade-backed commands
 
       - prove `--json` errors emit the documented error envelope including `code`,
       `numeric_code`, `message`, and `details` when available
+
+      - leave `component list` and `component show` acceptance to a dedicated follow-up
+      test step because they use the separately clarified read seam
 
       - keep tests scoped to `larva.shell.cli` only, using doubles or harness fixtures
       for downstream seams rather than re-testing facade or storage internals
@@ -3863,6 +3866,8 @@ phases:
 
       - no MCP or Python API transport tests
 
+      - no `component list/show` assertions in this step
+
 
       Failure-path expectations:
 
@@ -3873,9 +3878,6 @@ phases:
 
       - add a focused regression for `validate` invalid-spec behavior returning exit
       code 1 without masquerading as file-not-found
-
-      - add a focused regression for `component show` missing target surfacing the
-      clarified shell error mapping
 
 
       Boundary citations:
@@ -3889,17 +3891,17 @@ phases:
       - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
 
       - README.md :: Interfaces / CLI'
-    verification: '- Tests cover the full documented CLI command surface and both
-      text/JSON output modes
+    verification: '- Tests cover the documented facade-backed CLI commands in both
+      text and `--json` modes
 
       - Failure-path regressions cover invalid input, not-found, and JSON envelope
-      behavior
+      behavior without leaking component-read concerns into this step
 
       - Test scope remains inside `larva.shell.cli` with downstream dependencies doubled
       or harnessed rather than reimplemented'
     depends_on:
     - shell_cli.shell-cli-contract
-    agent: python-senior
+    agent: python-executor
   - id: shell_cli.shell-cli-implement
     name: shell-cli-implement
     status: pending
