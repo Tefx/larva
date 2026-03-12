@@ -4936,6 +4936,8 @@ phases:
       - Environment: `<python version / relevant env>`
 
       - Freeze statement: `No code changes after freeze until core.spec.gate completes.`'
+    depends_on:
+    - core_spec.core-spec-verify
     agent: integration-verifier
   - id: core_spec.core-spec-verify
     name: core.spec.verify
