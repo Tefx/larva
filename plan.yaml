@@ -5267,6 +5267,8 @@ phases:
 
       - Proof: implementation stays confined to `src/larva/core/normalize.py` and
       does not add shell/app imports'
+    depends_on:
+    - core_normalize.core-normalize-tests
     agent: python-executor
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
