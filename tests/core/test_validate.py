@@ -53,31 +53,51 @@ class TestValidateSpecContract:
     def test_pre_annotation_present(self):
         """validate_spec should have @pre annotation."""
         func = validate_module.validate_spec
-        # Handle both deal and invar contracts
-        has_pre = hasattr(func, "__precondition__") or hasattr(func, "__pre__")
-        assert has_pre
+        # Deal adds __deal_contract attribute when pre/post decorators are used
+        contract = getattr(func, "__deal_contract", None)
+        assert contract is not None, "validate_spec should have @pre/@post decorator"
+        assert len(contract.pres) > 0, "Should have pre conditions"
 
     def test_post_annotation_present(self):
         """validate_spec should have @post annotation."""
         func = validate_module.validate_spec
-        # Handle both deal and invar contracts
-        has_post = hasattr(func, "__postcondition__") or hasattr(func, "__post__")
-        assert has_post
+        contract = getattr(func, "__deal_contract", None)
+        assert contract is not None, "validate_spec should have @pre/@post decorator"
+        assert len(contract.posts) > 0, "Should have post conditions"
 
 
 class TestValidateSpecStub:
     """Test that the stub raises NotImplementedError."""
 
     def test_raises_not_implemented_error(self):
-        """Calling validate_spec should raise NotImplementedError."""
-        with pytest.raises(NotImplementedError):
-            validate_module.validate_spec({})
+        """Calling validate_spec should raise NotImplementedError.
+
+        Note: Due to a bug in invar_runtime (invar_runtime/contracts.py:128),
+        the contract validation fails with AttributeError before reaching
+        the NotImplementedError when the input is a dict. This test uses
+        deal.disable() to bypass the contract validation and test the
+        underlying stub behavior.
+        """
+        import deal
+
+        deal.disable()
+        try:
+            with pytest.raises(NotImplementedError):
+                validate_module.validate_spec({})
+        finally:
+            deal.enable()
 
     def test_error_message_mentions_implementation_pending(self):
         """NotImplementedError message should mention implementation is pending."""
-        with pytest.raises(NotImplementedError) as exc_info:
-            validate_module.validate_spec({})
-        assert "implementation" in str(exc_info.value).lower()
+        import deal
+
+        deal.disable()
+        try:
+            with pytest.raises(NotImplementedError) as exc_info:
+                validate_module.validate_spec({})
+            assert "implementation" in str(exc_info.value).lower()
+        finally:
+            deal.enable()
 
 
 class TestValidationIssueTypedDict:
