@@ -1431,24 +1431,18 @@ phases:
     name: core.validate.contract
     status: done
     description: "Create the contract-only `larva.core.validate` module at `src/larva/core/validate.py`.\n\
-      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
-      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define `ValidationIssue`\
-      \ and `ValidationReport` as the authoritative `TypedDict` contracts from the\
-      \ documented public interface\n- define the public contract `validate_spec(spec:\
-      \ PersonaSpec) -> ValidationReport`\n- encode acceptance-only behavioral notes\
-      \ for deterministic validation: report structure is stable, invalid specs produce\
-      \ structured issues, and non-fatal findings may surface as warning strings without\
-      \ transport formatting\n- keep the module pure and domain-only so downstream\
-      \ facade and transport layers can depend on it without I/O, registry, or CLI/MCP\
-      \ concerns\n- allow stub bodies or `NotImplementedError` only; no runnable validation\
-      \ logic in this step\n\nNon-goals:\n- no concrete validation rule implementation\n\
-      - no normalization, assembly, or registry logic\n- no CLI/MCP/JSON error-shape\
-      \ adaptation\n- no package export wiring such as `src/larva/__init__.py`\n\n\
-      Boundary citations:\n- ARCHITECTURE.md :: Module: `larva.core.validate`\n- ARCHITECTURE.md\
-      \ :: 4. Dependency Rules / Forbidden\n- ARCHITECTURE.md :: 8. Error Boundary\
-      \ Model / Core\n- INTERFACES.md :: A. MCP Server Interface / `larva.validate(spec)`\n\
-      - README.md :: What larva Does\n- README.md :: Key Design Decisions\n\nPattern\
-      \ note:\n- batch work only inside the `larva.core.validate` boundary"
+      \nCanonical interface decision for planning freeze:\n- Public contract names\
+      \ are `ValidationIssue`, `ValidationReport`, and `validate_spec(spec: PersonaSpec)\
+      \ -> ValidationReport`.\n- All downstream test/implementation/verification steps\
+      \ in this family must use these canonical names/signature.\n- Legacy aliases\
+      \ or alternate naming may only appear as compatibility notes, not as primary\
+      \ public contract in planning artifacts.\n\nstep_type: contract\ncontract_purity:\
+      \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
+      \  - stubs\n\nScope:\n- define authoritative validation report contracts\n-\
+      \ define public validation function contract\n- keep module pure/domain-only\
+      \ for facade and transports\n- stubs only, no runnable validation logic in this\
+      \ step\n\nNon-goals:\n- no normalization/assembly/registry logic\n- no transport\
+      \ formatting\n- no package export wiring"
     verification: '- Contract surface is acceptance-only and limited to `src/larva/core/validate.py`
 
       - Public names match the authoritative interface: `ValidationIssue`, `ValidationReport`,
