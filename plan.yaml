@@ -3553,6 +3553,98 @@ phases:
     depends_on:
     - shell_registry.shell-registry-gate
     agent: python-senior
+  - id: shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2
+    name: retest-shell-registry-gate-blockers-b1-b2-s1-s2
+    status: pending
+    description: 'Re-test ALL registry gate findings together after `fix-shell-registry-gate-blockers-b1-b2-s1-s2`.
+
+
+      step_type: gate
+
+      Independence: use the same independent gate reviewer role as the original `shell_registry.shell-registry-gate`;
+      do not delegate to the implementation agent.
+
+
+      Scope:
+
+      - Revalidate B1 and B2 blockers together on the real registry persistence contract.
+
+      - Confirm S1 contract/doc parity and S2 touched-surface tooling outcomes in
+      the same pass.
+
+      - Reject partial closure: this retest is only complete if all blocker families
+      are closed together and should-fix items are either fixed or explicitly evidenced
+      as no longer applicable.
+
+
+      Spec refs:
+
+      - `ARCHITECTURE.md` :: Module: `larva.shell.registry`
+
+      - `INTERFACES.md` :: D. Global Registry
+
+      - `INTERFACES.md` :: G. Error Codes
+
+      - `contracts/errors.yaml`
+
+
+      Touch paths:
+
+      - `src/larva/shell/registry.py`
+
+      - `tests/shell/test_registry.py`
+
+      - `contracts/errors.yaml`
+
+      - `INTERFACES.md`
+
+
+      Review focus:
+
+      - `get()` no longer treats index metadata as authoritative over a valid persisted
+      spec file
+
+      - save/index paths enforce non-empty digest invariants and preserve readable-consistent
+      state
+
+      - error-code contract parity holds across runtime and docs
+
+      - Ruff/mypy debt on touched registry files is actually closed, not deferred
+
+
+      Remediation consolidation:
+
+      - Existing chain extended
+
+      - Root blocker: registry persistence contract drift and associated parity/tooling
+      debt
+
+      - New loop justified by: original gate exposed multiple related issues on one
+      persistence surface, so a single batched retest is safer than fragmented follow-ups'
+    verification: '- Main path: evidence shows `get()` returns the persisted persona
+      when `<id>.json` exists even if `index.json` is stale/missing, and list/index
+      behavior remains coherent
+
+      - Failure path: regression evidence covers empty `spec_digest` rejection and
+      no unreadable digest-mismatch state is persisted
+
+      - Contract parity: `INVALID_PERSONA_ID` and applicable `REGISTRY_*` codes match
+      across runtime, `contracts/errors.yaml`, and `INTERFACES.md::G`
+
+      - Tooling: exact Ruff/mypy commands for the touched registry surface pass
+
+      - Gate decision explicitly states whether B1, B2, S1, and S2 are each closed'
+    evidence_template: "## Registry Gate Retest Report\n\n**Reviewer**: gate-reviewer\n\
+      **Scope**: B1, B2, S1, S2 together\n\n### Closure matrix\n| Finding | Status\
+      \ | Evidence |\n| --- | --- | --- |\n| B1 | closed/open | <tests or command\
+      \ output> |\n| B2 | closed/open | <tests or command output> |\n| S1 | closed/open\
+      \ | <doc/runtime parity proof> |\n| S2 | closed/open | <ruff/mypy output> |\n\
+      \n### Main path proof\n- \n\n### Highest-risk failure proof\n- \n\n### Gate\
+      \ decision\n- OPEN only if all four findings are closed together\n- BLOCKED\
+      \ otherwise, with remaining blocker list\n"
+    depends_on:
+    - shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
+    agent: gate-reviewer
 - id: app_facade
   name: larva.app.facade
   status: locked
