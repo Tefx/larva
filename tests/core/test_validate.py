@@ -88,6 +88,17 @@ class TestValidateSpecBehavior:
         assert report["valid"] is False
         assert report["errors"][0]["code"] == "INVALID_SIDE_EFFECT_POLICY"
 
+    def test_unresolved_prompt_variables_produce_variable_unresolved_code(self):
+        """validate_spec should use canonical VARIABLE_UNRESOLVED code for unresolved vars."""
+        report = validate_module.validate_spec(
+            {
+                "prompt": "You are {role} speaking to {target}",
+                "variables": {"role": "assistant"},
+            }
+        )
+        assert report["valid"] is False
+        assert report["errors"][0]["code"] == "VARIABLE_UNRESOLVED"
+
 
 class TestValidationIssueTypedDict:
     """Test ValidationIssue TypedDict shape (canonical schema).

@@ -12,12 +12,24 @@ See:
 import hashlib
 import json
 
-from deal import post
-from deal import pre
+from deal import post, pre
 
 from larva.core.spec import PersonaSpec
 
 
+@pre(lambda spec: isinstance(spec, dict))
+@post(lambda result: isinstance(result, bool))
+def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
+    """Return True when spec can be encoded as canonical JSON."""
+    try:
+        spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
+        json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+@pre(lambda spec: _is_json_serializable_spec(spec))
 @post(lambda result: isinstance(result, str) and len(result) == 64)
 def _compute_spec_digest(spec: PersonaSpec) -> str:
     """Compute SHA-256 digest from canonical JSON representation.
@@ -35,7 +47,7 @@ def _compute_spec_digest(spec: PersonaSpec) -> str:
     return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
 @post(lambda result: "spec_version" in result and "spec_digest" in result)
 def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.

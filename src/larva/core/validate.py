@@ -23,8 +23,7 @@ See:
 import re
 from typing import TypedDict
 
-from deal import post
-from deal import pre
+from deal import post, pre
 
 # Import PersonaSpec from the canonical spec module
 from larva.core.spec import PersonaSpec
@@ -83,7 +82,14 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
 
     Acceptance:
         @pre(lambda spec: isinstance(spec, dict))
-        @post(lambda result: isinstance(result, dict) and "valid" in result and "errors" in result and "warnings" in result)
+        @post(
+            lambda result: (
+                isinstance(result, dict)
+                and "valid" in result
+                and "errors" in result
+                and "warnings" in result
+            )
+        )
 
     Examples:
         >>> validate_spec({"spec_version": "0.1.0"})["valid"]
@@ -126,7 +132,7 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         if unresolved:
             errors.append(
                 {
-                    "code": "UNRESOLVED_PROMPT_VARIABLES",
+                    "code": "VARIABLE_UNRESOLVED",
                     "message": (
                         f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}"
                     ),
