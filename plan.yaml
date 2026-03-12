@@ -1490,6 +1490,38 @@ phases:
       - Canonical ValidationIssue shape: code, message, details
 
       - Alignment status: pass across docs+code'
+  - id: meta.review.meta-review-fix-validationissue-canonical-schema
+    name: meta.review.fix-validationissue-canonical-schema
+    status: pending
+    description: 'Resolve the remaining canonical-schema conflict for ValidationIssue.
+
+
+      Current conflict:
+
+      - `src/larva/core/validate.py` uses fields `{field, message, code}`
+
+      - `ARCHITECTURE.md` documents `{code, message, details}`
+
+
+      Required:
+
+      - Choose one canonical schema and align ALL artifacts (code + ARCHITECTURE.md
+      + INTERFACES.md + related plan evidence) to that shape.
+
+      - Perform sibling search for all mentions of ValidationIssue/ValidationReport
+      and update conflicting references.
+
+      - Keep changes minimal and contract-focused.
+
+
+      Completion evidence must explicitly list old vs new schema and show no remaining
+      divergence.'
+    verification: '- ValidationIssue schema is identical across code and docs
+
+      - no conflicting mentions remain in ARCHITECTURE.md / INTERFACES.md / src/larva/core/validate.py'
+    depends_on:
+    - meta.review.meta-review-fix-b1-validationreport-shape
+    agent: python-senior
 - id: core_spec
   name: larva.core.spec
   status: in_progress
