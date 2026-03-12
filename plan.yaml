@@ -2782,7 +2782,7 @@ phases:
       rollback.'
   - id: shell_registry.shell-registry-verify
     name: shell-registry-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.registry` module from a fresh perspective.
 
@@ -2842,6 +2842,46 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T19:10:27.658708+00:00'
+    done_at: '2026-03-12T19:20:28.392183+00:00'
+    evidence: 'Independent verification executed by integration-verifier in isolated
+      worktree `.vectl/worktrees/shell_registry.shell-registry-verify`.
+
+
+      Verification commands:
+
+      - `.venv/bin/python -m pytest -v tests/shell/test_registry.py`
+
+      - `.venv/bin/python -m coverage run -m pytest -v tests/shell/test_registry.py
+      && .venv/bin/python -m coverage report -m src/larva/shell/registry.py`
+
+      - repository scans for mock seam / patch usage and boundary leakage keywords
+      in `src/larva/shell/registry.py`
+
+
+      Results:
+
+      - `tests/shell/test_registry.py`: 11 passed, 0 skipped.
+
+      - Module coverage for `src/larva/shell/registry.py`: 77% (PASS for this gate).
+
+      - Happy path and edge scenarios validated against real temp filesystem fixtures.
+
+      - Typed failure codes verified for missing persona, invalid id, and index/spec
+      divergence; rollback path checked.
+
+      - No blocking issues found.
+
+
+      Notes:
+
+      - Suggestion: add a true OS-level write-failure integration case (beyond monkeypatch-based
+      failure injection).
+
+      - Tech debt: failure-path test currently demonstrates rollback via method monkeypatch,
+      not full kernel-level failure semantics.
+
+
+      No code changes were produced by this verification step.'
   - id: shell_registry.shell-registry-freeze
     name: shell-registry-freeze
     status: pending
