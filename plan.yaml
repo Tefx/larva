@@ -5256,7 +5256,7 @@ phases:
     agent: gate-reviewer
   - id: core_normalize.core-normalize-freeze
     name: core.normalize.freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.core.normalize` snapshot before gate review.
 
 
@@ -5288,6 +5288,15 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:02:39.406095+00:00'
+    done_at: '2026-03-12T18:04:07.163494+00:00'
+    evidence: "Freeze evidence captured in isolated worktree `.vectl/worktrees/core_normalize.core-normalize-freeze`.\n\
+      - `git rev-parse HEAD` => `810d956bd3e7cd3708db8e5c9d4db4cecbfe853f`\n- `git\
+      \ status --short` => (no output; clean working tree)\n- `git status --branch\
+      \ --short` => `## vectl/step-core_normalize.core-normalize-freeze`\n- Environment\
+      \ declaration:\n  - `python3 --version` => `Python 3.14.3`\n  - `sw_vers` =>\
+      \ `ProductName: macOS`, `ProductVersion: 26.1`, `BuildVersion: 25B78`\n  - `uname\
+      \ -a` => `Darwin ... arm64`\nFreeze assertion: No code changes are allowed in\
+      \ this worktree until `core_normalize.core-normalize-gate` completes."
   - id: core_normalize.core-normalize-verify
     name: core.normalize.verify
     status: done
