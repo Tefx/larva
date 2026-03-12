@@ -4165,7 +4165,9 @@ phases:
     - shell_cli.shell-cli-clarify
     - shell_cli.shell-cli-contract
     - shell_cli.shell-cli-tests
+    - shell_cli.shell-cli-component-tests
     - shell_cli.shell-cli-implement
+    - shell_cli.shell-cli-component-implement
     - shell_cli.shell-cli-verify
     - shell_cli.shell-cli-seam-proof
     - shell_cli.shell-cli-freeze
