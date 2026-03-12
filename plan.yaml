@@ -2440,6 +2440,122 @@ phases:
     - shell_components.shell-components-verify
     - shell_components.shell-components-freeze
     agent: gate-reviewer
+  - id: shell_components.fix-shell-components-verify-blockers-b1-b3
+    name: Fix shell-components verification blockers B1-B3
+    status: pending
+    description: 'Fix ALL blockers found by `shell_components.shell-components-verify`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Cross-type path mixup accepted by production loader
+
+      Locations: `src/larva/shell/components.py`
+
+      Remediation: enforce strict component name/path validation in production `FilesystemComponentStore`/loader
+      entrypoints; reject `..` traversal, cross-type escapes, and model-to-constraints
+      path mixups with typed shell `ComponentStoreError` results only.
+
+      Grep hint: `load_model|_read_yaml|resolve|\..\/constraints|ComponentStoreError`
+
+      IMPORTANT: search for sibling path resolution and loader call paths beyond the
+      reported reproduction so no alternate escape path remains.
+
+
+      ### B2: Target module coverage is CRITICAL (29%)
+
+      Locations: `src/larva/shell/components.py`, `tests/shell/test_components.py`
+
+      Remediation: add production-targeted integration tests using real temp fixtures
+      that exercise load/list/error paths in the production module rather than test
+      doubles; explicitly cover success, typed failure, and fixture-backed enumeration
+      behavior.
+
+      Grep hint: `FilesystemComponentStore|test_components|coverage`
+
+      IMPORTANT: search for all production entrypoints in `src/larva/shell/components.py`
+      that currently lack runtime execution and add coverage for the highest-risk
+      shell paths.
+
+
+      ### B3: Existing tests give false confidence by shadowing production implementation
+
+      Locations: `tests/shell/test_components.py`
+
+      Remediation: remove the test-local `FilesystemComponentStore` reimplementation
+      and replace it with tests that import and exercise `larva.shell.components.FilesystemComponentStore`
+      directly.
+
+      Grep hint: `class FilesystemComponentStore|from larva.shell.components import`
+
+      IMPORTANT: search for sibling shadow implementations, helper wrappers, or monkeypatched
+      surrogates that bypass the production store.
+
+
+      ## Additional requirements
+
+      - S1: add explicit negative tests asserting cross-type requests fail with typed
+      `ComponentStoreError`.
+
+      - S2: preserve shell boundary discipline: return `Result` typed errors only;
+      do not introduce transport-shaped JSON errors in the shell layer.
+
+
+      ## Known risks
+
+      - Path resolution and typed shell error semantics are persistence/state-adjacent
+      shell concerns; verify both main path and failure path.
+
+      - Tests currently risk false confidence by exercising reimplemented logic rather
+      than production wiring.
+
+
+      ## Completion criteria
+
+      - ALL blockers fixed, not just B1.
+
+      - Sibling search completed for each blocker family.
+
+      - No remaining path traversal or cross-type escape acceptance in production
+      loader paths.
+
+      - Test suite imports production implementation directly and meaningfully raises
+      coverage on `src/larva/shell/components.py`.
+
+      - Shell boundary remains `Result` + typed error based, with no transport-shaped
+      error payloads added.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any remaining `..` traversal or cross-type path acceptance in shell component
+      loaders.
+
+      2. Tests that still shadow production implementation or only validate a local
+      surrogate.
+
+      3. Coverage improvement claims without real temp-fixture execution through production
+      load/list/error paths.
+
+      4. Shell-layer errors shaped like transport/JSON payloads instead of typed shell
+      errors.'
+    verification: '- Each blocker family addressed together with sibling search evidence
+
+      - B1 failure-path regression proves `..` traversal and cross-type escapes fail
+      with typed `ComponentStoreError`
+
+      - B2 production-targeted integration tests execute real temp-fixture load/list/error
+      paths in `src/larva/shell/components.py`
+
+      - B3 test file imports production `larva.shell.components.FilesystemComponentStore`
+      and removes local shadow implementation
+
+      - Shell boundary remains `Result` typed errors only; no transport-shaped JSON
+      errors introduced'
+    depends_on:
+    - shell_components.shell-components-verify
+    agent: python-senior
 - id: shell_registry
   name: larva.shell.registry
   status: in_progress
