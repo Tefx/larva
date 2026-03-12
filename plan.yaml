@@ -2222,3 +2222,67 @@ phases:
     depends_on:
     - shell_components.shell-components-verify
     agent: integration-verifier
+  - id: shell_components.shell-components-gate
+    name: shell-components-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_components` phase meets the quality bar for proceeding to downstream
+      facade and transport work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if component-store behavior drifts
+      from the docs, evidence is vague, or the shell boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - `larva.shell.components` is a narrow shell module, but it defines the external
+      component-store contract consumed by facade and transport layers
+
+      - the phase touches filesystem-backed loading and typed shell errors, so boundary
+      discipline matters more than code volume
+
+      - downstream `component list/show` and `assemble` flows rely on exact type-directory
+      mapping and error handoff
+
+
+      cross_cutting_focus:
+
+      - fidelity to the documented component-store directory and file-format mapping
+
+      - typed shell `Result[T, E]` behavior with no transport-shaped error formatting
+      in-module
+
+      - evidence that `larva.shell.components` stops at loading/listing and leaves
+      assembly, registry, and transport work to downstream phases
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.components`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Component Loading
+      -> Assembly
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: C. Component Library
+
+      - README.md :: Component Library'
+    verification: '- All `shell_components` steps completed successfully
+
+      - Evidence shows real filesystem-backed loading for each documented component
+      type
+
+      - No unresolved boundary leaks into assembly, registry, CLI, or MCP concerns
+
+      - The phase is ready for downstream facade/transport planning and execution'
+    depends_on:
+    - shell_components.shell-components-freeze
+    agent: gate-reviewer
