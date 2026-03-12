@@ -26,12 +26,14 @@ import json
 import os
 import re
 import tempfile
+from contextlib import suppress
 from pathlib import Path
-from typing import Literal, Protocol, TypeAlias, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.core.spec import PersonaSpec
+if TYPE_CHECKING:
+    from larva.core.spec import PersonaSpec
 
 
 DEFAULT_REGISTRY_ROOT = Path("~/.larva/registry").expanduser()
@@ -113,7 +115,7 @@ class RegistryStore(Protocol):
         """Persist one canonical PersonaSpec and update digest index."""
         ...
 
-    def get(self, id: str) -> Result[PersonaSpec, RegistryError]:
+    def get(self, persona_id: str) -> Result[PersonaSpec, RegistryError]:
         """Load one canonical PersonaSpec by flat kebab-case id."""
         ...
 
@@ -146,6 +148,17 @@ class FileSystemRegistryStore(RegistryStore):
         if invalid is not None:
             return Failure(invalid)
 
+        spec_path = self._spec_path(persona_id)
+        spec_digest = self._require_non_empty_digest(spec.get("spec_digest"))
+        if spec_digest is None:
+            return Failure(
+                self._write_failed(
+                    persona_id,
+                    spec_path,
+                    "spec_digest must be a non-empty string",
+                )
+            )
+
         root_create_error = self._ensure_root_exists(persona_id)
         if root_create_error is not None:
             return Failure(root_create_error)
@@ -154,7 +167,6 @@ class FileSystemRegistryStore(RegistryStore):
         if isinstance(index_result, Failure):
             return index_result
 
-        spec_path = self._spec_path(persona_id)
         index_path = self._index_path()
         old_spec_bytes: bytes | None = None
         spec_existed = spec_path.exists()
@@ -173,7 +185,7 @@ class FileSystemRegistryStore(RegistryStore):
             return spec_write_result
 
         updated_index = dict(index_result.unwrap())
-        updated_index[persona_id] = str(spec.get("spec_digest", ""))
+        updated_index[persona_id] = spec_digest
 
         index_write_result = self._write_json_atomic(index_path, updated_index, "index", persona_id)
         if isinstance(index_write_result, Failure):
@@ -199,20 +211,16 @@ class FileSystemRegistryStore(RegistryStore):
 
         return Success(None)
 
-    def get(self, id: str) -> Result[PersonaSpec, RegistryError]:
-        invalid = self._invalid_id_error(id)
+    def get(self, persona_id: str) -> Result[PersonaSpec, RegistryError]:
+        invalid = self._invalid_id_error(persona_id)
         if invalid is not None:
             return Failure(invalid)
 
-        index_result = self._read_index()
-        if isinstance(index_result, Failure):
-            return index_result
+        spec_path = self._spec_path(persona_id)
+        if not spec_path.exists():
+            return Failure(self._not_found(persona_id))
 
-        index = index_result.unwrap()
-        if id not in index:
-            return Failure(self._not_found(id))
-
-        return self._read_spec(id, index[id])
+        return self._read_spec(persona_id, expected_digest=None)
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
         index_result = self._read_index()
@@ -299,12 +307,20 @@ class FileSystemRegistryStore(RegistryStore):
                         "path": str(index_path),
                     }
                 )
+            if self._require_non_empty_digest(value) is None:
+                return Failure(
+                    {
+                        "code": "REGISTRY_INDEX_READ_FAILED",
+                        "message": "registry index digest values must be non-empty strings",
+                        "path": str(index_path),
+                    }
+                )
             index[key] = value
 
         return Success(index)
 
     def _read_spec(
-        self, persona_id: str, expected_digest: str
+        self, persona_id: str, expected_digest: str | None
     ) -> Result[PersonaSpec, RegistryError]:
         spec_path = self._spec_path(persona_id)
         if not spec_path.exists():
@@ -328,17 +344,41 @@ class FileSystemRegistryStore(RegistryStore):
                 )
             )
 
-        actual_digest = payload.get("spec_digest")
-        if actual_digest != expected_digest:
+        actual_digest = self._require_non_empty_digest(payload.get("spec_digest"))
+        if actual_digest is None:
             return Failure(
                 self._spec_read_failed(
                     persona_id,
                     spec_path,
-                    "digest mismatch between index.json and spec file",
+                    "spec file must include a non-empty spec_digest",
                 )
             )
 
-        return Success(cast(PersonaSpec, payload))
+        if expected_digest is not None:
+            expected_digest_value = self._require_non_empty_digest(expected_digest)
+            if expected_digest_value is None:
+                return Failure(
+                    self._spec_read_failed(
+                        persona_id,
+                        spec_path,
+                        "index entry for persona must include a non-empty digest",
+                    )
+                )
+            if actual_digest != expected_digest_value:
+                return Failure(
+                    self._spec_read_failed(
+                        persona_id,
+                        spec_path,
+                        "digest mismatch between index.json and spec file",
+                    )
+                )
+
+        return Success(cast("PersonaSpec", payload))
+
+    def _require_non_empty_digest(self, digest: object) -> str | None:
+        if isinstance(digest, str) and digest.strip():
+            return digest
+        return None
 
     def _write_json_atomic(
         self,
@@ -358,10 +398,8 @@ class FileSystemRegistryStore(RegistryStore):
                     os.fsync(handle.fileno())
                 os.replace(tmp_path_text, path)
             except Exception:
-                try:
+                with suppress(OSError):
                     os.unlink(tmp_path_text)
-                except OSError:
-                    pass
                 raise
         except (OSError, TypeError, ValueError) as exc:
             if kind == "spec":
@@ -405,10 +443,8 @@ class FileSystemRegistryStore(RegistryStore):
                     os.fsync(handle.fileno())
                 os.replace(tmp_path_text, spec_path)
             except Exception:
-                try:
+                with suppress(OSError):
                     os.unlink(tmp_path_text)
-                except OSError:
-                    pass
                 raise
         except OSError as exc:
             return self._write_failed(

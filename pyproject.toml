@@ -25,6 +25,7 @@ dependencies = [
     "pydantic>=2.0",
     "click>=8.0",
     "rich>=13.0",
+    "returns>=0.24",
 ]
 
 [project.scripts]
@@ -63,4 +64,5 @@ exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycac
 [dependency-groups]
 dev = [
     "invar-tools>=1.19.7",
+    "pytest>=8.4",
 ]

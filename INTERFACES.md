@@ -172,7 +172,7 @@ All commands support `--json` for machine-readable JSON output on stdout.
 
 **Exit code strategy:** CLI uses standard small exit codes (0/1/2) for
 shell scripting compatibility. With `--json`, errors include the full
-error code from `errors.yaml` (100-106) in the JSON body. See Section G.
+error code from `errors.yaml` (100-110) in the JSON body. See Section G.
 
 ### `larva validate <spec.json> [--json]`
 
@@ -392,8 +392,13 @@ larva uses the 100-range from `contracts/errors.yaml`.
 | 101 | `PERSONA_INVALID` | PersonaSpec validation failed |
 | 102 | `PERSONA_CYCLE` | Circular reference detected (reserved) |
 | 103 | `VARIABLE_UNRESOLVED` | Unresolved variable in prompt text |
+| 104 | `INVALID_PERSONA_ID` | Persona id violates flat kebab-case rules |
 | 105 | `COMPONENT_NOT_FOUND` | Component referenced in assembly not found |
 | 106 | `COMPONENT_CONFLICT` | Multiple components set the same scalar field |
+| 107 | `REGISTRY_INDEX_READ_FAILED` | Registry `index.json` could not be read or decoded |
+| 108 | `REGISTRY_SPEC_READ_FAILED` | Registry `<id>.json` file could not be read or validated |
+| 109 | `REGISTRY_WRITE_FAILED` | Registry `<id>.json` file could not be written |
+| 110 | `REGISTRY_UPDATE_FAILED` | Registry `index.json` could not be updated |
 
 ### Error Response Format (--json / MCP)
 

@@ -11,13 +11,17 @@ These tests define expected shell-boundary behavior for FileSystemRegistryStore:
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING, Literal, cast
 
 import pytest
 from returns.result import Failure, Success
 
-from larva.core.spec import PersonaSpec
-from larva.shell.registry import FileSystemRegistryStore, INDEX_FILENAME
+from larva.shell.registry import INDEX_FILENAME, FileSystemRegistryStore
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from larva.core.spec import PersonaSpec
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -68,9 +72,10 @@ class TestFileSystemRegistryStoreContract:
 
     def test_save_preserves_explicit_null_values(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
-        spec = _canonical_spec("null-preserver", "sha256:null-preserver")
-        spec["description"] = None
-        spec["model_params"] = {"temperature": None}
+        spec_payload = dict(_canonical_spec("null-preserver", "sha256:null-preserver"))
+        spec_payload["description"] = None
+        spec_payload["model_params"] = {"temperature": None}
+        spec = cast("PersonaSpec", spec_payload)
 
         result = store.save(spec)
 
@@ -82,6 +87,33 @@ class TestFileSystemRegistryStoreContract:
         assert persisted_spec["description"] is None
         assert persisted_spec["model_params"]["temperature"] is None
 
+    def test_save_rejects_empty_spec_digest(self, registry_root: Path) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
+        spec = _canonical_spec("empty-digest", "")
+
+        result = store.save(spec)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_WRITE_FAILED"
+        assert error["persona_id"] == "empty-digest"
+        assert "spec_digest" in error["message"]
+        assert not (registry_root / "empty-digest.json").exists()
+
+    def test_get_rejects_spec_with_empty_spec_digest(self, registry_root: Path) -> None:
+        spec = _canonical_spec("bad-digest", "sha256:good")
+        spec["spec_digest"] = ""
+        _write_json(registry_root / "bad-digest.json", spec)
+
+        store = FileSystemRegistryStore(root=registry_root)
+        result = store.get("bad-digest")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert error["persona_id"] == "bad-digest"
+        assert "spec_digest" in error["message"]
+
     def test_get_returns_exact_stored_spec_for_valid_kebab_case_id(
         self, registry_root: Path
     ) -> None:
@@ -91,6 +123,25 @@ class TestFileSystemRegistryStoreContract:
 
         store = FileSystemRegistryStore(root=registry_root)
         result = store.get("infra-reviewer")
+
+        assert result == Success(spec)
+
+    def test_get_returns_spec_when_index_file_is_missing(self, registry_root: Path) -> None:
+        spec = _canonical_spec("indexless-agent", "sha256:indexless-agent")
+        _write_json(registry_root / "indexless-agent.json", spec)
+
+        store = FileSystemRegistryStore(root=registry_root)
+        result = store.get("indexless-agent")
+
+        assert result == Success(spec)
+
+    def test_get_returns_spec_when_index_entry_is_missing(self, registry_root: Path) -> None:
+        spec = _canonical_spec("stale-index-agent", "sha256:stale-index-agent")
+        _write_json(registry_root / "stale-index-agent.json", spec)
+        _write_json(registry_root / INDEX_FILENAME, {})
+
+        store = FileSystemRegistryStore(root=registry_root)
+        result = store.get("stale-index-agent")
 
         assert result == Success(spec)
 
@@ -161,6 +212,19 @@ class TestFileSystemRegistryStoreContract:
 
         assert result == Success([])
 
+    def test_list_rejects_index_entry_with_empty_digest(self, registry_root: Path) -> None:
+        spec = _canonical_spec("empty-index-digest", "sha256:actual")
+        _write_json(registry_root / "empty-index-digest.json", spec)
+        _write_json(registry_root / INDEX_FILENAME, {"empty-index-digest": ""})
+
+        store = FileSystemRegistryStore(root=registry_root)
+        result = store.list()
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert "digest" in error["message"].lower()
+
     def test_list_fails_with_typed_error_when_index_digest_disagrees_with_spec(
         self,
         registry_root: Path,
@@ -208,7 +272,12 @@ class TestFileSystemRegistryStoreContract:
 
         original_write_json_atomic = store._write_json_atomic
 
-        def fail_index_write(path: Path, payload: object, kind: str, persona_id: str):
+        def fail_index_write(
+            path: Path,
+            payload: object,
+            kind: Literal["spec", "index"],
+            persona_id: str,
+        ) -> object:
             if kind == "index":
                 return Failure(
                     {

@@ -37,12 +37,27 @@ errors:
   VARIABLE_UNRESOLVED:
     code: 103
     description: "Unresolved variable in prompt text"
+  INVALID_PERSONA_ID:
+    code: 104
+    description: "Persona id violates flat kebab-case rules"
   COMPONENT_NOT_FOUND:
     code: 105
     description: "Component referenced in assembly not found"
   COMPONENT_CONFLICT:
     code: 106
     description: "Multiple components set the same scalar field without explicit override"
+  REGISTRY_INDEX_READ_FAILED:
+    code: 107
+    description: "Registry index.json could not be read or decoded"
+  REGISTRY_SPEC_READ_FAILED:
+    code: 108
+    description: "Registry persona spec file could not be read or validated"
+  REGISTRY_WRITE_FAILED:
+    code: 109
+    description: "Registry persona spec file could not be written"
+  REGISTRY_UPDATE_FAILED:
+    code: 110
+    description: "Registry index.json could not be updated"
 
   # --- tela (MCP gateway) ---
   AUTHZ_DENY:
