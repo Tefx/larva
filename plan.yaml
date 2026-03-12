@@ -5704,14 +5704,14 @@ phases:
       - ARCHITECTURE.md module larva.core.normalize'
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_validate
   steps:
   - id: core_validate.core-validate-gate
     name: core.validate.gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_validate` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -5759,6 +5759,20 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:14:16.989569+00:00'
+    done_at: '2026-03-12T18:14:28.792156+00:00'
+    evidence: 'Gate decision: BLOCKED.
+
+
+      Evidence summary:
+
+      - Blocking findings include package/runtime wiring gaps, unresolved spec-code
+      mismatch in error-code naming path, and guard configuration mismatch.
+
+      - Additional should-fix contract quality findings noted for assemble helper
+      contracts.
+
+
+      Included in unified batched remediation chain before downstream unlock.'
   - id: core_validate.core-validate-freeze
     name: core.validate.freeze
     status: done
