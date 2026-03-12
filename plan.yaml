@@ -346,7 +346,7 @@ phases:
       - Repair outcome: success'
   - id: meta.plan.components
     name: Plan module larva.shell.components
-    status: claimed
+    status: done
     description: Produce the detailed vectl implementation plan for `larva.shell.components`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -374,6 +374,23 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-03-12T09:33:02.294496+00:00'
+    done_at: '2026-03-12T09:39:25.463145+00:00'
+    evidence: '- Added step IDs: shell_components.shell-components-contract, shell_components.shell-components-tests,
+      shell_components.shell-components-implement, shell_components.shell-components-verify,
+      shell_components.shell-components-freeze, shell_components.shell-components-gate
+
+      - Boundary citations: ARCHITECTURE.md module larva.shell.components + component-loading->assembly
+      + shell error boundary + build order; INTERFACES.md component library + MCP
+      assemble + CLI component commands + error format; README component library
+
+      - Downstream ordering used: contract -> test -> implementation -> verification
+      -> freeze -> gate
+
+      - Concrete execution agents assigned: yes
+
+      - Open module questions: none
+
+      - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.registry
     name: Plan module larva.shell.registry
     status: pending
