@@ -3673,3 +3673,436 @@ phases:
   status: locked
   depends_on:
   - app_facade
+  steps:
+  - id: shell_cli.shell-cli-clarify
+    name: shell-cli-clarify
+    status: pending
+    description: 'Clarify the authoritative dependency seam for `larva.shell.cli`
+      before contract work begins.
+
+
+      step_type: planning
+
+      agent_source: default
+
+
+      Scope:
+
+      - resolve the documented gap between `ARCHITECTURE.md` naming `larva.app.facade`
+      as the `larva.shell.cli` dependency and `INTERFACES.md` / `README.md` requiring
+      `larva component list` and `larva component show`
+
+      - produce an explicit acceptance note for downstream workers stating whether
+      component subcommands route through a facade-owned read surface or a dedicated
+      injected read port, without moving business logic into `larva.shell.cli`
+
+      - keep clarification scoped to `larva.shell.cli` transport ownership, dependency
+      direction, and shell-boundary error/exit-code behavior
+
+
+      Non-goals:
+
+      - no product implementation in this step
+
+      - no expansion into `larva.shell.components`, `larva.shell.registry`, or `larva.app.facade`
+      implementation work
+
+      - no undocumented new commands or flags
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 4. Dependency Rules / Allowed
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - README.md :: Interfaces / CLI'
+    verification: '- The plan records an explicit dependency direction for all documented
+      CLI commands, including `component list/show`
+
+      - Clarification stays inside `larva.shell.cli` transport planning and does not
+      invent undocumented behavior
+
+      - Downstream contract/test/implementation steps can execute without guessing
+      the component-subcommand seam'
+    agent: software-architect
+  - id: shell_cli.shell-cli-contract
+    name: shell-cli-contract
+    status: pending
+    description: "Create the contract-only `larva.shell.cli` module at `src/larva/shell/cli.py`\
+      \ after the CLI dependency seam is clarified.\n\nstep_type: contract\ncontract_purity:\
+      \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
+      \  - stubs\nagent_source: default\n\nScope:\n- define the contract-only command\
+      \ surface for the documented CLI commands: `validate`, `assemble`, `register`,\
+      \ `resolve`, `list`, `component list`, and `component show`\n- define only acceptance-level\
+      \ shell-side signatures for argument parsing, stdout/stderr shaping, `--json`\
+      \ mode, and exit-code mapping (0/1/2) without adding runnable command logic\n\
+      - declare the command-adapter seams to downstream facade and component-read\
+      \ dependencies exactly as clarified by `shell_cli.shell-cli-clarify`\n- allow\
+      \ stubs, `...`, or `raise NotImplementedError` only; no runnable parsing, file\
+      \ I/O, facade calls, component-store reads, or JSON emission in this step\n\n\
+      Non-goals:\n- no business-rule ownership\n- no registry persistence or assembly\
+      \ logic\n- no direct implementation of component loading\n- no package export\
+      \ wiring outside `src/larva/shell/cli.py`\n\nBoundary citations:\n- ARCHITECTURE.md\
+      \ :: Module: `larva.shell.cli`\n- ARCHITECTURE.md :: 8. Error Boundary Model\
+      \ / Shell\n- ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build\
+      \ Order\n- INTERFACES.md :: B. CLI Interface\n- INTERFACES.md :: G. Error Codes\
+      \ / Error Response Format (--json / MCP)\n- README.md :: Interfaces / CLI"
+    verification: '- Contract artifacts are limited to signatures, type defs, interface
+      notes, and stubs
+
+      - `src/larva/shell/cli.py` remains acceptance-only with no runnable command
+      execution logic
+
+      - The contract names the authoritative command set, `--json` behavior, and concrete
+      downstream seam without widening module scope'
+    depends_on:
+    - shell_cli.shell-cli-clarify
+    agent: python-senior
+  - id: shell_cli.shell-cli-tests
+    name: shell-cli-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.shell.cli` in `tests/shell/test_cli.py`.
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Scope:
+
+      - define focused tests for all documented commands and subcommands: `validate`,
+      `assemble`, `register`, `resolve`, `list`, `component list`, and `component
+      show`
+
+      - prove CLI argument parsing delegates to the clarified downstream seams without
+      absorbing facade/component business logic
+
+      - prove success-path text output, `--json` output, and exit-code mapping follow
+      the documented CLI contract for valid, invalid, not-found, and generic-error
+      cases
+
+      - prove `--json` errors emit the documented error envelope including `code`,
+      `numeric_code`, `message`, and `details` when available
+
+      - keep tests scoped to `larva.shell.cli` only, using doubles or harness fixtures
+      for downstream seams rather than re-testing facade or storage internals
+
+
+      Non-goals:
+
+      - no shell component-store implementation tests
+
+      - no registry persistence tests
+
+      - no MCP or Python API transport tests
+
+
+      Failure-path expectations:
+
+      - add a focused regression for JSON/text mode separation so machine-readable
+      output never includes human-oriented formatting
+
+      - add a focused regression for `resolve` not-found vs generic-failure exit codes
+
+      - add a focused regression for `validate` invalid-spec behavior returning exit
+      code 1 without masquerading as file-not-found
+
+      - add a focused regression for `component show` missing target surfacing the
+      clarified shell error mapping
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / CLI'
+    verification: '- Tests cover the full documented CLI command surface and both
+      text/JSON output modes
+
+      - Failure-path regressions cover invalid input, not-found, and JSON envelope
+      behavior
+
+      - Test scope remains inside `larva.shell.cli` with downstream dependencies doubled
+      or harnessed rather than reimplemented'
+    depends_on:
+    - shell_cli.shell-cli-contract
+    agent: python-senior
+  - id: shell_cli.shell-cli-implement
+    name: shell-cli-implement
+    status: pending
+    description: "Implement `larva.shell.cli` in `src/larva/shell/cli.py` as the user-facing\
+      \ CLI transport adapter for the documented command set and nothing more.\n\n\
+      step_type: implementation\nagent_source: default\ntags:\n  - integration\n\n\
+      Scope:\n- implement command parsing, dispatch, stdout/stderr shaping, and exit-code\
+      \ handling for `validate`, `assemble`, `register`, `resolve`, `list`, `component\
+      \ list`, and `component show`\n- delegate domain use-cases to `larva.app.facade`\
+      \ and component-read behavior to the clarified dependency seam from `shell_cli.shell-cli-clarify`,\
+      \ without moving business logic or storage logic into the CLI module\n- implement\
+      \ `--json` success/error output so JSON bodies remain machine-readable and aligned\
+      \ with the documented envelope while human-readable mode stays separate\n- keep\
+      \ changes constrained to `src/larva/shell/cli.py` and `tests/shell/test_cli.py`\
+      \ only\n\nFailure-mode checklist:\n- relative vs absolute path behavior: file-path\
+      \ arguments such as `<spec.json>` and `-o/--output` must preserve shell-level\
+      \ path handling and report missing files without reclassifying them as semantic\
+      \ validation failures\n- missing-file fallback behavior: missing input files\
+      \ or missing component targets must return the documented CLI not-found behavior\
+      \ instead of silent fallback or empty output\n- explicit clear / null overwrite\
+      \ semantics: repeated `--override key=value` and `--var key=value` inputs must\
+      \ preserve explicit falsey or empty-string values rather than dropping them\
+      \ during parse/dispatch\n- stale-definition vs new-state precedence: CLI flags\
+      \ are transport inputs only; precedence and revalidation semantics remain owned\
+      \ by downstream facade/component seams and must not be reinvented in `larva.shell.cli`\n\
+      - partial-write / CAS-conflict behavior: if `assemble -o <output>` or any downstream\
+      \ write path fails, CLI must surface the failure cleanly and must not claim\
+      \ success or emit a partial-success payload\n\nState semantics:\n- last-writer-wins\
+      \ applies only to repeated CLI flag values as explicitly documented by the clarified\
+      \ transport contract; deeper merge semantics remain downstream\n- exact JSON\
+      \ envelope keys and documented exit-code families (0/1/2) must be preserved\
+      \ for machine clients\n- backward-compatible behavior is limited to the documented\
+      \ CLI command/flag surface and output shapes in the cited docs\n\nKnown risks:\n\
+      - JSON/text mode confusion: verify both output modes for every command family;\
+      \ do not let human-readable formatting or ANSI escapes leak into `--json` output\n\
+      - boundary drift: do not add validation, assembly, registry, or component-loading\
+      \ business logic inside `larva.shell.cli`\n- command-surface drift: do not invent\
+      \ undocumented flags, aliases, or subcommands\n- shared-registry conflict: do\
+      \ not modify `src/larva/__init__.py`, shared export files, or downstream router/registry\
+      \ files from this phase\n\nOut of scope:\n- implementation changes in `larva.app.facade`,\
+      \ `larva.shell.components`, or `larva.shell.registry`\n- MCP transport behavior\n\
+      - Python API export wiring\n\nBoundary citations:\n- ARCHITECTURE.md :: Module:\
+      \ `larva.shell.cli`\n- ARCHITECTURE.md :: 8. Error Boundary Model / Shell\n\
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order\n- INTERFACES.md\
+      \ :: B. CLI Interface\n- INTERFACES.md :: G. Error Codes / Error Response Format\
+      \ (--json / MCP)\n- README.md :: Interfaces / CLI\n- README.md :: Key Design\
+      \ Decisions"
+    verification: '- Main path: targeted CLI tests prove command parsing, downstream
+      delegation, output shaping, and exit codes for the documented command surface
+
+      - Failure path: focused regressions cover missing files, invalid specs, not-found
+      component/persona lookups, falsey override preservation, and write-failure reporting
+      without false success
+
+      - Proof: no validation, assembly, registry, or component-loading business logic
+      is introduced outside `src/larva/shell/cli.py`'
+    depends_on:
+    - shell_cli.shell-cli-tests
+    agent: python-senior
+  - id: shell_cli.shell-cli-verify
+    name: shell-cli-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`blind-tester`), validate the `larva.shell.cli`
+      module from a fresh user-facing perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: each documented CLI command works with the documented arguments
+      and returns the expected text or JSON shape
+
+      - Edge cases: repeated overrides/vars preserving explicit falsey values, empty
+      registry/component listings, and file-path handling for stdin/stdout or explicit
+      paths if supported by the clarified contract
+
+      - Error scenarios: invalid spec, missing file, missing persona/component, output-write
+      failure, and JSON envelope fidelity
+
+      - Boundary discipline: CLI remains a transport adapter and does not absorb facade
+      or storage logic
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / CLI'
+    verification: '- Exercise the full documented CLI command surface independently
+      from implementation context
+
+      - Include at least one text-mode and one `--json` failure-path check
+
+      - Confirm the module stays inside the CLI transport boundary with no leaked
+      business logic'
+    depends_on:
+    - shell_cli.shell-cli-implement
+    agent: blind-tester
+  - id: shell_cli.shell-cli-seam-proof
+    name: shell-cli-seam-proof
+    status: pending
+    description: 'Integration companion: provide seam-level real path evidence for
+      `larva.shell.cli`.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Changed seams require real execution proof:
+
+      - CLI -> `larva.app.facade` for `validate`, `assemble`, `register`, `resolve`,
+      and `list`
+
+      - CLI -> clarified component-read seam for `component list/show`
+
+      - CLI output mode seam for text vs `--json` responses and exit-code mapping
+
+
+      Mock-heavy unit tests alone are insufficient for this step. Provide real command
+      execution evidence showing the CLI works through its downstream seams without
+      broadening module ownership.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / CLI'
+    verification: '- Provide at least one real CLI invocation for a facade-backed
+      command and one for a component subcommand
+
+      - Include actual stdout/stderr and observed exit code, not only a passing summary
+
+      - Show `--json` output remains machine-readable and free of human-formatting
+      leakage'
+    depends_on:
+    - shell_cli.shell-cli-implement
+    agent: integration-verifier
+  - id: shell_cli.shell-cli-freeze
+    name: shell-cli-freeze
+    status: pending
+    description: 'Freeze the `larva.shell.cli` snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between independent verification and
+      gate review
+
+      - preserve the verified CLI transport evidence for downstream handoff'
+    verification: '- `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `shell_cli.shell-cli-gate`
+      completes'
+    depends_on:
+    - shell_cli.shell-cli-verify
+    - shell_cli.shell-cli-seam-proof
+    agent: integration-verifier
+  - id: shell_cli.shell-cli-gate
+    name: shell-cli-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_cli` phase meets the quality bar for proceeding to downstream review
+      or integration work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if command-surface fidelity, JSON/text
+      separation, or evidence quality is insufficient.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      agent_source: default
+
+      review_depth_rationale:
+
+      - `larva.shell.cli` is a user-facing transport with documented text/JSON output
+      and exit-code obligations
+
+      - the phase includes integration-tagged command dispatch across facade and component-read
+      seams
+
+      - output formatting mistakes can break machine consumers even when unit tests
+      appear green
+
+
+      cross_cutting_focus:
+
+      - JSON output validity and absence of ANSI or human-formatting leakage across
+      all command families
+
+      - fidelity to the documented command/flag set and exit-code behavior
+
+      - proof that `larva.shell.cli` remains a transport adapter rather than a second
+      business-logic layer
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / CLI'
+    verification: '- All `shell_cli` steps completed successfully
+
+      - Evidence shows the documented command surface, exit codes, and JSON/text separation
+      are verified with real CLI proof
+
+      - No unresolved boundary leaks into facade, component-store, registry, MCP,
+      or Python API concerns
+
+      - The phase is ready for downstream review'
+    depends_on:
+    - shell_cli.shell-cli-clarify
+    - shell_cli.shell-cli-contract
+    - shell_cli.shell-cli-tests
+    - shell_cli.shell-cli-implement
+    - shell_cli.shell-cli-verify
+    - shell_cli.shell-cli-seam-proof
+    - shell_cli.shell-cli-freeze
+    agent: gate-reviewer
