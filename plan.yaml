@@ -1030,59 +1030,6 @@ phases:
       - Spec link: ARCHITECTURE.md module larva.core.spec; INTERFACES.md section E
 
       - Gaps/Notes: none'
-  - id: core_spec.core-spec-tests
-    name: core.spec.tests
-    status: pending
-    description: 'Add contract-focused tests for `larva.core.spec` in `tests/core/test_spec.py`.
-
-
-      step_type: test
-
-
-      Scope:
-
-      - assert the literal domains for `ToolPosture` and `SideEffectPolicy`
-
-      - assert `PersonaSpec` is optional-key (`total=False`) and exposes exactly the
-      documented fields
-
-      - assert `spec_version` remains pinned to `Literal["0.1.0"]`
-
-      - add focused import/usage checks that prove the contract is consumable by downstream
-      modules without widening scope
-
-
-      Non-goals:
-
-      - no downstream module tests
-
-      - no registry or facade coverage
-
-      - no production helpers beyond minimal test fixtures
-
-
-      Boundary citations:
-
-      - ARCHITECTURE.md :: Module: `larva.core.spec` / Public Interface
-
-      - INTERFACES.md :: C. Component Library
-
-      - INTERFACES.md :: F. Variable Injection
-
-      - INTERFACES.md :: G. Error Codes'
-    verification: '- Focused contract tests exist only for `larva.core.spec`
-
-      - Tests cover literal values, optional-key semantics, and the exact `PersonaSpec`
-      key set
-
-      - Test assertions are acceptance-defining and do not introduce production logic'
-    evidence_template: "## Test Evidence\n\n- Test file: `tests/core/test_spec.py`\n\
-      - Covered contract assertions:\n  - Tool posture literal set\n  - Side-effect\
-      \ policy literal set\n  - PersonaSpec optional-key shape\n  - Spec version literal\
-      \ pin\n- Command planned for workers: `invar guard`"
-    depends_on:
-    - core_spec.core-spec-contract
-    agent: python-executor
 - id: core_normalize
   name: larva.core.normalize
   status: in_progress
@@ -4731,4 +4678,55 @@ phases:
       \ -c \"from larva.core.spec import ToolPosture, SideEffectPolicy, PersonaSpec\"\
       \n  ```\n- `invar guard` result for changed files\n- Confirmation that no non-boundary\
       \ files were edited"
+    agent: python-executor
+  - id: core_spec.core-spec-tests
+    name: core.spec.tests
+    status: pending
+    description: 'Add contract-focused tests for `larva.core.spec` in `tests/core/test_spec.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - assert the literal domains for `ToolPosture` and `SideEffectPolicy`
+
+      - assert `PersonaSpec` is optional-key (`total=False`) and exposes exactly the
+      documented fields
+
+      - assert `spec_version` remains pinned to `Literal["0.1.0"]`
+
+      - add focused import/usage checks that prove the contract is consumable by downstream
+      modules without widening scope
+
+
+      Non-goals:
+
+      - no downstream module tests
+
+      - no registry or facade coverage
+
+      - no production helpers beyond minimal test fixtures
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.core.spec` / Public Interface
+
+      - INTERFACES.md :: C. Component Library
+
+      - INTERFACES.md :: F. Variable Injection
+
+      - INTERFACES.md :: G. Error Codes'
+    verification: '- Focused contract tests exist only for `larva.core.spec`
+
+      - Tests cover literal values, optional-key semantics, and the exact `PersonaSpec`
+      key set
+
+      - Test assertions are acceptance-defining and do not introduce production logic'
+    evidence_template: "## Test Evidence\n\n- Test file: `tests/core/test_spec.py`\n\
+      - Covered contract assertions:\n  - Tool posture literal set\n  - Side-effect\
+      \ policy literal set\n  - PersonaSpec optional-key shape\n  - Spec version literal\
+      \ pin\n- Command planned for workers: `invar guard`"
     agent: python-executor
