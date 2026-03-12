@@ -1386,42 +1386,6 @@ phases:
     depends_on:
     - core_assemble.core-assemble-implement
     agent: integration-verifier
-  - id: core_assemble.core-assemble-freeze
-    name: core-assemble-freeze
-    status: pending
-    description: 'Freeze the `larva.core.assemble` snapshot before gate review.
-
-
-      step_type: verification
-
-
-      Purpose:
-
-      - lock the reviewed commit and environment for the gate step
-
-      - ensure no additional code changes occur between verification and gate
-
-      - preserve the verified `assemble -> validate -> normalize` boundary evidence
-      for the phase handoff
-
-
-      Boundary citations:
-
-      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
-      -> Normalization
-
-      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order'
-    verification: '- `git rev-parse HEAD`
-
-      - `git status` is clean
-
-      - environment declaration for the verification run
-
-      - explicit statement that no code changes are allowed until `core_assemble.core-assemble-gate`
-      completes'
-    depends_on:
-    - core_assemble.core-assemble-verify
-    agent: integration-verifier
 - id: shell_components
   name: larva.shell.components
   status: locked
@@ -4717,3 +4681,37 @@ phases:
       - Phase is ready for downstream facade planning without bypassing normalization
       responsibilities'
     agent: gate-reviewer
+  - id: core_assemble.core-assemble-freeze
+    name: core-assemble-freeze
+    status: pending
+    description: 'Freeze the `larva.core.assemble` snapshot before gate review.
+
+
+      step_type: verification
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between verification and gate
+
+      - preserve the verified `assemble -> validate -> normalize` boundary evidence
+      for the phase handoff
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order'
+    verification: '- `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `core_assemble.core-assemble-gate`
+      completes'
+    agent: integration-verifier
