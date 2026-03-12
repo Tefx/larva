@@ -1732,7 +1732,7 @@ phases:
       commentary'
   - id: meta.review.meta-review-retest-gate-blockers-b1-family-residual
     name: meta.review.retest-gate-blockers-b1-family-residual
-    status: pending
+    status: claimed
     description: 'Revalidate ALL blocker families B1-B6 after `meta.review.meta-review-fix-b1-family-residual-contract-text`
       completes.
 
@@ -1767,6 +1767,8 @@ phases:
     depends_on:
     - meta.review.meta-review-fix-b1-family-residual-contract-text
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T16:31:18.500737+00:00'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
