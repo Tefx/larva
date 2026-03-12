@@ -3492,3 +3492,52 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-implement
     agent: integration-verifier
+  - id: shell_python_api.shell-python-api-seam-proof
+    name: shell-python-api-seam-proof
+    status: pending
+    description: 'Integration companion: provide seam-level real path evidence for
+      `larva.shell.python_api`.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Changed seams require at least ONE real execution proof:
+
+      - Python import seam: `larva.shell.python_api` -> `larva.app.facade` for `validate`
+      or `list`
+
+      - Python assemble seam: `larva.shell.python_api` -> `larva.app.facade` -> documented
+      assemble flow
+
+      - Python resolve seam: `larva.shell.python_api` -> `larva.app.facade` with override
+      forwarding
+
+
+      Mock-heavy unit tests alone are insufficient for this step. Provide at least
+      one real in-process Python invocation showing the module works through the facade
+      seam without top-level package export wiring.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.python_api`
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - README.md :: Interfaces / Python Library
+
+      - INTERFACES.md :: A. MCP Server Interface'
+    verification: '- Provide one real in-process Python command or test invoking `larva.shell.python_api`
+      through the facade seam
+
+      - Include actual output, not only a passing-summary statement
+
+      - Show the exercised path stays inside `larva.shell.python_api` -> `larva.app.facade`
+      and does not rely on `src/larva/__init__.py`'
+    depends_on:
+    - shell_python_api.shell-python-api-implement
+    agent: integration-verifier
