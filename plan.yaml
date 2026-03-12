@@ -4444,3 +4444,73 @@ phases:
     - shell_mcp.shell-mcp-verify
     - shell_mcp.shell-mcp-seam-proof
     agent: integration-verifier
+  - id: shell_mcp.shell-mcp-gate
+    name: shell-mcp-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_mcp` phase meets the quality bar for downstream review or integration
+      work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if MCP contract fidelity, error-envelope
+      evidence, or boundary discipline is insufficient.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      agent_source: default
+
+
+      review_depth_rationale:
+
+      - `larva.shell.mcp` is the documented primary interface for other opifex components
+
+      - the phase includes integration-tagged transport work across the MCP -> facade
+      seam
+
+      - response-shape or error-envelope mistakes can break machine consumers even
+      when local tests appear green
+
+
+      cross_cutting_focus:
+
+      - exact fidelity to the documented MCP tool names, parameter names, and success
+      payload shapes
+
+      - JSON error-envelope validity across all tested failure classes, with no field
+      drift
+
+      - proof that `larva.shell.mcp` remains a transport adapter rather than a second
+      business-logic layer
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.mcp`
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: A. MCP Server Interface (primary)
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / MCP Server (primary)
+
+      - README.md :: Key Design Decisions'
+    verification: '- All phase steps completed successfully
+
+      - Evidence shows exact MCP contract fidelity and documented error-envelope behavior
+
+      - Seam-level MCP proof is present and specific
+
+      - No business-logic ownership leaked beyond the MCP transport boundary'
+    depends_on:
+    - shell_mcp.shell-mcp-contract
+    - shell_mcp.shell-mcp-tests
+    - shell_mcp.shell-mcp-implement
+    - shell_mcp.shell-mcp-verify
+    - shell_mcp.shell-mcp-seam-proof
+    - shell_mcp.shell-mcp-freeze
+    agent: gate-reviewer
