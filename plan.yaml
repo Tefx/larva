@@ -1143,40 +1143,6 @@ phases:
       - Spec link: ARCHITECTURE.md module larva.core.validate; INTERFACES.md larva.validate(spec)
 
       - Gaps/Notes: none'
-  - id: core_validate.core-validate-tests
-    name: core.validate.tests
-    status: pending
-    description: "Add focused contract-driven tests for `larva.core.validate` in `tests/core/test_validate.py`.\n\
-      \nstep_type: test\n\nScope:\n- assert the report shape exposed by `ValidationIssue`\
-      \ and `ValidationReport`\n- define contract expectations for representative\
-      \ deterministic validation rules already anchored in the docs:\n  - invalid\
-      \ `spec_version` values are reported as structured errors\n  - invalid `side_effect_policy`\
-      \ values are reported as structured errors\n  - unresolved `{variable}` placeholders\
-      \ in prompt text are reported as structured errors\n- define that successful\
-      \ validation returns `valid=True` with no errors and preserves warning strings\
-      \ as warnings, not transport-layer error payloads\n- add a determinism check\
-      \ proving repeated validation of the same PersonaSpec yields the same report\
-      \ content\n\nNon-goals:\n- no normalization-module tests\n- no assembly conflict\
-      \ tests beyond validation of the assembled PersonaSpec shape itself\n- no facade,\
-      \ registry, CLI, MCP, or Python API coverage\n- no production helpers beyond\
-      \ minimal test fixtures/builders\n\nBoundary citations:\n- ARCHITECTURE.md ::\
-      \ Module: `larva.core.validate` / Public Interface\n- ARCHITECTURE.md :: 7.\
-      \ Cross-Module Interface Contracts / Assembly -> Validation -> Normalization\n\
-      - INTERFACES.md :: A. MCP Server Interface / `larva.validate(spec)`\n- INTERFACES.md\
-      \ :: F. Variable Injection / Enforcement\n- README.md :: What larva Does\n\n\
-      Failure-path expectations:\n- add a focused regression showing unresolved prompt\
-      \ placeholders fail validation deterministically and surface structured issue\
-      \ metadata rather than transport-formatted strings"
-    verification: '- Targeted validation tests exist only for `larva.core.validate`
-
-      - Tests define the contract before implementation for report shape, representative
-      rule failures, and deterministic output
-
-      - Test assertions stay inside `tests/core/test_validate.py` plus the `larva.core.validate`
-      contract'
-    depends_on:
-    - core_validate.core-validate-contract
-    agent: python-executor
 - id: core_assemble
   name: larva.core.assemble
   status: in_progress
@@ -4715,4 +4681,36 @@ phases:
 
       - Proof: implementation stays confined to `src/larva/core/validate.py` / `tests/core/test_validate.py`
       and adds no shell/app imports'
+    agent: python-executor
+  - id: core_validate.core-validate-tests
+    name: core.validate.tests
+    status: pending
+    description: "Add focused contract-driven tests for `larva.core.validate` in `tests/core/test_validate.py`.\n\
+      \nstep_type: test\n\nScope:\n- assert the report shape exposed by `ValidationIssue`\
+      \ and `ValidationReport`\n- define contract expectations for representative\
+      \ deterministic validation rules already anchored in the docs:\n  - invalid\
+      \ `spec_version` values are reported as structured errors\n  - invalid `side_effect_policy`\
+      \ values are reported as structured errors\n  - unresolved `{variable}` placeholders\
+      \ in prompt text are reported as structured errors\n- define that successful\
+      \ validation returns `valid=True` with no errors and preserves warning strings\
+      \ as warnings, not transport-layer error payloads\n- add a determinism check\
+      \ proving repeated validation of the same PersonaSpec yields the same report\
+      \ content\n\nNon-goals:\n- no normalization-module tests\n- no assembly conflict\
+      \ tests beyond validation of the assembled PersonaSpec shape itself\n- no facade,\
+      \ registry, CLI, MCP, or Python API coverage\n- no production helpers beyond\
+      \ minimal test fixtures/builders\n\nBoundary citations:\n- ARCHITECTURE.md ::\
+      \ Module: `larva.core.validate` / Public Interface\n- ARCHITECTURE.md :: 7.\
+      \ Cross-Module Interface Contracts / Assembly -> Validation -> Normalization\n\
+      - INTERFACES.md :: A. MCP Server Interface / `larva.validate(spec)`\n- INTERFACES.md\
+      \ :: F. Variable Injection / Enforcement\n- README.md :: What larva Does\n\n\
+      Failure-path expectations:\n- add a focused regression showing unresolved prompt\
+      \ placeholders fail validation deterministically and surface structured issue\
+      \ metadata rather than transport-formatted strings"
+    verification: '- Targeted validation tests exist only for `larva.core.validate`
+
+      - Tests define the contract before implementation for report shape, representative
+      rule failures, and deterministic output
+
+      - Test assertions stay inside `tests/core/test_validate.py` plus the `larva.core.validate`
+      contract'
     agent: python-executor
