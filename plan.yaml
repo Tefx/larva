@@ -1214,45 +1214,6 @@ phases:
     depends_on:
     - core_normalize.core-normalize-tests
     agent: python-executor
-  - id: core_normalize.core-normalize-verify
-    name: core.normalize.verify
-    status: pending
-    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
-      `larva.core.normalize` module from a fresh perspective.
-
-
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
-
-
-      step_type: verification
-
-      Independence Level: L1
-
-
-      Test for:
-
-      - Happy path: canonical PersonaSpec output includes `spec_version` and recomputed
-      `spec_digest`
-
-      - Edge cases: input key-order variation, already-normalized input, and absent
-      `spec_version`
-
-      - Error scenarios: stale incoming `spec_digest` should not survive normalization;
-      accidental imports from shell/app layers should be caught
-
-
-      Document ALL findings. A verification step that discovers issues is a success.'
-    verification: '- Independent evidence covers the main canonicalization path and
-      the stale-digest failure path
-
-      - Verification scope stays limited to `larva.core.normalize` and its focused
-      tests
-
-      - Findings explicitly note whether boundary purity and deterministic output
-      held'
-    depends_on:
-    - core_normalize.core-normalize-implement
-    agent: integration-verifier
 - id: core_validate
   name: larva.core.validate
   status: in_progress
@@ -4727,4 +4688,41 @@ phases:
     verification: '- Freeze evidence records commit, clean working tree, and environment
 
       - No code changes are introduced between freeze capture and gate review'
+    agent: integration-verifier
+  - id: core_normalize.core-normalize-verify
+    name: core.normalize.verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.core.normalize` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      Test for:
+
+      - Happy path: canonical PersonaSpec output includes `spec_version` and recomputed
+      `spec_digest`
+
+      - Edge cases: input key-order variation, already-normalized input, and absent
+      `spec_version`
+
+      - Error scenarios: stale incoming `spec_digest` should not survive normalization;
+      accidental imports from shell/app layers should be caught
+
+
+      Document ALL findings. A verification step that discovers issues is a success.'
+    verification: '- Independent evidence covers the main canonicalization path and
+      the stale-digest failure path
+
+      - Verification scope stays limited to `larva.core.normalize` and its focused
+      tests
+
+      - Findings explicitly note whether boundary purity and deterministic output
+      held'
     agent: integration-verifier
