@@ -2021,7 +2021,7 @@ phases:
       - Gaps/Notes: none'
 - id: shell_components
   name: larva.shell.components
-  status: locked
+  status: pending
   context: Filesystem-backed component loading at the shell boundary; must stay separate
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
@@ -2357,7 +2357,7 @@ phases:
     agent: gate-reviewer
 - id: shell_registry
   name: larva.shell.registry
-  status: locked
+  status: pending
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -6100,14 +6100,14 @@ phases:
       - INTERFACES.md larva.validate'
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_assemble
   steps:
   - id: core_assemble.core-assemble-gate
     name: core-assemble-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_assemble` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -6172,6 +6172,20 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:14:39.582351+00:00'
+    done_at: '2026-03-12T18:14:48.144219+00:00'
+    evidence: 'Gate decision: BLOCKED.
+
+
+      Evidence summary:
+
+      - Blocking findings include package/runtime wiring gaps, interface-spec mismatches
+      across assemble/validate/normalize semantics, and invar guard configuration
+      mismatch.
+
+      - should-fix: contract quality improvements in assemble helper contracts.
+
+
+      Included in unified batched remediation chain before downstream unlock.'
   - id: core_assemble.core-assemble-freeze
     name: core-assemble-freeze
     status: done
