@@ -1635,7 +1635,7 @@ phases:
       \nNo remaining divergence across checked artifacts."
   - id: meta.review.meta-review-fix-b1-family-residual-contract-text
     name: meta.review.fix-b1-family-residual-contract-text
-    status: pending
+    status: claimed
     description: 'Fix ALL residual B1-family stale conflicting contract text found
       after `meta.review.retest-gate-blockers`.
 
@@ -1694,6 +1694,8 @@ phases:
     depends_on:
     - meta.review.retest-gate-blockers
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T16:24:41.171522+00:00'
   - id: meta.review.meta-review-retest-gate-blockers-b1-family-residual
     name: meta.review.retest-gate-blockers-b1-family-residual
     status: pending
