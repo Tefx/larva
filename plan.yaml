@@ -1035,3 +1035,35 @@ phases:
 - id: core_normalize
   name: larva.core.normalize
   status: pending
+  steps:
+  - id: core_normalize.core-normalize-contract
+    name: core.normalize.contract
+    status: pending
+    description: "Create the contract-only `larva.core.normalize` module at `src/larva/core/normalize.py`.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the public contract\
+      \ `normalize_spec(spec: PersonaSpec) -> PersonaSpec`\n- express canonical normalization\
+      \ behavior as acceptance-only docstrings/structured notes: default `spec_version`\
+      \ to `\"0.1.0\"` when absent, preserve flat self-contained PersonaSpec output,\
+      \ and compute `spec_digest` from canonical JSON with sorted keys, no whitespace,\
+      \ excluding the `spec_digest` field itself\n- keep the module pure and deterministic\
+      \ so downstream facade work can rely on a stable normalization contract without\
+      \ introducing I/O or transport concerns\n- include only minimal stub-level helpers\
+      \ if required to make the contract explicit; no runnable business logic beyond\
+      \ stubs\n\nNon-goals:\n- no validation rules\n- no component loading or assembly\
+      \ flow\n- no registry lookup or persistence code\n- no CLI/MCP/Python API formatting\n\
+      - no shared export wiring such as `src/larva/__init__.py`\n\nBoundary citations:\n\
+      - ARCHITECTURE.md :: 5. Proposed File Structure\n- ARCHITECTURE.md :: Module:\
+      \ `larva.core.normalize`\n- ARCHITECTURE.md :: 4. Dependency Rules / Forbidden\n\
+      - INTERFACES.md :: E. PersonaSpec Output Format / Normalization\n- README.md\
+      \ :: What larva Does\n\nPattern note:\n- batch work only inside the `larva.core.normalize`\
+      \ boundary"
+    verification: '- Contract surface is acceptance-only and limited to `src/larva/core/normalize.py`
+
+      - The contract cites canonical normalization semantics from the authoritative
+      docs
+
+      - No shell/app/transport/persistence logic is introduced
+
+      - The produced contract is ready to drive tests before implementation'
+    agent: python-executor
