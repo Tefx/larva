@@ -3252,6 +3252,51 @@ phases:
     - app_facade.app-facade-seam-proof
     - app_facade.app-facade-freeze
     agent: gate-reviewer
+  - id: app_facade.app-facade-implement-register-list
+    name: app-facade-implement-register-list
+    status: pending
+    description: "Implement the `register()` and `list()` facade flows in `src/larva/app/facade.py`\
+      \ after the validate/assemble path is in place.\n\nstep_type: implementation\n\
+      tags:\n  - integration\n\nScope:\n- implement `register(spec)` so facade-owned\
+      \ validation/normalization complete before registry persistence is attempted\
+      \ and success returns facade-level `{id, registered}`\n- implement `list()`\
+      \ so facade summary shaping returns only `id`, `spec_digest`, and `model` from\
+      \ canonical registry records\n- compose app-level `LarvaError` values for registry-save\
+      \ and registry-read failures without introducing transport-specific envelopes\n\
+      - keep `resolve()` deferred to a dedicated follow-up step because override and\
+      \ revalidation semantics need isolated acceptance\n- constrain changes to `src/larva/app/facade.py`\
+      \ and `tests/app/test_facade.py` only\n\nFailure-mode checklist:\n- missing-file\
+      \ fallback behavior: registry misses or unreadable registry state must surface\
+      \ as app-level errors, never empty success payloads\n- explicit clear / null\
+      \ overwrite semantics: canonical PersonaSpec content passed into `register()`\
+      \ must preserve explicit nulls and falsey values exactly through facade delegation\n\
+      - stale-definition vs new-state precedence: facade summary shaping for `list()`\
+      \ must reflect canonical registry records only; no synthetic fallback summaries\
+      \ are allowed\n- partial-write / CAS-conflict behavior: `register()` must never\
+      \ report `{registered: true}` when the registry save path fails\n\nState semantics:\n\
+      - successful `register()` persists only validated, canonical PersonaSpec content\n\
+      - `list()` is a read-only summary projection over canonical registry state;\
+      \ it does not mutate or normalize in place\n- backward-compatible v1 behavior\
+      \ is limited to the documented register acknowledgement and persona summary\
+      \ shape\n\nOut of scope:\n- `resolve()` override application and revalidation\
+      \ semantics\n- storage implementation changes in `larva.shell.registry`\n- CLI,\
+      \ MCP, or Python API shaping\n\nBoundary citations:\n- ARCHITECTURE.md :: Module:\
+      \ `larva.app.facade`\n- ARCHITECTURE.md :: 7. Cross-Module Interface Contracts\
+      \ / Registry Read -> Override -> Revalidation\n- ARCHITECTURE.md :: 8. Error\
+      \ Boundary Model / App\n- INTERFACES.md :: A. MCP Server Interface / `larva.register(spec)`\n\
+      - INTERFACES.md :: A. MCP Server Interface / `larva.list()`\n- INTERFACES.md\
+      \ :: G. Error Codes"
+    verification: '- Main path: targeted facade tests prove `register()` validates
+      before persistence and `list()` returns only `id`, `spec_digest`, and `model`
+
+      - Failure path: focused regressions cover registry save failure and registry-read
+      failure without false success or transport-shaped payloads
+
+      - Proof: `resolve()` remains deferred and no storage implementation changes
+      leave `src/larva/app/facade.py`'
+    depends_on:
+    - app_facade.app-facade-implement
+    agent: python-senior
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
