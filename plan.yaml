@@ -5239,14 +5239,14 @@ phases:
       - contracts/persona_spec.schema.json'
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_normalize
   steps:
   - id: core_normalize.core-normalize-gate
     name: core.normalize.gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_normalize` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -5292,6 +5292,20 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:13:54.969250+00:00'
+    done_at: '2026-03-12T18:14:05.026717+00:00'
+    evidence: 'Gate decision: BLOCKED.
+
+
+      Evidence summary:
+
+      - invar guard passes, but broader quality gates reported blockers (ruff/mypy/spec-alignment/wiring)
+      in core gate reviews.
+
+      - Verification trust is reduced by guard path configuration mismatch.
+
+
+      This phase is included in the unified batched remediation chain before downstream
+      unlock.'
   - id: core_normalize.core-normalize-freeze
     name: core.normalize.freeze
     status: done
