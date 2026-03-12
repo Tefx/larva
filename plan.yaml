@@ -3248,6 +3248,8 @@ phases:
     - app_facade.app-facade-contract
     - app_facade.app-facade-tests
     - app_facade.app-facade-implement
+    - app_facade.app-facade-implement-register-list
+    - app_facade.app-facade-implement-resolve
     - app_facade.app-facade-verify
     - app_facade.app-facade-seam-proof
     - app_facade.app-facade-freeze
