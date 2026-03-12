@@ -3297,6 +3297,54 @@ phases:
     depends_on:
     - app_facade.app-facade-implement
     agent: python-senior
+  - id: app_facade.app-facade-implement-resolve
+    name: app-facade-implement-resolve
+    status: pending
+    description: "Implement the `resolve(id, overrides=None)` facade flow in `src/larva/app/facade.py`\
+      \ as an isolated high-risk step.\n\nstep_type: implementation\ntags:\n  - integration\n\
+      \nScope:\n- fetch the canonical PersonaSpec from the registry boundary\n- apply\
+      \ optional overrides in `larva.app.facade` only\n- re-enter validation and normalization\
+      \ before returning, with recomputed `spec_digest`\n- preserve app-level `LarvaError`\
+      \ composition for not-found, validation-failure, and downstream registry failures\n\
+      - constrain changes to `src/larva/app/facade.py` and `tests/app/test_facade.py`\
+      \ only\n\nFailure-mode checklist:\n- relative vs absolute path behavior: facade\
+      \ must not introduce any path/CWD logic while resolving; registry path semantics\
+      \ stay delegated to shell stores\n- missing-file fallback behavior: missing\
+      \ persona ids must surface as app-level errors, never fallback synthesis or\
+      \ empty success payloads\n- explicit clear / null overwrite semantics: override\
+      \ application must preserve explicit null values, false, zero, and empty-string\
+      \ values exactly rather than dropping them during merge/rebuild\n- stale-definition\
+      \ vs new-state precedence: the fetched canonical registry spec is the base source\
+      \ of truth and explicit overrides win only for the supplied fields before mandatory\
+      \ revalidation/renormalization\n- partial-write / CAS-conflict behavior: if\
+      \ downstream read/validation/normalization fails, `resolve()` must return the\
+      \ app-level failure and must not expose a partially rewritten PersonaSpec\n\n\
+      State semantics:\n- last-writer-wins applies only to explicit override fields\
+      \ supplied to `resolve(..., overrides=...)` before revalidation and normalization\n\
+      - canonical PersonaSpec content and the recomputed `spec_digest` must be preserved\
+      \ exactly in the returned facade result after successful normalize\n- backward-compatible\
+      \ v1 behavior is limited to the documented override-through-revalidation flow\n\
+      \nOut of scope:\n- changes to `register()`, `list()`, `validate()`, or `assemble()`\
+      \ beyond shared helpers already introduced in earlier serialized steps\n- storage\
+      \ implementation changes in `larva.shell.registry`\n- CLI, MCP, or Python API\
+      \ shaping\n\nBoundary citations:\n- ARCHITECTURE.md :: Module: `larva.app.facade`\n\
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->\
+      \ Override -> Revalidation\n- ARCHITECTURE.md :: 8. Error Boundary Model / App\n\
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 2: `resolve(..., overrides=...)`\
+      \ is part of v1\n- INTERFACES.md :: A. MCP Server Interface / `larva.resolve(id,\
+      \ overrides?)`\n- INTERFACES.md :: G. Error Codes"
+    verification: '- Main path: targeted facade tests prove `resolve()` reads canonical
+      registry state, applies overrides in the facade, then revalidates and renormalizes
+      before success
+
+      - Failure path: focused regressions cover persona miss, explicit-null override
+      preservation, falsey override values, and validation failure after overrides
+
+      - Proof: no transport-specific shaping or storage implementation changes are
+      introduced outside `src/larva/app/facade.py`'
+    depends_on:
+    - app_facade.app-facade-implement-register-list
+    agent: python-senior
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
