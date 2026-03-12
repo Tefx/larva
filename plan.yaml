@@ -5637,6 +5637,11 @@ phases:
 
       - Phase is ready for downstream facade planning without bypassing normalization
       responsibilities'
+    depends_on:
+    - core_assemble.core-assemble-tests
+    - core_assemble.core-assemble-implement
+    - core_assemble.core-assemble-verify
+    - core_assemble.core-assemble-freeze
     agent: gate-reviewer
   - id: core_assemble.core-assemble-freeze
     name: core-assemble-freeze
