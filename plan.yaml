@@ -1032,3 +1032,6 @@ phases:
     - core_spec.core-spec-verify
     - core_spec.core-spec-freeze
     agent: gate-reviewer
+- id: core_normalize
+  name: larva.core.normalize
+  status: pending
