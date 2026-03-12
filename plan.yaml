@@ -3668,3 +3668,8 @@ phases:
     - shell_python_api.shell-python-api-seam-proof
     - shell_python_api.shell-python-api-freeze
     agent: gate-reviewer
+- id: shell_cli
+  name: larva.shell.cli
+  status: locked
+  depends_on:
+  - app_facade
