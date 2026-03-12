@@ -4668,7 +4668,7 @@ phases:
   steps:
   - id: meta.gate.meta-gate-complete
     name: meta.gate.complete
-    status: pending
+    status: claimed
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -4709,6 +4709,8 @@ phases:
     depends_on:
     - meta.gate.meta-gate-future-stage-plan-review
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T16:58:21.056192+00:00'
   - id: meta.gate.meta-gate-future-stage-plan-review
     name: meta.gate.future-stage-plan-review
     status: done
