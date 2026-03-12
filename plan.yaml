@@ -5286,7 +5286,7 @@ phases:
     agent: integration-verifier
   - id: core_normalize.core-normalize-verify
     name: core.normalize.verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.normalize` module from a fresh perspective.
 
@@ -5325,6 +5325,48 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:28:09.150098+00:00'
+    done_at: '2026-03-12T17:38:17.557633+00:00'
+    evidence: 'Artifact:
+
+      - PR: 1b16c6c
+
+
+      Verification:
+
+      - Run: MCP invar_guard(path=.vectl/worktrees/core_normalize.core-normalize-verify,
+      changed=false) -> FAIL (doctest/runtime contract-layer AttributeError)
+
+      - Run: uv run pytest -v tests/core/test_normalize.py -> 11 passed
+
+      - Run: direct normalize invocation -> FAIL (`AttributeError: ''function'' object
+      has no attribute ''check''`)
+
+
+      Spec link:
+
+      - INTERFACES.md normalization contract
+
+      - ARCHITECTURE.md module larva.core.normalize
+
+      - src/larva/core/normalize.py
+
+
+      Decision: ISSUES_FOUND
+
+      Findings:
+
+      - Runtime contract/decorator path crashes before function behavior can be reliably
+      verified.
+
+      - Verification cannot confirm executable normalize behavior under normal runtime.
+
+      - Boundary purity remains intact.
+
+
+      Follow-up:
+
+      - Included in batched remediation chain: core_exec_remediation.fix-core-verification-blockers-b1-b3
+      -> core_exec_remediation.retest-core-verification-blockers-b1-b3'
   - id: core_normalize.core-normalize-implement
     name: core.normalize.implement
     status: done
