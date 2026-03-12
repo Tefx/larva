@@ -4163,3 +4163,82 @@ phases:
       - The contract names the documented MCP tool set, error-envelope obligations,
       and concrete `larva.app.facade` seam without runnable server logic'
     agent: python-executor
+  - id: shell_mcp.shell-mcp-tests
+    name: shell-mcp-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.shell.mcp` in `tests/shell/test_mcp.py`.
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Scope:
+
+      - define focused tests for the five documented MCP tools: `larva.validate`,
+      `larva.assemble`, `larva.resolve`, `larva.register`, and `larva.list`
+
+      - prove MCP request handling delegates to `larva.app.facade` without absorbing
+      validation, assembly, or registry business logic
+
+      - prove success-path results preserve the documented MCP response shapes for
+      validation reports, PersonaSpec JSON, register acknowledgements, and persona
+      listings
+
+      - prove failure-path responses use the documented JSON error envelope with `code`,
+      `numeric_code`, `message`, and `details` when available
+
+      - keep tests scoped to `larva.shell.mcp` only, using facade doubles or MCP harness
+      fixtures as needed without re-testing facade internals
+
+
+      Non-goals:
+
+      - no CLI exit-code or text-output tests
+
+      - no Python API import/export tests
+
+      - no direct shell component-store or registry implementation tests
+
+
+      Failure-path expectations:
+
+      - add a focused regression for `resolve(id, overrides?)` preserving explicit
+      null/falsey override values through MCP parameter handling
+
+      - add a focused regression for `register(spec)` surfacing facade validation
+      or registry failures through the documented MCP error envelope without transport-specific
+      renaming
+
+      - add a focused regression for `assemble(components)` component-not-found and
+      component-conflict errors preserving the documented error codes
+
+      - add a focused regression for malformed or incomplete MCP parameters being
+      rejected at the MCP transport boundary without inventing undocumented tool behavior
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.mcp`
+
+      - ARCHITECTURE.md :: 4. Dependency Rules / Allowed
+
+      - INTERFACES.md :: A. MCP Server Interface (primary)
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / MCP Server (primary)
+
+      - README.md :: Key Design Decisions'
+    verification: '- Tests cover the full documented MCP tool surface and documented
+      JSON success/error shapes
+
+      - Failure-path regressions cover falsey override forwarding, facade error passthrough,
+      and documented component/registry error codes
+
+      - Test scope remains inside `larva.shell.mcp` with `larva.app.facade` doubled
+      or harnessed rather than reimplemented'
+    depends_on:
+    - shell_mcp.shell-mcp-contract
+    agent: python-executor
