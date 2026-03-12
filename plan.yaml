@@ -4826,7 +4826,7 @@ phases:
   steps:
   - id: core_spec.core-spec-gate
     name: core.spec.gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_spec` phase meets the quality bar for proceeding to downstream modules.
 
@@ -4904,6 +4904,8 @@ phases:
     - core_spec.core-spec-verify
     - core_spec.core-spec-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T18:05:23.365187+00:00'
   - id: core_spec.core-spec-freeze
     name: core.spec.freeze
     status: done
