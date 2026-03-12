@@ -1324,7 +1324,7 @@ phases:
     claimed_at: '2026-03-12T13:14:47.134820+00:00'
   - id: meta.review.meta-review-fix-contract-artifacts
     name: meta.review.fix-contract-artifacts
-    status: claimed
+    status: done
     description: 'Resolve blocker artifacts B1/B2/B3 at source level before meta freeze
       retest.
 
@@ -1371,6 +1371,41 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T14:27:10.185395+00:00'
+    done_at: '2026-03-12T14:36:08.720575+00:00'
+    evidence: 'Artifact:
+
+      - PR: 296286e
+
+      - Files changed: ARCHITECTURE.md, INTERFACES.md, src/larva/core/assemble.py,
+      src/larva/core/spec.py, src/larva/core/validate.py
+
+
+      Verification:
+
+      - Run: invar_guard(changed=true) -> PASS (0 errors, 0 warnings)
+
+      - Run: git status --short -> clean
+
+
+      Spec link:
+
+      - ARCHITECTURE.md module interfaces for core.validate/core.assemble/core.spec
+
+      - INTERFACES.md MCP + Component Library sections
+
+
+      Closure Matrix:
+
+      - B1: closed (validate contract naming/signature aligned)
+
+      - B2: closed (assemble contract shape + PersonaSpec return aligned)
+
+      - B3: closed (component-type ownership explicit and consistent)
+
+
+      Gaps/Notes:
+
+      - none'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
