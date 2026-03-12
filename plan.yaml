@@ -346,7 +346,7 @@ phases:
       - Repair outcome: success'
   - id: meta.plan.components
     name: Plan module larva.shell.components
-    status: pending
+    status: claimed
     description: Produce the detailed vectl implementation plan for `larva.shell.components`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -372,6 +372,8 @@ phases:
     depends_on:
     - meta.plan.assemble
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-12T09:33:02.294496+00:00'
   - id: meta.plan.registry
     name: Plan module larva.shell.registry
     status: pending
