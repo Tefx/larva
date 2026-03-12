@@ -308,6 +308,54 @@ class TestFacadeAssemble:
 
 
 class TestFacadeRegister:
+    def test_register_validates_normalizes_then_persists_and_returns_facade_shape(self) -> None:
+        calls: list[str] = []
+        registry = InMemoryRegistryStore()
+        spec = _canonical_spec("register-ok", digest="sha256:old")
+        facade, _, validate_module, normalize_module = _facade(
+            report=_valid_report(),
+            registry=registry,
+            calls=calls,
+        )
+
+        result = facade.register(spec)
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"id": "register-ok", "registered": True}
+        assert calls == ["validate", "normalize"]
+        assert validate_module.inputs == [spec]
+        assert normalize_module.inputs[0]["id"] == "register-ok"
+        assert registry.save_inputs[0]["id"] == "register-ok"
+        assert registry.save_inputs[0]["spec_digest"] == _digest_for(spec)
+
+    def test_register_preserves_explicit_falsey_values_through_delegation(self) -> None:
+        calls: list[str] = []
+        registry = InMemoryRegistryStore()
+        spec = _canonical_spec("register-falsey")
+        spec["can_spawn"] = False
+        spec["description"] = ""
+        spec["compaction_prompt"] = ""
+        spec["description"] = cast("object", None)
+        facade, _, validate_module, normalize_module = _facade(
+            report=_valid_report(),
+            registry=registry,
+            calls=calls,
+        )
+
+        result = facade.register(spec)
+
+        assert isinstance(result, Success)
+        assert calls == ["validate", "normalize"]
+        assert validate_module.inputs[0]["can_spawn"] is False
+        assert validate_module.inputs[0]["description"] is None
+        assert validate_module.inputs[0]["compaction_prompt"] == ""
+        assert normalize_module.inputs[0]["can_spawn"] is False
+        assert normalize_module.inputs[0]["description"] is None
+        assert normalize_module.inputs[0]["compaction_prompt"] == ""
+        assert registry.save_inputs[0]["can_spawn"] is False
+        assert registry.save_inputs[0]["description"] is None
+        assert registry.save_inputs[0]["compaction_prompt"] == ""
+
     def test_register_validation_failure_blocks_persistence(self) -> None:
         registry = InMemoryRegistryStore()
         facade, _, _, _ = _facade(report=_invalid_report(), registry=registry)
@@ -342,60 +390,15 @@ class TestFacadeRegister:
 
 
 class TestFacadeResolve:
-    def test_resolve_override_preserves_null_and_recomputes_digest(self) -> None:
-        canonical = _canonical_spec("resolve-me", digest="sha256:old")
-        registry = InMemoryRegistryStore(get_result=Success(canonical))
-        calls: list[str] = []
-        facade, _, validate_module, normalize_module = _facade(
-            report=_valid_report(), registry=registry, calls=calls
-        )
+    def test_resolve_remains_deferred(self) -> None:
+        facade, _, _, _ = _facade()
 
-        result = facade.resolve("resolve-me", overrides={"description": None})
-
-        assert isinstance(result, Success)
-        resolved = result.unwrap()
-        assert registry.get_inputs == ["resolve-me"]
-        assert calls == ["validate", "normalize"]
-        assert validate_module.inputs[0]["description"] is None
-        assert normalize_module.inputs[0]["description"] is None
-        assert resolved["description"] is None
-        assert resolved["spec_digest"] != "sha256:old"
-
-    def test_resolve_registry_miss_maps_to_app_error(self) -> None:
-        registry = InMemoryRegistryStore(
-            get_result=Failure(
-                {
-                    "code": "PERSONA_NOT_FOUND",
-                    "message": "persona missing",
-                    "persona_id": "ghost",
-                }
-            )
-        )
-        facade, _, _, _ = _facade(registry=registry)
-
-        result = facade.resolve("ghost")
-
-        error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "PERSONA_NOT_FOUND"
-        assert error["numeric_code"] == 100
-        assert error["details"]["persona_id"] == "ghost"
-
-    def test_resolve_validation_failure_prevents_success_response(self) -> None:
-        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("resolve-bad")))
-        calls: list[str] = []
-        facade, _, _, normalize_module = _facade(
-            report=_invalid_report("INVALID_SPEC_VERSION"),
-            registry=registry,
-            calls=calls,
-        )
-
-        result = facade.resolve("resolve-bad", overrides={"spec_version": "0.2.0"})
-
-        error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "PERSONA_INVALID"
-        assert error["numeric_code"] == 101
-        assert normalize_module.inputs == []
-        assert calls == ["validate"]
+        try:
+            facade.resolve("resolve-me")
+        except NotImplementedError as error:
+            assert str(error) == "Contract-only: facade resolve flow is not implemented"
+        else:
+            raise AssertionError("Expected resolve() to remain unimplemented")
 
 
 class TestFacadeList:
@@ -414,3 +417,22 @@ class TestFacadeList:
             {"id": "alpha", "spec_digest": "sha256:a", "model": "gpt-4o-mini"},
             {"id": "beta", "spec_digest": "sha256:b", "model": "gpt-4o-mini"},
         ]
+
+    def test_list_maps_registry_read_failures_to_app_error_without_success(self) -> None:
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index unreadable",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.list()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert error["numeric_code"] == 107
+        assert error["details"]["path"] == "/tmp/index.json"

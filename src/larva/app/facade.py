@@ -251,7 +251,25 @@ class DefaultLarvaFacade(LarvaFacade):
         }
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
-        raise NotImplementedError("Contract-only: facade register flow is not implemented")
+        report = self.validate(spec)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized = self._normalize.normalize_spec(spec)
+        save_result = self._registry.save(normalized)
+        if isinstance(save_result, Failure):
+            error = save_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        persona_id = cast("str", normalized.get("id", ""))
+        return Success({"id": persona_id, "registered": True})
 
     def resolve(
         self,
@@ -261,4 +279,25 @@ class DefaultLarvaFacade(LarvaFacade):
         raise NotImplementedError("Contract-only: facade resolve flow is not implemented")
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
-        raise NotImplementedError("Contract-only: facade list flow is not implemented")
+        list_result = self._registry.list()
+        if isinstance(list_result, Failure):
+            error = list_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        summaries: list[PersonaSummary] = []
+        for spec in list_result.unwrap():
+            summaries.append(
+                {
+                    "id": spec["id"],
+                    "spec_digest": spec["spec_digest"],
+                    "model": spec["model"],
+                }
+            )
+        return Success(summaries)
