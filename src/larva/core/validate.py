@@ -67,7 +67,6 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
     step.
 
     Contract (from INTERFACES.md):
-    - Validates required fields: spec_version, spec_id, name
     - Validates field types and allowed values
     - Produces structured errors with code, message, and details
     - Produces warnings for non-critical issues (unknown models, deprecated fields)
@@ -80,7 +79,6 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
 
     Note:
         This is a contract stub. Implementation handles:
-        - Required field validation (spec_version, spec_id, name)
         - Type validation for all fields
         - Allowed value validation (e.g., side_effect_policy enum)
         - Field-specific validation rules
