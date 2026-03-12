@@ -1661,6 +1661,43 @@ phases:
     depends_on:
     - meta.review.retest-gate-blockers
     agent: python-executor
+  - id: meta.review.meta-review-retest-gate-blockers-b1-family-residual
+    name: meta.review.retest-gate-blockers-b1-family-residual
+    status: pending
+    description: 'Revalidate ALL blocker families B1-B6 after `meta.review.meta-review-fix-b1-family-residual-contract-text`
+      completes.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), confirm the residual B1-family
+      stale contract text is closed and that B1-B6 remain fully closed after this
+      follow-up fix.
+
+
+      Review scope:
+
+      - B1 residual cleanup in `src/larva/core/validate.py` removes stale `spec_id`
+      / `required fields` conflict text everywhere in the sibling family
+
+      - B1 canonical contract alignment still holds end-to-end
+
+      - B2-B6 remain closed and no stale review evidence or dependency regressions
+      were reintroduced
+
+
+      Systemic sibling search is required again before passing this step.'
+    verification: '- Revalidate closure of B1-B6, not only the residual B1-family
+      issue
+
+      - Confirm grep-hint family in `src/larva/core/validate.py` no longer contains
+      stale conflicting contract text
+
+      - Confirm prior B2-B6 closures remain intact
+
+      - Only mark PASS when the plan is still executable, dependency-safe, and ready
+      for `meta.review.meta-review-gate`'
+    depends_on:
+    - meta.review.meta-review-fix-b1-family-residual-contract-text
+    agent: gate-reviewer
 - id: core_spec
   name: larva.core.spec
   status: in_progress
