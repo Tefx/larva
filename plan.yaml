@@ -2890,3 +2890,98 @@ phases:
     depends_on:
     - app_facade.app-facade-contract
     agent: python-senior
+  - id: app_facade.app-facade-implement
+    name: app-facade-implement
+    status: pending
+    description: "Implement `larva.app.facade` in `src/larva/app/facade.py` so the\
+      \ app layer owns the five documented use-case flows without leaking transport\
+      \ or storage concerns.\n\nstep_type: implementation\ntags:\n  - integration\n\
+      \nScope:\n- implement the facade dependency-injection surface, typed `LarvaError`\
+      \ composition, and the five documented use-cases: `validate`, `assemble`, `register`,\
+      \ `resolve`, and `list`\n- wire `assemble()` through component loading, core\
+      \ assembly, core validation, and core normalization before returning a canonical\
+      \ PersonaSpec\n- wire `register()` so only validated canonical PersonaSpec values\
+      \ reach the registry store and success returns facade-level `{id, registered}`\n\
+      - wire `resolve()` so canonical registry reads stay in `shell.registry`, while\
+      \ override application, revalidation, renormalization, and `spec_digest` recomputation\
+      \ stay in `larva.app.facade`\n- wire `list()` so facade summary shaping returns\
+      \ only `id`, `spec_digest`, and `model`\n- constrain changes to `src/larva/app/facade.py`\
+      \ and `tests/app/test_facade.py` only\n\nFailure-mode checklist:\n- relative\
+      \ vs absolute path behavior: facade must not introduce path/CWD logic; all component\
+      \ and registry path semantics remain delegated to shell stores\n- missing-file\
+      \ fallback behavior: component or registry misses must surface as app-level\
+      \ `LarvaError` values suitable for downstream transport mapping, never silent\
+      \ fallback synthesis in the facade\n- explicit clear / null overwrite semantics:\
+      \ override application must preserve explicit null values and falsey scalars\
+      \ exactly rather than dropping them during merge/rebuild\n- stale-definition\
+      \ vs new-state precedence: for `resolve(id, overrides)`, the fetched canonical\
+      \ registry spec is the base source of truth and explicit overrides win only\
+      \ for the provided fields before mandatory revalidation/renormalization\n- partial-write\
+      \ / CAS-conflict behavior: `register()` must never report `{registered: true}`\
+      \ when the registry save path fails; facade error composition must preserve\
+      \ the failure and avoid false success state\n\nState semantics:\n- last-writer-wins\
+      \ applies only to explicit override fields supplied to `resolve(..., overrides=...)`\
+      \ before revalidation and normalization\n- canonical PersonaSpec content and\
+      \ its recomputed `spec_digest` must be preserved exactly in returned facade\
+      \ results after successful normalize\n- backward-compatible v1 behavior is limited\
+      \ to the documented five use-cases, summary shape, and override-through-revalidation\
+      \ flow\n\nKnown risks:\n- boundary drift: do not add CLI parsing, MCP envelopes,\
+      \ Python API exports, or filesystem implementation details here\n- merge-semantics\
+      \ drift: override handling must stay centralized in the facade and must not\
+      \ bypass validation or normalization\n- error-shaping drift: compose app-level\
+      \ errors suitable for transports without emitting transport-specific JSON envelopes\
+      \ in-module\n- shared-registry conflict: do not modify `src/larva/__init__.py`\
+      \ or downstream transport/router files from this phase\n\nOut of scope:\n- call-site\
+      \ migration in `larva.shell.cli`, `larva.shell.mcp`, or `larva.shell.python_api`\n\
+      - storage implementation changes in `larva.shell.components` or `larva.shell.registry`\n\
+      - compatibility wrappers outside `larva.app.facade`\n\nBoundary citations:\n\
+      - ARCHITECTURE.md :: Module: `larva.app.facade`\n- ARCHITECTURE.md :: 7. Cross-Module\
+      \ Interface Contracts / Assembly -> Validation -> Normalization\n- ARCHITECTURE.md\
+      \ :: 7. Cross-Module Interface Contracts / Registry Read -> Override -> Revalidation\n\
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App\n- ARCHITECTURE.md :: 10.\
+      \ Final Decisions / Decision 2: `resolve(..., overrides=...)` is part of v1\n\
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin\
+      \ facade export\n- README.md :: Key Design Decisions\n- README.md :: Interfaces\
+      \ / Python Library\n- INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`\n\
+      - INTERFACES.md :: A. MCP Server Interface / `larva.resolve(id, overrides?)`\n\
+      - INTERFACES.md :: A. MCP Server Interface / `larva.register(spec)`\n- INTERFACES.md\
+      \ :: A. MCP Server Interface / `larva.list()`\n- INTERFACES.md :: G. Error Codes\
+      \ / Error Response Format (--json / MCP)"
+    verification: '- Main path: targeted facade tests prove `assemble`, `register`,
+      `resolve`, `list`, and `validate` follow the documented orchestration order
+      and return canonical app-level results
+
+      - Failure path: focused regressions cover component miss, registry miss, explicit-null
+      overrides, validation failure after overrides, and registry save failure without
+      false success
+
+      - Proof: no CLI/MCP/Python API/package-export wiring or shell storage implementation
+      changes are introduced outside `src/larva/app/facade.py`'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact pytest command or invar guard target covering facade use-cases>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste concrete runner output>
+
+      ```
+
+
+      **Path exercised**: `larva.app.facade` -> core assemble/validate/normalize and
+      shell component/registry ports
+
+      '
+    depends_on:
+    - app_facade.app-facade-tests
+    agent: python-senior
