@@ -2777,7 +2777,7 @@ phases:
       - no code changes made during retest'
   - id: shell_components.fix-shell-components-gate-findings-b1-s2
     name: fix-shell-components-gate-findings-b1-s2
-    status: pending
+    status: claimed
     description: 'Fix ALL issues found by `shell_components.shell-components-gate`
       together in one batched remediation step.
 
@@ -2936,6 +2936,8 @@ phases:
     depends_on:
     - shell_components.shell-components-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T20:04:36.861647+00:00'
   - id: shell_components.retest-shell-components-gate-findings-b1-s2
     name: retest-shell-components-gate-findings-b1-s2
     status: pending
