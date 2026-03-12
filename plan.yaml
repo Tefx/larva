@@ -1548,7 +1548,7 @@ phases:
   name: larva.shell.registry
   status: locked
   depends_on:
-  - core_assemble
+  - core_assemble_exec
   steps:
   - id: shell_registry.shell-registry-contract
     name: shell-registry-contract
