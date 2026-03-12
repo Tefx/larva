@@ -4045,7 +4045,7 @@ phases:
   steps:
   - id: app_facade.app-facade-contract
     name: app-facade-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.app.facade` module at `src/larva/app/facade.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -4089,6 +4089,51 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:17:03.053582+00:00'
+    done_at: '2026-03-12T20:23:33.135649+00:00'
+    evidence: 'Artifact:
+
+      - PR: 9b37432ccf87fef811959eb927cea0b8fcdeeafb
+
+      - squash merged to main as commit bf05c4a
+
+
+      Verification:
+
+      - Run: `invar_invar_guard(path=..., changed=true)` -> passed (errors=0, warnings=0)
+
+      - Run: `git show --name-only --pretty=format:"%H %s" HEAD` (in worktree) ->
+      only `src/larva/app/facade.py` changed
+
+      - Run: `invar_invar_sig(target=src/larva/app/facade.py)` -> typed `TypedDict`/`Protocol`
+      contract surfaces and stub signatures for `validate`, `assemble`, `register`,
+      `resolve`, `list`
+
+      - Run: pattern scan for I/O/transport symbols in `src/larva/app/facade.py` ->
+      no filesystem/transport/wiring imports or calls
+
+      - Run: pattern scan for stub markers -> only `...` / `NotImplementedError` style
+      stubs
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: `larva.app.facade` module and app error boundary sections
+
+      - INTERFACES.md :: MCP operation contracts + error code sections
+
+      - README.md :: key design decisions and Python library interface
+
+
+      Gaps/Notes:
+
+      - Implemented contract-only `src/larva/app/facade.py` with typed DI shape for
+      core modules and shell stores.
+
+      - Included acceptance notes that overrides belong in facade and must re-enter
+      validation/normalization.
+
+      - No business-logic orchestration, no CLI/MCP/Python API wiring, no storage
+      I/O implementation, and no package export edits.'
   - id: app_facade.app-facade-tests
     name: app-facade-tests
     status: pending
