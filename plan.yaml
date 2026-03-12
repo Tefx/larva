@@ -3164,3 +3164,89 @@ phases:
     - app_facade.app-facade-verify
     - app_facade.app-facade-seam-proof
     agent: integration-verifier
+  - id: app_facade.app-facade-gate
+    name: app-facade-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `app_facade` phase meets the quality bar for proceeding to downstream transport
+      work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if facade orchestration drifts from
+      the docs, evidence is vague, override semantics bypass revalidation, or transport/storage
+      concerns leak into the app layer.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - `larva.app.facade` owns cross-module use-case orchestration across core and
+      shell boundaries
+
+      - the phase carries override/revalidation and app-level error-composition risk
+      across five public use-cases
+
+      - downstream CLI, MCP, and Python API phases rely on a stable, transport-agnostic
+      facade contract
+
+
+      cross_cutting_focus:
+
+      - exact assemble -> validate -> normalize ordering for facade-owned flows
+
+      - resolve override application staying in `larva.app.facade` with mandatory
+      revalidation and renormalization
+
+      - app-level error composition and summary shaping with no CLI/MCP/Python API
+      leakage
+
+      - seam-level evidence that facade integration works beyond mock-only unit tests
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.app.facade`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 2: `resolve(..., overrides=...)`
+      is part of v1
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions
+
+      - README.md :: Interfaces / Python Library'
+    verification: '- All `app_facade` steps completed successfully
+
+      - Evidence shows real facade orchestration for the five documented use-cases
+      plus seam-level proof beyond mock-only tests
+
+      - No unresolved boundary leaks into shell storage implementation or downstream
+      CLI/MCP/Python API shaping
+
+      - The phase is ready for downstream transport planning and execution'
+    depends_on:
+    - app_facade.app-facade-contract
+    - app_facade.app-facade-tests
+    - app_facade.app-facade-implement
+    - app_facade.app-facade-verify
+    - app_facade.app-facade-seam-proof
+    - app_facade.app-facade-freeze
+    agent: gate-reviewer
