@@ -4499,8 +4499,8 @@ phases:
   - id: meta.gate.meta-gate-complete
     name: meta.gate.complete
     status: pending
-    description: 'Gate review: confirm the meta-plan is complete, reviewed, and frozen
-      before any implementation execution begins.
+    description: 'Gate review: freeze the meta-planning flow before any implementation
+      planning output is executed.
 
 
       step_type: gate
@@ -4509,25 +4509,35 @@ phases:
 
       review_depth_rationale:
 
-      - planning freeze barrier before execution
+      - this gate freezes the full planning basis before execution begins
 
-      - all module plans must be reviewed before workers run
+      - downstream implementation phases must not start until the future-stage plan
+      review and all meta review steps complete
 
-      - prevents planning-while-executing drift
+      - this is the structural barrier enforcing planning-first, execution-after-freeze
 
 
       cross_cutting_focus:
 
-      - all meta.review work completed
+      - all module plans reviewed
 
-      - planning consistency accepted
+      - future-stage agent assignment and step-splitting review completed under the
+      updated planner prompt
 
-      - execution blocked until this step is done'
-    verification: '- meta.review phase completed successfully
+      - cross-module dependency consistency
 
-      - planning set frozen and accepted
+      - implementation phases blocked until meta-plan completion is accepted'
+    verification: '- All meta review work is complete
 
-      - downstream implementation phases remain blocked until this gate opens'
+      - `meta.gate.meta-gate-future-stage-plan-review` produced a concrete conclusion
+      with either adjustment checklist or explicit no-change decision
+
+      - Evidence confirms downstream non-meta phases remain blocked until this gate
+      opens
+
+      - Ready for execution-phase start only after the planning freeze is accepted'
+    depends_on:
+    - meta.gate.meta-gate-future-stage-plan-review
     agent: gate-reviewer
   - id: meta.gate.meta-gate-future-stage-plan-review
     name: meta.gate.future-stage-plan-review
