@@ -888,11 +888,11 @@ phases:
     agent: software-architect
 - id: core_spec
   name: larva.core.spec
-  status: pending
+  status: in_progress
   steps:
   - id: core_spec.core-spec-contract
     name: core.spec.contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.core.spec` module at `src/larva/core/spec.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the canonical\
@@ -928,6 +928,8 @@ phases:
 
       - Purity check: list imports and confirm no I/O/runtime imports'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T10:07:23.357882+00:00'
   - id: core_spec.core-spec-tests
     name: core.spec.tests
     status: pending
