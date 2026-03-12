@@ -441,7 +441,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.facade
     name: Plan module larva.app.facade
-    status: claimed
+    status: done
     description: Produce the detailed vectl implementation plan for `larva.app.facade`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -469,6 +469,23 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-03-12T09:43:13.475986+00:00'
+    done_at: '2026-03-12T09:49:41.477068+00:00'
+    evidence: '- Added step IDs: app_facade.app-facade-contract, app_facade.app-facade-tests,
+      app_facade.app-facade-implement, app_facade.app-facade-verify, app_facade.app-facade-seam-proof,
+      app_facade.app-facade-freeze, app_facade.app-facade-gate
+
+      - Boundary citations: ARCHITECTURE.md app.facade module + cross-module contracts
+      + app error boundary + final decisions + build order; INTERFACES.md MCP methods
+      + error response format; README key design + python interface
+
+      - Downstream ordering used: contract -> test -> implementation -> verification
+      -> seam-proof -> freeze -> gate
+
+      - Concrete execution agents assigned: yes
+
+      - Open module questions: none
+
+      - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.python_api
     name: Plan module larva.shell.python_api
     status: pending
