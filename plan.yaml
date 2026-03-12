@@ -1129,7 +1129,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by `meta.review.meta-review-gate`.
 
 
@@ -1244,6 +1244,18 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T13:08:18.202955+00:00'
+    done_at: '2026-03-12T13:12:08.734739+00:00'
+    evidence: "Artifact:\n- PR: none\n- Planner remediation spec: ses_31dd64b33ffexs1Ae53lTKrN9t\n\
+      \nVerification:\n- Run: blocker-remediation-spec -> pass\n- Applied plan mutations:\n\
+      \  - Updated `shell_python_api` phase depends_on to include `app_facade` (B4).\n\
+      \  - Updated `core_validate.core-validate-contract` with canonical interface\
+      \ decision (`ValidationIssue`/`ValidationReport`/`validate_spec`) (B1).\n  -\
+      \ Updated `core_assemble.core-assemble-contract` with canonical contract-source\
+      \ decision and return type PersonaSpec (B2).\n  - Updated `shell_components.shell-components-contract`\
+      \ with explicit component-type ownership under core.assemble (B3).\n  - Rejected\
+      \ `meta.review.final` for mandatory refresh after B1-B5 (B6).\n  - Rejected\
+      \ `meta.review.meta-review-gate` for rerun after retest (B6).\n\nSpec link:\n\
+      - ARCHITECTURE.md / INTERFACES.md / meta.review gate findings"
   - id: meta.review.retest-gate-blockers
     name: Re-review all blockers from meta.review.meta-review-gate
     status: pending
