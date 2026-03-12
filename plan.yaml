@@ -6884,7 +6884,7 @@ phases:
       - B1/B2 regression safety preserved.'
 - id: core_gate_remediation
   name: Core gate remediation
-  status: pending
+  status: in_progress
   depends_on:
   - core_spec_exec
   - core_normalize_exec
@@ -6894,7 +6894,7 @@ phases:
   steps:
   - id: fix-core-gate-blockers-b1-b5
     name: Fix core gate blockers B1-B5
-    status: pending
+    status: claimed
     description: "Fix ALL blockers found by core gate review across `core_spec.core-spec-gate`,\
       \ `core_normalize.core-normalize-gate`, `core_validate.core-validate-gate`,\
       \ and `core_assemble.core-assemble-gate`.\n\nstep_type: implementation\nprior_loop:\n\
@@ -6977,6 +6977,8 @@ phases:
       residual broad exception/type workaround remains where this remediation scope
       requires removal'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:19:43.999508+00:00'
   - id: retest-core-gate-blockers-b1-b5
     name: Retest core gate blockers B1-B5
     status: pending
