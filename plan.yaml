@@ -819,7 +819,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.components
     name: Review plan for larva.shell.components
-    status: rejected
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.components` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -841,7 +841,7 @@ phases:
     - meta.review.assemble
     agent: software-architect
     claimed_by: software-architect
-    claimed_at: '2026-03-12T15:04:31.874940+00:00'
+    claimed_at: '2026-03-12T16:00:26.581983+00:00'
     done_at: '2026-03-12T15:07:51.055315+00:00'
     rejection_reason: B3 ownership text corrected in plan; refresh review outcome.
     rejection_history:
