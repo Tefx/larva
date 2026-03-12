@@ -1954,7 +1954,11 @@ phases:
     agent: gate-reviewer
 - id: shell_components
   name: larva.shell.components
-  status: pending
+  status: locked
+  context: Filesystem-backed component loading at the shell boundary; must stay separate
+    from assembly, registry, CLI, and MCP concerns.
+  depends_on:
+  - core_assemble
   steps:
   - id: shell_components.shell-components-contract
     name: shell-components-contract
