@@ -982,7 +982,7 @@ phases:
       - Gaps/Notes: none'
   - id: core_spec.core-spec-tests
     name: core.spec.tests
-    status: pending
+    status: claimed
     description: 'Add contract-focused tests for `larva.core.spec` in `tests/core/test_spec.py`.
 
 
@@ -1033,6 +1033,8 @@ phases:
     depends_on:
     - core_spec.core-spec-contract
     agent: python-executor
+    claimed_by: vectl-orchestrator
+    claimed_at: '2026-03-12T10:43:29.292629+00:00'
   - id: core_spec.core-spec-implement
     name: core.spec.implement
     status: pending
