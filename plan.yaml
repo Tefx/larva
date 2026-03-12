@@ -960,7 +960,7 @@ phases:
       \ `shell_python_api` depends_on `app_facade` before execution."
   - id: meta.review.cli
     name: Review plan for larva.shell.cli
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.cli` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -981,6 +981,8 @@ phases:
     depends_on:
     - meta.review.python_api
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:47:18.163774+00:00'
   - id: meta.review.mcp
     name: Review plan for larva.shell.mcp
     status: pending
