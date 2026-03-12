@@ -992,7 +992,7 @@ phases:
       \nRequired correction: set shell_cli execution dependency on app_facade."
   - id: meta.review.mcp
     name: Review plan for larva.shell.mcp
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.mcp` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -1013,6 +1013,8 @@ phases:
     depends_on:
     - meta.review.cli
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:49:07.347542+00:00'
   - id: meta.review.final
     name: Run final cross-module plan review
     status: pending
