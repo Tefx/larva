@@ -12,14 +12,30 @@ Acceptance note (ARCHITECTURE.md, registry-read-override-revalidation):
 
 from __future__ import annotations
 
-from typing import Protocol, TypedDict
+from typing import Any, Protocol, TypedDict, cast
 
-from returns.result import Result
+from returns.result import Failure, Result, Success
 
+from larva.core.assemble import AssemblyError
 from larva.core.spec import AssemblyInput, PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore
 from larva.shell.registry import RegistryStore
+
+
+ERROR_NUMERIC_CODES: dict[str, int] = {
+    "PERSONA_NOT_FOUND": 100,
+    "PERSONA_INVALID": 101,
+    "PERSONA_CYCLE": 102,
+    "VARIABLE_UNRESOLVED": 103,
+    "INVALID_PERSONA_ID": 104,
+    "COMPONENT_NOT_FOUND": 105,
+    "COMPONENT_CONFLICT": 106,
+    "REGISTRY_INDEX_READ_FAILED": 107,
+    "REGISTRY_SPEC_READ_FAILED": 108,
+    "REGISTRY_WRITE_FAILED": 109,
+    "REGISTRY_UPDATE_FAILED": 110,
+}
 
 
 class AssembleRequest(TypedDict, total=False):
@@ -121,13 +137,118 @@ class DefaultLarvaFacade(LarvaFacade):
         normalize: NormalizeModule,
         components: ComponentStore,
         registry: RegistryStore,
-    ) -> None: ...
+    ) -> None:
+        self._spec = spec
+        self._assemble = assemble
+        self._validate = validate
+        self._normalize = normalize
+        self._components = components
+        self._registry = registry
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
-        raise NotImplementedError("Contract-only: facade validate flow is not implemented")
+        return self._validate.validate_spec(spec)
 
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
-        raise NotImplementedError("Contract-only: facade assemble flow is not implemented")
+        assemble_input: AssemblyInput = {
+            "id": cast("str", request.get("id", "")),
+            "prompts": [],
+            "toolsets": [],
+            "constraints": [],
+            "variables": request.get("variables", {}),
+            "overrides": request.get("overrides", {}),
+        }
+
+        prompt_names = request.get("prompts", [])
+        for prompt_name in prompt_names:
+            prompt_result = self._components.load_prompt(prompt_name)
+            if isinstance(prompt_result, Failure):
+                return Failure(
+                    self._component_error(prompt_result.failure(), prompt_name, "prompt")
+                )
+            cast("list[dict[str, str]]", assemble_input["prompts"]).append(prompt_result.unwrap())
+
+        toolset_names = request.get("toolsets", [])
+        for toolset_name in toolset_names:
+            toolset_result = self._components.load_toolset(toolset_name)
+            if isinstance(toolset_result, Failure):
+                return Failure(
+                    self._component_error(toolset_result.failure(), toolset_name, "toolset")
+                )
+            cast("list[dict[str, dict[str, str]]]", assemble_input["toolsets"]).append(
+                toolset_result.unwrap()
+            )
+
+        constraint_names = request.get("constraints", [])
+        for constraint_name in constraint_names:
+            constraint_result = self._components.load_constraint(constraint_name)
+            if isinstance(constraint_result, Failure):
+                return Failure(
+                    self._component_error(
+                        constraint_result.failure(), constraint_name, "constraint"
+                    )
+                )
+            cast("list[dict[str, object]]", assemble_input["constraints"]).append(
+                constraint_result.unwrap()
+            )
+
+        model_name = request.get("model")
+        if model_name:
+            model_result = self._components.load_model(model_name)
+            if isinstance(model_result, Failure):
+                return Failure(self._component_error(model_result.failure(), model_name, "model"))
+            assemble_input["model"] = model_result.unwrap()
+
+        try:
+            candidate = self._assemble.assemble_candidate(assemble_input)
+        except AssemblyError as error:
+            return Failure(self._assembly_error(error))
+
+        report = self.validate(candidate)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized = self._normalize.normalize_spec(candidate)
+        return Success(normalized)
+
+    def _component_error(
+        self, error: Exception, component_name: str, component_type: str
+    ) -> LarvaError:
+        message = str(error)
+        details: dict[str, object] = {
+            "component_type": getattr(error, "component_type", component_type),
+            "component_name": getattr(error, "component_name", component_name),
+        }
+        return self._error(
+            code="COMPONENT_NOT_FOUND",
+            message=message,
+            details=details,
+        )
+
+    def _assembly_error(self, error: AssemblyError) -> LarvaError:
+        return self._error(
+            code=error.code,
+            message=error.message,
+            details=dict(error.details),
+        )
+
+    def _validation_error(self, report: ValidationReport) -> LarvaError:
+        errors = report.get("errors", [])
+        first_message = "PersonaSpec validation failed"
+        if errors:
+            first_message = cast("str", errors[0].get("message", first_message))
+        return self._error(
+            code="PERSONA_INVALID",
+            message=first_message,
+            details={"report": report},
+        )
+
+    def _error(self, *, code: str, message: str, details: dict[str, object]) -> LarvaError:
+        return {
+            "code": code,
+            "numeric_code": ERROR_NUMERIC_CODES.get(code, 10),
+            "message": message,
+            "details": details,
+        }
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
         raise NotImplementedError("Contract-only: facade register flow is not implemented")

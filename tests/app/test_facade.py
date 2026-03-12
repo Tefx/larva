@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, cast
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core.assemble import AssemblyError
 from larva.core import spec as spec_module
 from larva.shell.components import ComponentStoreError
 
@@ -97,6 +98,19 @@ class SpyNormalizeModule:
 
 
 @dataclass
+class RaisingAssembleModule:
+    calls: list[str]
+
+    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
+        self.calls.append("assemble")
+        raise AssemblyError(
+            code="COMPONENT_CONFLICT",
+            message="Multiple sources provide different values for 'side_effect_policy'",
+            details={"field": "side_effect_policy"},
+        )
+
+
+@dataclass
 class InMemoryComponentStore:
     prompt_text: str = "Prompt body"
     toolset: dict[str, str] = field(default_factory=lambda: {"shell": "read_only"})
@@ -104,6 +118,10 @@ class InMemoryComponentStore:
         default_factory=lambda: {"side_effect_policy": "read_only"}
     )
     model: dict[str, object] = field(default_factory=lambda: {"model": "gpt-4o-mini"})
+    prompts_by_name: dict[str, str] = field(default_factory=dict)
+    toolsets_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
+    constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
+    models_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
     fail_prompt: bool = False
 
     def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
@@ -115,16 +133,16 @@ class InMemoryComponentStore:
                     component_name=name,
                 )
             )
-        return Success({"text": self.prompt_text})
+        return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        return Success({"tools": self.toolset})
+        return Success({"tools": self.toolsets_by_name.get(name, self.toolset)})
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
-        return Success(self.constraint)
+        return Success(self.constraints_by_name.get(name, self.constraint))
 
     def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
-        return Success(self.model)
+        return Success(self.models_by_name.get(name, self.model))
 
     def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
         return Success({"prompts": [], "toolsets": [], "constraints": [], "models": []})
@@ -243,6 +261,50 @@ class TestFacadeAssemble:
         assert assemble_module.inputs == []
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
+
+    def test_assemble_component_conflict_maps_to_app_error(self) -> None:
+        calls: list[str] = []
+        assemble_module = RaisingAssembleModule(calls)
+        validate_module = SpyValidateModule(_valid_report(), calls)
+        normalize_module = SpyNormalizeModule(calls)
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(),
+        )
+
+        result = facade.assemble(
+            {
+                "id": "persona-a",
+                "constraints": ["strict", "autonomous"],
+            }
+        )
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "COMPONENT_CONFLICT"
+        assert error["numeric_code"] == 106
+        assert error["details"]["field"] == "side_effect_policy"
+        assert validate_module.inputs == []
+        assert normalize_module.inputs == []
+
+    def test_assemble_validation_failure_returns_persona_invalid(self) -> None:
+        calls: list[str] = []
+        facade, _, _, normalize_module = _facade(
+            report=_invalid_report("INVALID_SPEC_VERSION"),
+            calls=calls,
+        )
+
+        result = facade.assemble({"id": "persona-a", "prompts": ["base"]})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["numeric_code"] == 101
+        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_VERSION"
+        assert normalize_module.inputs == []
+        assert calls == ["assemble", "validate"]
 
 
 class TestFacadeRegister:
