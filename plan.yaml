@@ -1539,7 +1539,7 @@ phases:
   steps:
   - id: core_validate.core-validate-contract
     name: core.validate.contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.core.validate` module at `src/larva/core/validate.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define `ValidationIssue`\
@@ -1571,6 +1571,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T10:29:51.958270+00:00'
+    done_at: '2026-03-12T10:29:58.092679+00:00'
+    evidence: '- Contract file: src/larva/core/validate.py
+
+      - Public names: ValidationIssue, ValidationReport, validate_spec
+
+      - Purity check imports: typing.TypeAlias only
+
+      - Commit hash(es): 3ab3c3d
+
+      - Files changed: src/larva/core/validate.py
+
+      - Verification: syntax and import checks passed
+
+      - Spec link: ARCHITECTURE.md module larva.core.validate; INTERFACES.md larva.validate(spec)
+
+      - Gaps/Notes: none'
   - id: core_validate.core-validate-tests
     name: core.validate.tests
     status: pending
