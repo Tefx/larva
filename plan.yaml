@@ -1989,3 +1989,71 @@ phases:
       - Public contract matches the cited `larva.shell.components` and component-library
       documentation'
     agent: python-executor
+  - id: shell_components.shell-components-tests
+    name: shell-components-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.shell.components` in `tests/shell/test_components.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - define focused tests for the filesystem-backed `ComponentStore` contract using
+      temporary component-store fixtures with real `.md` and `.yaml` files
+
+      - prove prompt loads return raw markdown content from `prompts/<name>.md` without
+      wrapper metadata
+
+      - prove toolset, constraint, and model loads parse `toolsets/<name>.yaml`, `constraints/<name>.yaml`,
+      and `models/<name>.yaml` into the corresponding `larva.core.spec` component
+      objects
+
+      - prove `list_components()` returns the documented directory-keyed inventory
+      shape `dict[str, list[str]]` with stable names per component type
+
+      - prove missing components surface a typed shell error through `Result` that
+      can map to the documented `COMPONENT_NOT_FOUND` transport error later
+
+      - keep tests scoped to `larva.shell.components` only, with no facade, registry,
+      CLI, MCP, or assembly assertions
+
+
+      Non-goals:
+
+      - no transport JSON formatting tests
+
+      - no registry persistence tests
+
+      - no override or assembly-rule tests
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.components` / Public Interface
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Component Loading
+      -> Assembly
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: C. Component Library
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`
+
+      - INTERFACES.md :: B. CLI Interface / `larva component list [--json]`
+
+      - INTERFACES.md :: B. CLI Interface / `larva component show <type>/<name> [--json]`
+
+      - README.md :: Component Library'
+    verification: '- Tests exercise real temporary component-store files for all four
+      documented component types
+
+      - Missing-component coverage proves the shell error boundary needed for downstream
+      `COMPONENT_NOT_FOUND` mapping
+
+      - Test scope remains inside `larva.shell.components` and its filesystem fixtures'
+    depends_on:
+    - shell_components.shell-components-contract
+    agent: python-executor
