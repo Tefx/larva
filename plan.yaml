@@ -2471,7 +2471,7 @@ phases:
       only; no filesystem/business implementation.'
   - id: shell_registry.shell-registry-tests
     name: shell-registry-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.shell.registry` in `tests/shell/test_registry.py`.
 
 
@@ -2553,6 +2553,8 @@ phases:
     depends_on:
     - shell_registry.shell-registry-contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:49:33.858973+00:00'
   - id: shell_registry.shell-registry-implement
     name: shell-registry-implement
     status: pending
