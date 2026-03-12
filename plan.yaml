@@ -6257,3 +6257,10 @@ phases:
       - ARCHITECTURE.md larva.core.assemble
 
       - INTERFACES.md larva.assemble + component library'
+- id: core_exec_remediation
+  name: Core execution remediation
+  status: locked
+  depends_on:
+  - core_normalize_exec
+  - core_validate_exec
+  - core_assemble_exec
