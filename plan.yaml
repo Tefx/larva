@@ -6590,7 +6590,7 @@ phases:
       \  - core_exec_remediation.retest-core-verification-blockers-b3-residual"
   - id: core_exec_remediation.fix-core-verification-blockers-b3-residual
     name: Fix residual B3 exception specificity
-    status: claimed
+    status: done
     description: "Fix the residual B3 blocker in `tests/core/test_assemble.py` without\
       \ expanding scope beyond the failed realism assertion gap.\n\nstep_type: implementation\n\
       prior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
@@ -6626,6 +6626,31 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:54:57.550894+00:00'
+    done_at: '2026-03-12T18:00:03.238053+00:00'
+    evidence: 'Artifact:
+
+      - PR: c2110f3e8437d64cefd80e2270dec2db05be027c
+
+      - Files changed: tests/core/test_assemble.py
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_assemble.py -v -> 29 passed
+
+      - Run: MCP invar guard -> passed (errors=0)
+
+
+      Spec link:
+
+      - core_exec_remediation.fix-core-verification-blockers-b3-residual
+
+      - tests/core/test_assemble.py
+
+
+      Closure:
+
+      - B3 residual fixed: yes'
   - id: core_exec_remediation.retest-core-verification-blockers-b3-residual
     name: Retest residual B3 closure with B1/B2 regressions
     status: pending
