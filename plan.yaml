@@ -1967,9 +1967,10 @@ phases:
       - Gaps/Notes: none'
 - id: core_assemble
   name: larva.core.assemble
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
+  evidence: Contract phase completed; remaining execution moved to core_assemble_exec.
   steps:
   - id: core_assemble.core-assemble-contract
     name: core-assemble-contract
@@ -5576,7 +5577,7 @@ phases:
     agent: python-executor
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   - core_assemble
