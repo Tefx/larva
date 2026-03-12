@@ -5345,9 +5345,10 @@ phases:
     agent: python-executor
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: pending
+  status: locked
   depends_on:
   - meta.gate
+  - core_validate
   steps:
   - id: core_validate.core-validate-gate
     name: core.validate.gate
