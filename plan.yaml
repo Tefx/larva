@@ -2556,6 +2556,45 @@ phases:
     depends_on:
     - shell_components.shell-components-verify
     agent: python-senior
+  - id: shell_components.retest-shell-components-verify-blockers-b1-b3
+    name: Retest shell-components verification blockers B1-B3
+    status: pending
+    description: 'Re-test ALL blockers from `shell_components.shell-components-verify`
+      together after the batched remediation.
+
+
+      Scope:
+
+      - B1 cross-type path traversal and cross-type escape rejection
+
+      - B2 real production-path coverage in `src/larva/shell/components.py`
+
+      - B3 removal of test-local store shadowing
+
+      - S1 explicit negative tests for typed `ComponentStoreError`
+
+      - S2 shell boundary discipline (`Result` typed errors only)
+
+
+      The retest must validate the blocker family as a set, not blocker-by-blocker
+      in isolation. Finding residual issues is a successful verification outcome and
+      should identify any remaining blocker precisely.'
+    verification: '- Re-run focused verification for production `FilesystemComponentStore`
+      load/list/error paths with real temp fixtures
+
+      - Confirm cross-type requests and `..` traversal fail with typed `ComponentStoreError`
+
+      - Confirm `tests/shell/test_components.py` no longer defines a local `FilesystemComponentStore`
+      and instead imports production implementation
+
+      - Confirm coverage evidence for `src/larva/shell/components.py` is materially
+      improved beyond the prior 29% and exercises the targeted production paths
+
+      - Confirm shell layer returns typed `Result` errors only, with no transport-shaped
+      JSON error leakage'
+    depends_on:
+    - shell_components.fix-shell-components-verify-blockers-b1-b3
+    agent: integration-verifier
 - id: shell_registry
   name: larva.shell.registry
   status: in_progress
