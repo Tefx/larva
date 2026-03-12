@@ -767,7 +767,7 @@ phases:
       \ downstream remediation planning."
   - id: meta.review.assemble
     name: Review plan for larva.core.assemble
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.core.assemble` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -788,6 +788,8 @@ phases:
     depends_on:
     - meta.review.validate
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:29:11.070834+00:00'
   - id: meta.review.components
     name: Review plan for larva.shell.components
     status: pending
