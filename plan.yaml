@@ -1005,7 +1005,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.cli
     name: Review plan for larva.shell.cli
-    status: done
+    status: rejected
     description: Review the module-level vectl plan for `larva.shell.cli` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -1029,12 +1029,11 @@ phases:
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:47:18.163774+00:00'
     done_at: '2026-03-12T12:48:54.434700+00:00'
-    evidence: "- Reviewed module: larva.shell.cli\n- Decision: rework\n- Boundary\
-      \ issues: none\n- Dependency issues:\n  - Execution dependency incomplete; CLI\
-      \ should depend on `app_facade` (not only `meta.gate`) per transport-after-facade\
-      \ ordering.\n- Evidence gaps:\n  - Clarify-first structure is good, but phase\
-      \ dependency still needs app_facade gating.\n- Agent assignment gaps: none\n\
-      \nRequired correction: set shell_cli execution dependency on app_facade."
+    rejection_reason: Dependency correction applied; refresh review evidence to accept.
+    rejection_history:
+    - reason: Dependency correction applied; refresh review evidence to accept.
+      timestamp: '2026-03-12T16:15:41.117402+00:00'
+      reviewer: vectl-orchestrator
   - id: meta.review.mcp
     name: Review plan for larva.shell.mcp
     status: done
