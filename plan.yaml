@@ -6890,3 +6890,89 @@ phases:
   - core_validate_exec
   - core_assemble_exec
   - core_exec_remediation
+  steps:
+  - id: fix-core-gate-blockers-b1-b5
+    name: Fix core gate blockers B1-B5
+    status: pending
+    description: "Fix ALL blockers found by core gate review across `core_spec.core-spec-gate`,\
+      \ `core_normalize.core-normalize-gate`, `core_validate.core-validate-gate`,\
+      \ and `core_assemble.core-assemble-gate`.\n\nstep_type: implementation\nprior_loop:\n\
+      \  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n  - core_exec_remediation.retest-core-verification-blockers-b1-b3\n\
+      \  - core_exec_remediation.fix-core-verification-blockers-b3-residual\n  - core_exec_remediation.retest-core-verification-blockers-b3-residual\n\
+      remaining_blocker: Gate-level blocker families B1-B4 remain open across guard\
+      \ configuration, package/runtime entry wiring, spec-code error naming alignment,\
+      \ and core-module lint/type issues; B5 requires preserving the earlier B1-B3\
+      \ closures while fixing these systemic gaps.\nwhy_new_loop: The earlier remediation\
+      \ chain closed verification-time B1-B3 failures, but the gate review surfaced\
+      \ a broader cross-module blocker set spanning config, packaging, spec alignment,\
+      \ and typing. Editing the prior loop would be insufficient because downstream\
+      \ shell phases now need one authoritative gate-level closure point.\n\n## Blockers\
+      \ to Fix (ALL of these, not just the first)\n\n### B1: Guard config mismatch\
+      \ in `pyproject.toml`\nLocations:\n- `pyproject.toml`\n- `src/larva/core/`\n\
+      - `src/larva/shell/`\nRemediation:\n- Align `[tool.invar.guard]` paths with\
+      \ the actual `core` / `shell` module layout so guard coverage and path-scoped\
+      \ checks match the repository structure.\n- Preserve the documented core/shell\
+      \ separation and ensure no path pattern accidentally drops active modules from\
+      \ guard coverage.\nGrep hint:\n- `\\[tool\\.invar\\.guard\\]`\n- `src/larva/core`\n\
+      - `src/larva/shell`\nIMPORTANT: Search sibling guard path declarations and any\
+      \ adjacent tool config that references the same module roots; do not patch only\
+      \ one path entry.\n\n### B2: Packaging/runtime wiring gap\nLocations:\n- `pyproject.toml`\n\
+      - `src/larva/cli.py`\n- any script target or package export file that defines\
+      \ the executable entrypoint\nRemediation:\n- Resolve the runtime packaging gap\
+      \ so the declared `larva.cli:main` script target either exists and is importable\
+      \ or the script configuration is adjusted to the implemented target.\n- Keep\
+      \ runtime entry wiring consistent with the documented CLI boundary and avoid\
+      \ introducing duplicate entrypoints.\nGrep hint:\n- `larva\\.cli:main`\n- `def\
+      \ main`\n- `\\[project\\.scripts\\]`\nIMPORTANT: Search all entrypoint declarations\
+      \ and package-export siblings so CLI/runtime wiring is consistent everywhere,\
+      \ not just in one script stanza.\n\n### B3: Spec-code mismatch for unresolved-variable\
+      \ error naming\nLocations:\n- `src/larva/core/validate.py`\n- `src/larva/core/assemble.py`\n\
+      - `tests/core/`\n- authoritative spec docs that define error-code naming\nRemediation:\n\
+      - Align unresolved-variable error code naming across docs, implementation, and\
+      \ tests so one canonical name is used consistently.\n- Update all sibling expectations\
+      \ that reference the same error family; do not leave mixed aliases in tests\
+      \ or contract text.\nGrep hint:\n- `unresolved`\n- `error[_-]?code`\n- `variable`\n\
+      IMPORTANT: Search all sibling error-code references across core docs/tests/modules\
+      \ before claiming completion.\n\n### B4: Lint/type issues in core modules\n\
+      Locations:\n- `src/larva/core/spec.py`\n- `src/larva/core/normalize.py`\n- `src/larva/core/validate.py`\n\
+      - `src/larva/core/assemble.py`\n- `tests/core/` when needed for type-aligned\
+      \ fixtures\nRemediation:\n- Resolve the gate-reported lint and typing issues\
+      \ across the core module set, including assemble typing/contract issues, without\
+      \ weakening contracts or test realism.\n- Keep pure-core boundaries intact;\
+      \ no shell/app/runtime imports added as a shortcut.\nGrep hint:\n- `type: ignore`\n\
+      - `Any`\n- `cast\\(`\nIMPORTANT: Search sibling helper signatures and related\
+      \ test fixtures so contract/type fixes do not leave inconsistent call sites\
+      \ behind.\n\n### B5: Preserve prior B1-B3 remediation from `core_exec_remediation`\n\
+      Locations:\n- `src/larva/core/normalize.py`\n- `src/larva/core/validate.py`\n\
+      - `src/larva/core/assemble.py`\n- `tests/core/test_assemble.py`\nRemediation:\n\
+      - Keep the earlier runtime-contract, committed-state, and assemble-test-realism\
+      \ remediations intact while addressing B1-B4.\n- Treat any regression in those\
+      \ families as a blocker in this loop.\nGrep hint:\n- `@pre`\n- `@post`\n- `pytest\\\
+      .raises\\(Exception\\)`\nIMPORTANT: Re-run sibling searches for the historical\
+      \ B1-B3 anti-patterns before claiming done.\n\n## Completion Criteria\n- ALL\
+      \ B1-B5 families are closed in one batched change set.\n- Sibling search evidence\
+      \ is provided for each blocker family.\n- Guard config paths align with the\
+      \ actual core/shell tree.\n- The package script target resolves to a real importable\
+      \ implementation or is deliberately corrected.\n- Unresolved-variable error\
+      \ naming is canonical across docs, code, and tests.\n- Core lint/type issues\
+      \ are resolved without boundary regressions.\n- Prior B1-B3 remediations remain\
+      \ intact.\n\n## Gate Preview (what the retest gate WILL reject)\n1. Partial\
+      \ config repair that leaves any guard path family misaligned.\n2. CLI packaging\
+      \ fixes that leave `larva.cli:main` unresolved or introduce duplicate/conflicting\
+      \ script targets.\n3. Mixed unresolved-variable error-code names across docs,\
+      \ code, and tests.\n4. Type/lint cleanup that regresses contract purity, assemble\
+      \ typing semantics, or prior B1-B3 closures.\n5. Missing sibling-search evidence\
+      \ for any blocker family."
+    verification: '- Each blocker family B1-B5 is addressed with concrete code/config/test/doc
+      updates and sibling-search evidence
+
+      - Main path: guard/tooling config, packaging entrypoint wiring, canonical unresolved-variable
+      error naming, and core lint/type issues are all fixed together
+
+      - Failure path: targeted regressions prove prior B1-B3 closures remain intact
+      and no mixed error-code alias or unresolved entrypoint remains
+
+      - Proof: no stale guard path mismatch, unresolved `larva.cli:main` target, or
+      residual broad exception/type workaround remains where this remediation scope
+      requires removal'
+    agent: python-senior
