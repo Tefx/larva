@@ -6880,3 +6880,12 @@ phases:
       - B3 residual closed.
 
       - B1/B2 regression safety preserved.'
+- id: core_gate_remediation
+  name: Core gate remediation
+  status: pending
+  depends_on:
+  - core_spec_exec
+  - core_normalize_exec
+  - core_validate_exec
+  - core_assemble_exec
+  - core_exec_remediation
