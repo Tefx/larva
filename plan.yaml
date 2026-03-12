@@ -4952,7 +4952,7 @@ phases:
     agent: integration-verifier
   - id: core_spec.core-spec-verify
     name: core.spec.verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.spec` module from a fresh perspective.
 
@@ -4996,6 +4996,36 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:24:20.699404+00:00'
+    done_at: '2026-03-12T17:38:05.216667+00:00'
+    evidence: 'Artifact:
+
+      - PR: 1b16c6cf2795f7053e37899df9d01e9efb6b42f2
+
+
+      Verification:
+
+      - Run: MCP invar_guard(path=.vectl/worktrees/core_spec.core-spec-verify, changed=true)
+      -> passed (errors=0, warnings=0)
+
+      - Run: python3 import/inspection for larva.core.spec -> PASS
+
+      - Run: literal and field drift assertions -> PASS
+
+      - Run: forbidden-import grep in src/larva/core/spec.py -> no matches
+
+
+      Spec link:
+
+      - ARCHITECTURE.md module larva.core.spec
+
+      - INTERFACES.md PersonaSpec output format
+
+
+      Decision: PASS
+
+      Findings:
+
+      - No contract mismatches, no literal drift, no purity violations.'
   - id: core_spec.core-spec-implement
     name: core.spec.implement
     status: done
