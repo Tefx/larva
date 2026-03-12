@@ -959,7 +959,7 @@ phases:
       - Independent verifier/gate separation is correctly represented in planned agents.'
   - id: meta.review.python_api
     name: Review plan for larva.shell.python_api
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.shell.python_api` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -982,7 +982,22 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T16:13:18.143292+00:00'
-    done_at: '2026-03-12T12:47:12.128474+00:00'
+    done_at: '2026-03-12T16:15:31.127454+00:00'
+    evidence: '- Reviewed module: larva.shell.python_api
+
+      - Decision: accept
+
+      - Boundary issues: none
+
+      - Dependency issues: none
+
+      - Evidence gaps: none
+
+      - Agent assignment gaps: none
+
+
+      Closure note: shell_python_api dependency includes app_facade; sequencing and
+      boundary checks now pass.'
     rejection_reason: Dependency correction applied; refresh review evidence to accept.
     rejection_history:
     - reason: Dependency correction applied; refresh review evidence to accept.
