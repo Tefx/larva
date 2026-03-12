@@ -4696,3 +4696,37 @@ phases:
   status: locked
   depends_on:
   - meta.review
+  steps:
+  - id: meta.gate.meta-gate-complete
+    name: meta.gate.complete
+    status: pending
+    description: 'Gate review: confirm the meta-plan is complete, reviewed, and frozen
+      before any implementation execution begins.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - planning freeze barrier before execution
+
+      - all module plans must be reviewed before workers run
+
+      - prevents planning-while-executing drift
+
+
+      cross_cutting_focus:
+
+      - all meta.review work completed
+
+      - planning consistency accepted
+
+      - execution blocked until this step is done'
+    verification: '- meta.review phase completed successfully
+
+      - planning set frozen and accepted
+
+      - downstream implementation phases remain blocked until this gate opens'
+    agent: gate-reviewer
