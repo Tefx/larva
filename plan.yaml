@@ -202,7 +202,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.normalize
     name: Plan module larva.core.normalize
-    status: pending
+    status: claimed
     description: Produce the detailed vectl implementation plan for `larva.core.normalize`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -228,6 +228,8 @@ phases:
     depends_on:
     - meta.plan.spec
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-03-12T05:47:19.489172+00:00'
   - id: meta.plan.validate
     name: Plan module larva.core.validate
     status: pending
