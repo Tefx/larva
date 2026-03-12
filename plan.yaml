@@ -1180,7 +1180,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by `meta.review.meta-review-gate`.
 
 
@@ -1295,7 +1295,35 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T16:08:53.108764+00:00'
-    done_at: '2026-03-12T13:12:08.734739+00:00'
+    done_at: '2026-03-12T16:09:01.531976+00:00'
+    evidence: 'Artifact:
+
+      - PR: none
+
+      - Remediation commits integrated on main: 2a3caac, 40471be
+
+
+      Verification:
+
+      - Run: plan consistency audit -> updated
+
+      - B1: core.validate canonical names/signature aligned
+
+      - B2: core.assemble contract shape and PersonaSpec return aligned
+
+      - B3: component TypedDict ownership canonicalized to `larva.core.spec` across
+      plan/docs/code
+
+      - B4: shell_python_api phase depends_on includes app_facade
+
+      - B5: shell_cli phase depends_on includes app_facade
+
+      - B6: meta.review.final refreshed post-remediation
+
+
+      Spec link:
+
+      - ARCHITECTURE.md / INTERFACES.md / plan meta.review findings'
     rejection_reason: Refresh evidence text to remove stale B3 ownership statement
       and match canonical core.spec ownership.
     rejection_history:
