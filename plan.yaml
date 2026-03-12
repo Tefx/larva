@@ -1707,3 +1707,74 @@ phases:
     depends_on:
     - core_assemble.core-assemble-contract
     agent: python-executor
+  - id: core_assemble.core-assemble-implement
+    name: core-assemble-implement
+    status: pending
+    description: 'Implement `larva.core.assemble` in `src/larva/core/assemble.py`
+      so it satisfies the documented assembly contract without widening module scope.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - implement the documented `TypedDict` contracts and `assemble_candidate(data:
+      AssemblyInput) -> PersonaSpec`
+
+      - assemble prompt text in declared order, merge compatible toolsets, and apply
+      override precedence exactly as the cited assembly rules require
+
+      - surface deterministic component-conflict failures for contradictory scalar
+      fields and contradictory tool posture merges
+
+      - keep the result as a PersonaSpec candidate for the documented `assemble ->
+      validate -> normalize` downstream order
+
+      - constrain changes to the `larva.core.assemble` module and its focused tests
+      only
+
+
+      Known risks:
+
+      - boundary drift: do not add component discovery, registry writes, facade orchestration,
+      or CLI/MCP argument parsing here
+
+      - candidate/output confusion: `larva.core.assemble` produces a candidate PersonaSpec;
+      normalization owns canonical output fields such as `spec_digest`
+
+      - override semantics drift: explicit overrides must win without inventing undocumented
+      merge rules
+
+      - shared-registry conflict: do not modify `src/larva/__init__.py` or other shared
+      export files
+
+
+      State semantics:
+
+      - prompt concatenation order is preserved exactly from declared component order
+
+      - scalar conflicts remain deterministic and require explicit overrides for resolution
+
+      - backward-compatible behavior is limited to the assembly rules and PersonaSpec
+      candidate shape documented in the cited sources
+
+
+      Out of scope:
+
+      - call-site wiring in `larva.app.facade`
+
+      - normalization implementation or spec-digest computation
+
+      - component loading from shell modules or registry-backed lookup'
+    verification: '- Main path: targeted tests prove prompt concatenation, compatible
+      toolset merge, and override application
+
+      - Failure path: targeted regressions prove contradictory scalars and contradictory
+      tool postures surface deterministic conflicts
+
+      - Proof: no facade, registry, transport, or package-export wiring is added outside
+      `larva.core.assemble` scope'
+    depends_on:
+    - core_assemble.core-assemble-tests
+    agent: python-executor
