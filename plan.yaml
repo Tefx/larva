@@ -2454,7 +2454,7 @@ phases:
       completes.'
   - id: shell_components.shell-components-gate
     name: shell-components-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_components` phase meets the quality bar for proceeding to downstream
       facade and transport work.
@@ -2524,6 +2524,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T19:54:05.103666+00:00'
+    done_at: '2026-03-12T20:04:13.971217+00:00'
+    evidence: "Artifact:\n- Commit: d42c99c (gate worktree head for components gate\
+      \ review)\n\nVerification:\n- Run: `invar_guard(path=.vectl/worktrees/shell_components.shell-components-gate,\
+      \ changed=false)` -> FAIL (`crosshair.status=counterexample_found` in core modules)\n\
+      - Run: `invar_guard(path=.vectl/worktrees/shell_components.shell-components-gate,\
+      \ changed=true)` -> PASS (no changed files)\n- Run: `uv run pytest -q tests/shell/test_components.py`\
+      \ -> 18 passed\n\nSpec link:\n- ARCHITECTURE.md :: `larva.shell.components`\
+      \ module and shell boundary sections\n- INTERFACES.md :: C. Component Library\n\
+      - README.md :: Component Library\n\nfindings:\n  blockers:\n    - Shell module\
+      \ still exposes transport-shaped serialization seam via `ComponentStoreError.to_dict()`\
+      \ (`src/larva/shell/components.py`), violating strict gate criterion for shell-typed-only\
+      \ boundary.\n  should_fix:\n    - Module docstring contract-purity text drifts\
+      \ from actual filesystem-loading implementation.\n    - Maintainability risk:\
+      \ monolithic components module mixes protocol/error/store concerns.\n  suggestions:\n\
+      \    - review missing-root semantics around `_ensure_components_dir()` usage\
+      \ vs `list_components()` behavior.\n    - evaluate symlink escape hardening\
+      \ for resolved component paths.\n  tech_debt: []\n\nGaps/Notes:\n- No code changes\
+      \ in gate worktree.\n- Per batched-fix protocol, planner remediation has been\
+      \ added as one consolidated fix + one retest chain:\n  - `shell_components.fix-shell-components-gate-findings-b1-s2`\n\
+      \  - `shell_components.retest-shell-components-gate-findings-b1-s2`\n- Gate\
+      \ completion records findings and routes closure through the remediation chain."
   - id: shell_components.fix-shell-components-verify-blockers-b1-b3
     name: Fix shell-components verification blockers B1-B3
     status: done
