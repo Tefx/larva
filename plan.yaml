@@ -2404,7 +2404,7 @@ phases:
   steps:
   - id: shell_registry.shell-registry-contract
     name: shell-registry-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.shell.registry` module at `src/larva/shell/registry.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -2439,6 +2439,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T18:39:40.688198+00:00'
+    done_at: '2026-03-12T18:49:24.920101+00:00'
+    evidence: 'Artifact:
+
+      - PR: 0da2ed5 (squash merge on main)
+
+      - Source commit: 633c06811684e0cb1308950a2d7214d1522dcd47
+
+      - Files changed: src/larva/shell/registry.py
+
+
+      Verification:
+
+      - Run: MCP invar_guard(changed=true) in step worktree -> passed (errors=0, warnings=0)
+
+      - Run: commit hook Invar Guard -> passed
+
+
+      Spec link:
+
+      - shell_registry.shell-registry-contract
+
+      - ARCHITECTURE.md shell.registry module
+
+      - INTERFACES.md global registry section
+
+
+      Scope confirmation:
+
+      - Contract-only RegistryStore/RegistryError surface with Result[T,E] and stubs
+      only; no filesystem/business implementation.'
   - id: shell_registry.shell-registry-tests
     name: shell-registry-tests
     status: pending
