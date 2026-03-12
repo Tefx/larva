@@ -963,6 +963,8 @@ phases:
 - id: core_spec
   name: larva.core.spec
   status: in_progress
+  depends_on:
+  - meta.gate
   steps:
   - id: core_spec.core-spec-contract
     name: core.spec.contract
