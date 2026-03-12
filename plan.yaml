@@ -6107,7 +6107,7 @@ phases:
   steps:
   - id: core_assemble.core-assemble-gate
     name: core-assemble-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_assemble` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -6170,6 +6170,8 @@ phases:
     - core_assemble.core-assemble-verify
     - core_assemble.core-assemble-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T18:14:39.582351+00:00'
   - id: core_assemble.core-assemble-freeze
     name: core-assemble-freeze
     status: done
