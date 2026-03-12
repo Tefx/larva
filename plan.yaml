@@ -5171,6 +5171,8 @@ phases:
     verification: '- Freeze evidence records commit, clean working tree, and environment
 
       - No code changes are introduced between freeze capture and gate review'
+    depends_on:
+    - core_normalize.core-normalize-verify
     agent: integration-verifier
   - id: core_normalize.core-normalize-verify
     name: core.normalize.verify
