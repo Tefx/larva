@@ -2318,3 +2318,39 @@ phases:
   status: locked
   depends_on:
   - core_assemble
+  steps:
+  - id: shell_registry.shell-registry-contract
+    name: shell-registry-contract
+    status: pending
+    description: "Create the contract-only `larva.shell.registry` module at `src/larva/shell/registry.py`.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
+      \ shell-side `RegistryStore` protocol with `save(spec: PersonaSpec) -> Result[None,\
+      \ RegistryError]`, `get(id: str) -> Result[PersonaSpec, RegistryError]`, and\
+      \ `list() -> Result[list[PersonaSpec], RegistryError]`\n- define the typed `RegistryError`\
+      \ surface needed for missing persona, invalid id, index/spec read failure, and\
+      \ write/update failure cases without adopting transport JSON formatting\n- define\
+      \ contract-only signatures for a filesystem-backed adapter rooted at the documented\
+      \ `~/.larva/registry/` store with `<id>.json` PersonaSpec files plus `index.json`\n\
+      - encode acceptance-only notes that this module reads and writes canonical PersonaSpec\
+      \ records only; override application, revalidation, and renormalization remain\
+      \ outside this boundary in downstream facade work\n- allow stubs or `NotImplementedError`\
+      \ only; no filesystem I/O, JSON serialization, or register/resolve business\
+      \ logic in this step\n\nNon-goals:\n- no semantic validation or normalization\
+      \ logic\n- no override patching or spec_digest recomputation logic for resolve\
+      \ overrides\n- no CLI, MCP, or Python API transport shaping\n- no package export\
+      \ wiring such as `src/larva/__init__.py`\n\nBoundary citations:\n- ARCHITECTURE.md\
+      \ :: Module: `larva.shell.registry`\n- ARCHITECTURE.md :: 7. Cross-Module Interface\
+      \ Contracts / Registry Read -> Override -> Revalidation\n- ARCHITECTURE.md ::\
+      \ 8. Error Boundary Model / Shell\n- ARCHITECTURE.md :: 11. Implementation Handoff\
+      \ / Suggested Build Order\n- INTERFACES.md :: D. Global Registry / Location\n\
+      - INTERFACES.md :: D. Global Registry / Id Rules\n- README.md :: Key Design\
+      \ Decisions"
+    verification: '- `src/larva/shell/registry.py` exposes only protocol/type/stub-level
+      registry contracts and typed shell errors
+
+      - Contract text keeps override/revalidation work out of `larva.shell.registry`
+
+      - No filesystem I/O, JSON persistence logic, or transport formatting is introduced
+      in the contract step'
+    agent: python-senior
