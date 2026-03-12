@@ -5049,7 +5049,7 @@ phases:
     agent: python-executor
   - id: core_spec.core-spec-tests
     name: core.spec.tests
-    status: claimed
+    status: done
     description: 'Add contract-focused tests for `larva.core.spec` in `tests/core/test_spec.py`.
 
 
@@ -5100,6 +5100,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:06:07.251751+00:00'
+    done_at: '2026-03-12T17:12:12.730669+00:00'
+    evidence: 'Artifact:
+
+      - PR: bf3cf0a
+
+      - Files changed: tests/core/test_spec.py
+
+
+      Verification:
+
+      - Run: .venv/bin/python -m pytest tests/core/test_spec.py -v -> 25 passed
+
+      - Run: MCP invar guard (target test file) -> passed (0 errors, 0 warnings)
+
+
+      Spec link:
+
+      - src/larva/core/spec.py
+
+      - contracts/persona_spec.schema.json'
 - id: core_normalize_exec
   name: larva.core.normalize execution
   status: in_progress
