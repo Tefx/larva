@@ -3272,3 +3272,35 @@ phases:
 - id: shell_python_api
   name: larva.shell.python_api
   status: pending
+  steps:
+  - id: shell_python_api.shell-python-api-contract
+    name: shell-python-api-contract
+    status: pending
+    description: "Create the contract-only `larva.shell.python_api` module at `src/larva/shell/python_api.py`.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\nagent_source: default\n\nScope:\n\
+      - define the thin in-process Python API signatures that mirror the documented\
+      \ public larva use-cases: `validate(spec)`, `assemble(...)`, `register(spec)`,\
+      \ `resolve(id, overrides=None)`, and `list()`\n- define only the minimal contract\
+      \ surface needed for this module to delegate to `larva.app.facade` without introducing\
+      \ independent orchestration logic or transport-specific behavior\n- encode acceptance-only\
+      \ notes that `larva.shell.python_api` is a thin facade adapter inside the shell\
+      \ boundary, while shared top-level package export wiring remains deferred outside\
+      \ this module plan\n- allow only stubs, `...`, or `raise NotImplementedError`;\
+      \ no runnable facade delegation, no filesystem I/O, no registry/component access,\
+      \ and no package export changes in this step\n\nNon-goals:\n- no separate flow\
+      \ logic from `larva.app.facade`\n- no CLI, MCP, JSON-envelope, or command parsing\
+      \ behavior\n- no `src/larva/__init__.py` changes or other shared export-registry\
+      \ wiring\n- no new Python-only semantics that diverge from the facade contract\n\
+      \nBoundary citations:\n- ARCHITECTURE.md :: Module: `larva.shell.python_api`\n\
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin\
+      \ facade export\n- ARCHITECTURE.md :: 11. Implementation Handoff / Suggested\
+      \ Build Order\n- README.md :: Interfaces / Python Library\n- README.md :: Key\
+      \ Design Decisions"
+    verification: '- Contract artifacts are signatures/type defs/stubs only
+
+      - Scope remains inside `src/larva/shell/python_api.py`
+
+      - The contract explicitly documents thin delegation to `larva.app.facade` and
+      defers shared package-export wiring'
+    agent: python-executor
