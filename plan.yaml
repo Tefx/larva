@@ -4662,13 +4662,13 @@ phases:
     agent: gate-reviewer
 - id: meta.gate
   name: Meta Freeze Gate
-  status: in_progress
+  status: done
   depends_on:
   - meta.review
   steps:
   - id: meta.gate.meta-gate-complete
     name: meta.gate.complete
-    status: claimed
+    status: done
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -4711,6 +4711,15 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T16:58:21.056192+00:00'
+    done_at: '2026-03-12T16:59:22.490978+00:00'
+    evidence: "Artifact:\n- PR: 686b291d511bd0433f595e1eaffe86d59acf1aa7 (meta.review\
+      \ gate acceptance)\n- Meta planner review artifact: ses_31d1250efffe6oje57sRqaiw79\n\
+      \nVerification:\n- Run: meta-gate readiness check -> PASS\n  - meta.review.meta-review-gate\
+      \ is done with Decision: accept\n  - meta.gate.meta-gate-future-stage-plan-review\
+      \ is done\n  - future-stage assignment/splitting review applied and DAG remains\
+      \ executable\n\nSpec link:\n- plan.yaml: meta.review.meta-review-gate\n- plan.yaml:\
+      \ meta.gate.meta-gate-future-stage-plan-review\n- plan.yaml: meta.gate.meta-gate-complete\n\
+      \nDecision: accept\nFindings:\n- Meta planning is frozen and execution can proceed."
   - id: meta.gate.meta-gate-future-stage-plan-review
     name: meta.gate.future-stage-plan-review
     status: done
@@ -4804,7 +4813,7 @@ phases:
       - planner remediation summary from ses_31d1250efffe6oje57sRqaiw79'
 - id: core_spec_exec
   name: larva.core.spec execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   steps:
@@ -5075,7 +5084,7 @@ phases:
     agent: python-executor
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   steps:
@@ -5312,7 +5321,7 @@ phases:
     agent: python-executor
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   steps:
@@ -5528,7 +5537,7 @@ phases:
     agent: python-executor
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   steps:
