@@ -5726,7 +5726,7 @@ phases:
     agent: integration-verifier
   - id: core_validate.core-validate-verify
     name: core.validate.verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.validate` module from a fresh perspective.
 
@@ -5765,6 +5765,49 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:28:18.006909+00:00'
+    done_at: '2026-03-12T17:38:31.083815+00:00'
+    evidence: 'Artifact:
+
+      - PR: 1b16c6c
+
+
+      Verification:
+
+      - Run: MCP invar_guard(path=.vectl/worktrees/core_validate.core-validate-verify,
+      changed=false, strict=true, coverage=true) -> FAIL due to contract-layer/doctest
+      failure path
+
+      - Run: MCP invar_guard(changed=true, strict=true) -> passed (no changed files)
+
+      - Run: uv run pytest -v tests/core/test_validate.py -> 15 passed
+
+      - Run: direct validate_spec invocation -> FAIL (`AttributeError: ''function''
+      object has no attribute ''check''` before business logic)
+
+
+      Spec link:
+
+      - ARCHITECTURE.md module larva.core.validate
+
+      - INTERFACES.md larva.validate contract
+
+      - src/larva/core/validate.py
+
+
+      Decision: ISSUES_FOUND
+
+      Findings:
+
+      - Runtime contract wiring blocks executable verification path.
+
+      - Step behavior cannot be trusted as runtime-verified until contract-layer issue
+      is fixed.
+
+
+      Follow-up:
+
+      - Included in batched remediation chain: core_exec_remediation.fix-core-verification-blockers-b1-b3
+      -> core_exec_remediation.retest-core-verification-blockers-b1-b3'
   - id: core_validate.core-validate-implement
     name: core.validate.implement
     status: done
