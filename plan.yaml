@@ -1318,55 +1318,6 @@ phases:
     depends_on:
     - core_validate.core-validate-verify
     agent: integration-verifier
-  - id: core_validate.core-validate-gate
-    name: core.validate.gate
-    status: pending
-    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
-      `core_validate` phase meets the quality bar for proceeding to downstream facade
-      work.
-
-
-      YOU ARE THE QUALITY GATE. Block progress if validation semantics drift from
-      the docs, evidence is vague, or the module boundary leaked.
-
-
-      step_type: gate
-
-      review_depth: STANDARD
-
-      review_depth_rationale:
-
-      - validation is an externally visible core contract used by facade and transport
-      layers
-
-      - the phase is narrow and pure-core, so standard depth is sufficient
-
-      - deterministic report shape and representative rule coverage deserve explicit
-      scrutiny
-
-
-      cross_cutting_focus:
-
-      - fidelity to the documented `ValidationIssue` / `ValidationReport` interface
-
-      - core purity: no shell/app/runtime imports
-
-      - evidence quality for deterministic structured issues and warning handling'
-    verification: '- All phase steps completed successfully
-
-      - Evidence is specific, verifiable, and boundary-limited
-
-      - No unresolved blockers remain
-
-      - `larva.core.validate` is ready to unblock downstream facade and transport
-      work'
-    depends_on:
-    - core_validate.core-validate-contract
-    - core_validate.core-validate-tests
-    - core_validate.core-validate-implement
-    - core_validate.core-validate-verify
-    - core_validate.core-validate-freeze
-    agent: gate-reviewer
 - id: core_assemble
   name: larva.core.assemble
   status: in_progress
@@ -4727,3 +4678,47 @@ phases:
   status: locked
   depends_on:
   - meta.gate
+  steps:
+  - id: core_validate.core-validate-gate
+    name: core.validate.gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `core_validate` phase meets the quality bar for proceeding to downstream facade
+      work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if validation semantics drift from
+      the docs, evidence is vague, or the module boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - validation is an externally visible core contract used by facade and transport
+      layers
+
+      - the phase is narrow and pure-core, so standard depth is sufficient
+
+      - deterministic report shape and representative rule coverage deserve explicit
+      scrutiny
+
+
+      cross_cutting_focus:
+
+      - fidelity to the documented `ValidationIssue` / `ValidationReport` interface
+
+      - core purity: no shell/app/runtime imports
+
+      - evidence quality for deterministic structured issues and warning handling'
+    verification: '- All phase steps completed successfully
+
+      - Evidence is specific, verifiable, and boundary-limited
+
+      - No unresolved blockers remain
+
+      - `larva.core.validate` is ready to unblock downstream facade and transport
+      work'
+    agent: gate-reviewer
