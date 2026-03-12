@@ -4242,3 +4242,61 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-contract
     agent: python-executor
+  - id: shell_mcp.shell-mcp-implement
+    name: shell-mcp-implement
+    status: pending
+    description: "Implement `larva.shell.mcp` in `src/larva/shell/mcp.py` as the MCP\
+      \ transport adapter for the documented tool set and nothing more.\n\nstep_type:\
+      \ implementation\nagent_source: default\ntags:\n  - integration\n\nScope:\n\
+      - implement the five documented MCP tools so they delegate to `larva.app.facade`:\
+      \ `larva.validate(spec)`, `larva.assemble(components)`, `larva.resolve(id, overrides?)`,\
+      \ `larva.register(spec)`, and `larva.list()`\n- implement MCP-side request parsing,\
+      \ result shaping, and error-envelope translation strictly to the documented\
+      \ interface without creating a second business-logic layer\n- keep changes constrained\
+      \ to `src/larva/shell/mcp.py` and `tests/shell/test_mcp.py` only\n\nFailure-mode\
+      \ checklist:\n- relative vs absolute path behavior: this module must not invent\
+      \ CLI-style path semantics or file lookups; MCP inputs are structured tool parameters\
+      \ only\n- missing-file fallback behavior: absent personas/components or other\
+      \ downstream not-found cases must surface as documented MCP errors instead of\
+      \ empty success payloads or transport-local fallbacks\n- explicit clear / null\
+      \ overwrite semantics: `resolve(id, overrides?)` and `assemble(components)`\
+      \ must preserve explicit null, false, zero, and empty-string values passed through\
+      \ MCP parameters rather than dropping them during adapter normalization\n- stale-definition\
+      \ vs new-state precedence: precedence, revalidation, and digest recomputation\
+      \ stay authoritative in `larva.app.facade`; `larva.shell.mcp` must forward requests\
+      \ without re-implementing merge semantics\n- partial-write / CAS-conflict behavior:\
+      \ if downstream register or resolve flows fail mid-operation, the MCP adapter\
+      \ must return the documented error envelope and must not emit partial-success\
+      \ responses\n\nState semantics:\n- this module preserves facade-owned success\
+      \ payloads and canonical error codes; it does not create a second source of\
+      \ truth for PersonaSpec state or registry contents\n- last-writer-wins and override\
+      \ semantics remain downstream; the MCP adapter only preserves parameter fidelity\
+      \ and envelope fidelity\n- backward-compatible behavior for this phase is limited\
+      \ to the documented five MCP tools and their published request/response contracts\n\
+      \nKnown risks:\n- MCP contract drift: do not rename tools, parameters, or response\
+      \ fields beyond what the docs authorize\n- JSON envelope drift: keep error responses\
+      \ aligned with the documented `error.code`, `error.numeric_code`, `error.message`,\
+      \ and optional `error.details` structure on every failure path\n- boundary drift:\
+      \ do not add validation, assembly, registry, or component-store business logic\
+      \ inside `larva.shell.mcp`\n- shared-wiring conflict: do not modify shared export,\
+      \ CLI, Python API, or router/entrypoint files outside this module phase\n\n\
+      Out of scope:\n- implementation changes in `larva.app.facade`, `larva.shell.components`,\
+      \ or `larva.shell.registry`\n- CLI text/exit-code behavior\n- Python API behavior\
+      \ or package export wiring\n\nBoundary citations:\n- ARCHITECTURE.md :: Module:\
+      \ `larva.shell.mcp`\n- ARCHITECTURE.md :: 4. Dependency Rules / Allowed\n- ARCHITECTURE.md\
+      \ :: 11. Implementation Handoff / Suggested Build Order\n- INTERFACES.md ::\
+      \ A. MCP Server Interface (primary)\n- INTERFACES.md :: G. Error Codes / Error\
+      \ Response Format (--json / MCP)\n- README.md :: Interfaces / MCP Server (primary)\n\
+      - README.md :: Key Design Decisions"
+    verification: '- Main path: targeted MCP tests prove tool registration/dispatch,
+      downstream delegation, and documented success payload shapes for all five tools
+
+      - Failure path: focused regressions cover malformed parameters, component/persona
+      not-found errors, falsey override preservation, and MCP error-envelope fidelity
+      without partial success
+
+      - Proof: no validation, assembly, registry, or component-store business logic
+      is introduced outside `src/larva/shell/mcp.py`'
+    depends_on:
+    - shell_mcp.shell-mcp-tests
+    agent: python-executor
