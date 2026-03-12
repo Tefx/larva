@@ -2749,3 +2749,48 @@ phases:
   depends_on:
   - shell_components
   - shell_registry
+  steps:
+  - id: app_facade.app-facade-contract
+    name: app-facade-contract
+    status: pending
+    description: "Create the contract-only `larva.app.facade` module at `src/larva/app/facade.py`.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
+      \ `AssembleRequest`, `RegisteredPersona`, `PersonaSummary`, and `LarvaError`\
+      \ typed surfaces for facade use-cases\n- define the `LarvaFacade` protocol plus\
+      \ contract-only signatures/stubs for `validate(spec)`, `assemble(request)`,\
+      \ `register(spec)`, `resolve(id, overrides=None)`, and `list()`\n- define constructor-level\
+      \ dependency injection for the already-planned core modules (`spec`, `assemble`,\
+      \ `validate`, `normalize`) and the shell-side component/registry store interfaces\
+      \ without implementing orchestration logic yet\n- encode acceptance-only notes\
+      \ that override application belongs in `larva.app.facade`, and any override\
+      \ path must re-enter validation and normalization before returning\n- allow\
+      \ only stubs, `...`, or `raise NotImplementedError`; no use-case implementation\
+      \ logic, no filesystem I/O, and no transport formatting\n\nNon-goals:\n- no\
+      \ CLI parsing, MCP protocol handling, or Python API export wiring\n- no component\
+      \ loading or registry persistence implementation details\n- no package-export\
+      \ changes such as `src/larva/__init__.py`\n- no completed validate/assemble/register/resolve/list\
+      \ orchestration bodies in this step\n\nBoundary citations:\n- ARCHITECTURE.md\
+      \ :: Module: `larva.app.facade`\n- ARCHITECTURE.md :: 7. Cross-Module Interface\
+      \ Contracts / Assembly -> Validation -> Normalization\n- ARCHITECTURE.md ::\
+      \ 7. Cross-Module Interface Contracts / Registry Read -> Override -> Revalidation\n\
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App\n- ARCHITECTURE.md :: 10.\
+      \ Final Decisions / Decision 2: `resolve(..., overrides=...)` is part of v1\n\
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order\n- INTERFACES.md\
+      \ :: A. MCP Server Interface / `larva.validate(spec)`\n- INTERFACES.md :: A.\
+      \ MCP Server Interface / `larva.assemble(components)`\n- INTERFACES.md :: A.\
+      \ MCP Server Interface / `larva.resolve(id, overrides?)`\n- INTERFACES.md ::\
+      \ A. MCP Server Interface / `larva.register(spec)`\n- INTERFACES.md :: A. MCP\
+      \ Server Interface / `larva.list()`\n- INTERFACES.md :: G. Error Codes / Error\
+      \ Response Format (--json / MCP)\n- README.md :: Key Design Decisions\n- README.md\
+      \ :: Interfaces / Python Library"
+    verification: '- `src/larva/app/facade.py` exposes only contract/type/stub-level
+      facade surfaces and app-level error types
+
+      - Contract text keeps override, revalidation, and normalization sequencing inside
+      `larva.app.facade` while leaving transport and storage implementation outside
+      the module
+
+      - No CLI/MCP/Python API wiring, filesystem I/O, or completed business logic
+      is introduced in the contract step'
+    agent: python-senior
