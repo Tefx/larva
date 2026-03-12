@@ -1952,3 +1952,6 @@ phases:
     - core_assemble.core-assemble-contract
     - core_assemble.core-assemble-freeze
     agent: gate-reviewer
+- id: shell_components
+  name: larva.shell.components
+  status: pending
