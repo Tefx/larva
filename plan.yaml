@@ -2754,6 +2754,167 @@ phases:
       in this worktree
 
       - no code changes made during retest'
+  - id: shell_components.fix-shell-components-gate-findings-b1-s2
+    name: fix-shell-components-gate-findings-b1-s2
+    status: pending
+    description: 'Fix ALL issues found by `shell_components.shell-components-gate`
+      together in one batched remediation step.
+
+
+      step_type: implementation
+
+      priority: HIGH
+
+      prior_loop:
+
+      - shell_components.fix-shell-components-verify-blockers-b1-b3
+
+      - shell_components.retest-shell-components-verify-blockers-b1-b3
+
+      remaining_blocker: shell boundary transport-shaped serialization leakage plus
+      documentation/maintainability drift in `src/larva/shell/components.py`
+
+      why_new_loop: the prior verification remediation closed loader/test-shadowing
+      issues, but the gate found a different boundary-contract breach and follow-on
+      should_fix debt that cannot be resolved by editing the prior loop evidence alone.
+
+
+      spec_refs:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.components`
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Component Library
+
+
+      touch_paths:
+
+      - src/larva/shell/components.py
+
+      - tests/shell/test_components.py
+
+
+      harness_refs:
+
+      - tests/shell/test_components.py
+
+
+      Fix ALL of these, not just the first blocker.
+
+
+      ## Blockers and should-fix items
+
+
+      ### B1: Shell boundary transport-shaped serialization leakage
+
+      Locations: `src/larva/shell/components.py:49`, `tests/shell/test_components.py:206`
+
+      Remediation: remove or relocate `ComponentStoreError.to_dict()` transport-shaped
+      serialization from the shell boundary module, or otherwise enforce that shell
+      returns typed errors only and transport shaping happens downstream. Adjust tests
+      to validate typed shell errors rather than transport payloads.
+
+      Grep hint: `to_dict\(|\{"error"|numeric_code|ComponentStoreError`
+
+      IMPORTANT: search for sibling helpers, methods, and tests beyond the listed
+      line numbers so no transport-shaped error formatting remains in `src/larva/shell/components.py`
+      or its direct tests.
+
+
+      ### S1: Contract-purity docstring drift
+
+      Locations: `src/larva/shell/components.py:6`, `src/larva/shell/components.py:144`
+
+      Remediation: align module/class docstrings and comments with the actual shell
+      responsibility: real filesystem-backed loading plus typed shell errors, not
+      contract-only or transport logic.
+
+      Grep hint: `Contract purity|ENFORCED|filesystem|file-loading`
+
+      IMPORTANT: search sibling comments/docstrings in the same module so the documentation
+      reflects the real boundary everywhere, not only at the top docstring.
+
+
+      ### S2: Maintainability risk from monolithic module size/mixing concerns
+
+      Locations: `src/larva/shell/components.py`
+
+      Remediation: apply a bounded maintainability improvement within current scope,
+      at minimum improving structure/clarity around protocol, typed errors, and filesystem
+      store responsibilities without expanding into unrelated refactors or new modules
+      unless needed to remove the transport-shaped leak cleanly.
+
+      Grep hint: `class ComponentStore|class FilesystemComponentStore|ComponentStoreError`
+
+      IMPORTANT: search for sibling mixed-responsibility sections so the cleanup addresses
+      the error/store/protocol boundary as a set.
+
+
+      ## Known risks
+
+      - Shell boundary discipline: `larva.shell.components` must return typed shell
+      errors in `Result[T, E]`, not JSON/transport payloads.
+
+      - Bounded remediation only: improve structure enough to remove the leak and
+      clarify responsibilities, but do not widen scope into facade, CLI, MCP, or registry
+      work.
+
+      - Historical pattern in this phase: test assertions can accidentally encode
+      transport behavior too early; search for sibling tests before claiming done.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any remaining `to_dict()` or equivalent transport-shaped error formatter
+      in the shell module.
+
+      2. Tests that still assert on downstream JSON/error payload shape instead of
+      typed shell errors.
+
+      3. Docstrings/comments that still misstate the module as contract-only or omit
+      its filesystem responsibility.
+
+      4. Large cleanup claims with no bounded structural improvement to the mixed
+      protocol/error/store sections.
+
+
+      ## Completion Criteria
+
+      - ALL of B1, S1, and S2 handled together.
+
+      - Sibling search completed for each grep family and evidence names what was
+      checked.
+
+      - Shell module returns typed errors only; any transport serialization is absent
+      from shell scope or explicitly moved downstream.
+
+      - Tests validate typed shell error behavior and updated documentation/structure
+      stays consistent with the actual filesystem-backed responsibility.
+
+
+      Out of scope:
+
+      - facade orchestration
+
+      - CLI/MCP transport implementation
+
+      - registry changes
+
+      - unrelated large-scale refactors'
+    verification: '- Main path: `src/larva/shell/components.py` still loads/list components
+      through the documented filesystem-backed shell adapter
+
+      - Failure path: typed shell errors remain in `Result[T, E]` with no shell-local
+      transport serialization helper left
+
+      - Proof: grep-based sibling search covers B1, S1, and S2 families; tests updated
+      to assert typed shell error behavior only'
+    depends_on:
+    - shell_components.shell-components-gate
+    agent: python-senior
 - id: shell_registry
   name: larva.shell.registry
   status: done
