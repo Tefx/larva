@@ -4906,7 +4906,7 @@ phases:
     agent: gate-reviewer
   - id: core_spec.core-spec-freeze
     name: core.spec.freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.core.spec` snapshot before gate review.
 
 
@@ -4950,6 +4950,8 @@ phases:
     depends_on:
     - core_spec.core-spec-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T18:02:28.957710+00:00'
   - id: core_spec.core-spec-verify
     name: core.spec.verify
     status: done
