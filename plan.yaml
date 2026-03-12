@@ -1037,7 +1037,7 @@ phases:
       fidelity.'
   - id: meta.review.final
     name: Run final cross-module plan review
-    status: claimed
+    status: done
     description: Perform the final overall review of all module-level plans after
       the per-module reviews complete. Confirm the full plan set covers every module,
       preserves the documented dependency graph and layer boundaries, handles cross-module
@@ -1060,7 +1060,28 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T13:14:31.970252+00:00'
-    done_at: '2026-03-12T12:52:09.935235+00:00'
+    done_at: '2026-03-12T13:14:39.492651+00:00'
+    evidence: '- Reviewed modules: core.spec, core.normalize, core.validate, core.assemble,
+      shell.components, shell.registry, app.facade, shell.python_api, shell.cli, shell.mcp
+
+      - Coverage gaps: none
+
+      - Boundary conflicts: none
+
+      - Sequencing conflicts: none
+
+      - Final decision: ready
+
+      - Follow-up actions: none
+
+
+      Closure notes:
+
+      - B1-B5 remediation reflected in updated planning artifacts and dependencies.
+
+      - Cross-module dependency graph now enforces facade-before-transport sequencing.
+
+      - Plan set is coherent for gate retest.'
     rejection_reason: B6 remediation requires refreshed cross-module review after
       blocker fixes B1-B5.
     rejection_history:
