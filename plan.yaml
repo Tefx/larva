@@ -684,7 +684,7 @@ phases:
       - Gaps/Notes: none'
   - id: meta.review.normalize
     name: Review plan for larva.core.normalize
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.core.normalize` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -707,6 +707,30 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T11:16:39.839691+00:00'
+    done_at: '2026-03-12T11:18:21.883402+00:00'
+    evidence: '- Reviewed module: larva.core.normalize
+
+      - Decision: accept
+
+      - Boundary issues: none
+
+      - Dependency issues: none
+
+      - Evidence gaps: none
+
+      - Agent assignment gaps: none
+
+
+      Review notes:
+
+      - Boundary fidelity confirmed against ARCHITECTURE.md module responsibilities/non-responsibilities.
+
+      - Dependency direction valid (`core.normalize -> core.spec`) and cycle-free.
+
+      - Evidence and verification requirements are explicit and sufficient for downstream
+      work.
+
+      - Agent assignment present and concrete.'
   - id: meta.review.validate
     name: Review plan for larva.core.validate
     status: pending
