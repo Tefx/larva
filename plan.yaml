@@ -3361,7 +3361,7 @@ phases:
       \ completion records findings and hands off to remediation chain."
   - id: shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
     name: fix-shell-registry-gate-blockers-b1-b2-s1-s2
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `shell_registry.shell-registry-gate` — ALL
       of these, not just the first.
 
@@ -3609,6 +3609,47 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:41:53.488525+00:00'
+    done_at: '2026-03-12T19:53:49.779709+00:00'
+    evidence: "Commit hash(es):\n- cf04ef9\n- 5779bab\n- 6b85aac\n- squash merged\
+      \ to main as commit a048312\n\nFiles changed:\n- src/larva/shell/registry.py\n\
+      - tests/shell/test_registry.py\n- contracts/errors.yaml\n- INTERFACES.md\n-\
+      \ pyproject.toml\n- uv.lock\n\n## Batched Fix Evidence\n\n**Scope**: B1, B2,\
+      \ S1, S2 together\n\n### Sibling search evidence\n- B1 grep results and remaining\
+      \ matches:\n  - Searched `def get\\(|_read_index|index\\.json|PERSONA_NOT_FOUND`\
+      \ across Python surfaces.\n  - `get()` no longer index-membership-gates retrieval;\
+      \ it now checks `<id>.json` persisted spec path directly.\n- B2 grep results\
+      \ and remaining matches:\n  - Searched `spec_digest|get\\('spec_digest'|digest\
+      \ mismatch|REGISTRY_SPEC_READ_FAILED`.\n  - Save/read/index paths now enforce\
+      \ non-empty digest; remaining matches are expected assertions/docs and explicit\
+      \ mismatch handling.\n- S1 grep results and remaining matches:\n  - Searched\
+      \ `INVALID_PERSONA_ID|REGISTRY_.*FAILED|errors.yaml|Error Codes`.\n  - Runtime\
+      \ code literals, `contracts/errors.yaml`, and `INTERFACES.md` are synchronized\
+      \ for registry codes.\n- S2 tooling scan scope:\n  - `src/larva/shell/registry.py`,\
+      \ `tests/shell/test_registry.py` (plus needed project typing/tooling metadata\
+      \ updates in `pyproject.toml`, `uv.lock`).\n\n### Main-path proof\n- Tests/commands\
+      \ updated for get/save parity:\n  - added regressions for missing index file\
+      \ and missing index entry returning persisted spec success.\n  - added digest\
+      \ invariant regressions on save/get/list paths.\n- Verification command:\n \
+      \ - `uv run pytest -q tests/shell/test_registry.py` -> 16 passed.\n\n### Failure-path\
+      \ proof\n- Stale/missing index fallback:\n  - `FileSystemRegistryStore.get()`\
+      \ retrieves persisted `<id>.json` and does not emit false `PERSONA_NOT_FOUND`\
+      \ solely from stale/missing index metadata.\n- Empty digest rejection / readable-consistency:\n\
+      \  - save path rejects empty/missing digest before writes.\n  - index/spec read\
+      \ paths reject empty digest states with typed registry failure codes.\n  - digest-mismatch\
+      \ path remains explicit and typed.\n\n### Contract parity proof\n- Runtime codes\
+      \ synced with `contracts/errors.yaml` and `INTERFACES.md`:\n  - added/confirmed\
+      \ `INVALID_PERSONA_ID`, `REGISTRY_INDEX_READ_FAILED`, `REGISTRY_SPEC_READ_FAILED`,\
+      \ `REGISTRY_WRITE_FAILED`, `REGISTRY_UPDATE_FAILED` with aligned numeric mappings.\n\
+      \  - updated interface doc range note accordingly.\n\n### Tooling proof\n- `uv\
+      \ run ruff check src/larva/shell/registry.py tests/shell/test_registry.py` ->\
+      \ All checks passed.\n- `uv run mypy --python-executable .venv/bin/python src/larva/shell/registry.py\
+      \ tests/shell/test_registry.py` -> Success: no issues.\n- `invar guard` on changed\
+      \ surface -> passed (0 errors, 0 warnings).\n\nSpec link:\n- ARCHITECTURE.md\
+      \ :: `larva.shell.registry` module and boundary sections\n- INTERFACES.md ::\
+      \ D (Global Registry), G (Error Codes)\n- contracts/errors.yaml :: larva shell\
+      \ error namespace\n\nGaps/Notes:\n- Out-of-scope observation recorded: `list()`\
+      \ remains index-driven for orphan spec enumeration; not part of B1 acceptance\
+      \ targeting false-not-found behavior in `get()`."
   - id: shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2
     name: retest-shell-registry-gate-blockers-b1-b2-s1-s2
     status: pending
