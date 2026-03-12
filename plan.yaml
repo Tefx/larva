@@ -6029,7 +6029,7 @@ phases:
     agent: integration-verifier
   - id: core_assemble.core-assemble-implement
     name: core-assemble-implement
-    status: pending
+    status: claimed
     description: 'Implement `larva.core.assemble` in `src/larva/core/assemble.py`
       so it satisfies the documented assembly contract without widening module scope.
 
@@ -6098,6 +6098,8 @@ phases:
     depends_on:
     - core_assemble.core-assemble-tests
     agent: python-executor
+    claimed_by: agent
+    claimed_at: '2026-03-12T17:22:47.816612+00:00'
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
     status: done
