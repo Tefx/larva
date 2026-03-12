@@ -4689,3 +4689,6 @@ phases:
     - shell_mcp.shell-mcp-seam-proof
     - shell_mcp.shell-mcp-freeze
     agent: gate-reviewer
+- id: meta.gate
+  name: Meta Freeze Gate
+  status: pending
