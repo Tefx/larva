@@ -1542,26 +1542,20 @@ phases:
     name: shell-components-contract
     status: pending
     description: "Create the contract-only `larva.shell.components` module at `src/larva/shell/components.py`.\n\
-      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
-      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
-      \ shell-side `ComponentStore` protocol documented for prompt, toolset, constraint,\
-      \ and model loading plus `list_components`\n- define contract-only signatures\
-      \ for a filesystem-backed adapter rooted at the documented `~/.larva/components/`\
-      \ store, including typed shell error values and `Result[T, E]` returns\n- encode\
-      \ the documented type-directory/file-format mapping: prompts from `prompts/*.md`,\
-      \ toolsets from `toolsets/*.yaml`, constraints from `constraints/*.yaml`, and\
-      \ models from `models/*.yaml`\n- declare that prompt components return raw markdown\
-      \ text while YAML-backed components return parsed `larva.core.spec` component\
-      \ objects in memory\n- allow stubs or `NotImplementedError` only; no filesystem\
-      \ traversal, YAML parsing, or assembly logic in this step\n\nNon-goals:\n- no\
-      \ component assembly or override logic\n- no validation rule ownership\n- no\
-      \ registry reads or writes\n- no CLI/MCP transport formatting or package export\
-      \ wiring such as `src/larva/__init__.py`\n\nBoundary citations:\n- ARCHITECTURE.md\
-      \ :: Module: `larva.shell.components`\n- ARCHITECTURE.md :: 7. Cross-Module\
-      \ Interface Contracts / Component Loading -> Assembly\n- ARCHITECTURE.md ::\
-      \ 8. Error Boundary Model / Shell\n- ARCHITECTURE.md :: 11. Implementation Handoff\
-      \ / Suggested Build Order\n- INTERFACES.md :: C. Component Library\n- README.md\
-      \ :: Component Library"
+      \nCanonical type-ownership decision for planning freeze:\n- Component TypedDicts\
+      \ used by assembly (`PromptComponent`, `ToolsetComponent`, `ConstraintComponent`,\
+      \ `ModelComponent`) are owned by `larva.core.assemble` contract surfaces.\n\
+      - `larva.shell.components` loads external component files and returns in-memory\
+      \ data shaped for core assembly contracts.\n- `larva.core.spec` remains the\
+      \ owner of persona-level domain types (`PersonaSpec`, `ToolPosture`, `SideEffectPolicy`)\
+      \ and is not the owner of assembly component TypedDicts.\n\nstep_type: contract\n\
+      contract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n\
+      \  - interfaces\n  - stubs\n\nScope:\n- define shell-side `ComponentStore` protocol\
+      \ for prompt/toolset/constraint/model loading and listing\n- define typed shell\
+      \ error values and `Result[T,E]` boundaries\n- encode documented type-directory/file-format\
+      \ mapping\n- keep boundaries separate from assembly, registry, and transports\n\
+      \nNon-goals:\n- no component assembly or override logic\n- no registry reads/writes\n\
+      - no CLI/MCP transport formatting"
     verification: '- Contract artifacts are limited to protocol signatures, type definitions,
       error types, and stubs
 
