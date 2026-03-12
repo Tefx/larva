@@ -884,7 +884,7 @@ phases:
       shell error boundaries.'
   - id: meta.review.facade
     name: Review plan for larva.app.facade
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.app.facade` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -905,6 +905,8 @@ phases:
     depends_on:
     - meta.review.registry
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:42:23.148966+00:00'
   - id: meta.review.python_api
     name: Review plan for larva.shell.python_api
     status: pending
