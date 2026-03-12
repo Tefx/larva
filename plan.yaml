@@ -4300,3 +4300,62 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-tests
     agent: python-executor
+  - id: shell_mcp.shell-mcp-verify
+    name: shell-mcp-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.shell.mcp` module from a fresh protocol-facing perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: each documented MCP tool accepts the documented parameters and
+      returns the expected validation, PersonaSpec, register, or list shape
+
+      - Edge cases: explicit null/falsey override forwarding for `resolve` and `assemble`,
+      empty registry list behavior for `larva.list()`, and optional `details` preservation
+      in errors
+
+      - Error scenarios: malformed parameters, component/persona not-found, component
+      conflict, and downstream validation or registry failures preserving documented
+      MCP error codes and envelope structure
+
+      - Boundary discipline: MCP remains a transport adapter over `larva.app.facade`
+      and does not absorb registry, assembly, or validation business logic
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.mcp`
+
+      - ARCHITECTURE.md :: 4. Dependency Rules / Allowed
+
+      - INTERFACES.md :: A. MCP Server Interface (primary)
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / MCP Server (primary)'
+    verification: '- Exercise all five documented MCP tools independently from implementation
+      context
+
+      - Include at least one success path and one failure path showing documented
+      error-envelope fidelity
+
+      - Confirm the module stays inside the MCP transport boundary with no leaked
+      business logic'
+    depends_on:
+    - shell_mcp.shell-mcp-implement
+    agent: integration-verifier
