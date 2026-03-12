@@ -992,7 +992,7 @@ phases:
       \nRequired correction: set shell_cli execution dependency on app_facade."
   - id: meta.review.mcp
     name: Review plan for larva.shell.mcp
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.shell.mcp` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -1015,6 +1015,26 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:49:07.347542+00:00'
+    done_at: '2026-03-12T12:50:18.155989+00:00'
+    evidence: '- Reviewed module: larva.shell.mcp
+
+      - Decision: accept
+
+      - Boundary issues: none
+
+      - Dependency issues: none
+
+      - Evidence gaps: none
+
+      - Agent assignment gaps: none
+
+
+      Notes:
+
+      - Transport-adapter boundary and app_facade dependency are correctly encoded.
+
+      - Verification/gate evidence requirements are sufficiently strict for MCP envelope
+      fidelity.'
   - id: meta.review.final
     name: Run final cross-module plan review
     status: pending
