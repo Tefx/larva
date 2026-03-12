@@ -1177,76 +1177,6 @@ phases:
     depends_on:
     - core_validate.core-validate-contract
     agent: python-executor
-  - id: core_validate.core-validate-implement
-    name: core.validate.implement
-    status: pending
-    description: 'Implement `larva.core.validate` in `src/larva/core/validate.py`
-      so it satisfies the documented validation contract without widening module scope.
-
-
-      step_type: implementation
-
-
-      Scope:
-
-      - implement `validate_spec(spec: PersonaSpec) -> ValidationReport`
-
-      - emit deterministic `ValidationIssue` entries with `code`, `message`, and `details`
-
-      - cover the contract-defined rules for `spec_version`, `side_effect_policy`,
-      and unresolved prompt variables
-
-      - return warning strings only for non-fatal findings; keep transport-layer formatting
-      out of core
-
-      - keep all logic inside `src/larva/core/validate.py` and its focused tests
-
-
-      Known risks:
-
-      - boundary drift: do not add normalization, assembly orchestration, registry
-      access, or CLI/MCP formatting here
-
-      - core purity drift: do not import filesystem, env, path, process, or transport
-      helpers
-
-      - error-shape confusion: core returns structured issues and warning strings;
-      shell/app layers own external JSON/CLI adaptation
-
-      - shared-registry conflict: do not modify `src/larva/__init__.py` or any future
-      export/router file
-
-
-      State semantics:
-
-      - validation is deterministic for the same `PersonaSpec` input
-
-      - report ordering for repeated runs must remain stable enough for reproducible
-      evidence
-
-      - backward-compatible behavior is limited to the documented v1 `PersonaSpec`
-      surface and issue/report schema
-
-
-      Out of scope:
-
-      - call-site wiring in `larva.app.facade`
-
-      - package-level re-exports
-
-      - invented semantic rules not anchored in the cited docs'
-    verification: '- Main path: targeted tests for valid specs and the documented
-      rule failures pass
-
-      - Failure path: focused regression proves unresolved prompt placeholders and
-      invalid enum/version values produce structured issue entries, not transport-formatted
-      strings
-
-      - Proof: implementation stays confined to `src/larva/core/validate.py` / `tests/core/test_validate.py`
-      and adds no shell/app imports'
-    depends_on:
-    - core_validate.core-validate-tests
-    agent: python-executor
 - id: core_assemble
   name: larva.core.assemble
   status: in_progress
@@ -4718,3 +4648,71 @@ phases:
       - Findings explicitly note report-shape fidelity, deterministic output, and
       boundary purity'
     agent: integration-verifier
+  - id: core_validate.core-validate-implement
+    name: core.validate.implement
+    status: pending
+    description: 'Implement `larva.core.validate` in `src/larva/core/validate.py`
+      so it satisfies the documented validation contract without widening module scope.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - implement `validate_spec(spec: PersonaSpec) -> ValidationReport`
+
+      - emit deterministic `ValidationIssue` entries with `code`, `message`, and `details`
+
+      - cover the contract-defined rules for `spec_version`, `side_effect_policy`,
+      and unresolved prompt variables
+
+      - return warning strings only for non-fatal findings; keep transport-layer formatting
+      out of core
+
+      - keep all logic inside `src/larva/core/validate.py` and its focused tests
+
+
+      Known risks:
+
+      - boundary drift: do not add normalization, assembly orchestration, registry
+      access, or CLI/MCP formatting here
+
+      - core purity drift: do not import filesystem, env, path, process, or transport
+      helpers
+
+      - error-shape confusion: core returns structured issues and warning strings;
+      shell/app layers own external JSON/CLI adaptation
+
+      - shared-registry conflict: do not modify `src/larva/__init__.py` or any future
+      export/router file
+
+
+      State semantics:
+
+      - validation is deterministic for the same `PersonaSpec` input
+
+      - report ordering for repeated runs must remain stable enough for reproducible
+      evidence
+
+      - backward-compatible behavior is limited to the documented v1 `PersonaSpec`
+      surface and issue/report schema
+
+
+      Out of scope:
+
+      - call-site wiring in `larva.app.facade`
+
+      - package-level re-exports
+
+      - invented semantic rules not anchored in the cited docs'
+    verification: '- Main path: targeted tests for valid specs and the documented
+      rule failures pass
+
+      - Failure path: focused regression proves unresolved prompt placeholders and
+      invalid enum/version values produce structured issue entries, not transport-formatted
+      strings
+
+      - Proof: implementation stays confined to `src/larva/core/validate.py` / `tests/core/test_validate.py`
+      and adds no shell/app imports'
+    agent: python-executor
