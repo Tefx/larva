@@ -3433,3 +3433,62 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-tests
     agent: python-executor
+  - id: shell_python_api.shell-python-api-verify
+    name: shell-python-api-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.shell.python_api` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: the thin Python API functions invoke the corresponding facade
+      use-cases and return the expected documented shapes for `validate`, `assemble`,
+      `register`, `resolve`, and `list`
+
+      - Edge cases: explicit null/falsey override forwarding for `resolve`, empty-list
+      passthrough for `list`, and argument-name alignment with the documented Python
+      Library usage
+
+      - Error scenarios: facade failures pass through without transport reshaping,
+      extra orchestration, or direct shell-storage access being added in `larva.shell.python_api`
+
+      - Boundary discipline: the module remains a thin in-process adapter and does
+      not modify `src/larva/__init__.py`, CLI behavior, MCP behavior, or storage-layer
+      code
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.python_api`
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - README.md :: Interfaces / Python Library
+
+      - README.md :: Key Design Decisions
+
+      - INTERFACES.md :: A. MCP Server Interface'
+    verification: '- Run independent verification against `src/larva/shell/python_api.py`
+      and `tests/shell/test_python_api.py`
+
+      - Exercise all five documented functions and at least one facade failure path
+
+      - Confirm no shared export wiring or transport-specific behavior was added'
+    depends_on:
+    - shell_python_api.shell-python-api-implement
+    agent: integration-verifier
