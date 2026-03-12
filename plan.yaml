@@ -3903,45 +3903,45 @@ phases:
     - shell_cli.shell-cli-contract
     agent: python-executor
   - id: shell_cli.shell-cli-implement
-    name: shell-cli-implement
+    name: shell-cli-facade-command-implement
     status: pending
-    description: "Implement `larva.shell.cli` in `src/larva/shell/cli.py` as the user-facing\
-      \ CLI transport adapter for the documented command set and nothing more.\n\n\
-      step_type: implementation\nagent_source: default\ntags:\n  - integration\n\n\
-      Scope:\n- implement command parsing, dispatch, stdout/stderr shaping, and exit-code\
-      \ handling for `validate`, `assemble`, `register`, `resolve`, `list`, `component\
-      \ list`, and `component show`\n- delegate domain use-cases to `larva.app.facade`\
-      \ and component-read behavior to the clarified dependency seam from `shell_cli.shell-cli-clarify`,\
-      \ without moving business logic or storage logic into the CLI module\n- implement\
-      \ `--json` success/error output so JSON bodies remain machine-readable and aligned\
-      \ with the documented envelope while human-readable mode stays separate\n- keep\
-      \ changes constrained to `src/larva/shell/cli.py` and `tests/shell/test_cli.py`\
-      \ only\n\nFailure-mode checklist:\n- relative vs absolute path behavior: file-path\
-      \ arguments such as `<spec.json>` and `-o/--output` must preserve shell-level\
-      \ path handling and report missing files without reclassifying them as semantic\
-      \ validation failures\n- missing-file fallback behavior: missing input files\
-      \ or missing component targets must return the documented CLI not-found behavior\
+    description: "Implement the facade-backed command family in `src/larva/shell/cli.py`\
+      \ as the user-facing CLI transport adapter and nothing more.\n\nstep_type: implementation\n\
+      agent_source: default\ntags:\n  - integration\n\nScope:\n- implement command\
+      \ parsing, dispatch, stdout/stderr shaping, and exit-code handling for `validate`,\
+      \ `assemble`, `register`, `resolve`, and `list`\n- delegate all domain use-cases\
+      \ to `larva.app.facade` without moving business logic or storage logic into\
+      \ the CLI module\n- implement `--json` success/error output so JSON bodies remain\
+      \ machine-readable and aligned with the documented envelope while human-readable\
+      \ mode stays separate for these commands\n- leave `component list` and `component\
+      \ show` to a dedicated serialized follow-up step because they use the clarified\
+      \ component-read seam\n- keep changes constrained to `src/larva/shell/cli.py`\
+      \ and `tests/shell/test_cli.py` only\n\nFailure-mode checklist:\n- relative\
+      \ vs absolute path behavior: file-path arguments such as `<spec.json>` and `-o/--output`\
+      \ must preserve shell-level path handling and report missing files without reclassifying\
+      \ them as semantic validation failures\n- missing-file fallback behavior: missing\
+      \ input files or missing personas must return the documented CLI not-found behavior\
       \ instead of silent fallback or empty output\n- explicit clear / null overwrite\
       \ semantics: repeated `--override key=value` and `--var key=value` inputs must\
       \ preserve explicit falsey or empty-string values rather than dropping them\
       \ during parse/dispatch\n- stale-definition vs new-state precedence: CLI flags\
       \ are transport inputs only; precedence and revalidation semantics remain owned\
-      \ by downstream facade/component seams and must not be reinvented in `larva.shell.cli`\n\
-      - partial-write / CAS-conflict behavior: if `assemble -o <output>` or any downstream\
-      \ write path fails, CLI must surface the failure cleanly and must not claim\
-      \ success or emit a partial-success payload\n\nState semantics:\n- last-writer-wins\
-      \ applies only to repeated CLI flag values as explicitly documented by the clarified\
-      \ transport contract; deeper merge semantics remain downstream\n- exact JSON\
-      \ envelope keys and documented exit-code families (0/1/2) must be preserved\
-      \ for machine clients\n- backward-compatible behavior is limited to the documented\
-      \ CLI command/flag surface and output shapes in the cited docs\n\nKnown risks:\n\
-      - JSON/text mode confusion: verify both output modes for every command family;\
-      \ do not let human-readable formatting or ANSI escapes leak into `--json` output\n\
-      - boundary drift: do not add validation, assembly, registry, or component-loading\
-      \ business logic inside `larva.shell.cli`\n- command-surface drift: do not invent\
-      \ undocumented flags, aliases, or subcommands\n- shared-registry conflict: do\
-      \ not modify `src/larva/__init__.py`, shared export files, or downstream router/registry\
-      \ files from this phase\n\nOut of scope:\n- implementation changes in `larva.app.facade`,\
+      \ by `larva.app.facade`\n- partial-write / CAS-conflict behavior: if `assemble\
+      \ -o <output>` or any downstream write path fails, CLI must surface the failure\
+      \ cleanly and must not claim success or emit a partial-success payload\n\nState\
+      \ semantics:\n- last-writer-wins applies only to repeated CLI flag values as\
+      \ explicitly documented by the transport contract; deeper merge semantics remain\
+      \ downstream\n- exact JSON envelope keys and documented exit-code families (0/1/2)\
+      \ must be preserved for machine clients\n- backward-compatible behavior in this\
+      \ step is limited to the facade-backed CLI command/flag surface and output shapes\n\
+      \nKnown risks:\n- JSON/text mode confusion: verify both output modes for every\
+      \ command in this family; do not let human-readable formatting or ANSI escapes\
+      \ leak into `--json` output\n- boundary drift: do not add validation, assembly,\
+      \ registry, or component-loading business logic inside `larva.shell.cli`\n-\
+      \ command-surface drift: do not invent undocumented flags, aliases, or subcommands\n\
+      - shared-registry conflict: do not modify `src/larva/__init__.py`, shared export\
+      \ files, or downstream router/registry files from this phase\n\nOut of scope:\n\
+      - `component list/show` implementation\n- implementation changes in `larva.app.facade`,\
       \ `larva.shell.components`, or `larva.shell.registry`\n- MCP transport behavior\n\
       - Python API export wiring\n\nBoundary citations:\n- ARCHITECTURE.md :: Module:\
       \ `larva.shell.cli`\n- ARCHITECTURE.md :: 8. Error Boundary Model / Shell\n\
@@ -3949,15 +3949,16 @@ phases:
       \ :: B. CLI Interface\n- INTERFACES.md :: G. Error Codes / Error Response Format\
       \ (--json / MCP)\n- README.md :: Interfaces / CLI\n- README.md :: Key Design\
       \ Decisions"
-    verification: '- Main path: targeted CLI tests prove command parsing, downstream
-      delegation, output shaping, and exit codes for the documented command surface
+    verification: '- Main path: targeted CLI tests prove parsing, downstream facade
+      delegation, output shaping, and exit codes for `validate`, `assemble`, `register`,
+      `resolve`, and `list`
 
       - Failure path: focused regressions cover missing files, invalid specs, not-found
-      component/persona lookups, falsey override preservation, and write-failure reporting
-      without false success
+      persona lookups, falsey override preservation, and write-failure reporting without
+      false success
 
-      - Proof: no validation, assembly, registry, or component-loading business logic
-      is introduced outside `src/larva/shell/cli.py`'
+      - Proof: no `component list/show`, validation, assembly, registry, or component-loading
+      business logic is introduced outside `src/larva/shell/cli.py`'
     depends_on:
     - shell_cli.shell-cli-tests
     agent: python-senior
