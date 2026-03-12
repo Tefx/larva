@@ -631,13 +631,13 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
 - id: meta.review
   name: Review
-  status: pending
+  status: in_progress
   depends_on:
   - meta.plan_creation
   steps:
   - id: meta.review.spec
     name: Review plan for larva.core.spec
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.core.spec` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -656,6 +656,8 @@ phases:
 
       - Agent assignment gaps: <none | list>'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T10:30:27.429268+00:00'
   - id: meta.review.normalize
     name: Review plan for larva.core.normalize
     status: pending
