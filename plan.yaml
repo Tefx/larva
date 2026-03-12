@@ -2794,3 +2794,99 @@ phases:
       - No CLI/MCP/Python API wiring, filesystem I/O, or completed business logic
       is introduced in the contract step'
     agent: python-senior
+  - id: app_facade.app-facade-tests
+    name: app-facade-tests
+    status: pending
+    description: 'Add contract-driven tests for `larva.app.facade` in `tests/app/test_facade.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - define focused use-case tests for `validate`, `assemble`, `register`, `resolve`,
+      and `list` using typed in-memory doubles for component-store and registry-store
+      seams while exercising real core contract objects
+
+      - prove facade `assemble()` follows the documented order `assemble -> validate
+      -> normalize -> return` and maps missing components / component conflicts into
+      app-level errors suitable for downstream transports
+
+      - prove `register()` validates before persistence and returns `{id, registered}`
+      on success while surfacing registry save failures as app-level errors
+
+      - prove `resolve()` fetches the canonical PersonaSpec from the registry, applies
+      optional overrides in the facade layer, then revalidates and renormalizes before
+      returning with recomputed `spec_digest`
+
+      - prove `list()` returns facade-owned summaries shaped as `id`, `spec_digest`,
+      and `model`, leaving CLI/MCP/Python API rendering to downstream transports
+
+      - prove `validate()` returns the core validation report unchanged at the facade
+      boundary for transport adapters to render
+
+      - keep tests scoped to `larva.app.facade` only, with no CLI, MCP, Python API,
+      filesystem, or package-export coverage
+
+
+      Non-goals:
+
+      - no shell storage adapter tests
+
+      - no CLI/MCP JSON envelope assertions
+
+      - no `src/larva/__init__.py` export tests
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.app.facade` / Public Interface
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / App
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 2: `resolve(..., overrides=...)`
+      is part of v1
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.validate(spec)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.resolve(id, overrides?)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.register(spec)`
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.list()`
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions
+
+
+      Failure-path expectations:
+
+      - add a focused regression for `resolve()` override application preserving explicit
+      nulls and recomputing `spec_digest` after revalidation/renormalization
+
+      - add a focused regression for registry miss / component miss surfacing app-level
+      errors without leaking raw shell/core internals
+
+      - add a focused regression for validation failure during `register()` or override-based
+      `resolve()` preventing persistence/success responses'
+    verification: '- Tests name and lock the five documented use-cases plus their
+      boundary-local failure paths
+
+      - Test coverage keeps transport rendering and storage implementation outside
+      `tests/app/test_facade.py`
+
+      - Override and summary-shaping expectations are explicit before product code
+      is written'
+    depends_on:
+    - app_facade.app-facade-contract
+    agent: python-senior
