@@ -2188,3 +2188,37 @@ phases:
     depends_on:
     - shell_components.shell-components-implement
     agent: integration-verifier
+  - id: shell_components.shell-components-freeze
+    name: shell-components-freeze
+    status: pending
+    description: 'Freeze the `larva.shell.components` snapshot before gate review.
+
+
+      step_type: verification
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between verification and gate
+
+      - preserve the verified shell-boundary evidence for the phase handoff
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order'
+    verification: '- `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `shell_components.shell-components-gate`
+      completes'
+    depends_on:
+    - shell_components.shell-components-verify
+    agent: integration-verifier
