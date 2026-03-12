@@ -6120,7 +6120,7 @@ phases:
     agent: gate-reviewer
   - id: core_assemble.core-assemble-freeze
     name: core-assemble-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.core.assemble` snapshot before gate review.
 
 
@@ -6156,6 +6156,34 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:03:02.530739+00:00'
+    done_at: '2026-03-12T18:05:14.541167+00:00'
+    evidence: 'Artifact:
+
+      - Worktree: /Users/tefx/Projects/larva/.vectl/worktrees/core_assemble.core-assemble-freeze
+
+      - Commit: 810d956bd3e7cd3708db8e5c9d4db4cecbfe853f
+
+
+      Verification:
+
+      - Run: git status --branch -> clean on vectl/step-core_assemble.core-assemble-freeze
+
+      - Run: git rev-parse HEAD -> 810d956bd3e7cd3708db8e5c9d4db4cecbfe853f
+
+      - Environment declaration captured (UTC 2026-03-12T18:04:11Z)
+
+
+      Spec link:
+
+      - ARCHITECTURE.md assembly->validation->normalization contract
+
+      - core_assemble.core-assemble-freeze
+
+
+      Freeze statement:
+
+      - No code changes are allowed in this worktree until core_assemble.core-assemble-gate
+      completes.'
   - id: core_assemble.core-assemble-verify
     name: core-assemble-verify
     status: done
