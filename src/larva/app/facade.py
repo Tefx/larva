@@ -276,7 +276,28 @@ class DefaultLarvaFacade(LarvaFacade):
         id: str,
         overrides: dict[str, object] | None = None,
     ) -> Result[PersonaSpec, LarvaError]:
-        raise NotImplementedError("Contract-only: facade resolve flow is not implemented")
+        get_result = self._registry.get(id)
+        if isinstance(get_result, Failure):
+            error = get_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        resolved = dict(get_result.unwrap())
+        if overrides is not None:
+            resolved.update(overrides)
+
+        report = self.validate(cast("PersonaSpec", resolved))
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized = self._normalize.normalize_spec(cast("PersonaSpec", resolved))
+        return Success(normalized)
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
         list_result = self._registry.list()
