@@ -6421,7 +6421,7 @@ phases:
       - INTERFACES.md larva.assemble + component library'
 - id: core_exec_remediation
   name: Core execution remediation
-  status: pending
+  status: in_progress
   context: Single batched remediation loop for B1-B3 discovered by the three core
     verification steps.
   depends_on:
@@ -6432,7 +6432,7 @@ phases:
   steps:
   - id: core_exec_remediation.fix-core-verification-blockers-b1-b3
     name: Fix core verification blockers B1-B3
-    status: pending
+    status: claimed
     description: "Fix ALL of these, not just the first, for `core_normalize.core-normalize-verify`,\
       \ `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`.\n\
       \nstep_type: implementation\nprior_loop:\n  - core_normalize.core-normalize-verify\n\
@@ -6492,6 +6492,8 @@ phases:
       - `tests/core/test_assemble.py` asserts concrete outcomes/failure signals and
       contains no broad exception-pass masking pattern for the covered paths'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T17:38:56.673489+00:00'
   - id: core_exec_remediation.retest-core-verification-blockers-b1-b3
     name: Retest core verification blockers B1-B3
     status: pending
