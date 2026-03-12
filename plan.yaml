@@ -4169,6 +4169,75 @@ phases:
     - shell_cli.shell-cli-seam-proof
     - shell_cli.shell-cli-freeze
     agent: gate-reviewer
+  - id: shell_cli.shell-cli-component-tests
+    name: shell-cli-component-tests
+    status: pending
+    description: 'Add contract-driven tests for the component-read subcommands of
+      `larva.shell.cli` in `tests/shell/test_cli.py`.
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Scope:
+
+      - define focused tests for `component list` and `component show`
+
+      - prove CLI argument parsing delegates to the clarified component-read seam
+      without absorbing component-store business logic
+
+      - prove text output, `--json` output, and exit-code mapping stay aligned with
+      the documented contract for successful list/show, missing component targets,
+      and generic downstream failures
+
+      - keep this step scoped to the component-read command family so the acceptance
+      boundary stays separate from facade-backed commands
+
+
+      Non-goals:
+
+      - no `validate`, `assemble`, `register`, `resolve`, or `list` command assertions
+
+      - no component-store implementation tests
+
+      - no MCP or Python API transport tests
+
+
+      Failure-path expectations:
+
+      - add a focused regression for `component show` missing target surfacing the
+      clarified shell error mapping
+
+      - add a focused regression for `component list --json` staying machine-readable
+      with no human-formatting leakage
+
+      - add a focused regression for generic component-read failure preserving the
+      documented error envelope and exit-code family
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.cli`
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: B. CLI Interface
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / CLI'
+    verification: '- Tests cover only `component list/show` and keep the clarified
+      read seam explicit
+
+      - Both text and `--json` output are acceptance-defined for success and missing-target
+      cases
+
+      - Shared CLI harness usage stays serialized after `shell_cli.shell-cli-tests`'
+    depends_on:
+    - shell_cli.shell-cli-tests
+    agent: python-executor
 - id: shell_mcp
   name: larva.shell.mcp
   status: locked
