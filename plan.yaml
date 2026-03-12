@@ -5141,6 +5141,11 @@ phases:
       - No unresolved blockers remain
 
       - `larva.core.normalize` is ready to unblock downstream facade and shell planning'
+    depends_on:
+    - core_normalize.core-normalize-tests
+    - core_normalize.core-normalize-implement
+    - core_normalize.core-normalize-verify
+    - core_normalize.core-normalize-freeze
     agent: gate-reviewer
   - id: core_normalize.core-normalize-freeze
     name: core.normalize.freeze
