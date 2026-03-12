@@ -5353,7 +5353,7 @@ phases:
     claimed_at: '2026-03-12T17:06:18.963116+00:00'
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   - core_validate
@@ -5549,7 +5549,7 @@ phases:
     agent: python-executor
   - id: core_validate.core-validate-tests
     name: core.validate.tests
-    status: pending
+    status: claimed
     description: "Add focused contract-driven tests for `larva.core.validate` in `tests/core/test_validate.py`.\n\
       \nstep_type: test\n\nScope:\n- assert the report shape exposed by `ValidationIssue`\
       \ and `ValidationReport`\n- define contract expectations for representative\
@@ -5579,6 +5579,8 @@ phases:
       - Test assertions stay inside `tests/core/test_validate.py` plus the `larva.core.validate`
       contract'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:06:25.803735+00:00'
 - id: core_assemble_exec
   name: larva.core.assemble execution
   status: pending
