@@ -3089,7 +3089,7 @@ phases:
       No code changes were produced by this verification step.'
   - id: shell_registry.shell-registry-freeze
     name: shell-registry-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.shell.registry` snapshot before gate review.
 
 
@@ -3121,6 +3121,8 @@ phases:
     depends_on:
     - shell_registry.shell-registry-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:23:35.919961+00:00'
   - id: shell_registry.shell-registry-gate
     name: shell-registry-gate
     status: pending
