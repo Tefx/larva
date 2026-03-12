@@ -4253,7 +4253,7 @@ phases:
       \ the new test file in files_checked for this repo configuration."
   - id: app_facade.app-facade-implement
     name: app-facade-implement-validate-assemble
-    status: pending
+    status: claimed
     description: "Implement the `validate()` and `assemble()` facade flows in `src/larva/app/facade.py`\
       \ while keeping app-layer orchestration transport-agnostic.\n\nstep_type: implementation\n\
       tags:\n  - integration\n\nScope:\n- implement the facade dependency-injection\
@@ -4316,6 +4316,8 @@ phases:
     depends_on:
     - app_facade.app-facade-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T20:30:06.881553+00:00'
   - id: app_facade.app-facade-verify
     name: app-facade-verify
     status: pending
