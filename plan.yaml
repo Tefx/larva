@@ -2615,7 +2615,7 @@ phases:
       - ARCHITECTURE.md larva.shell.registry'
   - id: shell_registry.shell-registry-implement
     name: shell-registry-implement
-    status: pending
+    status: claimed
     description: 'Implement `larva.shell.registry` in `src/larva/shell/registry.py`
       so it persists and retrieves canonical PersonaSpec records without widening
       module scope.
@@ -2733,6 +2733,8 @@ phases:
     depends_on:
     - shell_registry.shell-registry-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:01:43.829310+00:00'
   - id: shell_registry.shell-registry-verify
     name: shell-registry-verify
     status: pending
