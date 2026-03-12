@@ -5291,7 +5291,7 @@ phases:
     agent: integration-verifier
   - id: core_normalize.core-normalize-implement
     name: core.normalize.implement
-    status: pending
+    status: claimed
     description: 'Implement `larva.core.normalize` in `src/larva/core/normalize.py`
       so it satisfies the documented canonicalization contract without widening module
       scope.
@@ -5350,6 +5350,8 @@ phases:
     depends_on:
     - core_normalize.core-normalize-tests
     agent: python-executor
+    claimed_by: agent
+    claimed_at: '2026-03-12T17:20:11.490968+00:00'
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
     status: done
