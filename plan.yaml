@@ -2358,7 +2358,7 @@ phases:
     agent: gate-reviewer
 - id: shell_registry
   name: larva.shell.registry
-  status: pending
+  status: in_progress
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -2366,7 +2366,7 @@ phases:
   steps:
   - id: shell_registry.shell-registry-contract
     name: shell-registry-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.shell.registry` module at `src/larva/shell/registry.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -2399,6 +2399,8 @@ phases:
       - No filesystem I/O, JSON persistence logic, or transport formatting is introduced
       in the contract step'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T18:39:40.688198+00:00'
   - id: shell_registry.shell-registry-tests
     name: shell-registry-tests
     status: pending
