@@ -1610,3 +1610,6 @@ phases:
     - core_validate.core-validate-verify
     - core_validate.core-validate-freeze
     agent: gate-reviewer
+- id: core_assemble
+  name: larva.core.assemble
+  status: pending
