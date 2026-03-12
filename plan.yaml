@@ -6976,3 +6976,42 @@ phases:
       residual broad exception/type workaround remains where this remediation scope
       requires removal'
     agent: python-senior
+  - id: retest-core-gate-blockers-b1-b5
+    name: Retest core gate blockers B1-B5
+    status: pending
+    description: "Re-open the blocked core gate path after `core_gate_remediation.fix-core-gate-blockers-b1-b5`\
+      \ with one independent retest gate covering all blocker families.\n\nstep_type:\
+      \ gate\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
+      \  - core_exec_remediation.retest-core-verification-blockers-b1-b3\n  - core_exec_remediation.fix-core-verification-blockers-b3-residual\n\
+      \  - core_exec_remediation.retest-core-verification-blockers-b3-residual\nremaining_blocker:\
+      \ Independent gate-level evidence must show B1-B5 are all closed before shell\
+      \ phases can start.\nwhy_new_loop: Downstream shell execution needs one authoritative\
+      \ reopening point after the batched gate remediation; the prior verification\
+      \ retests do not cover the new gate-level blocker families.\n\nAs an INDEPENDENT\
+      \ REVIEWER (`gate-reviewer`), assess whether the batched remediation closes\
+      \ ALL blocker families B1-B5 across the four core gate findings.\n\nreview_depth:\
+      \ THOROUGH\nreview_depth_rationale:\n- four core gate findings were consolidated\
+      \ into one batched remediation loop\n- blocker families span config, packaging/runtime\
+      \ wiring, spec-code alignment, and typing/contracts\n- downstream shell phases\
+      \ must remain blocked until one independent gate confirms closure\n\ncross_cutting_focus:\n\
+      - guard config path alignment for true core/shell coverage\n- package/runtime\
+      \ script wiring for the CLI execution target\n- canonical unresolved-variable\
+      \ error code naming across docs, code, and tests\n- lint/type/contract correctness\
+      \ in core modules, especially assemble typing surfaces\n- regression safety\
+      \ for prior B1-B3 remediation from `core_exec_remediation`\n\nA successful retest\
+      \ may still report non-blocking suggestions, but any residual blocker in B1-B5\
+      \ keeps downstream shell phases locked."
+    verification: '- Review evidence shows all B1-B5 blocker families are closed,
+      not just a subset
+
+      - Main path: independent evidence confirms aligned guard config, valid package/runtime
+      entry wiring, canonical unresolved-variable error naming, and clean core lint/type
+      results
+
+      - Failure path: independent regression evidence confirms no reintroduction of
+      the earlier core_exec_remediation B1-B3 failures
+
+      - Decision output explicitly states OPEN or BLOCKED for downstream shell phases'
+    depends_on:
+    - fix-core-gate-blockers-b1-b5
+    agent: gate-reviewer
