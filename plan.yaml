@@ -1487,26 +1487,20 @@ phases:
     name: core-assemble-contract
     status: done
     description: "Create the contract-only `larva.core.assemble` module at `src/larva/core/assemble.py`.\n\
-      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
-      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
-      \ assembly-facing `TypedDict` contracts documented for `PromptComponent`, `ToolsetComponent`,\
-      \ `ConstraintComponent`, `ModelComponent`, and `AssemblyInput`\n- define the\
-      \ public contract `assemble_candidate(data: AssemblyInput) -> PersonaSpec`\n\
-      - encode contract-only behavioral notes from the assembly rules: prompts concatenate\
-      \ in declared order, scalar conflicts require explicit overrides, tool conflicts\
-      \ surface deterministically, and output remains a PersonaSpec candidate inside\
-      \ the core boundary\n- keep the module pure and domain-only so `larva.app.facade`\
-      \ can orchestrate `assemble -> validate -> normalize` without I/O, registry,\
-      \ CLI, or MCP concerns\n- allow stubs or `NotImplementedError` only; no runnable\
-      \ assembly logic in this step\n\nNon-goals:\n- no component file discovery\n\
-      - no registry writes\n- no transport parsing or CLI/MCP parameter adaptation\n\
-      - no package export wiring such as `src/larva/__init__.py`\n\nBoundary citations:\n\
-      - ARCHITECTURE.md :: Module: `larva.core.assemble`\n- ARCHITECTURE.md :: 7.\
-      \ Cross-Module Interface Contracts / Assembly -> Validation -> Normalization\n\
-      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order\n- INTERFACES.md\
-      \ :: A. MCP Server Interface / `larva.assemble(components)`\n- INTERFACES.md\
-      \ :: C. Component Library / Assembly Rules\n- INTERFACES.md :: E. PersonaSpec\
-      \ Output Format"
+      \nCanonical contract decision for planning freeze:\n- Treat `ARCHITECTURE.md`\
+      \ as authoritative for core-level in-memory contracts.\n- `AssemblyInput` and\
+      \ component types (`PromptComponent`, `ToolsetComponent`, `ConstraintComponent`,\
+      \ `ModelComponent`) are core contracts for assembly behavior.\n- `assemble_candidate(data:\
+      \ AssemblyInput) -> PersonaSpec` is the canonical return type.\n- Any name-based\
+      \ component references in transport/interface surfaces are facade/shell adaptation\
+      \ concerns and MUST NOT redefine core contract types.\n\nstep_type: contract\n\
+      contract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n\
+      \  - interfaces\n  - stubs\n\nScope:\n- define authoritative assembly-facing\
+      \ TypedDict contracts\n- define public contract `assemble_candidate(data: AssemblyInput)\
+      \ -> PersonaSpec`\n- encode contract-only assembly rules and deterministic conflict\
+      \ semantics\n- keep module pure and domain-only\n\nNon-goals:\n- no component\
+      \ file discovery\n- no registry writes\n- no transport parsing or CLI/MCP parameter\
+      \ adaptation\n- no package export wiring"
     verification: '- Contract artifacts are limited to signatures, TypedDicts, interfaces,
       and stubs
 
