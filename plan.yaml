@@ -5254,7 +5254,7 @@ phases:
     agent: integration-verifier
   - id: core_normalize.core-normalize-verify
     name: core.normalize.verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.normalize` module from a fresh perspective.
 
@@ -5291,6 +5291,8 @@ phases:
     depends_on:
     - core_normalize.core-normalize-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T17:28:09.150098+00:00'
   - id: core_normalize.core-normalize-implement
     name: core.normalize.implement
     status: done
