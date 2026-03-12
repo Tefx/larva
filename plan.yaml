@@ -1492,7 +1492,7 @@ phases:
       - Alignment status: pass across docs+code'
   - id: meta.review.meta-review-fix-validationissue-canonical-schema
     name: meta.review.fix-validationissue-canonical-schema
-    status: claimed
+    status: done
     description: 'Resolve the remaining canonical-schema conflict for ValidationIssue.
 
 
@@ -1524,6 +1524,28 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T15:14:33.761037+00:00'
+    done_at: '2026-03-12T15:19:05.778999+00:00'
+    evidence: "Artifact:\n- Commit: 24a746d\n- Merge commit from worktree: ca54edf\
+      \ (merged from vectl/step-meta.review.meta-review-fix-b1-validationreport-shape)\n\
+      - Files changed: src/larva/core/validate.py, tests/core/test_validate.py, README.md,\
+      \ INTERFACES.md\n\nVerification:\n- Run: invar guard --changed -> PASS (0 errors,\
+      \ 0 warnings)\n\nSchema Alignment Summary:\n- Canonical schema merged from worktree\
+      \ branch to main\n- All artifacts now aligned:\n\n  ARCHITECTURE.md (already\
+      \ aligned):\n  ```\n  class ValidationIssue(TypedDict):\n      code: str\n \
+      \     message: str\n      details: dict[str, object]\n  \n  class ValidationReport(TypedDict):\n\
+      \      valid: bool\n      errors: list[ValidationIssue]\n      warnings: list[str]\n\
+      \  ```\n\n  src/larva/core/validate.py (now aligned):\n  - ValidationIssue:\
+      \ code, message, details ✓\n  - ValidationReport: valid, errors, warnings ✓\n\
+      \  - validate_spec(spec: PersonaSpec) -> ValidationReport ✓\n\n  tests/core/test_validate.py\
+      \ (now aligned):\n  - TestValidationIssueTypedDict: tests code, message, details\
+      \ ✓\n  - TestValidationReportTypedDict: tests valid, errors, warnings ✓\n  -\
+      \ validate_spec return type assertion updated ✓\n\n  INTERFACES.md (now aligned):\n\
+      \  - Shows structured errors with code, message, details ✓\n  - Example JSON\
+      \ demonstrates ValidationIssue shape ✓\n\n  README.md (now aligned):\n  - Updated:\
+      \ larva.validate(spec) -> ValidationReport ✓\n\nOld vs New:\n- OLD: ValidationError(field,\
+      \ message, code), ValidationResult, warnings as ValidationWarning[]\n- NEW:\
+      \ ValidationIssue(code, message, details), ValidationReport, warnings as list[str]\n\
+      \nNo remaining divergence across checked artifacts."
 - id: core_spec
   name: larva.core.spec
   status: in_progress
