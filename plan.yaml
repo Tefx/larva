@@ -3385,3 +3385,51 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-contract
     agent: python-executor
+  - id: shell_python_api.shell-python-api-implement
+    name: shell-python-api-implement
+    status: pending
+    description: "Implement `larva.shell.python_api` in `src/larva/shell/python_api.py`\
+      \ as a thin in-process facade adapter and nothing more.\n\nstep_type: implementation\n\
+      agent_source: default\ntags:\n  - integration\n\nScope:\n- implement the thin\
+      \ Python API functions for the five documented public use-cases so they delegate\
+      \ directly to `larva.app.facade` and preserve facade-owned shapes and semantics\n\
+      - keep Python-facing argument names aligned with the documented Python Library\
+      \ example and the authoritative use-case set (`validate`, `assemble`, `register`,\
+      \ `resolve`, `list`)\n- ensure the module introduces no separate orchestration\
+      \ order, no transport envelopes, and no direct component-store or registry I/O\
+      \ of its own\n- constrain changes to `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`\
+      \ only\n\nKnown risks:\n- thinness drift: do not duplicate orchestration that\
+      \ already belongs in `larva.app.facade`\n- public-surface drift: keep names,\
+      \ arguments, and return shapes aligned with the documented Python Library and\
+      \ facade contracts\n- transport drift: do not add CLI/MCP JSON shaping, command\
+      \ parsing, or transport-specific error formatting here\n- shared-export conflict:\
+      \ do not modify `src/larva/__init__.py` or other shared export files from this\
+      \ phase\n\nState semantics:\n- this module preserves the facade result objects\
+      \ exactly; it does not create a second source of truth for PersonaSpec content\
+      \ or summaries\n- explicit `resolve(..., overrides=...)` values are forwarded\
+      \ intact to the facade layer, where override semantics remain authoritative\n\
+      - backward-compatible behavior for this phase is limited to the documented thin\
+      \ in-process Python use-cases and no more\n\nOut of scope:\n- top-level package\
+      \ export wiring such as `from larva import ...`\n- CLI or MCP command implementation\n\
+      - storage behavior in `larva.shell.components` or `larva.shell.registry`\n-\
+      \ any Python-only behavior that diverges from `larva.app.facade`\n\nBoundary\
+      \ citations:\n- ARCHITECTURE.md :: Module: `larva.shell.python_api`\n- ARCHITECTURE.md\
+      \ :: 10. Final Decisions / Decision 3: Python API is a thin facade export\n\
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order\n- README.md\
+      \ :: Interfaces / Python Library\n- README.md :: Key Design Decisions\n- INTERFACES.md\
+      \ :: A. MCP Server Interface / `larva.validate(spec)`\n- INTERFACES.md :: A.\
+      \ MCP Server Interface / `larva.assemble(components)`\n- INTERFACES.md :: A.\
+      \ MCP Server Interface / `larva.resolve(id, overrides?)`\n- INTERFACES.md ::\
+      \ A. MCP Server Interface / `larva.register(spec)`\n- INTERFACES.md :: A. MCP\
+      \ Server Interface / `larva.list()`"
+    verification: '- Main path: targeted tests for the five Python API wrapper functions
+      pass
+
+      - Failure path: regression covers facade error passthrough and explicit override
+      forwarding without Python-API-specific mutation
+
+      - Proof: no component-store, registry-I/O, CLI, MCP, or shared export wiring
+      remains in scope for this module'
+    depends_on:
+    - shell_python_api.shell-python-api-tests
+    agent: python-executor
