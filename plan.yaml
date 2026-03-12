@@ -1196,6 +1196,7 @@ phases:
     - meta.review.mcp
     - meta.review.final
     - meta.review.retest-gate-blockers
+    - meta.review.meta-review-retest-gate-blockers-b1-family-residual
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T12:52:22.491168+00:00'
