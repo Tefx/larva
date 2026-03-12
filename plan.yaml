@@ -4529,6 +4529,69 @@ phases:
 
       - downstream implementation phases remain blocked until this gate opens'
     agent: gate-reviewer
+  - id: meta.gate.meta-gate-future-stage-plan-review
+    name: meta.gate.future-stage-plan-review
+    status: pending
+    description: 'Review all future non-`meta.*` phases against the updated planner
+      prompt before implementation execution begins.
+
+
+      step_type: planning
+
+
+      Goals:
+
+      - review whether the assigned agent for every future non-`meta.*` phase step
+      is still appropriate under the updated planner prompt
+
+      - review whether any future step needs additional splitting because of complexity,
+      risk, shared-surface conflicts, or insufficient verification
+
+      - preserve the existing execution freeze so no non-meta execution starts until
+      this review is complete
+
+
+      Review scope:
+
+      - all future non-`meta.*` phase families after meta completion, including core
+      execution, shell, app facade, and transport phases
+
+      - agent independence for verification and gate steps
+
+      - implementation routing for Python work under current planner rules
+
+      - whether any future step should be decomposed further due to rework risk, integration
+      realism, hardened acceptance, or shared registry/wiring conflict
+
+
+      Output requirement:
+
+      - produce either (a) an adjustment checklist listing required agent-assignment
+      changes and required step-split changes, or (b) an explicit conclusion that
+      no plan changes are needed
+
+      - the conclusion must name the reviewed future phase families and state whether
+      follow-up plan mutation is required before execution proceeds
+
+
+      Verification:
+
+      - evidence includes a concrete written conclusion, not a vague approval
+
+      - evidence must contain either `assignment changes: <list>` and `step split
+      changes: <list>` or explicit `no changes needed` statements for both categories
+
+      - evidence must confirm all reviewed future non-meta phases remain blocked on
+      meta completion until this review and `meta.gate.complete` finish'
+    verification: '- Review all future non-`meta.*` phases and produce a concrete
+      conclusion
+
+      - Provide either an adjustment checklist (`assignment changes` + `step split
+      changes`) or an explicit `no changes needed` conclusion for both categories
+
+      - Confirm all reviewed future non-meta phases remain blocked on meta completion
+      until this review and `meta.gate.complete` finish'
+    agent: vectl-planner
 - id: core_spec_exec
   name: larva.core.spec execution
   status: locked
