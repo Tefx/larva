@@ -2132,3 +2132,59 @@ phases:
     depends_on:
     - shell_components.shell-components-tests
     agent: python-executor
+  - id: shell_components.shell-components-verify
+    name: shell-components-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.shell.components` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      Test for:
+
+      - Happy path: prompt, toolset, constraint, and model components load from the
+      documented directory/file-format layout into the expected in-memory objects
+
+      - Edge cases: `list_components()` stays stable when some component type directories
+      are empty; prompt content is preserved exactly; YAML-backed loads reject cross-type
+      path mixups
+
+      - Error scenarios: missing components return typed shell errors through `Result`;
+      shell code does not emit transport-shaped JSON errors; no assembly or registry
+      behavior leaks into the module
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.components`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Component Loading
+      -> Assembly
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: C. Component Library
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Component Library'
+    verification: '- Run independent verification against real temporary component-store
+      fixtures, not mocks alone
+
+      - Capture whether shell errors stay typed `Result` values and defer transport
+      formatting to downstream layers
+
+      - Record any boundary leaks into assembly, registry, or transport concerns'
+    depends_on:
+    - shell_components.shell-components-implement
+    agent: integration-verifier
