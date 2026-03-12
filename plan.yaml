@@ -5102,7 +5102,7 @@ phases:
     claimed_at: '2026-03-12T17:06:07.251751+00:00'
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   - core_normalize
@@ -5287,7 +5287,7 @@ phases:
     agent: python-executor
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
-    status: pending
+    status: claimed
     description: 'Add focused contract-driven tests for `larva.core.normalize` in
       `tests/core/test_normalize.py`.
 
@@ -5349,6 +5349,8 @@ phases:
 
       - Test expectations encode contract-first behavior before implementation'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:06:18.963116+00:00'
 - id: core_validate_exec
   name: larva.core.validate execution
   status: pending
