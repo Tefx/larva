@@ -1787,9 +1787,10 @@ phases:
       - B1-B6 all closed; no residual B1 stale text remains.'
 - id: core_spec
   name: larva.core.spec
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
+  evidence: Contract phase completed; remaining execution moved to core_spec_exec.
   steps:
   - id: core_spec.core-spec-contract
     name: core.spec.contract
@@ -4813,7 +4814,7 @@ phases:
       - planner remediation summary from ses_31d1250efffe6oje57sRqaiw79'
 - id: core_spec_exec
   name: larva.core.spec execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   - core_spec
