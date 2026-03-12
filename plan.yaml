@@ -2387,7 +2387,7 @@ phases:
       No code changes were produced by this verification step.'
   - id: shell_components.shell-components-freeze
     name: shell-components-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.shell.components` snapshot before gate review.
 
 
@@ -2422,6 +2422,36 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T19:41:45.083356+00:00'
+    done_at: '2026-03-12T19:53:11.331532+00:00'
+    evidence: 'Artifact:
+
+      - PR: 583cf2715fc5a39fafdec74134c0a44cddbf5c4c
+
+
+      Verification:
+
+      - Run: `git rev-parse HEAD` -> `583cf2715fc5a39fafdec74134c0a44cddbf5c4c`
+
+      - Run: `git status` -> clean working tree on `vectl/step-shell_components.shell-components-freeze`
+
+      - Run: `pwd && git branch --show-current && uname -s && date -u +"%Y-%m-%dT%H:%M:%SZ"`
+      -> isolated freeze worktree path, branch name, Darwin timestamped environment
+      declaration
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: Error Boundary Model / Shell
+
+      - ARCHITECTURE.md :: Implementation Handoff / Suggested Build Order
+
+
+      Gaps/Notes:
+
+      - Read-only freeze audit; no files modified.
+
+      - Explicit freeze declaration recorded: no code changes allowed until `shell_components.shell-components-gate`
+      completes.'
   - id: shell_components.shell-components-gate
     name: shell-components-gate
     status: pending
