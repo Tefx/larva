@@ -4738,3 +4738,8 @@ phases:
 
       - downstream implementation phases remain blocked until this gate opens'
     agent: gate-reviewer
+- id: core_spec_exec
+  name: larva.core.spec execution
+  status: locked
+  depends_on:
+  - meta.gate
