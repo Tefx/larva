@@ -1005,7 +1005,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.cli
     name: Review plan for larva.shell.cli
-    status: rejected
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.cli` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -1027,7 +1027,7 @@ phases:
     - meta.review.python_api
     agent: software-architect
     claimed_by: software-architect
-    claimed_at: '2026-03-12T12:47:18.163774+00:00'
+    claimed_at: '2026-03-12T16:15:49.299113+00:00'
     done_at: '2026-03-12T12:48:54.434700+00:00'
     rejection_reason: Dependency correction applied; refresh review evidence to accept.
     rejection_history:
