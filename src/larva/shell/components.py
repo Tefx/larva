@@ -173,6 +173,56 @@ class FilesystemComponentStore:
             )
         return Success(self.components_dir)
 
+    def _resolve_component_path(
+        self,
+        *,
+        component_type: str,
+        component_name: str,
+        subdirectory: str,
+        extension: str,
+    ) -> Result[Path, ComponentStoreError]:
+        """Resolve a component path while rejecting traversal and cross-type escapes."""
+        if (
+            not component_name
+            or component_name in {".", ".."}
+            or "/" in component_name
+            or "\\" in component_name
+            or ".." in Path(component_name).parts
+        ):
+            return Failure(
+                ComponentStoreError(
+                    f"Invalid {component_type} component name: {component_name}",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+
+        component_dir = self.components_dir / subdirectory
+        target_path = component_dir / f"{component_name}{extension}"
+
+        try:
+            resolved_dir = component_dir.resolve(strict=False)
+            resolved_target = target_path.resolve(strict=False)
+        except Exception as e:
+            return Failure(
+                ComponentStoreError(
+                    f"Failed to resolve {component_type} component path {component_name}: {e}",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+
+        if resolved_target.parent != resolved_dir:
+            return Failure(
+                ComponentStoreError(
+                    f"Invalid {component_type} component path: {component_name}",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+
+        return Success(target_path)
+
     def load_prompt(self, name: str) -> Result[PromptComponent, ComponentStoreError]:
         """Load a prompt component by name.
 
@@ -184,7 +234,16 @@ class FilesystemComponentStore:
             Err(ComponentStoreError) if not found or read error.
         """
         try:
-            prompt_path = self.components_dir / "prompts" / f"{name}.md"
+            path_result = self._resolve_component_path(
+                component_type="prompt",
+                component_name=name,
+                subdirectory="prompts",
+                extension=".md",
+            )
+            if isinstance(path_result, Failure):
+                return path_result
+
+            prompt_path = path_result.unwrap()
             if not prompt_path.exists():
                 return Failure(
                     ComponentStoreError(
@@ -195,8 +254,6 @@ class FilesystemComponentStore:
                 )
             text = prompt_path.read_text(encoding="utf-8")
             return Success(PromptComponent(text=text))
-        except ComponentStoreError:
-            raise
         except Exception as e:
             return Failure(
                 ComponentStoreError(
@@ -219,7 +276,16 @@ class FilesystemComponentStore:
         try:
             import yaml
 
-            toolset_path = self.components_dir / "toolsets" / f"{name}.yaml"
+            path_result = self._resolve_component_path(
+                component_type="toolset",
+                component_name=name,
+                subdirectory="toolsets",
+                extension=".yaml",
+            )
+            if isinstance(path_result, Failure):
+                return path_result
+
+            toolset_path = path_result.unwrap()
             if not toolset_path.exists():
                 return Failure(
                     ComponentStoreError(
@@ -231,8 +297,6 @@ class FilesystemComponentStore:
             with open(toolset_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             return Success(ToolsetComponent(tools=data.get("tools", {})))
-        except ComponentStoreError:
-            raise
         except Exception as e:
             return Failure(
                 ComponentStoreError(
@@ -255,7 +319,16 @@ class FilesystemComponentStore:
         try:
             import yaml
 
-            constraint_path = self.components_dir / "constraints" / f"{name}.yaml"
+            path_result = self._resolve_component_path(
+                component_type="constraint",
+                component_name=name,
+                subdirectory="constraints",
+                extension=".yaml",
+            )
+            if isinstance(path_result, Failure):
+                return path_result
+
+            constraint_path = path_result.unwrap()
             if not constraint_path.exists():
                 return Failure(
                     ComponentStoreError(
@@ -267,8 +340,6 @@ class FilesystemComponentStore:
             with open(constraint_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             return Success(ConstraintComponent(**data))
-        except ComponentStoreError:
-            raise
         except Exception as e:
             return Failure(
                 ComponentStoreError(
@@ -291,7 +362,16 @@ class FilesystemComponentStore:
         try:
             import yaml
 
-            model_path = self.components_dir / "models" / f"{name}.yaml"
+            path_result = self._resolve_component_path(
+                component_type="model",
+                component_name=name,
+                subdirectory="models",
+                extension=".yaml",
+            )
+            if isinstance(path_result, Failure):
+                return path_result
+
+            model_path = path_result.unwrap()
             if not model_path.exists():
                 return Failure(
                     ComponentStoreError(
@@ -303,8 +383,6 @@ class FilesystemComponentStore:
             with open(model_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
             return Success(ModelComponent(**data))
-        except ComponentStoreError:
-            raise
         except Exception as e:
             return Failure(
                 ComponentStoreError(
