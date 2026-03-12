@@ -2800,6 +2800,7 @@ phases:
   status: locked
   depends_on:
   - meta.gate
+  - app_facade
   steps:
   - id: shell_python_api.shell-python-api-contract
     name: shell-python-api-contract
