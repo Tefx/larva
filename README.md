@@ -30,7 +30,7 @@ Part of the [opifex](https://github.com/tefx/opifex) system — four independent
 ### MCP Server (primary)
 
 ```
-larva.validate(spec)          → Ok | ValidationErrors
+larva.validate(spec)          → ValidationReport
 larva.assemble(components)    → PersonaSpec JSON
 larva.resolve(id)             → PersonaSpec JSON (from registry)
 larva.register(spec)          → id
