@@ -2387,7 +2387,7 @@ phases:
       No code changes were produced by this verification step.'
   - id: shell_components.shell-components-freeze
     name: shell-components-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.shell.components` snapshot before gate review.
 
 
@@ -2420,6 +2420,8 @@ phases:
     - shell_components.shell-components-verify
     - shell_components.retest-shell-components-verify-blockers-b1-b3
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:41:45.083356+00:00'
   - id: shell_components.shell-components-gate
     name: shell-components-gate
     status: pending
