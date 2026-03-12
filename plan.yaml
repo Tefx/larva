@@ -2282,7 +2282,7 @@ phases:
       \ Done**: None\n\n**Discovered Siblings (out of scope)**: None"
   - id: shell_components.shell-components-verify
     name: shell-components-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.components` module from a fresh perspective.
 
@@ -2336,6 +2336,8 @@ phases:
     depends_on:
     - shell_components.shell-components-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T19:09:35.582485+00:00'
   - id: shell_components.shell-components-freeze
     name: shell-components-freeze
     status: pending
