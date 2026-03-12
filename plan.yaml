@@ -2057,3 +2057,78 @@ phases:
     depends_on:
     - shell_components.shell-components-contract
     agent: python-executor
+  - id: shell_components.shell-components-implement
+    name: shell-components-implement
+    status: pending
+    description: 'Implement `larva.shell.components` in `src/larva/shell/components.py`
+      so it loads documented component files into typed in-memory objects without
+      widening module scope.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - implement the filesystem-backed `ComponentStore` adapter and typed shell errors
+      using `Result[T, E]`
+
+      - read prompt components from markdown files and return raw prompt text exactly
+      as stored
+
+      - parse toolset, constraint, and model YAML files into the corresponding `larva.core.spec`
+      component objects
+
+      - implement `list_components()` over the documented component directories and
+      return a stable directory-keyed inventory for downstream `component list/show`
+      transports to consume
+
+      - constrain changes to `src/larva/shell/components.py` and `tests/shell/test_components.py`
+      only
+
+
+      Known risks:
+
+      - boundary drift: do not add assembly rules, registry mutation, facade orchestration,
+      or CLI/MCP formatting here
+
+      - path semantics: the adapter must honor the documented `~/.larva/components/`
+      layout and keep directory-to-type mapping exact
+
+      - shell error drift: external read/parse failures must remain typed shell errors
+      carried in `Result`, not transport-shaped JSON payloads
+
+      - shared-registry conflict: do not modify `src/larva/__init__.py` or other shared
+      export files
+
+
+      State semantics:
+
+      - prompt content is preserved exactly as file content
+
+      - YAML-backed component objects preserve the documented field sets for their
+      respective component type
+
+      - backward-compatible behavior is limited to the documented component-store
+      layout and shell `Result[T, E]` boundary
+
+
+      Out of scope:
+
+      - variable injection or component assembly
+
+      - registry read/write behavior
+
+      - CLI or MCP command implementation
+
+      - facade-level orchestration across multiple modules'
+    verification: '- Main path: targeted tests for prompt/toolset/constraint/model
+      loads and `list_components()` pass against real temporary files
+
+      - Failure path: targeted regression covers missing-component lookup returning
+      a typed shell error suitable for downstream `COMPONENT_NOT_FOUND` mapping
+
+      - Proof: no assembly, registry, CLI, or MCP logic is introduced into `src/larva/shell/components.py`'
+    depends_on:
+    - shell_components.shell-components-tests
+    agent: python-executor
