@@ -1067,3 +1067,69 @@ phases:
 
       - The produced contract is ready to drive tests before implementation'
     agent: python-executor
+  - id: core_normalize.core-normalize-tests
+    name: core.normalize.tests
+    status: pending
+    description: 'Add focused contract-driven tests for `larva.core.normalize` in
+      `tests/core/test_normalize.py`.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - prove `normalize_spec` returns canonical PersonaSpec output for already-flat
+      input
+
+      - cover `spec_version` defaulting to `"0.1.0"` when omitted
+
+      - cover `spec_digest` computation from canonical JSON with sorted keys, no whitespace,
+      and exclusion of the `spec_digest` field from the digest input
+
+      - cover canonical stability so semantically equivalent input key order yields
+      the same normalized output and digest
+
+      - cover idempotence expectations for already-normalized input
+
+
+      Non-goals:
+
+      - no validation-module tests
+
+      - no facade, shell, registry, or component tests
+
+      - no production helpers beyond minimal test fixtures/data builders
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.core.normalize` / Public Interface
+
+      - INTERFACES.md :: E. PersonaSpec Output Format
+
+      - INTERFACES.md :: E. PersonaSpec Output Format / Normalization
+
+      - README.md :: Key Design Decisions
+
+
+      Dependency note:
+
+      - this module plan assumes the upstream `larva.core.spec` contract phase completes
+      first because `normalize_spec` consumes `PersonaSpec`
+
+
+      Failure-path expectations:
+
+      - add a focused regression asserting digest recomputation ignores any incoming
+      `spec_digest` value rather than preserving stale digest state'
+    verification: '- Targeted normalization tests exist and name the canonical output
+      rules explicitly
+
+      - Tests stay limited to `tests/core/test_normalize.py` plus the `larva.core.normalize`
+      contract
+
+      - Test expectations encode contract-first behavior before implementation'
+    depends_on:
+    - core_normalize.core-normalize-contract
+    agent: python-executor
