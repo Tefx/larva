@@ -1136,7 +1136,7 @@ phases:
       \  - meta.review.retest-gate-blockers"
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by `meta.review.meta-review-gate`.
 
 
@@ -1249,6 +1249,8 @@ phases:
     depends_on:
     - meta.review.final
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T13:08:18.202955+00:00'
   - id: meta.review.retest-gate-blockers
     name: Re-review all blockers from meta.review.meta-review-gate
     status: pending
