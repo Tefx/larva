@@ -1331,3 +1331,6 @@ phases:
     - core_normalize.core-normalize-verify
     - core_normalize.core-normalize-freeze
     agent: gate-reviewer
+- id: core_validate
+  name: larva.core.validate
+  status: pending
