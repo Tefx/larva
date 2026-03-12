@@ -5707,7 +5707,7 @@ phases:
     agent: gate-reviewer
   - id: core_validate.core-validate-freeze
     name: core.validate.freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.core.validate` snapshot before gate review.
 
 
@@ -5739,6 +5739,32 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:02:50.505101+00:00'
+    done_at: '2026-03-12T18:04:11.607626+00:00'
+    evidence: 'Freeze evidence captured in isolated worktree `/Users/tefx/Projects/larva/.vectl/worktrees/core_validate.core-validate-freeze`.
+
+
+      Command: `git rev-parse HEAD && git status --porcelain=v1 && git status --short
+      --branch && pwd && uname -srm && python3 --version && date -u +"%Y-%m-%dT%H:%M:%SZ"`
+
+
+      Output:
+
+      - HEAD: `810d956bd3e7cd3708db8e5c9d4db4cecbfe853f`
+
+      - `git status --porcelain=v1`: *(no output; clean)*
+
+      - branch/status: `## vectl/step-core_validate.core-validate-freeze`
+
+      - worktree: `/Users/tefx/Projects/larva/.vectl/worktrees/core_validate.core-validate-freeze`
+
+      - platform: `Darwin 25.1.0 arm64`
+
+      - python: `Python 3.14.3`
+
+      - captured_at_utc: `2026-03-12T18:04:02Z`
+
+
+      Freeze assertion: No code changes are allowed until `core.validate.gate` completes.'
   - id: core_validate.core-validate-verify
     name: core.validate.verify
     status: done
