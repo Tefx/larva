@@ -4408,3 +4408,39 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-implement
     agent: integration-verifier
+  - id: shell_mcp.shell-mcp-freeze
+    name: shell-mcp-freeze
+    status: pending
+    description: 'Freeze the `larva.shell.mcp` snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between independent verification and
+      gate review
+
+      - preserve the verified MCP transport evidence for downstream handoff
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - README.md :: Key Design Decisions'
+    verification: '- Record `git rev-parse HEAD`
+
+      - Record clean `git status`
+
+      - Record environment declaration and no-code-changes freeze statement before
+      gate review'
+    depends_on:
+    - shell_mcp.shell-mcp-verify
+    - shell_mcp.shell-mcp-seam-proof
+    agent: integration-verifier
