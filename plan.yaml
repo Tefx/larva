@@ -3578,3 +3578,73 @@ phases:
     - shell_python_api.shell-python-api-verify
     - shell_python_api.shell-python-api-seam-proof
     agent: integration-verifier
+  - id: shell_python_api.shell-python-api-gate
+    name: shell-python-api-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_python_api` phase meets the quality bar for downstream transport and
+      package-surface integration work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if the Python API stops being thin,
+      evidence is vague, or facade/package boundaries leak.
+
+
+      step_type: gate
+
+      agent_source: default
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - `larva.shell.python_api` is intentionally narrow, but it touches a documented
+      public in-process surface
+
+      - the phase carries integration risk at the seam between Python callers and
+      `larva.app.facade`
+
+      - shared top-level package export wiring is deliberately deferred, so boundary
+      discipline must be checked explicitly
+
+
+      cross_cutting_focus:
+
+      - exact thin-adapter behavior with no duplicated orchestration beyond `larva.app.facade`
+
+      - alignment between documented Python Library examples and module-level function
+      signatures
+
+      - evidence that seam-level Python invocation works while `src/larva/__init__.py`
+      remains untouched in this module phase
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.python_api`
+
+      - ARCHITECTURE.md :: 10. Final Decisions / Decision 3: Python API is a thin
+      facade export
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - README.md :: Interfaces / Python Library
+
+      - README.md :: Key Design Decisions
+
+      - INTERFACES.md :: A. MCP Server Interface'
+    verification: '- All phase steps completed successfully
+
+      - Evidence shows thin delegation, not new orchestration
+
+      - Seam-level Python proof is present and specific
+
+      - Shared package export wiring is still deferred outside this module phase'
+    depends_on:
+    - shell_python_api.shell-python-api-contract
+    - shell_python_api.shell-python-api-tests
+    - shell_python_api.shell-python-api-implement
+    - shell_python_api.shell-python-api-verify
+    - shell_python_api.shell-python-api-seam-proof
+    - shell_python_api.shell-python-api-freeze
+    agent: gate-reviewer
