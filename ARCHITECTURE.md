@@ -174,6 +174,30 @@ class PersonaSpec(TypedDict, total=False):
     compaction_prompt: str
     spec_version: Literal["0.1.0"]
     spec_digest: str
+
+class PromptComponent(TypedDict):
+    text: str
+
+class ToolsetComponent(TypedDict):
+    tools: dict[str, ToolPosture]
+
+class ConstraintComponent(TypedDict, total=False):
+    can_spawn: bool | list[str]
+    side_effect_policy: SideEffectPolicy
+    compaction_prompt: str
+
+class ModelComponent(TypedDict, total=False):
+    model: str
+    model_params: dict[str, object]
+
+class AssemblyInput(TypedDict, total=False):
+    id: str
+    prompts: list[PromptComponent]
+    toolsets: list[ToolsetComponent]
+    constraints: list[ConstraintComponent]
+    model: ModelComponent | str
+    overrides: dict[str, object]
+    variables: dict[str, str]
 ```
 
 ---
@@ -242,31 +266,9 @@ PersonaSpec candidate.
 
 ### Public Interface
 
+Component input contracts are owned by `larva.core.spec`.
+
 ```python
-class PromptComponent(TypedDict):
-    text: str
-
-class ToolsetComponent(TypedDict):
-    tools: dict[str, ToolPosture]
-
-class ConstraintComponent(TypedDict, total=False):
-    can_spawn: bool | list[str]
-    side_effect_policy: SideEffectPolicy
-    compaction_prompt: str
-
-class ModelComponent(TypedDict, total=False):
-    model: str
-    model_params: dict[str, object]
-
-class AssemblyInput(TypedDict, total=False):
-    id: str
-    prompts: list[PromptComponent]
-    toolsets: list[ToolsetComponent]
-    constraints: list[ConstraintComponent]
-    model: ModelComponent | str
-    overrides: dict[str, object]
-    variables: dict[str, str]
-
 def assemble_candidate(data: AssemblyInput) -> PersonaSpec: ...
 ```
 

@@ -1,8 +1,8 @@
 """Contract-only assembly module for PersonaSpec construction.
 
-This module defines the assembly-facing TypedDict contracts and the
-`assemble_candidate` function signature. Implementation follows the
-assembly rules documented in INTERFACES.md Section C.
+This module defines the `assemble_candidate` contract over canonical
+in-memory component types from `larva.core.spec`. Implementation follows
+the assembly rules documented in INTERFACES.md Section C.
 
 Behavioral notes (contract-only):
 - Prompts concatenate in declared order with "\\n\\n" separator
@@ -11,78 +11,16 @@ Behavioral notes (contract-only):
 - Output remains a PersonaSpec candidate inside core boundary
 """
 
-from typing import TypedDict
-
 from invar import post
 from invar import pre
 
-
-# Assembly-facing TypedDict contracts
-
-
-class PromptComponent(TypedDict):
-    """Single prompt component contributing to the final prompt field.
-
-    In the assembly input, prompts are identified by name and their
-    content is concatenated in declared order.
-    """
-
-    name: str
-
-
-class ToolsetComponent(TypedDict):
-    """Toolset component defining tool posture mappings.
-
-    Each toolset maps tool_family -> posture (none|read_only|read_write|destructive).
-    Multiple toolsets may be merged only if they don't have contradictory posture values.
-    """
-
-    name: str
-
-
-class ConstraintComponent(TypedDict):
-    """Constraint component defining policy boundaries.
-
-    Contributes: can_spawn, side_effect_policy, compaction_prompt
-    """
-
-    name: str
-
-
-class ModelComponent(TypedDict):
-    """Model component defining model identifier and parameters.
-
-    Contributes: model (string), model_params (object with temperature, top_p, max_tokens)
-    """
-
-    name: str
-
-
-class AssemblyInput(TypedDict, total=False):
-    """Complete input structure for persona assembly.
-
-    Fields:
-        id: Required persona identifier (kebab-case)
-        prompts: List of prompt component names (concatenated in order)
-        toolset: Optional toolset component name
-        constraints: Optional constraint component name
-        model: Optional model component name or literal model identifier
-        overrides: Field overrides (wins over component values)
-        variables: Variable substitution map for prompt text
-    """
-
-    id: str
-    prompts: list[str]
-    toolset: str | None
-    constraints: str | None
-    model: str | None
-    overrides: dict[str, object]
-    variables: dict[str, str]
+from larva.core.spec import AssemblyInput
+from larva.core.spec import PersonaSpec
 
 
 @pre(lambda data: isinstance(data, dict) and "id" in data)
 @post(lambda result: isinstance(result, dict) and "id" in result)
-def assemble_candidate(data: AssemblyInput) -> dict:
+def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
     """Assemble a PersonaSpec candidate from component inputs.
 
     This is a stub - full implementation follows in core_assemble.core-assemble-implement.
@@ -94,19 +32,18 @@ def assemble_candidate(data: AssemblyInput) -> dict:
     - model_params: Deep-merged from model component, overrides can patch keys
 
     Args:
-        data: AssemblyInput containing component references and overrides
+        data: AssemblyInput containing in-memory component values and overrides.
 
     Returns:
-        PersonaSpec candidate dict (not yet normalized/validated)
+        PersonaSpec candidate (not yet normalized/validated)
 
     Raises:
         NotImplementedError: Stub - implementation pending
 
     Examples:
-        >>> assemble_candidate({"id": "test"})  # pragma: no cover
+        >>> assemble_candidate({"id": "test"})  # doctest: +SKIP
         Traceback (most recent call last):
             ...
-        NotImplementedError: assemble_candidate implementation pending core_assemble.core-assemble-implement
     """
     raise NotImplementedError(
         "assemble_candidate implementation pending core_assemble.core-assemble-implement"

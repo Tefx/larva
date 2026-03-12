@@ -99,13 +99,18 @@ Assemble a PersonaSpec from named components.
 | ---- | ---- | -------- | ----------- |
 | `id` | string | yes | Persona id |
 | `prompts` | list[string] | no | Prompt component names (concatenated in order) |
-| `toolset` | string | no | Toolset component name |
-| `constraints` | string | no | Constraint component name |
+| `toolsets` | list[string] | no | Toolset component names |
+| `constraints` | list[string] | no | Constraint component names |
 | `model` | string | no | Model component name |
 | `overrides` | object | no | Field overrides (wins over components) |
 | `variables` | object | no | Variable substitution in prompt text |
 
 **Returns:** Complete PersonaSpec JSON (validated, with spec_digest).
+
+Implementation boundary: shell resolves component names to in-memory
+component objects, then calls `larva.core.assemble.assemble_candidate`
+with `larva.core.spec.AssemblyInput` and continues through
+validate+normalize before returning the final PersonaSpec.
 
 **Error:** `COMPONENT_NOT_FOUND` if a referenced component does not exist.
 `COMPONENT_CONFLICT` if two components set the same scalar field without
@@ -183,8 +188,8 @@ Assemble a PersonaSpec from components.
 | ---- | ---- | ----------- |
 | `--id` | str | Persona id (required) |
 | `--prompt` | str (repeatable) | Prompt component name |
-| `--toolset` | str | Toolset component name |
-| `--constraints` | str | Constraint component name |
+| `--toolset` | str (repeatable) | Toolset component name |
+| `--constraints` | str (repeatable) | Constraint component name |
 | `--model` | str | Model component name or literal model identifier |
 | `--override` | str (repeatable) | Field override: `key=value` |
 | `--var` | str (repeatable) | Variable substitution: `key=value` |
@@ -233,6 +238,13 @@ Components are stored in `~/.larva/components/` organized by type.
 | Toolset | `toolsets/` | `.yaml` | `tools` |
 | Constraint | `constraints/` | `.yaml` | `can_spawn`, `side_effect_policy`, `compaction_prompt` |
 | Model | `models/` | `.yaml` | `model`, `model_params` |
+
+Type ownership is explicit:
+- File-backed component payload semantics are defined in this section.
+- Canonical in-memory component contracts (`PromptComponent`,
+  `ToolsetComponent`, `ConstraintComponent`, `ModelComponent`,
+  `AssemblyInput`) are owned by `larva.core.spec` and consumed by
+  `larva.core.assemble` / `larva.shell.components`.
 
 ### Prompt Component
 

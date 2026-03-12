@@ -76,12 +76,56 @@ class PersonaSpec(TypedDict, total=False):
     spec_digest: str
 
 
+class PromptComponent(TypedDict):
+    """In-memory prompt component content for core assembly."""
+
+    text: str
+
+
+class ToolsetComponent(TypedDict):
+    """In-memory toolset posture mapping for core assembly."""
+
+    tools: dict[str, ToolPosture]
+
+
+class ConstraintComponent(TypedDict, total=False):
+    """In-memory constraint values for core assembly."""
+
+    can_spawn: bool | list[str]
+    side_effect_policy: SideEffectPolicy
+    compaction_prompt: str
+
+
+class ModelComponent(TypedDict, total=False):
+    """In-memory model configuration for core assembly."""
+
+    model: str
+    model_params: dict[str, object]
+
+
+class AssemblyInput(TypedDict, total=False):
+    """Canonical in-memory input shape accepted by core assembly."""
+
+    id: str
+    prompts: list[PromptComponent]
+    toolsets: list[ToolsetComponent]
+    constraints: list[ConstraintComponent]
+    model: ModelComponent | str
+    overrides: dict[str, object]
+    variables: dict[str, str]
+
+
 # -----------------------------------------------------------------------------
 # Public API
 # -----------------------------------------------------------------------------
 
 __all__ = [
+    "AssemblyInput",
+    "ConstraintComponent",
+    "ModelComponent",
     "PersonaSpec",
+    "PromptComponent",
     "SideEffectPolicy",
+    "ToolsetComponent",
     "ToolPosture",
 ]

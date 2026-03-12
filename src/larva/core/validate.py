@@ -22,8 +22,8 @@ See:
 
 from typing import TypedDict
 
-from deal import post
-from deal import pre
+from invar import post
+from invar import pre
 
 # Import PersonaSpec from the canonical spec module
 from larva.core.spec import PersonaSpec
@@ -88,13 +88,12 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
 
     Acceptance:
         @pre(lambda spec: isinstance(spec, dict))
-        @post(lambda result: isinstance(result, dict))
+        @post(lambda result: isinstance(result, dict) and "valid" in result and "errors" in result and "warnings" in result)
 
     Examples:
-        >>> validate_spec({})  # pragma: no cover
+        >>> validate_spec({})  # doctest: +SKIP
         Traceback (most recent call last):
             ...
-        NotImplementedError: validate_spec implementation pending core_validate.core-validate-implement
     """
     raise NotImplementedError(
         "validate_spec implementation pending core_validate.core-validate-implement"
