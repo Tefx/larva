@@ -838,7 +838,7 @@ phases:
       \ corrections recorded before downstream execution."
   - id: meta.review.registry
     name: Review plan for larva.shell.registry
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.registry` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -859,6 +859,8 @@ phases:
     depends_on:
     - meta.review.components
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:40:37.124796+00:00'
   - id: meta.review.facade
     name: Review plan for larva.app.facade
     status: pending
