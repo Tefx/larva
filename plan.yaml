@@ -1535,11 +1535,11 @@ phases:
     agent: gate-reviewer
 - id: core_validate
   name: larva.core.validate
-  status: pending
+  status: in_progress
   steps:
   - id: core_validate.core-validate-contract
     name: core.validate.contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.core.validate` module at `src/larva/core/validate.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define `ValidationIssue`\
@@ -1569,6 +1569,8 @@ phases:
       - No validation business logic, I/O, registry access, or transport formatting
       is introduced'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T10:29:51.958270+00:00'
   - id: core_validate.core-validate-tests
     name: core.validate.tests
     status: pending
