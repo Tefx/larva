@@ -4994,7 +4994,7 @@ phases:
     agent: integration-verifier
   - id: core_spec.core-spec-implement
     name: core.spec.implement
-    status: pending
+    status: claimed
     description: 'Finalize `larva.core.spec` so the contract is import-stable and
       usable by downstream modules while preserving the exact surface defined by the
       contract step.
@@ -5047,6 +5047,8 @@ phases:
     depends_on:
     - core_spec.core-spec-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:12:55.845580+00:00'
   - id: core_spec.core-spec-tests
     name: core.spec.tests
     status: done
