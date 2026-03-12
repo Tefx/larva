@@ -6421,7 +6421,7 @@ phases:
       - INTERFACES.md larva.assemble + component library'
 - id: core_exec_remediation
   name: Core execution remediation
-  status: in_progress
+  status: done
   context: Single batched remediation loop for B1-B3 discovered by the three core
     verification steps.
   depends_on:
@@ -6653,7 +6653,7 @@ phases:
       - B3 residual fixed: yes'
   - id: core_exec_remediation.retest-core-verification-blockers-b3-residual
     name: Retest residual B3 closure with B1/B2 regressions
-    status: claimed
+    status: done
     description: "Re-test the residual B3 blocker after `core_exec_remediation.fix-core-verification-blockers-b3-residual`,\
       \ while preserving regression coverage for the already-remediated B1/B2 families.\n\
       \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
@@ -6690,3 +6690,38 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T18:00:11.781412+00:00'
+    done_at: '2026-03-12T18:02:17.746586+00:00'
+    evidence: 'Artifact:
+
+      - PR: c2110f3, b2da58f, 9551a83
+
+
+      Verification:
+
+      - Run: MCP invar_guard(changed=false) -> passed (errors=0, warnings=2)
+
+      - Run: regex scan for broad exception masking in tests/core/test_assemble.py
+      -> no matches
+
+      - Run: pytest -v tests/core/test_assemble.py tests/core/test_normalize.py tests/core/test_validate.py
+      -> 56 passed
+
+
+      Spec link:
+
+      - tests/core/test_assemble.py
+
+      - tests/core/test_normalize.py
+
+      - tests/core/test_validate.py
+
+      - src/larva/core/assemble.py
+
+
+      Decision: accept
+
+      Findings:
+
+      - B3 residual closed.
+
+      - B1/B2 regression safety preserved.'
