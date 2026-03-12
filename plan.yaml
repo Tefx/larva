@@ -1075,7 +1075,7 @@ phases:
       \ affected modules."
   - id: meta.review.meta-review-gate
     name: meta.review.gate
-    status: claimed
+    status: done
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -1124,6 +1124,16 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T12:52:22.491168+00:00'
+    done_at: '2026-03-12T13:07:52.241163+00:00'
+    evidence: "Artifact:\n- PR: none\n- Gate audit artifact commit: 7406145\n\nVerification:\n\
+      - Run: meta-review-gate-audit -> FAIL (reject)\n- Blockers detected:\n  - core.validate\
+      \ interface mismatch\n  - core.assemble contract shape/docs conflict\n  - shell.components\
+      \ type ownership ambiguity\n  - shell.python_api missing app_facade dependency\n\
+      \  - shell.cli missing app_facade dependency\n  - meta.review.final remained\
+      \ rework\n\nSpec link:\n- ARCHITECTURE.md / INTERFACES.md / plan meta.review\n\
+      \nDecision: reject\nFindings:\n- Gate rejected planning freeze due unresolved\
+      \ cross-module blockers.\n- Batched remediation created via planner:\n  - meta.review.fix-gate-blockers\n\
+      \  - meta.review.retest-gate-blockers"
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
     status: pending
