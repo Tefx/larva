@@ -2628,7 +2628,7 @@ phases:
       \ payloads added to shell boundary.\n- No out-of-scope files modified."
   - id: shell_components.retest-shell-components-verify-blockers-b1-b3
     name: Retest shell-components verification blockers B1-B3
-    status: claimed
+    status: done
     description: 'Re-test ALL blockers from `shell_components.shell-components-verify`
       together after the batched remediation.
 
@@ -2667,6 +2667,59 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T19:31:41.540845+00:00'
+    done_at: '2026-03-12T19:39:11.711703+00:00'
+    evidence: 'Artifact:
+
+      - PR: 67b6162810c6e0526e860d67d709af3841ff7006
+
+
+      Verification:
+
+      - Run: `uv run pytest -v tests/shell/test_components.py` -> 18 passed (includes
+      traversal/cross-type rejection and typed-error negatives)
+
+      - Run: `uv run coverage run -m pytest -v tests/shell/test_components.py && uv
+      run coverage report -m src/larva/shell/components.py` -> `src/larva/shell/components.py`
+      87%
+
+      - Run: `rg -n --stats "Mock|MagicMock|AsyncMock|@patch|patch\(" tests` -> 0
+      matches
+
+      - Run: `rg -n --stats "class\s+FilesystemComponentStore" tests` -> 0 matches
+
+      - Run: `rg -n "from larva\.shell\.components import" tests/shell/test_components.py`
+      -> production import confirmed
+
+      - Run: shell-boundary grep scan in `src/larva/shell/components.py` -> typed
+      `Result[..., ComponentStoreError]` failure paths, no transport-shaped JSON return
+      payloads
+
+
+      Spec link:
+
+      - ARCHITECTURE.md:372 (module), ARCHITECTURE.md:523/533 (shell error boundary)
+
+      - INTERFACES.md:229 (component library), INTERFACES.md:385/395 (error codes)
+
+
+      Findings:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: keep explicit cross-type traversal negatives in regression suite
+
+      - tech_debt: `ComponentStoreError.to_dict()` remains; acceptable if usage stays
+      outside shell-return contract
+
+
+      Gaps/Notes:
+
+      - coverage collected via `coverage run/report` because `pytest-cov` plugin unavailable
+      in this worktree
+
+      - no code changes made during retest'
 - id: shell_registry
   name: larva.shell.registry
   status: in_progress
