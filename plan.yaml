@@ -4730,3 +4730,8 @@ phases:
       \ policy literal set\n  - PersonaSpec optional-key shape\n  - Spec version literal\
       \ pin\n- Command planned for workers: `invar guard`"
     agent: python-executor
+- id: core_normalize_exec
+  name: larva.core.normalize execution
+  status: locked
+  depends_on:
+  - meta.gate
