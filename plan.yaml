@@ -2021,7 +2021,7 @@ phases:
       - Gaps/Notes: none'
 - id: shell_components
   name: larva.shell.components
-  status: pending
+  status: in_progress
   context: Filesystem-backed component loading at the shell boundary; must stay separate
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
@@ -2031,7 +2031,7 @@ phases:
   steps:
   - id: shell_components.shell-components-contract
     name: shell-components-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.shell.components` module at `src/larva/shell/components.py`.\n\
       \nCanonical type-ownership decision for planning freeze:\n- Component TypedDicts\
       \ used by assembly (`PromptComponent`, `ToolsetComponent`, `ConstraintComponent`,\
@@ -2055,6 +2055,8 @@ phases:
       - Public contract matches the cited `larva.shell.components` and component-library
       documentation'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T18:40:41.446102+00:00'
   - id: shell_components.shell-components-tests
     name: shell-components-tests
     status: pending
