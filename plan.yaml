@@ -5392,6 +5392,11 @@ phases:
 
       - `larva.core.validate` is ready to unblock downstream facade and transport
       work'
+    depends_on:
+    - core_validate.core-validate-tests
+    - core_validate.core-validate-implement
+    - core_validate.core-validate-verify
+    - core_validate.core-validate-freeze
     agent: gate-reviewer
   - id: core_validate.core-validate-freeze
     name: core.validate.freeze
