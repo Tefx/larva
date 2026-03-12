@@ -929,7 +929,7 @@ phases:
       - Independent verifier/gate separation is correctly represented in planned agents.'
   - id: meta.review.python_api
     name: Review plan for larva.shell.python_api
-    status: pending
+    status: claimed
     description: Review the module-level vectl plan for `larva.shell.python_api` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -950,6 +950,8 @@ phases:
     depends_on:
     - meta.review.facade
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:44:34.356663+00:00'
   - id: meta.review.cli
     name: Review plan for larva.shell.cli
     status: pending
