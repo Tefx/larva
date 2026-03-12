@@ -5583,7 +5583,7 @@ phases:
     claimed_at: '2026-03-12T17:06:25.803735+00:00'
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   - core_assemble
@@ -5815,7 +5815,7 @@ phases:
     agent: python-executor
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.core.assemble` in `tests/core/test_assemble.py`.
 
 
@@ -5871,3 +5871,5 @@ phases:
 
       - Test scope stays inside `tests/core/test_assemble.py` plus minimal helpers'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T17:06:33.907381+00:00'
