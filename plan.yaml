@@ -1867,3 +1867,66 @@ phases:
     depends_on:
     - core_assemble.core-assemble-verify
     agent: integration-verifier
+  - id: core_assemble.core-assemble-gate
+    name: core-assemble-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `core_assemble` phase meets the quality bar for proceeding to downstream facade
+      work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if assembly semantics drift from the
+      docs, evidence is vague, or the module boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - `larva.core.assemble` is a pure-core module with a documented public interface
+      and deterministic merge/conflict semantics
+
+      - the phase is narrow to one module, but downstream facade work depends on exact
+      assembly behavior and boundary discipline
+
+      - candidate-vs-normalized output separation deserves explicit scrutiny
+
+
+      cross_cutting_focus:
+
+      - fidelity to the documented `AssemblyInput` and `assemble_candidate` interface
+
+      - exact enforcement of the documented assembly rules for prompt ordering, conflicts,
+      and overrides
+
+      - evidence quality showing `larva.core.assemble` stops at candidate generation
+      and leaves normalization fields for downstream modules
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.core.assemble`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Assembly -> Validation
+      -> Normalization
+
+      - INTERFACES.md :: A. MCP Server Interface / `larva.assemble(components)`
+
+      - INTERFACES.md :: C. Component Library / Assembly Rules
+
+      - INTERFACES.md :: E. PersonaSpec Output Format'
+    verification: '- All `core_assemble` steps completed successfully
+
+      - Evidence covers contract fidelity, implementation behavior, independent verification
+      findings, and freeze requirements
+
+      - No unresolved blockers remain inside the `larva.core.assemble` boundary
+
+      - Phase is ready for downstream facade planning without bypassing normalization
+      responsibilities'
+    depends_on:
+    - core_assemble.core-assemble-contract
+    - core_assemble.core-assemble-freeze
+    agent: gate-reviewer
