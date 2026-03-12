@@ -2026,6 +2026,7 @@ phases:
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
   - core_assemble_exec
+  - core_exec_remediation
   steps:
   - id: shell_components.shell-components-contract
     name: shell-components-contract
