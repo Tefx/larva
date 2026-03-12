@@ -838,7 +838,7 @@ phases:
       \ corrections recorded before downstream execution."
   - id: meta.review.registry
     name: Review plan for larva.shell.registry
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.shell.registry` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -861,6 +861,27 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:40:37.124796+00:00'
+    done_at: '2026-03-12T12:42:16.410200+00:00'
+    evidence: '- Reviewed module: larva.shell.registry
+
+      - Decision: accept
+
+      - Boundary issues: none
+
+      - Dependency issues: none
+
+      - Evidence gaps: none
+
+      - Agent assignment gaps: none
+
+
+      Notes:
+
+      - Contract/test/implement/verify/freeze/gate sequencing and agent assignment
+      are complete and concrete.
+
+      - Failure-path verification requirements are explicit and aligned with documented
+      shell error boundaries.'
   - id: meta.review.facade
     name: Review plan for larva.app.facade
     status: pending
