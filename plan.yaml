@@ -4126,3 +4126,8 @@ phases:
     - shell_cli.shell-cli-seam-proof
     - shell_cli.shell-cli-freeze
     agent: gate-reviewer
+- id: shell_mcp
+  name: larva.shell.mcp
+  status: locked
+  depends_on:
+  - app_facade
