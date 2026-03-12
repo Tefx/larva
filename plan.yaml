@@ -4693,4 +4693,6 @@ phases:
     agent: gate-reviewer
 - id: meta.gate
   name: Meta Freeze Gate
-  status: pending
+  status: locked
+  depends_on:
+  - meta.review
