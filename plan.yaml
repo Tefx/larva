@@ -2777,7 +2777,7 @@ phases:
       - no code changes made during retest'
   - id: shell_components.fix-shell-components-gate-findings-b1-s2
     name: fix-shell-components-gate-findings-b1-s2
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `shell_components.shell-components-gate`
       together in one batched remediation step.
 
@@ -2938,6 +2938,27 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:04:36.861647+00:00'
+    done_at: '2026-03-12T20:08:51.426894+00:00'
+    evidence: "Commit hash(es):\n- 0f64f21\n- bc3a236\n- squash merged to main as\
+      \ commit 41961ec\n\nFiles changed:\n- src/larva/shell/components.py\n- tests/shell/test_components.py\n\
+      \nVerification:\n- Commands run:\n  - `invar_guard(path=.vectl/worktrees/shell_components.fix-shell-components-gate-findings-b1-s2,\
+      \ changed=true)`\n  - `invar_guard(path=.vectl/worktrees/shell_components.fix-shell-components-gate-findings-b1-s2,\
+      \ changed=false)`\n  - `git status --short`\n- Key outputs/results:\n  - changed-file\
+      \ guard: passed, 0 errors, 0 warnings.\n  - pre-commit hooks passed on both\
+      \ implementation commits.\n  - full-scan guard still fails only on pre-existing\
+      \ core CrossHair counterexample signals outside this step scope.\n  - working\
+      \ tree clean after commits.\n\nSibling search evidence:\n- B1 family (`to_dict\\\
+      (|\\{\"error\"|numeric_code|ComponentStoreError`): `to_dict(` removed from shell\
+      \ module/tests; typed `ComponentStoreError` usage retained.\n- S1 family (`Contract\
+      \ purity|ENFORCED|filesystem|file-loading`): stale contract-only wording removed;\
+      \ docstrings now reflect filesystem-backed shell behavior.\n- S2 family (`class\
+      \ ComponentStore|class FilesystemComponentStore|ComponentStoreError`): bounded\
+      \ internal structure cleanup applied to reduce mixed-responsibility friction\
+      \ while keeping scope local.\n\nSpec link:\n- ARCHITECTURE.md :: `larva.shell.components`\
+      \ module and shell error boundary\n- INTERFACES.md :: error response boundary\
+      \ notes\n\nGaps/Notes:\n- Out-of-scope unresolved signal: full-project CrossHair\
+      \ issues in `src/larva/core/{normalize,assemble,validate}.py` remain and were\
+      \ not modified in this step.\n- No facade/registry/CLI/MCP changes made."
   - id: shell_components.retest-shell-components-gate-findings-b1-s2
     name: retest-shell-components-gate-findings-b1-s2
     status: pending
