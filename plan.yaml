@@ -892,7 +892,7 @@ phases:
   steps:
   - id: core_spec.core-spec-contract
     name: core.spec.contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.core.spec` module at `src/larva/core/spec.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the canonical\
@@ -930,6 +930,30 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T10:07:23.357882+00:00'
+    done_at: '2026-03-12T10:28:32.646222+00:00'
+    evidence: '## Contract Evidence
+
+      - File created: `src/larva/core/spec.py`
+
+      - Public names declared: `ToolPosture`, `SideEffectPolicy`, `PersonaSpec`
+
+      - Exact PersonaSpec keys listed from code: id, description, prompt, model, tools,
+      model_params, side_effect_policy, can_spawn, compaction_prompt, spec_version,
+      spec_digest
+
+      - Purity check: imports are typing-only (`Literal`, `TypeAlias`, `TypedDict`);
+      no I/O/runtime imports
+
+      - Commit hash(es): e142087
+
+      - Files changed: src/larva/core/spec.py
+
+      - Verification: import/AST checks passed and file contains no business logic
+      helpers
+
+      - Spec link: ARCHITECTURE.md module larva.core.spec; INTERFACES.md section E
+
+      - Gaps/Notes: none'
   - id: core_spec.core-spec-tests
     name: core.spec.tests
     status: pending
