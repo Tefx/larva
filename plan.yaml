@@ -5208,6 +5208,8 @@ phases:
 
       - Findings explicitly note whether boundary purity and deterministic output
       held'
+    depends_on:
+    - core_normalize.core-normalize-implement
     agent: integration-verifier
   - id: core_normalize.core-normalize-implement
     name: core.normalize.implement
