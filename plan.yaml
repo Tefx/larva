@@ -4253,7 +4253,7 @@ phases:
       \ the new test file in files_checked for this repo configuration."
   - id: app_facade.app-facade-implement
     name: app-facade-implement-validate-assemble
-    status: claimed
+    status: done
     description: "Implement the `validate()` and `assemble()` facade flows in `src/larva/app/facade.py`\
       \ while keeping app-layer orchestration transport-agnostic.\n\nstep_type: implementation\n\
       tags:\n  - integration\n\nScope:\n- implement the facade dependency-injection\
@@ -4318,6 +4318,81 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:30:06.881553+00:00'
+    done_at: '2026-03-12T20:37:25.672582+00:00'
+    evidence: 'Commit hash(es):
+
+      - 0fd342d
+
+      - 47f6054
+
+      - squash merged to main as commit c594a9a
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+
+      ## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```bash
+
+      uv run pytest tests/app/test_facade.py -k "TestFacadeValidate or TestFacadeAssemble"
+      -v
+
+      ```
+
+
+      **Actual output**:
+
+      ```text
+
+      5 passed, 6 deselected
+
+      ```
+
+      (selected tests for validate pass-through + assemble orchestration/failure paths)
+
+
+      **Path exercised**: `larva.app.facade` -> core assemble/validate/normalize and
+      shell component/registry ports
+
+
+      Verification summary:
+
+      - `assemble()` flow implemented as `assemble -> validate -> normalize -> return`.
+
+      - `validate()` returns core validation report unchanged.
+
+      - Failure mappings covered for component miss/conflict and validation failure
+      with app-level typed errors (no transport envelope shaping in module).
+
+      - `invar guard` changed-surface checks passed with 0 errors/warnings in worker
+      evidence.
+
+      - Out-of-scope methods `register()`, `resolve()`, `list()` intentionally left
+      unimplemented for subsequent steps.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: app facade module + sequence + app error boundary sections
+
+      - INTERFACES.md :: A (`validate`, `assemble`) + G (error codes)
+
+      - README.md :: key decisions
+
+
+      Gaps/Notes:
+
+      - No changes outside `src/larva/app/facade.py` and `tests/app/test_facade.py`.
+
+      - No CLI/MCP/Python API export/wiring changes introduced.'
   - id: app_facade.app-facade-verify
     name: app-facade-verify
     status: pending
