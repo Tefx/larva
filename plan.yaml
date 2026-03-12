@@ -1235,11 +1235,11 @@ phases:
     agent: gate-reviewer
 - id: core_normalize
   name: larva.core.normalize
-  status: pending
+  status: in_progress
   steps:
   - id: core_normalize.core-normalize-contract
     name: core.normalize.contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.core.normalize` module at `src/larva/core/normalize.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the public contract\
@@ -1268,6 +1268,8 @@ phases:
 
       - The produced contract is ready to drive tests before implementation'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T10:29:11.341290+00:00'
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
     status: pending
