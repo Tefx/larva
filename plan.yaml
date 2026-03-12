@@ -1813,11 +1813,11 @@ phases:
     agent: gate-reviewer
 - id: core_assemble
   name: larva.core.assemble
-  status: pending
+  status: in_progress
   steps:
   - id: core_assemble.core-assemble-contract
     name: core-assemble-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.core.assemble` module at `src/larva/core/assemble.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -1848,6 +1848,8 @@ phases:
       - Public contract matches the cited `larva.core.assemble` and assembly-rule
       documentation'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-12T10:30:12.868106+00:00'
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
     status: pending
