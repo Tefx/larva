@@ -4994,7 +4994,7 @@ phases:
     agent: integration-verifier
   - id: core_spec.core-spec-implement
     name: core.spec.implement
-    status: claimed
+    status: done
     description: 'Finalize `larva.core.spec` so the contract is import-stable and
       usable by downstream modules while preserving the exact surface defined by the
       contract step.
@@ -5049,6 +5049,49 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T17:12:55.845580+00:00'
+    done_at: '2026-03-12T17:14:58.319480+00:00'
+    evidence: '## Step Complete: core_spec.core-spec-implement
+
+
+      ### Evidence
+
+
+      **Verification:**
+
+      - ✅ 25/25 contract tests pass (`pytest tests/core/test_spec.py`)
+
+      - ✅ Direct import check passes: `ToolPosture`, `SideEffectPolicy`, `PersonaSpec`
+      all import successfully
+
+      - ✅ No forbidden imports (only `typing` module imported)
+
+      - ✅ `__all__` surface unchanged: 8 exports preserved
+
+      - ✅ `invar guard` passed (no errors)
+
+
+      **Files changed:** none
+
+
+      **Commit hash:** none (module already finalized in prior step - no modifications
+      needed)
+
+
+      **Rationale:** The `src/larva/core/spec.py` module was already fully implemented
+      and meets all contract requirements. The verification confirms:
+
+      - Import stability for downstream modules
+
+      - Typing compatibility (TypedDict, Literal types)
+
+      - No boundary widening (exact 8 exports in `__all__`)
+
+      - Core purity maintained (only `typing` imports)
+
+      - All contract tests pass
+
+
+      The step completes successfully as the module satisfies all requirements.'
   - id: core_spec.core-spec-tests
     name: core.spec.tests
     status: done
