@@ -1150,7 +1150,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.meta-review-gate
     name: meta.review.gate
-    status: rejected
+    status: claimed
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -1199,7 +1199,7 @@ phases:
     - meta.review.meta-review-retest-gate-blockers-b1-family-residual
     agent: gate-reviewer
     claimed_by: gate-reviewer
-    claimed_at: '2026-03-12T12:52:22.491168+00:00'
+    claimed_at: '2026-03-12T16:36:24.865943+00:00'
     done_at: '2026-03-12T13:07:52.241163+00:00'
     rejection_reason: Gate previously rejected; must rerun after batched blocker remediation
       and retest.
