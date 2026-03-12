@@ -3127,7 +3127,7 @@ phases:
 
       '
     depends_on:
-    - app_facade.app-facade-implement
+    - app_facade.app-facade-implement-resolve
     agent: integration-verifier
   - id: app_facade.app-facade-freeze
     name: app-facade-freeze
