@@ -5687,7 +5687,7 @@ phases:
     agent: integration-verifier
   - id: core_validate.core-validate-implement
     name: core.validate.implement
-    status: pending
+    status: claimed
     description: 'Implement `larva.core.validate` in `src/larva/core/validate.py`
       so it satisfies the documented validation contract without widening module scope.
 
@@ -5755,6 +5755,8 @@ phases:
     depends_on:
     - core_validate.core-validate-tests
     agent: python-executor
+    claimed_by: agent
+    claimed_at: '2026-03-12T17:21:36.702565+00:00'
   - id: core_validate.core-validate-tests
     name: core.validate.tests
     status: done
