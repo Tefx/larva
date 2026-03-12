@@ -3234,7 +3234,7 @@ phases:
       - No code changes were made in this step.'
   - id: shell_registry.shell-registry-gate
     name: shell-registry-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_registry` phase meets the quality bar for proceeding to downstream facade
       and transport work.
@@ -3305,6 +3305,28 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T19:31:51.773286+00:00'
+    done_at: '2026-03-12T19:41:21.780765+00:00'
+    evidence: "Artifact:\n- Commit: 67b6162 (gate worktree head)\n\nVerification:\n\
+      - Run: `uv run pytest -q tests/shell/test_registry.py` -> 11 passed\n- Run:\
+      \ `uv run coverage run -m pytest -q tests/shell/test_registry.py && uv run coverage\
+      \ report -m --include='src/larva/shell/registry.py'` -> 77%\n- Run: `invar guard\
+      \ (changed=false)` -> FAIL (crosshair counterexample_found in core modules)\n\
+      - Run: `uv run ruff check src/larva/shell/registry.py tests/shell/test_registry.py`\
+      \ -> FAIL (style/type-check findings)\n- Run: `uv run mypy src/larva/shell/registry.py`\
+      \ -> FAIL (typing/stubs finding)\n\nSpec link:\n- ARCHITECTURE.md :: `larva.shell.registry`\
+      \ module + error boundary + cross-module boundary\n- INTERFACES.md :: D (Global\
+      \ Registry) + G (Error Codes)\n\nfindings:\n  blockers:\n    - `get()` semantics\
+      \ drift from documented registry layout: index-authoritative path can return\
+      \ PERSONA_NOT_FOUND when spec exists but index is stale/missing.\n    - `save()`\
+      \ allows empty/missing spec_digest persistence, creating later unreadable/digest-mismatch\
+      \ state.\n  should_fix:\n    - Error-code registry/doc parity gaps for `INVALID_PERSONA_ID`\
+      \ and `REGISTRY_*` surfaces.\n    - Ruff/mypy debt on touched registry/test\
+      \ surfaces.\n  suggestions:\n    - Add explicit rollback test for new-spec write\
+      \ + index-write failure path.\n  tech_debt: []\n\nGaps/Notes:\n- No code changes\
+      \ in gate worktree.\n- Following batched-fix protocol, planner remediation was\
+      \ requested and added as one consolidated fix step + one retest step:\n  - `shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2`\n\
+      \  - `shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2`\n- Gate\
+      \ completion records findings and hands off to remediation chain."
   - id: shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
     name: fix-shell-registry-gate-blockers-b1-b2-s1-s2
     status: pending
