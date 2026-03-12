@@ -5527,6 +5527,8 @@ phases:
 
       - Proof: implementation stays confined to `src/larva/core/validate.py` / `tests/core/test_validate.py`
       and adds no shell/app imports'
+    depends_on:
+    - core_validate.core-validate-tests
     agent: python-executor
   - id: core_validate.core-validate-tests
     name: core.validate.tests
