@@ -4136,7 +4136,7 @@ phases:
       I/O implementation, and no package export edits.'
   - id: app_facade.app-facade-tests
     name: app-facade-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.app.facade` in `tests/app/test_facade.py`.
 
 
@@ -4230,6 +4230,8 @@ phases:
     depends_on:
     - app_facade.app-facade-contract
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T20:23:53.751260+00:00'
   - id: app_facade.app-facade-implement
     name: app-facade-implement-validate-assemble
     status: pending
