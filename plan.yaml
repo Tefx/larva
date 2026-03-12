@@ -2288,5 +2288,9 @@ phases:
 
       - The phase is ready for downstream facade/transport planning and execution'
     depends_on:
+    - shell_components.shell-components-contract
+    - shell_components.shell-components-tests
+    - shell_components.shell-components-implement
+    - shell_components.shell-components-verify
     - shell_components.shell-components-freeze
     agent: gate-reviewer
