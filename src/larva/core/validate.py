@@ -20,10 +20,11 @@ See:
 - Depends on: larva.core.spec (PersonaSpec type)
 """
 
+import re
 from typing import TypedDict
 
-from invar import post
-from invar import pre
+from deal import post
+from deal import pre
 
 # Import PersonaSpec from the canonical spec module
 from larva.core.spec import PersonaSpec
@@ -57,14 +58,10 @@ class ValidationReport(TypedDict):
     warnings: list[str]
 
 
-# Contract-only stub - implementation handles validation logic
 @pre(lambda spec: isinstance(spec, dict))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
 def validate_spec(spec: PersonaSpec) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
-
-    This is a contract stub - full implementation follows in a subsequent
-    step.
 
     Contract (from INTERFACES.md):
     - Validates field types and allowed values
@@ -78,7 +75,7 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         ValidationReport with valid=True/False, errors list, and warnings list.
 
     Note:
-        This is a contract stub. Implementation handles:
+        This implementation handles:
         - Type validation for all fields
         - Allowed value validation (e.g., side_effect_policy enum)
         - Field-specific validation rules
@@ -89,10 +86,59 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         @post(lambda result: isinstance(result, dict) and "valid" in result and "errors" in result and "warnings" in result)
 
     Examples:
-        >>> validate_spec({})  # doctest: +SKIP
-        Traceback (most recent call last):
-            ...
+        >>> validate_spec({"spec_version": "0.1.0"})["valid"]
+        True
+        >>> validate_spec({"spec_version": "0.2.0"})["errors"][0]["code"]
+        'INVALID_SPEC_VERSION'
     """
-    raise NotImplementedError(
-        "validate_spec implementation pending core_validate.core-validate-implement"
-    )
+    errors: list[ValidationIssue] = []
+    warnings: list[str] = []
+
+    spec_version = spec.get("spec_version")
+    if spec_version is not None and spec_version != "0.1.0":
+        errors.append(
+            {
+                "code": "INVALID_SPEC_VERSION",
+                "message": "spec_version must be '0.1.0'",
+                "details": {"field": "spec_version", "value": spec_version},
+            }
+        )
+
+    side_effect_policy = spec.get("side_effect_policy")
+    valid_policies: set[str] = {"allow", "approval_required", "read_only"}
+    if side_effect_policy is not None and side_effect_policy not in valid_policies:
+        errors.append(
+            {
+                "code": "INVALID_SIDE_EFFECT_POLICY",
+                "message": "side_effect_policy must be one of allow, approval_required, read_only",
+                "details": {"field": "side_effect_policy", "value": side_effect_policy},
+            }
+        )
+
+    prompt = spec.get("prompt", "")
+    placeholder_pattern = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
+    found_vars = set(placeholder_pattern.findall(prompt))
+    provided_vars_obj = spec.get("variables", {})
+    provided_vars = provided_vars_obj if isinstance(provided_vars_obj, dict) else {}
+
+    if found_vars:
+        unresolved = found_vars - set(provided_vars.keys())
+        if unresolved:
+            errors.append(
+                {
+                    "code": "UNRESOLVED_PROMPT_VARIABLES",
+                    "message": (
+                        f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}"
+                    ),
+                    "details": {
+                        "field": "prompt",
+                        "unresolved_variables": sorted(unresolved),
+                    },
+                }
+            )
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+    }

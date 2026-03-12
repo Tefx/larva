@@ -1,13 +1,9 @@
-"""Contract tests for larva.core.assemble module.
-
-These tests verify the contract surface of the assembly module without
-testing implementation details (which are stubbed).
-"""
+"""Tests for larva.core.assemble module contracts and behavior."""
 
 import pytest
 from inspect import signature
 
-from larva.core.assemble import assemble_candidate
+from larva.core.assemble import AssemblyError, assemble_candidate
 from larva.core.spec import (
     AssemblyInput,
     ConstraintComponent,
@@ -61,53 +57,43 @@ class TestAssembleCandidateContracts:
 
     def test_pre_contract_accepts_valid_input(self):
         """@pre contract should accept a valid dict with id."""
-        # Should not raise contract error (will raise NotImplementedError from stub)
-        # Note: Due to broken invar contract, AttributeError may surface first
-        try:
-            result = assemble_candidate({"id": "test-persona"})
-            # If we get here, the stub was reached - verify NotImplementedError behavior
-        except NotImplementedError:
-            pass  # Expected behavior
-        except AttributeError:
-            pass  # Broken invar contract - but input was accepted
+        result = assemble_candidate({"id": "test-persona"})
+        assert result["id"] == "test-persona"
 
     def test_post_contract_returns_dict_with_id(self):
         """@post contract should ensure result has 'id' key."""
-        # The stub raises NotImplementedError before @post can validate
-        # but the contract annotation exists and will be checked by invar guard
-        # Note: Due to broken invar contract, AttributeError may surface first
-        try:
-            result = assemble_candidate({"id": "test"})
-        except NotImplementedError:
-            pass  # Expected behavior
-        except AttributeError:
-            pass  # Broken invar contract - but input was accepted
+        result = assemble_candidate({"id": "test"})
+        assert isinstance(result, dict)
+        assert "id" in result
 
 
-class TestAssembleCandidateStubBehavior:
-    """Test that assemble_candidate raises NotImplementedError (stub behavior)."""
+class TestAssembleCandidateBehavior:
+    """Test concrete assemble behavior and failure signals."""
 
-    def test_raises_not_implemented_error_or_contract_error(self):
-        """Calling assemble_candidate should raise NotImplementedError or contract error."""
-        # The current implementation has a broken invar contract that raises AttributeError
-        # The test accepts any exception since the stub behavior is NotImplementedError
-        # but the broken contract may surface first
-        try:
-            assemble_candidate({"id": "test-persona"})
-        except (NotImplementedError, AttributeError) as exc_info:
-            # Accept either: NotImplementedError (stub) or AttributeError (broken contract)
-            if isinstance(exc_info, NotImplementedError):
-                assert "implementation pending" in str(exc_info).lower()
+    def test_concatenates_prompts_in_order(self):
+        """Prompt components should concatenate using a double-newline separator."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "prompts": [{"text": "first"}, {"text": "second"}],
+            }
+        )
+        assert result["prompt"] == "first\n\nsecond"
 
-    def test_error_message_contains_implementation_reference_or_contracts_broken(self):
-        """Error message should reference the implementation ticket or contracts are broken."""
-        try:
-            assemble_candidate({"id": "test"})
-        except (NotImplementedError, AttributeError) as exc_info:
-            # Accept either: NotImplementedError (stub) or AttributeError (broken contract)
-            if isinstance(exc_info, NotImplementedError):
-                error_msg = str(exc_info)
-                assert "core_assemble" in error_msg or "assemble_candidate" in error_msg
+    def test_raises_component_conflict_for_contradictory_tool_posture(self):
+        """Conflicting tool postures should raise AssemblyError with conflict code."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"tools": {"read": "read_only"}},
+                        {"tools": {"read": "read_write"}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "COMPONENT_CONFLICT"
+        assert "Contradictory posture" in exc_info.value.message
 
 
 class TestTypedDictShapes:

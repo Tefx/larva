@@ -100,52 +100,31 @@ class TestNormalizeSpecContractAnnotations:
         assert hasattr(post_validator, "function"), "Post validator should have function attribute"
 
 
-class TestNormalizeSpecStubBehavior:
-    """Test normalize_spec stub raises NotImplementedError."""
+class TestNormalizeSpecBehavior:
+    """Test normalize_spec runtime behavior."""
 
-    def test_raises_not_implemented_error(self) -> None:
-        """Calling normalize_spec should raise NotImplementedError.
-
-        Note: Due to a bug in invar_runtime (invar_runtime/contracts.py:128),
-        the contract validation fails with AttributeError before reaching
-        the NotImplementedError when the input is a dict. This test uses
-        deal.disable() to bypass the contract validation and test the
-        underlying stub behavior.
-        """
+    def test_defaults_spec_version_when_absent(self) -> None:
+        """normalize_spec should add default spec_version when missing."""
         from larva.core.normalize import normalize_spec
-        import deal
 
-        # Use module-level disable to bypass contract validation
-        deal.disable()
-        try:
-            with pytest.raises(NotImplementedError):
-                normalize_spec({"id": "test"})
-        finally:
-            deal.enable()
+        result = normalize_spec({"id": "test"})
+        assert result["spec_version"] == "0.1.0"
 
-    def test_raises_not_implemented_error_with_empty_dict(self) -> None:
-        """Calling normalize_spec with empty dict should raise NotImplementedError."""
+    def test_overwrites_stale_digest(self) -> None:
+        """normalize_spec should compute a fresh digest and ignore stale input digest."""
         from larva.core.normalize import normalize_spec
-        import deal
 
-        deal.disable()
-        try:
-            with pytest.raises(NotImplementedError):
-                normalize_spec({})
-        finally:
-            deal.enable()
+        result = normalize_spec({"id": "test", "spec_digest": "stale"})
+        assert result["spec_digest"] != "stale"
+        assert len(result["spec_digest"]) == 64
 
-    def test_error_message_indicates_pending_implementation(self) -> None:
-        """NotImplementedError should indicate implementation is pending."""
+    def test_digest_is_deterministic(self) -> None:
+        """normalize_spec should produce deterministic digest for same input."""
         from larva.core.normalize import normalize_spec
-        import deal
 
-        deal.disable()
-        try:
-            with pytest.raises(NotImplementedError, match="normalize_spec.*pending"):
-                normalize_spec({"id": "test"})
-        finally:
-            deal.enable()
+        left = normalize_spec({"id": "test", "model": "gpt-4"})
+        right = normalize_spec({"model": "gpt-4", "id": "test"})
+        assert left["spec_digest"] == right["spec_digest"]
 
 
 if __name__ == "__main__":

@@ -66,38 +66,27 @@ class TestValidateSpecContract:
         assert len(contract.posts) > 0, "Should have post conditions"
 
 
-class TestValidateSpecStub:
-    """Test that the stub raises NotImplementedError."""
+class TestValidateSpecBehavior:
+    """Test validate_spec runtime behavior."""
 
-    def test_raises_not_implemented_error(self):
-        """Calling validate_spec should raise NotImplementedError.
+    def test_valid_spec_returns_valid_report(self):
+        """validate_spec should mark canonical spec_version as valid."""
+        report = validate_module.validate_spec({"spec_version": "0.1.0"})
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert report["warnings"] == []
 
-        Note: Due to a bug in invar_runtime (invar_runtime/contracts.py:128),
-        the contract validation fails with AttributeError before reaching
-        the NotImplementedError when the input is a dict. This test uses
-        deal.disable() to bypass the contract validation and test the
-        underlying stub behavior.
-        """
-        import deal
+    def test_invalid_spec_version_produces_structured_error(self):
+        """validate_spec should report INVALID_SPEC_VERSION for unsupported version."""
+        report = validate_module.validate_spec({"spec_version": "0.2.0"})
+        assert report["valid"] is False
+        assert report["errors"][0]["code"] == "INVALID_SPEC_VERSION"
 
-        deal.disable()
-        try:
-            with pytest.raises(NotImplementedError):
-                validate_module.validate_spec({})
-        finally:
-            deal.enable()
-
-    def test_error_message_mentions_implementation_pending(self):
-        """NotImplementedError message should mention implementation is pending."""
-        import deal
-
-        deal.disable()
-        try:
-            with pytest.raises(NotImplementedError) as exc_info:
-                validate_module.validate_spec({})
-            assert "implementation" in str(exc_info.value).lower()
-        finally:
-            deal.enable()
+    def test_invalid_side_effect_policy_produces_structured_error(self):
+        """validate_spec should report INVALID_SIDE_EFFECT_POLICY for bad policy values."""
+        report = validate_module.validate_spec({"side_effect_policy": "forbidden"})
+        assert report["valid"] is False
+        assert report["errors"][0]["code"] == "INVALID_SIDE_EFFECT_POLICY"
 
 
 class TestValidationIssueTypedDict:

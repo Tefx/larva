@@ -9,10 +9,30 @@ See:
 - ARCHITECTURE.md :: Module: larva.core.normalize
 """
 
-from invar import post
-from invar import pre
+import hashlib
+import json
+
+from deal import post
+from deal import pre
 
 from larva.core.spec import PersonaSpec
+
+
+@post(lambda result: isinstance(result, str) and len(result) == 64)
+def _compute_spec_digest(spec: PersonaSpec) -> str:
+    """Compute SHA-256 digest from canonical JSON representation.
+
+    Canonical form: sorted keys, no whitespace, excluding spec_digest field.
+
+    Args:
+        spec: PersonaSpec to compute digest for.
+
+    Returns:
+        Hex-encoded SHA-256 digest string.
+    """
+    spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
 @pre(lambda spec: isinstance(spec, dict))
@@ -33,17 +53,24 @@ def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
         Canonical PersonaSpec with spec_version defaulted and spec_digest computed.
 
     Note:
-        This is a contract stub. Implementation handles:
+        This implementation handles:
         - spec_version defaulting to "0.1.0" if missing
         - spec_digest computation from canonical JSON representation
         - Deterministic, pure transformation (no I/O side effects)
 
     Examples:
-        >>> normalize_spec({"id": "test"})  # pragma: no cover
-        Traceback (most recent call last):
-            ...
-        NotImplementedError: normalize_spec implementation pending core_normalize.core-normalize-implement
+        >>> normalize_spec({"id": "test"})["spec_version"]
+        '0.1.0'
+        >>> result = normalize_spec({"id": "test"})
+        >>> len(result["spec_digest"]) == 64
+        True
+        >>> normalize_spec({"id": "test"}) == normalize_spec({"id": "test"})
+        True
+        >>> normalize_spec({"spec_digest": "stale_digest"})["spec_digest"] != "stale_digest"
+        True
     """
-    raise NotImplementedError(
-        "normalize_spec implementation pending core_normalize.core-normalize-implement"
-    )
+    if "spec_version" not in spec:
+        spec = {**spec, "spec_version": "0.1.0"}
+
+    digest = _compute_spec_digest(spec)
+    return {**spec, "spec_digest": digest}
