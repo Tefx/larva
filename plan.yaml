@@ -3305,6 +3305,254 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T19:31:51.773286+00:00'
+  - id: shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
+    name: fix-shell-registry-gate-blockers-b1-b2-s1-s2
+    status: pending
+    description: 'Fix ALL issues found by `shell_registry.shell-registry-gate` — ALL
+      of these, not just the first.
+
+
+      step_type: implementation
+
+      prior_loop: []
+
+      remaining_blocker: registry get/save contract drift and related error-surface/tooling
+      parity on the registry persistence seam
+
+      why_new_loop: initial gate surfaced cross-cutting persistence and contract/documentation
+      defects that require one batched remediation pass before registry phase closure
+
+
+      Spec refs:
+
+      - `ARCHITECTURE.md` :: Module: `larva.shell.registry`
+
+      - `ARCHITECTURE.md` :: Registry Read -> Override -> Revalidation
+
+      - `INTERFACES.md` :: D. Global Registry
+
+      - `INTERFACES.md` :: G. Error Codes
+
+      - `contracts/errors.yaml`
+
+
+      Touch paths:
+
+      - `src/larva/shell/registry.py`
+
+      - `tests/shell/test_registry.py`
+
+      - `contracts/errors.yaml`
+
+      - `INTERFACES.md`
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Spec/layout fidelity drift in registry get semantics
+
+      Locations: `src/larva/shell/registry.py:207`, `src/larva/shell/registry.py:216`,
+      `src/larva/shell/registry.py:269`, `src/larva/shell/registry.py:270`
+
+      Remediation:
+
+      - Align runtime `get()` behavior with documented registry layout and precedence
+      contract.
+
+      - `get()` must read `~/.larva/registry/<id>.json` as the authoritative persisted
+      spec source and must not return false `PERSONA_NOT_FOUND` solely because `index.json`
+      is stale or missing.
+
+      - Preserve backward-compatible readable behavior for valid persisted specs while
+      keeping index metadata coherent.
+
+      Grep hint: `def get\(|_read_index|index\.json|PERSONA_NOT_FOUND`
+
+      Sibling search required:
+
+      - Search all read/list/index helper paths for the same stale-index-authoritative
+      assumption.
+
+      - Check any call sites or helpers that translate missing index entries into
+      not-found outcomes when the spec file still exists.
+
+
+      ### B2: Persistence contract hole for missing/empty spec_digest
+
+      Locations: `src/larva/shell/registry.py:176`, `src/larva/shell/registry.py:179`,
+      `src/larva/shell/registry.py:331`, `src/larva/shell/registry.py:339`
+
+      Remediation:
+
+      - Enforce non-empty `spec_digest` invariants on save and index-write paths.
+
+      - Prevent persisting spec/index combinations that create unreadable later state
+      through digest-mismatch branches.
+
+      - Keep saved state readable-consistent across spec file and index metadata updates.
+
+      Grep hint: `spec_digest|get\(''spec_digest''|digest mismatch|REGISTRY_SPEC_READ_FAILED`
+
+      Sibling search required:
+
+      - Search all save/write/update helpers for paths that accept empty digest, clear
+      digest, or write inconsistent index/spec combinations.
+
+      - Review tests for missing invariant coverage around empty digest and digest-mismatch
+      recovery.
+
+
+      ### S1: Error-code registry/documentation parity
+
+      Locations: `src/larva/shell/registry.py:43`, `src/larva/shell/registry.py:101`,
+      `contracts/errors.yaml`, `INTERFACES.md`
+
+      Remediation:
+
+      - Bring `INVALID_PERSONA_ID` and relevant `REGISTRY_*` codes into parity across
+      runtime surface, `contracts/errors.yaml`, and `INTERFACES.md::G`.
+
+      - Ensure docs describe the actual registry shell error surface after the runtime
+      fixes above.
+
+      Grep hint: `INVALID_PERSONA_ID|REGISTRY_.*FAILED|errors.yaml|Error Codes`
+
+      Sibling search required:
+
+      - Scan for other registry-emitted codes that appear in code but not in contract
+      docs, or vice versa.
+
+
+      ### S2: Tooling gate debt on touched registry surface
+
+      Locations: `src/larva/shell/registry.py`, `tests/shell/test_registry.py`
+
+      Remediation:
+
+      - Resolve Ruff/mypy issues on the touched registry surface while preserving
+      `returns.result` shell conventions.
+
+      - Treat tooling cleanup as part of done for this remediation batch, not follow-up
+      debt.
+
+      Grep hint: `ruff|mypy|A002|TC006|SIM105|returns.result`
+
+      Sibling search required:
+
+      - Scan the touched tests/helpers for adjacent lint/type issues introduced or
+      exposed by the registry fixes.
+
+
+      ## Hardened acceptance
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior for registry root and `~/.larva/registry/<id>.json`
+
+      - missing-file fallback when spec file exists but index entry is stale/missing
+
+      - explicit empty/null digest rejection on save/index write path
+
+      - stale-definition vs new-state precedence between spec file and `index.json`
+
+      - partial-write / readable-consistency behavior for spec+index persistence
+
+
+      State semantics:
+
+      - Last-writer-wins applies to the latest valid persisted spec+digest pair, not
+      to stale index metadata.
+
+      - Persisted spec contents and non-empty digest must be preserved exactly once
+      accepted.
+
+      - Backward-compatible legacy behavior means readable persisted persona specs
+      remain retrievable even when index metadata needs repair or refresh.
+
+
+      Out of scope guardrail:
+
+      - Do not expand scope into facade override/revalidation behavior or transport
+      formatting; limit work to registry persistence/read/list contract parity, docs
+      parity, and touched-surface tooling debt.
+
+
+      Known risks:
+
+      - Persistence/layout drift has already produced false-not-found and unreadable-state
+      failures; grep beyond cited lines before claiming done.
+
+      - Gate will reject narrow fixes that patch only one code path without sibling
+      search evidence.
+
+
+      Gate Preview:
+
+      1. stale or missing `index.json` still causing false `PERSONA_NOT_FOUND`
+
+      2. empty `spec_digest` still persisting through any save/index path
+
+      3. runtime/documentation error-code drift after code changes
+
+      4. lint/type regressions left on touched registry files
+
+      Address ALL before claiming done.'
+    verification: '- Targeted regressions prove `get()` succeeds from persisted `~/.larva/registry/<id>.json`
+      when index metadata is stale/missing but the spec file is valid
+
+      - Targeted regressions prove save/index paths reject or prevent empty `spec_digest`
+      persistence and maintain readable-consistent state
+
+      - Error codes are synchronized across runtime surface, `contracts/errors.yaml`,
+      and `INTERFACES.md::G`
+
+      - Ruff/mypy issues on `src/larva/shell/registry.py` and `tests/shell/test_registry.py`
+      are resolved
+
+      - Evidence includes sibling-search results for each grep hint family'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Scope**: B1, B2, S1, S2 together
+
+
+      ### Sibling search evidence
+
+      - B1 grep results and remaining matches:
+
+      - B2 grep results and remaining matches:
+
+      - S1 grep results and remaining matches:
+
+      - S2 tooling scan scope:
+
+
+      ### Main-path proof
+
+      - Tests/commands updated for get/save parity:
+
+
+      ### Failure-path proof
+
+      - Stale/missing index fallback:
+
+      - Empty digest rejection / readable-consistency:
+
+
+      ### Contract parity proof
+
+      - Runtime codes synced with `contracts/errors.yaml` and `INTERFACES.md`
+
+
+      ### Tooling proof
+
+      - Exact Ruff/mypy commands and outputs:
+
+      '
+    depends_on:
+    - shell_registry.shell-registry-gate
+    agent: python-senior
 - id: app_facade
   name: larva.app.facade
   status: locked
