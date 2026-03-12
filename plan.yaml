@@ -1363,7 +1363,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.retest-gate-blockers
     name: Re-review all blockers from meta.review.meta-review-gate
-    status: claimed
+    status: done
     description: 'Re-review ALL blockers from `meta.review.meta-review-gate` after
       `meta.review.fix-gate-blockers` completes.
 
@@ -1406,6 +1406,38 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:14:47.134820+00:00'
+    done_at: '2026-03-12T16:24:28.344414+00:00'
+    evidence: 'Artifact:
+
+      - PR: none
+
+      - Audit context: main artifacts only
+
+
+      Verification:
+
+      - Run: blocker-retest-audit(main-artifacts) -> FAIL
+
+      - Remaining blocker: residual stale B1-family text in `src/larva/core/validate.py`
+      mentioning `spec_id` in required-fields commentary.
+
+
+      Spec link:
+
+      - main:src/larva/core/validate.py
+
+      - main:ARCHITECTURE.md
+
+      - main:INTERFACES.md
+
+
+      Decision: reject
+
+      Findings:
+
+      - B2/B3/B4/B5/B6 passed in this retest.
+
+      - B1 residual contract-text conflict remained; follow-up fix step created: `meta.review.meta-review-fix-b1-family-residual-contract-text`.'
   - id: meta.review.meta-review-fix-contract-artifacts
     name: meta.review.fix-contract-artifacts
     status: done
