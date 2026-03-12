@@ -2558,3 +2558,63 @@ phases:
     depends_on:
     - shell_registry.shell-registry-tests
     agent: python-senior
+  - id: shell_registry.shell-registry-verify
+    name: shell-registry-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.shell.registry` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L2
+
+
+      Test for:
+
+      - Happy path: save/get/list operate against a real temporary registry directory
+      with `<id>.json` persona files and `index.json` updates matching the stored
+      `spec_digest`
+
+      - Edge cases: empty registry listing, explicit JSON `null` preservation, and
+      id regex enforcement for invalid ids
+
+      - Error scenarios: missing personas surface typed shell errors suitable for
+      downstream `PERSONA_NOT_FOUND` mapping; index/spec divergence is detected; write
+      failures do not leave silent stale-state precedence inside the registry boundary
+
+      - Boundary discipline: override application, revalidation, renormalization,
+      and transport response shaping remain absent from `larva.shell.registry`
+
+
+      Document ALL findings. A verification step that discovers issues is a success.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.registry`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - INTERFACES.md :: D. Global Registry
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions'
+    verification: '- Run independent verification against a real temporary registry
+      directory, not mocks alone
+
+      - Capture whether typed shell errors stay in `Result` form and defer transport
+      formatting to downstream layers
+
+      - Record whether persistence failure paths leave registry state consistent enough
+      to avoid silent stale-state reads'
+    depends_on:
+    - shell_registry.shell-registry-implement
+    agent: integration-verifier
