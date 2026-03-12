@@ -1253,38 +1253,6 @@ phases:
     depends_on:
     - core_normalize.core-normalize-implement
     agent: integration-verifier
-  - id: core_normalize.core-normalize-freeze
-    name: core.normalize.freeze
-    status: pending
-    description: 'Freeze the `larva.core.normalize` snapshot before gate review.
-
-
-      step_type: verification
-
-
-      Purpose:
-
-      - lock the reviewed commit and environment for the gate step
-
-      - ensure no additional code changes occur between verification and gate
-
-
-      Required freeze evidence:
-
-      - `git rev-parse HEAD`
-
-      - `git status` is clean
-
-      - environment declaration for the verification run
-
-      - explicit statement that no code changes are allowed until `core.normalize.gate`
-      completes'
-    verification: '- Freeze evidence records commit, clean working tree, and environment
-
-      - No code changes are introduced between freeze capture and gate review'
-    depends_on:
-    - core_normalize.core-normalize-verify
-    agent: integration-verifier
 - id: core_validate
   name: larva.core.validate
   status: in_progress
@@ -4730,3 +4698,33 @@ phases:
 
       - `larva.core.normalize` is ready to unblock downstream facade and shell planning'
     agent: gate-reviewer
+  - id: core_normalize.core-normalize-freeze
+    name: core.normalize.freeze
+    status: pending
+    description: 'Freeze the `larva.core.normalize` snapshot before gate review.
+
+
+      step_type: verification
+
+
+      Purpose:
+
+      - lock the reviewed commit and environment for the gate step
+
+      - ensure no additional code changes occur between verification and gate
+
+
+      Required freeze evidence:
+
+      - `git rev-parse HEAD`
+
+      - `git status` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes are allowed until `core.normalize.gate`
+      completes'
+    verification: '- Freeze evidence records commit, clean working tree, and environment
+
+      - No code changes are introduced between freeze capture and gate review'
+    agent: integration-verifier
