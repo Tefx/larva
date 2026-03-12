@@ -912,6 +912,54 @@ phases:
     depends_on:
     - meta.review.mcp
     agent: software-architect
+  - id: meta.review.meta-review-gate
+    name: meta.review.gate
+    status: pending
+    description: 'Gate review: freeze the meta-planning flow before any implementation
+      planning output is executed.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - this gate freezes the full planning basis before execution begins
+
+      - downstream implementation phases must not start until all meta review steps
+      complete
+
+      - this is the structural barrier enforcing planning-first, execution-after-freeze
+
+
+      cross_cutting_focus:
+
+      - all module plans reviewed
+
+      - cross-module dependency consistency
+
+      - implementation phases blocked until meta-plan completion is accepted'
+    verification: '- All meta.review steps completed successfully
+
+      - Cross-module planning review complete
+
+      - Meta-plan is frozen for execution
+
+      - No implementation phase may begin before this gate is complete'
+    depends_on:
+    - meta.review.spec
+    - meta.review.normalize
+    - meta.review.validate
+    - meta.review.assemble
+    - meta.review.components
+    - meta.review.registry
+    - meta.review.facade
+    - meta.review.python_api
+    - meta.review.cli
+    - meta.review.mcp
+    - meta.review.final
+    agent: gate-reviewer
 - id: core_spec
   name: larva.core.spec
   status: in_progress
