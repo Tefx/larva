@@ -4978,6 +4978,8 @@ phases:
       \ Issues Found\n| Severity | Description | Location | Reproduction |\n|----------|-------------|----------|--------------|\n\
       | blocker | <issue> | <file:line> | <steps> |\n| should_fix | <issue> | <file:line>\
       \ | <steps> |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - core_spec.core-spec-implement
     agent: integration-verifier
   - id: core_spec.core-spec-implement
     name: core.spec.implement
