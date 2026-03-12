@@ -2021,7 +2021,7 @@ phases:
       - Gaps/Notes: none'
 - id: shell_components
   name: larva.shell.components
-  status: locked
+  status: pending
   context: Filesystem-backed component loading at the shell boundary; must stay separate
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
@@ -2358,7 +2358,7 @@ phases:
     agent: gate-reviewer
 - id: shell_registry
   name: larva.shell.registry
-  status: locked
+  status: pending
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -6884,7 +6884,7 @@ phases:
       - B1/B2 regression safety preserved.'
 - id: core_gate_remediation
   name: Core gate remediation
-  status: in_progress
+  status: done
   depends_on:
   - core_spec_exec
   - core_normalize_exec
@@ -7026,7 +7026,7 @@ phases:
       - B5 closed (core behavior preserved with focused tests)'
   - id: retest-core-gate-blockers-b1-b5
     name: Retest core gate blockers B1-B5
-    status: claimed
+    status: done
     description: "Re-open the blocked core gate path after `core_gate_remediation.fix-core-gate-blockers-b1-b5`\
       \ with one independent retest gate covering all blocker families.\n\nstep_type:\
       \ gate\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
@@ -7065,3 +7065,47 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T18:31:39.698821+00:00'
+    done_at: '2026-03-12T18:39:31.634838+00:00'
+    evidence: 'Artifact:
+
+      - PR: 02ad4b7
+
+
+      Verification:
+
+      - Run: retest-core-gate-b1-b5 -> PASS
+
+      - MCP invar_guard(changed=false): 0 errors (warnings only)
+
+      - Ruff core+cli: PASS
+
+      - Mypy core+cli: PASS
+
+      - Core tests (normalize/validate/assemble): 57 passed
+
+      - Entrypoint smoke: `uv run larva` executes
+
+      - Error-code canonicalization: VARIABLE_UNRESOLVED confirmed
+
+      - Legacy alias scan: no UNRESOLVED_PROMPT_VARIABLES matches in authoritative
+      artifacts
+
+
+      Spec link:
+
+      - ARCHITECTURE.md
+
+      - INTERFACES.md
+
+      - contracts/errors.yaml
+
+      - pyproject.toml
+
+      - src/larva/cli.py
+
+
+      Decision: accept
+
+      Findings:
+
+      - B1-B5 all closed; downstream core-gate blockers resolved.'
