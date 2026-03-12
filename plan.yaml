@@ -1247,45 +1247,6 @@ phases:
     depends_on:
     - core_validate.core-validate-tests
     agent: python-executor
-  - id: core_validate.core-validate-verify
-    name: core.validate.verify
-    status: pending
-    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
-      `larva.core.validate` module from a fresh perspective.
-
-
-      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
-
-
-      step_type: verification
-
-      Independence Level: L1
-
-
-      Test for:
-
-      - Happy path: valid PersonaSpec returns a deterministic `ValidationReport` with
-      `valid=True`, no structured errors, and warning strings only when applicable
-
-      - Edge cases: repeated validation is stable; invalid `spec_version` and invalid
-      `side_effect_policy` surface structured issues with useful `details`
-
-      - Error scenarios: unresolved prompt variables produce deterministic structured
-      issues; accidental shell/app imports or transport formatting leakage are caught
-
-
-      Document ALL findings. A verification step that discovers issues is a success.'
-    verification: '- Independent evidence covers the main validation path and the
-      unresolved-variable failure path
-
-      - Verification scope stays limited to `larva.core.validate` and its focused
-      tests
-
-      - Findings explicitly note report-shape fidelity, deterministic output, and
-      boundary purity'
-    depends_on:
-    - core_validate.core-validate-implement
-    agent: integration-verifier
 - id: core_assemble
   name: larva.core.assemble
   status: in_progress
@@ -4719,4 +4680,41 @@ phases:
     verification: '- Freeze evidence records commit, clean working tree, and environment
 
       - No code changes are introduced between freeze capture and gate review'
+    agent: integration-verifier
+  - id: core_validate.core-validate-verify
+    name: core.validate.verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      `larva.core.validate` module from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+
+      Test for:
+
+      - Happy path: valid PersonaSpec returns a deterministic `ValidationReport` with
+      `valid=True`, no structured errors, and warning strings only when applicable
+
+      - Edge cases: repeated validation is stable; invalid `spec_version` and invalid
+      `side_effect_policy` surface structured issues with useful `details`
+
+      - Error scenarios: unresolved prompt variables produce deterministic structured
+      issues; accidental shell/app imports or transport formatting leakage are caught
+
+
+      Document ALL findings. A verification step that discovers issues is a success.'
+    verification: '- Independent evidence covers the main validation path and the
+      unresolved-variable failure path
+
+      - Verification scope stays limited to `larva.core.validate` and its focused
+      tests
+
+      - Findings explicitly note report-shape fidelity, deterministic output, and
+      boundary purity'
     agent: integration-verifier
