@@ -2371,6 +2371,7 @@ phases:
       completes'
     depends_on:
     - shell_components.shell-components-verify
+    - shell_components.retest-shell-components-verify-blockers-b1-b3
     agent: integration-verifier
   - id: shell_components.shell-components-gate
     name: shell-components-gate
