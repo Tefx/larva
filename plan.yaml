@@ -1239,7 +1239,7 @@ phases:
   steps:
   - id: core_normalize.core-normalize-contract
     name: core.normalize.contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.core.normalize` module at `src/larva/core/normalize.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the public contract\
@@ -1270,6 +1270,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T10:29:11.341290+00:00'
+    done_at: '2026-03-12T10:29:39.175709+00:00'
+    evidence: '- Contract file: src/larva/core/normalize.py
+
+      - Public signature: normalize_spec(spec: PersonaSpec) -> PersonaSpec
+
+      - Purity check imports: typing (TypeAlias only)
+
+      - Commit hash(es): 517b8d7
+
+      - Files changed: src/larva/core/normalize.py
+
+      - Verification: python3 -m py_compile src/larva/core/normalize.py -> Syntax
+      OK
+
+      - Spec link: INTERFACES.md section E normalization; ARCHITECTURE.md module larva.core.normalize;
+      contracts/persona_spec.schema.json
+
+      - Gaps/Notes: none'
   - id: core_normalize.core-normalize-tests
     name: core.normalize.tests
     status: pending
