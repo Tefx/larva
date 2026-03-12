@@ -1208,7 +1208,7 @@ phases:
   context: Filesystem-backed component loading at the shell boundary; must stay separate
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
-  - core_assemble
+  - core_assemble_exec
   steps:
   - id: shell_components.shell-components-contract
     name: shell-components-contract
