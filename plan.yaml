@@ -2021,7 +2021,7 @@ phases:
       - Gaps/Notes: none'
 - id: shell_components
   name: larva.shell.components
-  status: in_progress
+  status: done
   context: Filesystem-backed component loading at the shell boundary; must stay separate
     from assembly, registry, CLI, and MCP concerns.
   depends_on:
@@ -2961,7 +2961,7 @@ phases:
       \ not modified in this step.\n- No facade/registry/CLI/MCP changes made."
   - id: shell_components.retest-shell-components-gate-findings-b1-s2
     name: retest-shell-components-gate-findings-b1-s2
-    status: claimed
+    status: done
     description: "Re-test and gate ALL findings from `shell_components.shell-components-gate`\
       \ together after the batched remediation.\n\nstep_type: gate\npriority: HIGH\n\
       spec_refs:\n- ARCHITECTURE.md :: Module: `larva.shell.components`\n- ARCHITECTURE.md\
@@ -3008,6 +3008,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T20:09:09.434722+00:00'
+    done_at: '2026-03-12T20:16:45.798659+00:00'
+    evidence: "## Gate Remediation Review\n\n**Reviewer**: gate-reviewer\n**Scope**:\
+      \ shell_components gate remediation for B1 + S1 + S2 (scoped to `src/larva/shell/components.py`,\
+      \ `tests/shell/test_components.py`)\n\n### Sibling Search Evidence\n- B1 grep\
+      \ (`to_dict\\(|\\{\"error\"|numeric_code|ComponentStoreError`) scoped to the\
+      \ two files shows typed error usage only; no `to_dict(`, `{\"error\"`, or `numeric_code`\
+      \ serialization in module/tests.\n- S1 grep (`Contract purity|ENFORCED|filesystem|file-loading`)\
+      \ shows scope docstrings/comments consistently describing filesystem-backed\
+      \ responsibility.\n- S2 grep (`class ComponentStore|class FilesystemComponentStore|ComponentStoreError`)\
+      \ confirms bounded protocol/error/store seams and helper structure.\n\n### Blocker\
+      \ Family Assessment\n- B1 closed: yes (no shell-local transport serialization\
+      \ helpers remain).\n- S1 handled: yes (docs/comments aligned with actual filesystem-backed\
+      \ shell role).\n- S2 handled: yes (bounded maintainability improvements applied\
+      \ in scope).\n\n### Gate Decision\n- CLOSED: all B1 + S1 + S2 are handled together\
+      \ with scoped sibling-search evidence.\n\nfindings:\n  blockers: []\n  should_fix:\
+      \ []\n  suggestions: []\n  tech_debt: []\ndiscovered_issues:\n- none\nGaps/Notes:\n\
+      - Initial reviewer response overreached scope to registry docs; output was repaired\
+      \ in the same subagent session and finalized strictly to step scope before completion."
 - id: shell_registry
   name: larva.shell.registry
   status: done
@@ -4020,7 +4038,7 @@ phases:
       \ for local import resolution."
 - id: app_facade
   name: larva.app.facade
-  status: locked
+  status: pending
   depends_on:
   - shell_components
   - shell_registry
