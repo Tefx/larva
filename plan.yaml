@@ -1790,18 +1790,17 @@ phases:
     description: "Create the contract-only `larva.shell.components` module at `src/larva/shell/components.py`.\n\
       \nCanonical type-ownership decision for planning freeze:\n- Component TypedDicts\
       \ used by assembly (`PromptComponent`, `ToolsetComponent`, `ConstraintComponent`,\
-      \ `ModelComponent`) are owned by `larva.core.assemble` contract surfaces.\n\
-      - `larva.shell.components` loads external component files and returns in-memory\
-      \ data shaped for core assembly contracts.\n- `larva.core.spec` remains the\
-      \ owner of persona-level domain types (`PersonaSpec`, `ToolPosture`, `SideEffectPolicy`)\
-      \ and is not the owner of assembly component TypedDicts.\n\nstep_type: contract\n\
-      contract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n\
-      \  - interfaces\n  - stubs\n\nScope:\n- define shell-side `ComponentStore` protocol\
-      \ for prompt/toolset/constraint/model loading and listing\n- define typed shell\
-      \ error values and `Result[T,E]` boundaries\n- encode documented type-directory/file-format\
-      \ mapping\n- keep boundaries separate from assembly, registry, and transports\n\
-      \nNon-goals:\n- no component assembly or override logic\n- no registry reads/writes\n\
-      - no CLI/MCP transport formatting"
+      \ `ModelComponent`, `AssemblyInput`) are owned by `larva.core.spec` contract\
+      \ surfaces.\n- `larva.shell.components` loads external component files and returns\
+      \ in-memory data shaped for core assembly contracts.\n- `larva.core.assemble`\
+      \ consumes these canonical contracts; it does not own the type definitions.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define shell-side `ComponentStore`\
+      \ protocol for prompt/toolset/constraint/model loading and listing\n- define\
+      \ typed shell error values and `Result[T,E]` boundaries\n- encode documented\
+      \ type-directory/file-format mapping\n- keep boundaries separate from assembly,\
+      \ registry, and transports\n\nNon-goals:\n- no component assembly or override\
+      \ logic\n- no registry reads/writes\n- no CLI/MCP transport formatting"
     verification: '- Contract artifacts are limited to protocol signatures, type definitions,
       error types, and stubs
 
