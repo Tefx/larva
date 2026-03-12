@@ -767,7 +767,7 @@ phases:
       \ downstream remediation planning."
   - id: meta.review.assemble
     name: Review plan for larva.core.assemble
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.core.assemble` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -790,6 +790,17 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:29:11.070834+00:00'
+    done_at: '2026-03-12T12:31:36.872195+00:00'
+    evidence: "- Reviewed module: larva.core.assemble\n- Decision: rework\n- Boundary\
+      \ issues:\n  - Contract surface mismatches against ARCHITECTURE.md for component\
+      \ TypedDict fields.\n  - AssemblyInput shape conflict identified (plural object\
+      \ lists vs singular string references).\n  - Return type expected PersonaSpec,\
+      \ current contract returns dict.\n- Dependency issues:\n  - Missing explicit\
+      \ PersonaSpec import/use from larva.core.spec in contract interface.\n- Evidence\
+      \ gaps:\n  - Authoritative conflict between ARCHITECTURE.md and INTERFACES.md\
+      \ on by-name vs by-value component inputs.\n- Agent assignment gaps: none\n\n\
+      Review result: reject pending architecture/interface conflict resolution and\
+      \ contract alignment."
   - id: meta.review.components
     name: Review plan for larva.shell.components
     status: pending
