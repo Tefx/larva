@@ -1635,7 +1635,7 @@ phases:
       \nNo remaining divergence across checked artifacts."
   - id: meta.review.meta-review-fix-b1-family-residual-contract-text
     name: meta.review.fix-b1-family-residual-contract-text
-    status: claimed
+    status: done
     description: 'Fix ALL residual B1-family stale conflicting contract text found
       after `meta.review.retest-gate-blockers`.
 
@@ -1696,6 +1696,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T16:24:41.171522+00:00'
+    done_at: '2026-03-12T16:31:09.168653+00:00'
+    evidence: 'Artifact:
+
+      - PR: 0bf24bd (squash-merge resolution on main)
+
+      - Source branch commits included: 340f538 (residual text fix), 7406145 (audit
+      runner)
+
+      - Files changed: src/larva/core/validate.py
+
+
+      Verification:
+
+      - Run: MCP invar guard (changed scope) -> PASS (0 errors, 0 warnings)
+
+      - Run: conflict check `git diff --name-only --diff-filter=U` -> no unmerged
+      paths
+
+
+      Spec link:
+
+      - src/larva/core/validate.py
+
+      - ARCHITECTURE.md core.validate contract
+
+      - INTERFACES.md validate contract
+
+
+      Closure:
+
+      - Residual B1 family fixed: yes
+
+      - stale `spec_id` required-fields conflict text removed in validate contract
+      commentary'
   - id: meta.review.meta-review-retest-gate-blockers-b1-family-residual
     name: meta.review.retest-gate-blockers-b1-family-residual
     status: pending
