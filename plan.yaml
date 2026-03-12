@@ -5722,6 +5722,8 @@ phases:
       generation and does not absorb normalization or transport duties
 
       - Findings are reported with concrete reproduction details'
+    depends_on:
+    - core_assemble.core-assemble-implement
     agent: integration-verifier
   - id: core_assemble.core-assemble-implement
     name: core-assemble-implement
