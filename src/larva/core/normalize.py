@@ -9,13 +9,14 @@ See:
 - ARCHITECTURE.md :: Module: larva.core.normalize
 """
 
-from typing import TypeAlias
+from invar import post
+from invar import pre
 
-# Type alias representing the canonical PersonaSpec structure.
-# Derived from contracts/persona_spec.schema.json
-PersonaSpec: TypeAlias = dict[str, object]
+from larva.core.spec import PersonaSpec
 
 
+@pre(lambda spec: isinstance(spec, dict))
+@post(lambda result: "spec_version" in result and "spec_digest" in result)
 def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.
 
@@ -36,5 +37,13 @@ def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
         - spec_version defaulting to "0.1.0" if missing
         - spec_digest computation from canonical JSON representation
         - Deterministic, pure transformation (no I/O side effects)
+
+    Examples:
+        >>> normalize_spec({"id": "test"})  # pragma: no cover
+        Traceback (most recent call last):
+            ...
+        NotImplementedError: normalize_spec implementation pending core_normalize.core-normalize-implement
     """
-    ...
+    raise NotImplementedError(
+        "normalize_spec implementation pending core_normalize.core-normalize-implement"
+    )
