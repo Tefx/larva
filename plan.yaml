@@ -5246,7 +5246,7 @@ phases:
   steps:
   - id: core_normalize.core-normalize-gate
     name: core.normalize.gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `core_normalize` phase meets the quality bar for proceeding to downstream facade
       work.
@@ -5290,6 +5290,8 @@ phases:
     - core_normalize.core-normalize-verify
     - core_normalize.core-normalize-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T18:13:54.969250+00:00'
   - id: core_normalize.core-normalize-freeze
     name: core.normalize.freeze
     status: done
