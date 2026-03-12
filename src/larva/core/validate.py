@@ -22,60 +22,45 @@ See:
 
 from typing import TypedDict
 
-from invar import post
-from invar import pre
+from deal import post
+from deal import pre
 
 # Import PersonaSpec from the canonical spec module
 from larva.core.spec import PersonaSpec
 
 
-class ValidationError(TypedDict):
-    """Single validation error for a PersonaSpec field.
+class ValidationIssue(TypedDict):
+    """Single structured validation issue for a PersonaSpec candidate.
 
     Fields:
-        field: The field path that failed validation (e.g., "spec_version")
-        message: Human-readable error message
-        code: Machine-readable error code (e.g., "INVALID_SPEC_VERSION")
+        code: Machine-readable issue code (e.g., "INVALID_SPEC_VERSION")
+        message: Human-readable issue message
+        details: Extra context for machine handling and diagnostics
     """
 
-    field: str
-    message: str
     code: str
-
-
-class ValidationWarning(TypedDict):
-    """Single validation warning for a PersonaSpec field.
-
-    Warnings indicate non-critical issues that don't invalidate the spec
-    but may indicate potential problems or deprecated usage.
-
-    Fields:
-        field: The field path with the warning (e.g., "model")
-        message: Human-readable warning message
-    """
-
-    field: str
     message: str
+    details: dict[str, object]
 
 
-class ValidationResult(TypedDict):
+class ValidationReport(TypedDict):
     """Structured validation result for a PersonaSpec candidate.
 
     Fields:
         valid: True if the spec passes all validation rules
-        errors: List of validation errors (empty if valid)
-        warnings: List of validation warnings (always present, may be empty)
+        errors: List of structured validation issues (empty if valid)
+        warnings: List of warning messages (always present, may be empty)
     """
 
     valid: bool
-    errors: list[ValidationError]
-    warnings: list[ValidationWarning]
+    errors: list[ValidationIssue]
+    warnings: list[str]
 
 
 # Contract-only stub - implementation handles validation logic
-@pre(lambda candidate: isinstance(candidate, dict))
+@pre(lambda spec: isinstance(spec, dict))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
-def validate_persona_spec(candidate: dict) -> ValidationResult:
+def validate_spec(spec: PersonaSpec) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
 
     This is a contract stub - full implementation follows in a subsequent
@@ -84,15 +69,14 @@ def validate_persona_spec(candidate: dict) -> ValidationResult:
     Contract (from INTERFACES.md):
     - Validates required fields: spec_version, spec_id, name
     - Validates field types and allowed values
-    - Produces structured errors with field path, message, and error code
+    - Produces structured errors with code, message, and details
     - Produces warnings for non-critical issues (unknown models, deprecated fields)
 
     Args:
-        candidate: A dict representing a PersonaSpec candidate to validate.
-            Expected to be a dict (possibly with validation issues).
+        spec: A PersonaSpec candidate to validate.
 
     Returns:
-        ValidationResult with valid=True/False, errors list, and warnings list.
+        ValidationReport with valid=True/False, errors list, and warnings list.
 
     Note:
         This is a contract stub. Implementation handles:
@@ -103,15 +87,15 @@ def validate_persona_spec(candidate: dict) -> ValidationResult:
         - Deterministic, pure validation (no I/O side effects)
 
     Acceptance:
-        @pre(lambda candidate: isinstance(candidate, dict))
-        @post(lambda result: isinstance(result, ValidationResult))
+        @pre(lambda spec: isinstance(spec, dict))
+        @post(lambda result: isinstance(result, dict))
 
     Examples:
-        >>> validate_persona_spec({})  # pragma: no cover
+        >>> validate_spec({})  # pragma: no cover
         Traceback (most recent call last):
             ...
-        NotImplementedError: validate_persona_spec implementation pending core_validate.core-validate-implement
+        NotImplementedError: validate_spec implementation pending core_validate.core-validate-implement
     """
     raise NotImplementedError(
-        "validate_persona_spec implementation pending core_validate.core-validate-implement"
+        "validate_spec implementation pending core_validate.core-validate-implement"
     )

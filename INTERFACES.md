@@ -33,9 +33,39 @@ Validate a PersonaSpec JSON object.
 | `spec` | object | yes | PersonaSpec JSON to validate |
 
 **Returns:**
+
+`larva.validate` returns a `ValidationReport` object:
+
+```json
+{
+  "valid": false,
+  "errors": [
+    {
+      "code": "INVALID_SPEC_VERSION",
+      "message": "spec_version must be '0.1.0'",
+      "details": {"field": "spec_version", "value": "0.2.0"}
+    }
+  ],
+  "warnings": ["model 'gpt-6' not in known models list"]
+}
+```
+
+Where each entry in `errors` is a `ValidationIssue`:
+
+```json
+{
+  "code": "string",
+  "message": "string",
+  "details": {"key": "value"}
+}
+```
+
+`warnings` is always present as `list[string]` and `errors` is always present as `list[ValidationIssue]`.
+
 ```json
 {
   "valid": true,
+  "errors": [],
   "warnings": ["model 'gpt-6' not in known models list"]
 }
 ```
@@ -43,7 +73,19 @@ or
 ```json
 {
   "valid": false,
-  "errors": ["spec_version must be '0.1.0'", "side_effect_policy must be one of allow, approval_required, read_only"]
+  "errors": [
+    {
+      "code": "INVALID_SPEC_VERSION",
+      "message": "spec_version must be '0.1.0'",
+      "details": {"field": "spec_version", "value": "0.2.0"}
+    },
+    {
+      "code": "INVALID_SIDE_EFFECT_POLICY",
+      "message": "side_effect_policy must be one of allow, approval_required, read_only",
+      "details": {"field": "side_effect_policy", "value": "unsafe"}
+    }
+  ],
+  "warnings": []
 }
 ```
 
