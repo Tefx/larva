@@ -4726,7 +4726,7 @@ phases:
       \ no orchestrator state file changes."
   - id: app_facade.app-facade-implement-resolve
     name: app-facade-implement-resolve
-    status: claimed
+    status: done
     description: "Implement the `resolve(id, overrides=None)` facade flow in `src/larva/app/facade.py`\
       \ as an isolated high-risk step.\n\nstep_type: implementation\ntags:\n  - integration\n\
       \nScope:\n- fetch the canonical PersonaSpec from the registry boundary\n- apply\
@@ -4774,6 +4774,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:43:54.467522+00:00'
+    done_at: '2026-03-12T20:49:04.685247+00:00'
+    evidence: "Commit hash(es):\n- 3727511\n- 8d88459\n- squash merged to main as\
+      \ commit 08dcd8e\n\nFiles changed:\n- src/larva/app/facade.py\n- tests/app/test_facade.py\n\
+      \nVerification:\n- Commands run:\n  - `uv run pytest -q tests/app/test_facade.py`\n\
+      \  - `invar_guard(path=<worktree>, changed=true)`\n  - `invar_guard(path=<worktree>,\
+      \ changed=false)`\n  - scoped grep checks for resolve implementation and prior\
+      \ NotImplemented marker removal\n- Key outputs/results:\n  - facade tests: `16\
+      \ passed`\n  - changed-files guard: PASS (`0 errors`, `0 warnings`)\n  - full\
+      \ guard: PASS (`0 errors`, `0 warnings`)\n  - `resolve()` NotImplemented marker\
+      \ removed from implementation path; protocol + concrete method present in facade.\n\
+      \  - explicit falsey override preservation, revalidation, renormalization, and\
+      \ digest recomputation covered by tests.\n\nSpec link:\n- ARCHITECTURE.md ::\
+      \ Registry Read -> Override -> Revalidation + Decision 2 (`resolve(..., overrides=...)`)\n\
+      - INTERFACES.md :: A (`resolve`) + G (error codes)\n\nGaps/Notes:\n- Scope kept\
+      \ to resolve implementation/tests only.\n- No storage implementation edits and\
+      \ no transport envelope shaping introduced.\n- No changes to register/list/validate/assemble\
+      \ beyond shared-path compatibility."
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
