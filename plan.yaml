@@ -631,7 +631,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
 - id: meta.review
   name: Review
-  status: in_progress
+  status: done
   depends_on:
   - meta.plan_creation
   steps:
@@ -774,11 +774,6 @@ phases:
 
       - Canonical names/signature aligned across ARCHITECTURE.md, INTERFACES.md, plan
       text, and src/larva/core/validate.py.'
-    rejection_reason: Refresh review evidence after B1/B2/B3/B4/B5 remediation.
-    rejection_history:
-    - reason: Refresh review evidence after B1/B2/B3/B4/B5 remediation.
-      timestamp: '2026-03-12T14:53:35.219332+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.assemble
     name: Review plan for larva.core.assemble
     status: done
@@ -812,11 +807,6 @@ phases:
       \ be considered refreshed by remediation commits.\n- Agent assignment gaps:\
       \ none\n\nB2/B3 closure confirmed at architecture level: assemble consumes canonical\
       \ contracts and returns PersonaSpec."
-    rejection_reason: Refresh review evidence after B2/B3 remediation.
-    rejection_history:
-    - reason: Refresh review evidence after B2/B3 remediation.
-      timestamp: '2026-03-12T14:58:32.862792+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.components
     name: Review plan for larva.shell.components
     status: done
@@ -858,14 +848,6 @@ phases:
 
       B3 closure confirmed: component TypedDict ownership is consistently represented
       as larva.core.spec across plan/docs/code.'
-    rejection_reason: B3 ownership text corrected in plan; refresh review outcome.
-    rejection_history:
-    - reason: Refresh review evidence after B3 ownership remediation.
-      timestamp: '2026-03-12T15:04:25.027078+00:00'
-      reviewer: vectl-orchestrator
-    - reason: B3 ownership text corrected in plan; refresh review outcome.
-      timestamp: '2026-03-12T16:00:18.725985+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.registry
     name: Review plan for larva.shell.registry
     status: done
@@ -998,11 +980,6 @@ phases:
 
       Closure note: shell_python_api dependency includes app_facade; sequencing and
       boundary checks now pass.'
-    rejection_reason: Dependency correction applied; refresh review evidence to accept.
-    rejection_history:
-    - reason: Dependency correction applied; refresh review evidence to accept.
-      timestamp: '2026-03-12T16:13:10.640752+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.cli
     name: Review plan for larva.shell.cli
     status: done
@@ -1044,11 +1021,6 @@ phases:
 
       Closure note: shell_cli dependency includes app_facade; transport sequencing
       now passes review.'
-    rejection_reason: Dependency correction applied; refresh review evidence to accept.
-    rejection_history:
-    - reason: Dependency correction applied; refresh review evidence to accept.
-      timestamp: '2026-03-12T16:15:41.117402+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.mcp
     name: Review plan for larva.shell.mcp
     status: done
@@ -1141,16 +1113,9 @@ phases:
       - Cross-module dependency graph now enforces facade-before-transport sequencing.
 
       - Plan set is coherent for gate retest.'
-    rejection_reason: B6 remediation requires refreshed cross-module review after
-      blocker fixes B1-B5.
-    rejection_history:
-    - reason: B6 remediation requires refreshed cross-module review after blocker
-        fixes B1-B5.
-      timestamp: '2026-03-12T13:11:38.539835+00:00'
-      reviewer: vectl-orchestrator
   - id: meta.review.meta-review-gate
     name: meta.review.gate
-    status: claimed
+    status: done
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -1199,14 +1164,35 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T16:36:24.865943+00:00'
-    done_at: '2026-03-12T13:07:52.241163+00:00'
-    rejection_reason: Gate previously rejected; must rerun after batched blocker remediation
-      and retest.
-    rejection_history:
-    - reason: Gate previously rejected; must rerun after batched blocker remediation
-        and retest.
-      timestamp: '2026-03-12T13:11:45.004468+00:00'
-      reviewer: vectl-orchestrator
+    done_at: '2026-03-12T16:57:52.465933+00:00'
+    evidence: 'Artifact:
+
+      - PR: 686b291d511bd0433f595e1eaffe86d59acf1aa7
+
+
+      Verification:
+
+      - Run: meta-review-gate-audit(main-artifacts) -> PASS
+
+
+      Spec link:
+
+      - plan.yaml
+
+      - meta-review-gate-audit
+
+      - meta.review.meta-review-gate.verification
+
+
+      Decision: accept
+
+      Findings:
+
+      - All required gate dependencies are done and pass audit checks.
+
+      - Cross-module meta review is complete and marked ready.
+
+      - Meta-plan freeze gate conditions are satisfied for execution handoff.'
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
     status: done
@@ -4676,7 +4662,7 @@ phases:
     agent: gate-reviewer
 - id: meta.gate
   name: Meta Freeze Gate
-  status: locked
+  status: pending
   depends_on:
   - meta.review
   steps:
