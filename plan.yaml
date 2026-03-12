@@ -6532,7 +6532,7 @@ phases:
       - B3: closed (assemble tests tightened; no permissive exception-pass masking)'
   - id: core_exec_remediation.retest-core-verification-blockers-b1-b3
     name: Retest core verification blockers B1-B3
-    status: claimed
+    status: done
     description: 'Re-run the verification criteria for `core_normalize.core-normalize-verify`,
       `core_validate.core-validate-verify`, and `core_assemble.core-assemble-verify`
       after the batched fix step.
@@ -6576,6 +6576,18 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T17:49:01.580309+00:00'
+    done_at: '2026-03-12T17:54:49.192436+00:00'
+    evidence: "Artifact:\n- PR: 68b5e11, 256cda7, d85b5c4\n\nVerification:\n- Run:\
+      \ MCP invar_guard(changed=false, coverage=true) -> PASSED (errors=0, warnings=2,\
+      \ doctest passed)\n- Run: pytest tests/core/{test_normalize.py,test_validate.py,test_assemble.py}\
+      \ -> 56 passed\n- Run: direct runtime invocation normalize/validate/assemble\
+      \ -> PASS (no contract-layer AttributeError)\n- Run: grep for permissive exception\
+      \ assertions in tests/core/test_assemble.py -> FOUND `pytest.raises(Exception)`\
+      \ at lines 49 and 55\n\nSpec link:\n- core_exec_remediation.retest-core-verification-blockers-b1-b3\n\
+      - tests/core/test_assemble.py\n\nDecision: reject\nFindings:\n- B1 closed\n\
+      - B2 closed\n- B3 residual remains (broad exception assertions can mask failure-signal\
+      \ specificity)\n\nFollow-up:\n- Added focused chain:\n  - core_exec_remediation.fix-core-verification-blockers-b3-residual\n\
+      \  - core_exec_remediation.retest-core-verification-blockers-b3-residual"
   - id: core_exec_remediation.fix-core-verification-blockers-b3-residual
     name: Fix residual B3 exception specificity
     status: pending
