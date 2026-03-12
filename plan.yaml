@@ -7026,7 +7026,7 @@ phases:
       - B5 closed (core behavior preserved with focused tests)'
   - id: retest-core-gate-blockers-b1-b5
     name: Retest core gate blockers B1-B5
-    status: pending
+    status: claimed
     description: "Re-open the blocked core gate path after `core_gate_remediation.fix-core-gate-blockers-b1-b5`\
       \ with one independent retest gate covering all blocker families.\n\nstep_type:\
       \ gate\nprior_loop:\n  - core_exec_remediation.fix-core-verification-blockers-b1-b3\n\
@@ -7063,3 +7063,5 @@ phases:
     depends_on:
     - fix-core-gate-blockers-b1-b5
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T18:31:39.698821+00:00'
