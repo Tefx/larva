@@ -6259,8 +6259,11 @@ phases:
       - INTERFACES.md larva.assemble + component library'
 - id: core_exec_remediation
   name: Core execution remediation
-  status: locked
+  status: pending
+  context: Single batched remediation loop for B1-B3 discovered by the three core
+    verification steps.
   depends_on:
-  - core_normalize_exec
-  - core_validate_exec
-  - core_assemble_exec
+  - meta.gate
+  - core_normalize
+  - core_validate
+  - core_assemble
