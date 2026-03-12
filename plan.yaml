@@ -4813,9 +4813,10 @@ phases:
       - planner remediation summary from ses_31d1250efffe6oje57sRqaiw79'
 - id: core_spec_exec
   name: larva.core.spec execution
-  status: pending
+  status: locked
   depends_on:
   - meta.gate
+  - core_spec
   steps:
   - id: core_spec.core-spec-gate
     name: core.spec.gate
