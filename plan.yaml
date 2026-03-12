@@ -5791,6 +5791,8 @@ phases:
 
       - Proof: no facade, registry, transport, or package-export wiring is added outside
       `larva.core.assemble` scope'
+    depends_on:
+    - core_assemble.core-assemble-tests
     agent: python-executor
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
