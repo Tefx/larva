@@ -1075,7 +1075,7 @@ phases:
       \ affected modules."
   - id: meta.review.meta-review-gate
     name: meta.review.gate
-    status: pending
+    status: claimed
     description: 'Gate review: freeze the meta-planning flow before any implementation
       planning output is executed.
 
@@ -1121,6 +1121,8 @@ phases:
     - meta.review.mcp
     - meta.review.final
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-12T12:52:22.491168+00:00'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
