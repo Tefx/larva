@@ -5652,7 +5652,7 @@ phases:
     agent: integration-verifier
   - id: core_validate.core-validate-verify
     name: core.validate.verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.core.validate` module from a fresh perspective.
 
@@ -5689,6 +5689,8 @@ phases:
     depends_on:
     - core_validate.core-validate-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-12T17:28:18.006909+00:00'
   - id: core_validate.core-validate-implement
     name: core.validate.implement
     status: done
