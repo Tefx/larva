@@ -1037,7 +1037,7 @@ phases:
       fidelity.'
   - id: meta.review.final
     name: Run final cross-module plan review
-    status: pending
+    status: claimed
     description: Perform the final overall review of all module-level plans after
       the per-module reviews complete. Confirm the full plan set covers every module,
       preserves the documented dependency graph and layer boundaries, handles cross-module
@@ -1058,6 +1058,8 @@ phases:
     depends_on:
     - meta.review.mcp
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-12T12:50:37.873115+00:00'
   - id: meta.review.meta-review-gate
     name: meta.review.gate
     status: pending
