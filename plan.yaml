@@ -3331,7 +3331,7 @@ phases:
       \ completion records findings and hands off to remediation chain."
   - id: shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
     name: fix-shell-registry-gate-blockers-b1-b2-s1-s2
-    status: pending
+    status: claimed
     description: 'Fix ALL issues found by `shell_registry.shell-registry-gate` — ALL
       of these, not just the first.
 
@@ -3577,6 +3577,8 @@ phases:
     depends_on:
     - shell_registry.shell-registry-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T19:41:53.488525+00:00'
   - id: shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2
     name: retest-shell-registry-gate-blockers-b1-b2-s1-s2
     status: pending
