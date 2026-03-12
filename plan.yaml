@@ -2438,6 +2438,8 @@ phases:
     - shell_components.shell-components-tests
     - shell_components.shell-components-implement
     - shell_components.shell-components-verify
+    - shell_components.fix-shell-components-verify-blockers-b1-b3
+    - shell_components.retest-shell-components-verify-blockers-b1-b3
     - shell_components.shell-components-freeze
     agent: gate-reviewer
   - id: shell_components.fix-shell-components-verify-blockers-b1-b3
