@@ -4726,7 +4726,7 @@ phases:
       \ no orchestrator state file changes."
   - id: app_facade.app-facade-implement-resolve
     name: app-facade-implement-resolve
-    status: pending
+    status: claimed
     description: "Implement the `resolve(id, overrides=None)` facade flow in `src/larva/app/facade.py`\
       \ as an isolated high-risk step.\n\nstep_type: implementation\ntags:\n  - integration\n\
       \nScope:\n- fetch the canonical PersonaSpec from the registry boundary\n- apply\
@@ -4772,6 +4772,8 @@ phases:
     depends_on:
     - app_facade.app-facade-implement-register-list
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T20:43:54.467522+00:00'
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
