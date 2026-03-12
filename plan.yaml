@@ -1408,7 +1408,7 @@ phases:
       - none'
   - id: meta.review.meta-review-fix-b1-validationreport-shape
     name: meta.review.fix-b1-validationreport-shape
-    status: claimed
+    status: done
     description: 'Resolve remaining B1 schema mismatch: align `ValidationIssue` shape
       between authoritative docs and `src/larva/core/validate.py`.
 
@@ -1434,6 +1434,33 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T14:48:01.015843+00:00'
+    done_at: '2026-03-12T14:53:26.578176+00:00'
+    evidence: 'Artifact:
+
+      - PR: 40471be
+
+      - Files changed: INTERFACES.md, src/larva/core/validate.py
+
+
+      Verification:
+
+      - Run: invar_guard(changed=true) -> PASS (0 errors, 0 warnings)
+
+
+      Spec link:
+
+      - ARCHITECTURE.md module/public interface for core.validate
+
+      - INTERFACES.md validate contract section
+
+      - src/larva/core/validate.py contracts
+
+
+      Result:
+
+      - Canonical ValidationIssue shape: code, message, details
+
+      - Alignment status: pass across docs+code'
 - id: core_spec
   name: larva.core.spec
   status: in_progress
