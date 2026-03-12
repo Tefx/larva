@@ -1133,3 +1133,64 @@ phases:
     depends_on:
     - core_normalize.core-normalize-contract
     agent: python-executor
+  - id: core_normalize.core-normalize-implement
+    name: core.normalize.implement
+    status: pending
+    description: 'Implement `larva.core.normalize` in `src/larva/core/normalize.py`
+      so it satisfies the documented canonicalization contract without widening module
+      scope.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - implement `normalize_spec(spec: PersonaSpec) -> PersonaSpec`
+
+      - canonicalize output into a flat, self-contained PersonaSpec with `spec_version`
+      present
+
+      - compute `spec_digest` as SHA-256 over canonical JSON with sorted keys, no
+      whitespace, excluding the `spec_digest` field itself
+
+      - preserve deterministic output so repeated normalization of equivalent specs
+      is stable
+
+      - keep all logic inside `src/larva/core/normalize.py`
+
+
+      Known risks:
+
+      - stale digest leakage: never trust an incoming `spec_digest`; recompute from
+      canonical content every time
+
+      - boundary drift: do not add validation, component discovery, registry access,
+      transport formatting, or facade orchestration
+
+      - core purity drift: do not import filesystem, env, process, path, or transport
+      helpers
+
+      - shared-registry conflict: do not modify `src/larva/__init__.py` or any router/export
+      file
+
+
+      Out of scope:
+
+      - call-site wiring in `larva.app.facade`
+
+      - package-level re-exports
+
+      - validation of malformed PersonaSpec values beyond what normalization semantics
+      require'
+    verification: '- Main path: targeted tests for canonical output, spec_version
+      defaulting, digest generation, and idempotence pass
+
+      - Failure path: focused regression proves incoming `spec_digest` values are
+      ignored and replaced with recomputed digest output
+
+      - Proof: implementation stays confined to `src/larva/core/normalize.py` and
+      does not add shell/app imports'
+    depends_on:
+    - core_normalize.core-normalize-tests
+    agent: python-executor
