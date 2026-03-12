@@ -3089,7 +3089,7 @@ phases:
       No code changes were produced by this verification step.'
   - id: shell_registry.shell-registry-freeze
     name: shell-registry-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.shell.registry` snapshot before gate review.
 
 
@@ -3123,6 +3123,40 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-12T19:23:35.919961+00:00'
+    done_at: '2026-03-12T19:29:48.868019+00:00'
+    evidence: 'Artifact:
+
+      - PR: cb7c5751d35504c5d58e80ecb67a478acce9b4ca
+
+
+      Verification:
+
+      - Run: `git rev-parse HEAD` -> `cb7c5751d35504c5d58e80ecb67a478acce9b4ca`
+
+      - Run: `git status --short --branch` -> `## vectl/step-shell_registry.shell-registry-freeze`
+      (clean)
+
+      - Run: `git status` -> working tree clean
+
+      - Run: `uname -s && uname -m && python3 --version` -> `Darwin`, `arm64`, `Python
+      3.14.3`
+
+
+      Spec link:
+
+      - shell_registry.shell-registry-freeze step verification requirements
+
+      - ARCHITECTURE.md :: Error Boundary Model / Shell
+
+
+      Gaps/Notes:
+
+      - Snapshot frozen at the verified commit.
+
+      - Explicit freeze declaration recorded: no code changes allowed until `shell_registry.shell-registry-gate`
+      completes.
+
+      - No code changes were made in this step.'
   - id: shell_registry.shell-registry-gate
     name: shell-registry-gate
     status: pending
