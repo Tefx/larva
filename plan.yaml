@@ -2756,7 +2756,7 @@ phases:
       - no code changes made during retest'
 - id: shell_registry
   name: larva.shell.registry
-  status: in_progress
+  status: done
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -3654,7 +3654,7 @@ phases:
       \ targeting false-not-found behavior in `get()`."
   - id: shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2
     name: retest-shell-registry-gate-blockers-b1-b2-s1-s2
-    status: claimed
+    status: done
     description: 'Re-test ALL registry gate findings together after `fix-shell-registry-gate-blockers-b1-b2-s1-s2`.
 
 
@@ -3746,6 +3746,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T19:54:14.259095+00:00'
+    done_at: '2026-03-12T20:01:01.131040+00:00'
+    evidence: "## Registry Gate Retest Report\n\n**Reviewer**: gate-reviewer\n**Scope**:\
+      \ B1, B2, S1, S2 together\n\n### Closure matrix\n| Finding | Status | Evidence\
+      \ |\n| --- | --- | --- |\n| B1 | closed | `uv run pytest -q tests/shell/test_registry.py`\
+      \ includes stale/missing-index fallback tests; 16 passed |\n| B2 | closed |\
+      \ same test run includes empty-digest rejection and rollback/digest-mismatch\
+      \ protections |\n| S1 | closed | parity confirmed across `src/larva/shell/registry.py`,\
+      \ `contracts/errors.yaml`, and `INTERFACES.md` |\n| S2 | closed | Ruff and mypy\
+      \ commands for touched surfaces pass |\n\n### Main path proof\n- `uv run pytest\
+      \ -q tests/shell/test_registry.py` -> 16 passed.\n\n### Highest-risk failure\
+      \ proof\n- Regression coverage includes missing-index fallback, empty-digest\
+      \ rejection, digest mismatch, and save rollback on index update failure.\n\n\
+      ### Gate decision\n- CLOSED: all B1/B2/S1/S2 findings are closed together.\n\
+      \nfindings:\n  blockers: []\n  should_fix: []\n  suggestions: []\n  tech_debt:\
+      \ []\ndiscovered_issues:\n- Full-project `invar guard` still reports crosshair\
+      \ counterexample_found in core modules; out of scope for this registry retest\
+      \ chain.\nGaps/Notes:\n- mypy invocation in this environment required `MYPYPATH=src`\
+      \ for local import resolution."
 - id: app_facade
   name: larva.app.facade
   status: locked
