@@ -1858,9 +1858,10 @@ phases:
       - Gaps/Notes: none'
 - id: core_normalize
   name: larva.core.normalize
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
+  evidence: Contract phase completed; remaining execution moved to core_normalize_exec.
   steps:
   - id: core_normalize.core-normalize-contract
     name: core.normalize.contract
@@ -5097,7 +5098,7 @@ phases:
     agent: python-executor
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   - core_normalize
