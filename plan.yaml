@@ -4038,14 +4038,14 @@ phases:
       \ for local import resolution."
 - id: app_facade
   name: larva.app.facade
-  status: pending
+  status: in_progress
   depends_on:
   - shell_components
   - shell_registry
   steps:
   - id: app_facade.app-facade-contract
     name: app-facade-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.app.facade` module at `src/larva/app/facade.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -4087,6 +4087,8 @@ phases:
       - No CLI/MCP/Python API wiring, filesystem I/O, or completed business logic
       is introduced in the contract step'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-12T20:17:03.053582+00:00'
   - id: app_facade.app-facade-tests
     name: app-facade-tests
     status: pending
