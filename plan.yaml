@@ -1083,61 +1083,6 @@ phases:
     depends_on:
     - core_spec.core-spec-contract
     agent: python-executor
-  - id: core_spec.core-spec-implement
-    name: core.spec.implement
-    status: pending
-    description: 'Finalize `larva.core.spec` so the contract is import-stable and
-      usable by downstream modules while preserving the exact surface defined by the
-      contract step.
-
-
-      step_type: implementation
-
-
-      Scope:
-
-      - satisfy the contract tests without expanding beyond `src/larva/core/spec.py`
-
-      - add only the minimal implementation detail needed for stable imports, documentation
-      quality, and typing compatibility on the repo''s supported Python toolchain
-
-      - keep the module deterministic, pure, and free of shell/app concerns
-
-
-      Known risks:
-
-      - Core purity drift: do not import filesystem, path, env, JSON, or transport
-      helpers into `src/larva/core/spec.py`
-
-      - Boundary widening: do not pre-emptively add validation, normalization, registry,
-      or facade helpers here
-
-      - Shared-registry conflict: do not modify `src/larva/__init__.py` or other future
-      export registries from this step
-
-
-      Out of scope:
-
-      - package-level re-exports outside `larva.core.spec`
-
-      - downstream call-site migrations in `validate`, `assemble`, `normalize`, `facade`,
-      or shell modules'
-    verification: '- Main path: `larva.core.spec` imports cleanly and satisfies the
-      contract tests
-
-      - Failure path: no forbidden imports or extra public fields slip into the module
-      surface
-
-      - Proof: focused `invar guard` run on changed files plus a direct import check
-      for `ToolPosture`, `SideEffectPolicy`, and `PersonaSpec`'
-    evidence_template: "## Implementation Evidence\n\n- Files touched: `src/larva/core/spec.py`,\
-      \ `tests/core/test_spec.py`\n- Direct import proof command:\n  ```bash\n  python\
-      \ -c \"from larva.core.spec import ToolPosture, SideEffectPolicy, PersonaSpec\"\
-      \n  ```\n- `invar guard` result for changed files\n- Confirmation that no non-boundary\
-      \ files were edited"
-    depends_on:
-    - core_spec.core-spec-tests
-    agent: python-executor
 - id: core_normalize
   name: larva.core.normalize
   status: in_progress
@@ -4734,3 +4679,56 @@ phases:
       | blocker | <issue> | <file:line> | <steps> |\n| should_fix | <issue> | <file:line>\
       \ | <steps> |\n\n### Verdict\n- [ ] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
     agent: integration-verifier
+  - id: core_spec.core-spec-implement
+    name: core.spec.implement
+    status: pending
+    description: 'Finalize `larva.core.spec` so the contract is import-stable and
+      usable by downstream modules while preserving the exact surface defined by the
+      contract step.
+
+
+      step_type: implementation
+
+
+      Scope:
+
+      - satisfy the contract tests without expanding beyond `src/larva/core/spec.py`
+
+      - add only the minimal implementation detail needed for stable imports, documentation
+      quality, and typing compatibility on the repo''s supported Python toolchain
+
+      - keep the module deterministic, pure, and free of shell/app concerns
+
+
+      Known risks:
+
+      - Core purity drift: do not import filesystem, path, env, JSON, or transport
+      helpers into `src/larva/core/spec.py`
+
+      - Boundary widening: do not pre-emptively add validation, normalization, registry,
+      or facade helpers here
+
+      - Shared-registry conflict: do not modify `src/larva/__init__.py` or other future
+      export registries from this step
+
+
+      Out of scope:
+
+      - package-level re-exports outside `larva.core.spec`
+
+      - downstream call-site migrations in `validate`, `assemble`, `normalize`, `facade`,
+      or shell modules'
+    verification: '- Main path: `larva.core.spec` imports cleanly and satisfies the
+      contract tests
+
+      - Failure path: no forbidden imports or extra public fields slip into the module
+      surface
+
+      - Proof: focused `invar guard` run on changed files plus a direct import check
+      for `ToolPosture`, `SideEffectPolicy`, and `PersonaSpec`'
+    evidence_template: "## Implementation Evidence\n\n- Files touched: `src/larva/core/spec.py`,\
+      \ `tests/core/test_spec.py`\n- Direct import proof command:\n  ```bash\n  python\
+      \ -c \"from larva.core.spec import ToolPosture, SideEffectPolicy, PersonaSpec\"\
+      \n  ```\n- `invar guard` result for changed files\n- Confirmation that no non-boundary\
+      \ files were edited"
+    agent: python-executor
