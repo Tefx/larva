@@ -2313,3 +2313,8 @@ phases:
     - shell_components.shell-components-verify
     - shell_components.shell-components-freeze
     agent: gate-reviewer
+- id: shell_registry
+  name: larva.shell.registry
+  status: locked
+  depends_on:
+  - core_assemble
