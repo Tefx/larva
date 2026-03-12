@@ -4714,3 +4714,8 @@ phases:
       - Test assertions stay inside `tests/core/test_validate.py` plus the `larva.core.validate`
       contract'
     agent: python-executor
+- id: core_assemble_exec
+  name: larva.core.assemble execution
+  status: locked
+  depends_on:
+  - meta.gate
