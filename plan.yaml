@@ -2357,10 +2357,11 @@ phases:
     agent: gate-reviewer
 - id: shell_registry
   name: larva.shell.registry
-  status: pending
+  status: locked
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
+  - core_gate_remediation
   steps:
   - id: shell_registry.shell-registry-contract
     name: shell-registry-contract
