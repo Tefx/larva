@@ -1406,6 +1406,32 @@ phases:
       Gaps/Notes:
 
       - none'
+  - id: meta.review.meta-review-fix-b1-validationreport-shape
+    name: meta.review.fix-b1-validationreport-shape
+    status: pending
+    description: 'Resolve remaining B1 schema mismatch: align `ValidationIssue` shape
+      between authoritative docs and `src/larva/core/validate.py`.
+
+
+      Required:
+
+      - Make one canonical shape for `ValidationIssue` and `ValidationReport` and
+      apply consistently across ARCHITECTURE.md, INTERFACES.md, and `src/larva/core/validate.py`.
+
+      - If `details` is canonical, ensure code includes it; if not canonical, ensure
+      docs remove it.
+
+      - Preserve deterministic contract semantics and avoid scope expansion.
+
+
+      Evidence must include exact symbol-level diff summary and guard outcome.'
+    verification: '- No remaining mismatch between docs and code for ValidationIssue/ValidationReport
+      fields
+
+      - invar guard changed=true passes for touched files'
+    depends_on:
+    - meta.review.meta-review-fix-contract-artifacts
+    agent: python-senior
 - id: core_spec
   name: larva.core.spec
   status: in_progress
