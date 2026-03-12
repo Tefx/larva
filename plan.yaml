@@ -2628,7 +2628,7 @@ phases:
       - ARCHITECTURE.md larva.shell.registry'
   - id: shell_registry.shell-registry-implement
     name: shell-registry-implement
-    status: claimed
+    status: done
     description: 'Implement `larva.shell.registry` in `src/larva/shell/registry.py`
       so it persists and retrieves canonical PersonaSpec records without widening
       module scope.
@@ -2748,6 +2748,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:01:43.829310+00:00'
+    done_at: '2026-03-12T19:09:14.892472+00:00'
+    evidence: 'Artifact:
+
+      - PR: de8905c (squash merge on main)
+
+      - Source commit: 69acab0e599ed61e5e62e1c19593507a66372a1b
+
+      - Files changed: src/larva/shell/registry.py, tests/shell/test_registry.py
+
+
+      Verification:
+
+      - Run: MCP invar guard -> PASS (errors=0, warnings=0)
+
+      - Run: tests/shell/test_registry.py -> 11 passed
+
+
+      Spec link:
+
+      - shell_registry.shell-registry-implement
+
+      - INTERFACES.md global registry + id rules
+
+      - ARCHITECTURE.md shell.registry
+
+
+      Failure-mode checklist coverage:
+
+      - id validation, index/spec consistency, explicit null preservation, partial-write
+      rollback.'
   - id: shell_registry.shell-registry-verify
     name: shell-registry-verify
     status: pending
