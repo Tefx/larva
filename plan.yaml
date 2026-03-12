@@ -4359,3 +4359,52 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-implement
     agent: integration-verifier
+  - id: shell_mcp.shell-mcp-seam-proof
+    name: shell-mcp-seam-proof
+    status: pending
+    description: 'Integration companion: provide seam-level real path evidence for
+      `larva.shell.mcp`.
+
+
+      step_type: verification
+
+      agent_source: default
+
+
+      Changed seams require real execution proof:
+
+      - MCP tool call -> `larva.app.facade` for at least one read path (`larva.list`
+      or `larva.resolve`) and one mutation/assembly path (`larva.register` or `larva.assemble`)
+
+      - MCP error seam for documented JSON error envelopes on at least one not-found
+      or conflict case
+
+      - MCP parameter-fidelity seam for explicit falsey override values
+
+
+      Mock-heavy unit tests alone are insufficient for this step. Provide real MCP
+      invocation evidence showing the adapter works through its facade seam without
+      broadening module ownership.
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.mcp`
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: A. MCP Server Interface (primary)
+
+      - INTERFACES.md :: G. Error Codes / Error Response Format (--json / MCP)
+
+      - README.md :: Interfaces / MCP Server (primary)'
+    verification: '- Provide at least one real MCP invocation for a success path and
+      one for a failure path
+
+      - Include actual structured output, not only a passing summary
+
+      - Show the exercised path stays inside `larva.shell.mcp` -> `larva.app.facade`
+      and preserves the documented JSON envelope'
+    depends_on:
+    - shell_mcp.shell-mcp-implement
+    agent: integration-verifier
