@@ -733,7 +733,7 @@ phases:
       - Agent assignment present and concrete.'
   - id: meta.review.validate
     name: Review plan for larva.core.validate
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.core.validate` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -756,6 +756,15 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:26:38.304002+00:00'
+    done_at: '2026-03-12T12:29:05.094906+00:00'
+    evidence: "- Reviewed module: larva.core.validate\n- Decision: rework\n- Boundary\
+      \ issues:\n  - Public interface naming mismatch against ARCHITECTURE.md (ValidationIssue/ValidationReport/validate_spec\
+      \ expected).\n  - Function signature mismatch (`validate_spec(spec: PersonaSpec)\
+      \ -> ValidationReport` expected vs current `validate_persona_spec(candidate:\
+      \ dict) -> ValidationResult`).\n- Dependency issues: none\n- Evidence gaps:\n\
+      \  - Prior contract evidence listed public names inconsistent with current module\
+      \ content.\n- Agent assignment gaps: none\n\nRequired corrections recorded for\
+      \ downstream remediation planning."
   - id: meta.review.assemble
     name: Review plan for larva.core.assemble
     status: pending
