@@ -884,7 +884,7 @@ phases:
       shell error boundaries.'
   - id: meta.review.facade
     name: Review plan for larva.app.facade
-    status: claimed
+    status: done
     description: Review the module-level vectl plan for `larva.app.facade` against
       the authoritative docs, the shared planning rubric, and the review checklist.
       Confirm boundary fidelity, dependency assumptions, evidence requirements, and
@@ -907,6 +907,26 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-12T12:42:23.148966+00:00'
+    done_at: '2026-03-12T12:44:27.568084+00:00'
+    evidence: '- Reviewed module: larva.app.facade
+
+      - Decision: accept
+
+      - Boundary issues: none
+
+      - Dependency issues: none
+
+      - Evidence gaps: none
+
+      - Agent assignment gaps: none
+
+
+      Notes:
+
+      - App boundary, flow ordering, and error boundary alignment are consistent with
+      architecture and interface docs.
+
+      - Independent verifier/gate separation is correctly represented in planned agents.'
   - id: meta.review.python_api
     name: Review plan for larva.shell.python_api
     status: pending
