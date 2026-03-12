@@ -4136,7 +4136,7 @@ phases:
       I/O implementation, and no package export edits.'
   - id: app_facade.app-facade-tests
     name: app-facade-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for `larva.app.facade` in `tests/app/test_facade.py`.
 
 
@@ -4232,6 +4232,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T20:23:53.751260+00:00'
+    done_at: '2026-03-12T20:29:48.590745+00:00'
+    evidence: "Commit hash(es):\n- c9164d1\n- squash merged to main as commit 27fb8e6\n\
+      \nFiles changed:\n- tests/app/test_facade.py\n\nVerification:\n- Commands run:\n\
+      \  - `uv run pytest -q tests/app/test_facade.py`\n  - `uv run ruff check tests/app/test_facade.py`\n\
+      \  - `invar_guard(path=..., changed=true)`\n  - symbol scan for `LarvaFacade`/`DefaultLarvaFacade`\
+      \ references\n- Key outputs/results:\n  - `ruff` passed.\n  - facade test file\
+      \ added with boundary tests for validate/assemble/register/resolve/list and\
+      \ specified failure paths.\n  - `pytest` currently fails (9 failures) with `NotImplementedError`\
+      \ from `src/larva/app/facade.py` contract stubs; this is expected pre-implementation\
+      \ and establishes executable acceptance for the next implementation step.\n\
+      \  - changed-surface guard reported pass with no shell/core regression signals\
+      \ in this step.\n\nSpec link:\n- ARCHITECTURE.md :: app facade sequencing and\
+      \ override/revalidation boundaries\n- INTERFACES.md :: A (operations) + G (error\
+      \ codes)\n- README.md :: key decisions and Python interface expectations\n\n\
+      Gaps/Notes:\n- Contract-driven red tests are intentional at this stage and target\
+      \ upcoming implementation behavior.\n- No CLI/MCP envelope assertions, no shell\
+      \ storage adapter implementation tests, and no package-export tests were introduced.\n\
+      - Discovered environment note from worker: `invar guard --changed` did not include\
+      \ the new test file in files_checked for this repo configuration."
   - id: app_facade.app-facade-implement
     name: app-facade-implement-validate-assemble
     status: pending
