@@ -1817,7 +1817,7 @@ phases:
   steps:
   - id: core_assemble.core-assemble-contract
     name: core-assemble-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.core.assemble` module at `src/larva/core/assemble.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n\nScope:\n- define the authoritative\
@@ -1850,6 +1850,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-12T10:30:12.868106+00:00'
+    done_at: '2026-03-12T10:30:20.809608+00:00'
+    evidence: '- Contract file: src/larva/core/assemble.py
+
+      - Public names: PromptComponent, ToolsetComponent, ConstraintComponent, ModelComponent,
+      AssemblyInput, assemble_candidate
+
+      - Purity check imports: typing (TypedDict only)
+
+      - Commit hash(es): c37bb742cdb25ff2368efddf54f97fd94bf5409a
+
+      - Files changed: src/larva/core/assemble.py
+
+      - Verification: import checks passed; commit contains only assemble.py
+
+      - Spec link: INTERFACES.md section C assembly rules + section E output format;
+      ARCHITECTURE.md module larva.core.assemble
+
+      - Gaps/Notes: none'
   - id: core_assemble.core-assemble-tests
     name: core-assemble-tests
     status: pending
