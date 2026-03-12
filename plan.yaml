@@ -1180,7 +1180,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: meta.review.fix-gate-blockers
     name: Fix all gate blockers from meta.review.meta-review-gate
-    status: rejected
+    status: claimed
     description: 'Fix ALL blockers found by `meta.review.meta-review-gate`.
 
 
@@ -1294,7 +1294,7 @@ phases:
     - meta.review.final
     agent: software-architect
     claimed_by: software-architect
-    claimed_at: '2026-03-12T13:08:18.202955+00:00'
+    claimed_at: '2026-03-12T16:08:53.108764+00:00'
     done_at: '2026-03-12T13:12:08.734739+00:00'
     rejection_reason: Refresh evidence text to remove stale B3 ownership statement
       and match canonical core.spec ownership.
