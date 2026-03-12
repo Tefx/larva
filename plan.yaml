@@ -5096,9 +5096,10 @@ phases:
     agent: python-executor
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: pending
+  status: locked
   depends_on:
   - meta.gate
+  - core_normalize
   steps:
   - id: core_normalize.core-normalize-gate
     name: core.normalize.gate
