@@ -393,7 +393,7 @@ phases:
       - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.registry
     name: Plan module larva.shell.registry
-    status: claimed
+    status: done
     description: Produce the detailed vectl implementation plan for `larva.shell.registry`
       in `plan.yaml`, anchored to the authoritative docs. Downstream planner must
       use contract -> test -> implementation ordering for non-trivial new work, allow
@@ -421,6 +421,24 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-03-12T09:39:32.116733+00:00'
+    done_at: '2026-03-12T09:43:05.187793+00:00'
+    evidence: '- Added step IDs: shell_registry.shell-registry-contract, shell_registry.shell-registry-tests,
+      shell_registry.shell-registry-implement, shell_registry.shell-registry-verify,
+      shell_registry.shell-registry-freeze, shell_registry.shell-registry-gate
+
+      - Boundary citations: ARCHITECTURE.md module larva.shell.registry + registry->override->revalidation
+      + shell error boundary + build order; INTERFACES.md register/resolve/list +
+      global registry location/resolution/id rules + error codes; README key design
+      decisions
+
+      - Downstream ordering used: contract -> test -> implementation -> verification
+      -> freeze -> gate
+
+      - Concrete execution agents assigned: yes
+
+      - Open module questions: none
+
+      - Planner output flags: plan_is_dirty=true, requires_durability_handoff=true'
   - id: meta.plan.facade
     name: Plan module larva.app.facade
     status: pending
