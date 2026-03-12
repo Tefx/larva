@@ -2492,7 +2492,7 @@ phases:
     agent: gate-reviewer
   - id: shell_components.fix-shell-components-verify-blockers-b1-b3
     name: Fix shell-components verification blockers B1-B3
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by `shell_components.shell-components-verify`.
 
 
@@ -2608,6 +2608,24 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-12T19:31:08.049594+00:00'
+    done_at: '2026-03-12T19:31:22.886419+00:00'
+    evidence: "Commit hash(es):\n- 64ed073\n- 5eb97fd\n- squash merged to main as\
+      \ commit 7ab9e66\n\nFiles changed:\n- src/larva/shell/components.py\n- tests/shell/test_components.py\n\
+      \nVerification:\n- Commands run:\n  - `uv run pytest -v tests/shell/test_components.py\
+      \ -k \"cross_type_and_traversal_names_are_rejected_with_typed_error or uses_production_store_implementation\"\
+      `\n  - `uv run coverage run -m pytest -q tests/shell/test_components.py && uv\
+      \ run coverage report -m src/larva/shell/components.py`\n  - `invar_guard(path=...,\
+      \ changed=false)`\n  - sibling-search scans for loader path resolution and test\
+      \ shadow-class patterns\n- Key outputs/results:\n  - traversal/cross-type rejection\
+      \ tests passed with typed failures.\n  - production-implementation usage test\
+      \ passed.\n  - full components test run: 18 passed.\n  - coverage for `src/larva/shell/components.py`:\
+      \ 87% (114 stmts, 15 miss).\n  - guard PASS: 0 errors, 0 warnings.\n  - sibling\
+      \ search: `_resolve_component_path` now used across loader entrypoints; no remaining\
+      \ local shadow `FilesystemComponentStore` in tests.\n\nSpec link:\n- ARCHITECTURE.md\
+      \ :: Module `larva.shell.components` / shell typed-error boundary\n- INTERFACES.md\
+      \ :: Component Library + Error Codes\n\nGaps/Notes:\n- Scope kept to B1/B2/B3\
+      \ + S1/S2 in components module/tests only.\n- No transport-shaped JSON error\
+      \ payloads added to shell boundary.\n- No out-of-scope files modified."
   - id: shell_components.retest-shell-components-verify-blockers-b1-b3
     name: Retest shell-components verification blockers B1-B3
     status: pending
