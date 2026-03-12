@@ -2652,3 +2652,74 @@ phases:
     depends_on:
     - shell_registry.shell-registry-verify
     agent: integration-verifier
+  - id: shell_registry.shell-registry-gate
+    name: shell-registry-gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_registry` phase meets the quality bar for proceeding to downstream facade
+      and transport work.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if registry persistence semantics drift
+      from the docs, evidence is vague, or the shell boundary leaked.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - `larva.shell.registry` owns persistent canonical persona storage and typed
+      shell error boundaries
+
+      - the phase carries state-consistency risk across `<id>.json` files and `index.json`
+
+      - downstream facade and transport phases rely on exact separation between registry
+      persistence and override/revalidation logic
+
+
+      cross_cutting_focus:
+
+      - fidelity to the documented registry layout, id rules, and canonical PersonaSpec
+      storage contract
+
+      - typed shell `Result[T, E]` behavior with no transport-shaped error formatting
+      in-module
+
+      - evidence that `larva.shell.registry` stops at persistence/read/list and leaves
+      override, revalidation, and summary shaping to downstream phases
+
+
+      Boundary citations:
+
+      - ARCHITECTURE.md :: Module: `larva.shell.registry`
+
+      - ARCHITECTURE.md :: 7. Cross-Module Interface Contracts / Registry Read ->
+      Override -> Revalidation
+
+      - ARCHITECTURE.md :: 8. Error Boundary Model / Shell
+
+      - ARCHITECTURE.md :: 11. Implementation Handoff / Suggested Build Order
+
+      - INTERFACES.md :: D. Global Registry
+
+      - INTERFACES.md :: G. Error Codes
+
+      - README.md :: Key Design Decisions'
+    verification: '- All `shell_registry` steps completed successfully
+
+      - Evidence shows real filesystem-backed registry persistence for save/get/list
+      plus typed shell error handling
+
+      - No unresolved boundary leaks into facade override/revalidation or transport
+      shaping concerns
+
+      - The phase is ready for downstream facade and transport planning and execution'
+    depends_on:
+    - shell_registry.shell-registry-contract
+    - shell_registry.shell-registry-tests
+    - shell_registry.shell-registry-implement
+    - shell_registry.shell-registry-verify
+    - shell_registry.shell-registry-freeze
+    agent: gate-reviewer
