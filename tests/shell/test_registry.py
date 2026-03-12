@@ -66,6 +66,22 @@ class TestFileSystemRegistryStoreContract:
         assert persisted_spec == spec
         assert persisted_index == {"ops-analyst": "sha256:ops-analyst"}
 
+    def test_save_preserves_explicit_null_values(self, registry_root: Path) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
+        spec = _canonical_spec("null-preserver", "sha256:null-preserver")
+        spec["description"] = None
+        spec["model_params"] = {"temperature": None}
+
+        result = store.save(spec)
+
+        assert result == Success(None)
+        persisted_spec = json.loads(
+            (registry_root / "null-preserver.json").read_text(encoding="utf-8")
+        )
+        assert "description" in persisted_spec
+        assert persisted_spec["description"] is None
+        assert persisted_spec["model_params"]["temperature"] is None
+
     def test_get_returns_exact_stored_spec_for_valid_kebab_case_id(
         self, registry_root: Path
     ) -> None:
@@ -92,6 +108,16 @@ class TestFileSystemRegistryStoreContract:
         assert error["code"] == "PERSONA_NOT_FOUND"
         assert error["persona_id"] == "missing-persona"
         assert "missing-persona" in error["message"]
+
+    def test_get_with_missing_index_returns_persona_not_found(self, registry_root: Path) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.get("missing-persona")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["persona_id"] == "missing-persona"
 
     def test_get_rejects_invalid_id_with_typed_shell_error(self, registry_root: Path) -> None:
         _write_json(registry_root / INDEX_FILENAME, {})
@@ -128,6 +154,13 @@ class TestFileSystemRegistryStoreContract:
         by_id = {spec["id"]: spec for spec in specs}
         assert by_id == {"analysis-agent": spec_a, "ops-agent": spec_b}
 
+    def test_list_with_missing_index_returns_empty_registry(self, registry_root: Path) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.list()
+
+        assert result == Success([])
+
     def test_list_fails_with_typed_error_when_index_digest_disagrees_with_spec(
         self,
         registry_root: Path,
@@ -162,3 +195,43 @@ class TestFileSystemRegistryStoreContract:
         assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
         assert error["persona_id"] == "missing-agent"
         assert error["path"].endswith("missing-agent.json")
+
+    def test_save_rolls_back_spec_when_index_update_fails(
+        self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        initial = _canonical_spec("rollback-agent", "sha256:original")
+        _write_json(registry_root / "rollback-agent.json", initial)
+        _write_json(registry_root / INDEX_FILENAME, {"rollback-agent": "sha256:original"})
+
+        store = FileSystemRegistryStore(root=registry_root)
+        updated = _canonical_spec("rollback-agent", "sha256:updated")
+
+        original_write_json_atomic = store._write_json_atomic
+
+        def fail_index_write(path: Path, payload: object, kind: str, persona_id: str):
+            if kind == "index":
+                return Failure(
+                    {
+                        "code": "REGISTRY_UPDATE_FAILED",
+                        "message": "simulated index update failure",
+                        "persona_id": persona_id,
+                        "path": str(path),
+                    }
+                )
+            return original_write_json_atomic(path, payload, kind, persona_id)
+
+        monkeypatch.setattr(store, "_write_json_atomic", fail_index_write)
+
+        result = store.save(updated)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_UPDATE_FAILED"
+        assert "index" in error["path"]
+
+        persisted_spec = json.loads(
+            (registry_root / "rollback-agent.json").read_text(encoding="utf-8")
+        )
+        persisted_index = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
+        assert persisted_spec == initial
+        assert persisted_index == {"rollback-agent": "sha256:original"}
