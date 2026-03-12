@@ -1318,7 +1318,7 @@ phases:
       - Only mark PASS when the plan is executable, dependency-safe, and ready for
       `meta.review.meta-review-gate` to proceed'
     depends_on:
-    - meta.review.fix-gate-blockers
+    - meta.review.meta-review-fix-contract-artifacts
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-12T13:14:47.134820+00:00'
