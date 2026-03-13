@@ -14200,7 +14200,7 @@ phases:
       \ of scope for this docs/surface retest)\n\n### Verdict\n- PASS"
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
-  status: pending
+  status: in_progress
   context: Start only after validate-warning gate closure. This is the final acceptance
     barrier for the follow-on gaps and must stay serial and worktree-safe.
   depends_on:
@@ -14208,7 +14208,7 @@ phases:
   steps:
   - id: followup_guard_full.guard-diagnose
     name: guard-diagnose
-    status: pending
+    status: claimed
     description: 'Diagnose the confirmed full-project `invar guard --all` failure
       and turn it into an explicit remediation matrix focused on authoritative repo
       debt after `.vectl` ignore tightening.
@@ -14268,6 +14268,8 @@ phases:
       - Diagnosis recommends whether guard-scope config confirmation, CLI code changes,
       components-root investigation, or a bounded combination is required'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-13T18:35:11.010470+00:00'
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
     status: pending
