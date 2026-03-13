@@ -12593,6 +12593,13 @@ phases:
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: pending
+  context: Append after completed shell transport work. The active plan snapshot has
+    no distinct `shell_mcp_runtime` phase, so this phase is anchored to the completed
+    `shell_mcp` phase while preserving the user-requested post-runtime ordering intent.
+    Keep worktree-safe and serial because this phase touches shared public surfaces
+    and docs.
+  depends_on:
+  - shell_mcp
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: pending
