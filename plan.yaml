@@ -14775,7 +14775,7 @@ phases:
     agent: gate-reviewer
   - id: followup_guard_full.guard-full-batched-fix
     name: guard-full-batched-fix
-    status: claimed
+    status: done
     description: 'Fix ALL blocking and should-fix full-guard findings in one batched
       remediation pass; do not split this into one-warning-at-a-time follow-ups.
 
@@ -14942,6 +14942,26 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T19:04:49.902440+00:00'
+    done_at: '2026-03-13T19:19:35.448613+00:00'
+    evidence: "Artifact:\n- PR: 7801819aeec22090ee91b6100c9283c785692672 (worktree),\
+      \ squashed to main as 46ff8cf\n\nFiles changed:\n- src/larva/core/validate.py\n\
+      - src/larva/core/assemble.py\n- src/larva/shell/cli.py\n- src/larva/shell/cli_helpers.py\
+      \ (new)\n- src/larva/shell/mcp.py\n- src/larva/shell/mcp_contract.py (new)\n\
+      \nVerification:\n- uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py\
+      \ tests/shell/test_cli.py tests/shell/test_mcp.py -> 198 passed\n- uv run pytest\
+      \ -q tests/core/test_validate.py tests/shell/test_cli.py tests/shell/test_mcp.py\
+      \ -> 169 passed\n- uvx invar-tools guard --all -> status passed, errors 0, warnings\
+      \ 0, infos 8, crosshair verified, property tests passed\n\nB0-B3 closure summary:\n\
+      - B0 CrossHair failed core files closed (crosshair verified, failed=[]) \n-\
+      \ B1 validate_spec size warning closed via helper extraction in core validate\
+      \ flow\n- B2 CLI shell-pure-logic warning family closed by moving helper cluster\
+      \ to `cli_helpers.py`\n- B3 near-limit size warnings closed (`cli.py` and `mcp.py`\
+      \ reduced; no file_size_warning)\n\nSibling-search proof:\n- grep checks run\
+      \ for core variable paths, validate_spec definition, listed CLI helper set,\
+      \ and size/logic warning families\n- results show targeted families closed and\
+      \ helper relocation complete\n\ndiscovered_issues:\n- CrossHair still reports\
+      \ some skipped unsupported operations (tooling limitation, non-blocking)\n-\
+      \ no runtime/registry/shell_mcp_runtime scope duplication introduced"
   - id: followup_guard_full.guard-full-retest
     name: guard-full-retest
     status: pending
