@@ -33,9 +33,10 @@ Sources:
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+import json
+from typing import Any, Literal, TypedDict, cast
 
-from returns.result import Result
+from returns.result import Failure, Result, Success
 
 from larva.app.facade import (
     AssembleRequest,
@@ -147,14 +148,54 @@ PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
 COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
 
 
+# @invar:allow shell_result: pure data transformation, no I/O
+def _map_facade_error(error: LarvaError) -> JsonErrorEnvelope:
+    """Convert a facade error to a JSON error envelope."""
+    return {
+        "code": error["code"],
+        "numeric_code": error["numeric_code"],
+        "message": error["message"],
+        "details": dict(error["details"]),
+    }
+
+
+# @shell_complexity: CLI command handlers inherently handle both text/JSON modes
 def validate_command(
     spec: PersonaSpec,
     *,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva validate` command handling."""
-    raise NotImplementedError("cli contract-only: validate command wiring deferred")
+    """Handle `larva validate` command.
+
+    Validates a PersonaSpec and returns the validation report.
+    """
+    report = facade.validate(spec)
+
+    if report["valid"]:
+        result: CliCommandResult = {"exit_code": EXIT_OK}
+        if as_json:
+            result["json"] = {
+                "data": {"valid": True, "errors": [], "warnings": report.get("warnings", [])}
+            }
+        return Success(result)
+
+    # Invalid spec - exit code 1
+    error_envelope = _map_facade_error(
+        {
+            "code": "PERSONA_INVALID",
+            "numeric_code": 101,
+            "message": report["errors"][0]["message"] if report["errors"] else "validation failed",
+            "details": {"report": report},
+        }
+    )
+
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        # Text mode - include stderr message
+        failure["stderr"] = f"Validation failed: {error_envelope['message']}"
+
+    return Failure(failure)
 
 
 def assemble_command(
@@ -163,8 +204,27 @@ def assemble_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva assemble` command handling."""
-    raise NotImplementedError("cli contract-only: assemble command wiring deferred")
+    """Handle `larva assemble` command.
+
+    Assembles a PersonaSpec from components and returns the result.
+    """
+    result = facade.assemble(request)
+
+    if isinstance(result, Success):
+        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        if as_json:
+            cli_result["json"] = {"data": dict(result.unwrap())}
+        return Success(cli_result)
+
+    # Assembly failed - exit code 1
+    error = result.failure()
+    error_envelope = _map_facade_error(error)
+
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Assembly failed: {error_envelope['message']}"
+
+    return Failure(failure)
 
 
 def register_command(
@@ -173,19 +233,58 @@ def register_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva register` command handling."""
-    raise NotImplementedError("cli contract-only: register command wiring deferred")
+    """Handle `larva register` command.
+
+    Validates, normalizes, and persists a PersonaSpec to the registry.
+    """
+    result = facade.register(spec)
+
+    if isinstance(result, Success):
+        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        if as_json:
+            cli_result["json"] = {"data": dict(result.unwrap())}
+        return Success(cli_result)
+
+    # Registration failed - exit code 1
+    error = result.failure()
+    error_envelope = _map_facade_error(error)
+
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Registration failed: {error_envelope['message']}"
+
+    return Failure(failure)
 
 
 def resolve_command(
     persona_id: str,
     *,
-    overrides: dict[str, object] | None,
+    overrides: dict[str, object] | None = None,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva resolve` command handling."""
-    raise NotImplementedError("cli contract-only: resolve command wiring deferred")
+    """Handle `larva resolve` command.
+
+    Resolves a PersonaSpec from the registry, optionally applying overrides.
+    """
+    result = facade.resolve(persona_id, overrides=overrides)
+
+    if isinstance(result, Success):
+        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        if as_json:
+            cli_result["json"] = {"data": dict(result.unwrap())}
+        return Success(cli_result)
+
+    # Resolution failed - exit code 1 (domain error, not critical)
+    # This is a regression test: not-found should be exit code 1, not 2
+    error = result.failure()
+    error_envelope = _map_facade_error(error)
+
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Resolve failed: {error_envelope['message']}"
+
+    return Failure(failure)
 
 
 def list_command(
@@ -193,10 +292,30 @@ def list_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva list` command handling."""
-    raise NotImplementedError("cli contract-only: list command wiring deferred")
+    """Handle `larva list` command.
+
+    Lists all registered persona summaries from the registry.
+    """
+    result = facade.list()
+
+    if isinstance(result, Success):
+        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        if as_json:
+            cli_result["json"] = {"data": list(result.unwrap())}
+        return Success(cli_result)
+
+    # List failed - exit code 1
+    error = result.failure()
+    error_envelope = _map_facade_error(error)
+
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"List failed: {error_envelope['message']}"
+
+    return Failure(failure)
 
 
+# @invar:allow dead_param: contract stub - will be implemented in next step
 def component_list_command(
     *,
     as_json: bool,
@@ -206,6 +325,7 @@ def component_list_command(
     raise NotImplementedError("cli contract-only: component list wiring deferred")
 
 
+# @invar:allow dead_param: contract stub - will be implemented in next step
 def component_show_command(
     component_ref: str,
     *,
