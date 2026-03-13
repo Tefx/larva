@@ -39,6 +39,11 @@ larva.list()                  → [{id, spec_digest, model}]
 
 ### CLI
 
+`larva.cli` is a compatibility shim only. The authoritative CLI entrypoint is
+`larva.shell.cli:main`, which is also the console-script target in
+`pyproject.toml`. Keep command behavior in `larva.shell.cli`; do not add a
+second CLI implementation under `larva.cli`.
+
 ```bash
 larva validate <spec.json>
 larva assemble --id <persona-id> --prompt <name> --toolset <name> --constraints <name> -o <output>
@@ -47,6 +52,7 @@ larva resolve <id> [--override key=value]
 larva list
 larva component list
 larva component show <type>/<name>
+python -m larva.cli list   # compatibility path; same behavior as `larva list`
 ```
 
 ### Python Library

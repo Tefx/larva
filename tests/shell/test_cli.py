@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import json
 import io
+import runpy
+import sys
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
@@ -62,6 +64,40 @@ from larva.shell.cli import (
 
 if TYPE_CHECKING:
     from larva.shell.registry import RegistryError
+
+
+def test_package_cli_main_delegates_to_shell_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    from larva import cli as compat_cli
+
+    calls: list[list[str] | None] = []
+
+    def fake_main(argv: list[str] | None = None) -> int:
+        calls.append(argv)
+        return 17
+
+    monkeypatch.setattr(compat_cli.shell_cli, "main", fake_main)
+
+    exported_main = compat_cli.main
+
+    assert exported_main(["list"]) == 17
+    assert calls == [["list"]]
+
+
+def test_python_module_cli_executes_same_shell_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[object] = []
+
+    def fake_main(argv: object = None) -> int:
+        calls.append(argv)
+        return 9
+
+    monkeypatch.setattr("larva.shell.cli.main", fake_main)
+    sys.modules.pop("larva.cli", None)
+
+    with pytest.raises(SystemExit) as exc_info:
+        runpy.run_module("larva.cli", run_name="__main__")
+
+    assert exc_info.value.code == 9
+    assert calls == [None]
 
 
 def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
