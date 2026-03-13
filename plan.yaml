@@ -15026,7 +15026,7 @@ phases:
       \ closed."
   - id: followup_guard_full.guard-full-core-crosshair-fix-2
     name: guard-full-core-crosshair-fix-2
-    status: claimed
+    status: done
     description: 'Second batched remediation escalation for the unresolved CrossHair
       blocker family only; do not reopen the already-cleared warning/error families
       and do not split this into serial micro-fixes.
@@ -15152,6 +15152,55 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T19:25:54.143474+00:00'
+    done_at: '2026-03-13T19:34:12.941456+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 64eca72 (worktree), squashed to main as d3edb12
+
+
+      Residual blocker root-cause clusters handled:
+
+      - Cluster A: CrossHair symbolic typing/proxy failures at core boundaries ->
+      narrowed core input parameter annotations to `dict[str, object]` where needed
+      in validate/assemble/normalize boundary functions
+
+      - Cluster B: mapping-iteration KeyError counterexample in validate variable
+      extraction -> hardened iteration with guarded handling and deterministic fallback
+
+
+      Files changed:
+
+      - src/larva/core/validate.py
+
+      - src/larva/core/assemble.py
+
+      - src/larva/core/normalize.py
+
+
+      Verification:
+
+      - uv run pytest -v tests/core/test_validate.py tests/core/test_assemble.py tests/core/test_normalize.py
+      -> 65 passed
+
+      - uvx invar-tools guard --all -> status passed, crosshair status verified, failed=[],
+      counterexamples=[]
+
+
+      Sibling-search evidence:
+
+      - no remaining AssemblyInput parameter signatures in core function defs
+
+      - checked PersonaSpec parameter signatures for boundary consistency
+
+      - verified guarded iteration site for provided_vars handling in validate
+
+
+      Scope guardrails:
+
+      - no core purity violations introduced
+
+      - did not reopen already-green shell warning families or modify orchestrator/plan
+      state'
   - id: followup_guard_full.guard-full-core-crosshair-retest-2
     name: guard-full-core-crosshair-retest-2
     status: pending
