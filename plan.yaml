@@ -16744,7 +16744,7 @@ phases:
 
       - followup_guard_full.guard-full-core-crosshair-retest-6
 
-      remaining_blocker: `uvx invar-tools guard --all` still fails with `crosshair.status=counterexample_found`
+      remaining_blocker: `uv run invar guard --all` still fails with `crosshair.status=counterexample_found`
       for the narrowed residual family limited to `src/larva/core/assemble.py` and
       `src/larva/core/normalize.py`
 
@@ -16772,7 +16772,7 @@ phases:
 
       harness_refs:
 
-      - `uvx invar-tools guard --all`
+      - `uv run invar guard --all`
 
       - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
       tests/core/test_normalize.py`
@@ -16793,7 +16793,7 @@ phases:
 
       - Locations: `src/larva/core/assemble.py`
 
-      - Raw evidence: `uvx invar-tools guard --all` => `crosshair.status=counterexample_found`;
+      - Raw evidence: `uv run invar guard --all` => `crosshair.status=counterexample_found`;
       failed file includes `src/larva/core/assemble.py`.
 
       - Remediation: close the remaining symbolic failure path in assemble in the
@@ -16810,7 +16810,7 @@ phases:
 
       - Locations: `src/larva/core/normalize.py`
 
-      - Raw evidence: `uvx invar-tools guard --all` => `crosshair.status=counterexample_found`;
+      - Raw evidence: `uv run invar guard --all` => `crosshair.status=counterexample_found`;
       failed file includes `src/larva/core/normalize.py`.
 
       - Remediation: close the remaining symbolic failure path in normalize in the
@@ -16842,7 +16842,7 @@ phases:
 
       ## Completion criteria
 
-      - `uvx invar-tools guard --all` no longer reports `crosshair.status=counterexample_found`
+      - `uv run invar guard --all` no longer reports `crosshair.status=counterexample_found`
       for either `src/larva/core/assemble.py` or `src/larva/core/normalize.py`.
 
       - The narrowed residual family is closed in one batched pass for BOTH files.
