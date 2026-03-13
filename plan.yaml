@@ -13538,7 +13538,7 @@ phases:
       \ hooks with invar guard passed\n\ndiscovered_issues: none"
   - id: followup_surface_hygiene.retest-gate-should-fix
     name: retest-gate-should-fix
-    status: pending
+    status: claimed
     description: 'Re-test the batched remediation for ALL should_fix findings from
       `followup_surface_hygiene.gate`.
 
@@ -13656,6 +13656,8 @@ phases:
     depends_on:
     - followup_surface_hygiene.fix-gate-should-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T17:55:34.540857+00:00'
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
