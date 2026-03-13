@@ -4457,7 +4457,7 @@ phases:
     agent: integration-verifier
   - id: app_facade.app-facade-seam-proof
     name: app-facade-seam-proof
-    status: pending
+    status: claimed
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.app.facade`.
 
@@ -4535,6 +4535,8 @@ phases:
     depends_on:
     - app_facade.app-facade-implement-resolve
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T02:09:29.971538+00:00'
   - id: app_facade.app-facade-freeze
     name: app-facade-freeze
     status: pending
