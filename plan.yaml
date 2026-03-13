@@ -7746,7 +7746,7 @@ phases:
       existing file-size/complexity warnings remain tech debt.'
   - id: shell_cli.shell-cli-verify-fix-batch
     name: shell-cli-verify-fix-batch
-    status: claimed
+    status: done
     description: 'Fix ALL findings from `shell_cli.shell-cli-verify` in one batched
       remediation loop.
 
@@ -7932,6 +7932,49 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T06:22:35.531943+00:00'
+    done_at: '2026-03-13T06:33:07.380296+00:00'
+    evidence: 'Commit hash(es): d9a8910b38d41890417169f8f16213a1a58cbaee (worktree),
+      squashed to main as 09ff4c7
+
+      Files changed: INTERFACES.md, pyproject.toml, src/larva/shell/cli.py, tests/shell/test_cli.py
+
+      Verification:
+
+      - invar_guard(changed=true in worktree) -> PASS (0 errors)
+
+      - uv run pytest tests/shell/test_cli.py -q -> 65 passed
+
+      - uv run larva --help -> public CLI help from real argparse surface
+
+      - uv run larva component list --json -> machine-readable JSON data payload
+
+      Spec link:
+
+      - INTERFACES.md B and G
+
+      - ARCHITECTURE.md module larva.shell.cli
+
+      - README CLI interface
+
+      Sibling-search evidence:
+
+      - B1 script wiring and placeholder path search -> published script remapped
+      to larva.shell.cli:main
+
+      - B2 assemble output option search -> -o/--output parser/runtime/docs/tests
+      aligned
+
+      - S1 numeric-code policy search -> docs + runtime + tests aligned (domain codes
+      plus INTERNAL fallback for parse/input/runtime failures)
+
+      - S2 CLI section duplication search -> consolidated to one canonical section
+
+      Gaps/Notes:
+
+      - Legacy placeholder in src/larva/cli.py remains out of scope/non-blocking after
+      script remap.
+
+      - discovered_issues: none'
   - id: shell_cli.shell-cli-verify-retest
     name: shell-cli-verify-retest
     status: pending
