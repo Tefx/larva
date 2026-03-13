@@ -13398,7 +13398,7 @@ phases:
       fix chain per anti-serial protocol.'
   - id: followup_surface_hygiene.fix-gate-should-fix
     name: fix-gate-should-fix
-    status: pending
+    status: claimed
     description: 'Fix ALL should_fix findings from `followup_surface_hygiene.gate`
       in one batched remediation step.
 
@@ -13516,6 +13516,8 @@ phases:
     depends_on:
     - followup_surface_hygiene.surface-verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T17:49:54.378742+00:00'
   - id: followup_surface_hygiene.retest-gate-should-fix
     name: retest-gate-should-fix
     status: pending
