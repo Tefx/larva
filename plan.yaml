@@ -8220,7 +8220,7 @@ phases:
       - Black-box retest intentionally avoids white-box internal dispatch inspection.'
   - id: shell_cli.shell-cli-gate-fix-batch
     name: shell-cli-gate-fix-batch
-    status: claimed
+    status: done
     description: 'Fix ALL findings from `shell_cli.shell-cli-gate` in one consolidated
       remediation loop.
 
@@ -8425,6 +8425,43 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T06:57:28.688581+00:00'
+    done_at: '2026-03-13T07:47:22.136673+00:00'
+    evidence: 'Commit hash(es): 1ead858637483c662fba9f73f988f20b94ee4e8c (worktree),
+      squashed to main as 207fccc
+
+      Files changed: README.md, INTERFACES.md, contracts/persona_spec.schema.json,
+      src/larva/core/validate.py, src/larva/shell/cli.py, src/larva/shell/mcp.py,
+      tests/core/test_validate.py, tests/shell/test_cli.py
+
+      Verification:
+
+      - invar_guard(changed=true in worktree) -> PASS (0 errors, warnings only)
+
+      - git show --name-only HEAD in worktree confirmed expected 8-file scope
+
+      - python3 -m pytest tests/core/test_validate.py tests/shell/test_cli.py -> environment
+      limitation (`No module named pytest`), but pre-commit Invar Guard passed at
+      commit time
+
+      Spec link:
+
+      - shell_cli gate-fix batch requirements for missing-id contract parity across
+      docs/schema/runtime
+
+      - README assemble required flags
+
+      - CLI maintainability simplification without business-logic drift
+
+      Gaps/Notes:
+
+      - Added missing-id validation contract/test alignment in core+CLI surfaces and
+      docs.
+
+      - CLI maintainability improved by reducing repetitive failure-envelope handling
+      via helper extraction.
+
+      - discovered_issues: pre-existing warnings (shell_pure_logic, function_size,
+      file_size) remain non-blocking.'
   - id: shell_cli.shell-cli-gate-retest
     name: shell-cli-gate-retest
     status: pending
