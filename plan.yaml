@@ -12923,7 +12923,7 @@ phases:
       - No code/docs/tests were modified.'
   - id: followup_validate_warnings.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: verify follow-up validate-warnings completion and quality.
 
 
@@ -12962,6 +12962,42 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T18:17:43.657518+00:00'
+    done_at: '2026-03-13T18:26:58.452606+00:00'
+    evidence: 'Gate review verdict: ISSUES_FOUND
+
+
+      Findings captured:
+
+      - blocker B1: stale code-facing docs/examples implied open warning families
+      rather than contracted UNUSED_VARIABLES-only semantics
+
+      - should_fix S1: missing transport-level integration assertion that canonical
+      warning survives unchanged through user-facing path
+
+
+      Key gate evidence:
+
+      - core validate tests pass
+
+      - behavior probes confirm unresolved-vars remain errors and UNUSED_VARIABLES
+      warning behavior
+
+      - grep surfaced semantic drift locations in core/mcp/test examples
+
+
+      Batched remediation created before completion:
+
+      - followup_validate_warnings.fix-gate-blockers
+
+      - followup_validate_warnings.retest-gate-blockers
+
+      - followup_validate_warnings.gate rewired to depend on retest step
+
+
+      Notes:
+
+      - No code/docs edits made in gate step; findings forwarded intact into one batched
+      fix loop.'
   - id: followup_validate_warnings.fix-gate-blockers
     name: fix-gate-blockers
     status: pending
