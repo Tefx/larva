@@ -15655,7 +15655,7 @@ phases:
       families remain out of scope.'
   - id: followup_guard_full.guard-full-core-crosshair-fix-4
     name: guard-full-core-crosshair-fix-4
-    status: claimed
+    status: done
     description: 'Fourth batched remediation extension for the remaining CrossHair
       residuals only; keep scope narrow to `src/larva/core/assemble.py` and `src/larva/core/normalize.py`
       and do not reopen already-green families.
@@ -15816,6 +15816,44 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T20:07:40.666526+00:00'
+    done_at: '2026-03-13T20:16:30.791314+00:00'
+    evidence: 'Verification:
+
+      - `uvx invar-tools guard --all` => PASS on final run; `status: passed`, `crosshair.status:
+      verified`, no assemble/normalize failures.
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py` => PASS (`65 passed in 0.12s`).
+
+      - Seam scans with specified `rg` hints completed; no additional in-scope sibling
+      residual requiring edits.
+
+
+      Files changed:
+
+      - none
+
+
+      Commit hash(es):
+
+      - none (no code delta required; worktree remained clean)
+
+
+      Spec link:
+
+      - Completion criteria met: no CrossHair residuals on assemble/normalize in final
+      guard run; focused pytest green; scope stayed limited to assemble+normalize
+      residual verification.
+
+
+      Gaps/Notes:
+
+      - No source edits needed in this loop.
+
+      - First cold full-guard attempt briefly showed transient `counterexample_found`
+      with empty counterexamples, but required final run converged to verified/passed.
+
+      - Worktree branch squash-merged (nothing to squash), then cleaned up.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-4
     name: guard-full-core-crosshair-retest-4
     status: pending
