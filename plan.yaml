@@ -7754,7 +7754,7 @@ phases:
     agent: gate-reviewer
   - id: shell_mcp.shell-mcp-fix-batch
     name: shell-mcp-fix-batch
-    status: claimed
+    status: done
     description: 'Fix ALL issues from `shell_mcp.shell-mcp-verify` in one batched
       remediation step.
 
@@ -8007,6 +8007,38 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T04:59:28.035147+00:00'
+    done_at: '2026-03-13T05:10:53.227740+00:00'
+    evidence: 'Commit hash(es): e7a0fb1a1bc1d2726edb9a36e066edbf1550015b (worktree),
+      squashed to main as ebe121cbe0b5ac5554bf33487639dabdfd641d8b
+
+      Files changed: src/larva/shell/mcp.py, tests/shell/test_mcp.py
+
+      Verification:
+
+      - uv run pytest tests/shell/test_mcp.py -k "MCPHandlersImplementation or MCPMalformedParamsRejected"
+      -v -> pass (27 passed, 32 deselected)
+
+      - uv run pytest tests/shell/test_mcp.py -v -> pass (59 passed)
+
+      - invar guard --changed (via invar_guard MCP tool) -> pass (0 errors, 1 warning:
+      file_size_warning on src/larva/shell/mcp.py)
+
+      Spec link:
+
+      - INTERFACES.md A (MCP Server Interface)
+
+      - INTERFACES.md G (error envelope fidelity incl message semantics)
+
+      - ARCHITECTURE.md module larva.shell.mcp and thin-adapter boundary
+
+      - README.md MCP server interface surface
+
+      Gaps/Notes:
+
+      - Fixed B1/B2/S1/S2/S3 in one batch; preserved falsey override forwarding for
+      resolve/assemble.
+
+      - Discovered out-of-scope note: src/larva/shell/mcp.py near size threshold warning.'
   - id: shell_mcp.shell-mcp-verify-retest
     name: shell-mcp-verify-retest
     status: pending
