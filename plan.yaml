@@ -14696,7 +14696,7 @@ phases:
       - Failure converted to anti-serial batched fix loop per protocol.'
   - id: followup_guard_full.freeze
     name: freeze
-    status: claimed
+    status: done
     description: 'Freeze the follow-up full-guard snapshot before gate review.
 
 
@@ -14715,6 +14715,29 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T19:37:04.731913+00:00'
+    done_at: '2026-03-13T19:38:19.904057+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (verification-only freeze)
+
+
+      Verification:
+
+      - git rev-parse HEAD captured
+
+      - git status --porcelain --branch clean
+
+      - environment declaration captured (worktree path, branch, OS/arch, UTC timestamp)
+
+
+      Spec link:
+
+      - followup_guard_full.freeze
+
+
+      Gaps/Notes:
+
+      - no code/docs/tests modified'
   - id: followup_guard_full.gate
     name: gate
     status: pending
