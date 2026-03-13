@@ -5397,7 +5397,7 @@ phases:
       \ changes."
   - id: app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
     name: retest-app-facade-gate-blockers-b1-s1-s2-s3
-    status: pending
+    status: claimed
     description: 'Re-test `app_facade.app-facade-gate` findings closure as one gate-quality
       bundle after `app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3`.
 
@@ -5560,6 +5560,8 @@ phases:
     depends_on:
     - app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T02:49:57.982160+00:00'
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
