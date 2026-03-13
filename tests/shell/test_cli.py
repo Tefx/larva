@@ -916,6 +916,19 @@ class RecordingFacade:
 
 
 class TestRunCli:
+    def test_validate_parse_error_json_returns_internal_numeric_code(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(["validate", "--json"], facade=facade, stdout=stdout, stderr=stderr)
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
+        assert payload["error"]["numeric_code"] == 10
+        assert stderr.getvalue() == ""
+
     def test_validate_json_success_writes_json_stdout_only(self, tmp_path: Path) -> None:
         spec_path = tmp_path / "valid.json"
         spec_path.write_text(json.dumps(_canonical_spec("ok")), encoding="utf-8")
@@ -978,6 +991,44 @@ class TestRunCli:
         assert exit_code == EXIT_CRITICAL
         assert stdout.getvalue() == ""
         assert "expected key=value" in stderr.getvalue()
+
+    def test_assemble_output_short_flag_writes_json_file(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "assembled-short.json"
+        facade = RecordingFacade(assemble_result=Success(_canonical_spec("assembled-short")))
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["assemble", "--id", "assembled-short", "-o", str(output_path)],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        assert stdout.getvalue() == ""
+        assert stderr.getvalue() == ""
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+        assert payload["id"] == "assembled-short"
+
+    def test_assemble_output_long_flag_writes_json_file(self, tmp_path: Path) -> None:
+        output_path = tmp_path / "assembled-long.json"
+        facade = RecordingFacade(assemble_result=Success(_canonical_spec("assembled-long")))
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["assemble", "--id", "assembled-long", "--output", str(output_path)],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        assert stdout.getvalue() == ""
+        assert stderr.getvalue() == ""
+        payload = json.loads(output_path.read_text(encoding="utf-8"))
+        assert payload["id"] == "assembled-long"
 
     def test_resolve_passes_parsed_overrides_to_facade(self) -> None:
         facade = RecordingFacade()

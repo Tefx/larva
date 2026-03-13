@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.scripts]
-larva = "larva.cli:main"
+larva = "larva.shell.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/larva"]

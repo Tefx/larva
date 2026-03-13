@@ -206,6 +206,22 @@ def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
     return Success(cast("PersonaSpec", loaded))
 
 
+# @invar:allow shell_result: filesystem output helper returns typed error envelope
+def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnvelope]:
+    path_obj = Path(path)
+    try:
+        with open(path_obj, "w", encoding="utf-8") as output_file:
+            json.dump(payload, output_file, indent=2, sort_keys=True, ensure_ascii=True)
+            output_file.write("\n")
+    except OSError as error:
+        return Failure(
+            _critical_error(
+                "failed to write output file", {"path": str(path_obj), "error": str(error)}
+            )
+        )
+    return Success(None)
+
+
 # @invar:allow shell_result: argparse builder returns parser object
 def _build_parser() -> _CliParser:
     parser = _CliParser(prog="larva", add_help=True)
@@ -223,6 +239,7 @@ def _build_parser() -> _CliParser:
     assemble_parser.add_argument("--model")
     assemble_parser.add_argument("--override", dest="overrides", action="append", default=[])
     assemble_parser.add_argument("--var", dest="variables", action="append", default=[])
+    assemble_parser.add_argument("-o", "--output")
     assemble_parser.add_argument("--json", action="store_true", dest="as_json")
 
     register_parser = subparsers.add_parser("register")
@@ -315,7 +332,12 @@ def _dispatch(
         model = cast("str | None", args.model)
         if model is not None:
             request["model"] = model
-        return assemble_command(request, as_json=as_json, facade=facade)
+        return assemble_command(
+            request,
+            as_json=as_json,
+            facade=facade,
+            output_path=cast("str | None", args.output),
+        )
 
     if command == "register":
         loaded_spec = _read_spec_json(cast("str", args.spec))
@@ -478,13 +500,24 @@ def assemble_command(
     *,
     as_json: bool,
     facade: LarvaFacade,
+    output_path: str | None = None,
 ) -> Result[CliCommandResult, CliFailure]:
     result = facade.assemble(request)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
+        if output_path is not None:
+            write_result = _write_output_json(output_path, payload)
+            if isinstance(write_result, Failure):
+                error_envelope = write_result.failure()
+                failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error_envelope}
+                if not as_json:
+                    failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
+                return Failure(failure)
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("assemble", payload),
+            "stdout": ""
+            if output_path is not None
+            else _render_payload_for_text("assemble", payload),
         }
         if as_json:
             cli_result["json"] = {"data": payload}

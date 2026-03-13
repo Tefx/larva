@@ -177,13 +177,16 @@ This requirement prevents placeholder-only evidence and keeps gate reviews repla
 ---
 
 ## B. CLI Interface
-## B. CLI Interface
 
 All commands support `--json` for machine-readable JSON output on stdout.
 
 **Exit code strategy:** CLI uses standard small exit codes (0/1/2) for
-shell scripting compatibility. With `--json`, errors include the full
-error code from `errors.yaml` (100-110) in the JSON body. See Section G.
+shell scripting compatibility.
+
+**Numeric code strategy (`--json`):** Domain failures use mapped app codes
+(`100-110`) from Section G. Transport/runtime failures with no mapped app code
+(for example argument parsing failures and local input file I/O failures)
+use fallback `INTERNAL` (`numeric_code: 10`).
 
 **Dependency model:** Persona commands (validate, assemble, register, resolve, list)
 route through `app.facade`. Component commands (component list, component show)
@@ -193,9 +196,9 @@ route directly to injected `ComponentStore` port. See ARCHITECTURE.md Decision 4
 
 Validate a PersonaSpec JSON file. Checks schema conformance and semantic rules.
 
-Exit codes: 0 valid, 1 invalid, 2 not found.
+Exit codes: 0 valid, 1 invalid, 2 input/critical failure.
 
-### `larva assemble [OPTIONS] -o <output>`
+### `larva assemble [OPTIONS]`
 
 Assemble a PersonaSpec from components.
 
@@ -208,27 +211,27 @@ Assemble a PersonaSpec from components.
 | `--model` | str | Model component name or literal model identifier |
 | `--override` | str (repeatable) | Field override: `key=value` |
 | `--var` | str (repeatable) | Variable substitution: `key=value` |
-| `-o, --output` | path | Output file (default: stdout) |
+| `-o, --output` | path | Write assembled spec JSON to file; default writes to stdout |
 
-Exit codes: 0 success, 1 error.
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ### `larva register <spec.json> [--json]`
 
 Register a PersonaSpec in the global registry.
 
-Exit codes: 0 success, 1 error.
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ### `larva resolve <id> [--override key=value...] [--json]`
 
 Resolve a persona from the registry, optionally with overrides.
 
-Exit codes: 0 success, 1 not found.
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ### `larva list [--json]`
 
 List all registered personas.
 
-Exit codes: 0 success.
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ### `larva component list [--json]`
 
@@ -236,7 +239,7 @@ List all available components.
 
 **Routing:** Direct to injected `ComponentStore.list_components()`. Bypasses facade.
 
-Exit codes: 0 success, 1 error (component directory access failure).
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ### `larva component show <type>/<name> [--json]`
 
@@ -245,58 +248,7 @@ Show a component's content. Type is one of: `prompts`, `toolsets`,
 
 **Routing:** Direct to `ComponentStore.load_<type>(name)`. Bypasses facade.
 
-Exit codes: 0 success, 1 not found (component does not exist or cannot be parsed).
-
----
-### `larva validate <spec.json> [--json]`
-
-Validate a PersonaSpec JSON file. Checks schema conformance and semantic rules.
-
-Exit codes: 0 valid, 1 invalid, 2 not found.
-
-### `larva assemble [OPTIONS] -o <output>`
-
-Assemble a PersonaSpec from components.
-
-| Flag | Type | Description |
-| ---- | ---- | ----------- |
-| `--id` | str | Persona id (required) |
-| `--prompt` | str (repeatable) | Prompt component name |
-| `--toolset` | str (repeatable) | Toolset component name |
-| `--constraints` | str (repeatable) | Constraint component name |
-| `--model` | str | Model component name or literal model identifier |
-| `--override` | str (repeatable) | Field override: `key=value` |
-| `--var` | str (repeatable) | Variable substitution: `key=value` |
-| `-o, --output` | path | Output file (default: stdout) |
-
-Exit codes: 0 success, 1 error.
-
-### `larva register <spec.json> [--json]`
-
-Register a PersonaSpec in the global registry.
-
-Exit codes: 0 success, 1 error.
-
-### `larva resolve <id> [--override key=value...] [--json]`
-
-Resolve a persona from the registry, optionally with overrides.
-
-Exit codes: 0 success, 1 not found.
-
-### `larva list [--json]`
-
-List all registered personas.
-
-Exit codes: 0 success.
-
-### `larva component list [--json]`
-
-List all available components.
-
-### `larva component show <type>/<name> [--json]`
-
-Show a component's content. Type is one of: `prompts`, `toolsets`,
-`constraints`, `models`.
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ---
 
