@@ -4644,7 +4644,7 @@ phases:
       - explicit statement that no code changes are allowed until `app_facade.app-facade-gate`
       completes'
     depends_on:
-    - app_facade.app-facade-verify
+    - app_facade.app-facade-verify-gap-retest
     - app_facade.app-facade-seam-proof
     agent: integration-verifier
   - id: app_facade.app-facade-gate
