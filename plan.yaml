@@ -14757,11 +14757,12 @@ phases:
 
       - Repo-wide acceptance barrier
 
-      - Repeated-remediation escalation has been narrowed to one residual CrossHair
-      blocker family in `src/larva/core/assemble.py::_merge_tools`
+      - Repeated-remediation escalation has been narrowed again to residual CrossHair
+      blockers in `src/larva/core/assemble.py` and `src/larva/core/normalize.py`
 
-      - This review must confirm the third loop stayed within the surviving symbolic-typing
-      seam and did not reopen already-green CLI/MCP/Python-API families
+      - This review must confirm the fourth loop stayed inside that residual symbolic
+      seam and did not reopen already-green CLI/MCP/Python-API or unrelated warning
+      families
 
       - A bad final loop could fake green by weakening contracts or by broadening
       scope back into cleared surfaces
@@ -14770,29 +14771,27 @@ phases:
 
       - no fake guard pass by suppressing authoritative repo files or symbolic paths
 
-      - residual `_merge_tools` `Literal`/`issubclass` blocker and any direct sibling
-      symbolic seam are actually closed, not redistributed
+      - residual assemble+normalize CrossHair blockers are actually closed, not redistributed
 
-      - CLI/MCP/Python-API regressions remain green and untouched
+      - CLI/MCP/Python-API and other already-green families remain green and untouched
 
       - core purity and contract strength are preserved while closing the residual
-      blocker family
+      blocker pair
 
       agent_source: default'
     verification: '- All phase steps completed successfully
 
       - Evidence shows the repeated remediation stayed batched and scoped to the final
-      `_merge_tools` symbolic-typing blocker family rather than restarting broad churn
+      assemble+normalize CrossHair blocker pair rather than restarting broad churn
 
       - Evidence shows raw outputs for `uvx invar-tools guard --all` and focused core
-      tests from `followup_guard_full.guard-full-core-crosshair-retest-3`
+      tests from `followup_guard_full.guard-full-core-crosshair-retest-4`
 
-      - Evidence shows warnings/errors stayed at zero, CLI/MCP/Python-API regressions
-      remained green, and no completed-phase ownership was duplicated
+      - Evidence shows warnings/errors stayed at zero, already-green families remained
+      closed, and no completed-phase ownership was duplicated
 
       - Full `uvx invar-tools guard --all` passes from the main checkout or the gate
-      clearly names the only remaining explicitly unresolved `_merge_tools` symbolic
-      residue'
+      clearly names the only remaining explicitly unresolved assemble+normalize residue'
     depends_on:
     - followup_guard_full.guard-diagnose
     - followup_guard_full.guard-scope-remediate
@@ -14805,6 +14804,7 @@ phases:
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
     - followup_guard_full.guard-full-core-crosshair-retest-3
+    - followup_guard_full.guard-full-core-crosshair-retest-4
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T19:38:29.668537+00:00'
