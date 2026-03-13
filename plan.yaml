@@ -5592,7 +5592,7 @@ phases:
       \  - `app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual`"
   - id: app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
-    status: claimed
+    status: done
     description: 'Fix the remaining unresolved B1 digest-parity surface from `app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3`
       as ONE batched remediation step.
 
@@ -5728,6 +5728,18 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T03:43:46.982784+00:00'
+    done_at: '2026-03-13T03:47:29.346475+00:00'
+    evidence: "Commit hash(es):\n- 78ea52840a26b671e502c030cefa092c05a927a0\n- squash\
+      \ merged to main as commit 1ca7196\n\nFiles changed:\n- tests/core/test_normalize.py\n\
+      \nVerification:\n- Commands run:\n  - `uv run pytest tests/core/test_normalize.py\
+      \ -v`\n  - `uv run pytest tests/ -v`\n- Key outputs/results:\n  - normalize\
+      \ tests: 11 passed\n  - full tests: 136 passed\n  - stale assertion corrected\
+      \ to canonical `sha256:<64hex>` semantics.\n\nSibling search evidence:\n- Searched\
+      \ for stale raw-64 assumptions using:\n  - `spec_digest`\n  - `len\\(.*spec_digest.*\\\
+      )\\s*==\\s*64`\n  - `sha256:`\n- No remaining stale `len(spec_digest)==64` assumptions\
+      \ found in searched parity surface.\n\nSpec link:\n- INTERFACES.md digest contract\
+      \ (`sha256:<hex>`) sections\n\nGaps/Notes:\n- S1/S2/S3 preserved; no source/runtime\
+      \ behavior changes in facade/core beyond test expectation alignment."
   - id: app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: retest-app-facade-gate-blockers-b1-digest-parity-residual
     status: pending
