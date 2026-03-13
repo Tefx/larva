@@ -7441,7 +7441,7 @@ phases:
       - none'
   - id: shell_cli.shell-cli-freeze
     name: shell-cli-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.shell.cli` snapshot before gate review.
 
 
@@ -7472,6 +7472,29 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T06:22:26.340935+00:00'
+    done_at: '2026-03-13T06:32:05.759495+00:00'
+    evidence: 'Commit hash(es): none (verification-only freeze)
+
+      Files changed: none
+
+      Verification:
+
+      - git rev-parse HEAD -> 5710328a85a69395104bb53600125ffa895155cd
+
+      - git branch --show-current -> vectl/step-shell_cli.shell-cli-freeze
+
+      - git status --porcelain -> clean
+
+      - environment recorded: Darwin arm64, UTC timestamp 2026-03-13T06:24:14Z, worktree
+      path confirmed
+
+      Spec link:
+
+      - shell_cli freeze boundary before gate
+
+      Gaps/Notes:
+
+      - Explicit statement recorded: no code changes until shell_cli gate completes.'
   - id: shell_cli.shell-cli-gate
     name: shell-cli-gate
     status: pending
