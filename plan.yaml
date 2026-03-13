@@ -5698,6 +5698,112 @@ phases:
     depends_on:
     - app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
     agent: python-executor
+  - id: app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual
+    name: retest-app-facade-gate-blockers-b1-digest-parity-residual
+    status: pending
+    description: 'Re-test the residual B1 digest-parity closure after `app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual`
+      while confirming S1/S2/S3 remain closed.
+
+
+      step_type: gate
+
+      agent: gate-reviewer
+
+      agent_source: default
+
+      prior_loop:
+
+      - app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
+
+      - app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
+
+      remaining_blocker: verify that the last stale raw-64 digest assumption is removed
+      and that previously closed S1/S2/S3 did not regress.
+
+      why_new_loop: residual gate-quality validation is required because the previous
+      retest surfaced one remaining parity assertion; a single follow-up retest keeps
+      the chain batched and on the app_facade critical path.
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: canonical digest contract `sha256:<64hex>`
+
+      - original findings recorded for `app_facade.app-facade-gate`
+
+      - residual failure evidence from `tests/core/test_normalize.py:119`
+
+
+      touch_paths:
+
+      - `tests/core/test_normalize.py`
+
+      - any sibling parity surfaces updated by the fix step
+
+      - previously closed S1/S2/S3 evidence surfaces for preservation check
+
+
+      harness_refs:
+
+      - `app_facade.app-facade-verify`
+
+      - `app_facade.app-facade-seam-proof`
+
+      - focused digest-parity regressions plus preserved S1/S2/S3 checks
+
+
+      conflict_rationale:
+
+      - Must remain serialized after the residual fix and before `app_facade` phase
+      closure.
+
+      - This retest is the critical-path gate that proves B1 is now fully closed without
+      regressing S1/S2/S3.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), validate that residual B1 is now
+      closed and that S1, S2, and S3 remain closed. Finding remaining drift is a successful
+      review outcome.
+
+
+      Review focus:
+
+      1. `spec_digest` parity uses canonical `sha256:<64hex>` in normalize/facade-facing
+      tests and any sibling parity surfaces updated by the fix.
+
+      2. The grep-guided sibling search is evidenced, not implied.
+
+      3. S1 malformed-record handling remains closed.
+
+      4. S2 seam-proof reproducibility remains closed.
+
+      5. S3 fallback numeric-code alignment remains closed.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Final critical-path gate before `app_facade` phase can close
+
+      - Residual parity bug surfaced after an earlier batched gate remediation
+
+      - Must verify preservation of three already-closed findings while closing the
+      last blocker'
+    verification: '- Main path: evidence shows `tests/core/test_normalize.py::TestNormalizeSpecBehavior::test_overwrites_stale_digest`
+      and any sibling parity assertions now expect canonical `sha256:<64hex>`.
+
+      - Sibling search proof: evidence includes the grep-guided search outcome for
+      `spec_digest`, `len(.*spec_digest.*)==64`, and `sha256:`.
+
+      - Preservation path: evidence confirms S1/S2/S3 remain closed with no regressions
+      in malformed-record handling, seam-proof replayability, or fallback numeric-code
+      model.
+
+      - Critical-path rule: `app_facade` does not close until this retest is open.'
+    depends_on:
+    - app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
+    agent: gate-reviewer
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
