@@ -14208,7 +14208,7 @@ phases:
   steps:
   - id: followup_guard_full.guard-diagnose
     name: guard-diagnose
-    status: claimed
+    status: done
     description: 'Diagnose the confirmed full-project `invar guard --all` failure
       and turn it into an explicit remediation matrix focused on authoritative repo
       debt after `.vectl` ignore tightening.
@@ -14270,6 +14270,51 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-13T18:35:11.010470+00:00'
+    done_at: '2026-03-13T18:39:05.588395+00:00'
+    evidence: 'Artifact:
+
+      - PR: b6bfdf468ce87ff0893b5698738e438caa4d53ff (worktree), squashed to main
+      as d4adfa8
+
+      - Diagnosis artifact: guard-diagnosis.md
+
+
+      Verification:
+
+      - invar guard --all -> fail with 0 errors / 11 warnings / 9 infos / 12 files
+      checked
+
+      - confirms `.vectl` noise no longer in scope; remaining findings are repo-local
+
+
+      Root-cause matrix summary:
+
+      - primary debt: `src/larva/shell/cli.py` shell_complexity_debt + file_size_warning
+
+      - additional main-repo debt: `src/larva/core/validate.py::validate_spec` function-size
+      warning
+
+      - `.vectl` ignore tightening effectiveness confirmed
+
+      - package-root re-export policy recorded as deferred future-follow-up (not silent
+      exclusion)
+
+      - `~/.larva/components` classified into investigation/cleanup/clarification
+      bucket
+
+      - preserved exclusions: registry init and `shell_mcp_runtime`-owned work not
+      duplicated
+
+
+      Spec link:
+
+      - pyproject.toml guard config
+
+      - AGENTS Invar rules
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/components.py'
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
     status: pending
