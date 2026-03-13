@@ -6039,7 +6039,7 @@ phases:
       \ in this step."
   - id: shell_python_api.shell-python-api-implement
     name: shell-python-api-implement
-    status: pending
+    status: claimed
     description: "Implement `larva.shell.python_api` in `src/larva/shell/python_api.py`\
       \ as a thin in-process facade adapter and nothing more.\n\nstep_type: implementation\n\
       agent_source: default\ntags:\n  - integration\n\nScope:\n- implement the thin\
@@ -6085,6 +6085,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T04:18:48.874233+00:00'
   - id: shell_python_api.shell-python-api-verify
     name: shell-python-api-verify
     status: pending
