@@ -5868,7 +5868,7 @@ phases:
       \ made in this retest step."
 - id: shell_python_api
   name: larva.shell.python_api
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - app_facade
@@ -6922,7 +6922,7 @@ phases:
       - discovered_issues: none'
   - id: shell_python_api.shell-python-api-gate-retest
     name: shell-python-api-gate-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the batched
       remediation for `shell_python_api.shell-python-api-gate` from a fresh perspective.
 
@@ -6971,6 +6971,48 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T06:34:56.875556+00:00'
+    done_at: '2026-03-13T06:43:02.611201+00:00'
+    evidence: 'Retest verdict: PASS
+
+      Commit hash(es): none (verification-only retest)
+
+      Files changed: none
+
+      Verification:
+
+      - uv run pytest -v tests/shell/test_python_api.py -> 27 passed
+
+      - import/signature check confirms README examples align with `larva.shell.python_api`
+      surface and kwargs
+
+      - package-root deferred export preserved (`from larva import assemble` ImportError
+      expected; hasattr(larva,''assemble'') False)
+
+      - ruff complexity check (C901) on src/larva/shell/python_api.py -> pass
+
+      Spec link:
+
+      - README Python snippets at updated import/kwarg lines
+
+      - src/larva/__init__.py unchanged (deferred export preserved)
+
+      - tests fixture now monkeypatch teardown-safe
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: keep README pinned to shell import path until intentional package-root
+      export change
+
+      - tech_debt: ARCHITECTURE decision text and current deferred export posture
+      remain a documented tension outside this step
+
+      Gaps/Notes:
+
+      - no code changes in retest step.'
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
