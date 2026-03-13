@@ -12961,6 +12961,167 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T18:17:43.657518+00:00'
+  - id: followup_validate_warnings.fix-gate-blockers
+    name: fix-gate-blockers
+    status: pending
+    description: 'Fix ALL blockers found by `followup_validate_warnings.gate`.
+
+
+      step_type: implementation
+
+      prior_loop:
+
+      - `followup_validate_warnings.gate`
+
+      remaining_blocker: stale code-facing docs/examples still describe open-ended
+      warning families and warning-path survival lacks a transport-level integration
+      assertion
+
+      why_new_loop: gate findings span both contract drift and missing user-facing
+      proof, so one batched remediation step is required to align semantics and add
+      durable coverage
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `ARCHITECTURE.md:250`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_mcp.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/core/test_validate.py`
+
+      - `uv run pytest -q tests/shell/test_mcp.py`
+
+      - MCP-facing validation path through `src/larva/shell/mcp.py`
+
+      agent_source: default
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: stale code-facing docs/examples still describe open-ended warning families
+
+      Locations: `src/larva/core/validate.py:72`, `src/larva/shell/mcp.py:74`, `tests/core/test_validate.py:194`
+
+      Remediation: align docstrings, examples, and test fixtures to canonical `UNUSED_VARIABLES`
+      semantics, or clearly mark any transport-generic example as non-canonical so
+      contract readers cannot infer `unknown-model` / `deprecated` warning families.
+
+      Grep hint: `rg -n "gpt-6|unknown models|deprecated fields|not in known models
+      list" src tests`
+
+      IMPORTANT: search for sibling examples beyond the listed locations and remove
+      or relabel all contract-drifting warning language.
+
+
+      ### S1: lacking transport-level integration assertion for warning-path survival
+      through a user-facing entrypoint
+
+      Locations: `tests/core/test_validate.py:217`, `tests/shell/test_mcp.py:330`
+
+      Remediation: add one integration test via an MCP-facing path that asserts the
+      canonical `UNUSED_VARIABLES` warning string survives unchanged from validation
+      core through the transport surface.
+
+      Grep hint: `rg -n "test_validate_success_with_warnings|UNUSED_VARIABLES" tests`
+
+      IMPORTANT: proof must exercise the transport boundary, not just core helpers.
+
+
+      ## Completion Criteria
+
+      - ALL findings above are closed in one batch
+
+      - Contract-facing docs/examples/tests consistently describe only the canonical
+      `UNUSED_VARIABLES` warning family unless explicitly labeled transport-generic
+
+      - At least one user-facing transport test proves the canonical warning string
+      survives unchanged end-to-end
+
+      - Sibling search completed for both grep hints and any remaining drift is either
+      removed or explicitly scoped
+
+
+      Known risks:
+
+      - Do not broaden warning semantics while rewriting examples
+
+      - Do not mutate error semantics or unresolved-variable behavior
+
+      - Do not satisfy S1 with another core-only assertion
+
+
+      Gate Preview:
+
+      1. Any lingering `unknown-model` / `deprecated` warning language in code-facing
+      docs/examples will fail gate.
+
+      2. A transport test that normalizes or rewrites the warning string instead of
+      asserting canonical survival will fail gate.
+
+      3. Evidence that only the listed files were inspected, without sibling grep
+      coverage, will fail gate.'
+    verification: '- Each blocker grep hint is rerun and remaining matches are either
+      removed or explicitly justified as transport-generic examples
+
+      - Main path: MCP-facing integration test proves the canonical `UNUSED_VARIABLES`
+      warning string survives unchanged end-to-end
+
+      - Failure path: targeted regression still shows unresolved-variable cases remain
+      errors without warning-family expansion
+
+      - Evidence includes sibling-search proof for both blocker families'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Blockers covered**: B1, S1
+
+
+      **Files updated**:
+
+      - <path>
+
+
+      **Sibling search evidence**:
+
+      ```bash
+
+      <grep hint>
+
+      <output or explanation>
+
+      ```
+
+
+      **Contract alignment proof**:
+
+      - <where canonical `UNUSED_VARIABLES` semantics now appear>
+
+
+      **Transport proof added**:
+
+      - <test name / command>
+
+      - <why this is user-facing rather than core-only>
+
+      '
+    depends_on:
+    - followup_validate_warnings.gate
+    agent: python-senior
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: done
