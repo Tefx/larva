@@ -12590,3 +12590,75 @@ phases:
 - id: shell_mcp_runtime
   name: shell_mcp_runtime
   status: pending
+  steps:
+  - id: shell_mcp_runtime.transport_scope
+    name: transport_scope
+    status: pending
+    description: 'Freeze the runtime surface for runnable MCP support before contract
+      or implementation work begins.
+
+
+      step_type: planning
+
+      agent_source: default
+
+
+      spec_refs:
+
+      - README.md :: Interfaces / MCP Server (primary)
+
+      - INTERFACES.md :: A. MCP Server Interface (`larva runs as an MCP server (stdio
+      or SSE)`)
+
+      - ARCHITECTURE.md :: Module `larva.shell.mcp`
+
+
+      Touch paths:
+
+      - README.md
+
+      - INTERFACES.md
+
+      - ARCHITECTURE.md
+
+      - src/larva/shell/mcp.py
+
+      - pyproject.toml
+
+
+      Decision for this phase:
+
+      - Ship runnable `stdio` MCP runtime now
+
+      - Defer `SSE` from implementation in this phase because the repository does
+      not define authoritative HTTP/SSE startup semantics such as bind host/port defaults,
+      path shape, dependency choice, or lifecycle ownership
+
+      - Preserve the deferral explicitly in plan text so the docs/runtime mismatch
+      is visible rather than silently narrowed
+
+
+      Acceptance boundary:
+
+      - This phase must restore the documented runtime surface that the completed
+      `shell_mcp` handler layer did not provide
+
+      - The runtime must remain thin and delegate tool behavior through `MCPHandlers`
+      into `larva.app.facade`
+
+      - The runtime must not be routed through `larva.shell.cli`
+
+
+      Conflict rationale:
+
+      - This step serializes all later work by freezing transport scope before new
+      runtime tests, entrypoint naming, and shared file edits begin'
+    verification: '- Runtime scope note names one canonical launch path for the MCP
+      server
+
+      - This phase explicitly ships `stdio` and explicitly defers `SSE` pending authoritative
+      host/path/dependency/startup semantics
+
+      - Acceptance text states that runtime work must reuse `MCPHandlers` and must
+      not duplicate facade/business logic'
+    agent: software-architect
