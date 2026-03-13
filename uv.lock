@@ -519,7 +519,7 @@ wheels = [
 
 [[package]]
 name = "invar-tools"
-version = "1.19.7"
+version = "1.20.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "coverage", extra = ["toml"] },
@@ -538,9 +538,9 @@ dependencies = [
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/d5/539a68b9c37738735981e316196c76a98aef86046d41135698edff930df7/invar_tools-1.19.7.tar.gz", hash = "sha256:fb490014d6f292da7899f0f62346d2077a6d49476b9fe29583e2412544a3f00a", size = 10163047, upload-time = "2026-03-09T19:17:02.293Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/70/9066951cb6c66326e86ef4a436635dde60a85b646ae511db16dd2999eb99/invar_tools-1.20.1.tar.gz", hash = "sha256:477ea45483b19d72a44b167fe185ffb8ecc60967f2436b676cd35c4127801f4b", size = 1467960, upload-time = "2026-03-13T19:59:13.008Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bb/e7/3c2bb2972bafca29aa7df8a0884c1f5ad977ddc90c82b8e16393813f3228/invar_tools-1.19.7-py3-none-any.whl", hash = "sha256:c793deee03fd369aadc16edc24c1f99e0f28577ead8e1c56fe96088b2120d2f2", size = 10435525, upload-time = "2026-03-09T19:16:59.537Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/b2/5c7841b8568faa2759592b3d92034abdc306c48dd7094026b4961db7b2c6/invar_tools-1.20.1-py3-none-any.whl", hash = "sha256:8f37b52755b5010d28aaacc79ff30472726e4daa6b23eef81f1498cb06c6a8cc", size = 321404, upload-time = "2026-03-13T19:59:10.984Z" },
 ]
 
 [[package]]
@@ -623,7 +623,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "invar-tools", specifier = ">=1.19.7" },
+    { name = "invar-tools", specifier = ">=1.20.1" },
     { name = "pytest", specifier = ">=8.4" },
 ]
 
