@@ -13427,14 +13427,18 @@ phases:
       \  ## Full Guard Verification\n\n  **Exact guard command**:\n  ```bash\n  uvx\
       \ invar-tools guard --all\n  ```\n\n  **Actual output**:\n  ```text\n  <paste\
       \ actual guard output>\n  ```\n\n  **CLI regression command**:\n  ```bash\n\
-      \  uv run pytest -q tests/shell/test_cli.py\n  ```\n\n  **Main-repo vs worktree\
-      \ conclusion**: <one line>\n"
+      \  uv run pytest -q tests/shell/test_cli.py\n  ```\n\n  **Main-repo debt conclusion**:\
+      \ <one line>\n  **Deferred / classified follow-up conclusion**: <one line covering\
+      \ package-root policy + components-root bucket>\n"
     verification: '- Main path: full `uvx invar-tools guard --all` passes from the
-      main repo
+      main repo or clearly isolates only remaining authoritative repo debt
 
-      - Failure path: evidence proves `.vectl/worktrees/**` duplication no longer
-      inflates the project-level debt calculation while real main-repo findings are
-      closed or justified
+      - Failure path: evidence proves `.vectl` ignore tightening did not hide main-repo
+      findings and that remaining debt is real, not worktree duplication
+
+      - Evidence explicitly records package-root re-exports as deferred / future-policy
+      follow-up and `~/.larva/components` root-init as an investigation / cleanup
+      / clarification item, while leaving registry-init and MCP-runtime scope untouched
 
       - Focused CLI regressions still pass'
     depends_on:
