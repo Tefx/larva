@@ -5868,14 +5868,14 @@ phases:
       \ made in this retest step."
 - id: shell_python_api
   name: larva.shell.python_api
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   - app_facade
   steps:
   - id: shell_python_api.shell-python-api-contract
     name: shell-python-api-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.shell.python_api` module at `src/larva/shell/python_api.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\nagent_source: default\n\nScope:\n\
@@ -5904,6 +5904,8 @@ phases:
       - The contract explicitly documents thin delegation to `larva.app.facade` and
       defers shared package-export wiring'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T03:52:59.784807+00:00'
   - id: shell_python_api.shell-python-api-tests
     name: shell-python-api-tests
     status: pending
