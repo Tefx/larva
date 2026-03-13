@@ -7962,6 +7962,8 @@ phases:
     - shell_mcp.shell-mcp-freeze
     - shell_mcp.shell-mcp-fix-batch
     - shell_mcp.shell-mcp-verify-retest
+    - shell_mcp.shell-mcp-gate-fix-batch
+    - shell_mcp.shell-mcp-gate-retest
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T05:46:08.311620+00:00'
