@@ -13317,7 +13317,7 @@ phases:
       - No code/docs/tests modified in this step.'
   - id: followup_surface_hygiene.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: verify follow-up surface hygiene completion and quality.
 
 
@@ -13358,6 +13358,8 @@ phases:
     - followup_surface_hygiene.surface-verify
     - followup_surface_hygiene.freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T17:41:25.052222+00:00'
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
