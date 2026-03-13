@@ -9340,7 +9340,7 @@ phases:
       - discovered_issues: none'
   - id: shell_mcp.shell-mcp-gate-retest
     name: shell-mcp-gate-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the ONE
       batched remediation from `shell_mcp.shell-mcp-gate-fix-batch` and verify that
       ALL gate findings are resolved before `shell_mcp.shell-mcp-gate` can reopen.
@@ -9432,6 +9432,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-gate-fix-batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T06:22:45.961980+00:00'
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
