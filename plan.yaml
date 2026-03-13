@@ -4697,7 +4697,7 @@ phases:
       - Read-only freeze verification only; no files modified.'
   - id: app_facade.app-facade-gate
     name: app-facade-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `app_facade` phase meets the quality bar for proceeding to downstream transport
       work.
@@ -4783,6 +4783,8 @@ phases:
     - app_facade.app-facade-seam-proof
     - app_facade.app-facade-freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T02:28:16.964947+00:00'
   - id: app_facade.app-facade-implement-register-list
     name: app-facade-implement-register-list
     status: done
