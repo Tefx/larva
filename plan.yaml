@@ -13176,3 +13176,291 @@ phases:
     barrier for the follow-on gaps and must stay serial and worktree-safe.
   depends_on:
   - followup_validate_warnings
+  steps:
+  - id: followup_guard_full.guard-diagnose
+    name: guard-diagnose
+    status: pending
+    description: 'Diagnose the confirmed full-project `invar guard --all` failure
+      and turn it into an explicit remediation matrix.
+
+
+      step_type: review
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - project Invar rules from `AGENTS.md`
+
+      - saved full-guard failure artifact showing `<project>` `shell_complexity_debt`
+
+      touch_paths:
+
+      - `pyproject.toml`
+
+      - `src/larva/shell/cli.py`
+
+      - optional tooling docs if needed
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      agent_source: default
+
+
+      Produce a root-cause matrix with evidence for: project-level `shell_complexity_debt`,
+      duplicated findings under `.vectl/worktrees/**`, and the real main-repo complexity
+      findings in `src/larva/shell/cli.py`. Preserve exclusions from the earlier preview:
+      no package-root re-export scope, no component-root init scope, no registry-root
+      init scope, and no duplicate MCP runtime work.'
+    verification: '- Diagnosis explicitly identifies the failing rule and why it exits
+      non-zero
+
+      - Diagnosis distinguishes main-repo findings from `.vectl/worktrees/**` duplication
+
+      - Diagnosis recommends whether guard-scope config, CLI code changes, or both
+      are required'
+    agent: software-architect
+  - id: followup_guard_full.guard-scope-remediate
+    name: guard-scope-remediate
+    status: pending
+    description: 'Remediate guard scope/config if diagnosis confirms `.vectl/worktrees/**`
+      duplication is inflating full-project failure counts.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      touch_paths:
+
+      - `pyproject.toml`
+
+      - optional adjacent tooling docs
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      agent_source: default
+
+
+      Known risks:
+
+      - Do not hide real main-repo files from guard coverage
+
+      - Exclude only ephemeral duplicated worktree state if the diagnosis confirms
+      it is non-authoritative
+
+      - Keep the core/shell path model intact
+
+
+      Gate Preview:
+
+      1. Guard still traverses `.vectl/worktrees/**` and inflates debt counts.
+
+      2. Config change suppresses legitimate main-repo coverage.
+
+      3. The remediation explains away duplication without proving the scope boundary.'
+    verification: '- Main path: full-guard scope no longer counts duplicated non-authoritative
+      worktree copies if diagnosis confirmed that issue
+
+      - Failure path: proof shows main checkout files remain covered by guard
+
+      - Config evidence cites the exact exclusion/scope behavior changed'
+    depends_on:
+    - followup_guard_full.guard-diagnose
+    agent: python-executor
+  - id: followup_guard_full.cli-complexity-tests
+    name: cli-complexity-tests
+    status: pending
+    description: 'Add targeted CLI regressions for the real main-repo complexity-debt
+      sites before refactor or justification.
+
+
+      step_type: test
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:638`
+
+      - main-repo guard findings in `src/larva/shell/cli.py`
+
+      touch_paths:
+
+      - `tests/shell/test_cli.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/shell/test_cli.py`
+
+      agent_source: default
+
+
+      Lock behavior around `_read_spec_json`, `_dispatch`, `validate_command`, and
+      `assemble_command` so complexity remediation does not change CLI semantics.'
+    verification: '- Focused regressions cover the four real main-repo complexity-debt
+      sites
+
+      - Tests protect text/JSON, parse/input, and assemble/validate behavior before
+      remediation'
+    depends_on:
+    - followup_guard_full.guard-diagnose
+    agent: python-executor
+  - id: followup_guard_full.cli-complexity-remediate
+    name: cli-complexity-remediate
+    status: pending
+    description: 'Resolve the real main-repo CLI complexity debt revealed by full
+      guard.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:638`
+
+      - main-repo guard findings in `src/larva/shell/cli.py`
+
+      touch_paths:
+
+      - `src/larva/shell/cli.py`
+
+      - `tests/shell/test_cli.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/shell/test_cli.py`
+
+      - changed-scope guard
+
+      agent_source: default
+
+
+      Known risks:
+
+      - Do not change user-visible CLI behavior while reducing/explaining complexity
+
+      - Do not move business logic out of facade ownership as a fake simplification
+
+      - Keep component commands and text/JSON modes aligned
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Complexity markers added without tight justification for truly transport-driven
+      branching.
+
+      2. Refactors that change CLI behavior while making guard output quieter.
+
+      3. Partial cleanup that leaves `_dispatch` or sibling high-branch paths effectively
+      unchanged without explanation.'
+    verification: '- Main path: the four real main-repo complexity-debt sites are
+      reduced or explicitly justified in-policy
+
+      - Failure path: targeted regressions prove text/JSON, parse/input, and assemble/validate
+      behavior did not regress
+
+      - Proof includes changed-scope guard evidence for `src/larva/shell/cli.py`'
+    depends_on:
+    - followup_guard_full.guard-scope-remediate
+    - followup_guard_full.cli-complexity-tests
+    agent: python-senior
+  - id: followup_guard_full.guard-full-verify
+    name: guard-full-verify
+    status: pending
+    description: "As an INDEPENDENT TESTER, re-run the full-project acceptance barrier\
+      \ after guard-scope and CLI-complexity remediation.\n\nstep_type: verification\n\
+      Independence Level: L1\nspec_refs:\n- `pyproject.toml:53`\n- saved full-guard\
+      \ failure artifact\n- `README.md:40`\n- `ARCHITECTURE.md:638`\ntouch_paths:\n\
+      - `pyproject.toml`\n- `src/larva/shell/cli.py`\n- `tests/shell/test_cli.py`\n\
+      harness_refs:\n- full `uvx invar-tools guard --all`\n- focused `uv run pytest\
+      \ -q tests/shell/test_cli.py`\nagent_source: default\n\nevidence_template: |\n\
+      \  ## Full Guard Verification\n\n  **Exact guard command**:\n  ```bash\n  uvx\
+      \ invar-tools guard --all\n  ```\n\n  **Actual output**:\n  ```text\n  <paste\
+      \ actual guard output>\n  ```\n\n  **CLI regression command**:\n  ```bash\n\
+      \  uv run pytest -q tests/shell/test_cli.py\n  ```\n\n  **Main-repo vs worktree\
+      \ conclusion**: <one line>\n"
+    verification: '- Main path: full `uvx invar-tools guard --all` passes from the
+      main repo
+
+      - Failure path: evidence proves `.vectl/worktrees/**` duplication no longer
+      inflates the project-level debt calculation while real main-repo findings are
+      closed or justified
+
+      - Focused CLI regressions still pass'
+    depends_on:
+    - followup_guard_full.cli-complexity-remediate
+    agent: integration-verifier
+  - id: followup_guard_full.freeze
+    name: freeze
+    status: pending
+    description: 'Freeze the follow-up full-guard snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default'
+    verification: '- Record `git rev-parse HEAD`
+
+      - Record clean `git status`
+
+      - Record environment declaration
+
+      - State that no code changes are allowed until gate review completes'
+    depends_on:
+    - followup_guard_full.guard-full-verify
+    agent: integration-verifier
+  - id: followup_guard_full.gate
+    name: gate
+    status: pending
+    description: 'Gate review: verify full-guard remediation completion and final
+      acceptance quality.
+
+
+      step_type: gate
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Repo-wide acceptance barrier
+
+      - Mixes guard-scope correctness with real CLI complexity debt remediation
+
+      - A bad fix could hide real issues instead of resolving them
+
+      cross_cutting_focus:
+
+      - no fake guard pass by suppressing authoritative repo files
+
+      - no duplicate MCP runtime or package-export scope creep
+
+      - CLI behavior preserved while complexity debt is genuinely reduced or justified
+
+      agent_source: default'
+    verification: '- All phase steps completed successfully
+
+      - Evidence shows the failing full-guard root cause was diagnosed correctly
+
+      - Evidence shows duplicated worktree inflation was handled correctly if applicable,
+      without hiding main-repo coverage
+
+      - Evidence shows the main-repo CLI complexity debt is actually resolved or justified
+
+      - Full `uvx invar-tools guard --all` passes from the main checkout'
+    depends_on:
+    - followup_guard_full.guard-diagnose
+    - followup_guard_full.guard-scope-remediate
+    - followup_guard_full.cli-complexity-tests
+    - followup_guard_full.cli-complexity-remediate
+    - followup_guard_full.guard-full-verify
+    - followup_guard_full.freeze
+    agent: gate-reviewer
