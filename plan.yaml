@@ -6285,7 +6285,7 @@ phases:
       for this seam proof.'
   - id: shell_python_api.shell-python-api-freeze
     name: shell-python-api-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.shell.python_api` snapshot before gate review.
 
 
@@ -6320,6 +6320,8 @@ phases:
     - shell_python_api.shell-python-api-verify
     - shell_python_api.shell-python-api-seam-proof
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T05:14:11.729922+00:00'
   - id: shell_python_api.shell-python-api-gate
     name: shell-python-api-gate
     status: pending
