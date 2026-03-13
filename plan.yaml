@@ -7240,7 +7240,7 @@ phases:
       \ remained unchanged by design."
   - id: shell_cli.shell-cli-verify
     name: shell-cli-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`blind-tester`), validate the `larva.shell.cli`
       module from a fresh user-facing perspective.
 
@@ -7297,6 +7297,37 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-13T06:03:29.241355+00:00'
+    done_at: '2026-03-13T06:21:30.933565+00:00'
+    evidence: 'Independent verification returned ISSUES_FOUND and triggered batched
+      remediation planning.
+
+      Findings captured:
+
+      - blocker B1: public `uv run larva` entrypoint not wired to real CLI (placeholder
+      output only)
+
+      - blocker B2: assemble `-o/--output` options rejected despite contract
+
+      - should_fix S1: JSON failure numeric-code policy mismatch (`INTERNAL`=10 cases
+      vs documented CLI range expectations)
+
+      - should_fix S2: duplicated CLI interface section in INTERFACES.md causing ambiguity
+
+      Commands included black-box probes via `uv run larva ...` and in-process `run_cli(...)`
+      fallback checks.
+
+      Planner remediation created and wired:
+
+      - shell_cli.shell-cli-verify-fix-batch
+
+      - shell_cli.shell-cli-verify-retest
+
+      - shell_cli.shell-cli-gate updated to depend on shell_cli.shell-cli-verify-retest
+
+      Notes:
+
+      - Per anti-serial-fix protocol, all findings were batched into one fix step
+      plus one retest step before gate continuation.'
   - id: shell_cli.shell-cli-seam-proof
     name: shell-cli-seam-proof
     status: done
