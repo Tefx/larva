@@ -7636,7 +7636,7 @@ phases:
       \ not full MCP stdio/SSE server runtime."
   - id: shell_mcp.shell-mcp-freeze
     name: shell-mcp-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.shell.mcp` snapshot before gate review.
 
 
@@ -7670,6 +7670,8 @@ phases:
     - shell_mcp.shell-mcp-verify
     - shell_mcp.shell-mcp-seam-proof
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T05:11:54.296278+00:00'
   - id: shell_mcp.shell-mcp-gate
     name: shell-mcp-gate
     status: pending
