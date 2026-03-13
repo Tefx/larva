@@ -16769,7 +16769,7 @@ phases:
       - blocker: CrossHair residual persists for `src/larva/core/normalize.py`'
   - id: followup_guard_full.guard-full-core-crosshair-fix-7
     name: guard-full-core-crosshair-fix-7
-    status: claimed
+    status: done
     description: 'Seventh batched remediation extension for the remaining narrowed
       CrossHair residual family only; preserve the existing `followup_guard_full`
       residual family chain, keep scope strict to `src/larva/core/assemble.py` and
@@ -16915,6 +16915,45 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T21:29:13.874579+00:00'
+    done_at: '2026-03-13T21:37:05.348022+00:00'
+    evidence: 'Artifact:
+
+      - commit: `fc39bd2` (squash-merge of worktree branch `vectl/step-followup_guard_full.guard-full-core-crosshair-fix-7`;
+      branch commit `a9b79a9`).
+
+
+      Files changed:
+
+      - `src/larva/core/assemble.py`
+
+      - `src/larva/core/normalize.py`
+
+
+      Verification:
+
+      - `uv run invar guard --all` -> PASS (`status=passed`, `crosshair` verified
+      assemble+normalize; errors/warnings=0).
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py` -> PASS (`65 passed`).
+
+      - Both required sibling-search grep commands executed and reported.
+
+      - Merge commit hooks passed with `PATH=.venv/bin:$PATH` (no hook bypass).
+
+
+      Spec link:
+
+      - Closed both residual blockers together in one batched pass under updated command
+      policy (`uv run invar ...`), with scope limited to assemble+normalize family.
+
+
+      Gaps/Notes:
+
+      - `.hypothesis/` remained untracked and excluded from commit.
+
+      - Command-policy update (no `uvx`) was enforced in step execution and remaining
+      pending steps.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-7
     name: guard-full-core-crosshair-retest-7
     status: pending
