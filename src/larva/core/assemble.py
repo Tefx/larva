@@ -20,7 +20,6 @@ from larva.core.spec import (
     ModelComponent,
     PersonaSpec,
     ToolPosture,
-    ToolsetComponent,
 )
 
 
@@ -126,14 +125,18 @@ def _collect_scalar(
     lambda toolsets: isinstance(toolsets, list) and all(isinstance(item, dict) for item in toolsets)
 )
 @raises(AssemblyError)
-def _merge_tools(toolsets: list[ToolsetComponent]) -> dict[str, ToolPosture]:
+def _merge_tools(toolsets: list[dict[str, object]]) -> dict[str, str]:
     """Merge tools from multiple toolset components."""
-    merged: dict[str, ToolPosture] = {}
+    merged: dict[str, str] = {}
 
     for toolset in toolsets:
         if "tools" not in toolset:
             continue
-        for tool_name, posture in toolset["tools"].items():
+        tools_obj = toolset["tools"]
+        if not isinstance(tools_obj, dict):
+            continue
+        tools = cast("dict[str, str]", tools_obj)
+        for tool_name, posture in tools.items():
             if tool_name in merged and merged[tool_name] != posture:
                 raise AssemblyError(
                     code="COMPONENT_CONFLICT",
@@ -298,12 +301,12 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
 
     toolsets_obj = data.get("toolsets", [])
     toolsets = (
-        [cast("ToolsetComponent", item) for item in toolsets_obj if isinstance(item, dict)]
+        [cast("dict[str, object]", item) for item in toolsets_obj if isinstance(item, dict)]
         if isinstance(toolsets_obj, list)
         else []
     )
     if toolsets:
-        result["tools"] = _merge_tools(toolsets)
+        result["tools"] = cast("dict[str, ToolPosture]", _merge_tools(toolsets))
 
     model_component: ModelComponent | None = None
     if isinstance(model, dict):
