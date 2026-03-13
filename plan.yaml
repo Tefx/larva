@@ -14805,6 +14805,8 @@ phases:
     - followup_guard_full.freeze
     - followup_guard_full.guard-full-core-crosshair-retest-3
     - followup_guard_full.guard-full-core-crosshair-retest-4
+    - followup_guard_full.guard-full-core-crosshair-fix-7
+    - followup_guard_full.guard-full-core-crosshair-retest-7
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T19:38:29.668537+00:00'
