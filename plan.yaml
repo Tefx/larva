@@ -12816,7 +12816,7 @@ phases:
       \ warning"
   - id: followup_validate_warnings.warning-verify
     name: warning-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, validate the follow-up warning semantics
       from a fresh perspective.
 
@@ -12865,6 +12865,18 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:13:34.238962+00:00'
+    done_at: '2026-03-13T18:16:04.823425+00:00'
+    evidence: "Artifact:\n- PR/Commit: none (verification-only step)\n\nVerification:\n\
+      - uv run pytest -v tests/core/test_validate.py -> 25 passed\n- uv run pytest\
+      \ -v --doctest-modules src/larva/core/validate.py -> 1 passed\n- direct runtime\
+      \ probes confirm:\n  - unused variable case -> valid true, warnings contains\
+      \ canonical UNUSED_VARIABLES message\n  - unresolved variable case -> valid\
+      \ false, VARIABLE_UNRESOLVED error, warnings empty\n  - model-only/no-variable\
+      \ case -> warnings empty\n- grep checks show warning emission sites limited\
+      \ to contracted family in validate module\n\nSpec link:\n- tests/core/test_validate.py\
+      \ warning semantics cases\n- src/larva/core/validate.py unresolved vs unused\
+      \ handling paths\n- validate doctest contract examples\n\nGaps/Notes:\n- No\
+      \ files modified."
   - id: followup_validate_warnings.freeze
     name: freeze
     status: pending
