@@ -12989,3 +12989,51 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_implement_stdio_adapter
     agent: python-executor
+  - id: shell_mcp_runtime.runtime_freeze
+    name: runtime_freeze
+    status: pending
+    description: 'Freeze the runnable MCP runtime snapshot before independent L2 verification
+      and gate review.
+
+
+      step_type: planning
+
+      agent_source: default
+
+
+      spec_refs:
+
+      - Freeze required for L2 verification and gate review on runnable transport
+      work
+
+
+      Touch paths:
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_runtime.py
+
+      - pyproject.toml
+
+      - tests/shell/test_mcp_runtime.py
+
+
+      Freeze contents:
+
+      - exact runtime launch command
+
+      - commit SHA / working tree state
+
+      - environment declaration for the stdio runtime verification harness
+
+      - explicit statement that `SSE` remains deferred and out of scope for this phase'
+    verification: '- Freeze evidence captures `git rev-parse HEAD`
+
+      - Freeze evidence declares clean `git status` and the runtime environment/dependency
+      assumptions used for verification
+
+      - Freeze evidence states that no code changes occur between freeze and the subsequent
+      verification/gate steps'
+    depends_on:
+    - shell_mcp_runtime.runtime_implement_entrypoint
+    agent: software-architect
