@@ -12589,7 +12589,12 @@ phases:
       - B1-B5 all closed; downstream core-gate blockers resolved.'
 - id: followup_validate_warnings
   name: Follow-up Validate Warnings
-  status: pending
+  status: locked
+  context: This phase starts only after surface-hygiene gate closure. It must define
+    authoritative warning semantics before implementation and keep scope inside validation
+    docs/tests/core only.
+  depends_on:
+  - followup_surface_hygiene
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: pending
