@@ -348,6 +348,8 @@ class MCPHandlers:
 
         Returns:
             ValidationReport with valid flag, errors, and warnings.
+            Missing `spec.id` (or invalid id format) is reported as
+            INVALID_PERSONA_ID through the report errors list.
 
         Malformed requests return the documented MCP error envelope.
         """

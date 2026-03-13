@@ -945,6 +945,48 @@ class TestRunCli:
         assert payload["data"]["valid"] is True
         assert stderr.getvalue() == ""
 
+    def test_validate_missing_id_text_returns_domain_failure_with_stderr_only(
+        self, tmp_path: Path
+    ) -> None:
+        spec_path = tmp_path / "missing-id.json"
+        spec_path.write_text(json.dumps({"spec_version": "0.1.0"}), encoding="utf-8")
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["validate", str(spec_path)],
+            facade=cli.build_default_facade(),
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        assert stdout.getvalue() == ""
+        assert "Validation failed" in stderr.getvalue()
+        assert "id is required" in stderr.getvalue()
+
+    def test_validate_missing_id_json_returns_persona_invalid_envelope(
+        self, tmp_path: Path
+    ) -> None:
+        spec_path = tmp_path / "missing-id.json"
+        spec_path.write_text(json.dumps({"spec_version": "0.1.0"}), encoding="utf-8")
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["validate", str(spec_path), "--json"],
+            facade=cli.build_default_facade(),
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "PERSONA_INVALID"
+        assert payload["error"]["numeric_code"] == 101
+        assert payload["error"]["details"]["report"]["errors"][0]["code"] == "INVALID_PERSONA_ID"
+        assert stderr.getvalue() == ""
+
     def test_register_missing_file_text_returns_critical_and_stderr_only(self) -> None:
         facade = RecordingFacade()
         stdout = io.StringIO()

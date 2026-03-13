@@ -286,6 +286,14 @@ def _emit_result(
     return failure.get("exit_code", EXIT_ERROR)
 
 
+# @invar:allow shell_result: helper builds typed CLI failure envelope
+def _operation_failure(operation: str, error: JsonErrorEnvelope, *, as_json: bool) -> CliFailure:
+    failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error}
+    if not as_json:
+        failure["stderr"] = f"{operation} failed: {error['message']}\n"
+    return failure
+
+
 def _dispatch(
     args: argparse.Namespace,
     *,
@@ -298,28 +306,16 @@ def _dispatch(
     if command == "validate":
         loaded_spec = _read_spec_json(cast("str", args.spec))
         if isinstance(loaded_spec, Failure):
-            error = loaded_spec.failure()
-            failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error}
-            if not as_json:
-                failure["stderr"] = f"Validate failed: {error['message']}\n"
-            return Failure(failure)
+            return Failure(_operation_failure("Validate", loaded_spec.failure(), as_json=as_json))
         return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
 
     if command == "assemble":
         overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
         if isinstance(overrides, Failure):
-            error = overrides.failure()
-            failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error}
-            if not as_json:
-                failure["stderr"] = f"Assemble failed: {error['message']}\n"
-            return Failure(failure)
+            return Failure(_operation_failure("Assemble", overrides.failure(), as_json=as_json))
         variables = _parse_key_value_pairs(cast("list[str]", args.variables), flag="--var")
         if isinstance(variables, Failure):
-            error = variables.failure()
-            failure = {"exit_code": EXIT_CRITICAL, "error": error}
-            if not as_json:
-                failure["stderr"] = f"Assemble failed: {error['message']}\n"
-            return Failure(failure)
+            return Failure(_operation_failure("Assemble", variables.failure(), as_json=as_json))
 
         request: AssembleRequest = {
             "id": cast("str", args.id),
@@ -342,21 +338,13 @@ def _dispatch(
     if command == "register":
         loaded_spec = _read_spec_json(cast("str", args.spec))
         if isinstance(loaded_spec, Failure):
-            error = loaded_spec.failure()
-            failure = {"exit_code": EXIT_CRITICAL, "error": error}
-            if not as_json:
-                failure["stderr"] = f"Register failed: {error['message']}\n"
-            return Failure(failure)
+            return Failure(_operation_failure("Register", loaded_spec.failure(), as_json=as_json))
         return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
 
     if command == "resolve":
         overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
         if isinstance(overrides, Failure):
-            error = overrides.failure()
-            failure = {"exit_code": EXIT_CRITICAL, "error": error}
-            if not as_json:
-                failure["stderr"] = f"Resolve failed: {error['message']}\n"
-            return Failure(failure)
+            return Failure(_operation_failure("Resolve", overrides.failure(), as_json=as_json))
         return resolve_command(
             cast("str", args.id),
             overrides=overrides.unwrap(),

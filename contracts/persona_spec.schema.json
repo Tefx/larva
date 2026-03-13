@@ -8,7 +8,7 @@
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "Stable canonical persona identity. Flat kebab-case, no namespaces in v1. Used by registry, resolution, promotion, and dispatch references."
+      "description": "Stable canonical persona identity. Required by schema (missing id is invalid). Flat kebab-case, no namespaces in v1. Used by registry, resolution, promotion, and dispatch references."
     },
     "description": {
       "type": "string",

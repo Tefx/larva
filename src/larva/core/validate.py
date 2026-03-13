@@ -29,6 +29,10 @@ from deal import post, pre
 from larva.core.spec import PersonaSpec
 
 
+_PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+_PROMPT_VARIABLE_PATTERN = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
+
+
 class ValidationIssue(TypedDict):
     """Single structured validation issue for a PersonaSpec candidate.
 
@@ -92,13 +96,27 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         )
 
     Examples:
-        >>> validate_spec({"spec_version": "0.1.0"})["valid"]
+        >>> validate_spec({"id": "code-reviewer", "spec_version": "0.1.0"})["valid"]
         True
-        >>> validate_spec({"spec_version": "0.2.0"})["errors"][0]["code"]
-        'INVALID_SPEC_VERSION'
+        >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
+        'INVALID_PERSONA_ID'
     """
     errors: list[ValidationIssue] = []
     warnings: list[str] = []
+
+    persona_id = spec.get("id")
+    if (
+        not isinstance(persona_id, str)
+        or persona_id == ""
+        or not _PERSONA_ID_PATTERN.fullmatch(persona_id)
+    ):
+        errors.append(
+            {
+                "code": "INVALID_PERSONA_ID",
+                "message": "id is required and must match ^[a-z0-9]+(-[a-z0-9]+)*$",
+                "details": {"field": "id", "value": persona_id},
+            }
+        )
 
     spec_version = spec.get("spec_version")
     if spec_version is not None and spec_version != "0.1.0":
@@ -122,8 +140,7 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         )
 
     prompt = spec.get("prompt", "")
-    placeholder_pattern = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
-    found_vars = set(placeholder_pattern.findall(prompt))
+    found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt))
     provided_vars_obj = spec.get("variables", {})
     provided_vars = provided_vars_obj if isinstance(provided_vars_obj, dict) else {}
 

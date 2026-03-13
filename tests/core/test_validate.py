@@ -71,20 +71,33 @@ class TestValidateSpecBehavior:
 
     def test_valid_spec_returns_valid_report(self):
         """validate_spec should mark canonical spec_version as valid."""
-        report = validate_module.validate_spec({"spec_version": "0.1.0"})
+        report = validate_module.validate_spec(
+            {
+                "id": "valid-persona",
+                "spec_version": "0.1.0",
+            }
+        )
         assert report["valid"] is True
         assert report["errors"] == []
         assert report["warnings"] == []
 
+    def test_missing_id_produces_invalid_persona_id(self):
+        """validate_spec should reject specs that omit required id."""
+        report = validate_module.validate_spec({"spec_version": "0.1.0"})
+        assert report["valid"] is False
+        assert report["errors"][0]["code"] == "INVALID_PERSONA_ID"
+
     def test_invalid_spec_version_produces_structured_error(self):
         """validate_spec should report INVALID_SPEC_VERSION for unsupported version."""
-        report = validate_module.validate_spec({"spec_version": "0.2.0"})
+        report = validate_module.validate_spec({"id": "test-persona", "spec_version": "0.2.0"})
         assert report["valid"] is False
         assert report["errors"][0]["code"] == "INVALID_SPEC_VERSION"
 
     def test_invalid_side_effect_policy_produces_structured_error(self):
         """validate_spec should report INVALID_SIDE_EFFECT_POLICY for bad policy values."""
-        report = validate_module.validate_spec({"side_effect_policy": "forbidden"})
+        report = validate_module.validate_spec(
+            {"id": "test-persona", "side_effect_policy": "forbidden"}
+        )
         assert report["valid"] is False
         assert report["errors"][0]["code"] == "INVALID_SIDE_EFFECT_POLICY"
 
@@ -92,6 +105,7 @@ class TestValidateSpecBehavior:
         """validate_spec should use canonical VARIABLE_UNRESOLVED code for unresolved vars."""
         report = validate_module.validate_spec(
             {
+                "id": "test-persona",
                 "prompt": "You are {role} speaking to {target}",
                 "variables": {"role": "assistant"},
             }

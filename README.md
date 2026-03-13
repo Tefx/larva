@@ -41,7 +41,7 @@ larva.list()                  → [{id, spec_digest, model}]
 
 ```bash
 larva validate <spec.json>
-larva assemble --prompt <name> --toolset <name> --constraints <name> -o <output>
+larva assemble --id <persona-id> --prompt <name> --toolset <name> --constraints <name> -o <output>
 larva register <spec.json>
 larva resolve <id> [--override key=value]
 larva list

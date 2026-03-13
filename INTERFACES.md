@@ -196,6 +196,10 @@ route directly to injected `ComponentStore` port. See ARCHITECTURE.md Decision 4
 
 Validate a PersonaSpec JSON file. Checks schema conformance and semantic rules.
 
+Missing-id policy: `id` is mandatory. If absent or not flat kebab-case,
+validation fails with `PERSONA_INVALID` and report error code
+`INVALID_PERSONA_ID`.
+
 Exit codes: 0 valid, 1 invalid, 2 input/critical failure.
 
 ### `larva assemble [OPTIONS]`
@@ -374,6 +378,9 @@ or LLM-generated JSON passed to `larva.validate`). larva computes it
 during normalization. All larva output (assemble, resolve, register)
 always includes spec_digest.
 
+`id` is required in raw input and must match
+`^[a-z0-9]+(-[a-z0-9]+)*$`.
+
 ### Normalization
 
 - `spec_digest`: `sha256:` plus SHA-256 of canonical JSON (sorted keys, no whitespace,
@@ -397,7 +404,7 @@ You are a {role} working on {project_name}.
 
 ### Injection
 
-- CLI: `larva assemble --prompt my-prompt --var role=reviewer --var project_name=myapp`
+- CLI: `larva assemble --id reviewer-persona --prompt my-prompt --toolset python-core --constraints safe-default --var role=reviewer --var project_name=myapp`
 - MCP: `larva.assemble(prompts=["my-prompt"], variables={"role": "reviewer"})`
 
 ### Enforcement
