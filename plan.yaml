@@ -4459,7 +4459,7 @@ phases:
     claimed_at: '2026-03-13T02:10:24.121364+00:00'
   - id: app_facade.app-facade-seam-proof
     name: app-facade-seam-proof
-    status: claimed
+    status: done
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.app.facade`.
 
@@ -4539,6 +4539,77 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T02:09:29.971538+00:00'
+    done_at: '2026-03-13T02:15:18.110108+00:00'
+    evidence: '## Seam-Level Integration Evidence
+
+
+      **Changed seam path**: `src/larva/app/facade.py` (`register`, `list`, `resolve`)
+
+
+      **Exact command executed**:
+
+      ```bash
+
+      uv run python - <<''PY''
+
+      # live temporary-dir invocation of DefaultLarvaFacade with
+
+      # FilesystemComponentStore + FileSystemRegistryStore collaborators
+
+      PY
+
+      ```
+
+
+      **Actual output**:
+
+      ```text
+
+      register success
+
+      <Success: {''id'': ''facade-live'', ''registered'': True}>
+
+      list success
+
+      <Success: [{''id'': ''facade-live'', ''spec_digest'': ''...'', ''model'': ''gpt-4o-mini''}]>
+
+      resolve success
+
+      {''id'': ''facade-live'', ''model_params'': {''temperature'': 0}, ''spec_digest'':
+      ''...''}
+
+      ```
+
+
+      **Path exercised**: `larva.app.facade.DefaultLarvaFacade.register/list/resolve`
+      -> `larva.shell.registry.FileSystemRegistryStore.save/list/get` -> `larva.core.validate.validate_spec`
+      -> `larva.core.normalize.normalize_spec`
+
+
+      **Remaining mocks in related tests**: 0 (`tests/app/test_facade.py` has no Mock/MagicMock/patch
+      usage)
+
+
+      **Justification for remaining mocks**: none
+
+
+      Additional verification:
+
+      - `uv run pytest -v tests/app/test_facade.py` -> collected 16 items, 16 passed,
+      0 skipped.
+
+
+      Findings:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: keep one live filesystem seam proof alongside in-memory facade
+      boundary tests
+
+      - tech_debt: in-memory doubles in app tests are deterministic but should be
+      complemented by live seam checks (this step now provides that proof).'
   - id: app_facade.app-facade-freeze
     name: app-facade-freeze
     status: pending
