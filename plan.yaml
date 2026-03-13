@@ -4395,7 +4395,7 @@ phases:
       - No CLI/MCP/Python API export/wiring changes introduced.'
   - id: app_facade.app-facade-verify
     name: app-facade-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.app.facade` module from a fresh perspective.
 
@@ -4457,6 +4457,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T02:10:24.121364+00:00'
+    done_at: '2026-03-13T02:18:09.304510+00:00'
+    evidence: "Artifact:\n- PR: d3a602b224a9436d50183b8fe2ffeae6acba9ad9\n\nVerification:\n\
+      - Run: `uv run pytest -v tests/app/test_facade.py` -> collected 16 items, 16\
+      \ passed, 0 skipped.\n- Run: `rg -n \"\\b(Mock|MagicMock|AsyncMock|patch)\\\
+      b\" tests` -> no matches.\n- Run: `rg -n \"\\b(Mock|MagicMock|AsyncMock|patch|pass)\\\
+      b\" tests/app/test_facade.py` -> no fake-candle/pass-stub findings.\n- Run:\
+      \ `rg -n \"argparse|click|typer|mcp|python_api|Path\\(|open\\(|os\\.|pathlib|jsonrpc|stdin|stdout\"\
+      \ src/larva/app/facade.py` -> no boundary-leak matches.\n\nSpec link:\n- ARCHITECTURE.md\
+      \ facade boundaries\n- INTERFACES.md A + G\n- README key decisions\n\nfindings:\n\
+      \  blockers:\n    - Missing explicit edge-case test proving `facade.list()`\
+      \ empty-registry success shape is exactly `[]` (and not null/error envelope).\n\
+      \  should_fix: []\n  suggestions:\n    - Add focused empty-list success-shape\
+      \ regression for `list()` in `tests/app/test_facade.py`.\n  tech_debt: []\n\n\
+      discovered_issues:\n- Verification coverage gap only; no runtime failure observed.\n\
+      \nGaps/Notes:\n- Following batched-fix protocol, remediation chain was added\
+      \ before phase closure:\n  - `app_facade.app-facade-verify-gap-fix`\n  - `app_facade.app-facade-verify-gap-retest`\n\
+      - `app_facade.app-facade-freeze` now depends on the retest step."
   - id: app_facade.app-facade-seam-proof
     name: app-facade-seam-proof
     status: done
