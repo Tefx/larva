@@ -328,14 +328,20 @@ class TestMCPValidateSuccessShape:
         assert isinstance(result["warnings"], list)
 
     def test_validate_success_with_warnings(self) -> None:
-        report = {"valid": True, "errors": [], "warnings": ["model 'gpt-unknown' not in list"]}
+        report = {
+            "valid": True,
+            "errors": [],
+            "warnings": ["UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"],
+        }
         facade = _make_facade(validate_report=report)
         spec = _canonical_spec("test")
 
         result = facade.validate(spec)
 
         assert result["valid"] is True
-        assert result["warnings"] == ["model 'gpt-unknown' not in list"]
+        assert result["warnings"] == [
+            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
+        ]
 
 
 class TestMCPAssembleSuccessShape:
@@ -862,6 +868,35 @@ class TestMCPHandlersImplementation:
         assert result["valid"] is True
         assert result["errors"] == []
         assert result["warnings"] == []
+
+    def test_handle_validate_preserves_canonical_unused_variables_warning(self) -> None:
+        """MCP validate path should preserve canonical UNUSED_VARIABLES warning text."""
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(),
+        )
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_validate(
+            {
+                "spec": {
+                    "id": "warning-roundtrip",
+                    "spec_version": "0.1.0",
+                    "prompt": "Hello.",
+                    "variables": {"role": "assistant"},
+                }
+            }
+        )
+
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert result["warnings"] == [
+            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
+        ]
 
     def test_handle_validate_missing_spec_raises(self) -> None:
         """Test handle_validate returns malformed-params envelope for missing spec."""

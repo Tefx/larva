@@ -69,7 +69,7 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
     Contract (from INTERFACES.md):
     - Validates field types and allowed values
     - Produces structured errors with code, message, and details
-    - Produces warnings for non-critical issues (unknown models, deprecated fields)
+    - Produces warnings for non-critical unused variable declarations
 
     Args:
         spec: A PersonaSpec candidate to validate.

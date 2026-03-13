@@ -191,7 +191,7 @@ class TestValidationReportShapes:
         report: validate_module.ValidationReport = {
             "valid": False,
             "errors": [issue],
-            "warnings": ["model 'gpt-6' not in known models list"],
+            "warnings": ["UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"],
         }
         assert report["valid"] is False
         assert len(report["errors"]) == 1

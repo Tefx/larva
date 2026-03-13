@@ -71,7 +71,9 @@ class ValidationReport(TypedDict):
     {
         "valid": True,
         "errors": [],
-        "warnings": ["model 'gpt-6' not in known models list"]
+        "warnings": [
+            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
+        ]
     }
 
     Example invalid response:
