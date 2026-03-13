@@ -14590,8 +14590,8 @@ phases:
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
     status: done
-    description: 'As an INDEPENDENT TESTER, review the batched-remediation retest
-      evidence and confirm the final full-guard acceptance conclusion before freeze.
+    description: 'As an INDEPENDENT TESTER, review the second-loop retest evidence
+      and confirm the final full-guard acceptance conclusion before freeze.
 
 
       step_type: verification
@@ -14604,7 +14604,7 @@ phases:
 
       - saved full-guard failure artifact
 
-      - retest evidence from `followup_guard_full.guard-full-retest`
+      - retest evidence from `followup_guard_full.guard-full-core-crosshair-retest-2`
 
       - `README.md:40`
 
@@ -14612,38 +14612,41 @@ phases:
 
       touch_paths:
 
-      - retest evidence for `src/larva/core/**`
+      - retest evidence for `src/larva/core/validate.py`
 
-      - retest evidence for `src/larva/shell/cli.py`
+      - retest evidence for `src/larva/core/assemble.py`
 
-      - retest evidence for `src/larva/shell/mcp.py`
+      - retest evidence for `src/larva/core/normalize.py`
+
+      - retest evidence for warnings/errors staying at zero repo-wide
 
       harness_refs:
 
-      - `followup_guard_full.guard-full-retest` evidence bundle
+      - `followup_guard_full.guard-full-core-crosshair-retest-2` evidence bundle
 
       - full `uvx invar-tools guard --all`
 
-      - focused regressions cited by the retest
+      - focused core regressions cited by the retest
 
       agent_source: default
 
 
-      This step preserves serial flow by making the retest the execution point and
-      this step the acceptance review point.
+      This step preserves serial flow by making the second-loop retest the execution
+      point and this step the acceptance review point.
 
 
       Review for:
 
-      - completeness: every blocker family B0-B3 was addressed in the retest evidence
+      - completeness: the residual CrossHair blocker family across validate / assemble
+      / normalize was addressed in the retest evidence
 
-      - quality: raw command output is present, not summary-only
+      - quality: raw command output is present for full guard and focused core tests,
+      not summary-only
 
-      - scope hygiene: no authoritative repo files were hidden and no completed-phase
-      ownership was duplicated
+      - purity: no core/shell boundary violation was introduced while closing counterexamples
 
-      - acceptance: any remaining warning is explicitly justified as non-blocking
-      under current repo policy'
+      - churn guard: warning/error families remain zero and remediation stayed scoped
+      to the unresolved blocker family'
     verification: '- Main path: retest evidence proves the full-guard barrier is green
       or isolates only explicitly accepted non-blocking residue
 
@@ -14653,7 +14656,7 @@ phases:
       - Conclusion explicitly records whether the repo is ready for freeze and gate
       review'
     depends_on:
-    - followup_guard_full.guard-full-retest
+    - followup_guard_full.guard-full-core-crosshair-retest-2
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:56:17.056025+00:00'
