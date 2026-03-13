@@ -6250,13 +6250,13 @@ phases:
     agent: gate-reviewer
 - id: shell_cli
   name: larva.shell.cli
-  status: pending
+  status: in_progress
   depends_on:
   - app_facade
   steps:
   - id: shell_cli.shell-cli-clarify
     name: shell-cli-clarify
-    status: pending
+    status: claimed
     description: 'Clarify the authoritative dependency seam for `larva.shell.cli`
       before contract work begins.
 
@@ -6310,6 +6310,8 @@ phases:
       - Downstream contract/test/implementation steps can execute without guessing
       the component-subcommand seam'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-13T03:52:44.963458+00:00'
   - id: shell_cli.shell-cli-contract
     name: shell-cli-contract
     status: pending
