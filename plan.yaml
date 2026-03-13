@@ -6039,7 +6039,7 @@ phases:
       \ in this step."
   - id: shell_python_api.shell-python-api-implement
     name: shell-python-api-implement
-    status: claimed
+    status: done
     description: "Implement `larva.shell.python_api` in `src/larva/shell/python_api.py`\
       \ as a thin in-process facade adapter and nothing more.\n\nstep_type: implementation\n\
       agent_source: default\ntags:\n  - integration\n\nScope:\n- implement the thin\
@@ -6087,6 +6087,17 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T04:18:48.874233+00:00'
+    done_at: '2026-03-13T04:36:03.548961+00:00'
+    evidence: "Commit hash(es):\n- c20903474284912dee04b6a615fbda7aa67c7834\n- squash\
+      \ merged to main as commit 594c0e7\n\nFiles changed:\n- src/larva/shell/python_api.py\n\
+      \nVerification:\n- Commands run:\n  - `.venv/bin/python -m pytest tests/shell/test_python_api.py\
+      \ -v`\n  - `invar guard --changed`\n- Key outputs/results:\n  - 13/13 tests\
+      \ passed.\n  - Guard passed (0 errors, 0 warnings).\n  - Thin delegation implemented\
+      \ for validate/assemble/register/resolve/list with facade shape/semantics preserved.\n\
+      \  - failure passthrough and explicit override forwarding behavior maintained.\n\
+      \nSpec link:\n- ARCHITECTURE.md shell.python_api + Decision 3\n- README Python\
+      \ interface\n\nGaps/Notes:\n- Scope kept to `src/larva/shell/python_api.py`\
+      \ and tests.\n- No `src/larva/__init__.py` or other shared export wiring changes."
   - id: shell_python_api.shell-python-api-verify
     name: shell-python-api-verify
     status: pending
