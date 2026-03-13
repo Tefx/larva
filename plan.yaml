@@ -6509,6 +6509,64 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-verify
     agent: python-executor
+  - id: shell_python_api.shell-python-api-verify-retest
+    name: shell-python-api-verify-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the remediation
+      for `shell_python_api.shell-python-api-verify` from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm the fix worked.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      priority: HIGH
+
+      Independence Level: L2
+
+
+      Retest scope:
+
+      - verify the dedicated python_api boundary suite now invokes `larva.shell.python_api`
+      wrapper functions directly for `validate`, `assemble`, `register`, `resolve`,
+      and `list`
+
+      - verify `src/larva/shell/python_api.py` now shows non-trivial coverage from
+      the dedicated suite
+
+      - verify explicit boundary checks cover thin-adapter/no-leak semantics for storage,
+      CLI, and MCP leakage from the `python_api` surface
+
+      - keep scope on `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`
+      only
+
+
+      Document ALL remaining findings. A retest that discovers issues is a SUCCESS.'
+    verification: '- Run independent verification against `src/larva/shell/python_api.py`
+      and `tests/shell/test_python_api.py`
+
+      - Exercise all five documented wrapper functions through the boundary suite
+      itself
+
+      - Confirm coverage for `src/larva/shell/python_api.py` is non-trivial, not 0%
+
+      - Confirm explicit no-leak assertions cover CLI, MCP, and storage boundary leakage'
+    evidence_template: '## Retest Report\n\n**Tester**: `integration-verifier`\n**Scope**:
+      `larva.shell.python_api` remediation retest\n**Independence Level**: L2\n\n###
+      Commands executed\n```\n<paste exact test and coverage commands>\n```\n\n###
+      Required findings check\n- B1 facade-bypass issue resolved? <yes/no + evidence>\n-
+      B2 0% coverage issue resolved? <yes/no + exact coverage output>\n- S1 storage-symbol
+      no-leak checks present? <yes/no + test names>\n- S2 CLI/MCP/storage leakage
+      assertions present? <yes/no + test names>\n\n### Remaining issues\n| Severity
+      | Description | Location | Reproduction |\n| --- | --- | --- | --- |\n| blocker/should_fix/suggestion/tech_debt
+      | <fill in> | <file:line or test> | <steps> |\n\n### Verdict\n- [ ] PASS\n-
+      [ ] ISSUES_FOUND\n- [ ] INCOMPLETE'
+    depends_on:
+    - shell_python_api.shell-python-api-verify-fix
+    agent: integration-verifier
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
