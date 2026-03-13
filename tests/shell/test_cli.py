@@ -1160,7 +1160,16 @@ class TestComponentListCommand:
 
     def test_component_list_empty_store_returns_exit_ok_with_empty_dict(self) -> None:
         """Component list with empty store returns exit code 0 with empty dict."""
-        components = InMemoryComponentStore()
+        components = InMemoryComponentStore(
+            list_result=Success(
+                {
+                    "prompts": [],
+                    "toolsets": [],
+                    "constraints": [],
+                    "models": [],
+                }
+            )
+        )
 
         result = component_list_command(as_json=True, component_store=components)
 

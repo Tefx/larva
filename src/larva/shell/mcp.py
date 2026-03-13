@@ -24,9 +24,12 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, Union, cast
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, TypedDict, Union, cast
 
 from returns.result import Failure, Result, Success
+
+from larva.app import facade as facade_module
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -47,21 +50,8 @@ if TYPE_CHECKING:
 # Tool signatures follow INTERFACES.md :: A. MCP Server Interface
 # -----------------------------------------------------------------------------
 
-# Error codes from INTERFACES.md :: G. Error Codes
-LARVA_ERROR_CODES: dict[str, int] = {
-    "INTERNAL": 10,
-    "PERSONA_NOT_FOUND": 100,
-    "PERSONA_INVALID": 101,
-    "PERSONA_CYCLE": 102,
-    "VARIABLE_UNRESOLVED": 103,
-    "INVALID_PERSONA_ID": 104,
-    "COMPONENT_NOT_FOUND": 105,
-    "COMPONENT_CONFLICT": 106,
-    "REGISTRY_INDEX_READ_FAILED": 107,
-    "REGISTRY_SPEC_READ_FAILED": 108,
-    "REGISTRY_WRITE_FAILED": 109,
-    "REGISTRY_UPDATE_FAILED": 110,
-}
+# Canonical error map source is app facade; mapping proxy prevents local mutation.
+LARVA_ERROR_CODES = MappingProxyType(facade_module.ERROR_NUMERIC_CODES)
 
 
 class ValidationIssue(TypedDict):
@@ -209,8 +199,13 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
 # Each handler delegates to the corresponding LarvaFacade method.
 # -----------------------------------------------------------------------------
 
-# Type alias for MCP tool handler functions
-MCPHandler = Any  # Callable[[dict[str, Any]], Result[Any, LarvaError]]
+_HandlerSuccessT = TypeVar("_HandlerSuccessT")
+
+
+class MCPHandler(Protocol[_HandlerSuccessT]):
+    """Typed MCP tool-handler callable contract."""
+
+    def __call__(self, params: object) -> _HandlerSuccessT | LarvaError: ...
 
 
 class MCPHandlers:

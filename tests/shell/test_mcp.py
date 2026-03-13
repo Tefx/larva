@@ -174,6 +174,7 @@ def _assert_malformed_params_error(
     tool: str,
     reason: str,
 ) -> None:
+    assert "error" not in error
     assert error["code"] == "INTERNAL"
     assert error["numeric_code"] == 10
     assert error["message"] == f"Malformed parameters for '{tool}': {reason}"
@@ -910,6 +911,7 @@ class TestMCPHandlersImplementation:
 
         # Failure returns error envelope
         assert isinstance(result, dict)
+        assert "error" not in result
         assert "code" in result
         assert "numeric_code" in result
         assert "message" in result

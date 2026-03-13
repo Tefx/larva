@@ -477,7 +477,15 @@ larva uses the 100-range from `contracts/errors.yaml`.
 
 If an app-layer error `code` is not mapped in this table, `numeric_code` defaults to `10` (`INTERNAL`).
 
-### Error Response Format (--json / MCP)
+### Error Response Format
+
+`larva` uses one error envelope payload (`code`, `numeric_code`, `message`, `details`) across
+all transports. Wrapping differs by transport boundary:
+
+- CLI `--json`: payload is wrapped as `{ "error": <LarvaError> }`
+- MCP tool handler return: payload is returned directly as `<LarvaError>`
+
+CLI `--json` example:
 
 ```json
 {
@@ -489,6 +497,20 @@ If an app-layer error `code` is not mapped in this table, `numeric_code` default
       "field": "side_effect_policy",
       "sources": ["constraints/strict", "constraints/autonomous"]
     }
+  }
+}
+```
+
+MCP handler example:
+
+```json
+{
+  "code": "COMPONENT_CONFLICT",
+  "numeric_code": 106,
+  "message": "Field 'side_effect_policy' set by both 'constraints/strict' and 'constraints/autonomous'",
+  "details": {
+    "field": "side_effect_policy",
+    "sources": ["constraints/strict", "constraints/autonomous"]
   }
 }
 ```
