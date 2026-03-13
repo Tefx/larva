@@ -14964,7 +14964,7 @@ phases:
       \ no runtime/registry/shell_mcp_runtime scope duplication introduced"
   - id: followup_guard_full.guard-full-retest
     name: guard-full-retest
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER, rerun the full acceptance barrier after\
       \ the batched remediation and collect concrete red/green evidence.\n\nstep_type:\
       \ verification\nIndependence Level: L1\nspec_refs:\n- `pyproject.toml:53`\n\
@@ -15005,3 +15005,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-batched-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T19:19:44.461894+00:00'
