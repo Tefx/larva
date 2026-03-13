@@ -16004,3 +16004,138 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T20:17:16.845450+00:00'
+  - id: followup_guard_full.guard-full-core-crosshair-fix-5
+    name: guard-full-core-crosshair-fix-5
+    status: pending
+    description: 'Fifth batched remediation extension for the remaining narrowed CrossHair
+      residual family only; keep scope strict to `src/larva/core/assemble.py` and
+      `src/larva/core/normalize.py`, preserve the existing remediation family, and
+      fix ALL of these, not just the first.
+
+
+      step_type: implementation
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-core-crosshair-fix-4
+
+      - followup_guard_full.guard-full-core-crosshair-retest-4
+
+      remaining_blocker: `uvx invar-tools guard --all` still reports `crosshair.status=counterexample_found`
+      for the narrowed residual family limited to `src/larva/core/assemble.py` and
+      `src/larva/core/normalize.py`, with empty `counterexamples` payload and no other
+      files in scope
+
+      why_new_loop: the fourth retest still reports the same two-file symbolic residual,
+      so this loop must close both remaining symbolic paths together in one batched
+      pass without reopening already-green families
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - gate finding from `followup_guard_full.gate`
+
+      - retest evidence from `followup_guard_full.guard-full-core-crosshair-retest-4`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - `src/larva/core/assemble.py`
+
+      - `src/larva/core/normalize.py`
+
+      - direct same-root-cause sibling helpers referenced from those two files only
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py`
+
+      - `rg -n "_merge_tools|issubclass\(|Literal|TypeGuard|get_origin|get_args" src/larva/core/assemble.py
+      src/larva/core`
+
+      - `rg -n "normalize|Literal|TypeGuard|get_origin|get_args|issubclass\(" src/larva/core/normalize.py
+      src/larva/core`
+
+      agent_source: default
+
+
+      ## Blockers to fix (ALL of these, not just the first)
+
+
+      ### B1: CrossHair residual blocker persists for `src/larva/core/assemble.py`
+
+      - Raw evidence: `uvx invar-tools guard --all` => `crosshair.status=counterexample_found`;
+      failed list still includes `src/larva/core/assemble.py`; `counterexamples` payload
+      empty.
+
+      - Remediation: close the remaining symbolic failure paths in `src/larva/core/assemble.py`
+      in the same pass as normalize.
+
+      - Grep hint: `rg -n "_merge_tools|issubclass\(|Literal|TypeGuard|get_origin|get_args"
+      src/larva/core/assemble.py src/larva/core`
+
+
+      ### B2: CrossHair residual blocker persists for `src/larva/core/normalize.py`
+
+      - Raw evidence: `uvx invar-tools guard --all` => `crosshair.status=counterexample_found`;
+      failed list still includes `src/larva/core/normalize.py`; `counterexamples`
+      payload empty.
+
+      - Remediation: close the remaining symbolic failure paths in `src/larva/core/normalize.py`
+      in the same pass as assemble.
+
+      - Grep hint: `rg -n "normalize|Literal|TypeGuard|get_origin|get_args|issubclass\("
+      src/larva/core/normalize.py src/larva/core`
+
+
+      ## Systemic sibling search instructions
+
+      - Use BOTH grep hints and inspect direct same-root-cause siblings feeding the
+      residual symbolic paths in assemble+normalize.
+
+      - Search for sibling type-introspection and narrowing seams shared by both files;
+      fix them in this same batched loop when they are part of the same residual family.
+
+      - Do not widen scope beyond assemble+normalize and their direct same-root-cause
+      siblings.
+
+      - Do not reopen already-green families.
+
+
+      ## Completion criteria
+
+      - `uvx invar-tools guard --all` no longer reports `crosshair.status=counterexample_found`
+      for either `src/larva/core/assemble.py` or `src/larva/core/normalize.py`.
+
+      - The narrowed residual family is closed in one pass for both files.
+
+      - Already-green families remain out of scope and untouched unless raw evidence
+      proves a direct same-root-cause sibling.
+
+      - Focused core pytest remains green for assemble/validate/normalize.
+
+
+      ## Anti-churn guard
+
+      - Preserve the existing remediation family in `followup_guard_full`.
+
+      - Do not serialise this into one-blocker subloops.
+
+      - Do not weaken contracts or suppress symbolic checks to get green.'
+    verification: '- Main path: close the remaining symbolic failure paths for BOTH
+      `src/larva/core/assemble.py` and `src/larva/core/normalize.py` in one batched
+      pass
+
+      - Failure path: evidence shows the sibling search results from BOTH grep hints
+      and explains any direct same-root-cause seam adjusted inside the narrowed family
+
+      - Proof explicitly confirms already-green families were not reopened and scope
+      stayed limited to assemble+normalize residuals'
+    depends_on:
+    - followup_guard_full.guard-full-core-crosshair-retest-4
+    agent: python-senior
