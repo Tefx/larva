@@ -6349,7 +6349,7 @@ phases:
       - Explicit no-code-changes freeze statement recorded.'
   - id: shell_python_api.shell-python-api-gate
     name: shell-python-api-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_python_api` phase meets the quality bar for downstream transport and
       package-surface integration work.
@@ -6418,6 +6418,8 @@ phases:
     - shell_python_api.shell-python-api-freeze
     - shell_python_api.shell-python-api-verify-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T06:03:50.981508+00:00'
   - id: shell_python_api.shell-python-api-verify-fix
     name: shell-python-api-verify-fix
     status: done
