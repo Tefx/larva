@@ -6395,7 +6395,7 @@ phases:
     agent: gate-reviewer
   - id: shell_python_api.shell-python-api-verify-fix
     name: shell-python-api-verify-fix
-    status: pending
+    status: claimed
     description: 'Fix ALL issues found by `shell_python_api.shell-python-api-verify`
       within `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`
       only.
@@ -6532,6 +6532,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T05:14:21.764937+00:00'
   - id: shell_python_api.shell-python-api-verify-retest
     name: shell-python-api-verify-retest
     status: pending
