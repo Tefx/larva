@@ -6370,6 +6370,145 @@ phases:
     - shell_python_api.shell-python-api-seam-proof
     - shell_python_api.shell-python-api-freeze
     agent: gate-reviewer
+  - id: shell_python_api.shell-python-api-verify-fix
+    name: shell-python-api-verify-fix
+    status: pending
+    description: 'Fix ALL issues found by `shell_python_api.shell-python-api-verify`
+      within `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`
+      only.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      ## Findings to Fix (ALL of these, not just the first)
+
+
+      ### B1: boundary tests are not exercising `larva.shell.python_api` adapter functions
+
+      Locations: `tests/shell/test_python_api.py`
+
+      Remediation:
+
+      - rewrite the boundary-focused tests so they call the public wrapper functions
+      in `larva.shell.python_api` directly for all five documented use-cases: `validate`,
+      `assemble`, `register`, `resolve`, and `list`
+
+      - keep assertions focused on thin-adapter delegation and facade-owned result
+      shapes rather than calling `larva.app.facade` helpers directly
+
+      Grep hint: search `tests/shell/test_python_api.py` for direct `facade` calls
+      or imports that bypass `python_api`
+
+      IMPORTANT: search for sibling tests beyond the named boundary cases so no wrapper
+      path still bypasses the module under test.
+
+
+      ### B2: dedicated suite reports 0% coverage for `src/larva/shell/python_api.py`
+
+      Locations: `src/larva/shell/python_api.py`, `tests/shell/test_python_api.py`
+
+      Remediation:
+
+      - ensure the dedicated suite executes the wrapper module itself and records
+      non-trivial coverage for `src/larva/shell/python_api.py`
+
+      - keep scope on wrapper-function invocation and direct module coverage only;
+      do not expand into CLI, MCP, or storage integration work
+
+      Grep hint: search coverage config, test markers, and `tests/shell/test_python_api.py`
+      for suite selection patterns that exclude `src/larva/shell/python_api.py`
+
+      IMPORTANT: verify all five wrapper entry points contribute to module coverage,
+      not just one happy-path call.
+
+
+      ### S1: storage symbols are exposed in the `python_api` module namespace
+
+      Locations: `src/larva/shell/python_api.py`, `tests/shell/test_python_api.py`
+
+      Remediation:
+
+      - add explicit no-leak contract checks for thin-adapter semantics if appropriate
+      for the current public surface
+
+      - prove storage-layer helpers are not treated as supported `python_api` exports
+
+      Grep hint: search `src/larva/shell/python_api.py` for storage imports, re-exports,
+      and `__all__`/module-namespace exposure points
+
+      IMPORTANT: search for sibling leaked symbols, not only the first exposed name.
+
+
+      ### S2: missing explicit tests asserting absence of CLI/MCP/storage leakage
+      from the `python_api` surface
+
+      Locations: `tests/shell/test_python_api.py`
+
+      Remediation:
+
+      - add boundary assertions that the `python_api` surface remains a thin adapter
+      and does not expose CLI, MCP, or storage helpers as part of its supported module
+      API
+
+      - keep checks module-local; do not broaden into package-top-level export tests
+
+      Grep hint: search `tests/shell/test_python_api.py` for boundary/no-leak assertions
+      and add explicit negative coverage for CLI/MCP/storage leakage
+
+      IMPORTANT: search for sibling transport/storage names so no unsupported surface
+      remains unasserted.
+
+
+      ## Completion Criteria
+
+      - ALL blockers and should-fix findings above are addressed in one pass
+
+      - tests directly invoke `larva.shell.python_api` wrapper functions for all five
+      use-cases
+
+      - dedicated suite reports non-trivial coverage for `src/larva/shell/python_api.py`
+
+      - thin-adapter/no-leak assertions cover storage and CLI/MCP boundary leakage
+      without leaving module/test scope
+
+      - no changes outside `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`
+
+
+      Known risks:
+
+      - do not reintroduce facade-direct tests that bypass the wrapper module
+
+      - do not solve coverage by widening scope into unrelated transport or package-export
+      files
+
+      - preserve documented thin-adapter semantics and facade-owned shapes exactly'
+    verification: '- Targeted module/tests changes address ALL B1/B2/S1/S2 findings
+      together
+
+      - Wrapper-focused tests cover `validate`, `assemble`, `register`, `resolve`,
+      and `list`
+
+      - Focused evidence shows non-trivial coverage for `src/larva/shell/python_api.py`
+
+      - No CLI, MCP, or storage leakage assertions are missing from the module boundary
+      suite'
+    evidence_template: '## Fix Evidence\n\n**Files changed**:\n- `src/larva/shell/python_api.py`
+      (only if needed for no-leak surface hardening)\n- `tests/shell/test_python_api.py`\n\n**Wrapper
+      paths exercised**:\n- `validate`\n- `assemble`\n- `register`\n- `resolve`\n-
+      `list`\n\n**Coverage proof**:\n```\n<paste exact command and output showing
+      non-trivial coverage for src/larva/shell/python_api.py>\n```\n\n**No-leak proof**:\n```\n<paste
+      exact assertions or test names covering absence of CLI/MCP/storage leakage>\n```\n\n**Sibling-search
+      evidence**:\n- B1 grep/search result: <what was checked>\n- B2 grep/search result:
+      <what was checked>\n- S1 grep/search result: <what was checked>\n- S2 grep/search
+      result: <what was checked>'
+    depends_on:
+    - shell_python_api.shell-python-api-verify
+    agent: python-executor
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
