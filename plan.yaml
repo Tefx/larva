@@ -15007,3 +15007,129 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T19:19:44.461894+00:00'
+  - id: followup_guard_full.guard-full-core-crosshair-fix-2
+    name: guard-full-core-crosshair-fix-2
+    status: pending
+    description: 'Second batched remediation escalation for the unresolved CrossHair
+      blocker family only; do not reopen the already-cleared warning/error families
+      and do not split this into serial micro-fixes.
+
+
+      step_type: implementation
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-batched-fix
+
+      - followup_guard_full.guard-full-retest
+
+      remaining_blocker: `uvx invar-tools guard --all` still fails only on the CrossHair
+      counterexample family in `src/larva/core/validate.py`, `src/larva/core/assemble.py`,
+      and `src/larva/core/normalize.py`
+
+      why_new_loop: the first batched remediation cleared warnings/errors but left
+      the core counterexample family unresolved; this second loop escalates scope
+      only for the residual authoritative blocker to avoid churn across already-green
+      surfaces
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - saved retest artifact from `followup_guard_full.guard-full-retest`
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/core/assemble.py`
+
+      - `src/larva/core/normalize.py`
+
+      - focused core regression tests covering validate / assemble / normalize
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - focused core pytest commands for validate / assemble / normalize
+
+      - CrossHair-derived counterexample traces from the failed retest artifact
+
+      agent_source: default
+
+
+      ## Blocker to fix (ALL residual instances in this family)
+
+
+      ### B0-residual: CrossHair counterexample family in pure core modules
+
+      - Use the failed retest artifact to enumerate every residual `crosshair.status=counterexample_found`
+      instance for `validate.py`, `assemble.py`, and `normalize.py`.
+
+      - Close the family by tightening contracts, simplifying branching, refining
+      helper decomposition, or making state-free pure invariants explicit; do not
+      move I/O, environment access, or shell transport logic into core.
+
+      - Prefer smallest semantic correction that removes the counterexample family
+      across sibling helpers, not per-function churn.
+
+      - Grep hint: `rg -n "crosshair.status=counterexample_found|Counterexample|validate.py|assemble.py|normalize.py"
+      .`
+
+      - Sibling search guidance: inspect nearby pure helpers and contracts used by
+      the same flows so the residual counterexample family is closed once, not one
+      symbol at a time.
+
+
+      ## Completion criteria
+
+      - `uvx invar-tools guard --all` no longer reports `crosshair.status=counterexample_found`
+      for the three named core modules.
+
+      - Core purity is preserved: no I/O imports, no shell leakage, no guard suppression,
+      no weakening-by-removal of meaningful contracts.
+
+      - Evidence identifies the shared root cause or root-cause cluster across the
+      three modules and shows the fix scope was strengthened only for that family.
+
+      - Already-cleared warning/error families are left untouched unless a direct
+      purity-preserving change is unavoidable.
+
+
+      ## Churn guard
+
+      - This is repeated-remediation escalation (second loop). Reuse the existing
+      remediation family; do not create additional sibling fix loops for individual
+      functions unless a later gate explicitly proves distinct root causes.
+
+      - If one counterexample points to a shared helper or contract pattern, fix the
+      family at that seam instead of patching call sites independently.
+
+
+      Known risks:
+
+      - Do not trade away contract value just to satisfy CrossHair.
+
+      - Do not introduce impure helpers or shell dependencies into core.
+
+      - Do not reopen CLI/MCP warning families that are already green.
+
+      '
+    verification: '- Main path: residual CrossHair counterexamples in the three core
+      modules are closed with purity-preserving core changes and focused regression
+      coverage
+
+      - Failure path: evidence pinpoints the remaining shared counterexample root
+      cause, with raw artifact references, instead of creating another broad remediation
+      sweep
+
+      - Proof includes sibling-search evidence and an explicit note that warning/error
+      families outside the residual CrossHair blocker were intentionally left unchanged'
+    depends_on:
+    - followup_guard_full.guard-full-retest
+    agent: python-senior
