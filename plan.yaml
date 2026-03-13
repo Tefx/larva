@@ -14479,7 +14479,7 @@ phases:
       - No guard-config changes performed in this step.'
   - id: followup_guard_full.cli-complexity-remediate
     name: cli-complexity-remediate
-    status: pending
+    status: claimed
     description: 'Resolve the real main-repo CLI complexity debt revealed by full
       guard.
 
@@ -14538,6 +14538,8 @@ phases:
     - followup_guard_full.guard-scope-remediate
     - followup_guard_full.cli-complexity-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T18:48:38.752635+00:00'
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
     status: pending
