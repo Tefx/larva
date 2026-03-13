@@ -14378,7 +14378,7 @@ phases:
     agent: python-executor
   - id: followup_guard_full.cli-complexity-tests
     name: cli-complexity-tests
-    status: pending
+    status: claimed
     description: 'Add targeted CLI regressions for the real main-repo complexity-debt
       sites before refactor or justification.
 
@@ -14414,6 +14414,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-diagnose
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T18:39:22.743511+00:00'
   - id: followup_guard_full.cli-complexity-remediate
     name: cli-complexity-remediate
     status: pending
