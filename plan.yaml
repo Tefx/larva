@@ -14691,48 +14691,51 @@ phases:
 
       - Repo-wide acceptance barrier
 
-      - Mixes guard-scope correctness with real CLI complexity debt remediation
+      - Mixes core counterexample closure with shell purity and file-size debt remediation
 
-      - A bad fix could hide real issues instead of resolving them
+      - A bad batched fix could hide real issues instead of resolving them
 
-      - This review must confirm deferred and investigated exclusions are explicit
-      and epistemically sound
+      - This review must confirm remediation stayed within remaining ownership and
+      did not reopen completed phases
 
       cross_cutting_focus:
 
       - no fake guard pass by suppressing authoritative repo files
 
+      - all blocker families B0-B3 were searched for siblings, not just named sites
+
       - package-root re-exports remain explicitly deferred / future-policy work rather
       than silently ignored
 
-      - `~/.larva/components` root-init concern is classified into a real investigation
-      / cleanup / clarification bucket, not dismissed as docs-only
+      - `~/.larva/components` root-init concern remains classified correctly and is
+      not mixed into this batched fix
 
       - no new `~/.larva/registry` init scope and no duplicate MCP runtime work
 
-      - CLI behavior preserved while complexity debt is genuinely reduced or justified
+      - CLI and MCP behavior preserved while core/shell debt is genuinely reduced
+      or justified
 
       agent_source: default'
     verification: '- All phase steps completed successfully
 
-      - Evidence shows the failing full-guard root cause was diagnosed correctly and
-      remains focused on authoritative repo debt
+      - Evidence shows the failed full-guard root cause was remediated in one batched
+      pass rather than one-warning-at-a-time churn
 
-      - Evidence shows `.vectl` ignore tightening, if changed, was handled correctly
-      without hiding main-repo coverage
+      - Evidence shows every blocker family B0-B3 was searched, addressed, and retested
+      with raw outputs attached
 
-      - Evidence shows the main-repo CLI complexity debt is actually resolved or justified
-
-      - Evidence explicitly records deferred package-root policy and rigorous components-root
-      classification while leaving registry-init and MCP-runtime exclusions unchanged
+      - Evidence shows no completed-phase ownership was duplicated and no authoritative
+      coverage was hidden
 
       - Full `uvx invar-tools guard --all` passes from the main checkout or the gate
-      clearly names any remaining authoritative blocker'
+      clearly names the only remaining explicitly accepted non-blocking residue'
     depends_on:
     - followup_guard_full.guard-diagnose
     - followup_guard_full.guard-scope-remediate
     - followup_guard_full.cli-complexity-tests
     - followup_guard_full.cli-complexity-remediate
+    - followup_guard_full.guard-full-batched-fix
+    - followup_guard_full.guard-full-retest
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
     agent: gate-reviewer
