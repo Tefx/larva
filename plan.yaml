@@ -4885,7 +4885,7 @@ phases:
       \ beyond shared-path compatibility."
   - id: app_facade.app-facade-verify-gap-fix
     name: app-facade-verify-gap-fix
-    status: claimed
+    status: done
     description: 'Fix ALL verification gaps found by `app_facade.app-facade-verify`.
 
 
@@ -4974,6 +4974,20 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T02:18:44.775055+00:00'
+    done_at: '2026-03-13T02:22:11.108844+00:00'
+    evidence: "## Verification-gap remediation evidence\n\n**Blockers addressed**:\n\
+      - B1 empty-registry success-shape coverage\n\n**Files changed**:\n- `tests/app/test_facade.py`\n\
+      \n**Sibling search performed**:\n```text\ndef test_.*list.*empty|facade\\.list\\\
+      (|\\[\\]\n```\nFound existing list-coverage cluster and added explicit empty-registry\
+      \ shape assertion.\n\n**What was added**:\n- explicit assertion that `facade.list()`\
+      \ returns exactly `[]`\n- proof assertions that result is not wrapped in transport-envelope\
+      \ patterns (`{\"data\": ...}`, `{\"items\": ...}`, `{\"error\": ...}`, `[None]`,\
+      \ etc.)\n\n**Regression proof**:\n- `uv run pytest -q tests/app/test_facade.py`\n\
+      - output includes:\n  - `test_list_returns_facade_summaries_only` PASSED\n \
+      \ - `test_list_returns_exactly_empty_list_for_empty_registry` PASSED\n  - `test_list_maps_registry_read_failures_to_app_error_without_success`\
+      \ PASSED\n  - overall: `17 passed`\n\nCommit hash(es):\n- ce04cef62ebcd345a63ff8d8108754bf81693761\n\
+      - squash merged to main as commit bf82020\n\nGaps/Notes:\n- Targeted test-only\
+      \ remediation; no product behavior changes.\n\ndiscovered_issues:\n- none"
   - id: app_facade.app-facade-verify-gap-retest
     name: app-facade-verify-gap-retest
     status: pending
