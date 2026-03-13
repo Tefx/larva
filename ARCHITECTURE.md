@@ -255,6 +255,13 @@ class ValidationReport(TypedDict):
 def validate_spec(spec: PersonaSpec) -> ValidationReport: ...
 ```
 
+`warnings` is a deterministic extension point, not an open-ended diagnostic
+bucket. In v1, `larva.core.validate` owns exactly one warning family:
+`UNUSED_VARIABLES`, emitted when `spec.variables` contains keys that are not
+consumed by `{name}` placeholders in `spec.prompt`. Warnings remain ordered,
+string-valued diagnostics so transports can return them without additional
+formatting logic.
+
 ---
 
 ## Module: `larva.core.assemble`

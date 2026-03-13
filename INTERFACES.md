@@ -46,7 +46,9 @@ Validate a PersonaSpec JSON object.
       "details": {"field": "spec_version", "value": "0.2.0"}
     }
   ],
-  "warnings": ["model 'gpt-6' not in known models list"]
+  "warnings": [
+    "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
+  ]
 }
 ```
 
@@ -62,11 +64,23 @@ Where each entry in `errors` is a `ValidationIssue`:
 
 `warnings` is always present as `list[string]` and `errors` is always present as `list[ValidationIssue]`.
 
+Authoritative warning semantics for v1:
+
+- `warnings` is reserved for the deterministic `UNUSED_VARIABLES` family.
+- Emit a warning when `spec.variables` provides one or more keys that are not
+  referenced by any `{name}` placeholder in `spec.prompt`.
+- Warning strings use this canonical format:
+  `UNUSED_VARIABLES: supplied variables are not referenced by prompt: <sorted comma-separated keys>`.
+- Missing variables remain validation errors via `VARIABLE_UNRESOLVED`; they are
+  not warnings.
+
 ```json
 {
   "valid": true,
   "errors": [],
-  "warnings": ["model 'gpt-6' not in known models list"]
+  "warnings": [
+    "UNUSED_VARIABLES: supplied variables are not referenced by prompt: project_name, role"
+  ]
 }
 ```
 or
