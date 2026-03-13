@@ -6475,7 +6475,7 @@ phases:
       - No package export wiring or transport runtime behavior implemented.'
   - id: shell_cli.shell-cli-tests
     name: shell-cli-facade-command-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for the facade-backed portion of `larva.shell.cli`
       in `tests/shell/test_cli.py`.
 
@@ -6553,6 +6553,17 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T04:18:04.001097+00:00'
+    done_at: '2026-03-13T04:35:25.758700+00:00'
+    evidence: "Commit hash(es):\n- 4c13bd3\n- squash merged to main as commit f597a92\n\
+      \nFiles changed:\n- src/larva/shell/cli.py\n- tests/shell/test_cli.py\n\nVerification:\n\
+      - Commands run:\n  - `uv run pytest tests/shell/test_cli.py -v`\n- Key outputs/results:\n\
+      \  - 33 passed.\n  - Coverage includes facade-backed commands only: validate/assemble/register/resolve/list.\n\
+      \  - text + `--json` modes, exit-code mapping (0/1/2), and JSON error envelope\
+      \ checks covered.\n  - Regression checks include JSON/text separation, resolve\
+      \ not-found vs generic failure exit-code behavior, and invalid validate behavior.\n\
+      \nSpec link:\n- ARCHITECTURE.md shell.cli\n- INTERFACES.md B + G\n- README CLI\n\
+      \nGaps/Notes:\n- `component list/show` remain contract stubs and intentionally\
+      \ excluded from this step per scope."
   - id: shell_cli.shell-cli-implement
     name: shell-cli-facade-command-implement
     status: pending
