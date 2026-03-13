@@ -12684,7 +12684,7 @@ phases:
       prior to implementation'
   - id: followup_validate_warnings.warning-tests
     name: warning-tests
-    status: claimed
+    status: done
     description: 'Add targeted tests for the warning contract.
 
 
@@ -12718,6 +12718,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T18:03:54.062779+00:00'
+    done_at: '2026-03-13T18:08:46.491675+00:00'
+    evidence: 'Artifact:
+
+      - Commit: bee8680 (worktree), squashed to main as 2bfc3ee
+
+
+      Verification:
+
+      - uv run pytest tests/core/test_validate.py -v -> 20 passed, 5 failed (expected
+      at this test-first stage because implementation step not yet applied)
+
+
+      Spec link:
+
+      - INTERFACES warning-contract section for UNUSED_VARIABLES family and canonical
+      warning message format
+
+      - ARCHITECTURE warning semantics alignment from prior contract step
+
+      - tests/core/test_validate.py includes 7 new TestUnusedVariablesWarning cases
+      covering presence/format/sorting/interactions with unresolved vars and empty
+      inputs
+
+
+      Notes:
+
+      - Scope kept to tests only per step boundary.'
   - id: followup_validate_warnings.warning-implement
     name: warning-implement
     status: pending
