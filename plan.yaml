@@ -8394,6 +8394,162 @@ phases:
     depends_on:
     - shell_cli.shell-cli-verify-retest
     agent: python-senior
+  - id: shell_cli.shell-cli-gate-retest
+    name: shell-cli-gate-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
+      remediation from `shell_cli.shell-cli-gate-fix-batch` and verify that ALL blocker
+      and should-fix findings from `shell_cli.shell-cli-gate` are resolved together
+      before the gate can reopen.
+
+
+      step_type: verification
+
+      priority: HIGH
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `B. CLI Interface`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `README.md` :: `Interfaces / CLI`
+
+      - `contracts/persona_spec.schema.json` :: `required`
+
+
+      touch_paths:
+
+      - `README.md`
+
+      - `INTERFACES.md`
+
+      - `contracts/persona_spec.schema.json`
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_cli.py`
+
+
+      harness_refs:
+
+      - `uv run larva validate <spec-missing-id.json>`
+
+      - `uv run larva validate <spec-missing-id.json> --json`
+
+      - `uv run larva assemble ... --id ...`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_cli.py`
+
+
+      conflict_rationale:
+
+      - Serialized after the single batched fix because it validates the same validation
+      contract, CLI surface, docs, and shared shell/core harnesses.
+
+      - `shell_cli.shell-cli-gate` must wait on this retest because it is the acceptance
+      barrier for the consolidated B1/S1/S2 remediation loop.
+
+
+      Retest scope (ALL of these, not just the first):
+
+      - B1: the chosen source of truth is explicit and consistent across README, INTERFACES,
+      schema, MCP notes, core validation, and CLI behavior
+
+      - B1: a missing required field such as `id` no longer succeeds silently; the
+      CLI shows the expected failure behavior and `--json` envelope end to end
+
+      - S1: README `larva assemble` examples include required `--id` (and any added
+      `--json` example is correct)
+
+      - S2: CLI adapter maintainability risk is materially reduced, with parser/dispatch/render
+      helpers no longer concentrated in one oversized cluster
+
+      - Sibling-search proof exists for schema-conformance wording, assemble examples,
+      and CLI helper-cluster drift
+
+
+      A retest that finds issues is a SUCCESSFUL verification step and should feed
+      one consolidated remediation loop if needed.'
+    verification: '- Run targeted core + shell tests covering schema-required-field
+      enforcement/alignment and CLI missing-id failure behavior
+
+      - Exercise `larva validate` against a spec missing `id` in text and `--json`
+      modes and record the actual failure envelope
+
+      - Verify README examples and CLI structure reflect the resolved contract, not
+      stale behavior'
+    evidence_template: '## Retest Evidence
+
+
+      **Scope**: `shell_cli.shell-cli-gate` remediation for B1/S1/S2
+
+      **Tester**: `blind-tester`
+
+      **Independence Level**: L2
+
+
+      ### Commands / checks executed
+
+      ```
+
+      <paste exact targeted test commands and CLI invocations>
+
+      ```
+
+
+      ### Findings
+
+      - B1 schema/runtime/doc alignment: PASS/ISSUES_FOUND
+
+      - B1 missing-id CLI failure envelope: PASS/ISSUES_FOUND
+
+      - S1 README assemble examples: PASS/ISSUES_FOUND
+
+      - S2 CLI maintainability improvement: PASS/ISSUES_FOUND
+
+
+      ### Actual missing-id validation output
+
+      ```
+
+      <paste text-mode output>
+
+      ```
+
+
+      ```json
+
+      <paste --json output>
+
+      ```
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - shell_cli.shell-cli-gate-fix-batch
+    agent: blind-tester
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
