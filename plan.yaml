@@ -8688,6 +8688,100 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-gate
     agent: python-senior
+  - id: shell_mcp.shell-mcp-gate-retest
+    name: shell-mcp-gate-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the ONE
+      batched remediation from `shell_mcp.shell-mcp-gate-fix-batch` and verify that
+      ALL gate findings are resolved before `shell_mcp.shell-mcp-gate` can reopen.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      tags: ["integration"]
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface (primary)`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.mcp`
+
+
+      harness_refs:
+
+      - `tests/shell/test_cli.py`
+
+      - `tests/shell/test_mcp.py`
+
+      - MCP handler seam through `larva.shell.mcp.MCPHandlers`
+
+      - CLI command entrypoints in `src/larva/shell/cli.py`
+
+
+      touch_paths:
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `src/larva/app/facade.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `tests/shell/test_mcp.py`
+
+      - `INTERFACES.md`
+
+
+      conflict_rationale:
+
+      - Serialized after the batched fix because it validates the same CLI/MCP contract
+      surface and shared shell harnesses.
+
+      - `shell_mcp.shell-mcp-gate` must wait on this retest because this step is the
+      acceptance barrier for the gate''s blocker and should-fix findings.
+
+
+      Retest scope (ALL of these, not just the first):
+
+      - B1: `component list` and `component show` behave per contract and no deferred
+      CLI stub remains; full repo suite is green
+
+      - B2: MCP error response shape is canonical and consistent across docs, code,
+      and tests, including malformed-param and downstream error paths
+
+      - S1: numeric error-code mapping is canonicalized or parity-locked against drift
+
+      - S2: MCP handler callable typing is explicit and no longer erased as `Any`
+
+      - Sibling-search proof exists for deferred component commands, MCP error emitters/assertions,
+      numeric-code mappings, and handler dispatch aliases
+
+
+      A retest that finds issues is a SUCCESSFUL verification step and should feed
+      one consolidated remediation loop if needed.'
+    verification: '- Execute the full repo test suite and report the actual command/output
+      used to prove it is green
+
+      - Re-run focused CLI component tests and focused MCP contract tests with actual
+      command/output, not summary-only claims
+
+      - Verify the highest-risk failure path: malformed and downstream MCP errors
+      use the same documented canonical shape end-to-end
+
+      - Verify no remaining `NotImplementedError("component list deferred` / `component
+      show deferred`)` matches, no `MCPHandler = Any` alias remains, and numeric-code
+      parity protection is present'
+    depends_on:
+    - shell_mcp.shell-mcp-gate-fix-batch
+    agent: integration-verifier
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
