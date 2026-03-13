@@ -12879,7 +12879,7 @@ phases:
       \ files modified."
   - id: followup_validate_warnings.freeze
     name: freeze
-    status: claimed
+    status: done
     description: 'Freeze the follow-up validate-warnings snapshot before gate review.
 
 
@@ -12898,6 +12898,29 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:16:11.715152+00:00'
+    done_at: '2026-03-13T18:17:29.153319+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (verification-only freeze)
+
+
+      Verification:
+
+      - git rev-parse HEAD captured
+
+      - git status --porcelain clean
+
+      - environment declaration captured (worktree path, UTC timestamp, OS/arch)
+
+
+      Spec link:
+
+      - followup_validate_warnings.freeze requirements
+
+
+      Gaps/Notes:
+
+      - No code/docs/tests were modified.'
   - id: followup_validate_warnings.gate
     name: gate
     status: pending
