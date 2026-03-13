@@ -7699,6 +7699,259 @@ phases:
     - shell_mcp.shell-mcp-seam-proof
     - shell_mcp.shell-mcp-freeze
     agent: gate-reviewer
+  - id: shell_mcp.shell-mcp-fix-batch
+    name: shell-mcp-fix-batch
+    status: pending
+    description: 'Fix ALL issues from `shell_mcp.shell-mcp-verify` in one batched
+      remediation step.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface (primary)`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.mcp`
+
+      - `ARCHITECTURE.md` :: `CLI, MCP, and Python entrypoints must remain thin adapters`
+
+      - `README.md` :: `Interfaces / MCP Server (primary)`
+
+
+      touch_paths:
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/shell/test_mcp.py`
+
+
+      harness_refs:
+
+      - `tests/shell/test_mcp.py`
+
+      - MCP handler seam through `larva.shell.mcp.MCPHandlers`
+
+
+      conflict_rationale:
+
+      - Serial after `shell_mcp.shell-mcp-verify` because it touches the same MCP
+      adapter and same shell test harness.
+
+      - Must remain serialized before gate because it changes the same files and acceptance
+      surface reviewed by `shell_mcp.shell-mcp-gate`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: malformed parameter type handling inconsistent at MCP boundary
+
+      Locations: `src/larva/shell/mcp.py`, `tests/shell/test_mcp.py`
+
+      Remediation:
+
+      - add explicit MCP-boundary type/schema validation for all five tools before
+      facade delegation
+
+      - reject malformed payloads through the documented MCP error envelope instead
+      of silent acceptance or raw `ValueError`
+
+      - preserve delegation boundaries: MCP validates request shape only and must
+      not absorb facade or registry business logic
+
+      - preserve falsey/null override forwarding for `larva.resolve` and `larva.assemble`
+
+      Grep hint: `rg -n "handle_(validate|assemble|resolve|register|list)|Missing
+      required parameter|raise ValueError|params\.get|params\[" src/larva/shell/mcp.py
+      tests/shell/test_mcp.py`
+
+      IMPORTANT: search for sibling malformed-parameter paths across all five tools,
+      not only the failing examples.
+
+
+      ### B2: mock-island risk / seam evidence too weak
+
+      Locations: `tests/shell/test_mcp.py`, retest evidence for MCP seam
+
+      Remediation:
+
+      - strengthen seam-facing tests so MCP-boundary rejection and envelope fidelity
+      are exercised through the real handler seam, not only mock-heavy unit expectations
+
+      - add or update at least one seam-level proof path that demonstrates malformed
+      input rejection and one success path with actual handler output shape
+
+      - keep business-logic delegation in the facade; do not re-implement facade behavior
+      inside MCP tests
+
+      Grep hint: `rg -n "handle_|MCPHandlers|error envelope|numeric_code|details|message"
+      tests/shell/test_mcp.py src/larva/shell/mcp.py`
+
+      IMPORTANT: strengthen evidence expectations for the whole MCP adapter seam,
+      not just one tool.
+
+
+      ### S1: explicit type/schema validation at MCP boundary for all five tools
+
+      Locations: `src/larva/shell/mcp.py`, `tests/shell/test_mcp.py`
+
+      Remediation:
+
+      - define and enforce boundary validation for `larva.validate`, `larva.assemble`,
+      `larva.resolve`, `larva.register`, and `larva.list`
+
+      - lock behavior for missing required fields, wrong top-level types, wrong nested
+      types where documented, and unsupported params where behavior is specified
+
+      Grep hint: `rg -n "larva\.(validate|assemble|resolve|register|list)|input_schema"
+      src/larva/shell/mcp.py tests/shell/test_mcp.py`
+
+
+      ### S2: tighten error-envelope fidelity tests to include message semantics
+
+      Locations: `tests/shell/test_mcp.py`
+
+      Remediation:
+
+      - extend envelope tests to assert message semantics for malformed-parameter
+      rejection and downstream failures, not only `code` / `numeric_code` / `details`
+
+      - verify documented envelope shape remains stable across all malformed-parameter
+      classes covered above
+
+      Grep hint: `rg -n "numeric_code|details|message|error envelope" tests/shell/test_mcp.py`
+
+
+      ### S3: clarify and lock unknown-params behavior for `larva.list`
+
+      Locations: `src/larva/shell/mcp.py`, `tests/shell/test_mcp.py`
+
+      Remediation:
+
+      - choose and implement one documented behavior for unknown params on `larva.list`
+      at the MCP boundary, then lock it with tests
+
+      - if rejecting unknown params, use the same documented MCP error envelope as
+      other malformed requests
+
+      - if accepting only empty-object payloads, prove that facade delegation remains
+      `list()` with no business-logic drift
+
+      Grep hint: `rg -n "handle_list|larva\.list|empty params|unknown params" src/larva/shell/mcp.py
+      tests/shell/test_mcp.py`
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Mixed malformed-input behavior where some invalid payloads are silently accepted
+      and others raise raw exceptions.
+
+      2. Envelope tests that assert only codes/details while leaving message semantics
+      underspecified.
+
+      3. Any fix that breaks falsey override forwarding or pulls business logic into
+      `larva.shell.mcp`.
+
+      4. Seam evidence that stops at mock-heavy unit tests without one real handler-path
+      proof.
+
+
+      ## Completion Criteria
+
+      - ALL blockers and should-fix items above are addressed together.
+
+      - Sibling search completed across all five tools.
+
+      - Falsey override forwarding still works for `resolve` and `assemble`.
+
+      - MCP remains a transport adapter over `larva.app.facade`.
+
+      - Exact malformed-parameter envelope behavior is locked by focused tests.
+
+
+      Out of scope:
+
+      - facade business-rule changes
+
+      - registry semantics changes
+
+      - MCP runtime startup / transport framing
+
+
+      verification: main path and highest-risk failure path must both be prepared
+      for retest evidence.'
+    verification: '- Main path: targeted MCP handler tests cover all five tools and
+      preserve success-path delegation/output shapes
+
+      - Failure path: focused regressions cover malformed parameter rejection, `larva.list`
+      unknown-param behavior, and documented MCP error-envelope fidelity including
+      message semantics
+
+      - Proof: falsey override forwarding remains intact and no new business logic
+      is introduced beyond MCP-boundary request-shape validation
+
+      - Evidence prepared for retest includes an exact handler-level command or test
+      invocation exercising malformed input through the MCP seam'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Files changed**:
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/shell/test_mcp.py`
+
+
+      **Issues fixed**:
+
+      - B1 malformed parameter envelope consistency
+
+      - B2 seam evidence strengthening
+
+      - S1 boundary schema/type validation for all five tools
+
+      - S2 message-semantic envelope fidelity tests
+
+      - S3 `larva.list` unknown-param behavior lock
+
+
+      **Sibling search performed**:
+
+      ```bash
+
+      <paste rg commands used and key matches reviewed>
+
+      ```
+
+
+      **Focused tests updated/added**:
+
+      ```bash
+
+      <list exact test names added or changed>
+
+      ```
+
+
+      **Boundary guardrail**:
+
+      - Explain how MCP request-shape validation was added without moving business
+      logic out of `larva.app.facade`
+
+      - Explain how falsey override forwarding remains preserved
+
+      '
+    depends_on:
+    - shell_mcp.shell-mcp-verify
+    agent: python-senior
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
