@@ -6392,7 +6392,7 @@ phases:
       - No product implementation was introduced.'
   - id: shell_cli.shell-cli-contract
     name: shell-cli-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.shell.cli` module at `src/larva/shell/cli.py`\
       \ after the CLI dependency seam is clarified.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
@@ -6425,6 +6425,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T04:09:16.322596+00:00'
+    done_at: '2026-03-13T04:15:25.934097+00:00'
+    evidence: 'Artifact:
+
+      - worktree commit: e53bf3ece70d9c05802a180f0d06e56db896e4a6
+
+      - squash merged to main as commit d85026d
+
+
+      Verification:
+
+      - Run: `invar guard` (hook + changed files) -> PASS (0 errors; warnings tied
+      to intentional contract-only dead params).
+
+      - Run: `git status --short --branch` -> clean on step branch.
+
+      - Run: `git log -1 --oneline` -> commit recorded.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md `larva.shell.cli` and Decision 4 seam
+
+      - INTERFACES.md CLI interface + error/`--json` expectations
+
+      - README CLI interface
+
+
+      Gaps/Notes:
+
+      - Contract-only `src/larva/shell/cli.py` delivered with signatures/type defs/interface
+      notes/stubs for documented command set.
+
+      - Includes acceptance-level `--json` and exit code mapping notes; no runnable
+      parsing/execution logic.
+
+      - No package export wiring or transport runtime behavior implemented.'
   - id: shell_cli.shell-cli-tests
     name: shell-cli-facade-command-tests
     status: pending
