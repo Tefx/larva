@@ -14378,7 +14378,7 @@ phases:
     agent: python-executor
   - id: followup_guard_full.cli-complexity-tests
     name: cli-complexity-tests
-    status: claimed
+    status: done
     description: 'Add targeted CLI regressions for the real main-repo complexity-debt
       sites before refactor or justification.
 
@@ -14416,6 +14416,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T18:39:22.743511+00:00'
+    done_at: '2026-03-13T18:47:06.620040+00:00'
+    evidence: 'Artifact:
+
+      - PR: 8d448d6780c564114f0c6aa97361c9ed3cb2ee57 (worktree), squashed to main
+      as bd4b22b
+
+
+      Verification:
+
+      - uv run pytest tests/shell/test_cli.py::TestReadSpecJson tests/shell/test_cli.py::TestDispatch
+      -v -> 15 passed
+
+      - uv run pytest tests/shell/test_cli.py -v -> 84 passed
+
+
+      Spec link:
+
+      - ARCHITECTURE.md CLI boundary
+
+      - README.md CLI surface
+
+      - guard-diagnosis findings for `_read_spec_json` and `_dispatch` guardrail coverage
+
+
+      Gaps/Notes:
+
+      - Added 15 focused regression tests in tests/shell/test_cli.py covering read-spec
+      error handling and dispatch routing/error paths
+
+      - No guard-config changes performed in this step.'
   - id: followup_guard_full.cli-complexity-remediate
     name: cli-complexity-remediate
     status: pending
