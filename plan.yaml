@@ -13482,25 +13482,39 @@ phases:
 
       - A bad fix could hide real issues instead of resolving them
 
+      - This review must confirm deferred and investigated exclusions are explicit
+      and epistemically sound
+
       cross_cutting_focus:
 
       - no fake guard pass by suppressing authoritative repo files
 
-      - no duplicate MCP runtime or package-export scope creep
+      - package-root re-exports remain explicitly deferred / future-policy work rather
+      than silently ignored
+
+      - `~/.larva/components` root-init concern is classified into a real investigation
+      / cleanup / clarification bucket, not dismissed as docs-only
+
+      - no new `~/.larva/registry` init scope and no duplicate MCP runtime work
 
       - CLI behavior preserved while complexity debt is genuinely reduced or justified
 
       agent_source: default'
     verification: '- All phase steps completed successfully
 
-      - Evidence shows the failing full-guard root cause was diagnosed correctly
+      - Evidence shows the failing full-guard root cause was diagnosed correctly and
+      remains focused on authoritative repo debt
 
-      - Evidence shows duplicated worktree inflation was handled correctly if applicable,
+      - Evidence shows `.vectl` ignore tightening, if changed, was handled correctly
       without hiding main-repo coverage
 
       - Evidence shows the main-repo CLI complexity debt is actually resolved or justified
 
-      - Full `uvx invar-tools guard --all` passes from the main checkout'
+      - Evidence explicitly records deferred package-root policy and rigorous components-root
+      classification while leaving registry-init and MCP-runtime exclusions unchanged
+
+      - Full `uvx invar-tools guard --all` passes from the main checkout or the gate
+      clearly names any remaining authoritative blocker'
     depends_on:
     - followup_guard_full.guard-diagnose
     - followup_guard_full.guard-scope-remediate
