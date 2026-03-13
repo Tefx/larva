@@ -7110,7 +7110,7 @@ phases:
     claimed_at: '2026-03-13T06:03:29.241355+00:00'
   - id: shell_cli.shell-cli-seam-proof
     name: shell-cli-seam-proof
-    status: claimed
+    status: done
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.cli`.
 
@@ -7158,6 +7158,32 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T06:03:19.785442+00:00'
+    done_at: '2026-03-13T06:13:14.710387+00:00'
+    evidence: 'Commit hash(es): none (verification-only seam proof)
+
+      Files changed: none
+
+      Verification:
+
+      - uv run python -c "...main(...)" list --json -> exit 0, stdout {"data":[]},
+      stderr empty
+
+      - uv run python -c "...main(...)" component list --json -> exit 0, stdout machine-readable
+      JSON component map, stderr empty
+
+      - JSON leakage check: outputs were pure JSON with no human text prefixes/suffixes
+
+      Spec link:
+
+      - ARCHITECTURE.md CLI module and handoff seam
+
+      - INTERFACES.md B and G
+
+      - README CLI interface
+
+      Gaps/Notes:
+
+      - none'
   - id: shell_cli.shell-cli-freeze
     name: shell-cli-freeze
     status: pending
