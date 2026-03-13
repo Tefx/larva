@@ -14740,7 +14740,7 @@ phases:
       - no code/docs/tests modified'
   - id: followup_guard_full.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: verify full-guard remediation completion and final
       acceptance quality.
 
@@ -14804,6 +14804,40 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T19:38:29.668537+00:00'
+    done_at: '2026-03-13T19:54:27.806562+00:00'
+    evidence: 'Gate review verdict: ISSUES_FOUND
+
+
+      Blocker captured:
+
+      - residual CrossHair failure at `src/larva/core/assemble.py:129` (`_merge_tools`)
+      with `typing.Literal` / `issubclass` symbolic crash
+
+
+      Observed state:
+
+      - CLI/MCP/Python-API regressions remained green
+
+      - no guard scope cheating detected
+
+      - final acceptance still red due to the single residual core symbolic seam
+
+
+      Batched remediation loop created:
+
+      - followup_guard_full.guard-full-core-crosshair-fix-3
+
+      - followup_guard_full.guard-full-core-crosshair-retest-3
+
+      - followup_guard_full.gate rewired to depend on new retest path
+
+
+      Notes:
+
+      - No files modified in gate step.
+
+      - Scope narrowed to residual blocker family only; already-green families kept
+      closed.'
   - id: followup_guard_full.guard-full-batched-fix
     name: guard-full-batched-fix
     status: done
