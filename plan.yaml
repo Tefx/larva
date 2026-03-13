@@ -12958,6 +12958,7 @@ phases:
     - followup_validate_warnings.warning-implement
     - followup_validate_warnings.warning-verify
     - followup_validate_warnings.freeze
+    - followup_validate_warnings.retest-gate-blockers
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T18:17:43.657518+00:00'
