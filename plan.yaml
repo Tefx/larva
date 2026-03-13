@@ -15133,3 +15133,51 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-retest
     agent: python-senior
+  - id: followup_guard_full.guard-full-core-crosshair-retest-2
+    name: guard-full-core-crosshair-retest-2
+    status: pending
+    description: "As an INDEPENDENT TESTER, rerun the full guard plus focused core\
+      \ regressions after the second batched CrossHair remediation escalation.\n\n\
+      step_type: verification\nIndependence Level: L1\nprior_loop:\n- followup_guard_full.guard-full-retest\n\
+      remaining_blocker: residual CrossHair counterexample family in `src/larva/core/validate.py`,\
+      \ `src/larva/core/assemble.py`, and `src/larva/core/normalize.py`\nwhy_new_loop:\
+      \ the first retest isolated a single blocker family; this retest must prove\
+      \ that the strengthened second-loop fix closes that family without reintroducing\
+      \ warning/error debt or purity regressions\nspec_refs:\n- `pyproject.toml:53`\n\
+      - failed retest artifact from `followup_guard_full.guard-full-retest`\n- `README.md:40`\n\
+      - `ARCHITECTURE.md:638`\ntouch_paths:\n- `src/larva/core/validate.py`\n- `src/larva/core/assemble.py`\n\
+      - `src/larva/core/normalize.py`\n- focused core tests for validate / assemble\
+      \ / normalize\nharness_refs:\n- `uvx invar-tools guard --all`\n- focused core\
+      \ pytest commands for validate / assemble / normalize\n- prior failed retest\
+      \ artifact\nagent_source: default\n\nYOUR GOAL IS TO FIND PROBLEMS, not to confirm\
+      \ it works.\n\nTest for:\n- Happy path: full `uvx invar-tools guard --all` returns\
+      \ green with no residual CrossHair counterexample in the three named core modules\n\
+      - Edge cases: focused core tests still pass after contract/control-flow changes\
+      \ in validate, assemble, and normalize\n- Error scenarios: if CrossHair is still\
+      \ red, the exact residual counterexample family and module/symbol scope are\
+      \ attached with raw output\n- Churn guard: no reopened warning/error families\
+      \ outside the residual CrossHair scope\n\nevidence_template: |\n  ## Second-Loop\
+      \ Core CrossHair Retest Report\n\n  **Exact full guard command**:\n  ```bash\n\
+      \  uvx invar-tools guard --all\n  ```\n\n  **Actual full guard output**:\n \
+      \ ```text\n  <paste actual guard output>\n  ```\n\n  **Focused core regression\
+      \ commands**:\n  ```bash\n  uv run pytest -q tests/core/test_validate.py tests/core/test_assemble.py\
+      \ tests/core/test_normalize.py\n  ```\n\n  **Actual focused core outputs**:\n\
+      \  ```text\n  <paste actual pytest output>\n  ```\n\n  **Counterexample matrix**:\n\
+      \  - `src/larva/core/validate.py`: cleared | remaining with exact raw excerpt\n\
+      \  - `src/larva/core/assemble.py`: cleared | remaining with exact raw excerpt\n\
+      \  - `src/larva/core/normalize.py`: cleared | remaining with exact raw excerpt\n\
+      \n  **Purity proof**: <how you checked no I/O or shell leakage entered core>\n\
+      \  **Churn proof**: <how you checked warning/error families stayed at zero>\n\
+      \nA retest that still finds residual counterexamples is successful evidence\
+      \ collection.\n"
+    verification: '- Main path: raw `uvx invar-tools guard --all` output and focused
+      core pytest output are attached
+
+      - Failure path: any remaining CrossHair counterexample is isolated to exact
+      module/symbol evidence instead of broad blocker-family summaries
+
+      - Evidence explicitly shows warnings/errors remain zero while evaluating the
+      residual CrossHair family'
+    depends_on:
+    - followup_guard_full.guard-full-core-crosshair-fix-2
+    agent: integration-verifier
