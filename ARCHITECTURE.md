@@ -663,8 +663,8 @@ Rationale:
 ### Decision 3: Python API is a thin facade export
 
 - Python API remains part of the public surface.
-- It should begin as a thin export over `app.facade`, exposed from
-  `__init__.py`.
+- It is exposed via `larva.shell.python_api` — the supported import surface.
+- Package-root exports in `__init__.py` remain deferred policy.
 - A thicker `shell.python_api` module is only justified if the Python
   surface later needs behavior not shared with CLI and MCP.
 
@@ -749,8 +749,8 @@ Rationale:
 ### Decision 3: Python API is a thin facade export
 
 - Python API remains part of the public surface.
-- It should begin as a thin export over `app.facade`, exposed from
-  `__init__.py`.
+- It is exposed via `larva.shell.python_api` — the supported import surface.
+- Package-root exports in `__init__.py` remain deferred policy.
 - A thicker `shell.python_api` module is only justified if the Python
   surface later needs behavior not shared with CLI and MCP.
 

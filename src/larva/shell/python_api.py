@@ -161,6 +161,7 @@ def validate(spec: PersonaSpec) -> ValidationReport:
 
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def assemble(
     id: str,
     prompts: list[str] | None = None,
@@ -211,6 +212,7 @@ def assemble(
 
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def register(spec: PersonaSpec) -> RegisteredPersona:
     """Register a canonical PersonaSpec in the global registry.
 
@@ -237,6 +239,7 @@ def register(spec: PersonaSpec) -> RegisteredPersona:
 
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
     """Resolve a registered persona by id, with optional runtime overrides.
 
@@ -268,6 +271,7 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
 
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def list() -> list[PersonaSummary]:
     """List all registered personas.
 
