@@ -4629,7 +4629,7 @@ phases:
       complemented by live seam checks (this step now provides that proof).'
   - id: app_facade.app-facade-freeze
     name: app-facade-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.app.facade` snapshot before gate review.
 
 
@@ -4664,6 +4664,8 @@ phases:
     - app_facade.app-facade-verify-gap-retest
     - app_facade.app-facade-seam-proof
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T02:26:00.067855+00:00'
   - id: app_facade.app-facade-gate
     name: app-facade-gate
     status: pending
