@@ -5339,6 +5339,171 @@ phases:
     depends_on:
     - app_facade.app-facade-gate
     agent: python-senior
+  - id: app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
+    name: retest-app-facade-gate-blockers-b1-s1-s2-s3
+    status: pending
+    description: 'Re-test `app_facade.app-facade-gate` findings closure as one gate-quality
+      bundle after `app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3`.
+
+
+      step_type: gate
+
+      agent: gate-reviewer
+
+      agent_source: default
+
+      spec_refs:
+
+      - `INTERFACES.md` digest and error-code model sections
+
+      - original findings recorded for `app_facade.app-facade-gate`
+
+
+      touch_paths:
+
+      - `src/larva/core/normalize.py`
+
+      - `src/larva/app/facade.py`
+
+      - `src/larva/shell/registry.py`
+
+      - `tests/app/test_facade.py`
+
+      - `INTERFACES.md`
+
+      - seam-proof evidence artifact(s) for `app_facade.app-facade-seam-proof`
+
+
+      harness_refs:
+
+      - `app_facade.app-facade-verify`
+
+      - `app_facade.app-facade-seam-proof`
+
+      - focused facade regression tests / seam-proof replay command
+
+
+      conflict_rationale:
+
+      - Must remain on the app_facade critical path before phase close and before
+      any downstream shell phases unlock.
+
+      - Reviews the same shared runtime/test/doc cluster touched by the fix step;
+      keep serialized.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), validate that B1, S1, S2, and
+      S3 are all closed together. Finding residual issues is a successful review outcome.
+
+
+      Review focus:
+
+      1. `spec_digest` format parity across runtime, tests, and docs.
+
+      2. No `KeyError` leakage from malformed registry summaries at the app boundary.
+
+      3. Seam-proof evidence is replayable and includes exact command plus actual
+      output.
+
+      4. Unknown/fallback numeric code behavior matches the documented 100-110 model.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Cross-module runtime/test/docs parity issue
+
+      - Integration-tagged seam-proof evidence requirement
+
+      - Prior gate found one blocker plus three should-fix items across the same facade
+      surface
+
+
+      cross_cutting_focus:
+
+      - digest parity across normalize -> facade -> tests -> INTERFACES
+
+      - malformed-record boundary handling
+
+      - replayable seam-proof artifact quality
+
+      - fallback numeric-code model consistency'
+    verification: '- Main path: targeted evidence shows canonical digest format parity
+      and documented error-code behavior.
+
+      - Failure path: regression evidence proves malformed registry summaries do not
+      leak raw `KeyError` and fallback mapping stays within the documented model.
+
+      - Seam-proof quality: evidence includes an exact replayable command and pasted
+      actual output; placeholder narration is insufficient.
+
+      - Closure check: all four findings are verified together before app_facade can
+      close.'
+    evidence_template: '## Gate Retest Report
+
+
+      **Reviewer**: gate-reviewer
+
+      **Scope**: Re-close B1 + S1 + S2 + S3 from `app_facade.app-facade-gate`
+
+
+      ### Required Replayable Seam-Proof Artifact
+
+      **Exact command executed**:
+
+      ```
+
+      <paste exact seam-proof command; no placeholders>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste actual stdout/stderr or test output>
+
+      ```
+
+
+      **Path exercised**: `src/larva/core/normalize.py` -> `src/larva/app/facade.py`
+      -> seam-proof sink
+
+
+      ### Finding Closure Matrix
+
+      | Finding | Evidence reviewed | Closed? | Notes |
+
+      | ------- | ----------------- | ------- | ----- |
+
+      | B1 | runtime/tests/docs digest parity | yes/no | <notes> |
+
+      | S1 | malformed-record boundary behavior | yes/no | <notes> |
+
+      | S2 | replayable seam-proof command/output | yes/no | <notes> |
+
+      | S3 | fallback numeric-code model | yes/no | <notes> |
+
+
+      ### Residual Issues
+
+      | Severity | Description | Location | Reproduction |
+
+      | -------- | ----------- | -------- | ------------ |
+
+      | blocker/should_fix | <if any remain> | <path> | <steps> |
+
+
+      ### Verdict
+
+      - [ ] OPEN: all four findings closed together
+
+      - [ ] BLOCKED: residual issue(s) remain'
+    depends_on:
+    - app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
+    agent: gate-reviewer
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
