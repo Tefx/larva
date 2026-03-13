@@ -5742,7 +5742,7 @@ phases:
       \ behavior changes in facade/core beyond test expectation alignment."
   - id: app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: retest-app-facade-gate-blockers-b1-digest-parity-residual
-    status: pending
+    status: claimed
     description: 'Re-test the residual B1 digest-parity closure after `app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual`
       while confirming S1/S2/S3 remain closed.
 
@@ -5846,6 +5846,8 @@ phases:
     depends_on:
     - app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T03:47:52.219922+00:00'
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
