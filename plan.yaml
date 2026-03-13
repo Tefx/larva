@@ -13273,7 +13273,7 @@ phases:
       - src/larva/shell/python_api.py comment cleanup'
   - id: followup_surface_hygiene.freeze
     name: freeze
-    status: claimed
+    status: done
     description: 'Freeze the follow-up surface hygiene snapshot before gate review.
 
 
@@ -13292,6 +13292,29 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T17:39:44.041788+00:00'
+    done_at: '2026-03-13T17:41:12.929648+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (verification-only freeze)
+
+
+      Verification:
+
+      - git rev-parse HEAD captured at freeze point
+
+      - git status --porcelain --branch -> clean
+
+      - environment declaration captured (worktree path, branch, OS/arch, UTC timestamp)
+
+
+      Spec link:
+
+      - followup_surface_hygiene.freeze requirements satisfied (HEAD/status/env/no-code-changes)
+
+
+      Gaps/Notes:
+
+      - No code/docs/tests modified in this step.'
   - id: followup_surface_hygiene.gate
     name: gate
     status: pending
