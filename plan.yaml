@@ -16087,7 +16087,7 @@ phases:
       and `src/larva/core/normalize.py` under full guard.'
   - id: followup_guard_full.guard-full-core-crosshair-fix-5
     name: guard-full-core-crosshair-fix-5
-    status: pending
+    status: claimed
     description: 'Fifth batched remediation extension for the remaining narrowed CrossHair
       residual family only; keep scope strict to `src/larva/core/assemble.py` and
       `src/larva/core/normalize.py`, preserve the existing remediation family, and
@@ -16220,6 +16220,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-4
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T20:24:08.052334+00:00'
   - id: followup_guard_full.guard-full-core-crosshair-retest-5
     name: guard-full-core-crosshair-retest-5
     status: pending
