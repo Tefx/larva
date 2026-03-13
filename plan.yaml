@@ -6161,7 +6161,7 @@ phases:
     claimed_at: '2026-03-13T04:36:58.388459+00:00'
   - id: shell_python_api.shell-python-api-seam-proof
     name: shell-python-api-seam-proof
-    status: claimed
+    status: done
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.python_api`.
 
@@ -6210,6 +6210,59 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T04:36:58.700163+00:00'
+    done_at: '2026-03-13T04:50:17.402304+00:00'
+    evidence: '## Seam-Level Integration Evidence
+
+
+      **Changed seam path**: `src/larva/shell/python_api.py` -> `src/larva/app/facade.py`
+
+
+      **Exact command executed**:
+
+      ```bash
+
+      uv run python -c "from larva.shell import python_api; f = python_api._get_facade();
+      print(type(f).__module__ + ''.'' + type(f).__name__); print(python_api.validate({''id'':''demo'',''prompts'':[{''id'':''p1'',''content'':''hi''}],''toolsets'':[],''constraints'':[],''model'':''gpt-4o''}))"
+
+      ```
+
+
+      **Actual output** (key lines):
+
+      ```text
+
+      larva.app.facade.DefaultLarvaFacade
+
+      {''valid'': True, ''errors'': [], ''warnings'': []}
+
+      ```
+
+
+      **Path exercised**: `larva.shell.python_api` -> `larva.app.facade`
+
+
+      findings:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: none
+
+      - tech_debt: none
+
+
+      discovered_issues:
+
+      - none
+
+
+      Gaps/Notes:
+
+      - In-process invocation (no mocks) demonstrates actual facade seam traversal.
+
+      - No top-level package export wiring (`src/larva/__init__.py`) was required
+      for this seam proof.'
   - id: shell_python_api.shell-python-api-freeze
     name: shell-python-api-freeze
     status: pending
