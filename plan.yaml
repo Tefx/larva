@@ -15458,3 +15458,70 @@ phases:
     depends_on:
     - followup_guard_full.gate
     agent: python-senior
+  - id: followup_guard_full.guard-full-core-crosshair-retest-3
+    name: guard-full-core-crosshair-retest-3
+    status: pending
+    description: "As an INDEPENDENT TESTER, rerun the authoritative full guard plus\
+      \ focused core regressions after the third-loop narrowed CrossHair remediation.\n\
+      \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n- followup_guard_full.guard-full-core-crosshair-retest-2\n\
+      - followup_guard_full.gate\nremaining_blocker: residual CrossHair failure in\
+      \ `src/larva/core/assemble.py:129` (`_merge_tools`) with `TypeError: typing.Literal\
+      \ cannot be used with issubclass()` under symbolic checking\nwhy_new_loop: the\
+      \ gate isolated one surviving symbolic-checking blocker family; this retest\
+      \ must prove the narrow `_merge_tools` remediation closes that family without\
+      \ reopening already-green regression surfaces\nspec_refs:\n- `pyproject.toml:53`\n\
+      - gate finding from `followup_guard_full.gate`\n- prior retest artifact from\
+      \ `followup_guard_full.guard-full-core-crosshair-retest-2`\n- `ARCHITECTURE.md:638`\n\
+      touch_paths:\n- `src/larva/core/assemble.py`\n- direct sibling helpers or contracts\
+      \ used by `_merge_tools`\n- `tests/core/test_assemble.py`\n- `tests/core/test_validate.py`\n\
+      - `tests/core/test_normalize.py`\nharness_refs:\n- `uvx invar-tools guard --all`\n\
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py\
+      \ tests/core/test_normalize.py`\n- raw CrossHair excerpt for `_merge_tools`\n\
+      agent_source: default\n\nYOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.\n\
+      \nTest for:\n- Happy path: `uvx invar-tools guard --all` returns green with\
+      \ the `_merge_tools` `Literal`/`issubclass` residue cleared\n- Edge cases: focused\
+      \ core tests for assemble/validate/normalize still pass after the narrowed symbolic-typing\
+      \ fix\n- Error scenarios: if CrossHair is still red, attach the exact raw excerpt\
+      \ for `_merge_tools` or any direct sibling symbolic seam only\n- Scope hygiene:\
+      \ CLI/MCP/Python-API regressions remain green and are not pulled back into scope\
+      \ without evidence of a direct assemble-core regression\n\nevidence_template:\
+      \ |\n  ## Third-Loop Narrowed CrossHair Retest Report\n\n  **Exact full guard\
+      \ command**:\n  ```bash\n  uvx invar-tools guard --all\n  ```\n\n  **Actual\
+      \ full guard output**:\n  ```text\n  <paste actual guard output>\n  ```\n\n\
+      \  **Focused core regression command**:\n  ```bash\n  uv run pytest -q tests/core/test_assemble.py\
+      \ tests/core/test_validate.py tests/core/test_normalize.py\n  ```\n\n  **Actual\
+      \ focused core output**:\n  ```text\n  <paste actual pytest output>\n  ```\n\
+      \n  **Residual blocker matrix**:\n  - `_merge_tools` `Literal`/`issubclass`\
+      \ residue: cleared | remaining with exact raw excerpt\n  - direct sibling symbolic\
+      \ seam(s): cleared | remaining with exact raw excerpt\n\n  **Scope hygiene proof**:\
+      \ <how you confirmed already-green CLI/MCP/Python-API families stayed green\
+      \ and were not reopened>\n\nA retest that still finds a residual symbolic blocker\
+      \ is successful evidence collection."
+    verification: '- Main path: raw `uvx invar-tools guard --all` output and focused
+      core pytest output are attached for the narrowed `_merge_tools` blocker family
+
+      - Failure path: any remaining symbolic typing failure is pinned to exact raw
+      `_merge_tools` or direct sibling-seam evidence instead of broad family summaries
+
+      - Evidence explicitly confirms already-green CLI/MCP/Python-API families were
+      not reopened'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: third-loop `_merge_tools` CrossHair\
+      \ residue plus focused core regressions\n**Independence Level**: L1\n**Timestamp**:\
+      \ <ISO 8601>\n\n### Test Execution\n- Commands executed:\n  ```\n  uvx invar-tools\
+      \ guard --all\n  uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py\
+      \ tests/core/test_normalize.py\n  ```\n- Output summary: <key results>\n\n###\
+      \ Issues Found\n\nFinding issues is the primary value of verification.\n\n|\
+      \ Severity   | Description   | Location                | Reproduction |\n| ----------\
+      \ | ------------- | ----------------------- | ------------ |\n| blocker    |\
+      \ <issue>       | <file:line or symbol> | <steps>      |\n| should_fix | <issue>\
+      \       | <location>              | <steps>      |\n| suggestion | <improvement>\
+      \ | <context>               | -            |\n| tech_debt  | <known debt>  |\
+      \ <location>              | -            |\n\n### Coverage Assessment\n- Happy\
+      \ path verified: ✅/❌\n- Edge cases tested: <count>\n- NOT tested: <areas not\
+      \ covered and why>\n\n### Verdict\n- [ ] PASS: No issues found (coverage justified\
+      \ above)\n- [ ] ISSUES_FOUND: See issues table above\n- [ ] INCOMPLETE: <reason>\n\
+      \n**Confidence**: high/medium/low"
+    depends_on:
+    - followup_guard_full.guard-full-core-crosshair-fix-3
+    agent: integration-verifier
