@@ -5123,6 +5123,222 @@ phases:
       \  should_fix: []\n  suggestions: []\n  tech_debt: []\ndiscovered_issues:\n\
       - none\nGaps/Notes:\n- Targeted closure test passed (1 passed).\n- Full app-facade\
       \ suite passed (17 passed, 0 skipped)."
+  - id: app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
+    name: fix-app-facade-gate-blockers-b1-s1-s2-s3
+    status: pending
+    description: 'Fix ALL findings from `app_facade.app-facade-gate` together — B1
+      + S1 + S2 + S3, not just the first blocker.
+
+
+      step_type: implementation
+
+      agent: python-senior
+
+      agent_source: default
+
+      prior_loop: []
+
+      remaining_blocker: gate cannot close until digest-format parity, malformed-registry
+      boundary handling, seam-proof reproducibility, and fallback numeric-code alignment
+      are all corrected together.
+
+      why_new_loop: batched remediation is required because the four findings share
+      the same app-facade/runtime-contract surface and should be resolved as one parity
+      pass rather than serial micro-fixes.
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: facade resolve/register/list digest and error contract
+      sections (notably lines 340, 353-355)
+
+      - gate findings from `app_facade.app-facade-gate`
+
+
+      touch_paths:
+
+      - `src/larva/core/normalize.py`
+
+      - `src/larva/app/facade.py`
+
+      - `src/larva/shell/registry.py`
+
+      - `tests/app/test_facade.py`
+
+      - `INTERFACES.md`
+
+
+      harness_refs:
+
+      - `app_facade.app-facade-verify`
+
+      - `app_facade.app-facade-seam-proof`
+
+      - facade tests and seam-proof artifacts covering normalize -> facade register/resolve/list
+
+
+      conflict_rationale:
+
+      - Serial with all app_facade verification/gate work because this step touches
+      the same facade/runtime/test/docs cluster and the same seam-proof evidence path.
+
+      - Shared files (`src/larva/app/facade.py`, `tests/app/test_facade.py`, `INTERFACES.md`)
+      make parallel remediation unsafe.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: `spec_digest` format mismatch against interface expectation
+
+      Locations:
+
+      - `src/larva/core/normalize.py:47-48,87-88`
+
+      - `src/larva/app/facade.py:210-211,299-300`
+
+      - `tests/app/test_facade.py:60,95-97,448-449`
+
+      - `INTERFACES.md:340,353-355`
+
+      Remediation:
+
+      - Establish one canonical `spec_digest` format across runtime, tests, and docs.
+
+      - Runtime normalize output, facade register/resolve/list surfaces, tests, and
+      interface text must agree with no drift.
+
+      - Update all sibling paths, not just the cited assertions/call sites.
+
+      Grep hint: `spec_digest|sha256:|normalize_spec|facade\.resolve|facade\.register`
+
+
+      ### S1: potential `KeyError` leak in `DefaultLarvaFacade.list()` on malformed
+      registry records
+
+      Locations:
+
+      - `src/larva/app/facade.py:315-323`
+
+      - related shell behavior: `src/larva/shell/registry.py:347-356,376`
+
+      Remediation:
+
+      - Prevent boundary exception leakage when registry summaries are malformed or
+      missing required fields.
+
+      - Enforce documented app-level error behavior instead of propagating raw `KeyError`
+      semantics.
+
+      - Search sibling summary/record access patterns beyond `list()`.
+
+      Grep hint: `def list\(|\[''id''\]|\[''spec_digest''\]|\[''model''\]|KeyError`
+
+
+      ### S2: seam-proof evidence reproducibility gap
+
+      Locations:
+
+      - prior seam-proof completion narrative / evidence artifact path for `app_facade.app-facade-seam-proof`
+
+      Remediation:
+
+      - Remove placeholder-command ambiguity by requiring a replayable seam-proof
+      command and captured output.
+
+      - Ensure the remediation updates the step/evidence expectations so retest can
+      verify a real command transcript, not a summary placeholder.
+
+      Grep hint: `seam-proof|Exact command executed|Actual output`
+
+
+      ### S3: unknown-code fallback uses `numeric_code` 10 outside documented 100-110
+      range
+
+      Locations:
+
+      - `src/larva/app/facade.py:245-251`
+
+      Remediation:
+
+      - Align unknown/fallback numeric-code behavior with the documented error-code
+      model.
+
+      - Verify sibling fallback/error-mapping branches, not just the cited branch.
+
+      Grep hint: `numeric_code|_to_larva_error|100|110`
+
+
+      ## Completion Criteria
+
+      - ALL four findings closed together.
+
+      - Sibling search completed for each grep hint, with no unresolved drift left
+      in runtime/tests/docs.
+
+      - Digest format parity is canonical across normalize, facade, tests, and `INTERFACES.md`.
+
+      - Malformed registry records cannot leak raw `KeyError` across the app boundary.
+
+      - Seam-proof artifact requirements are upgraded to require reproducible command
+      + actual output.
+
+      - Unknown/fallback numeric code behavior is documented and implemented within
+      the declared model.
+
+
+      ## Known Risks
+
+      - Cross-surface parity drift between core normalize and facade wrappers can
+      recur if only one layer changes.
+
+      - Output/evidence fixes that update prose but not replayable command transcripts
+      will fail retest.
+
+      - Error-code fallback changes must not silently diverge from interface docs/tests.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any remaining bare 64-hex digest where the canonical interface requires `sha256:<hex>`
+      (or vice versa).
+
+      2. Any raw `KeyError`/missing-field leakage from malformed registry records.
+
+      3. Seam-proof evidence that lacks an exact replayable command and pasted actual
+      output.
+
+      4. Any fallback numeric code outside the documented 100-110 model.
+
+
+      Out-of-scope guardrail:
+
+      - Do not broaden this loop into unrelated CLI/MCP/python_api wiring; keep scope
+      to app facade, normalize parity, related docs/tests, and evidence requirements
+      needed to close these findings.'
+    verification: '- Focused regressions cover digest canonicalization, malformed
+      registry summaries, seam-proof evidence requirements, and fallback numeric-code
+      behavior.
+
+      - Proof includes sibling-search evidence for each grep hint.
+
+      - No unresolved parity drift remains across runtime/tests/docs.'
+    evidence_template: "## Batched Fix Evidence\n\n**Scope**: `app_facade.app-facade-gate`\
+      \ findings B1 + S1 + S2 + S3\n\n### Sibling Search Log\n- B1 grep results reviewed:\n\
+      \  ```\n  <paste commands and affected matches>\n  ```\n- S1 grep results reviewed:\n\
+      \  ```\n  <paste commands and affected matches>\n  ```\n- S2 grep results reviewed:\n\
+      \  ```\n  <paste commands and affected matches>\n  ```\n- S3 grep results reviewed:\n\
+      \  ```\n  <paste commands and affected matches>\n  ```\n\n### Closure Notes\n\
+      - Canonical digest format selected and applied across runtime/tests/docs:\n\
+      \  - <files updated>\n- Malformed registry handling:\n  - <boundary behavior\
+      \ and tests>\n- Seam-proof reproducibility requirement updated at:\n  - <step/file/evidence\
+      \ path>\n- Unknown/fallback numeric code alignment:\n  - <implementation + doc/test\
+      \ updates>\n\n### Verification\n- Targeted commands/tests executed:\n  ```\n\
+      \  <paste exact commands>\n  ```\n- Result snippets:\n  ```\n  <paste relevant\
+      \ output>\n  ```"
+    depends_on:
+    - app_facade.app-facade-gate
+    agent: python-senior
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
