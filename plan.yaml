@@ -6850,7 +6850,8 @@ phases:
 
       - `assemble()` warning is resolved and thin-adapter behavior remains explicit'
     depends_on:
-    - shell_python_api.shell-python-api-gate
+    - shell_python_api.shell-python-api-freeze
+    - shell_python_api.shell-python-api-verify-retest
     agent: python-senior
   - id: shell_python_api.shell-python-api-gate-retest
     name: shell-python-api-gate-retest
