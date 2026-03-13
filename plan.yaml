@@ -16139,3 +16139,112 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-4
     agent: python-senior
+  - id: followup_guard_full.guard-full-core-crosshair-retest-5
+    name: guard-full-core-crosshair-retest-5
+    status: pending
+    description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
+      focused core regressions after the fifth-loop batched remediation for the narrowed
+      assemble+normalize residual family.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-core-crosshair-fix-5
+
+      - followup_guard_full.guard-full-core-crosshair-retest-4
+
+      remaining_blocker: verify that the residual `crosshair.status=counterexample_found`
+      limited to `src/larva/core/assemble.py` and `src/larva/core/normalize.py` is
+      fully cleared after the batched fix
+
+      why_new_loop: the prior retest still showed the narrowed two-file symbolic family,
+      so this retest must verify that BOTH blockers are fixed together and that already-green
+      families stay closed
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - gate finding from `followup_guard_full.gate`
+
+      - fix step `followup_guard_full.guard-full-core-crosshair-fix-5`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - retest evidence for `src/larva/core/assemble.py`
+
+      - retest evidence for `src/larva/core/normalize.py`
+
+      - retest evidence for `tests/core/test_assemble.py`
+
+      - retest evidence for `tests/core/test_validate.py`
+
+      - retest evidence for `tests/core/test_normalize.py`
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py`
+
+      - raw CrossHair excerpts for assemble/normalize only
+
+      agent_source: default
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: `uvx invar-tools guard --all` returns green with BOTH narrowed
+      blockers for `src/larva/core/assemble.py` and `src/larva/core/normalize.py`
+      cleared
+
+      - Edge cases: focused core pytest stays green for assemble/validate/normalize
+      after the batched residual-family fix
+
+      - Error scenarios: if CrossHair is still red, attach the exact raw excerpt for
+      `src/larva/core/assemble.py` and/or `src/larva/core/normalize.py` only
+
+      - Scope hygiene: already-green families stay closed and are not pulled back
+      into scope without raw evidence of a direct same-root-cause regression
+
+
+      ## Anti-churn guard
+
+      - Verify ALL blockers from the batched fix step, not just the first failing
+      file.
+
+      - Do not summarize away failures; paste raw command output.
+
+      - Do not broaden the blocker report beyond assemble+normalize unless the raw
+      output proves it.'
+    verification: '- Main path: raw `uvx invar-tools guard --all` output and focused
+      core pytest output prove BOTH narrowed blockers are cleared
+
+      - Failure path: any remaining symbolic failure is pinned to exact raw output
+      for `src/larva/core/assemble.py` and/or `src/larva/core/normalize.py` only
+
+      - Evidence explicitly confirms already-green families were not reopened and
+      the batched fix addressed all listed blockers'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: fifth-loop batched CrossHair residual\
+      \ family for `src/larva/core/assemble.py` + `src/larva/core/normalize.py`\n\
+      **Independence Level**: L1\n\n### Test Execution\n- Commands executed:\n  ```\n\
+      \  uvx invar-tools guard --all\n  uv run pytest -q tests/core/test_assemble.py\
+      \ tests/core/test_validate.py tests/core/test_normalize.py\n  ```\n- Raw output\
+      \ excerpts:\n  ```\n  <paste exact guard + pytest output>\n  ```\n\n### Blocker\
+      \ Verification\n- [ ] B1 `src/larva/core/assemble.py` cleared\n- [ ] B2 `src/larva/core/normalize.py`\
+      \ cleared\n- [ ] Already-green families remain closed\n\n### Verdict\n- [ ]\
+      \ PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - followup_guard_full.guard-full-core-crosshair-fix-5
+    agent: integration-verifier
