@@ -6810,13 +6810,13 @@ phases:
     agent: python-senior
 - id: shell_mcp
   name: larva.shell.mcp
-  status: pending
+  status: in_progress
   depends_on:
   - app_facade
   steps:
   - id: shell_mcp.shell-mcp-contract
     name: shell-mcp-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.shell.mcp` module at `src/larva/shell/mcp.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\nagent_source: default\n\nScope:\n\
@@ -6845,6 +6845,8 @@ phases:
       - The contract names the documented MCP tool set, error-envelope obligations,
       and concrete `larva.app.facade` seam without runnable server logic'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T03:52:51.042642+00:00'
   - id: shell_mcp.shell-mcp-tests
     name: shell-mcp-tests
     status: pending
