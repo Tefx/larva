@@ -12,10 +12,8 @@ from returns.result import Failure, Result, Success
 
 from larva.app import facade as facade_module
 from larva.app.facade import AssembleRequest, LarvaError, LarvaFacade, PersonaSummary
-from larva.core import assemble as assemble_module
-from larva.core import normalize as normalize_module
-from larva.core import spec as spec_module
-from larva.core import validate as validate_module
+from larva.core import assemble as assemble_module, normalize as normalize_module
+from larva.core import spec as spec_module, validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore, ComponentStoreError, FilesystemComponentStore
@@ -294,6 +292,32 @@ def _operation_failure(operation: str, error: JsonErrorEnvelope, *, as_json: boo
     return failure
 
 
+def _dispatch_component(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    component_store: ComponentStore,
+) -> Result[CliCommandResult, CliFailure]:
+    component_command = cast("str", getattr(args, "component_command", ""))
+    if component_command == "list":
+        return component_list_command(as_json=as_json, component_store=component_store)
+    if component_command == "show":
+        return component_show_command(
+            cast("str", args.ref),
+            as_json=as_json,
+            component_store=component_store,
+        )
+    return Failure(
+        {
+            "exit_code": EXIT_CRITICAL,
+            "stderr": f"Unsupported component command: {component_command}\n",
+            "error": _critical_error(
+                "unsupported component command", {"command": component_command}
+            ),
+        }
+    )
+
+
 def _dispatch(
     args: argparse.Namespace,
     *,
@@ -356,24 +380,7 @@ def _dispatch(
         return list_command(as_json=as_json, facade=facade)
 
     if command == "component":
-        component_command = cast("str", getattr(args, "component_command", ""))
-        if component_command == "list":
-            return component_list_command(as_json=as_json, component_store=component_store)
-        if component_command == "show":
-            return component_show_command(
-                cast("str", args.ref),
-                as_json=as_json,
-                component_store=component_store,
-            )
-        return Failure(
-            {
-                "exit_code": EXIT_CRITICAL,
-                "stderr": f"Unsupported component command: {component_command}\n",
-                "error": _critical_error(
-                    "unsupported component command", {"command": component_command}
-                ),
-            }
-        )
+        return _dispatch_component(args, as_json=as_json, component_store=component_store)
 
     return Failure(
         {
@@ -586,7 +593,7 @@ def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResu
     return Failure(failure)
 
 
-# @shell_complexity: command-level error envelope mapping requires explicit branches
+# @shell_complexity: command-level envelope mapping requires explicit text/json branches
 def component_list_command(
     *, as_json: bool, component_store: ComponentStore
 ) -> Result[CliCommandResult, CliFailure]:
@@ -598,6 +605,7 @@ def component_list_command(
         if not as_json:
             failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
         return Failure(failure)
+
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -615,7 +623,25 @@ def component_list_command(
     return Failure(failure)
 
 
-# @shell_complexity: target parsing + loader routing requires explicit branching
+# @invar:allow shell_result: helper builds typed invalid-target failure envelope
+def _component_show_invalid_target(
+    component_ref: str,
+    *,
+    component_type: str | None = None,
+) -> CliFailure:
+    details: dict[str, object] = {"component_ref": component_ref}
+    if component_type is not None:
+        details["component_type"] = component_type
+    error_envelope: JsonErrorEnvelope = {
+        "code": "COMPONENT_NOT_FOUND",
+        "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
+        "message": f"invalid component target: {component_ref}",
+        "details": details,
+    }
+    return {"exit_code": EXIT_ERROR, "error": error_envelope}
+
+
+# @shell_complexity: target parsing + loader routing requires explicit branches
 def component_show_command(
     component_ref: str,
     *,
@@ -624,14 +650,9 @@ def component_show_command(
 ) -> Result[CliCommandResult, CliFailure]:
     component_type, separator, component_name = component_ref.partition("/")
     if separator == "" or component_type == "" or component_name == "":
-        error_envelope: JsonErrorEnvelope = {
-            "code": "COMPONENT_NOT_FOUND",
-            "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
-            "message": f"invalid component target: {component_ref}",
-            "details": {"component_ref": component_ref},
-        }
-        failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+        failure = _component_show_invalid_target(component_ref)
         if not as_json:
+            error_envelope = failure.get("error", _critical_error("unknown error"))
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
 
@@ -645,14 +666,9 @@ def component_show_command(
     }
     loader = loaders.get(component_type)
     if loader is None:
-        error_envelope = {
-            "code": "COMPONENT_NOT_FOUND",
-            "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
-            "message": f"invalid component target: {component_ref}",
-            "details": {"component_ref": component_ref, "component_type": component_type},
-        }
-        failure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+        failure = _component_show_invalid_target(component_ref, component_type=component_type)
         if not as_json:
+            error_envelope = failure.get("error", _critical_error("unknown error"))
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
 
@@ -660,10 +676,11 @@ def component_show_command(
         load_result = loader(component_name)
     except Exception as error:
         error_envelope, exit_code = _map_component_error(error)
-        failure = {"exit_code": exit_code, "error": error_envelope}
+        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
         if not as_json:
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
+
     if isinstance(load_result, Success):
         payload = cast("dict[str, object]", dict(cast("dict[str, object]", load_result.unwrap())))
         cli_result: CliCommandResult = {
@@ -675,7 +692,7 @@ def component_show_command(
         return Success(cli_result)
 
     error_envelope, exit_code = _map_component_error(load_result.failure())
-    failure = {"exit_code": exit_code, "error": error_envelope}
+    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
     return Failure(failure)
