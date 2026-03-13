@@ -14753,43 +14753,42 @@ phases:
 
       - Repo-wide acceptance barrier
 
-      - Repeated-remediation escalation: the first batched fix cleared warnings/errors
-      but left a residual core CrossHair blocker family
+      - Repeated-remediation escalation has been narrowed to one residual CrossHair
+      blocker family in `src/larva/core/assemble.py::_merge_tools`
 
-      - A bad second loop could create churn or weaken core contracts instead of resolving
-      the counterexample family
+      - This review must confirm the third loop stayed within the surviving symbolic-typing
+      seam and did not reopen already-green CLI/MCP/Python-API families
 
-      - This review must confirm remediation stayed within the unresolved blocker
-      family and did not reopen completed surfaces
+      - A bad final loop could fake green by weakening contracts or by broadening
+      scope back into cleared surfaces
 
       cross_cutting_focus:
 
-      - no fake guard pass by suppressing authoritative repo files
+      - no fake guard pass by suppressing authoritative repo files or symbolic paths
 
-      - residual CrossHair counterexamples in `validate.py`, `assemble.py`, and `normalize.py`
-      are actually closed, not redistributed
+      - residual `_merge_tools` `Literal`/`issubclass` blocker and any direct sibling
+      symbolic seam are actually closed, not redistributed
 
-      - warning/error families remain zero after second-loop remediation
+      - CLI/MCP/Python-API regressions remain green and untouched
 
       - core purity and contract strength are preserved while closing the residual
       blocker family
 
-      - no duplicate CLI/MCP remediation scope was reopened during the second loop
-
       agent_source: default'
     verification: '- All phase steps completed successfully
 
-      - Evidence shows the repeated remediation stayed batched and scoped to the unresolved
-      CrossHair blocker family rather than restarting broad churn
+      - Evidence shows the repeated remediation stayed batched and scoped to the final
+      `_merge_tools` symbolic-typing blocker family rather than restarting broad churn
 
       - Evidence shows raw outputs for `uvx invar-tools guard --all` and focused core
-      tests from `followup_guard_full.guard-full-core-crosshair-retest-2`
+      tests from `followup_guard_full.guard-full-core-crosshair-retest-3`
 
-      - Evidence shows warnings/errors stayed at zero and no completed-phase ownership
-      was duplicated
+      - Evidence shows warnings/errors stayed at zero, CLI/MCP/Python-API regressions
+      remained green, and no completed-phase ownership was duplicated
 
       - Full `uvx invar-tools guard --all` passes from the main checkout or the gate
-      clearly names the only remaining explicitly unresolved CrossHair residue'
+      clearly names the only remaining explicitly unresolved `_merge_tools` symbolic
+      residue'
     depends_on:
     - followup_guard_full.guard-diagnose
     - followup_guard_full.guard-scope-remediate
@@ -14801,6 +14800,7 @@ phases:
     - followup_guard_full.guard-full-core-crosshair-retest-2
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
+    - followup_guard_full.guard-full-core-crosshair-retest-3
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T19:38:29.668537+00:00'
