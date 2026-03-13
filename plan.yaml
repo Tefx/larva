@@ -12607,4 +12607,8 @@ phases:
   - shell_mcp
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
-  status: pending
+  status: locked
+  context: Start only after validate-warning gate closure. This is the final acceptance
+    barrier for the follow-on gaps and must stay serial and worktree-safe.
+  depends_on:
+  - followup_validate_warnings
