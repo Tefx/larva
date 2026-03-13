@@ -15558,7 +15558,7 @@ phases:
       issue family; handled in subsequent retest step'
   - id: followup_guard_full.guard-full-core-crosshair-retest-3
     name: guard-full-core-crosshair-retest-3
-    status: claimed
+    status: done
     description: "As an INDEPENDENT TESTER, rerun the authoritative full guard plus\
       \ focused core regressions after the third-loop narrowed CrossHair remediation.\n\
       \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n- followup_guard_full.guard-full-core-crosshair-retest-2\n\
@@ -15625,6 +15625,34 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T20:03:19.015756+00:00'
+    done_at: '2026-03-13T20:07:30.270987+00:00'
+    evidence: 'Retest failed and triggered narrowed next-loop batched remediation.
+
+
+      Failure evidence:
+
+      - uvx invar-tools guard --all -> status failed with crosshair counterexample_found
+
+      - failed files: src/larva/core/assemble.py, src/larva/core/normalize.py
+
+      - focused core pytest suite remained green (65 passed)
+
+
+      New batched loop created:
+
+      - followup_guard_full.guard-full-core-crosshair-fix-4
+
+      - followup_guard_full.guard-full-core-crosshair-retest-4
+
+      - followup_guard_full.guard-full-verify rewired to review retest-4 evidence
+
+      - followup_guard_full.gate rewired to depend on retest-4 path
+
+
+      Notes:
+
+      - scope narrowed to residual assemble+normalize CrossHair family; already-green
+      families remain out of scope.'
   - id: followup_guard_full.guard-full-core-crosshair-fix-4
     name: guard-full-core-crosshair-fix-4
     status: pending
