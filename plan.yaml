@@ -14479,7 +14479,7 @@ phases:
       - No guard-config changes performed in this step.'
   - id: followup_guard_full.cli-complexity-remediate
     name: cli-complexity-remediate
-    status: claimed
+    status: done
     description: 'Resolve the real main-repo CLI complexity debt revealed by full
       guard.
 
@@ -14540,6 +14540,53 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T18:48:38.752635+00:00'
+    done_at: '2026-03-13T18:56:10.251607+00:00'
+    evidence: 'Artifact:
+
+      - PR: 3647b0d449dcfffbc0f34736850ef779be6bb3b3 (worktree), squashed to main
+      as 0f5837a
+
+
+      Verification:
+
+      - uv run pytest -q tests/shell/test_cli.py -> 84 passed
+
+      - invar_guard(changed=true in isolated worktree) -> pass (0 errors, warnings
+      only)
+
+
+      Complexity remediation:
+
+      - extracted component command branch from `_dispatch` into `_dispatch_component`
+      to reduce nested routing complexity while preserving behavior
+
+      - introduced `_component_show_invalid_target` helper to deduplicate envelope
+      construction for invalid-target branches
+
+      - added explicit in-policy complexity/typing annotations where transport-driven
+      branching remains
+
+
+      Changed-scope guard evidence:
+
+      - touched file: src/larva/shell/cli.py only
+
+      - changed-scope guard passes with complexity-debt blocker cleared for this step
+
+
+      Spec link:
+
+      - README CLI surface contract
+
+      - ARCHITECTURE CLI boundary
+
+
+      Gaps/Notes:
+
+      - file remains near size limit and some informational complexity warnings persist
+      as documented debt
+
+      - no tests needed modification; existing suite covered behavior preservation'
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
     status: pending
