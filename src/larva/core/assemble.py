@@ -26,25 +26,61 @@ from larva.core.spec import (
 class AssemblyError(Exception):
     """Base exception for assembly errors."""
 
-    @pre(
-        lambda self, code, message, details=None: (
-            isinstance(code, str)
-            and len(code) > 0
-            and isinstance(message, str)
-            and len(message) > 0
-            and (details is None or isinstance(details, dict))
-        )
+    code: str
+    message: str
+    details: dict[str, Any]
+
+
+@pre(
+    lambda code, message, details=None: (
+        isinstance(code, str)
+        and len(code) > 0
+        and isinstance(message, str)
+        and len(message) > 0
+        and (details is None or isinstance(details, dict))
     )
-    def __init__(
-        self,
-        code: str,
-        message: str,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        self.code = code
-        self.message = message
-        self.details = details or {}
-        super().__init__(f"{code}: {message}")
+)
+@post(
+    lambda result: (
+        isinstance(result, AssemblyError)
+        and isinstance(result.code, str)
+        and len(result.code) > 0
+        and isinstance(result.message, str)
+        and len(result.message) > 0
+        and isinstance(result.details, dict)
+    )
+)
+def _assembly_error(
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> AssemblyError:
+    error = AssemblyError(f"{code}: {message}")
+    error.code = code
+    error.message = message
+    error.details = {} if details is None else details
+    return error
+
+
+@pre(lambda mapping: isinstance(mapping, Mapping))
+@post(
+    lambda result: (
+        isinstance(result, list)
+        and all(isinstance(item, tuple) and len(item) == 2 for item in result)
+    )
+)
+def _safe_items(mapping: Mapping[Any, Any]) -> list[tuple[Any, Any]]:
+    """Return mapping items without propagating symbolic Mapping key errors.
+
+    >>> _safe_items({"k": "v"})
+    [('k', 'v')]
+    >>> _safe_items({})
+    []
+    """
+    try:
+        return list(mapping.items())
+    except (KeyError, TypeError, ValueError):
+        return []
 
 
 @pre(lambda prompt: isinstance(prompt, str))
@@ -112,7 +148,7 @@ def _collect_scalar(
     if not allow_multiple and len(values) > 1:
         first = values[0]
         if any(value != first for value in values):
-            raise AssemblyError(
+            raise _assembly_error(
                 code="COMPONENT_CONFLICT",
                 message=f"Multiple sources provide different values for '{field}': {values}",
                 details={"field": field, "values": values},
@@ -135,10 +171,12 @@ def _merge_tools(toolsets: list[dict[str, object]]) -> dict[str, str]:
         tools_obj = toolset["tools"]
         if not isinstance(tools_obj, dict):
             continue
-        tools = cast("dict[str, str]", tools_obj)
-        for tool_name, posture in tools.items():
+        tools = cast("Mapping[object, object]", tools_obj)
+        for tool_name, posture in _safe_items(tools):
+            if not isinstance(tool_name, str) or not isinstance(posture, str):
+                continue
             if tool_name in merged and merged[tool_name] != posture:
-                raise AssemblyError(
+                raise _assembly_error(
                     code="COMPONENT_CONFLICT",
                     message=(
                         f"Contradictory posture for tool '{tool_name}': "
@@ -155,7 +193,9 @@ def _merge_tools(toolsets: list[dict[str, object]]) -> dict[str, str]:
 def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     """Deep-merge patch dict into base dict (patch values override base)."""
     result = dict(base)
-    for key, value in patch.items():
+    for key, value in _safe_items(patch):
+        if not isinstance(key, str):
+            continue
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
@@ -168,7 +208,9 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
         isinstance(prompt, str)
         and _is_format_template(prompt)
         and isinstance(variables, dict)
-        and all(isinstance(key, str) and isinstance(value, str) for key, value in variables.items())
+        and all(
+            isinstance(key, str) and isinstance(value, str) for key, value in _safe_items(variables)
+        )
     )
 )
 @raises(AssemblyError)
@@ -178,7 +220,7 @@ def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
         return prompt.format_map(variables)
     except KeyError as error:
         missing = list(error.args)
-        raise AssemblyError(
+        raise _assembly_error(
             code="VARIABLE_UNRESOLVED",
             message=f"Missing required variable(s): {missing}",
             details={"missing_variables": missing},
@@ -194,7 +236,7 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     variables = (
         {
             key: value
-            for key, value in variables_obj.items()
+            for key, value in _safe_items(cast("Mapping[Any, Any]", variables_obj))
             if isinstance(key, str) and isinstance(value, str)
         }
         if isinstance(variables_obj, dict)
@@ -242,7 +284,9 @@ def _apply_overrides(result: Mapping[str, object], overrides: dict[str, Any]) ->
         )
         return updated
 
-    for key, value in overrides.items():
+    for key, value in _safe_items(overrides):
+        if not isinstance(key, str):
+            continue
         if key != "model_params":
             updated[key] = value  # type: ignore[literal-required]
     return updated
