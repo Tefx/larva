@@ -6161,7 +6161,7 @@ phases:
     claimed_at: '2026-03-13T04:36:58.388459+00:00'
   - id: shell_python_api.shell-python-api-seam-proof
     name: shell-python-api-seam-proof
-    status: pending
+    status: claimed
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.python_api`.
 
@@ -6208,6 +6208,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T04:36:58.700163+00:00'
   - id: shell_python_api.shell-python-api-freeze
     name: shell-python-api-freeze
     status: pending
