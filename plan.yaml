@@ -14740,7 +14740,7 @@ phases:
       - no code/docs/tests modified'
   - id: followup_guard_full.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: verify full-guard remediation completion and final
       acceptance quality.
 
@@ -14802,6 +14802,8 @@ phases:
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T19:38:29.668537+00:00'
   - id: followup_guard_full.guard-full-batched-fix
     name: guard-full-batched-fix
     status: done
