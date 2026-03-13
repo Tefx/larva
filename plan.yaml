@@ -12879,7 +12879,7 @@ phases:
       \ files modified."
   - id: followup_validate_warnings.freeze
     name: freeze
-    status: pending
+    status: claimed
     description: 'Freeze the follow-up validate-warnings snapshot before gate review.
 
 
@@ -12896,6 +12896,8 @@ phases:
     depends_on:
     - followup_validate_warnings.warning-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T18:16:11.715152+00:00'
   - id: followup_validate_warnings.gate
     name: gate
     status: pending
