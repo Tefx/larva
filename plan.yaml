@@ -6349,7 +6349,7 @@ phases:
       - Explicit no-code-changes freeze statement recorded.'
   - id: shell_python_api.shell-python-api-gate
     name: shell-python-api-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_python_api` phase meets the quality bar for downstream transport and
       package-surface integration work.
@@ -6421,6 +6421,39 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T06:03:50.981508+00:00'
+    done_at: '2026-03-13T06:21:44.930915+00:00'
+    evidence: 'Independent gate review returned ISSUES_FOUND and triggered batched
+      remediation planning.
+
+      Findings captured:
+
+      - blocker B1: README Python Library examples mismatch current deferred package-root
+      export posture and include incorrect assemble kwargs
+
+      - should_fix S1: tests mutate `python_api._get_facade` without robust restoration
+
+      - should_fix S2: assemble adapter branching complexity warning should be justified
+      or refactored within shell policy
+
+      Key commands proved mismatch:
+
+      - `uv run python -c "from larva import assemble..."` -> ImportError
+
+      - `uv run python -c "from larva.shell.python_api import assemble; assemble(...,
+      toolset=...)"` -> TypeError
+
+      Planner remediation created and wired:
+
+      - shell_python_api.shell-python-api-gate-fix
+
+      - shell_python_api.shell-python-api-gate-retest
+
+      - shell_python_api.shell-python-api-gate updated to depend on shell_python_api.shell-python-api-gate-retest
+
+      Notes:
+
+      - Batched fix+retest chain added before gate can reopen; no code changes performed
+      in gate step.'
   - id: shell_python_api.shell-python-api-verify-fix
     name: shell-python-api-verify-fix
     status: done
