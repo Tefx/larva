@@ -26,8 +26,6 @@ _SPEC_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 @post(lambda result: isinstance(result, bool))
 def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
     """Return True when spec can be encoded as canonical JSON."""
-    if type(spec) is not dict:
-        return False
     try:
         spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
         json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
@@ -49,11 +47,8 @@ def _compute_spec_digest(spec: dict[str, object]) -> str:
     Returns:
         `sha256:<hex>` SHA-256 digest string.
     """
-    spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"} if type(spec) is dict else {}
-    try:
-        canonical_json = json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
-    except (TypeError, ValueError):
-        canonical_json = "{}"
+    spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
     digest_hex = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
     return f"sha256:{digest_hex}"
 

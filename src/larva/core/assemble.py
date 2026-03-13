@@ -77,7 +77,7 @@ def _safe_items(mapping: Mapping[Any, Any]) -> list[tuple[Any, Any]]:
     >>> _safe_items({})
     []
     """
-    if type(mapping) is not dict:
+    if not isinstance(mapping, dict):
         return []
     try:
         return list(mapping.items())
