@@ -7721,7 +7721,7 @@ phases:
       existing file-size/complexity warnings remain tech debt.'
   - id: shell_cli.shell-cli-verify-fix-batch
     name: shell-cli-verify-fix-batch
-    status: pending
+    status: claimed
     description: 'Fix ALL findings from `shell_cli.shell-cli-verify` in one batched
       remediation loop.
 
@@ -7905,6 +7905,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-verify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T06:22:35.531943+00:00'
   - id: shell_cli.shell-cli-verify-retest
     name: shell-cli-verify-retest
     status: pending
