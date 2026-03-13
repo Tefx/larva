@@ -8464,7 +8464,7 @@ phases:
       file_size) remain non-blocking.'
   - id: shell_cli.shell-cli-gate-retest
     name: shell-cli-gate-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
       remediation from `shell_cli.shell-cli-gate-fix-batch` and verify that ALL blocker
       and should-fix findings from `shell_cli.shell-cli-gate` are resolved together
@@ -8618,6 +8618,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-gate-fix-batch
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-13T07:47:31.160684+00:00'
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
