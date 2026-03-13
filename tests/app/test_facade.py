@@ -529,6 +529,27 @@ class TestFacadeList:
             {"id": "beta", "spec_digest": "sha256:b", "model": "gpt-4o-mini"},
         ]
 
+    def test_list_returns_exactly_empty_list_for_empty_registry(self) -> None:
+        """Verify empty registry returns exactly [] not wrapped in transport envelope."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.list()
+
+        assert isinstance(result, Success)
+        # Explicit assertion: returns exactly [] (empty list, not None, not wrapped)
+        assert result.unwrap() == []
+        # Ensure it's a list type, not any other shape
+        assert isinstance(result.unwrap(), list)
+        assert len(result.unwrap()) == 0
+        # No transport envelope leakage - plain Result with plain list
+        assert result.unwrap() is not None
+        # Verify no null/None values leak into the result structure
+        assert result.unwrap() != [None]
+        assert result.unwrap() != [{"error": None}]
+        assert result.unwrap() != {"data": [], "error": None}
+        assert result.unwrap() != {"items": [], "total": 0}
+
     def test_list_maps_registry_read_failures_to_app_error_without_success(self) -> None:
         registry = InMemoryRegistryStore(
             list_result=Failure(
