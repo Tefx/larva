@@ -13218,3 +13218,99 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_freeze
     agent: blind-tester
+  - id: shell_mcp_runtime.gate
+    name: gate
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `shell_mcp_runtime` phase restores the runnable MCP server surface promised
+      by the docs.
+
+
+      step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - This phase repairs a known handler-only vs runtime-surface planning gap
+
+      - It touches transport/runtime/entrypoint boundaries and package wiring
+
+      - It requires cross-cutting review of startup, transport cleanliness, and lifecycle
+      evidence
+
+
+      cross_cutting_focus:
+
+      - actual runtime startup path, not handler-only completion
+
+      - stdio transport cleanliness on stdout/stderr
+
+      - lifecycle/shutdown behavior
+
+      - absence of business-logic duplication outside `MCPHandlers`
+
+      - explicit `SSE` deferral rationale preserved in plan evidence
+
+
+      You are the quality gate. Block progress if runnable-surface evidence is missing
+      or if the implementation still delivers only handlers without a real server
+      process.'
+    verification: '- All phase steps completed successfully
+
+      - Freeze evidence present and verification evidence is specific and replayable
+
+      - Runnable-surface evidence identifies the real entrypoint / startup path
+
+      - At least one documented MCP request reaches the real runtime path end-to-end
+
+      - stdio transport semantics are proven on real process I/O
+
+      - shutdown/lifecycle behavior is evidenced
+
+      - No business-logic duplication exists beyond `MCPHandlers`
+
+      - `SSE` deferral is explicit and not silently erased from the documented product
+      surface'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent of phase implementation)
+
+      **Phase**: shell_mcp_runtime
+
+
+      ### Runnable Surface Checklist
+
+      - [ ] Canonical runtime entrypoint identified
+
+      - [ ] Exact launch command present
+
+      - [ ] Real stdio startup proven
+
+      - [ ] One documented MCP request reaches runtime end-to-end
+
+      - [ ] Shutdown/lifecycle proof present
+
+      - [ ] No duplicate tool/business logic outside `MCPHandlers`
+
+      - [ ] `SSE` explicitly deferred, not silently narrowed away
+
+
+      ### Issues Identified
+
+      | Severity | Description | Related Step | Blocking? |
+
+      |----------|-------------|--------------|-----------|
+
+      | blocker | <issue> | <step> | YES |
+
+      | should_fix | <issue> | <step> | NO |
+
+      '
+    depends_on:
+    - shell_mcp_runtime.runtime_verify_stdio
+    - shell_mcp_runtime.runtime_blackbox_proof
+    agent: gate-reviewer
