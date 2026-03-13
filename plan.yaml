@@ -7288,6 +7288,7 @@ phases:
     - shell_cli.shell-cli-verify
     - shell_cli.shell-cli-seam-proof
     - shell_cli.shell-cli-freeze
+    - shell_cli.shell-cli-verify-retest
     agent: gate-reviewer
   - id: shell_cli.shell-cli-component-tests
     name: shell-cli-component-tests
