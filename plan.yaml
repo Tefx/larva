@@ -7573,7 +7573,7 @@ phases:
       - Explicit statement recorded: no code changes until shell_cli gate completes.'
   - id: shell_cli.shell-cli-gate
     name: shell-cli-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_cli` phase meets the quality bar for proceeding to downstream review
       or integration work.
@@ -7646,6 +7646,8 @@ phases:
     - shell_cli.shell-cli-freeze
     - shell_cli.shell-cli-verify-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T06:43:21.332160+00:00'
   - id: shell_cli.shell-cli-component-tests
     name: shell-cli-component-tests
     status: done
