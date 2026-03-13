@@ -6369,6 +6369,7 @@ phases:
     - shell_python_api.shell-python-api-verify
     - shell_python_api.shell-python-api-seam-proof
     - shell_python_api.shell-python-api-freeze
+    - shell_python_api.shell-python-api-verify-retest
     agent: gate-reviewer
   - id: shell_python_api.shell-python-api-verify-fix
     name: shell-python-api-verify-fix
