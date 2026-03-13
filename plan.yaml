@@ -16628,7 +16628,7 @@ phases:
       resolved without code-scope expansion.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-6
     name: guard-full-core-crosshair-retest-6
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the sixth-loop batched remediation for the narrowed
       assemble+normalize residual family.
@@ -16726,6 +16726,47 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T21:21:03.376869+00:00'
+    done_at: '2026-03-13T21:28:14.933573+00:00'
+    evidence: 'Verification:
+
+      - Guard run (from independent verifier) failed with `crosshair.status=counterexample_found`
+      and failed files limited to `src/larva/core/assemble.py` + `src/larva/core/normalize.py`.
+
+      - Focused core pytest passed: `65 passed`.
+
+
+      Files changed:
+
+      - none (verification-only)
+
+
+      Commit hash(es):
+
+      - none (verification-only)
+
+
+      Spec link:
+
+      - Retest proved BOTH narrowed blockers were not yet cleared together; already-green
+      families were not reopened.
+
+
+      Gaps/Notes:
+
+      - Blocker family remains limited to assemble+normalize.
+
+      - Following user policy update, remaining incomplete steps were mutated to use
+      `uv run invar guard --all` (no `uvx` for future runs).
+
+      - Anti-rework protocol applied: planner created one new batched fix + one retest
+      chain (`...fix-7`, `...retest-7`) instead of per-file loops.
+
+
+      Detected issues (batched):
+
+      - blocker: CrossHair residual persists for `src/larva/core/assemble.py`
+
+      - blocker: CrossHair residual persists for `src/larva/core/normalize.py`'
   - id: followup_guard_full.guard-full-core-crosshair-fix-7
     name: guard-full-core-crosshair-fix-7
     status: pending
