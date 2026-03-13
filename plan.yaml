@@ -15856,7 +15856,7 @@ phases:
       - Worktree branch squash-merged (nothing to squash), then cleaned up.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-4
     name: guard-full-core-crosshair-retest-4
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the fourth-loop narrowed CrossHair remediation.
 
@@ -16002,3 +16002,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-fix-4
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T20:17:16.845450+00:00'
