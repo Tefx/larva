@@ -12926,3 +12926,66 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_tests_stdio
     agent: python-executor
+  - id: shell_mcp_runtime.runtime_implement_entrypoint
+    name: runtime_implement_entrypoint
+    status: pending
+    description: 'Integrate the runnable stdio MCP runtime into the package entrypoint
+      surface using a dedicated launch path.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      tags:
+
+      - integration
+
+
+      spec_refs:
+
+      - pyproject.toml :: current `larva = \"larva.shell.cli:main\"` entrypoint
+
+      - ARCHITECTURE.md :: `shell/cli` and `shell/mcp` must not depend on each other
+
+      - README.md / INTERFACES.md :: runnable MCP server surface
+
+
+      Touch paths:
+
+      - pyproject.toml
+
+      - src/larva/shell/mcp_runtime.py
+
+      - tests/shell/test_mcp_runtime.py
+
+
+      Acceptance criteria:
+
+      - add one canonical MCP runtime launch path, expected to be a dedicated console
+      entrypoint such as `larva-mcp`
+
+      - keep the existing CLI entrypoint intact and avoid routing runtime startup
+      through `larva.shell.cli:main`
+
+      - align test and seam-proof commands with the same canonical runtime launch
+      path
+
+      - preserve `stdio`-first rationale and explicit `SSE` deferral in adjacent runtime
+      text where needed
+
+
+      Conflict rationale:
+
+      - `pyproject.toml` is a shared registry/wiring file and must be touched in a
+      single serial integration step after runtime internals stabilize'
+    verification: '- A dedicated MCP runtime launch path exists and is exercised by
+      tests using the real packaging/module entrypoint
+
+      - Existing `larva = larva.shell.cli:main` CLI entrypoint remains unchanged
+
+      - The runtime entrypoint does not route through CLI code and starts the stdio
+      server directly'
+    depends_on:
+    - shell_mcp_runtime.runtime_implement_stdio_adapter
+    agent: python-executor
