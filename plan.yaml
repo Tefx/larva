@@ -4629,7 +4629,7 @@ phases:
       complemented by live seam checks (this step now provides that proof).'
   - id: app_facade.app-facade-freeze
     name: app-facade-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.app.facade` snapshot before gate review.
 
 
@@ -4666,6 +4666,35 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T02:26:00.067855+00:00'
+    done_at: '2026-03-13T02:27:57.635020+00:00'
+    evidence: 'Artifact:
+
+      - PR: 4882706f0f951f35615590768d053310376036fb
+
+
+      Verification:
+
+      - Run: `git rev-parse HEAD` -> `4882706f0f951f35615590768d053310376036fb`
+
+      - Run: `git status` -> clean working tree on `vectl/step-app_facade.app-facade-freeze`
+
+      - Run: `pwd && uname -s && uname -m && date -u +"%Y-%m-%dT%H:%M:%SZ"` -> isolated
+      freeze worktree path; `Darwin`; `arm64`; timestamped environment declaration
+
+      - Explicit statement recorded: no code changes are allowed until `app_facade.app-facade-gate`
+      completes.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: Error Boundary Model / App
+
+      - ARCHITECTURE.md :: Implementation Handoff / Suggested Build Order
+
+
+      Gaps/Notes:
+
+      - Read-only freeze verification only; no files modified.'
   - id: app_facade.app-facade-gate
     name: app-facade-gate
     status: pending
