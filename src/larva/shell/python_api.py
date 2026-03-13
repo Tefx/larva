@@ -1,4 +1,4 @@
-"""Contract-only Python API module for larva.
+"""Thin delegation Python API module for larva.
 
 This module defines the public Python interface for larva use-cases:
 - validate(spec)
@@ -30,27 +30,86 @@ from __future__ import annotations
 
 from typing import Any, TypedDict, cast
 
-# Note: Actual Result type from returns library - imported here to make contract explicit
-# from returns.result import Result  # Deferred: no I/O in contract-only module
+from returns.result import Failure, Result, Success
 
 # Import contract types from core modules
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 
-# Import app-layer types (these are contract-only TypedDicts)
-from larva.app.facade import AssembleRequest, LarvaError, PersonaSummary, RegisteredPersona
+# Import app-layer types and facade
+from larva.app.facade import (
+    AssembleRequest,
+    DefaultLarvaFacade,
+    LarvaError,
+    PersonaSummary,
+    RegisteredPersona,
+)
+
+# Import shell modules for facade construction
+from larva.shell.components import ComponentStore, FilesystemComponentStore
+from larva.shell.registry import FileSystemRegistryStore, RegistryStore
 
 
 # -----------------------------------------------------------------------------
-# Public API Contracts
+# Lazy Facade Initialization
 # -----------------------------------------------------------------------------
-# These are thin signatures that delegate to app.facade.LarvaFacade.
-# Actual implementation is deferred until needed.
+# The facade is lazily initialized on first use to avoid circular imports
+# and to defer I/O until the Python API is actually called.
 
 
-# @invar:allow shell_result: contract-only stub; delegation deferred to implementation
-# @invar:allow dead_param: contract-only stub; parameters documented for API contract
-# @shell_orchestration: contract-only stub; I/O via facade delegation at runtime
+_facade: DefaultLarvaFacade | None = None
+
+
+# @invar:allow shell_result: lazy initialization is internal helper returning facade instance
+# @shell_orchestration: facade construction is app-level orchestration, not core logic
+def _get_facade() -> DefaultLarvaFacade:
+    """Lazily initialize and return the default facade instance."""
+    global _facade
+    if _facade is None:
+        _facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=FilesystemComponentStore(),
+            registry=FileSystemRegistryStore(),
+        )
+    return _facade
+
+
+def _unwrap_result(result: Result[object, LarvaError]) -> object:
+    """Unwrap a Result, raising on failure without Python-API-specific mutation."""
+    if isinstance(result, Failure):
+        error = result.failure()
+        # Re-raise as a generic exception for failure passthrough
+        # The facade already provides all error details in the LarvaError
+        raise LarvaApiError(error)
+    return result.unwrap()
+
+
+class LarvaApiError(Exception):
+    """Exception raised when facade operations fail.
+
+    This provides failure passthrough from facade to python_api caller
+    without Python-API-specific mutation.
+    """
+
+    def __init__(self, error: LarvaError) -> None:
+        self.error = error
+        super().__init__(error["message"])
+
+
+# -----------------------------------------------------------------------------
+# Thin Delegation Implementation
+# -----------------------------------------------------------------------------
+
+
+# @invar:allow shell_result: facade.validate returns ValidationReport directly (not Result)
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def validate(spec: PersonaSpec) -> ValidationReport:
     """Validate a PersonaSpec candidate.
 
@@ -71,9 +130,7 @@ def validate(spec: PersonaSpec) -> ValidationReport:
         result = validate({"id": "test", "spec_version": "0.1.0"})
         assert result["valid"] is True
     """
-    # Contract-only stub: actual delegation deferred to implementation
-    # Implementation pattern: facade.validate(spec)
-    raise NotImplementedError("python_api contract-only: delegation deferred to implementation")
+    return _get_facade().validate(spec)
 
 
 # @invar:allow shell_result: contract-only stub; delegation deferred to implementation
@@ -116,11 +173,23 @@ def assemble(
         spec = assemble("code-reviewer", prompts=["code-reviewer"])
         assert spec["spec_version"] == "0.1.0"
     """
-    # Contract-only stub: actual delegation deferred to implementation
-    # Implementation pattern:
-    #   request: AssembleRequest = {...}
-    #   return facade.assemble(request).unwrap()
-    raise NotImplementedError("python_api contract-only: delegation deferred to implementation")
+    # Build request dict, omitting None values for optional fields
+    request: dict[str, object] = {"id": id}
+    if prompts is not None:
+        request["prompts"] = prompts
+    if toolsets is not None:
+        request["toolsets"] = toolsets
+    if constraints is not None:
+        request["constraints"] = constraints
+    if model is not None:
+        request["model"] = model
+    if overrides is not None:
+        request["overrides"] = overrides
+    if variables is not None:
+        request["variables"] = variables
+    return cast(
+        "PersonaSpec", _unwrap_result(_get_facade().assemble(cast("AssembleRequest", request)))
+    )
 
 
 # @invar:allow shell_result: contract-only stub; delegation deferred to implementation
@@ -148,9 +217,7 @@ def register(spec: PersonaSpec) -> RegisteredPersona:
         result = register({"id": "code-reviewer", "spec_version": "0.1.0"})
         assert result["registered"] is True
     """
-    # Contract-only stub: actual delegation deferred to implementation
-    # Implementation pattern: facade.register(spec).unwrap()
-    raise NotImplementedError("python_api contract-only: delegation deferred to implementation")
+    return cast("RegisteredPersona", _unwrap_result(_get_facade().register(spec)))
 
 
 # @invar:allow shell_result: contract-only stub; delegation deferred to implementation
@@ -165,6 +232,7 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
     Args:
         id: Unique identifier of the registered persona.
         overrides: Optional runtime overrides to apply before returning.
+            Explicit overrides (including null/falsey values) are forwarded intact.
 
     Returns:
         Resolved, validated, and normalized PersonaSpec.
@@ -172,7 +240,7 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
     Contract:
         - Delegates to app.facade for orchestration
         - Looks up via shell.registry
-        - Applies overrides if provided
+        - Applies overrides if provided (preserves null/falsey values)
         - Revalidates via core.validate (after override)
         - Renormalizes via core.normalize (after override)
         - ARCHITECTURE.md: override revalidation is mandatory
@@ -182,9 +250,7 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
         assert spec["id"] == "code-reviewer"
         spec = resolve("code-reviewer", {"model": "claude-opus-4-20250514"})
     """
-    # Contract-only stub: actual delegation deferred to implementation
-    # Implementation pattern: facade.resolve(id, overrides).unwrap()
-    raise NotImplementedError("python_api contract-only: delegation deferred to implementation")
+    return cast("PersonaSpec", _unwrap_result(_get_facade().resolve(id, overrides)))
 
 
 # @invar:allow shell_result: contract-only stub; delegation deferred to implementation
@@ -208,9 +274,7 @@ def list() -> list[PersonaSummary]:
         personas = list()
         assert len(personas) >= 0
     """
-    # Contract-only stub: actual delegation deferred to implementation
-    # Implementation pattern: facade.list().unwrap()
-    raise NotImplementedError("python_api contract-only: delegation deferred to implementation")
+    return cast("list[PersonaSummary]", _unwrap_result(_get_facade().list()))
 
 
 # -----------------------------------------------------------------------------
@@ -230,4 +294,6 @@ __all__ = [
     "RegisteredPersona",
     "PersonaSummary",
     "LarvaError",
+    # Exception for failure passthrough
+    "LarvaApiError",
 ]
