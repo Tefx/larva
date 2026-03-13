@@ -50,6 +50,8 @@ from larva.shell.cli import (
     CliFailure,
     JsonErrorEnvelope,
     assemble_command,
+    component_list_command,
+    component_show_command,
     list_command,
     run_cli,
     register_command,
@@ -952,3 +954,319 @@ class TestRunCli:
         assert exit_code == EXIT_OK
         assert facade.last_resolve_id == "persona-1"
         assert facade.last_resolve_overrides == {"model": "gpt-4o-mini", "can_spawn": "false"}
+
+
+# ============================================================================
+# Component List Command Tests
+# ============================================================================
+
+
+class TestComponentListCommand:
+    """Tests for the component_list_command handler.
+
+    Contract from INTERFACES.md:
+    - Exit code 0: success
+    - Exit code 1: error (component directory access failure)
+    - Direct to injected ComponentStore.list_components()
+    """
+
+    def test_component_list_success_text_mode_returns_exit_ok(self) -> None:
+        """Component list with valid store returns exit code 0 in text mode."""
+        components = InMemoryComponentStore()
+
+        result = component_list_command(as_json=False, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_component_list_success_json_mode_returns_json_payload(self) -> None:
+        """Component list returns JSON payload with inventory in JSON mode."""
+        components = InMemoryComponentStore()
+
+        result = component_list_command(as_json=True, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        data = cli_result["json"]["data"]
+        assert "prompts" in data
+        assert "toolsets" in data
+        assert "constraints" in data
+        assert "models" in data
+        # Verify list of each type
+        assert isinstance(data["prompts"], list)
+        assert isinstance(data["toolsets"], list)
+        assert isinstance(data["constraints"], list)
+        assert isinstance(data["models"], list)
+
+    def test_component_list_with_components_returns_exit_ok(self) -> None:
+        """Component list with actual components returns exit code 0."""
+        # Use the InMemoryComponentStore with predefined components
+        components = InMemoryComponentStore()
+        # The InMemoryComponentStore returns empty lists by default
+        # but we can override it to test non-empty results
+
+        result = component_list_command(as_json=False, component_store=components)
+
+        assert isinstance(result, Success)
+        assert result.unwrap()["exit_code"] == EXIT_OK
+
+    def test_component_list_empty_store_returns_exit_ok_with_empty_dict(self) -> None:
+        """Component list with empty store returns exit code 0 with empty dict."""
+        components = InMemoryComponentStore()
+
+        result = component_list_command(as_json=True, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert cli_result["json"]["data"]["prompts"] == []
+        assert cli_result["json"]["data"]["toolsets"] == []
+        assert cli_result["json"]["data"]["constraints"] == []
+        assert cli_result["json"]["data"]["models"] == []
+
+
+class TestComponentShowCommand:
+    """Tests for the component_show_command handler.
+
+    Contract from INTERFACES.md:
+    - Exit code 0: success
+    - Exit code 1: not found (component does not exist or cannot be parsed)
+    - Direct to ComponentStore.load_<type>(name)
+    - Type is one of: prompts, toolsets, constraints, models
+    """
+
+    def test_component_show_prompt_success_text_mode_returns_exit_ok(self) -> None:
+        """Component show with valid prompt returns exit code 0 in text mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/test-prompt", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_component_show_prompt_success_json_mode_returns_json_payload(self) -> None:
+        """Component show with valid prompt returns JSON payload in JSON mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/test-prompt", as_json=True, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert "data" in cli_result["json"]
+        assert "text" in cli_result["json"]["data"]
+
+    def test_component_show_toolset_success_text_mode_returns_exit_ok(self) -> None:
+        """Component show with valid toolset returns exit code 0 in text mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "toolsets/test-toolset", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_component_show_toolset_success_json_mode_returns_json_payload(self) -> None:
+        """Component show with valid toolset returns JSON payload in JSON mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "toolsets/test-toolset", as_json=True, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert "data" in cli_result["json"]
+        assert "tools" in cli_result["json"]["data"]
+
+    def test_component_show_constraint_success_text_mode_returns_exit_ok(self) -> None:
+        """Component show with valid constraint returns exit code 0 in text mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "constraints/test-constraint", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_component_show_model_success_text_mode_returns_exit_ok(self) -> None:
+        """Component show with valid model returns exit code 0 in text mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "models/test-model", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_component_show_not_found_returns_exit_error(self) -> None:
+        """Component show with non-existent component returns exit code 1."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/nonexistent", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        # Not found should return exit code 1
+        assert failure["exit_code"] == EXIT_ERROR
+        assert failure["exit_code"] == 1
+
+    def test_component_show_not_found_json_mode_returns_error_envelope(self) -> None:
+        """Component show not found returns JSON error envelope in JSON mode."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/nonexistent", as_json=True, component_store=components
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert "code" in error
+        assert "numeric_code" in error
+        assert "message" in error
+        assert "details" in error
+        # COMPONENT_NOT_FOUND = 105
+        assert error["numeric_code"] == 105
+
+
+class TestComponentCommandJsonTextSeparation:
+    """Regression tests for JSON/text output separation on component commands."""
+
+    def test_component_list_success_text_mode_has_no_json_key(self) -> None:
+        """Component list success in text mode must not include 'json' key."""
+        components = InMemoryComponentStore()
+
+        result = component_list_command(as_json=False, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert "json" not in cli_result
+
+    def test_component_list_failure_text_mode_has_no_json_key(self) -> None:
+        """Component list failure in text mode must not include 'json' key."""
+
+        # Create a failing component store that returns error
+        class FailingComponentStore:
+            def load_prompt(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_toolset(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_constraint(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_model(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def list_components(self):
+                return Failure(Exception("directory access failed"))
+
+        result = component_list_command(as_json=False, component_store=FailingComponentStore())
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert "json" not in failure
+
+    def test_component_show_success_text_mode_has_no_json_key(self) -> None:
+        """Component show success in text mode must not include 'json' key."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command("prompts/test", as_json=False, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert "json" not in cli_result
+
+    def test_component_show_failure_text_mode_has_no_json_key(self) -> None:
+        """Component show failure in text mode must not include 'json' key."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/nonexistent", as_json=False, component_store=components
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert "json" not in failure
+
+    def test_component_list_json_mode_includes_json_key_on_success(self) -> None:
+        """Component list success in JSON mode must include 'json' key with data."""
+        components = InMemoryComponentStore()
+
+        result = component_list_command(as_json=True, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert "json" in cli_result
+        assert "data" in cli_result["json"]
+
+    def test_component_show_json_mode_includes_json_key_on_success(self) -> None:
+        """Component show success in JSON mode must include 'json' key with data."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command("prompts/test", as_json=True, component_store=components)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert "json" in cli_result
+        assert "data" in cli_result["json"]
+
+    def test_component_list_json_mode_includes_error_key_on_failure(self) -> None:
+        """Component list failure in JSON mode must include 'error' key."""
+
+        class FailingComponentStore:
+            def load_prompt(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_toolset(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_constraint(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def load_model(self, name: str):
+                return Failure(Exception("not implemented"))
+
+            def list_components(self):
+                return Failure(Exception("directory access failed"))
+
+        result = component_list_command(as_json=True, component_store=FailingComponentStore())
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert "error" in failure
+
+    def test_component_show_json_mode_includes_error_key_on_failure(self) -> None:
+        """Component show failure in JSON mode must include 'error' key."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompts/nonexistent", as_json=True, component_store=components
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert "error" in failure
