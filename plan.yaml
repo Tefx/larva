@@ -13000,7 +13000,7 @@ phases:
       fix loop.'
   - id: followup_validate_warnings.fix-gate-blockers
     name: fix-gate-blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by `followup_validate_warnings.gate`.
 
 
@@ -13160,6 +13160,8 @@ phases:
     - followup_validate_warnings.warning-verify
     - followup_validate_warnings.freeze
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T18:27:24.058730+00:00'
   - id: followup_validate_warnings.retest-gate-blockers
     name: retest-gate-blockers
     status: pending
