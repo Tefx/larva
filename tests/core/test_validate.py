@@ -199,3 +199,127 @@ class TestValidationReportShapes:
         assert len(report["warnings"]) == 1
         # Warnings are now list[str], not list[ValidationWarning]
         assert isinstance(report["warnings"][0], str)
+
+
+class TestUnusedVariablesWarning:
+    """Test UNUSED_VARIABLES warning contract from INTERFACES.md.
+
+    Authoritative warning semantics for v1:
+    - `warnings` is reserved for the deterministic `UNUSED_VARIABLES` family.
+    - Emit a warning when `spec.variables` provides one or more keys that are not
+      referenced by any `{name}` placeholder in `spec.prompt`.
+    - Warning strings use this canonical format:
+      `UNUSED_VARIABLES: supplied variables are not referenced by prompt: <sorted comma-separated keys>`.
+    - Missing variables remain validation errors via `VARIABLE_UNRESOLVED`; they are
+      not warnings.
+    """
+
+    def test_unused_variables_produces_warning(self):
+        """validate_spec should emit UNUSED_VARIABLES warning when variables are not used."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "You are a helpful assistant.",  # No variables used
+                "variables": {"role": "assistant", "project": "demo"},
+            }
+        )
+        # Spec is valid (no errors), but has warnings
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert len(report["warnings"]) == 1
+
+    def test_unused_variables_warning_format(self):
+        """UNUSED_VARIABLES warning should use canonical format with sorted keys."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "Hello.",  # No variables used
+                "variables": {"zebra": "a", "apple": "b", "mango": "c"},
+            }
+        )
+        warning = report["warnings"][0]
+        # Should start with the canonical prefix
+        assert warning.startswith(
+            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
+        )
+        # Keys should be sorted (alphabetically)
+        assert "apple, mango, zebra" in warning
+
+    def test_multiple_unused_variables_sorted(self):
+        """Multiple unused variables should appear in sorted order in warning."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "Hello.",  # No variables used
+                "variables": {"z": "1", "a": "2", "m": "3"},
+            }
+        )
+        warning = report["warnings"][0]
+        # Sorted order: a, m, z
+        assert "a, m, z" in warning
+
+    def test_unused_variables_with_used_variables(self):
+        """Should emit warning for unused variables even when some are used."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "You are {role}.",  # 'role' is used
+                "variables": {"role": "assistant", "unused_key": "value"},
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert len(report["warnings"]) == 1
+        assert "unused_key" in report["warnings"][0]
+        assert "role" not in report["warnings"][0]  # role is used, not unused
+
+    def test_unused_variables_with_unresolved_variables(self):
+        """Should have both VARIABLE_UNRESOLVED error and UNUSED_VARIABLES warning."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "You are {role} talking to {target}.",  # target is unresolved
+                "variables": {
+                    "role": "assistant",
+                    "unused": "value",
+                },  # unused is provided but not referenced
+            }
+        )
+        # Should have error for unresolved variable
+        assert report["valid"] is False
+        assert len(report["errors"]) == 1
+        assert report["errors"][0]["code"] == "VARIABLE_UNRESOLVED"
+        # Should have warning for unused variable
+        assert len(report["warnings"]) == 1
+        assert "UNUSED_VARIABLES" in report["warnings"][0]
+        assert "unused" in report["warnings"][0]
+
+    def test_empty_variables_no_warning(self):
+        """Empty variables dict should not produce warnings."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "Hello.",
+                "variables": {},
+            }
+        )
+        assert report["valid"] is True
+        assert report["warnings"] == []
+
+    def test_no_variables_key_no_warning(self):
+        """Missing variables key should not produce warnings."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "prompt": "Hello.",
+            }
+        )
+        assert report["valid"] is True
+        assert report["warnings"] == []
