@@ -6995,7 +6995,7 @@ phases:
       business logic, no transport runtime implementation.'
   - id: shell_mcp.shell-mcp-tests
     name: shell-mcp-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for `larva.shell.mcp` in `tests/shell/test_mcp.py`.
 
 
@@ -7074,6 +7074,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T04:09:24.060772+00:00'
+    done_at: '2026-03-13T04:15:53.914846+00:00'
+    evidence: "Commit hash(es):\n- 808b7f33b647f333e00e79a92e536339547b96a4\n- squash\
+      \ merged to main as commit 1583751\n\nFiles changed:\n- tests/shell/test_mcp.py\n\
+      \nVerification:\n- Commands run:\n  - `uv run pytest tests/shell/test_mcp.py\
+      \ -v --tb=short`\n  - `uv run pytest tests/ -v --tb=short`\n- Key outputs/results:\n\
+      \  - MCP test module: 35 passed.\n  - Full test suite run in worker context:\
+      \ 171 passed.\n  - Coverage includes all five MCP tools and success/error envelope\
+      \ shape checks.\n  - Regression coverage includes falsey override forwarding,\
+      \ register failure passthrough, assemble conflict/missing code preservation,\
+      \ and malformed parameter rejection.\n\nSpec link:\n- INTERFACES.md A + G\n\
+      - ARCHITECTURE.md `larva.shell.mcp`\n- README MCP interface\n\nGaps/Notes:\n\
+      - Scope held to `larva.shell.mcp` adapter contract tests with facade doubles/harness\
+      \ behavior; no facade internals reimplementation."
   - id: shell_mcp.shell-mcp-implement
     name: shell-mcp-implement
     status: pending
