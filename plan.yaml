@@ -12590,3 +12590,6 @@ phases:
 - id: followup_validate_warnings
   name: Follow-up Validate Warnings
   status: pending
+- id: followup_surface_hygiene
+  name: Follow-up Surface Hygiene
+  status: pending
