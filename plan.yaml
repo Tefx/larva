@@ -5875,7 +5875,7 @@ phases:
   steps:
   - id: shell_python_api.shell-python-api-contract
     name: shell-python-api-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.shell.python_api` module at `src/larva/shell/python_api.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\nagent_source: default\n\nScope:\n\
@@ -5906,6 +5906,44 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T03:52:59.784807+00:00'
+    done_at: '2026-03-13T04:08:38.579120+00:00'
+    evidence: 'Artifact:
+
+      - worktree branch commits: ca2cc1d, f7ccfb0, 60e33c8
+
+      - squash merged to main as commit 8bb879f
+
+
+      Verification:
+
+      - Run: `python3 -m py_compile src/larva/shell/python_api.py` -> Syntax OK.
+
+      - Run: `uvx invar-tools guard` (in worktree after repair) -> passed, 0 errors,
+      0 warnings.
+
+      - Run: `git diff HEAD~1 --name-only` (in worktree) -> only `src/larva/shell/python_api.py`
+      changed in final repair commit.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: `larva.shell.python_api` + Decision 3 (thin facade export)
+
+      - README.md :: Python library interface
+
+
+      Gaps/Notes:
+
+      - Contract-only module delivered with signatures/type defs/stubs for validate/assemble/register/resolve/list.
+
+      - Doctest-executing snippets were converted to non-executing examples to keep
+      contract stubs non-runnable.
+
+      - No filesystem I/O, no registry/component implementation logic, no package
+      export wiring changes.
+
+      - Scope violation from an intermediate attempt (plan.yaml change) was repaired
+      before merge; final merged content excludes plan.yaml changes.'
   - id: shell_python_api.shell-python-api-tests
     name: shell-python-api-tests
     status: pending
