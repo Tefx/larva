@@ -7140,7 +7140,7 @@ phases:
     agent: gate-reviewer
   - id: shell_cli.shell-cli-component-tests
     name: shell-cli-component-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for the component-read subcommands of
       `larva.shell.cli` in `tests/shell/test_cli.py`.
 
@@ -7209,6 +7209,31 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T05:14:00.936643+00:00'
+    done_at: '2026-03-13T05:33:28.401693+00:00'
+    evidence: 'Commit hash(es): 404e2c5 (worktree), squashed to main as c4a782b
+
+      Files changed: tests/shell/test_cli.py
+
+      Verification:
+
+      - uv run pytest tests/shell/test_cli.py -k "ComponentListCommand or ComponentShowCommand
+      or ComponentCommandJsonTextSeparation" -v --collect-only -> collected 20 tests
+      (4 list + 8 show + 8 json/text separation regressions)
+
+      Spec link:
+
+      - INTERFACES.md B (CLI interface)
+
+      - INTERFACES.md G (error codes/error response)
+
+      - ARCHITECTURE.md module larva.shell.cli + component seam boundary
+
+      Gaps/Notes:
+
+      - Contract-driven tests added only for component read commands; no implementation
+      changes.
+
+      - discovered_issues: none'
   - id: shell_cli.shell-cli-component-implement
     name: shell-cli-component-implement
     status: pending
