@@ -12737,3 +12737,84 @@ phases:
     depends_on:
     - shell_mcp_runtime.transport_scope
     agent: python-senior
+  - id: shell_mcp_runtime.runtime_tests_stdio
+    name: runtime_tests_stdio
+    status: pending
+    description: 'Add contract-driven tests and harness coverage for the runnable
+      stdio MCP runtime before implementation.
+
+
+      step_type: test
+
+      agent_source: default
+
+      tags:
+
+      - integration
+
+
+      spec_refs:
+
+      - README.md :: Interfaces / MCP Server (primary)
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - src/larva/shell/mcp.py :: handler layer already complete
+
+
+      Touch paths:
+
+      - tests/shell/test_mcp_runtime.py
+
+      - tests/shell/test_mcp.py
+
+
+      Harness refs:
+
+      - existing facade doubles in `tests/shell/test_mcp.py`
+
+      - new subprocess stdio runtime harness for end-to-end request/response proof
+
+
+      Required coverage:
+
+      - launch the canonical runtime entrypoint in a child process
+
+      - prove the runtime advertises the documented larva MCP tool set
+
+      - send at least one real MCP request across stdio and assert the response path
+      reaches the handler/facade layer
+
+      - verify stdout remains protocol-clean and stderr does not corrupt transport
+      output
+
+      - verify shutdown on EOF or terminate without hanging the process
+
+      - assert runtime wiring reuses `MCPHandlers` rather than reimplementing tool
+      behavior
+
+
+      Conflict rationale:
+
+      - Tests must land before implementation and define the one accepted runtime
+      startup path
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Unit-only coverage that never starts a real runtime process
+
+      2. Handler-only testing that bypasses the stdio transport path
+
+      3. Runtime code that redefines tool behavior outside `MCPHandlers`'
+    verification: '- Focused runtime tests exist for stdio startup, one real request
+      through the runtime path, transport-clean stdout behavior, and shutdown/lifecycle
+      behavior
+
+      - Tests use the canonical runtime entrypoint rather than direct handler calls
+
+      - Test fixtures prove the runtime delegates through `MCPHandlers` instead of
+      duplicating business logic'
+    depends_on:
+    - shell_mcp_runtime.runtime_contract
+    agent: python-executor
