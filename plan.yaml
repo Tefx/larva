@@ -6417,6 +6417,7 @@ phases:
     - shell_python_api.shell-python-api-seam-proof
     - shell_python_api.shell-python-api-freeze
     - shell_python_api.shell-python-api-verify-retest
+    - shell_python_api.shell-python-api-gate-retest
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T06:03:50.981508+00:00'
