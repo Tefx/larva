@@ -5946,7 +5946,7 @@ phases:
       before merge; final merged content excludes plan.yaml changes.'
   - id: shell_python_api.shell-python-api-tests
     name: shell-python-api-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.shell.python_api` in `tests/shell/test_python_api.py`.
 
 
@@ -6025,6 +6025,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T04:09:35.269560+00:00'
   - id: shell_python_api.shell-python-api-implement
     name: shell-python-api-implement
     status: pending
