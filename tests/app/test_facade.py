@@ -11,14 +11,18 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
 from larva.core.assemble import AssemblyError
+from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
-from larva.shell.components import ComponentStoreError
+from larva.core import validate as validate_module
+from larva.shell.components import ComponentStoreError, FilesystemComponentStore
+from larva.shell.registry import FileSystemRegistryStore
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -107,6 +111,19 @@ class RaisingAssembleModule:
             code="COMPONENT_CONFLICT",
             message="Multiple sources provide different values for 'side_effect_policy'",
             details={"field": "side_effect_policy"},
+        )
+
+
+@dataclass
+class RaisingUnknownCodeAssembleModule:
+    calls: list[str]
+
+    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
+        self.calls.append("assemble")
+        raise AssemblyError(
+            code="UNMAPPED_ASSEMBLY_ERROR",
+            message="unmapped assembly failure",
+            details={"field": "model"},
         )
 
 
@@ -289,6 +306,28 @@ class TestFacadeAssemble:
         assert error["details"]["field"] == "side_effect_policy"
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
+
+    def test_assemble_unknown_error_code_falls_back_to_internal_numeric_code(self) -> None:
+        calls: list[str] = []
+        assemble_module = RaisingUnknownCodeAssembleModule(calls)
+        validate_module = SpyValidateModule(_valid_report(), calls)
+        normalize_module = SpyNormalizeModule(calls)
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(),
+        )
+
+        result = facade.assemble({"id": "persona-a"})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "UNMAPPED_ASSEMBLY_ERROR"
+        assert error["numeric_code"] == 10
+        assert error["message"] == "unmapped assembly failure"
+        assert calls == ["assemble"]
 
     def test_assemble_validation_failure_returns_persona_invalid(self) -> None:
         calls: list[str] = []
@@ -568,3 +607,72 @@ class TestFacadeList:
         assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
         assert error["numeric_code"] == 107
         assert error["details"]["path"] == "/tmp/index.json"
+
+    def test_list_malformed_registry_record_returns_persona_invalid_without_keyerror(self) -> None:
+        malformed = cast("PersonaSpec", {"id": "alpha", "model": "gpt-4o-mini"})
+        registry = InMemoryRegistryStore(list_result=Success([malformed]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.list()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["numeric_code"] == 101
+        assert "malformed" in error["message"]
+        assert "record" in error["details"]
+
+
+class TestFacadeSeamProof:
+    def test_replayable_seam_proof_command_writes_artifact_with_actual_outputs(
+        self, tmp_path: Path
+    ) -> None:
+        registry_root = tmp_path / "registry"
+        artifact_path = tmp_path / "facade-seam-proof-artifact.json"
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=SpyAssembleModule(_canonical_spec("unused"), []),
+            validate=validate_module,
+            normalize=normalize_module,
+            components=FilesystemComponentStore(components_dir=tmp_path / "components"),
+            registry=FileSystemRegistryStore(root=registry_root),
+        )
+
+        register_result = facade.register(_canonical_spec("facade-live", digest="sha256:stale"))
+        list_result = facade.list()
+        resolve_result = facade.resolve(
+            "facade-live", overrides={"model_params": {"temperature": 0}}
+        )
+
+        assert isinstance(register_result, Success)
+        assert isinstance(list_result, Success)
+        assert isinstance(resolve_result, Success)
+
+        artifact = {
+            "command": (
+                "uv run pytest -q tests/app/test_facade.py "
+                "-k replayable_seam_proof_command_writes_artifact_with_actual_outputs"
+            ),
+            "register": register_result.unwrap(),
+            "list": list_result.unwrap(),
+            "resolve": resolve_result.unwrap(),
+        }
+        artifact_path.write_text(json.dumps(artifact, indent=2, sort_keys=True), encoding="utf-8")
+
+        persisted_artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        assert persisted_artifact["command"].startswith("uv run pytest -q tests/app/test_facade.py")
+        assert persisted_artifact["register"] == {"id": "facade-live", "registered": True}
+        assert persisted_artifact["list"] == [
+            {
+                "id": "facade-live",
+                "model": "gpt-4o-mini",
+                "spec_digest": persisted_artifact["list"][0]["spec_digest"],
+            }
+        ]
+        assert persisted_artifact["resolve"]["id"] == "facade-live"
+        assert persisted_artifact["resolve"]["model_params"] == {"temperature": 0}
+        assert (
+            persisted_artifact["list"][0]["spec_digest"]
+            != persisted_artifact["resolve"]["spec_digest"]
+        )
+        assert persisted_artifact["list"][0]["spec_digest"].startswith("sha256:")
+        assert persisted_artifact["resolve"]["spec_digest"].startswith("sha256:")

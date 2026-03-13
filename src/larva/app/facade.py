@@ -24,6 +24,7 @@ from larva.shell.registry import RegistryStore
 
 
 ERROR_NUMERIC_CODES: dict[str, int] = {
+    "INTERNAL": 10,
     "PERSONA_NOT_FOUND": 100,
     "PERSONA_INVALID": 101,
     "PERSONA_CYCLE": 102,
@@ -243,12 +244,39 @@ class DefaultLarvaFacade(LarvaFacade):
         )
 
     def _error(self, *, code: str, message: str, details: dict[str, object]) -> LarvaError:
+        fallback_numeric_code = ERROR_NUMERIC_CODES["INTERNAL"]
         return {
             "code": code,
-            "numeric_code": ERROR_NUMERIC_CODES.get(code, 10),
+            "numeric_code": ERROR_NUMERIC_CODES.get(code, fallback_numeric_code),
             "message": message,
             "details": details,
         }
+
+    def _summary_from_spec(self, spec: PersonaSpec) -> Result[PersonaSummary, LarvaError]:
+        persona_id = spec.get("id")
+        spec_digest = spec.get("spec_digest")
+        model = spec.get("model")
+        if (
+            not isinstance(persona_id, str)
+            or not isinstance(spec_digest, str)
+            or not isinstance(model, str)
+        ):
+            return Failure(
+                self._error(
+                    code="PERSONA_INVALID",
+                    message="registry record is malformed: expected string id/spec_digest/model",
+                    details={
+                        "record": dict(spec),
+                    },
+                )
+            )
+        return Success(
+            {
+                "id": persona_id,
+                "spec_digest": spec_digest,
+                "model": model,
+            }
+        )
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
         report = self.validate(spec)
@@ -314,11 +342,8 @@ class DefaultLarvaFacade(LarvaFacade):
 
         summaries: list[PersonaSummary] = []
         for spec in list_result.unwrap():
-            summaries.append(
-                {
-                    "id": spec["id"],
-                    "spec_digest": spec["spec_digest"],
-                    "model": spec["model"],
-                }
-            )
+            summary_result = self._summary_from_spec(spec)
+            if isinstance(summary_result, Failure):
+                return summary_result
+            summaries.append(summary_result.unwrap())
         return Success(summaries)

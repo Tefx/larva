@@ -11,10 +11,14 @@ See:
 
 import hashlib
 import json
+import re
 
 from deal import post, pre
 
 from larva.core.spec import PersonaSpec
+
+
+_SPEC_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 @pre(lambda spec: isinstance(spec, dict))
@@ -30,7 +34,7 @@ def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
 
 
 @pre(lambda spec: _is_json_serializable_spec(spec))
-@post(lambda result: isinstance(result, str) and len(result) == 64)
+@post(lambda result: isinstance(result, str) and _SPEC_DIGEST_PATTERN.fullmatch(result) is not None)
 def _compute_spec_digest(spec: PersonaSpec) -> str:
     """Compute SHA-256 digest from canonical JSON representation.
 
@@ -40,11 +44,12 @@ def _compute_spec_digest(spec: PersonaSpec) -> str:
         spec: PersonaSpec to compute digest for.
 
     Returns:
-        Hex-encoded SHA-256 digest string.
+        `sha256:<hex>` SHA-256 digest string.
     """
     spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
     canonical_json = json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+    digest_hex = hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+    return f"sha256:{digest_hex}"
 
 
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
@@ -74,7 +79,9 @@ def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
         >>> normalize_spec({"id": "test"})["spec_version"]
         '0.1.0'
         >>> result = normalize_spec({"id": "test"})
-        >>> len(result["spec_digest"]) == 64
+        >>> result["spec_digest"].startswith("sha256:")
+        True
+        >>> len(result["spec_digest"]) == 71
         True
         >>> normalize_spec({"id": "test"}) == normalize_spec({"id": "test"})
         True

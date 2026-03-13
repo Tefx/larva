@@ -164,6 +164,16 @@ List all registered personas.
 ]
 ```
 
+### App-Facade Seam-Proof Evidence Requirement
+
+When `larva.app.facade` orchestration changes (assemble/register/list/resolve), seam proof must be reproducible:
+
+- include one replayable command (copy-paste runnable)
+- include verbatim output from that command
+- include one artifact path containing the captured command and output payloads
+
+This requirement prevents placeholder-only evidence and keeps gate reviews replayable.
+
 ---
 
 ## B. CLI Interface
@@ -299,7 +309,7 @@ model_params:
 `~/.larva/registry/`
 
 Each registered persona is a JSON file: `<id>.json`.
-An `index.json` maps ids to spec_digests.
+An `index.json` maps ids to canonical `spec_digest` values (`sha256:<64-hex>`).
 
 ### Resolution
 
@@ -350,7 +360,7 @@ always includes spec_digest.
 
 ### Normalization
 
-- `spec_digest`: SHA-256 of canonical JSON (sorted keys, no whitespace,
+- `spec_digest`: `sha256:` plus SHA-256 of canonical JSON (sorted keys, no whitespace,
   excluding the spec_digest field itself).
 - `spec_version`: Set to `"0.1.0"` if not present.
 
@@ -388,6 +398,7 @@ larva uses the 100-range from `contracts/errors.yaml`.
 
 | Code | Name | Description |
 |------|------|-------------|
+| 10 | `INTERNAL` | Unknown/unmapped app-layer code fallback (`numeric_code`) |
 | 100 | `PERSONA_NOT_FOUND` | Persona id not found in registry |
 | 101 | `PERSONA_INVALID` | PersonaSpec validation failed |
 | 102 | `PERSONA_CYCLE` | Circular reference detected (reserved) |
@@ -399,6 +410,8 @@ larva uses the 100-range from `contracts/errors.yaml`.
 | 108 | `REGISTRY_SPEC_READ_FAILED` | Registry `<id>.json` file could not be read or validated |
 | 109 | `REGISTRY_WRITE_FAILED` | Registry `<id>.json` file could not be written |
 | 110 | `REGISTRY_UPDATE_FAILED` | Registry `index.json` could not be updated |
+
+If an app-layer error `code` is not mapped in this table, `numeric_code` defaults to `10` (`INTERNAL`).
 
 ### Error Response Format (--json / MCP)
 
