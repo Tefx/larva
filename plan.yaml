@@ -15554,7 +15554,7 @@ phases:
       issue family; handled in subsequent retest step'
   - id: followup_guard_full.guard-full-core-crosshair-retest-3
     name: guard-full-core-crosshair-retest-3
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER, rerun the authoritative full guard plus\
       \ focused core regressions after the third-loop narrowed CrossHair remediation.\n\
       \nstep_type: verification\nIndependence Level: L1\nprior_loop:\n- followup_guard_full.guard-full-core-crosshair-retest-2\n\
@@ -15619,3 +15619,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-fix-3
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T20:03:19.015756+00:00'
