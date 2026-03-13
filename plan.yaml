@@ -4990,7 +4990,7 @@ phases:
       \ remediation; no product behavior changes.\n\ndiscovered_issues:\n- none"
   - id: app_facade.app-facade-verify-gap-retest
     name: app-facade-verify-gap-retest
-    status: pending
+    status: claimed
     description: 'Re-test `app_facade` after verification-gap remediation.
 
 
@@ -5072,6 +5072,8 @@ phases:
     depends_on:
     - app_facade.app-facade-verify-gap-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T02:22:38.212686+00:00'
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
