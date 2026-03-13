@@ -14590,7 +14590,7 @@ phases:
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
     status: done
-    description: 'As an INDEPENDENT TESTER, review the second-loop retest evidence
+    description: 'As an INDEPENDENT TESTER, review the fourth-loop retest evidence
       and confirm the final full-guard acceptance conclusion before freeze.
 
 
@@ -14604,7 +14604,7 @@ phases:
 
       - saved full-guard failure artifact
 
-      - retest evidence from `followup_guard_full.guard-full-core-crosshair-retest-2`
+      - retest evidence from `followup_guard_full.guard-full-core-crosshair-retest-4`
 
       - `README.md:40`
 
@@ -14612,17 +14612,21 @@ phases:
 
       touch_paths:
 
-      - retest evidence for `src/larva/core/validate.py`
-
       - retest evidence for `src/larva/core/assemble.py`
 
       - retest evidence for `src/larva/core/normalize.py`
+
+      - retest evidence for `tests/core/test_assemble.py`
+
+      - retest evidence for `tests/core/test_validate.py`
+
+      - retest evidence for `tests/core/test_normalize.py`
 
       - retest evidence for warnings/errors staying at zero repo-wide
 
       harness_refs:
 
-      - `followup_guard_full.guard-full-core-crosshair-retest-2` evidence bundle
+      - `followup_guard_full.guard-full-core-crosshair-retest-4` evidence bundle
 
       - full `uvx invar-tools guard --all`
 
@@ -14631,32 +14635,32 @@ phases:
       agent_source: default
 
 
-      This step preserves serial flow by making the second-loop retest the execution
+      This step preserves serial flow by making the fourth-loop retest the execution
       point and this step the acceptance review point.
 
 
       Review for:
 
-      - completeness: the residual CrossHair blocker family across validate / assemble
-      / normalize was addressed in the retest evidence
+      - completeness: the residual CrossHair blocker family in assemble + normalize
+      was addressed in the retest evidence
 
       - quality: raw command output is present for full guard and focused core tests,
       not summary-only
 
       - purity: no core/shell boundary violation was introduced while closing counterexamples
 
-      - churn guard: warning/error families remain zero and remediation stayed scoped
-      to the unresolved blocker family'
+      - churn guard: already-green families remain closed and remediation stayed scoped
+      to the unresolved assemble+normalize residuals'
     verification: '- Main path: retest evidence proves the full-guard barrier is green
-      or isolates only explicitly accepted non-blocking residue
+      or isolates only explicitly named residuals in assemble+normalize
 
       - Failure path: review rejects missing raw outputs, missing sibling-search evidence,
-      or unresolved blocker families hidden behind summaries
+      or reopened already-green families hidden behind summaries
 
       - Conclusion explicitly records whether the repo is ready for freeze and gate
       review'
     depends_on:
-    - followup_guard_full.guard-full-core-crosshair-retest-2
+    - followup_guard_full.guard-full-core-crosshair-retest-4
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:56:17.056025+00:00'
