@@ -7812,7 +7812,7 @@ phases:
       - Explicit no-code-changes freeze statement recorded for gate handoff.'
   - id: shell_mcp.shell-mcp-gate
     name: shell-mcp-gate
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_mcp` phase meets the quality bar for downstream review or integration
       work.
@@ -7892,6 +7892,8 @@ phases:
     - shell_mcp.shell-mcp-fix-batch
     - shell_mcp.shell-mcp-verify-retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T05:46:08.311620+00:00'
   - id: shell_mcp.shell-mcp-fix-batch
     name: shell-mcp-fix-batch
     status: done
