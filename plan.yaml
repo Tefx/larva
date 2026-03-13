@@ -7638,7 +7638,7 @@ phases:
 
 
       YOU ARE THE QUALITY GATE. Block progress if MCP contract fidelity, error-envelope
-      evidence, or boundary discipline is insufficient.
+      evidence, remediation completeness, or boundary discipline is insufficient.
 
 
       step_type: gate
@@ -7658,17 +7658,23 @@ phases:
       - response-shape or error-envelope mistakes can break machine consumers even
       when local tests appear green
 
+      - the phase now includes a batched remediation loop for malformed-parameter
+      envelope behavior and seam-evidence strength
+
 
       cross_cutting_focus:
 
       - exact fidelity to the documented MCP tool names, parameter names, and success
       payload shapes
 
-      - JSON error-envelope validity across all tested failure classes, with no field
-      drift
+      - JSON error-envelope validity across malformed-parameter classes, including
+      `message` semantics and `larva.list` unknown-param behavior
 
       - proof that `larva.shell.mcp` remains a transport adapter rather than a second
       business-logic layer
+
+      - seam-level evidence must include actual handler-path output, not only mock-heavy
+      test claims
 
 
       Boundary citations:
@@ -7688,7 +7694,11 @@ phases:
 
       - Evidence shows exact MCP contract fidelity and documented error-envelope behavior
 
-      - Seam-level MCP proof is present and specific
+      - Remediation batch closes malformed-parameter consistency gaps for all five
+      tools
+
+      - Seam-level MCP proof is present, specific, and includes actual handler-path
+      output
 
       - No business-logic ownership leaked beyond the MCP transport boundary'
     depends_on:
@@ -7698,6 +7708,8 @@ phases:
     - shell_mcp.shell-mcp-verify
     - shell_mcp.shell-mcp-seam-proof
     - shell_mcp.shell-mcp-freeze
+    - shell_mcp.shell-mcp-fix-batch
+    - shell_mcp.shell-mcp-verify-retest
     agent: gate-reviewer
   - id: shell_mcp.shell-mcp-fix-batch
     name: shell-mcp-fix-batch
