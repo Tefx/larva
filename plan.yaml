@@ -13122,6 +13122,135 @@ phases:
     depends_on:
     - followup_validate_warnings.gate
     agent: python-senior
+  - id: followup_validate_warnings.retest-gate-blockers
+    name: retest-gate-blockers
+    status: pending
+    description: 'Re-test ALL remediation from `followup_validate_warnings.fix-gate-blockers`
+      as an INDEPENDENT TESTER.
+
+
+      step_type: verification
+
+      prior_loop:
+
+      - `followup_validate_warnings.gate`
+
+      - `followup_validate_warnings.fix-gate-blockers`
+
+      remaining_blocker: verify that contract-facing examples no longer imply open-ended
+      warning families and that the canonical warning string survives a user-facing
+      transport path unchanged
+
+      why_new_loop: gate closure now depends on independent confirmation across both
+      semantic drift and transport survival, not just a rerun of prior core checks
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `ARCHITECTURE.md:250`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_mcp.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/core/test_validate.py`
+
+      - `uv run pytest -q tests/shell/test_mcp.py`
+
+      - MCP-facing validation entrypoint exercising warning propagation
+
+      agent_source: default
+
+      Independence Level: L1
+
+
+      Your goal is to find remaining drift, not to confirm success.
+
+      Test for:
+
+      - Happy path: canonical `UNUSED_VARIABLES` warning string is preserved through
+      the user-facing transport path
+
+      - Edge cases: contract-facing examples and fixtures no longer imply `unknown-model`
+      / `deprecated` warning families
+
+      - Error scenarios: unresolved-variable and other invalid cases remain errors,
+      not warnings
+
+
+      Document all findings. A test that discovers issues is a success.'
+    verification: '- Main path: independent run of the new MCP-facing integration
+      test shows the canonical warning string survives unchanged
+
+      - Drift path: independent grep / targeted assertions show stale open-ended warning-family
+      language is gone or clearly marked non-canonical
+
+      - Failure path: unresolved-variable regression still returns errors without
+      warning-only downgrade
+
+      - Evidence covers both B1 and S1, not just one finding'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: B1 + S1 closure for `followup_validate_warnings`
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```bash
+
+      <exact pytest / grep commands>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker | <issue or none> | <path> | <steps> |
+
+      | should_fix | <issue or none> | <path> | <steps> |
+
+
+      ### Closure checks
+
+      - [ ] No contract-drifting warning-family language remains unscoped
+
+      - [ ] MCP-facing warning propagation test passes with canonical string unchanged
+
+      - [ ] Error semantics remain preserved
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - followup_validate_warnings.fix-gate-blockers
+    agent: integration-verifier
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: done
