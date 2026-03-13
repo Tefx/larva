@@ -13398,7 +13398,7 @@ phases:
       fix chain per anti-serial protocol.'
   - id: followup_surface_hygiene.fix-gate-should-fix
     name: fix-gate-should-fix
-    status: claimed
+    status: done
     description: 'Fix ALL should_fix findings from `followup_surface_hygiene.gate`
       in one batched remediation step.
 
@@ -13518,6 +13518,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T17:49:54.378742+00:00'
+    done_at: '2026-03-13T17:55:25.470190+00:00'
+    evidence: "## Batched Fix Evidence\n\n**Scope**: close S1 and S2 together\n\n\
+      ### S1 wrapper rationale restoration\n- Exact edits:\n  - `src/larva/shell/python_api.py`\
+      \ added `@shell_orchestration` rationale on `assemble`, `register`, `resolve`,\
+      \ `list` wrappers\n- Grep output after fix confirms all four wrappers and corresponding\
+      \ annotations present.\n- Sibling search notes: checked wrapper siblings and\
+      \ existing helper annotations; no stale contract-stub/deferred wording reintroduced.\n\
+      \n### S2 architecture wording alignment\n- Exact edits:\n  - `ARCHITECTURE.md`\
+      \ Decision 3 duplicate sections updated to state supported import surface is\
+      \ `larva.shell.python_api` and package-root exports in `__init__.py` remain\
+      \ deferred policy\n- Grep output after fix confirms aligned wording across ARCHITECTURE/README/package\
+      \ root references.\n- Sibling search notes: verified no stale `__init__.py`\
+      \ export wording remains in Decision 3 duplicates.\n\n### Guardrails\n- Confirmed\
+      \ no stale `contract-only stub` / `delegation deferred` wording reintroduced\n\
+      - Confirmed no package-root export implementation added\n\nCommit hash(es):\n\
+      - f36cae502ef3e530c7bf0c4808d946f14692d19e (worktree), squashed to main as 7b43169\n\
+      \nVerification:\n- grep checks for S1 and S2 acceptance hints passed\n- commit\
+      \ hooks with invar guard passed\n\ndiscovered_issues: none"
   - id: followup_surface_hygiene.retest-gate-should-fix
     name: retest-gate-should-fix
     status: pending
