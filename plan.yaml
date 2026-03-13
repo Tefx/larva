@@ -12593,3 +12593,6 @@ phases:
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: pending
+- id: followup_guard_full
+  name: Follow-up Full Guard Remediation
+  status: pending
