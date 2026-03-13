@@ -14590,32 +14590,70 @@ phases:
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
     status: claimed
-    description: "As an INDEPENDENT TESTER, re-run the full-project acceptance barrier\
-      \ after guard-scope and CLI-complexity remediation.\n\nstep_type: verification\n\
-      Independence Level: L1\nspec_refs:\n- `pyproject.toml:53`\n- saved full-guard\
-      \ failure artifact\n- `README.md:40`\n- `ARCHITECTURE.md:638`\ntouch_paths:\n\
-      - `pyproject.toml`\n- `src/larva/shell/cli.py`\n- `tests/shell/test_cli.py`\n\
-      harness_refs:\n- full `uvx invar-tools guard --all`\n- focused `uv run pytest\
-      \ -q tests/shell/test_cli.py`\nagent_source: default\n\nevidence_template: |\n\
-      \  ## Full Guard Verification\n\n  **Exact guard command**:\n  ```bash\n  uvx\
-      \ invar-tools guard --all\n  ```\n\n  **Actual output**:\n  ```text\n  <paste\
-      \ actual guard output>\n  ```\n\n  **CLI regression command**:\n  ```bash\n\
-      \  uv run pytest -q tests/shell/test_cli.py\n  ```\n\n  **Main-repo debt conclusion**:\
-      \ <one line>\n  **Deferred / classified follow-up conclusion**: <one line covering\
-      \ package-root policy + components-root bucket>\n"
-    verification: '- Main path: full `uvx invar-tools guard --all` passes from the
-      main repo or clearly isolates only remaining authoritative repo debt
+    description: 'As an INDEPENDENT TESTER, review the batched-remediation retest
+      evidence and confirm the final full-guard acceptance conclusion before freeze.
 
-      - Failure path: evidence proves `.vectl` ignore tightening did not hide main-repo
-      findings and that remaining debt is real, not worktree duplication
 
-      - Evidence explicitly records package-root re-exports as deferred / future-policy
-      follow-up and `~/.larva/components` root-init as an investigation / cleanup
-      / clarification item, while leaving registry-init and MCP-runtime scope untouched
+      step_type: verification
 
-      - Focused CLI regressions still pass'
+      Independence Level: L1
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - saved full-guard failure artifact
+
+      - retest evidence from `followup_guard_full.guard-full-retest`
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - retest evidence for `src/larva/core/**`
+
+      - retest evidence for `src/larva/shell/cli.py`
+
+      - retest evidence for `src/larva/shell/mcp.py`
+
+      harness_refs:
+
+      - `followup_guard_full.guard-full-retest` evidence bundle
+
+      - full `uvx invar-tools guard --all`
+
+      - focused regressions cited by the retest
+
+      agent_source: default
+
+
+      This step preserves serial flow by making the retest the execution point and
+      this step the acceptance review point.
+
+
+      Review for:
+
+      - completeness: every blocker family B0-B3 was addressed in the retest evidence
+
+      - quality: raw command output is present, not summary-only
+
+      - scope hygiene: no authoritative repo files were hidden and no completed-phase
+      ownership was duplicated
+
+      - acceptance: any remaining warning is explicitly justified as non-blocking
+      under current repo policy'
+    verification: '- Main path: retest evidence proves the full-guard barrier is green
+      or isolates only explicitly accepted non-blocking residue
+
+      - Failure path: review rejects missing raw outputs, missing sibling-search evidence,
+      or unresolved blocker families hidden behind summaries
+
+      - Conclusion explicitly records whether the repo is ready for freeze and gate
+      review'
     depends_on:
-    - followup_guard_full.cli-complexity-remediate
+    - followup_guard_full.guard-full-retest
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:56:17.056025+00:00'
