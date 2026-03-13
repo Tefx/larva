@@ -15856,7 +15856,7 @@ phases:
       - Worktree branch squash-merged (nothing to squash), then cleaned up.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-4
     name: guard-full-core-crosshair-retest-4
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the fourth-loop narrowed CrossHair remediation.
 
@@ -16004,6 +16004,87 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T20:17:16.845450+00:00'
+    done_at: '2026-03-13T20:23:00.309749+00:00'
+    evidence: '## Fourth-Loop Narrowed CrossHair Retest Report
+
+
+      **Exact full guard command**:
+
+      ```bash
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Actual full guard output**:
+
+      `status: failed` with `crosshair.status=counterexample_found`; failed files
+      limited to:
+
+      - `src/larva/core/normalize.py`
+
+      - `src/larva/core/assemble.py`
+
+      `counterexamples: []` (empty payload)
+
+
+      **Focused core regression command**:
+
+      ```bash
+
+      uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py tests/core/test_normalize.py
+
+      ```
+
+
+      **Actual focused core output**:
+
+      PASS — `65 passed in 0.40s`
+
+
+      **Residual blocker matrix**:
+
+      - `src/larva/core/assemble.py`: remaining (raw guard failed list includes file)
+
+      - `src/larva/core/normalize.py`: remaining (raw guard failed list includes file)
+
+
+      **Scope hygiene proof**:
+
+      - Failure surface remained constrained to assemble+normalize; validate remained
+      verified and no broader blocker family emerged from raw output.
+
+
+      Files changed:
+
+      - none
+
+
+      Commit hash(es):
+
+      - none (verification-only step; no code edits)
+
+
+      Spec link:
+
+      - Verification step acceptance executed exactly as required for narrowed assemble/normalize
+      family.
+
+
+      Gaps/Notes:
+
+      - CrossHair residual persists with empty counterexample payload; remediation
+      still required for both files together.
+
+      - Anti-rework protocol applied: planner created one batched fix + one retest
+      follow-up for all detected blockers.
+
+
+      Detected issues (batched):
+
+      - blocker: residual CrossHair failure persists for `src/larva/core/assemble.py`
+      and `src/larva/core/normalize.py` under full guard.'
   - id: followup_guard_full.guard-full-core-crosshair-fix-5
     name: guard-full-core-crosshair-fix-5
     status: pending
