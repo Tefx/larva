@@ -13105,15 +13105,20 @@ phases:
       agent_source: default
 
 
-      Your goal is to find remaining public-surface drift, not to confirm it works.'
+      Your goal is to find remaining public-surface drift, not to confirm it works.
+      Verify that deferred scope is recorded explicitly rather than disappearing into
+      silence, and that the `~/.larva/components` root-init concern is routed forward
+      as a bounded investigation / cleanup clarification item instead of being treated
+      as docs-only dismissal.'
     verification: '- Main path: import/module smoke proves the cleaned `larva.cli`
       surface works as contracted
 
       - Drift path: grep/doc review confirms stale python_api comments and assemble-request
       field drift are gone
 
-      - Proof states package-root exports remain deferred and MCP runtime work was
-      not duplicated'
+      - Proof explicitly states package-root re-exports remain deferred / future follow-up,
+      `~/.larva/components` root-init concern is routed to bounded investigation /
+      cleanup classification, and MCP runtime work was not duplicated'
     depends_on:
     - followup_surface_hygiene.surface-doc-cleanup
     agent: integration-verifier
