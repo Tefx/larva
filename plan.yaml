@@ -5946,7 +5946,7 @@ phases:
       before merge; final merged content excludes plan.yaml changes.'
   - id: shell_python_api.shell-python-api-tests
     name: shell-python-api-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven tests for `larva.shell.python_api` in `tests/shell/test_python_api.py`.
 
 
@@ -6027,6 +6027,16 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T04:09:35.269560+00:00'
+    done_at: '2026-03-13T04:16:34.073136+00:00'
+    evidence: "Commit hash(es):\n- be2e868\n- squash merged to main as commit 1c88fe7\n\
+      \nFiles changed:\n- tests/shell/test_python_api.py\n\nVerification:\n- Commands\
+      \ run:\n  - `uv run pytest tests/shell/test_python_api.py -v`\n- Key outputs/results:\n\
+      \  - 13 tests passed.\n  - Covers thin-delegation surfaces for validate/assemble/register/resolve/list.\n\
+      \  - Includes failure passthrough and explicit null/falsey override forwarding\
+      \ checks.\n\nSpec link:\n- ARCHITECTURE.md shell.python_api module + Decision\
+      \ 3\n- README Python interface\n\nGaps/Notes:\n- Test scope kept inside `larva.shell.python_api`\
+      \ seam.\n- No package export assertions and no CLI/MCP formatting behavior tested\
+      \ in this step."
   - id: shell_python_api.shell-python-api-implement
     name: shell-python-api-implement
     status: pending
