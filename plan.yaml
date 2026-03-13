@@ -5397,7 +5397,7 @@ phases:
       \ changes."
   - id: app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
     name: retest-app-facade-gate-blockers-b1-s1-s2-s3
-    status: claimed
+    status: done
     description: 'Re-test `app_facade.app-facade-gate` findings closure as one gate-quality
       bundle after `app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3`.
 
@@ -5562,6 +5562,34 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T02:49:57.982160+00:00'
+    done_at: '2026-03-13T03:43:16.897768+00:00'
+    evidence: "## Gate Retest Report\n\n**Reviewer**: gate-reviewer\n**Scope**: Re-close\
+      \ B1 + S1 + S2 + S3 from `app_facade.app-facade-gate`\n\n### Required Replayable\
+      \ Seam-Proof Artifact\n**Exact command executed**:\n```bash\nbash -lc 'set -euo\
+      \ pipefail; uv run pytest -q tests/app/test_facade.py -k replayable_seam_proof_command_writes_artifact_with_actual_outputs;\
+      \ uv run pytest -q tests/app/test_facade.py -k \"list_malformed_registry_record_returns_persona_invalid_without_keyerror\
+      \ or assemble_unknown_error_code_falls_back_to_internal_numeric_code\"; uv run\
+      \ pytest -q tests/core/test_normalize.py'\n```\n\n**Actual output** (key lines):\n\
+      - replayable seam-proof test: passed\n- malformed-record + fallback-numeric\
+      \ tests: passed\n- `tests/core/test_normalize.py`: 1 failure at `test_overwrites_stale_digest`\
+      \ with `len(spec_digest)==64` assertion (`71` observed for `sha256:<64hex>`)\n\
+      \n**Path exercised**: `src/larva/core/normalize.py` -> `src/larva/app/facade.py`\
+      \ -> seam-proof sink\n\n### Finding Closure Matrix\n| Finding | Evidence reviewed\
+      \ | Closed? | Notes |\n| --- | --- | --- | --- |\n| B1 | digest parity runtime/tests/docs\
+      \ | no | residual stale test assumption in core normalize test |\n| S1 | malformed-record\
+      \ boundary behavior | yes | app test passes, no raw KeyError leak |\n| S2 |\
+      \ replayable seam-proof command/output | yes | replayable command + output captured\
+      \ |\n| S3 | fallback numeric-code model | yes | fallback test passes |\n\n###\
+      \ Residual Issues\n| Severity | Description | Location | Reproduction |\n| ---\
+      \ | --- | --- | --- |\n| blocker | stale digest-length assertion conflicts with\
+      \ canonical `sha256:<64hex>` | `tests/core/test_normalize.py:119` | `uv run\
+      \ pytest -q tests/core/test_normalize.py` |\n\n### Gate Verdict\n- ISSUES_FOUND\n\
+      \nfindings:\n  blockers:\n    - B1 unresolved due to stale core normalize test\
+      \ assertion.\n  should_fix: []\n  suggestions: []\n  tech_debt: []\ndiscovered_issues:\n\
+      - residual parity gap in core normalize test expectation only.\nGaps/Notes:\n\
+      - No code changes were made in retest worktree.\n- Per batched-fix protocol,\
+      \ a residual one-fix/one-retest chain was added:\n  - `app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual`\n\
+      \  - `app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual`"
   - id: app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
     status: pending
