@@ -6258,7 +6258,7 @@ phases:
   steps:
   - id: shell_cli.shell-cli-clarify
     name: shell-cli-clarify
-    status: claimed
+    status: done
     description: 'Clarify the authoritative dependency seam for `larva.shell.cli`
       before contract work begins.
 
@@ -6314,6 +6314,42 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-13T03:52:44.963458+00:00'
+    done_at: '2026-03-13T04:05:06.442411+00:00'
+    evidence: 'Artifact:
+
+      - Commit: d6c2fdc1b728c994828eebc0c6b209c2b107ed3c
+
+      - squash merged to main as commit 77e7681
+
+
+      Verification:
+
+      - Run: `git show --stat HEAD` (in worktree) -> 2 files changed, 203 insertions,
+      8 deletions.
+
+      - Run: targeted doc reads for `ARCHITECTURE.md` and `INTERFACES.md` sections
+      -> confirmed Decision 4 and CLI routing notes present.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md Decision 4 (CLI component subcommands use injected ComponentStore
+      port)
+
+      - ARCHITECTURE.md shell.cli module dependency notes
+
+      - INTERFACES.md CLI routing notes
+
+      - README CLI interface
+
+
+      Gaps/Notes:
+
+      - Clarification resolves seam ambiguity: persona commands route via facade;
+      component list/show routes via injected component-read port under CLI transport
+      ownership.
+
+      - No product implementation was introduced.'
   - id: shell_cli.shell-cli-contract
     name: shell-cli-contract
     status: pending
