@@ -14317,7 +14317,7 @@ phases:
       - src/larva/shell/components.py'
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
-    status: pending
+    status: claimed
     description: 'Remediate remaining guard scope/config only if diagnosis confirms
       there is still authoritative-scope work after `.vectl` ignore lands.
 
@@ -14376,6 +14376,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-diagnose
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T18:48:12.322839+00:00'
   - id: followup_guard_full.cli-complexity-tests
     name: cli-complexity-tests
     status: done
