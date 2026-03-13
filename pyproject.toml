@@ -59,7 +59,7 @@ max_function_lines = 50
 require_contracts = true
 require_doctests = true
 forbidden_imports = ["os", "sys", "socket", "requests", "urllib", "subprocess", "shutil", "io", "pathlib"]
-exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules", "dist", "build"]
+exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build"]
 
 [dependency-groups]
 dev = [
