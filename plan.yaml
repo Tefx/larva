@@ -15655,7 +15655,7 @@ phases:
       families remain out of scope.'
   - id: followup_guard_full.guard-full-core-crosshair-fix-4
     name: guard-full-core-crosshair-fix-4
-    status: pending
+    status: claimed
     description: 'Fourth batched remediation extension for the remaining CrossHair
       residuals only; keep scope narrow to `src/larva/core/assemble.py` and `src/larva/core/normalize.py`
       and do not reopen already-green families.
@@ -15814,6 +15814,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-3
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T20:07:40.666526+00:00'
   - id: followup_guard_full.guard-full-core-crosshair-retest-4
     name: guard-full-core-crosshair-retest-4
     status: pending
