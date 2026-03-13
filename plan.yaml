@@ -13234,7 +13234,7 @@ phases:
       step scope'
   - id: followup_validate_warnings.retest-gate-blockers
     name: retest-gate-blockers
-    status: pending
+    status: claimed
     description: 'Re-test ALL remediation from `followup_validate_warnings.fix-gate-blockers`
       as an INDEPENDENT TESTER.
 
@@ -13361,6 +13361,8 @@ phases:
     depends_on:
     - followup_validate_warnings.fix-gate-blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T18:32:01.259482+00:00'
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: done
