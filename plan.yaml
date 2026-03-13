@@ -12911,9 +12911,12 @@ phases:
 
       Choose one explicit compatibility outcome for `larva.cli`; recommended default
       is a thin compatibility shim to `larva.shell.cli:main` rather than a second
-      CLI implementation. Preserve the previously deferred package-root export decision
-      and do not reopen package-root re-exports, component-root bootstrap behavior,
-      registry-root init, or MCP runtime startup work.'
+      CLI implementation. Preserve the package-root re-export question as an explicit
+      deferred policy / future follow-up item for `src/larva/__init__.py`, not a silent
+      exclusion. Keep `~/.larva/components` bootstrap/init concerns out of this contract
+      step because they are routed to bounded follow-up investigation / cleanup classification.
+      Do not reopen `~/.larva/registry` init scope and do not duplicate MCP runtime
+      startup work.'
     verification: '- Contract states one explicit `larva.cli` compatibility behavior
 
       - Contract forbids duplicate CLI logic and package-root export expansion
