@@ -15338,7 +15338,7 @@ phases:
       - test execution produced untracked `.hypothesis/` artifacts'
   - id: followup_guard_full.guard-full-core-crosshair-fix-3
     name: guard-full-core-crosshair-fix-3
-    status: claimed
+    status: done
     description: 'Third batched remediation extension for the last remaining CrossHair
       blocker family only; keep scope narrow to `src/larva/core/assemble.py::_merge_tools`
       and any direct sibling root-cause patterns exposed by the same symbolic-typing
@@ -15495,6 +15495,63 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T19:54:55.195570+00:00'
+    done_at: '2026-03-13T20:03:09.218721+00:00'
+    evidence: '## Third-Loop CrossHair Fix Evidence
+
+
+      Root cause seam:
+
+      - CrossHair symbolic typing crash in `_merge_tools` path (`typing.Literal` /
+      `issubclass` interaction via ToolPosture-bearing boundary types)
+
+
+      Files changed:
+
+      - src/larva/core/assemble.py
+
+
+      Fix summary:
+
+      - narrowed `_merge_tools` symbolic seam typing to plain mapping shape at helper
+      boundary
+
+      - preserved caller contract via cast at assignment
+
+      - added defensive guard for malformed symbolic `tools` payload
+
+
+      Sibling search performed:
+
+      - scanned for ToolPosture/Literal/issubclass patterns in assemble and core siblings
+
+      - verified seam narrowed to `_merge_tools` path only
+
+
+      Why scope stayed narrow:
+
+      - touched only residual blocker seam in assemble core module
+
+      - did not reopen already-green CLI/MCP/warning families
+
+
+      Verification:
+
+      - uv run crosshair check src/larva/core/assemble.py -> success after fix
+
+      - uvx invar-tools guard (changed-scope) -> pass
+
+      - uv run pytest -q tests/core/test_assemble.py -> 29 passed
+
+
+      Commit hash(es):
+
+      - 030d66f (worktree), squashed to main as ba88e9d
+
+
+      discovered_issues:
+
+      - full `guard --all` prior to retest still indicated a separate property-test
+      issue family; handled in subsequent retest step'
   - id: followup_guard_full.guard-full-core-crosshair-retest-3
     name: guard-full-core-crosshair-retest-3
     status: pending
