@@ -7329,7 +7329,7 @@ phases:
     claimed_at: '2026-03-13T04:36:59.117333+00:00'
   - id: shell_mcp.shell-mcp-seam-proof
     name: shell-mcp-seam-proof
-    status: claimed
+    status: done
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.mcp`.
 
@@ -7378,6 +7378,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T04:37:51.465220+00:00'
+    done_at: '2026-03-13T04:53:49.973743+00:00'
+    evidence: "## Seam-Level Integration Evidence\n\n**Exact commands**:\n```bash\n\
+      uv run pytest -v tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_assemble_success\
+      \ tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_assemble_failure_returns_error_envelope\
+      \ tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_resolve_preserves_falsey_overrides\n\
+      uv run python - <<'PY'\n# direct MCPHandlers success/failure/falsey-override\
+      \ probe via facade doubles\nPY\n```\n\n**Actual outputs** (key lines):\n```text\n\
+      3 passed\nsuccess_path: larva.assemble returned dict with spec_digest\nfailure_path:\
+      \ COMPONENT_NOT_FOUND envelope with numeric_code 105\nfalsey_override_fidelity:\
+      \ None/False/\"\"/0 preserved\n```\n\n**Path exercised**: `larva.shell.mcp`\
+      \ -> `larva.app.facade`\n\nfindings:\n  blockers: []\n  should_fix:\n    - Failure-path\
+      \ `message` can degrade to dict-string representation depending on upstream\
+      \ error object shape.\n  suggestions:\n    - Keep seam-proof command pair as\
+      \ CI smoke.\n  tech_debt:\n    - local environment requires `uv run python`\
+      \ instead of bare `python`.\n\ndiscovered_issues:\n- message-fidelity edge case\
+      \ noted above.\n\nGaps/Notes:\n- Evidence is seam-level adapter invocation,\
+      \ not full MCP stdio/SSE server runtime."
   - id: shell_mcp.shell-mcp-freeze
     name: shell-mcp-freeze
     status: pending
