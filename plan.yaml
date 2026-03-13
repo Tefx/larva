@@ -6614,7 +6614,7 @@ phases:
       - discovered_issues: none'
   - id: shell_python_api.shell-python-api-verify-retest
     name: shell-python-api-verify-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the remediation
       for `shell_python_api.shell-python-api-verify` from a fresh perspective.
 
@@ -6672,6 +6672,45 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T05:46:19.613606+00:00'
+    done_at: '2026-03-13T05:57:49.156241+00:00'
+    evidence: '## Retest Report
+
+      Tester: integration-verifier
+
+      Scope: larva.shell.python_api remediation retest (L2)
+
+      Commit hash(es): none (verification-only, no edits)
+
+      Files changed: none
+
+      Commands executed:
+
+      - uv run pytest -v tests/shell/test_python_api.py
+
+      - uv run pytest -v tests/shell/test_python_api.py --cov=src/larva/shell/python_api.py
+      --cov-report=term-missing
+
+      - uv run coverage run -m pytest -v tests/shell/test_python_api.py && uv run
+      coverage report -m src/larva/shell/python_api.py
+
+      Required findings check:
+
+      - B1 wrapper invocation across validate/assemble/register/resolve/list: resolved
+      (delegation tests pass)
+
+      - B2 coverage non-trivial: resolved (python_api.py 94%: 50 stmts, 3 miss)
+
+      - S1 storage no-leak checks: present and passing
+
+      - S2 CLI/MCP/storage leakage assertions: present and passing
+
+      Remaining issues:
+
+      - none
+
+      Verdict: PASS
+
+      discovered_issues: none'
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
