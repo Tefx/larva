@@ -7573,7 +7573,7 @@ phases:
       - Explicit statement recorded: no code changes until shell_cli gate completes.'
   - id: shell_cli.shell-cli-gate
     name: shell-cli-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_cli` phase meets the quality bar for proceeding to downstream review
       or integration work.
@@ -7649,6 +7649,34 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T06:43:21.332160+00:00'
+    done_at: '2026-03-13T06:57:05.679351+00:00'
+    evidence: 'Gate review returned ISSUES_FOUND and triggered consolidated remediation
+      planning.
+
+      Findings captured:
+
+      - blocker B1: schema-conformance validation drift (`larva validate` accepts
+      missing required fields contrary to docs/contracts)
+
+      - should_fix S1: README assemble example omitted required `--id`
+
+      - should_fix S2: cli.py transport adapter maintainability/complexity risk
+
+      Planner remediation created and wired:
+
+      - shell_cli.shell-cli-gate-fix-batch
+
+      - shell_cli.shell-cli-gate-retest
+
+      - shell_cli.shell-cli-gate updated to depend on shell_cli.shell-cli-gate-retest
+
+      Commands in gate evidence included black-box `uv run larva ...` probes proving
+      the missing-id validate mismatch.
+
+      Notes:
+
+      - Findings were batched into one fix loop per anti-serial-fix protocol before
+      gate can reopen.'
   - id: shell_cli.shell-cli-component-tests
     name: shell-cli-component-tests
     status: done
