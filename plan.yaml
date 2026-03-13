@@ -7486,7 +7486,7 @@ phases:
       \ No business-logic duplication in adapter layer."
   - id: shell_mcp.shell-mcp-verify
     name: shell-mcp-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.mcp` module from a fresh protocol-facing perspective.
 
@@ -7545,6 +7545,27 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T04:36:59.117333+00:00'
+    done_at: '2026-03-13T04:58:48.024985+00:00'
+    evidence: "Artifact:\n- verification run in isolated worktree (no code changes)\n\
+      \nVerification:\n- Run: `uv run pytest -v tests/shell/test_mcp.py` -> 51 passed.\n\
+      - Run: module coverage for `src/larva/shell/mcp.py` -> 99%.\n- Run: malformed-parameter\
+      \ probes against handler paths showed inconsistent behavior (silent acceptance\
+      \ for some invalid payload types; raw ValueError for others).\n- Run: envelope\
+      \ fidelity probe showed failure `message` quality degradation under certain\
+      \ upstream error object shapes.\n\nSpec link:\n- INTERFACES A + G\n- ARCHITECTURE\
+      \ shell.mcp\n- README MCP interface\n\nfindings:\n  blockers:\n    - inconsistent\
+      \ malformed-parameter handling at MCP boundary (not uniformly envelope-safe).\n\
+      \    - verification surfaced mock-island risk and insufficient non-mock boundary\
+      \ confidence for protocol-facing guarantees.\n  should_fix:\n    - add explicit\
+      \ boundary schema/type checks for all five tools before facade delegation.\n\
+      \    - tighten envelope tests to include `message` semantics and unknown-param\
+      \ behavior consistency.\n  suggestions:\n    - keep real seam-level proof command\
+      \ as repeatable quality artifact.\n  tech_debt:\n    - test naming/shape currently\
+      \ can mask MCP-boundary defects under permissive facade behavior.\n\ndiscovered_issues:\n\
+      - boundary-type rejection and message-fidelity gaps as above.\n\nGaps/Notes:\n\
+      - Following batched-fix protocol, remediation chain added:\n  - `shell_mcp.shell-mcp-fix-batch`\n\
+      \  - `shell_mcp.shell-mcp-verify-retest`\n- `shell_mcp.shell-mcp-gate` now depends\
+      \ on the remediation chain."
   - id: shell_mcp.shell-mcp-seam-proof
     name: shell-mcp-seam-proof
     status: done
