@@ -5562,6 +5562,142 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T02:49:57.982160+00:00'
+  - id: app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
+    name: fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
+    status: pending
+    description: 'Fix the remaining unresolved B1 digest-parity surface from `app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3`
+      as ONE batched remediation step.
+
+
+      step_type: implementation
+
+      agent: python-executor
+
+      agent_source: default
+
+      prior_loop:
+
+      - app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
+
+      - app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
+
+      remaining_blocker: residual digest parity is not fully closed because `tests/core/test_normalize.py::TestNormalizeSpecBehavior::test_overwrites_stale_digest`
+      still asserts raw 64-char digest length while runtime now returns canonical
+      `sha256:<64hex>` (len 71).
+
+      why_new_loop: the prior batched loop closed S1/S2/S3 and most of B1, but one
+      stale parity assumption remains in core-normalize test coverage; extend the
+      existing chain with one batched residual fix instead of serial micro-fixes.
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: digest contract sections requiring canonical `sha256:<64hex>`
+
+      - prior gate findings for `app_facade.app-facade-gate`
+
+      - residual failure evidence at `tests/core/test_normalize.py:119`
+
+
+      touch_paths:
+
+      - `tests/core/test_normalize.py`
+
+      - sibling test/doc locations returned by the mandated stale-assumption search
+      for `spec_digest`, `len(.*spec_digest.*)==64`, and `sha256:`
+
+
+      harness_refs:
+
+      - `app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3`
+
+      - focused normalize/facade digest-parity regressions
+
+      - grep-based sibling search across test/docs parity surfaces
+
+
+      conflict_rationale:
+
+      - Keep serialized on the `app_facade` critical path because this residual parity
+      fix is the last blocker preventing phase closure and downstream shell phases
+      from unlocking.
+
+      - Shared digest-contract/test surfaces make parallel remediation unsafe even
+      though S1/S2/S3 are already closed.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: residual stale digest-length assumption
+
+      Locations:
+
+      - `tests/core/test_normalize.py:119`
+
+      - any sibling stale assumptions found via the required search
+
+      Remediation:
+
+      - Align remaining stale test assumptions with the canonical digest format `sha256:<64hex>`.
+
+      - Update every sibling assertion, fixture, and expectation found by the required
+      search; do not stop at the single failing assertion.
+
+      - Preserve S1/S2/S3 behavior and evidence surfaces exactly as already closed;
+      this loop is only for residual B1 parity drift.
+
+      Grep hint: `spec_digest`
+
+      Grep hint: `len\(.*spec_digest.*\)\s*==\s*64`
+
+      Grep hint: `sha256:`
+
+      IMPORTANT: Search for siblings beyond the listed location and prove no stale
+      raw-64 expectations remain in the parity surface.
+
+
+      ## Completion Criteria
+
+      - Residual B1 stale digest-length assumptions are removed across all sibling
+      parity surfaces found by the grep hints.
+
+      - `tests/core/test_normalize.py::TestNormalizeSpecBehavior::test_overwrites_stale_digest`
+      expects canonical `sha256:<64hex>` semantics.
+
+      - No newly discovered stale raw-64 `spec_digest` expectations remain in searched
+      sibling tests/docs.
+
+      - S1/S2/S3 remain untouched except for retest evidence proving they stay closed.
+
+
+      ## Gate Preview (what the retest WILL reject)
+
+      1. Any remaining assertion that treats `spec_digest` as bare 64 hex instead
+      of `sha256:<64hex>`.
+
+      2. Any fix that updates only the cited line while leaving sibling stale assumptions
+      behind.
+
+      3. Any remediation that reopens S1, S2, or S3 evidence/behavior while addressing
+      B1.
+
+
+      Out-of-scope guardrail:
+
+      - Do not reopen runtime behavior, malformed-registry handling, seam-proof requirements,
+      or fallback numeric-code logic unless the sibling search proves a digest-format
+      assumption still exists there.'
+    verification: '- Grep-based sibling search for `spec_digest`, `len(.*spec_digest.*)==64`,
+      and `sha256:` is completed and any stale raw-64 parity assumptions found in
+      scope are aligned.
+
+      - Focused regression updates cover `tests/core/test_normalize.py::TestNormalizeSpecBehavior::test_overwrites_stale_digest`.
+
+      - Evidence states explicitly that S1/S2/S3 were preserved and not reopened.'
+    depends_on:
+    - app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
+    agent: python-executor
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
