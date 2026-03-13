@@ -7439,7 +7439,7 @@ phases:
       - none'
   - id: shell_cli.shell-cli-freeze
     name: shell-cli-freeze
-    status: pending
+    status: claimed
     description: 'Freeze the `larva.shell.cli` snapshot before gate review.
 
 
@@ -7468,6 +7468,8 @@ phases:
     - shell_cli.shell-cli-verify
     - shell_cli.shell-cli-seam-proof
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T06:22:26.340935+00:00'
   - id: shell_cli.shell-cli-gate
     name: shell-cli-gate
     status: pending
