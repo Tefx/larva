@@ -6390,7 +6390,7 @@ phases:
       - No product implementation was introduced.'
   - id: shell_cli.shell-cli-contract
     name: shell-cli-contract
-    status: pending
+    status: claimed
     description: "Create the contract-only `larva.shell.cli` module at `src/larva/shell/cli.py`\
       \ after the CLI dependency seam is clarified.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
@@ -6421,6 +6421,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-clarify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T04:09:16.322596+00:00'
   - id: shell_cli.shell-cli-tests
     name: shell-cli-facade-command-tests
     status: pending
