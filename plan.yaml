@@ -8531,7 +8531,7 @@ phases:
       - Retest confirms batched MCP remediation acceptance barrier is satisfied.'
   - id: shell_mcp.shell-mcp-gate-fix-batch
     name: shell-mcp-gate-fix-batch
-    status: claimed
+    status: done
     description: 'Fix ALL blockers and should-fix findings from `shell_mcp.shell-mcp-gate`
       in ONE batched remediation step.
 
@@ -8760,6 +8760,50 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T06:03:39.210666+00:00'
+    done_at: '2026-03-13T06:14:18.414816+00:00'
+    evidence: 'Commit hash(es): 19135a7, 7953c5c (worktree), squashed to main as f4a005f
+
+      Files changed: INTERFACES.md, src/larva/shell/mcp.py, tests/shell/test_cli.py,
+      tests/shell/test_mcp.py
+
+      Verification:
+
+      - uv run pytest -q tests/shell/test_cli.py tests/shell/test_mcp.py -> 121 passed
+
+      - uv run pytest -q tests/shell/test_mcp.py -k "malformed or failure_returns_error_envelope
+      or resolve_failure_returns_error_envelope or register_failure_returns_error_envelope
+      or list_failure_returns_error_envelope" -> 15 passed, 44 deselected
+
+      - uv run pytest -q -> 284 passed (full suite green)
+
+      - invar_guard(changed=false in worktree) -> passed (0 errors, warnings only)
+
+      Spec link:
+
+      - INTERFACES.md A and G (canonical MCP error semantics aligned)
+
+      - ARCHITECTURE.md module larva.shell.mcp and thin adapter boundaries
+
+      Sibling-search evidence:
+
+      - B1 deferred component stubs search -> no remaining component list/show deferred
+      stubs
+
+      - B2 docs/code/tests MCP error-shape search -> aligned with explicit semantics
+      and tests updated
+
+      - S1 numeric mapping drift search -> parity locked using facade map reference/parity
+      checks
+
+      - S2 handler typing alias search -> `MCPHandler = Any` removed; explicit protocol
+      introduced
+
+      Gaps/Notes:
+
+      - Out-of-scope refactors not performed; no new MCP tools or transport startup
+      changes.
+
+      - discovered_issues: none'
   - id: shell_mcp.shell-mcp-gate-retest
     name: shell-mcp-gate-retest
     status: pending
