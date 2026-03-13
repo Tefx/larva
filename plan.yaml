@@ -13480,6 +13480,126 @@ phases:
     depends_on:
     - followup_surface_hygiene.surface-verify
     agent: python-executor
+  - id: followup_surface_hygiene.retest-gate-should-fix
+    name: retest-gate-should-fix
+    status: pending
+    description: 'Re-test the batched remediation for ALL should_fix findings from
+      `followup_surface_hygiene.gate`.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+      spec_refs:
+
+      - `src/larva/shell/python_api.py:164`
+
+      - `ARCHITECTURE.md:667`
+
+      - `README.md:61`
+
+      touch_paths:
+
+      - `src/larva/shell/python_api.py`
+
+      - `ARCHITECTURE.md`
+
+      - `README.md`
+
+      - `src/larva/__init__.py`
+
+      harness_refs:
+
+      - `rg -n ''^def (assemble|register|resolve|list)\('' src/larva/shell/python_api.py
+      && rg -n ''@shell_orchestration'' src/larva/shell/python_api.py`
+
+      - `rg -n ''__init__\\.py|larva\\.shell\\.python_api'' ARCHITECTURE.md README.md
+      src/larva/__init__.py`
+
+
+      As an INDEPENDENT TESTER, verify that BOTH gate findings are closed. Your goal
+      is to find remaining drift, not to confirm success.
+
+
+      Test for:
+
+      - S1: all four thin wrappers (`assemble`, `register`, `resolve`, `list`) carry
+      explicit accepted `@shell_orchestration` rationale and no stale contract-stub
+      wording
+
+      - S2: `ARCHITECTURE.md` no longer implies active package-root `__init__.py`
+      exports and instead matches the supported `larva.shell.python_api` import surface
+      plus explicit deferred package-root export policy
+
+      - Cross-file consistency: README, ARCHITECTURE, and package root say the same
+      thing about public imports
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.'
+    verification: '- Run both grep hints and inspect the edited lines for all listed
+      files
+
+      - Confirm S1 and S2 are both closed with no sibling drift left behind
+
+      - Confirm no package-root export implementation or stale stub wording was introduced
+      while fixing docs/comments'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: batched retest for S1 and S2
+
+      **Independence Level**: L1
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      rg -n ''^def (assemble|register|resolve|list)\('' src/larva/shell/python_api.py
+      && rg -n ''@shell_orchestration'' src/larva/shell/python_api.py
+
+      rg -n ''__init__\.py|larva\.shell\.python_api'' ARCHITECTURE.md README.md src/larva/__init__.py
+
+      ```
+
+      - Output summary: <key findings>
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion | <issue or none> | <file:line> | <steps> |
+
+
+      ### Coverage Assessment
+
+      - S1 wrapper rationale verified: ✅/❌
+
+      - S2 docs/import-surface alignment verified: ✅/❌
+
+      - Cross-file consistency verified: ✅/❌
+
+      - NOT tested: <if anything>
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - followup_surface_hygiene.fix-gate-should-fix
+    agent: integration-verifier
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
