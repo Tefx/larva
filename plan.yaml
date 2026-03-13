@@ -4990,7 +4990,7 @@ phases:
       \ remediation; no product behavior changes.\n\ndiscovered_issues:\n- none"
   - id: app_facade.app-facade-verify-gap-retest
     name: app-facade-verify-gap-retest
-    status: claimed
+    status: done
     description: 'Re-test `app_facade` after verification-gap remediation.
 
 
@@ -5074,6 +5074,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T02:22:38.212686+00:00'
+    done_at: '2026-03-13T02:25:36.187633+00:00'
+    evidence: "## Verification Retest Report\n\n**Tester**: integration-verifier\n\
+      **Scope**: `app_facade` verification-gap closure for empty-registry list shaping\n\
+      **Independence Level**: L2\n\n### Commands executed\n```text\nuv run pytest\
+      \ -v tests/app/test_facade.py::TestFacadeList::test_list_returns_exactly_empty_list_for_empty_registry\n\
+      uv run pytest -v tests/app/test_facade.py\n```\n\n### Coverage confirmed\n-\
+      \ [x] empty-registry `facade.list()` returns exactly `[]`\n- [x] no transport-envelope\
+      \ leakage in facade result shape\n- [x] prior app-facade verification coverage\
+      \ still holds\n\n### Findings\n| Severity | Description | Location | Reproduction\
+      \ |\n| --- | --- | --- | --- |\n| suggestion | Retest scope passes; direct `pytest`\
+      \ binary unavailable in environment, validated via `uv run pytest` | behavior\
+      \ | run commands above; full suite reports `17 passed, 0 skipped` |\n\n### Verdict\n\
+      - [x] PASS\n- [ ] ISSUES_FOUND\n- [ ] INCOMPLETE\n\nfindings:\n  blockers: []\n\
+      \  should_fix: []\n  suggestions: []\n  tech_debt: []\ndiscovered_issues:\n\
+      - none\nGaps/Notes:\n- Targeted closure test passed (1 passed).\n- Full app-facade\
+      \ suite passed (17 passed, 0 skipped)."
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
