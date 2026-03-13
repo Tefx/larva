@@ -12958,7 +12958,7 @@ phases:
       - tests/shell/test_cli.py includes import/module smoke assertions for the shim'
   - id: followup_surface_hygiene.cli-compat-tests
     name: cli-compat-tests
-    status: claimed
+    status: done
     description: 'Add focused tests for the chosen `larva.cli` compatibility contract
       before implementation.
 
@@ -12996,6 +12996,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T17:22:14.303943+00:00'
+    done_at: '2026-03-13T17:28:35.742146+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (verification-only step; test coverage already present on
+      main from prior contract implementation)
+
+
+      Verification:
+
+      - uv run pytest tests/shell/test_cli.py -k "package_cli_main_delegates_to_shell_cli
+      or python_module_cli_executes_same_shell_entrypoint" -> 2 passed
+
+      - uv run pytest tests/shell/test_cli.py -> 69 passed
+
+      - uv run pytest tests/ -> 292 passed
+
+      - uv run python -m larva.cli --help -> help output emitted successfully
+
+
+      Spec link:
+
+      - README.md:40 compatibility shim semantics
+
+      - ARCHITECTURE.md:53 shell CLI boundary
+
+      - pyproject.toml:31 entrypoint remains `larva.shell.cli:main`
+
+      - src/larva/cli.py delegates to shell main with no duplicate CLI logic'
   - id: followup_surface_hygiene.cli-compat-implement
     name: cli-compat-implement
     status: pending
