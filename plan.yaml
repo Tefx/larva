@@ -6851,6 +6851,55 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-gate
     agent: python-senior
+  - id: shell_python_api.shell-python-api-gate-retest
+    name: shell-python-api-gate-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the batched
+      remediation for `shell_python_api.shell-python-api-gate` from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm the fix worked.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      priority: HIGH
+
+      Independence Level: L2
+
+
+      Retest scope:
+
+      - verify README Python Library examples now align with the current deferred-wiring
+      import path `larva.shell.python_api` and current `assemble(...)` kwargs
+
+      - verify `src/larva/__init__.py` remains untouched and package-root exports
+      are still deferred in this phase
+
+      - verify test fixture isolation restores `python_api._get_facade` safely across
+      repeated test execution
+
+      - verify the `assemble()` adapter remains thin, with no duplicated orchestration
+      or shell leakage after the complexity remediation
+
+      - verify no-leak/thin-adapter behavior still holds for the Python API surface
+      after the fixes
+
+
+      Document ALL remaining findings. A retest that discovers issues is a SUCCESS.'
+    verification: '- Main path: targeted docs/API alignment checks and `tests/shell/test_python_api.py`
+      fixture-isolation coverage pass
+
+      - Failure path: regression coverage proves `_get_facade` does not leak between
+      tests and `assemble()` remains a thin adapter after the complexity change
+
+      - Proof: README import/kwargs examples match the current callable surface, `src/larva/__init__.py`
+      stays untouched, and no new shell-side orchestration appears'
+    depends_on:
+    - shell_python_api.shell-python-api-gate-fix
+    agent: integration-verifier
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
