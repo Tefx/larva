@@ -16769,7 +16769,7 @@ phases:
       - blocker: CrossHair residual persists for `src/larva/core/normalize.py`'
   - id: followup_guard_full.guard-full-core-crosshair-fix-7
     name: guard-full-core-crosshair-fix-7
-    status: pending
+    status: claimed
     description: 'Seventh batched remediation extension for the remaining narrowed
       CrossHair residual family only; preserve the existing `followup_guard_full`
       residual family chain, keep scope strict to `src/larva/core/assemble.py` and
@@ -16913,6 +16913,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-6
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T21:29:13.874579+00:00'
   - id: followup_guard_full.guard-full-core-crosshair-retest-7
     name: guard-full-core-crosshair-retest-7
     status: pending
