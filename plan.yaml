@@ -13196,7 +13196,8 @@ phases:
     name: guard-diagnose
     status: pending
     description: 'Diagnose the confirmed full-project `invar guard --all` failure
-      and turn it into an explicit remediation matrix.
+      and turn it into an explicit remediation matrix focused on authoritative repo
+      debt after `.vectl` ignore tightening.
 
 
       step_type: review
@@ -13209,11 +13210,17 @@ phases:
 
       - saved full-guard failure artifact showing `<project>` `shell_complexity_debt`
 
+      - `src/larva/shell/components.py`
+
+      - docs/comments that mention `~/.larva/components`
+
       touch_paths:
 
       - `pyproject.toml`
 
       - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/components.py`
 
       - optional tooling docs if needed
 
@@ -13224,18 +13231,28 @@ phases:
       agent_source: default
 
 
-      Produce a root-cause matrix with evidence for: project-level `shell_complexity_debt`,
-      duplicated findings under `.vectl/worktrees/**`, and the real main-repo complexity
-      findings in `src/larva/shell/cli.py`. Preserve exclusions from the earlier preview:
-      no package-root re-export scope, no component-root init scope, no registry-root
-      init scope, and no duplicate MCP runtime work.'
+      Produce a root-cause matrix with evidence for: remaining main-repo `shell_complexity_debt`;
+      any residual guard-scope confirmation still needed after `.vectl` is ignored;
+      package-root re-exports from `src/larva/__init__.py` recorded as deferred policy
+      / future follow-up; and `~/.larva/components` initialization concerns reclassified
+      into a rigorous bucket such as needs investigation, cleanup candidate, or dead-code-or-UX-semantics
+      clarification. Preserve the earlier sound exclusions for `~/.larva/registry`
+      initialization and items already owned by `shell_mcp_runtime`; do not duplicate
+      either line of work.'
     verification: '- Diagnosis explicitly identifies the failing rule and why it exits
       non-zero
 
-      - Diagnosis distinguishes main-repo findings from `.vectl/worktrees/**` duplication
+      - Diagnosis distinguishes any resolved worktree-duplication hygiene from the
+      remaining real main-repo debt
 
-      - Diagnosis recommends whether guard-scope config, CLI code changes, or both
-      are required'
+      - Diagnosis records `src/larva/__init__.py` package-root re-exports as deferred
+      / future-policy follow-up, not silent exclusion
+
+      - Diagnosis classifies `~/.larva/components` init concerns into an explicit
+      investigation / cleanup / clarification bucket rather than `docs-only`
+
+      - Diagnosis recommends whether guard-scope config confirmation, CLI code changes,
+      components-root investigation, or a bounded combination is required'
     agent: software-architect
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
