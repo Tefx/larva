@@ -13183,7 +13183,7 @@ phases:
       - Scope bounded to docs/comments with no behavior changes.'
   - id: followup_surface_hygiene.surface-verify
     name: surface-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, validate the follow-up surface hygiene
       phase from a fresh perspective.
 
@@ -13240,6 +13240,8 @@ phases:
     depends_on:
     - followup_surface_hygiene.surface-doc-cleanup
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T17:35:23.276550+00:00'
   - id: followup_surface_hygiene.freeze
     name: freeze
     status: pending
