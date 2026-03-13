@@ -13045,12 +13045,19 @@ phases:
 
       Update stale `contract-only stub / delegation deferred` comments in `src/larva/shell/python_api.py`
       and fix `ARCHITECTURE.md` assemble-request field drift (`toolsets: list[str]`,
-      `constraints: list[str]`). Keep package-root re-exports deferred and do not
-      duplicate MCP runtime work.'
+      `constraints: list[str]`). Record in phase evidence that package-root re-exports
+      from `src/larva/__init__.py` remain a deferred policy / future follow-up item
+      rather than an omitted bug. Keep `~/.larva/components` and `~/.larva/registry`
+      root-init work out of this doc-cleanup step: components-root concerns are routed
+      forward as investigation / cleanup / UX-semantics clarification, registry-root
+      init remains excluded, and MCP runtime work is not duplicated.'
     verification: '- No stale `contract-only stub` / `delegation deferred` comments
       remain for active python API functions
 
       - `ARCHITECTURE.md` request fields match the implemented plural-list surface
+
+      - Evidence explicitly records package-root re-exports as deferred / future-policy
+      follow-up
 
       - No unrelated public-surface decisions are reopened'
     depends_on:
