@@ -6957,7 +6957,7 @@ phases:
       business logic, no transport runtime implementation.'
   - id: shell_mcp.shell-mcp-tests
     name: shell-mcp-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for `larva.shell.mcp` in `tests/shell/test_mcp.py`.
 
 
@@ -7034,6 +7034,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T04:09:24.060772+00:00'
   - id: shell_mcp.shell-mcp-implement
     name: shell-mcp-implement
     status: pending
