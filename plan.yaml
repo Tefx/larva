@@ -6577,7 +6577,7 @@ phases:
       \ excluded from this step per scope."
   - id: shell_cli.shell-cli-implement
     name: shell-cli-facade-command-implement
-    status: pending
+    status: claimed
     description: "Implement the facade-backed command family in `src/larva/shell/cli.py`\
       \ as the user-facing CLI transport adapter and nothing more.\n\nstep_type: implementation\n\
       agent_source: default\ntags:\n  - integration\n\nScope:\n- implement command\
@@ -6635,6 +6635,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T04:36:47.462398+00:00'
   - id: shell_cli.shell-cli-verify
     name: shell-cli-verify
     status: pending
