@@ -12,12 +12,11 @@ Behavioral notes (contract-only):
 """
 
 from string import Formatter
-from typing import Any, cast
+from typing import Any, Mapping, cast
 
 from deal import post, pre, raises
 
 from larva.core.spec import (
-    AssemblyInput,
     ModelComponent,
     PersonaSpec,
     ToolPosture,
@@ -185,7 +184,7 @@ def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
 
 @pre(lambda data: isinstance(data, dict))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
-def _collect_prompt_texts(data: AssemblyInput) -> list[str]:
+def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompts_obj = data.get("prompts", [])
     prompts = prompts_obj if isinstance(prompts_obj, list) else []
     variables_obj = data.get("variables", {})
@@ -214,7 +213,7 @@ def _collect_prompt_texts(data: AssemblyInput) -> list[str]:
 
 @pre(lambda data: isinstance(data, dict))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, dict) for item in result))
-def _collect_constraint_sources(data: AssemblyInput) -> list[dict[str, Any]]:
+def _collect_constraint_sources(data: dict[str, object]) -> list[dict[str, Any]]:
     constraints_obj = data.get("constraints", [])
     constraints = constraints_obj if isinstance(constraints_obj, list) else []
     constraint_sources: list[dict[str, Any]] = [
@@ -231,25 +230,25 @@ def _collect_constraint_sources(data: AssemblyInput) -> list[dict[str, Any]]:
 
 @pre(lambda result, overrides: isinstance(result, dict) and isinstance(overrides, dict))
 @post(lambda result: isinstance(result, dict))
-def _apply_overrides(result: PersonaSpec, overrides: dict[str, Any]) -> PersonaSpec:
+def _apply_overrides(result: Mapping[str, object], overrides: dict[str, Any]) -> dict[str, object]:
     updated = dict(result)
     if "model_params" in updated and isinstance(overrides.get("model_params"), dict):
         updated["model_params"] = _deep_merge(
             cast("dict[str, Any]", updated["model_params"]),
             cast("dict[str, Any]", overrides["model_params"]),
         )
-        return cast("PersonaSpec", updated)
+        return updated
 
     for key, value in overrides.items():
         if key != "model_params":
             updated[key] = value  # type: ignore[literal-required]
-    return cast("PersonaSpec", updated)
+    return updated
 
 
 @pre(lambda data: isinstance(data, dict) and "id" in data and not _has_scalar_conflicts(data))
 @post(lambda result: isinstance(result, dict) and "id" in result)
 @raises(AssemblyError)
-def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
+def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     """Assemble a PersonaSpec candidate from component inputs.
 
     Contract (from INTERFACES.md Section C Assembly Rules):
@@ -260,7 +259,7 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
     - model_params: Deep-merged from model component, overrides can patch keys
 
     Args:
-        data: AssemblyInput containing in-memory component values and overrides.
+        data: Mapping containing in-memory component values and overrides.
 
     Returns:
         PersonaSpec candidate (not yet normalized/validated)
@@ -299,7 +298,7 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
 
     toolsets_obj = data.get("toolsets", [])
     toolsets = (
-        [item for item in toolsets_obj if isinstance(item, dict)]
+        [cast("ToolsetComponent", item) for item in toolsets_obj if isinstance(item, dict)]
         if isinstance(toolsets_obj, list)
         else []
     )
@@ -308,7 +307,7 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
 
     model_component: ModelComponent | None = None
     if isinstance(model, dict):
-        model_component = model
+        model_component = cast("ModelComponent", model)
     elif model is None:
         model_component = {}
 
@@ -318,6 +317,6 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
     overrides_obj = data.get("overrides", {})
     overrides = overrides_obj if isinstance(overrides_obj, dict) else {}
     if overrides:
-        result = _apply_overrides(result, cast("dict[str, Any]", overrides))
+        result = cast("PersonaSpec", _apply_overrides(result, cast("dict[str, Any]", overrides)))
 
     return result

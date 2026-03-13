@@ -12,6 +12,7 @@ See:
 import hashlib
 import json
 import re
+from typing import cast
 
 from deal import post, pre
 
@@ -35,7 +36,7 @@ def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
 
 @pre(lambda spec: _is_json_serializable_spec(spec))
 @post(lambda result: isinstance(result, str) and _SPEC_DIGEST_PATTERN.fullmatch(result) is not None)
-def _compute_spec_digest(spec: PersonaSpec) -> str:
+def _compute_spec_digest(spec: dict[str, object]) -> str:
     """Compute SHA-256 digest from canonical JSON representation.
 
     Canonical form: sorted keys, no whitespace, excluding spec_digest field.
@@ -54,7 +55,7 @@ def _compute_spec_digest(spec: PersonaSpec) -> str:
 
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
 @post(lambda result: "spec_version" in result and "spec_digest" in result)
-def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
+def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.
 
     Acceptance Contract (from INTERFACES.md):
@@ -92,4 +93,4 @@ def normalize_spec(spec: PersonaSpec) -> PersonaSpec:
         spec = {**spec, "spec_version": "0.1.0"}
 
     digest = _compute_spec_digest(spec)
-    return {**spec, "spec_digest": digest}
+    return cast("PersonaSpec", {**spec, "spec_digest": digest})

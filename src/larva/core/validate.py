@@ -25,10 +25,6 @@ from typing import TypedDict, cast
 
 from deal import post, pre
 
-# Import PersonaSpec from the canonical spec module
-from larva.core.spec import PersonaSpec
-
-
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _PROMPT_VARIABLE_PATTERN = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
 
@@ -71,7 +67,7 @@ def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIss
 
 @pre(lambda spec: isinstance(spec, dict))
 @post(lambda result: isinstance(result, list))
-def _validate_identity_fields(spec: PersonaSpec) -> list[ValidationIssue]:
+def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     errors: list[ValidationIssue] = []
     persona_id = spec.get("id")
     if (
@@ -113,7 +109,7 @@ def _validate_identity_fields(spec: PersonaSpec) -> list[ValidationIssue]:
 
 @pre(lambda spec: isinstance(spec, dict))
 @post(lambda result: isinstance(result, dict) and "errors" in result and "warnings" in result)
-def _validate_prompt_variables(spec: PersonaSpec) -> dict[str, object]:
+def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
     errors: list[ValidationIssue] = []
     warnings: list[str] = []
 
@@ -132,11 +128,12 @@ def _validate_prompt_variables(spec: PersonaSpec) -> dict[str, object]:
     provided_vars_obj = spec.get("variables", {})
     provided_vars: dict[str, str] = {}
     if isinstance(provided_vars_obj, dict):
-        provided_vars = {
-            key: value
-            for key, value in provided_vars_obj.items()
-            if isinstance(key, str) and isinstance(value, str)
-        }
+        try:
+            for key, value in provided_vars_obj.items():
+                if isinstance(key, str) and isinstance(value, str):
+                    provided_vars[key] = value
+        except KeyError:
+            provided_vars = {}
 
     unresolved = found_vars - set(provided_vars.keys())
     if unresolved:
@@ -160,7 +157,7 @@ def _validate_prompt_variables(spec: PersonaSpec) -> dict[str, object]:
 
 @pre(lambda spec: isinstance(spec, dict))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
-def validate_spec(spec: PersonaSpec) -> ValidationReport:
+def validate_spec(spec: dict[str, object]) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
 
     Contract (from INTERFACES.md):
