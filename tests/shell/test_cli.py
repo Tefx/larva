@@ -21,6 +21,8 @@ Sources:
 from __future__ import annotations
 
 import json
+import io
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
@@ -42,12 +44,14 @@ from larva.core.validate import ValidationReport
 from larva.shell import cli
 from larva.shell.cli import (
     EXIT_ERROR,
+    EXIT_CRITICAL,
     EXIT_OK,
     CliCommandResult,
     CliFailure,
     JsonErrorEnvelope,
     assemble_command,
     list_command,
+    run_cli,
     register_command,
     resolve_command,
     validate_command,
@@ -815,3 +819,136 @@ class TestJsonErrorEnvelope:
             assert error["numeric_code"] == expected_numeric, (
                 f"Expected {expected_numeric} for {code}"
             )
+
+
+@dataclass
+class RecordingFacade:
+    """Simple facade double for run_cli dispatch tests."""
+
+    validate_report: ValidationReport = field(default_factory=_valid_report)
+    assemble_result: Result[PersonaSpec, LarvaError] = field(
+        default_factory=lambda: Success(_canonical_spec("assembled"))
+    )
+    register_result: Result[RegisteredPersona, LarvaError] = field(
+        default_factory=lambda: Success({"id": "registered", "registered": True})
+    )
+    resolve_result: Result[PersonaSpec, LarvaError] = field(
+        default_factory=lambda: Success(_canonical_spec("resolved"))
+    )
+    list_result: Result[list[PersonaSummary], LarvaError] = field(
+        default_factory=lambda: Success([])
+    )
+    last_resolve_id: str | None = None
+    last_resolve_overrides: dict[str, object] | None = None
+
+    def validate(self, spec: PersonaSpec) -> ValidationReport:
+        del spec
+        return self.validate_report
+
+    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
+        del request
+        return self.assemble_result
+
+    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
+        del spec
+        return self.register_result
+
+    def resolve(
+        self,
+        id: str,
+        overrides: dict[str, object] | None = None,
+    ) -> Result[PersonaSpec, LarvaError]:
+        self.last_resolve_id = id
+        self.last_resolve_overrides = overrides
+        return self.resolve_result
+
+    def list(self) -> Result[list[PersonaSummary], LarvaError]:
+        return self.list_result
+
+
+class TestRunCli:
+    def test_validate_json_success_writes_json_stdout_only(self, tmp_path: Path) -> None:
+        spec_path = tmp_path / "valid.json"
+        spec_path.write_text(json.dumps(_canonical_spec("ok")), encoding="utf-8")
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["validate", str(spec_path), "--json"], facade=facade, stdout=stdout, stderr=stderr
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["valid"] is True
+        assert stderr.getvalue() == ""
+
+    def test_register_missing_file_text_returns_critical_and_stderr_only(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["register", "/missing/spec.json"], facade=facade, stdout=stdout, stderr=stderr
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        assert stdout.getvalue() == ""
+        assert "spec file not found" in stderr.getvalue()
+
+    def test_register_missing_file_json_returns_error_envelope_on_stdout(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["register", "/missing/spec.json", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
+        assert payload["error"]["numeric_code"] == 10
+        assert stderr.getvalue() == ""
+
+    def test_assemble_override_parse_error_returns_critical(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["assemble", "--id", "persona", "--override", "bad"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        assert stdout.getvalue() == ""
+        assert "expected key=value" in stderr.getvalue()
+
+    def test_resolve_passes_parsed_overrides_to_facade(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "resolve",
+                "persona-1",
+                "--override",
+                "model=gpt-4o-mini",
+                "--override",
+                "can_spawn=false",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        assert facade.last_resolve_id == "persona-1"
+        assert facade.last_resolve_overrides == {"model": "gpt-4o-mini", "can_spawn": "false"}

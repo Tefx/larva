@@ -1,53 +1,25 @@
-"""Contract-only CLI shell surface for larva.
-
-Task boundary (shell_cli.shell-cli-contract):
-- signatures, type definitions, interface notes, and stubs only
-- no argument parsing implementation
-- no file I/O implementation
-- no facade/component invocation implementation
-- no JSON emission implementation
-
-Authoritative downstream seams (clarified contract):
-- Persona commands route to `larva.app.facade.LarvaFacade`
-  (`validate`, `assemble`, `register`, `resolve`, `list`)
-- Component read commands route directly to
-  `larva.shell.components.ComponentStore`
-  (`component list`, `component show`)
-
-Acceptance-level notes for `--json` and process exits:
-- All commands accept `--json` as a transport formatting flag.
-- Exit code strategy uses small shell-friendly codes only:
-  - `0`: success
-  - `1`: domain/application error
-  - `2`: critical/transport failure
-- With `--json`, error payloads include app error identity fields
-  (`code`, `numeric_code`, `message`, `details`) while process exit remains
-  in `{0, 1, 2}`.
-
-Sources:
-- INTERFACES.md :: B. CLI Interface
-- INTERFACES.md :: G. Error Codes
-- ARCHITECTURE.md :: Module: `larva.shell.cli`
-- ARCHITECTURE.md :: Decision 4 (component subcommands bypass facade)
-"""
+"""CLI shell adapter for facade-backed persona commands."""
 
 from __future__ import annotations
 
+import argparse
 import json
-from typing import Any, Literal, TypedDict, cast
+import sys
+from pathlib import Path
+from typing import IO, Literal, NoReturn, Sequence, TypedDict, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import (
-    AssembleRequest,
-    LarvaError,
-    LarvaFacade,
-    PersonaSummary,
-    RegisteredPersona,
-)
+from larva.app import facade as facade_module
+from larva.app.facade import AssembleRequest, LarvaError, LarvaFacade, PersonaSummary
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.shell.components import ComponentStore
+from larva.shell.components import ComponentStore, FilesystemComponentStore
+from larva.shell.registry import FileSystemRegistryStore
 
 CliExitCode = Literal[0, 1, 2]
 
@@ -65,10 +37,11 @@ CommandName = Literal[
     "component show",
 ]
 
+PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
+COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
+
 
 class JsonErrorEnvelope(TypedDict):
-    """Machine-readable error payload for `--json` mode."""
-
     code: str
     numeric_code: int
     message: str
@@ -76,81 +49,33 @@ class JsonErrorEnvelope(TypedDict):
 
 
 class CliFailure(TypedDict, total=False):
-    """Transport-neutral CLI failure contract."""
-
     exit_code: CliExitCode
     stderr: str
     error: JsonErrorEnvelope
 
 
 class CliJsonSuccess(TypedDict):
-    """Machine-readable stdout payload for successful CLI commands."""
-
     data: object
 
 
 class CliCommandResult(TypedDict, total=False):
-    """Normalized contract result produced by CLI handlers."""
-
     exit_code: CliExitCode
     stdout: str
     stderr: str
     json: CliJsonSuccess
 
 
-class JsonModeSpec(TypedDict):
-    """Acceptance note entry for JSON behavior."""
-
-    command: CommandName
-    behavior: str
+class _CliParseError(Exception):
+    pass
 
 
-JSON_MODE_ACCEPTANCE: tuple[JsonModeSpec, ...] = (
-    {
-        "command": "validate",
-        "behavior": "When --json is set, success/error are represented as JSON payloads on stdout.",
-    },
-    {
-        "command": "assemble",
-        "behavior": "When --json is set, assembled PersonaSpec is emitted as JSON payload.",
-    },
-    {
-        "command": "register",
-        "behavior": "When --json is set, registration outcome is emitted as JSON payload.",
-    },
-    {
-        "command": "resolve",
-        "behavior": "When --json is set, resolved PersonaSpec is emitted as JSON payload.",
-    },
-    {
-        "command": "list",
-        "behavior": "When --json is set, persona summaries are emitted as JSON payload.",
-    },
-    {
-        "command": "component list",
-        "behavior": "When --json is set, component index is emitted as JSON payload.",
-    },
-    {
-        "command": "component show",
-        "behavior": "When --json is set, selected component payload is emitted as JSON payload.",
-    },
-)
+class _CliParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        raise _CliParseError(message)
 
 
-EXIT_CODE_ACCEPTANCE: tuple[tuple[CliExitCode, str], ...] = (
-    (EXIT_OK, "success"),
-    (EXIT_ERROR, "domain/application error"),
-    (EXIT_CRITICAL, "critical/transport failure"),
-)
-
-
-PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
-COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
-
-
-# @invar:allow shell_result: pure data transformation, no I/O
+# @invar:allow shell_result: helper maps facade error typed dict for transport output
 def _map_facade_error(error: LarvaError) -> JsonErrorEnvelope:
-    """Convert a facade error to a JSON error envelope."""
     return {
         "code": error["code"],
         "numeric_code": error["numeric_code"],
@@ -159,28 +84,310 @@ def _map_facade_error(error: LarvaError) -> JsonErrorEnvelope:
     }
 
 
-# @shell_complexity: CLI command handlers inherently handle both text/JSON modes
+# @invar:allow shell_result: helper builds transport-level critical envelope
+def _critical_error(message: str, details: dict[str, object] | None = None) -> JsonErrorEnvelope:
+    return {
+        "code": "INTERNAL",
+        "numeric_code": facade_module.ERROR_NUMERIC_CODES["INTERNAL"],
+        "message": message,
+        "details": details or {},
+    }
+
+
+# @invar:allow shell_result: serializer helper used by stdout emission
+def _json_line(payload: object) -> str:
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":")) + "\n"
+
+
+# @invar:allow shell_result: text formatter helper for validate command
+def _render_validation_report(report: ValidationReport) -> str:
+    if report["valid"]:
+        warnings = report.get("warnings", [])
+        if not warnings:
+            return "valid\n"
+        return "valid\n" + "\n".join(f"warning: {warning}" for warning in warnings) + "\n"
+    errors = report.get("errors", [])
+    if not errors:
+        return "invalid\n"
+    return f"invalid: {errors[0].get('message', 'validation failed')}\n"
+
+
+# @invar:allow shell_result: text formatter helper for list command
+def _render_list_summaries(summaries: list[PersonaSummary]) -> str:
+    if not summaries:
+        return "\n"
+    return (
+        "\n".join(f"{item['id']}\t{item['model']}\t{item['spec_digest']}" for item in summaries)
+        + "\n"
+    )
+
+
+# @invar:allow shell_result: text formatter helper for success payloads
+def _render_payload_for_text(command: CommandName, payload: object) -> str:
+    if command == "validate":
+        return _render_validation_report(cast("ValidationReport", payload))
+    if command == "list":
+        return _render_list_summaries(cast("list[PersonaSummary]", payload))
+    return json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
+
+
+def _parse_key_value_pairs(
+    raw_values: list[str], *, flag: str
+) -> Result[dict[str, object], JsonErrorEnvelope]:
+    parsed: dict[str, object] = {}
+    for raw in raw_values:
+        if "=" not in raw:
+            return Failure(
+                _critical_error(f"invalid {flag} value: expected key=value", {"value": raw})
+            )
+        key, value = raw.split("=", 1)
+        if key == "":
+            return Failure(
+                _critical_error(f"invalid {flag} value: key must be non-empty", {"value": raw})
+            )
+        parsed[key] = value
+    return Success(parsed)
+
+
+def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
+    path_obj = Path(path)
+    try:
+        with open(path_obj, encoding="utf-8") as spec_file:
+            loaded = json.load(spec_file)
+    except FileNotFoundError:
+        return Failure(_critical_error("spec file not found", {"path": str(path_obj)}))
+    except json.JSONDecodeError as error:
+        return Failure(
+            _critical_error(
+                "spec file is not valid JSON",
+                {"path": str(path_obj), "line": error.lineno, "column": error.colno},
+            )
+        )
+    except OSError as error:
+        return Failure(
+            _critical_error(
+                "failed to read spec file", {"path": str(path_obj), "error": str(error)}
+            )
+        )
+
+    if not isinstance(loaded, dict):
+        return Failure(
+            _critical_error("spec file root must be a JSON object", {"path": str(path_obj)})
+        )
+    return Success(cast("PersonaSpec", loaded))
+
+
+# @invar:allow shell_result: argparse builder returns parser object
+def _build_parser() -> _CliParser:
+    parser = _CliParser(prog="larva", add_help=True)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    validate_parser = subparsers.add_parser("validate")
+    validate_parser.add_argument("spec")
+    validate_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    assemble_parser = subparsers.add_parser("assemble")
+    assemble_parser.add_argument("--id", required=True)
+    assemble_parser.add_argument("--prompt", dest="prompts", action="append", default=[])
+    assemble_parser.add_argument("--toolset", dest="toolsets", action="append", default=[])
+    assemble_parser.add_argument("--constraints", dest="constraints", action="append", default=[])
+    assemble_parser.add_argument("--model")
+    assemble_parser.add_argument("--override", dest="overrides", action="append", default=[])
+    assemble_parser.add_argument("--var", dest="variables", action="append", default=[])
+    assemble_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    register_parser = subparsers.add_parser("register")
+    register_parser.add_argument("spec")
+    register_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    resolve_parser = subparsers.add_parser("resolve")
+    resolve_parser.add_argument("id")
+    resolve_parser.add_argument("--override", dest="overrides", action="append", default=[])
+    resolve_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    list_parser = subparsers.add_parser("list")
+    list_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    return parser
+
+
+def _emit_result(
+    result: Result[CliCommandResult, CliFailure], *, as_json: bool, stdout: IO[str], stderr: IO[str]
+) -> CliExitCode:
+    if isinstance(result, Success):
+        command_result = result.unwrap()
+        if as_json:
+            stdout.write(_json_line(command_result.get("json", {"data": None})))
+        else:
+            stdout.write(command_result.get("stdout", ""))
+        return command_result.get("exit_code", EXIT_OK)
+
+    failure = result.failure()
+    if as_json:
+        stdout.write(_json_line({"error": failure.get("error", _critical_error("unknown error"))}))
+    else:
+        stderr.write(failure.get("stderr", ""))
+    return failure.get("exit_code", EXIT_ERROR)
+
+
+def _dispatch(
+    args: argparse.Namespace, *, facade: LarvaFacade
+) -> Result[CliCommandResult, CliFailure]:
+    command = cast("str", args.command)
+    as_json = cast("bool", getattr(args, "as_json", False))
+
+    if command == "validate":
+        loaded_spec = _read_spec_json(cast("str", args.spec))
+        if isinstance(loaded_spec, Failure):
+            error = loaded_spec.failure()
+            failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error}
+            if not as_json:
+                failure["stderr"] = f"Validate failed: {error['message']}\n"
+            return Failure(failure)
+        return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
+
+    if command == "assemble":
+        overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
+        if isinstance(overrides, Failure):
+            error = overrides.failure()
+            failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error}
+            if not as_json:
+                failure["stderr"] = f"Assemble failed: {error['message']}\n"
+            return Failure(failure)
+        variables = _parse_key_value_pairs(cast("list[str]", args.variables), flag="--var")
+        if isinstance(variables, Failure):
+            error = variables.failure()
+            failure = {"exit_code": EXIT_CRITICAL, "error": error}
+            if not as_json:
+                failure["stderr"] = f"Assemble failed: {error['message']}\n"
+            return Failure(failure)
+
+        request: AssembleRequest = {
+            "id": cast("str", args.id),
+            "prompts": cast("list[str]", args.prompts),
+            "toolsets": cast("list[str]", args.toolsets),
+            "constraints": cast("list[str]", args.constraints),
+            "overrides": overrides.unwrap(),
+            "variables": cast("dict[str, str]", variables.unwrap()),
+        }
+        model = cast("str | None", args.model)
+        if model is not None:
+            request["model"] = model
+        return assemble_command(request, as_json=as_json, facade=facade)
+
+    if command == "register":
+        loaded_spec = _read_spec_json(cast("str", args.spec))
+        if isinstance(loaded_spec, Failure):
+            error = loaded_spec.failure()
+            failure = {"exit_code": EXIT_CRITICAL, "error": error}
+            if not as_json:
+                failure["stderr"] = f"Register failed: {error['message']}\n"
+            return Failure(failure)
+        return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
+
+    if command == "resolve":
+        overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
+        if isinstance(overrides, Failure):
+            error = overrides.failure()
+            failure = {"exit_code": EXIT_CRITICAL, "error": error}
+            if not as_json:
+                failure["stderr"] = f"Resolve failed: {error['message']}\n"
+            return Failure(failure)
+        return resolve_command(
+            cast("str", args.id),
+            overrides=overrides.unwrap(),
+            as_json=as_json,
+            facade=facade,
+        )
+
+    if command == "list":
+        return list_command(as_json=as_json, facade=facade)
+
+    return Failure(
+        {
+            "exit_code": EXIT_CRITICAL,
+            "stderr": f"Unsupported command: {command}\n",
+            "error": _critical_error("unsupported command", {"command": command}),
+        }
+    )
+
+
+# @invar:allow shell_result: returns concrete facade wiring for transport adapter
+def build_default_facade() -> LarvaFacade:
+    return facade_module.DefaultLarvaFacade(
+        spec=spec_module,
+        assemble=assemble_module,
+        validate=validate_module,
+        normalize=normalize_module,
+        components=FilesystemComponentStore(),
+        registry=FileSystemRegistryStore(),
+    )
+
+
+# @invar:allow shell_result: CLI entry handler returns process exit code
+def run_cli(
+    argv: Sequence[str], *, facade: LarvaFacade, stdout: IO[str], stderr: IO[str]
+) -> CliExitCode:
+    parser = _build_parser()
+    try:
+        args = parser.parse_args(list(argv))
+    except _CliParseError as error:
+        parse_failure: CliFailure = {
+            "exit_code": EXIT_CRITICAL,
+            "stderr": f"Argument parsing failed: {error}\n",
+            "error": _critical_error("argument parsing failed", {"message": str(error)}),
+        }
+        return _emit_result(
+            Failure(parse_failure),
+            as_json="--json" in argv,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    return _emit_result(
+        _dispatch(args, facade=facade),
+        as_json=cast("bool", getattr(args, "as_json", False)),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+# @invar:allow shell_result: process entrypoint returns int exit code
+# @invar:allow dead_export: console script entrypoint referenced via pyproject script
+def main(argv: Sequence[str] | None = None) -> int:
+    active_argv = list(sys.argv[1:] if argv is None else argv)
+    return int(
+        run_cli(
+            active_argv,
+            facade=build_default_facade(),
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+    )
+
+
 def validate_command(
     spec: PersonaSpec,
     *,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Handle `larva validate` command.
-
-    Validates a PersonaSpec and returns the validation report.
-    """
     report = facade.validate(spec)
-
     if report["valid"]:
-        result: CliCommandResult = {"exit_code": EXIT_OK}
+        result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_validation_report(report),
+        }
         if as_json:
             result["json"] = {
-                "data": {"valid": True, "errors": [], "warnings": report.get("warnings", [])}
+                "data": {
+                    "valid": True,
+                    "errors": [],
+                    "warnings": report.get("warnings", []),
+                }
             }
         return Success(result)
 
-    # Invalid spec - exit code 1
     error_envelope = _map_facade_error(
         {
             "code": "PERSONA_INVALID",
@@ -189,12 +396,9 @@ def validate_command(
             "details": {"report": report},
         }
     )
-
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        # Text mode - include stderr message
-        failure["stderr"] = f"Validation failed: {error_envelope['message']}"
-
+        failure["stderr"] = f"Validation failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
@@ -204,26 +408,21 @@ def assemble_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Handle `larva assemble` command.
-
-    Assembles a PersonaSpec from components and returns the result.
-    """
     result = facade.assemble(request)
-
     if isinstance(result, Success):
-        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("assemble", payload),
+        }
         if as_json:
-            cli_result["json"] = {"data": dict(result.unwrap())}
+            cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    # Assembly failed - exit code 1
-    error = result.failure()
-    error_envelope = _map_facade_error(error)
-
+    error_envelope = _map_facade_error(result.failure())
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Assembly failed: {error_envelope['message']}"
-
+        failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
@@ -233,26 +432,21 @@ def register_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Handle `larva register` command.
-
-    Validates, normalizes, and persists a PersonaSpec to the registry.
-    """
     result = facade.register(spec)
-
     if isinstance(result, Success):
-        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("register", payload),
+        }
         if as_json:
-            cli_result["json"] = {"data": dict(result.unwrap())}
+            cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    # Registration failed - exit code 1
-    error = result.failure()
-    error_envelope = _map_facade_error(error)
-
+    error_envelope = _map_facade_error(result.failure())
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Registration failed: {error_envelope['message']}"
-
+        failure["stderr"] = f"Registration failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
@@ -263,103 +457,59 @@ def resolve_command(
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Handle `larva resolve` command.
-
-    Resolves a PersonaSpec from the registry, optionally applying overrides.
-    """
     result = facade.resolve(persona_id, overrides=overrides)
-
     if isinstance(result, Success):
-        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("resolve", payload),
+        }
         if as_json:
-            cli_result["json"] = {"data": dict(result.unwrap())}
+            cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    # Resolution failed - exit code 1 (domain error, not critical)
-    # This is a regression test: not-found should be exit code 1, not 2
-    error = result.failure()
-    error_envelope = _map_facade_error(error)
-
+    error_envelope = _map_facade_error(result.failure())
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Resolve failed: {error_envelope['message']}"
-
+        failure["stderr"] = f"Resolve failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
-def list_command(
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    """Handle `larva list` command.
-
-    Lists all registered persona summaries from the registry.
-    """
+def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResult, CliFailure]:
     result = facade.list()
-
     if isinstance(result, Success):
-        cli_result: CliCommandResult = {"exit_code": EXIT_OK}
+        payload = list(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("list", payload),
+        }
         if as_json:
-            cli_result["json"] = {"data": list(result.unwrap())}
+            cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    # List failed - exit code 1
-    error = result.failure()
-    error_envelope = _map_facade_error(error)
-
+    error_envelope = _map_facade_error(result.failure())
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"List failed: {error_envelope['message']}"
-
+        failure["stderr"] = f"List failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
-# @invar:allow dead_param: contract stub - will be implemented in next step
+# @invar:allow dead_export: deferred command kept for future scope
+# @invar:allow dead_param: deferred command preserves contract signature
+# @invar:allow stub_body: intentionally deferred by task boundary
 def component_list_command(
-    *,
-    as_json: bool,
-    component_store: ComponentStore,
+    *, as_json: bool, component_store: ComponentStore
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva component list` command handling."""
-    raise NotImplementedError("cli contract-only: component list wiring deferred")
+    raise NotImplementedError("component list deferred for later step")
 
 
-# @invar:allow dead_param: contract stub - will be implemented in next step
+# @invar:allow dead_export: deferred command kept for future scope
+# @invar:allow dead_param: deferred command preserves contract signature
+# @invar:allow stub_body: intentionally deferred by task boundary
 def component_show_command(
     component_ref: str,
     *,
     as_json: bool,
     component_store: ComponentStore,
 ) -> Result[CliCommandResult, CliFailure]:
-    """Contract stub for `larva component show` command handling."""
-    raise NotImplementedError("cli contract-only: component show wiring deferred")
-
-
-__all__ = [
-    "CliCommandResult",
-    "CliExitCode",
-    "CliFailure",
-    "CommandName",
-    "COMPONENT_COMMAND_SEAM",
-    "EXIT_CODE_ACCEPTANCE",
-    "EXIT_CRITICAL",
-    "EXIT_ERROR",
-    "EXIT_OK",
-    "JSON_MODE_ACCEPTANCE",
-    "JsonErrorEnvelope",
-    "PERSONA_COMMAND_SEAM",
-    "assemble_command",
-    "component_list_command",
-    "component_show_command",
-    "list_command",
-    "register_command",
-    "resolve_command",
-    "validate_command",
-    "PersonaSpec",
-    "ValidationReport",
-    "AssembleRequest",
-    "RegisteredPersona",
-    "PersonaSummary",
-    "LarvaError",
-]
+    raise NotImplementedError("component show deferred for later step")
