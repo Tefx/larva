@@ -13183,7 +13183,7 @@ phases:
       - Scope bounded to docs/comments with no behavior changes.'
   - id: followup_surface_hygiene.surface-verify
     name: surface-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, validate the follow-up surface hygiene
       phase from a fresh perspective.
 
@@ -13242,6 +13242,35 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T17:35:23.276550+00:00'
+    done_at: '2026-03-13T17:39:36.019005+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (verification-only step)
+
+
+      Verification:
+
+      - worktree clean state confirmed
+
+      - `python -m larva.cli list` vs `larva list` parity check -> both rc=0, stdout/stderr
+      equal
+
+      - source-pattern check confirms no duplicate CLI parser/dispatch logic in `src/larva/cli.py`
+
+      - grep confirms stale contract-stub comments removed from `src/larva/shell/python_api.py`
+
+      - grep confirms ARCHITECTURE now uses plural fields (`toolsets`, `constraints`)
+
+
+      Spec link:
+
+      - README.md compatibility-shim semantics
+
+      - ARCHITECTURE.md field-shape alignment
+
+      - src/larva/cli.py thin shim delegation
+
+      - src/larva/shell/python_api.py comment cleanup'
   - id: followup_surface_hygiene.freeze
     name: freeze
     status: pending
