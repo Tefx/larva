@@ -7015,7 +7015,7 @@ phases:
       - no code changes in retest step.'
 - id: shell_cli
   name: larva.shell.cli
-  status: in_progress
+  status: done
   depends_on:
   - app_facade
   steps:
@@ -8464,7 +8464,7 @@ phases:
       file_size) remain non-blocking.'
   - id: shell_cli.shell-cli-gate-retest
     name: shell-cli-gate-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
       remediation from `shell_cli.shell-cli-gate-fix-batch` and verify that ALL blocker
       and should-fix findings from `shell_cli.shell-cli-gate` are resolved together
@@ -8620,6 +8620,51 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-13T07:47:31.160684+00:00'
+    done_at: '2026-03-13T07:51:09.039874+00:00'
+    evidence: 'Retest verdict: PASS
+
+      Commit hash(es): none (verification-only retest)
+
+      Files changed: none
+
+      Verification commands/results:
+
+      - uv run larva validate /tmp/larva_missing_id_spec.json -> text failure: "Validation
+      failed: id is required and must match ..."
+
+      - uv run larva validate /tmp/larva_missing_id_spec.json --json -> JSON error
+      envelope `{code: PERSONA_INVALID, numeric_code: 101, details.report.errors[0].code:
+      INVALID_PERSONA_ID}`
+
+      - uv run pytest tests/shell/test_cli.py -k "missing_id or component_list_json_routes_to_component_store_only
+      or component_show_json_routes_to_component_store_only" -> 3 passed
+
+      - uv run larva --help -> expected command set includes validate/assemble/register/resolve/list/component
+
+      Spec link:
+
+      - contracts/persona_spec.schema.json required id + pattern
+
+      - INTERFACES.md validate contract + missing-id policy
+
+      - README assemble example includes required flags
+
+      - tests/shell/test_cli.py missing-id and component seam routing assertions
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: none
+
+      - tech_debt: none
+
+      Gaps/Notes:
+
+      - Black-box retest used docs/schema/tests/runtime CLI outputs; no src/** code
+      inspection.'
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
