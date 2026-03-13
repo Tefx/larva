@@ -4395,7 +4395,7 @@ phases:
       - No CLI/MCP/Python API export/wiring changes introduced.'
   - id: app_facade.app-facade-verify
     name: app-facade-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.app.facade` module from a fresh perspective.
 
@@ -4455,6 +4455,8 @@ phases:
     depends_on:
     - app_facade.app-facade-implement-resolve
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T02:10:24.121364+00:00'
   - id: app_facade.app-facade-seam-proof
     name: app-facade-seam-proof
     status: claimed
