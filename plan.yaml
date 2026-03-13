@@ -8067,7 +8067,7 @@ phases:
     agent: blind-tester
 - id: shell_mcp
   name: larva.shell.mcp
-  status: in_progress
+  status: done
   depends_on:
   - app_facade
   steps:
@@ -9408,7 +9408,7 @@ phases:
       - discovered_issues: none'
   - id: shell_mcp.shell-mcp-gate-retest
     name: shell-mcp-gate-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the ONE
       batched remediation from `shell_mcp.shell-mcp-gate-fix-batch` and verify that
       ALL gate findings are resolved before `shell_mcp.shell-mcp-gate` can reopen.
@@ -9502,6 +9502,50 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T06:22:45.961980+00:00'
+    done_at: '2026-03-13T06:33:51.452358+00:00'
+    evidence: 'Retest verdict: PASS
+
+      Commit hash(es): none (verification-only step)
+
+      Files changed: none
+
+      Verification commands/results:
+
+      - uv run pytest -v -> 284 passed
+
+      - uv run pytest -v tests/shell/test_cli.py -k "component_list or component_show"
+      -> 24 passed
+
+      - uv run pytest -v tests/shell/test_mcp.py -k "MCPHandlersImplementation or
+      MCPMalformedParamsRejected" -> 27 passed
+
+      - uv run pytest -v tests/shell/test_mcp.py -k "MCPFailureEnvelope or MCPErrorCodes"
+      -> 8 passed
+
+      Sibling checks:
+
+      - no deferred component list/show NotImplementedError stubs
+
+      - no `MCPHandler = Any` alias
+
+      - mcp uses parity mapping via facade error-code map
+
+      - INTERFACES.md canonical MCP error-shape semantics aligned
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: none
+
+      - tech_debt: MCP runtime startup remains out-of-scope; seam-level validation
+      only
+
+      Gaps/Notes:
+
+      - Retest barrier satisfied for all B1/B2/S1/S2 closure criteria.'
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
