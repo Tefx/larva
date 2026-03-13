@@ -6749,7 +6749,7 @@ phases:
       discovered_issues: none'
   - id: shell_python_api.shell-python-api-gate-fix
     name: shell-python-api-gate-fix
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `shell_python_api.shell-python-api-gate`
       in one batched remediation pass while preserving the deferred package-root export
       decision.
@@ -6888,6 +6888,38 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T06:22:56.779159+00:00'
+    done_at: '2026-03-13T06:34:35.493099+00:00'
+    evidence: 'Commit hash(es): 3bb8ef0340ca06730a1710b0c5f7c7e6d165e5e4 (worktree),
+      squashed to main as a20dd8b
+
+      Files changed: README.md, src/larva/shell/python_api.py, tests/shell/test_python_api.py
+
+      Verification:
+
+      - invar_guard(changed=true in worktree) -> PASS (0 errors, 0 warnings)
+
+      - uv run pytest -q tests/shell/test_python_api.py -> 27 passed
+
+      - grep for `python_api._get_facade =` in tests -> 0 direct assignment mutations;
+      fixture now teardown-safe
+
+      - pre-commit hooks passed on commit
+
+      Spec link:
+
+      - ARCHITECTURE.md Decision 3 thin python_api adapter
+
+      - README Python Library interface examples aligned to deferred package-root
+      export policy
+
+      Gaps/Notes:
+
+      - Deferred package-root export decision preserved; src/larva/__init__.py untouched.
+
+      - assemble complexity warning addressed via helper extraction/policy annotation
+      while keeping adapter thin.
+
+      - discovered_issues: none'
   - id: shell_python_api.shell-python-api-gate-retest
     name: shell-python-api-gate-retest
     status: pending
