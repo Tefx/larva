@@ -12595,6 +12595,263 @@ phases:
     docs/tests/core only.
   depends_on:
   - followup_surface_hygiene
+  steps:
+  - id: followup_validate_warnings.warning-contract
+    name: warning-contract
+    status: pending
+    description: 'Define authoritative warning semantics for `src/larva/core/validate.py`
+      before implementation.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - interface_notes
+
+      - type_defs
+
+      - behavioral_examples
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `INTERFACES.md:49`
+
+      - `ARCHITECTURE.md:250`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - `src/larva/core/validate.py`
+
+      harness_refs:
+
+      - `tests/core/test_validate.py`
+
+      - doctest in `src/larva/core/validate.py`
+
+      agent_source: default
+
+
+      Resolve the confirmed mismatch where the docstring and interface examples imply
+      non-critical warnings may exist but the implementation always returns an empty
+      list. Choose one explicit, deterministic warning family and lock it in docs/examples
+      before code changes. Keep scope inside validation docs/tests/core only.'
+    verification: '- Contract defines exact warning-trigger conditions and example
+      payloads
+
+      - Contract makes clear when `warnings` must stay empty
+
+      - No unrelated validation or assemble semantics are changed in the contract
+      step'
+    agent: software-architect
+  - id: followup_validate_warnings.warning-tests
+    name: warning-tests
+    status: pending
+    description: 'Add targeted tests for the warning contract.
+
+
+      step_type: test
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `tests/core/test_validate.py`
+
+      - optional doctest examples in `src/larva/core/validate.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/core/test_validate.py`
+
+      agent_source: default
+
+
+      Lock one warning-producing path and one warning-free path before implementation.'
+    verification: '- Tests capture both warning-producing and warning-free behavior
+
+      - Test scope stays bounded to validate semantics'
+    depends_on:
+    - followup_validate_warnings.warning-contract
+    agent: python-executor
+  - id: followup_validate_warnings.warning-implement
+    name: warning-implement
+    status: pending
+    description: 'Implement the contracted warning semantics in `src/larva/core/validate.py`.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `ARCHITECTURE.md:250`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `INTERFACES.md`
+
+      - optional `ARCHITECTURE.md`
+
+      harness_refs:
+
+      - `tests/core/test_validate.py`
+
+      agent_source: default
+
+
+      Known risks:
+
+      - Do not convert error cases into warnings
+
+      - Do not broaden warning behavior beyond the explicit contract
+
+      - Keep pure-core boundaries intact
+
+
+      Gate Preview:
+
+      1. `warnings` remains permanently empty.
+
+      2. Warnings appear in invalid/error cases where the contract does not allow
+      them.
+
+      3. Docs and examples still disagree with runtime behavior.'
+    verification: '- Main path: contracted non-critical condition produces the expected
+      warning payload
+
+      - Failure path: invalid cases still produce structured errors without warning-only
+      false positives
+
+      - Docs/examples match the implemented warning family'
+    depends_on:
+    - followup_validate_warnings.warning-tests
+    agent: python-executor
+  - id: followup_validate_warnings.warning-verify
+    name: warning-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER, validate the follow-up warning semantics
+      from a fresh perspective.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+      spec_refs:
+
+      - `INTERFACES.md:37`
+
+      - `ARCHITECTURE.md:250`
+
+      - `src/larva/core/validate.py:67`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `tests/core/test_validate.py`
+
+      - `INTERFACES.md`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/core/test_validate.py`
+
+      - doctest for `src/larva/core/validate.py`
+
+      - `invar guard --changed`
+
+      agent_source: default
+
+
+      Your goal is to find contract/runtime drift, not to confirm it works.'
+    verification: '- Main path: independent evidence shows the warning-producing case
+      returns the documented warning payload
+
+      - Failure path: error-producing inputs still return the expected structured
+      errors and do not regress prior validation behavior
+
+      - Changed-scope guard evidence is present'
+    depends_on:
+    - followup_validate_warnings.warning-implement
+    agent: integration-verifier
+  - id: followup_validate_warnings.freeze
+    name: freeze
+    status: pending
+    description: 'Freeze the follow-up validate-warnings snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default'
+    verification: '- Record `git rev-parse HEAD`
+
+      - Record clean `git status`
+
+      - Record environment declaration
+
+      - State that no code changes are allowed until gate review completes'
+    depends_on:
+    - followup_validate_warnings.warning-verify
+    agent: integration-verifier
+  - id: followup_validate_warnings.gate
+    name: gate
+    status: pending
+    description: 'Gate review: verify follow-up validate-warnings completion and quality.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - Core contract/examples and runtime behavior must agree before downstream repo-wide
+      acceptance work
+
+      cross_cutting_focus:
+
+      - warning semantics are explicit and deterministic
+
+      - docs/examples/runtime agree
+
+      - errors remain errors
+
+      agent_source: default'
+    verification: '- All phase steps completed successfully
+
+      - Evidence shows warning semantics are explicitly contracted and implemented
+
+      - Evidence shows no drift remains between docs/examples and runtime behavior
+
+      - Error semantics are preserved'
+    depends_on:
+    - followup_validate_warnings.warning-contract
+    - followup_validate_warnings.warning-tests
+    - followup_validate_warnings.warning-implement
+    - followup_validate_warnings.warning-verify
+    - followup_validate_warnings.freeze
+    agent: gate-reviewer
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: pending
