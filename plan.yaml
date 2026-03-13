@@ -6285,7 +6285,7 @@ phases:
       for this seam proof.'
   - id: shell_python_api.shell-python-api-freeze
     name: shell-python-api-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.shell.python_api` snapshot before gate review.
 
 
@@ -6322,6 +6322,31 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T05:14:11.729922+00:00'
+    done_at: '2026-03-13T05:34:50.498349+00:00'
+    evidence: 'Commit hash(es): none (verification-only freeze step; no modifications
+      expected)
+
+      Files changed: none
+
+      Verification:
+
+      - git rev-parse HEAD -> 94c1a41a7417b27c7f6659249befecc2a0651874
+
+      - git status --porcelain -> empty (clean)
+
+      - git branch --show-current -> vectl/step-shell_python_api.shell-python-api-freeze
+
+      - pwd/uname/date recorded for environment declaration (Darwin, UTC 2026-03-13T05:16:42Z)
+
+      Spec link:
+
+      - ARCHITECTURE.md Decision 3 (python_api thin facade export)
+
+      - ARCHITECTURE.md section 11 handoff/freeze boundary
+
+      Gaps/Notes:
+
+      - Explicit no-code-changes freeze statement recorded.'
   - id: shell_python_api.shell-python-api-gate
     name: shell-python-api-gate
     status: pending
