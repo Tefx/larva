@@ -15338,7 +15338,7 @@ phases:
       - test execution produced untracked `.hypothesis/` artifacts'
   - id: followup_guard_full.guard-full-core-crosshair-fix-3
     name: guard-full-core-crosshair-fix-3
-    status: pending
+    status: claimed
     description: 'Third batched remediation extension for the last remaining CrossHair
       blocker family only; keep scope narrow to `src/larva/core/assemble.py::_merge_tools`
       and any direct sibling root-cause patterns exposed by the same symbolic-typing
@@ -15493,6 +15493,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-2
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T19:54:55.195570+00:00'
   - id: followup_guard_full.guard-full-core-crosshair-retest-3
     name: guard-full-core-crosshair-retest-3
     status: pending
