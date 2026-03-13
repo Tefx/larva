@@ -16956,7 +16956,7 @@ phases:
       pending steps.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-7
     name: guard-full-core-crosshair-retest-7
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the seventh-loop batched remediation for the
       narrowed assemble+normalize residual family.
@@ -17055,3 +17055,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-fix-7
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T21:37:48.048285+00:00'
