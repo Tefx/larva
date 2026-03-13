@@ -14317,7 +14317,7 @@ phases:
       - src/larva/shell/components.py'
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
-    status: claimed
+    status: done
     description: 'Remediate remaining guard scope/config only if diagnosis confirms
       there is still authoritative-scope work after `.vectl` ignore lands.
 
@@ -14378,6 +14378,35 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T18:48:12.322839+00:00'
+    done_at: '2026-03-13T18:48:22.700569+00:00'
+    evidence: 'Artifact:
+
+      - PR/Commit: none (no-code remediation/confirmation step; configuration already
+      correct)
+
+
+      Verification:
+
+      - invar guard --all -> failed with 0 errors / 11 warnings / 9 infos / 12 files
+      checked
+
+      - `pyproject.toml` exclude_paths contains `.vectl`
+
+      - guard scope confirmation shows only configured source roots in findings (no
+      worktree contamination)
+
+
+      Spec link:
+
+      - pyproject.toml guard config (tool.invar.guard)
+
+
+      Gaps/Notes:
+
+      - Remaining warnings are real repo debt, primarily CLI complexity and validate
+      function size
+
+      - CLI complexity refactor remains for downstream remediation step'
   - id: followup_guard_full.cli-complexity-tests
     name: cli-complexity-tests
     status: done
