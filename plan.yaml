@@ -12816,7 +12816,7 @@ phases:
       \ warning"
   - id: followup_validate_warnings.warning-verify
     name: warning-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, validate the follow-up warning semantics
       from a fresh perspective.
 
@@ -12863,6 +12863,8 @@ phases:
     depends_on:
     - followup_validate_warnings.warning-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T18:13:34.238962+00:00'
   - id: followup_validate_warnings.freeze
     name: freeze
     status: pending
