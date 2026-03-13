@@ -12598,7 +12598,7 @@ phases:
   steps:
   - id: followup_validate_warnings.warning-contract
     name: warning-contract
-    status: claimed
+    status: done
     description: 'Define authoritative warning semantics for `src/larva/core/validate.py`
       before implementation.
 
@@ -12656,6 +12656,32 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-13T17:57:59.046173+00:00'
+    done_at: '2026-03-13T18:03:46.130894+00:00'
+    evidence: 'Artifact:
+
+      - PR: fa11e838e0eb7e53cdf2cb3ba01718739375e76f (worktree), squashed to main
+      as 5f2d0c4
+
+
+      Verification:
+
+      - invar guard --changed -> PASS (docs-only contract delta)
+
+      - commit hooks passed
+
+      - invar_guard(changed=false) run in worktree shows pre-existing global warnings
+      outside task scope; no new task-scope contract failures introduced
+
+
+      Spec link:
+
+      - INTERFACES.md warning semantics section updated (refs at interface warning
+      lines)
+
+      - ARCHITECTURE.md warning-contract alignment updates
+
+      - src/larva/core/validate.py warning semantics are now contract-defined in docs
+      prior to implementation'
   - id: followup_validate_warnings.warning-tests
     name: warning-tests
     status: pending
