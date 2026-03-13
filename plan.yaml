@@ -8220,7 +8220,7 @@ phases:
       - Black-box retest intentionally avoids white-box internal dispatch inspection.'
   - id: shell_cli.shell-cli-gate-fix-batch
     name: shell-cli-gate-fix-batch
-    status: pending
+    status: claimed
     description: 'Fix ALL findings from `shell_cli.shell-cli-gate` in one consolidated
       remediation loop.
 
@@ -8423,6 +8423,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-verify-retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T06:57:28.688581+00:00'
   - id: shell_cli.shell-cli-gate-retest
     name: shell-cli-gate-retest
     status: pending
