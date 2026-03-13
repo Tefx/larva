@@ -8011,7 +8011,7 @@ phases:
       - discovered_issues: none'
   - id: shell_cli.shell-cli-verify-retest
     name: shell-cli-verify-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
       remediation from `shell_cli.shell-cli-verify-fix-batch` and verify that ALL
       blocker and should-fix findings from `shell_cli.shell-cli-verify` are resolved
@@ -8101,6 +8101,50 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-13T06:34:49.423586+00:00'
+    done_at: '2026-03-13T06:42:18.992572+00:00'
+    evidence: 'Retest verdict: PASS
+
+      Commit hash(es): none (verification-only step)
+
+      Files changed: none
+
+      Commands/results:
+
+      - uv run larva --help -> expected command set visible
+
+      - uv run larva component --help -> expected subcommands list/show
+
+      - uv run larva assemble ... -o <path> -> exit 0, file written
+
+      - uv run larva assemble ... --output <path> -> exit 0, file written
+
+      - uv run larva resolve missing-persona --json -> exit 1, envelope PERSONA_NOT_FOUND
+      numeric_code 100
+
+      - uv run larva assemble ... --override bad --json -> exit 2, envelope INTERNAL
+      numeric_code 10
+
+      - uv run larva component list --json -> exit 0, machine-readable component map
+
+      - uv run larva list --json -> exit 0, {"data":[]}
+
+      - docs grep check -> INTERFACES has single canonical CLI sections and output
+      flag contract
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: keep INTERFACES as single source of truth vs README quick-start
+      drift risk
+
+      - tech_debt: none
+
+      Gaps/Notes:
+
+      - Black-box retest intentionally avoids white-box internal dispatch inspection.'
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
