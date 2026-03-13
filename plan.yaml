@@ -6420,7 +6420,7 @@ phases:
     agent: gate-reviewer
   - id: shell_python_api.shell-python-api-verify-fix
     name: shell-python-api-verify-fix
-    status: claimed
+    status: done
     description: 'Fix ALL issues found by `shell_python_api.shell-python-api-verify`
       within `src/larva/shell/python_api.py` and `tests/shell/test_python_api.py`
       only.
@@ -6559,6 +6559,59 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T05:14:21.764937+00:00'
+    done_at: '2026-03-13T05:45:22.843654+00:00'
+    evidence: '## Fix Evidence
+
+      Commit hash(es): 1ff301a (worktree), squashed to main as 01de2ff
+
+      Files changed: tests/shell/test_python_api.py
+
+      Wrapper paths exercised:
+
+      - validate (3 tests via python_api.validate)
+
+      - assemble (3 tests via python_api.assemble)
+
+      - register (3 tests via python_api.register)
+
+      - resolve (7 tests via python_api.resolve)
+
+      - list (4 tests via python_api.list)
+
+      Coverage proof:
+
+      - Dedicated run reported src/larva/shell/python_api.py: 50 stmts, 3 miss, 94%
+      coverage; 27 tests passed.
+
+      No-leak proof:
+
+      - TestNoStorageLeak (3 tests)
+
+      - TestNoCLIMCPLeak (2 tests)
+
+      - TestThinAdapterSemantics (2 tests)
+
+      Sibling-search evidence:
+
+      - Wrapper invocation grep shows calls routed through python_api wrappers.
+
+      - Coverage remains non-trivial for python_api module.
+
+      - Storage symbols verified not exported in __all__.
+
+      - No CLI/MCP leakage assertions added and passing.
+
+      Spec link:
+
+      - ARCHITECTURE.md module larva.shell.python_api
+
+      - ARCHITECTURE.md Decision 3 thin facade export
+
+      Gaps/Notes:
+
+      - Missing lines are lazy facade initialization path under test mocks; accepted.
+
+      - discovered_issues: none'
   - id: shell_python_api.shell-python-api-verify-retest
     name: shell-python-api-verify-retest
     status: pending
