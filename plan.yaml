@@ -6100,7 +6100,7 @@ phases:
       \ and tests.\n- No `src/larva/__init__.py` or other shared export wiring changes."
   - id: shell_python_api.shell-python-api-verify
     name: shell-python-api-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.python_api` module from a fresh perspective.
 
@@ -6157,6 +6157,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T04:36:58.388459+00:00'
   - id: shell_python_api.shell-python-api-seam-proof
     name: shell-python-api-seam-proof
     status: pending
