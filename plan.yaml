@@ -13000,7 +13000,7 @@ phases:
       fix loop.'
   - id: followup_validate_warnings.fix-gate-blockers
     name: fix-gate-blockers
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by `followup_validate_warnings.gate`.
 
 
@@ -13162,6 +13162,76 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T18:27:24.058730+00:00'
+    done_at: '2026-03-13T18:31:48.688159+00:00'
+    evidence: '## Batched Fix Evidence
+
+      **Blockers covered**: B1, S1
+
+
+      **Files updated**:
+
+      - src/larva/core/validate.py
+
+      - src/larva/shell/mcp.py
+
+      - tests/core/test_validate.py
+
+      - tests/shell/test_mcp.py
+
+
+      What changed:
+
+      - Removed stale warning-family language and aligned code-facing docs/examples/tests
+      to canonical `UNUSED_VARIABLES` semantics
+
+      - Added MCP-facing integration assertion `test_handle_validate_preserves_canonical_unused_variables_warning`
+      proving canonical warning string survives unchanged through MCP handler path
+
+      - Preserved unresolved-variable error behavior (`VARIABLE_UNRESOLVED`)
+
+
+      Sibling search evidence:
+
+      - `rg -n "gpt-6|unknown models|deprecated fields|not in known models list" src
+      tests` -> no matches
+
+      - `rg -n "test_validate_success_with_warnings|UNUSED_VARIABLES" tests` -> expected
+      canonical warning references including new MCP transport test
+
+
+      Contract alignment proof:
+
+      - canonical warning emission and examples aligned in core/mcp/tests
+
+      - unresolved remains error path
+
+
+      Transport proof:
+
+      - `uv run pytest -v tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_validate_preserves_canonical_unused_variables_warning`
+      -> 1 passed
+
+      - uses `MCPHandlers.handle_validate` with real facade wiring, asserting exact
+      warning string equality
+
+
+      Verification:
+
+      - `uv run pytest -v tests/core/test_validate.py tests/shell/test_mcp.py` ->
+      85 passed
+
+      - invar guard changed-files -> pass (0 errors, warnings only)
+
+
+      Commit hash(es):
+
+      - 6937ff8 (worktree), squashed to main as 13cb4a5
+
+
+      discovered_issues:
+
+      - pre-existing size/complexity warnings in mcp.py and validate_spec out of this
+      step scope'
   - id: followup_validate_warnings.retest-gate-blockers
     name: retest-gate-blockers
     status: pending
