@@ -9958,7 +9958,7 @@ phases:
       paths, no unreviewed numeric-code drift, and no `MCPHandler = Any` alias left
       in the MCP adapter'
     depends_on:
-    - shell_mcp.shell-mcp-gate
+    - shell_mcp.shell-mcp-verify-retest
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T06:03:39.210666+00:00'
