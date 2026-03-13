@@ -6713,6 +6713,144 @@ phases:
       Verdict: PASS
 
       discovered_issues: none'
+  - id: shell_python_api.shell-python-api-gate-fix
+    name: shell-python-api-gate-fix
+    status: pending
+    description: 'Fix ALL issues found by `shell_python_api.shell-python-api-gate`
+      in one batched remediation pass while preserving the deferred package-root export
+      decision.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+      prior_loop:
+
+      - none
+
+      remaining_blocker: README/API drift, fragile fixture mutation, and shell adapter
+      complexity warning remain unresolved after gate review.
+
+      why_new_loop: This is the first gate remediation loop for this phase; the issues
+      span docs, tests, and the thin shell adapter, so a single batched fix step is
+      required to close the gate cleanly.
+
+
+      ## Findings to Fix (ALL of these, not just the first)
+
+
+      ### B1: README Python Library examples mismatch current API surface
+
+      Locations: `README.md:55`, `README.md:60`, `README.md:61`, `src/larva/__init__.py:1`
+
+      Remediation:
+
+      - align README examples to the deferred-wiring import path `larva.shell.python_api`
+
+      - correct `assemble(...)` kwargs to match the actual shell API surface (`toolsets=`
+      and any current `constraints=` usage)
+
+      - preserve the current boundary decision that package-root exports stay deferred
+      in this phase
+
+      - do NOT add package-root re-exports in `src/larva/__init__.py` from this fix
+      step
+
+      Grep hint: `rg -n "from larva import assemble, validate, resolve|toolset=|toolsets=|constraints="
+      README.md src/larva/__init__.py`
+
+      IMPORTANT: search for sibling README/API examples beyond the listed lines so
+      no stale package-root import or outdated kwarg survives.
+
+
+      ### S1: test fixture mutates `python_api._get_facade` without restoring original
+      implementation
+
+      Locations: `tests/shell/test_python_api.py:220`, `tests/shell/test_python_api.py:240`
+
+      Remediation:
+
+      - replace direct assignment with `monkeypatch` or equivalent teardown-safe restoration
+
+      - prove fixture isolation does not leak across tests or leave `python_api._get_facade`
+      mutated after each case
+
+      Grep hint: `rg -n "python_api\._get_facade\s*=|original_get_facade" tests/shell/test_python_api.py`
+
+      IMPORTANT: search for sibling monkeypatch/restore gaps beyond the listed lines
+      so no other facade-hook mutation remains fragile.
+
+
+      ### S2: `assemble()` adapter branching complexity warning in shell
+
+      Locations: `src/larva/shell/python_api.py:139`
+
+      Remediation:
+
+      - either extract a helper that keeps the shell adapter thin and policy-compliant,
+      or add an explicit shell-side complexity justification that matches project
+      policy
+
+      - preserve no-leak / thin-adapter behavior; do not introduce duplicate orchestration
+      beyond `larva.app.facade`
+
+      Grep hint: `rg -n "def assemble\(" src/larva/shell/python_api.py`
+
+      IMPORTANT: inspect sibling adapter branches around `assemble()` so the fix covers
+      the full decision path, not just one branch arm.
+
+
+      ## Completion Criteria
+
+      - README examples match the current Python API import path and kwargs while
+      `src/larva/__init__.py` remains untouched in this phase
+
+      - fixture isolation is teardown-safe and no `_get_facade` mutation leaks between
+      tests
+
+      - `assemble()` complexity warning is resolved with either helper extraction
+      or explicit in-policy justification, while keeping the adapter thin
+
+      - docs/API alignment, fixture isolation, and no-leak shell behavior are all
+      addressed in one pass
+
+
+      Known risks:
+
+      - do not undo the deferred package-root export decision
+
+      - do not broaden scope into top-level package wiring or unrelated transport
+      surfaces
+
+      - do not "fix" complexity by moving orchestration out of facade ownership
+
+      - keep evidence ready for docs/API alignment, fixture isolation, and thin-adapter
+      behavior
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. README examples that still imply `from larva import ...` in this phase
+
+      2. Any lingering direct mutation of `python_api._get_facade` without teardown-safe
+      restoration
+
+      3. `assemble()` cleanup that adds new orchestration instead of preserving a
+      thin shell adapter'
+    verification: '- README examples and actual `larva.shell.python_api` callable
+      surface agree exactly
+
+      - `src/larva/__init__.py` remains unchanged for this phase
+
+      - fixture mutation uses teardown-safe restoration (`monkeypatch` or equivalent)
+
+      - `assemble()` warning is resolved and thin-adapter behavior remains explicit'
+    depends_on:
+    - shell_python_api.shell-python-api-gate
+    agent: python-senior
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
