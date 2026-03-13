@@ -4955,6 +4955,90 @@ phases:
     depends_on:
     - app_facade.app-facade-verify
     agent: python-executor
+  - id: app_facade.app-facade-verify-gap-retest
+    name: app-facade-verify-gap-retest
+    status: pending
+    description: 'Re-test `app_facade` after verification-gap remediation.
+
+
+      step_type: verification
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), confirm that the batched
+      remediation for `app_facade.app-facade-verify` closes B1 and preserves the existing
+      facade verification surface.
+
+
+      Test for:
+
+      - Happy path: documented facade verification coverage still passes after the
+      test-only remediation
+
+      - Edge case: empty registry `facade.list()` success shape is exactly `[]`
+
+      - Boundary discipline: no transport envelope leakage appears in the app-level
+      empty-list result shape
+
+
+      This is verification-gap closure, not product-behavior redesign.'
+    verification: '- Run the app-facade verification path again with emphasis on the
+      empty-registry list case
+
+      - Record that `facade.list()` returns exactly `[]` and not `null`, an error
+      envelope, or a transport wrapper
+
+      - Confirm prior app-facade verification coverage remains satisfied after the
+      added edge-case test'
+    evidence_template: '## Verification Retest Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: `app_facade` verification-gap closure for empty-registry list shaping
+
+      **Independence Level**: L2
+
+
+      ### Commands executed
+
+      ```text
+
+      <paste exact test commands>
+
+      ```
+
+
+      ### Coverage confirmed
+
+      - [ ] empty-registry `facade.list()` returns exactly `[]`
+
+      - [ ] no transport-envelope leakage in facade result shape
+
+      - [ ] prior app-facade verification coverage still holds
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | blocker/should_fix/suggestion | <fill if any> | <file:line or behavior> |
+      <steps> |
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - app_facade.app-facade-verify-gap-fix
+    agent: integration-verifier
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
