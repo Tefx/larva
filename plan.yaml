@@ -4866,6 +4866,95 @@ phases:
       \ to resolve implementation/tests only.\n- No storage implementation edits and\
       \ no transport envelope shaping introduced.\n- No changes to register/list/validate/assemble\
       \ beyond shared-path compatibility."
+  - id: app_facade.app-facade-verify-gap-fix
+    name: app-facade-verify-gap-fix
+    status: pending
+    description: 'Fix ALL verification gaps found by `app_facade.app-facade-verify`.
+
+
+      step_type: implementation
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Missing explicit empty-registry success-shape coverage
+
+      Locations: `tests/app/test_facade.py`
+
+      Remediation: add an explicit app-facade test proving `facade.list()` returns
+      exactly `[]` for an empty registry, and verify no transport envelope leakage
+      (`null`, wrapped JSON payloads, or error-envelope structures) appears in the
+      facade result.
+
+      Grep hint: `def test_.*list.*empty|facade\.list\(|\[\]`
+
+      IMPORTANT: search for tightly related list-shape coverage in the same test module
+      so the new test closes the verification gap rather than only asserting a nearby
+      happy path.
+
+
+      ## Completion Criteria
+
+      - ALL listed verification gaps closed
+
+      - Explicit empty-list summary-shape assertion added at app-facade level
+
+      - Evidence shows no transport-envelope leakage in the empty-registry result
+      shape
+
+      - Existing app-facade verification coverage remains intact
+
+
+      Out of scope:
+
+      - product-behavior changes in `larva.app.facade`
+
+      - transport-layer envelope behavior changes in CLI/MCP/Python API surfaces'
+    verification: '- Targeted test coverage added in `tests/app/test_facade.py` for
+      empty-registry `facade.list()` success shape
+
+      - Grep-based sibling search confirms no remaining missing empty-list shape assertion
+      in the app-facade list coverage cluster
+
+      - Existing app-facade tests remain green after the verification-gap remediation'
+    evidence_template: '## Verification-gap remediation evidence
+
+
+      **Blockers addressed**:
+
+      - B1 empty-registry success-shape coverage
+
+
+      **Files changed**:
+
+      - `tests/app/test_facade.py`
+
+
+      **Sibling search performed**:
+
+      ```text
+
+      def test_.*list.*empty|facade\.list\(|\[\]
+
+      ```
+
+
+      **What was added**:
+
+      - explicit assertion that `facade.list()` returns exactly `[]`
+
+      - assertion/proof that no transport envelope shape leaks into the facade result
+
+
+      **Regression proof**:
+
+      - exact targeted test command/output for app-facade tests
+
+      '
+    depends_on:
+    - app_facade.app-facade-verify
+    agent: python-executor
 - id: shell_python_api
   name: larva.shell.python_api
   status: locked
