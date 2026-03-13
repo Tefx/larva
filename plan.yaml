@@ -8189,6 +8189,211 @@ phases:
       Gaps/Notes:
 
       - Black-box retest intentionally avoids white-box internal dispatch inspection.'
+  - id: shell_cli.shell-cli-gate-fix-batch
+    name: shell-cli-gate-fix-batch
+    status: pending
+    description: 'Fix ALL findings from `shell_cli.shell-cli-gate` in one consolidated
+      remediation loop.
+
+
+      step_type: implementation
+
+      priority: HIGH
+
+      agent_source: default
+
+      tags:
+
+      - integration
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `B. CLI Interface`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `README.md` :: `Interfaces / CLI`
+
+      - `contracts/persona_spec.schema.json` :: `required`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.cli`
+
+
+      touch_paths:
+
+      - `README.md`
+
+      - `INTERFACES.md`
+
+      - `contracts/persona_spec.schema.json`
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_cli.py`
+
+
+      harness_refs:
+
+      - `uv run larva validate <spec.json>`
+
+      - `uv run larva validate <spec.json> --json`
+
+      - `tests/core/test_validate.py`
+
+      - `tests/shell/test_cli.py`
+
+
+      conflict_rationale:
+
+      - This is a single batched remediation step because B1, S1, and S2 all converge
+      on the documented CLI/schema contract for `validate` and user-facing examples.
+
+      - Serializing docs, schema, core validation logic, MCP references, and CLI tests
+      avoids parallel conflicts across the same contract surface and shared harnesses.
+
+      - `shell_cli.shell-cli-gate` must wait on the downstream independent retest
+      because the gate findings concern both runtime behavior and documentation fidelity.
+
+
+      prior_loop:
+
+      - `shell_cli.shell-cli-verify-fix-batch`
+
+      - `shell_cli.shell-cli-verify-retest`
+
+      remaining_blocker: documented schema conformance for `larva validate` is still
+      unresolved, and README / adapter maintainability findings remain open in the
+      same command surface.
+
+      why_new_loop: the prior verification remediation addressed entrypoint/output
+      contract issues, but the gate surfaced a new cross-module mismatch between documented
+      schema validation, runtime behavior, and CLI examples that requires a consolidated
+      follow-up.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Documented schema conformance validation not implemented
+
+      Locations: `INTERFACES.md:197`, `README.md:9`, `src/larva/shell/mcp.py:108`,
+      `contracts/persona_spec.schema.json:6`, `src/larva/core/validate.py:95`, `tests/core/test_validate.py:72`
+
+      Remediation:
+
+      - Choose and align the canonical source of truth for schema-vs-semantic validation
+      across docs, schema, MCP surface notes, core validation behavior, and CLI behavior.
+
+      - Either enforce schema-required fields and declared types at runtime, or explicitly
+      downgrade docs/contracts to the actual semantic-only policy; do not leave mixed
+      messaging.
+
+      - Add focused end-to-end CLI coverage proving that a spec missing required fields
+      such as `id` fails with the expected text and `--json` error envelope.
+
+      - Search for sibling references to schema-conformance claims beyond the listed
+      locations before claiming done.
+
+      Grep hint: `rg -n "schema conformance|schema \+ semantic|canonical schema" README.md
+      INTERFACES.md src/larva/shell/mcp.py; rg -n "validate_spec\(\{\"spec_version\":
+      \"0\.1\.0\"\}\)" src/larva/core/validate.py tests/core/test_validate.py`
+
+
+      ### S1: README CLI assemble example omits required --id
+
+      Locations: `README.md:44`
+
+      Remediation:
+
+      - Update README CLI examples so required flags are present, and prefer adding
+      a `--json` example when that improves contract clarity.
+
+      - Search for sibling `assemble` examples that may also omit required inputs.
+
+      Grep hint: `rg -n "^larva assemble" README.md`
+
+
+      ### S2: CLI adapter near size/complexity limits
+
+      Locations: `src/larva/shell/cli.py` around `_dispatch` and helper cluster
+
+      Remediation:
+
+      - Reduce maintainability risk by splitting parser/dispatch/rendering mapping
+      units or moving pure policy logic out of the adapter while preserving the thin-shell
+      boundary.
+
+      - Keep the CLI as a transport adapter; do not move business logic into the shell
+      during the split.
+
+      - Search for sibling helper clusters that should move together so the module
+      does not remain one large dispatch knot.
+
+      Grep hint: `rg -n "def _dispatch\b|def _build_parser\b|def _map_facade_error\b|def
+      _critical_error\b|def _render_" src/larva/shell/cli.py`
+
+
+      ## Completion Criteria
+
+      - ALL of B1, S1, and S2 are resolved together, not piecemeal.
+
+      - Runtime validation policy, docs, schema contract, and MCP references are aligned
+      to one canonical story.
+
+      - `larva validate` rejects missing required fields if schema conformance remains
+      the contract, or the docs/contracts are explicitly downgraded everywhere if
+      that is the accepted policy.
+
+      - CLI end-to-end evidence covers missing-id failure behavior in both text and
+      `--json` modes.
+
+      - README examples reflect required CLI flags.
+
+      - `src/larva/shell/cli.py` maintainability risk is reduced without broadening
+      transport ownership.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Mixed schema/semantic validation claims remaining across docs, schema, MCP,
+      tests, and runtime behavior.
+
+      2. Missing-id `larva validate` still succeeding, or failing without a documented/test-backed
+      error envelope.
+
+      3. README examples still omitting required CLI flags.
+
+      4. Superficial CLI refactoring that leaves the same oversized dispatch/helper
+      knot intact.
+
+
+      known_risks:
+
+      - docs/runtime/schema drift around validation semantics
+
+      - user-facing CLI error-envelope regressions while tightening validation behavior
+
+      - thin-adapter boundary erosion during CLI maintainability refactor'
+    verification: '- Main path: targeted tests and CLI runs prove the chosen validation
+      contract is enforced consistently across docs, schema, core validation, and
+      CLI behavior
+
+      - Failure path: focused regression covers missing required-field / missing-id
+      validation failure in text and `--json` modes with the expected exit/error envelope
+
+      - Proof: README assemble examples include required flags, and CLI adapter refactor
+      evidence shows parser/dispatch/render helpers are split or simplified without
+      adding business logic to the shell'
+    depends_on:
+    - shell_cli.shell-cli-verify-retest
+    agent: python-senior
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
