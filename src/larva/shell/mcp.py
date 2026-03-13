@@ -237,7 +237,113 @@ class MCPHandlers:
         """
         self._facade = facade
 
-    def handle_validate(self, params: dict[str, Any]) -> ValidationReport:
+    @staticmethod
+    def _malformed_params_error(
+        tool_name: str,
+        reason: str,
+        details: dict[str, object],
+    ) -> LarvaError:
+        """Build a documented MCP error envelope for malformed request params."""
+        return {
+            "code": "INTERNAL",
+            "numeric_code": LARVA_ERROR_CODES["INTERNAL"],
+            "message": f"Malformed parameters for '{tool_name}': {reason}",
+            "details": {"tool": tool_name, "reason": reason, **details},
+        }
+
+    def _require_params_object(
+        self,
+        tool_name: str,
+        params: object,
+    ) -> Result[dict[str, Any], LarvaError]:
+        """Validate MCP params top-level shape as JSON object."""
+        if not isinstance(params, dict):
+            return Failure(
+                self._malformed_params_error(
+                    tool_name,
+                    "params must be an object",
+                    {"field": "params", "received_type": type(params).__name__},
+                )
+            )
+        return Success(params)
+
+    def _reject_unknown_params(
+        self,
+        tool_name: str,
+        params: dict[str, Any],
+        allowed_keys: set[str],
+    ) -> LarvaError | None:
+        """Reject unsupported parameters at MCP boundary."""
+        unknown_keys = sorted(key for key in params if key not in allowed_keys)
+        if unknown_keys:
+            return self._malformed_params_error(
+                tool_name,
+                "unknown parameter(s)",
+                {"field": "params", "unknown": unknown_keys},
+            )
+        return None
+
+    def _require_param(
+        self,
+        tool_name: str,
+        params: dict[str, Any],
+        key: str,
+    ) -> LarvaError | None:
+        """Require key presence for mandatory parameters."""
+        if key not in params:
+            return self._malformed_params_error(
+                tool_name,
+                f"missing required parameter '{key}'",
+                {"field": key},
+            )
+        return None
+
+    def _require_type(
+        self,
+        tool_name: str,
+        params: dict[str, Any],
+        key: str,
+        expected_type: type[object],
+        expected_label: str,
+    ) -> LarvaError | None:
+        """Require parameter runtime type at MCP boundary."""
+        value = params.get(key)
+        if not isinstance(value, expected_type):
+            return self._malformed_params_error(
+                tool_name,
+                f"parameter '{key}' must be {expected_label}",
+                {
+                    "field": key,
+                    "expected_type": expected_label,
+                    "received_type": type(value).__name__,
+                },
+            )
+        return None
+
+    def _require_list_of_strings(
+        self,
+        tool_name: str,
+        params: dict[str, Any],
+        key: str,
+    ) -> LarvaError | None:
+        """Require optional list[str] parameter shape when present."""
+        if key not in params:
+            return None
+
+        value = params[key]
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            return self._malformed_params_error(
+                tool_name,
+                f"parameter '{key}' must be list[string]",
+                {
+                    "field": key,
+                    "expected_type": "list[string]",
+                    "received_type": type(value).__name__,
+                },
+            )
+        return None
+
+    def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
         """Handle larva.validate MCP tool call.
 
         Delegates to: facade.validate(spec)
@@ -248,18 +354,24 @@ class MCPHandlers:
         Returns:
             ValidationReport with valid flag, errors, and warnings.
 
-        Raises:
-            ValueError: If 'spec' key is missing from params.
+        Malformed requests return the documented MCP error envelope.
         """
-        # Request parsing: extract 'spec' parameter
-        if "spec" not in params:
-            raise ValueError("Missing required parameter: 'spec'")
-        spec = params["spec"]
+        validated_params = self._require_params_object("larva.validate", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.validate", checked_params, {"spec"}):
+            return error
+        if error := self._require_param("larva.validate", checked_params, "spec"):
+            return error
+        if error := self._require_type("larva.validate", checked_params, "spec", dict, "object"):
+            return error
+        spec = checked_params["spec"]
 
         # Delegate to facade - returns ValidationReport directly
         return self._facade.validate(cast("PersonaSpec", spec))
 
-    def handle_assemble(self, params: dict[str, Any]) -> Union[PersonaSpec, LarvaError]:
+    def handle_assemble(self, params: object) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.assemble MCP tool call.
 
         Delegates to: facade.assemble(request)
@@ -277,22 +389,54 @@ class MCPHandlers:
         Returns:
             PersonaSpec JSON on success, or error envelope on failure.
 
-        Raises:
-            ValueError: If 'id' key is missing from params.
+        Malformed requests return the documented MCP error envelope.
         """
-        # Request parsing: validate required 'id' parameter
-        if "id" not in params:
-            raise ValueError("Missing required parameter: 'id'")
+        validated_params = self._require_params_object("larva.assemble", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params(
+            "larva.assemble",
+            checked_params,
+            {"id", "prompts", "toolsets", "constraints", "model", "overrides", "variables"},
+        ):
+            return error
+        if error := self._require_param("larva.assemble", checked_params, "id"):
+            return error
+        if error := self._require_type("larva.assemble", checked_params, "id", str, "string"):
+            return error
+        if error := self._require_list_of_strings("larva.assemble", checked_params, "prompts"):
+            return error
+        if error := self._require_list_of_strings("larva.assemble", checked_params, "toolsets"):
+            return error
+        if error := self._require_list_of_strings("larva.assemble", checked_params, "constraints"):
+            return error
+        if "model" in checked_params and (
+            error := self._require_type("larva.assemble", checked_params, "model", str, "string")
+        ):
+            return error
+        if "overrides" in checked_params and (
+            error := self._require_type(
+                "larva.assemble", checked_params, "overrides", dict, "object"
+            )
+        ):
+            return error
+        if "variables" in checked_params and (
+            error := self._require_type(
+                "larva.assemble", checked_params, "variables", dict, "object"
+            )
+        ):
+            return error
 
         # Build AssembleRequest - preserve falsey overrides
         request: AssembleRequest = {
-            "id": params["id"],
-            "prompts": params.get("prompts", []),
-            "toolsets": params.get("toolsets", []),
-            "constraints": params.get("constraints", []),
-            "model": params.get("model", ""),
-            "overrides": params.get("overrides", {}),
-            "variables": params.get("variables", {}),
+            "id": checked_params["id"],
+            "prompts": checked_params.get("prompts", []),
+            "toolsets": checked_params.get("toolsets", []),
+            "constraints": checked_params.get("constraints", []),
+            "model": checked_params.get("model", ""),
+            "overrides": checked_params.get("overrides", {}),
+            "variables": checked_params.get("variables", {}),
         }
 
         # Delegate to facade
@@ -306,7 +450,7 @@ class MCPHandlers:
         error = result.failure()
         return error
 
-    def handle_resolve(self, params: dict[str, Any]) -> Union[PersonaSpec, LarvaError]:
+    def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.resolve MCP tool call.
 
         Delegates to: facade.resolve(id, overrides)
@@ -319,16 +463,30 @@ class MCPHandlers:
         Returns:
             PersonaSpec JSON on success, or error envelope on failure.
 
-        Raises:
-            ValueError: If 'id' key is missing from params.
+        Malformed requests return the documented MCP error envelope.
         """
-        # Request parsing: validate required 'id' parameter
-        if "id" not in params:
-            raise ValueError("Missing required parameter: 'id'")
+        validated_params = self._require_params_object("larva.resolve", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params(
+            "larva.resolve", checked_params, {"id", "overrides"}
+        ):
+            return error
+        if error := self._require_param("larva.resolve", checked_params, "id"):
+            return error
+        if error := self._require_type("larva.resolve", checked_params, "id", str, "string"):
+            return error
+        if "overrides" in checked_params and (
+            error := self._require_type(
+                "larva.resolve", checked_params, "overrides", dict, "object"
+            )
+        ):
+            return error
 
-        persona_id = params["id"]
+        persona_id = checked_params["id"]
         # Preserve falsey/null override values - pass None if not provided
-        overrides: dict[str, object] | None = params.get("overrides")
+        overrides: dict[str, object] | None = checked_params.get("overrides")
 
         # Delegate to facade
         result = self._facade.resolve(persona_id, overrides)
@@ -341,7 +499,7 @@ class MCPHandlers:
         error = result.failure()
         return error
 
-    def handle_register(self, params: dict[str, Any]) -> Union[RegisteredPersona, LarvaError]:
+    def handle_register(self, params: object) -> Union[RegisteredPersona, LarvaError]:
         """Handle larva.register MCP tool call.
 
         Delegates to: facade.register(spec)
@@ -352,13 +510,19 @@ class MCPHandlers:
         Returns:
             {"id": str, "registered": True} on success, or error envelope on failure.
 
-        Raises:
-            ValueError: If 'spec' key is missing from params.
+        Malformed requests return the documented MCP error envelope.
         """
-        # Request parsing: extract 'spec' parameter
-        if "spec" not in params:
-            raise ValueError("Missing required parameter: 'spec'")
-        spec = params["spec"]
+        validated_params = self._require_params_object("larva.register", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.register", checked_params, {"spec"}):
+            return error
+        if error := self._require_param("larva.register", checked_params, "spec"):
+            return error
+        if error := self._require_type("larva.register", checked_params, "spec", dict, "object"):
+            return error
+        spec = checked_params["spec"]
 
         # Delegate to facade
         result = self._facade.register(cast("PersonaSpec", spec))
@@ -371,7 +535,7 @@ class MCPHandlers:
         error = result.failure()
         return error
 
-    def handle_list(self, params: dict[str, Any]) -> Union[list[dict[str, str]], LarvaError]:
+    def handle_list(self, params: object) -> Union[list[dict[str, str]], LarvaError]:
         """Handle larva.list MCP tool call.
 
         Delegates to: facade.list()
@@ -384,8 +548,12 @@ class MCPHandlers:
             [{"id": str, "spec_digest": str, "model": str}, ...]
             Or error envelope on failure.
         """
-        # No parameters needed for list
-        del params  # Explicitly indicate unused
+        validated_params = self._require_params_object("larva.list", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.list", checked_params, set()):
+            return error
 
         # Delegate to facade
         result = self._facade.list()

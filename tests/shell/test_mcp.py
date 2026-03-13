@@ -168,6 +168,19 @@ def _invalid_report(
     }
 
 
+def _assert_malformed_params_error(
+    error: LarvaError,
+    *,
+    tool: str,
+    reason: str,
+) -> None:
+    assert error["code"] == "INTERNAL"
+    assert error["numeric_code"] == 10
+    assert error["message"] == f"Malformed parameters for '{tool}': {reason}"
+    assert error["details"]["tool"] == tool
+    assert error["details"]["reason"] == reason
+
+
 # Import the actual facade to use as template
 from larva.app.facade import DefaultLarvaFacade
 from larva.core import assemble as assemble_module
@@ -652,39 +665,66 @@ class TestMCPAssembleConflictCodePreservation:
 class TestMCPMalformedParamsRejected:
     """Regression: malformed or incomplete params must be rejected at MCP boundary."""
 
-    def test_assemble_missing_id_uses_default(self) -> None:
-        """When 'id' is missing from request, facade uses default from candidate."""
-        facade = _make_facade(validate_report=_valid_report())
+    @pytest.mark.parametrize(
+        ("tool", "payload", "reason"),
+        [
+            ("larva.validate", {"spec": []}, "parameter 'spec' must be object"),
+            (
+                "larva.assemble",
+                {"id": "ok", "prompts": ["ok", 2]},
+                "parameter 'prompts' must be list[string]",
+            ),
+            (
+                "larva.resolve",
+                {"id": "ok", "overrides": []},
+                "parameter 'overrides' must be object",
+            ),
+            ("larva.register", {"spec": "not-an-object"}, "parameter 'spec' must be object"),
+            ("larva.list", {"unknown": True}, "unknown parameter(s)"),
+        ],
+    )
+    def test_all_tools_reject_malformed_payloads(
+        self,
+        tool: str,
+        payload: object,
+        reason: str,
+    ) -> None:
+        handlers = mcp_module.MCPHandlers(_make_facade(validate_report=_valid_report()))
+        dispatch = {
+            "larva.validate": handlers.handle_validate,
+            "larva.assemble": handlers.handle_assemble,
+            "larva.resolve": handlers.handle_resolve,
+            "larva.register": handlers.handle_register,
+            "larva.list": handlers.handle_list,
+        }
 
-        # When 'id' is missing, assemble uses the candidate's id
-        result = facade.assemble({"prompts": ["base"]})
+        result = dispatch[tool](payload)
 
-        # The facade handles this gracefully - not an error at this layer
-        # Validation at the MCP boundary would check required fields in schema
-        assert isinstance(result, Success)
-        assert result.unwrap()["id"] == "assembled"
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(cast("LarvaError", result), tool=tool, reason=reason)
 
-    def test_resolve_empty_string_returns_default(self) -> None:
-        """Empty string id returns the default from InMemoryRegistryStore."""
-        registry = InMemoryRegistryStore()
-        facade = _make_facade(registry=registry)
+    @pytest.mark.parametrize(
+        "tool",
+        ["larva.validate", "larva.assemble", "larva.resolve", "larva.register", "larva.list"],
+    )
+    def test_all_tools_reject_non_object_params(self, tool: str) -> None:
+        handlers = mcp_module.MCPHandlers(_make_facade(validate_report=_valid_report()))
+        dispatch = {
+            "larva.validate": handlers.handle_validate,
+            "larva.assemble": handlers.handle_assemble,
+            "larva.resolve": handlers.handle_resolve,
+            "larva.register": handlers.handle_register,
+            "larva.list": handlers.handle_list,
+        }
 
-        # Pass empty id - returns default persona from mock
-        result = facade.resolve("")
+        result = dispatch[tool]([])
 
-        # The mock registry returns a default persona for any id
-        assert isinstance(result, Success)
-
-    def test_register_invalid_spec_returns_error(self) -> None:
-        facade = _make_facade(validate_report=_invalid_report("INVALID_SPEC_VERSION"))
-
-        # Invalid spec should fail validation
-        invalid_spec = {"id": "invalid"}  # Missing required fields
-        result = facade.register(cast("PersonaSpec", invalid_spec))
-
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "PERSONA_INVALID"
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool=tool,
+            reason="params must be an object",
+        )
 
 
 class TestMCPValidationReportTypeContract:
@@ -823,12 +863,18 @@ class TestMCPHandlersImplementation:
         assert result["warnings"] == []
 
     def test_handle_validate_missing_spec_raises(self) -> None:
-        """Test handle_validate rejects missing 'spec' parameter."""
+        """Test handle_validate returns malformed-params envelope for missing spec."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
-        with pytest.raises(ValueError, match="Missing required parameter: 'spec'"):
-            handlers.handle_validate({})
+        result = handlers.handle_validate({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.validate",
+            reason="missing required parameter 'spec'",
+        )
 
     def test_handle_assemble_success(self) -> None:
         """Test handle_assemble returns PersonaSpec on success."""
@@ -871,12 +917,18 @@ class TestMCPHandlersImplementation:
         assert result["code"] == "COMPONENT_NOT_FOUND"
 
     def test_handle_assemble_missing_id_raises(self) -> None:
-        """Test handle_assemble rejects missing 'id' parameter."""
+        """Test handle_assemble returns malformed-params envelope for missing id."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
-        with pytest.raises(ValueError, match="Missing required parameter: 'id'"):
-            handlers.handle_assemble({"prompts": ["base"]})
+        result = handlers.handle_assemble({"prompts": ["base"]})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.assemble",
+            reason="missing required parameter 'id'",
+        )
 
     def test_handle_assemble_preserves_falsey_overrides(self) -> None:
         """Test handle_assemble preserves falsey values in overrides.
@@ -947,12 +999,18 @@ class TestMCPHandlersImplementation:
         assert result["numeric_code"] == 100
 
     def test_handle_resolve_missing_id_raises(self) -> None:
-        """Test handle_resolve rejects missing 'id' parameter."""
+        """Test handle_resolve returns malformed-params envelope for missing id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
-        with pytest.raises(ValueError, match="Missing required parameter: 'id'"):
-            handlers.handle_resolve({})
+        result = handlers.handle_resolve({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.resolve",
+            reason="missing required parameter 'id'",
+        )
 
     def test_handle_resolve_preserves_falsey_overrides(self) -> None:
         """Test handle_resolve preserves falsey values in overrides."""
@@ -1010,12 +1068,18 @@ class TestMCPHandlersImplementation:
         assert result["numeric_code"] == 101
 
     def test_handle_register_missing_spec_raises(self) -> None:
-        """Test handle_register rejects missing 'spec' parameter."""
+        """Test handle_register returns malformed-params envelope for missing spec."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
-        with pytest.raises(ValueError, match="Missing required parameter: 'spec'"):
-            handlers.handle_register({})
+        result = handlers.handle_register({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.register",
+            reason="missing required parameter 'spec'",
+        )
 
     def test_handle_list_success(self) -> None:
         """Test handle_list returns list of summaries on success."""
@@ -1065,3 +1129,18 @@ class TestMCPHandlersImplementation:
         # Empty params should work fine
         result = handlers.handle_list({})
         assert result == []
+
+    def test_handle_list_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_list rejects unknown params with stable error envelope."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        handlers = mcp_module.MCPHandlers(_make_facade(registry=registry))
+
+        result = handlers.handle_list({"limit": 5})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.list",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["limit"]
