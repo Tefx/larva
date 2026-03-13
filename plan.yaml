@@ -16265,7 +16265,7 @@ phases:
       run and merge.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-5
     name: guard-full-core-crosshair-retest-5
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the fifth-loop batched remediation for the narrowed
       assemble+normalize residual family.
@@ -16372,3 +16372,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-fix-5
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T20:54:49.171475+00:00'
