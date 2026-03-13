@@ -14775,7 +14775,7 @@ phases:
     agent: gate-reviewer
   - id: followup_guard_full.guard-full-batched-fix
     name: guard-full-batched-fix
-    status: pending
+    status: claimed
     description: 'Fix ALL blocking and should-fix full-guard findings in one batched
       remediation pass; do not split this into one-warning-at-a-time follow-ups.
 
@@ -14940,6 +14940,8 @@ phases:
     depends_on:
     - followup_guard_full.cli-complexity-remediate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T19:04:49.902440+00:00'
   - id: followup_guard_full.guard-full-retest
     name: guard-full-retest
     status: pending
