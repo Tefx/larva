@@ -14696,7 +14696,7 @@ phases:
       - Failure converted to anti-serial batched fix loop per protocol.'
   - id: followup_guard_full.freeze
     name: freeze
-    status: pending
+    status: claimed
     description: 'Freeze the follow-up full-guard snapshot before gate review.
 
 
@@ -14713,6 +14713,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T19:37:04.731913+00:00'
   - id: followup_guard_full.gate
     name: gate
     status: pending
