@@ -13136,3 +13136,85 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_freeze
     agent: integration-verifier
+  - id: shell_mcp_runtime.runtime_blackbox_proof
+    name: runtime_blackbox_proof
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`blind-tester`), validate the runnable
+      MCP runtime as a black-box public surface.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      spec_refs:
+
+      - README.md :: MCP Server (primary)
+
+      - INTERFACES.md :: `larva runs as an MCP server (stdio or SSE)`
+
+
+      Touch paths:
+
+      - pyproject.toml
+
+      - README.md
+
+      - INTERFACES.md
+
+
+      Test constraints:
+
+      - use only the public runtime launch path and published MCP behavior
+
+      - do not import internal Python modules or call `MCPHandlers` directly
+
+      - prove at least one documented request reaches the runtime successfully
+
+      - prove shutdown/lifecycle behavior from the outside'
+    verification: '- Treat the MCP server as a black-box command and prove startup,
+      one tool request, and shutdown using only public interface information
+
+      - Capture a reproducible transcript artifact path plus verbatim command/output
+
+      - Fail the step if proof requires internal imports, direct handler calls, or
+      bespoke test-only hooks'
+    evidence_template: '## Black-Box Runtime Proof
+
+
+      **Public launch command**:
+
+      ```
+
+      <paste exact command>
+
+      ```
+
+
+      **Observed transcript**:
+
+      ```
+
+      <paste verbatim runtime interaction>
+
+      ```
+
+
+      **Public interface used**:
+
+      - launch surface: <entrypoint>
+
+      - documented tool exercised: <tool name>
+
+      - shutdown method: <EOF|signal|command>
+
+
+      **Artifact path**: <path to saved transcript>
+
+      '
+    depends_on:
+    - shell_mcp_runtime.runtime_freeze
+    agent: blind-tester
