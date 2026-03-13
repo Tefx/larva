@@ -7645,6 +7645,7 @@ phases:
     - shell_cli.shell-cli-seam-proof
     - shell_cli.shell-cli-freeze
     - shell_cli.shell-cli-verify-retest
+    - shell_cli.shell-cli-gate-retest
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T06:43:21.332160+00:00'
