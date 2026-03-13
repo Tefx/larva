@@ -12589,7 +12589,7 @@ phases:
       - B1-B5 all closed; downstream core-gate blockers resolved.'
 - id: followup_validate_warnings
   name: Follow-up Validate Warnings
-  status: in_progress
+  status: done
   context: This phase starts only after surface-hygiene gate closure. It must define
     authoritative warning semantics before implementation and keep scope inside validation
     docs/tests/core only.
@@ -13234,7 +13234,7 @@ phases:
       step scope'
   - id: followup_validate_warnings.retest-gate-blockers
     name: retest-gate-blockers
-    status: claimed
+    status: done
     description: 'Re-test ALL remediation from `followup_validate_warnings.fix-gate-blockers`
       as an INDEPENDENT TESTER.
 
@@ -13363,6 +13363,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:32:01.259482+00:00'
+    done_at: '2026-03-13T18:34:52.354905+00:00'
+    evidence: "## Retest Report\n**Tester**: integration-verifier\n**Scope**: B1 +\
+      \ S1 closure for followup_validate_warnings\n**Independence Level**: L1\n\n\
+      ### Commands executed\n- grep scans for warning-family language and canonical\
+      \ UNUSED_VARIABLES references across INTERFACES/src/tests\n- `uv run pytest\
+      \ -v` targeted on:\n  - TestUnusedVariablesWarning::test_unused_variables_warning_format\n\
+      \  - TestUnusedVariablesWarning::test_unused_variables_with_unresolved_variables\n\
+      \  - TestMCPHandlersImplementation::test_handle_validate_preserves_canonical_unused_variables_warning\n\
+      \n### Findings\n| Severity | Description | Location | Reproduction |\n| ---\
+      \ | --- | --- | --- |\n| blocker/should_fix | none | n/a | n/a |\n\n### Closure\
+      \ checks\n- No contract-drifting warning-family language remains unscoped: ✅\n\
+      - MCP-facing warning propagation test passes with canonical string unchanged:\
+      \ ✅\n- Error semantics remain preserved: ✅\n\n### Verdict\n- PASS"
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: done
@@ -14187,7 +14200,7 @@ phases:
       \ of scope for this docs/surface retest)\n\n### Verdict\n- PASS"
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
-  status: locked
+  status: pending
   context: Start only after validate-warning gate closure. This is the final acceptance
     barrier for the follow-on gaps and must stay serial and worktree-safe.
   depends_on:
