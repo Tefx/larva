@@ -5592,7 +5592,7 @@ phases:
       \  - `app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual`"
   - id: app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: fix-retest-app-facade-gate-blockers-b1-digest-parity-residual
-    status: pending
+    status: claimed
     description: 'Fix the remaining unresolved B1 digest-parity surface from `app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3`
       as ONE batched remediation step.
 
@@ -5726,6 +5726,8 @@ phases:
     depends_on:
     - app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T03:43:46.982784+00:00'
   - id: app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: retest-app-facade-gate-blockers-b1-digest-parity-residual
     status: pending
