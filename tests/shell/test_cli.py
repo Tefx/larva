@@ -1553,3 +1553,311 @@ class TestComponentCommandJsonTextSeparation:
         assert isinstance(result, Failure)
         failure = result.failure()
         assert "error" in failure
+
+
+# ============================================================================
+# _read_spec_json Boundary Tests
+# ============================================================================
+# Regression tests for _read_spec_json behavior boundaries:
+# - File not found returns critical failure with INTERNAL code
+# - JSON decode error returns critical failure with parse details
+# - OSError returns critical failure with error details
+# - Non-dict root returns critical failure
+# - Valid JSON dict returns Success with loaded spec
+
+
+class TestReadSpecJson:
+    """Tests for the _read_spec_json helper function behavior boundaries."""
+
+    def test_file_not_found_returns_critical_failure(self, tmp_path: Path) -> None:
+        """Non-existent file returns Failure with INTERNAL error code."""
+        from larva.shell import cli as cli_module
+
+        missing_path = tmp_path / "does-not-exist.json"
+        result = cli_module._read_spec_json(str(missing_path))
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["code"] == "INTERNAL"
+        assert failure["numeric_code"] == 10
+        assert "not found" in failure["message"].lower()
+        assert failure["details"]["path"] == str(missing_path)
+
+    def test_json_decode_error_returns_failure_with_line_info(self, tmp_path: Path) -> None:
+        """Invalid JSON returns Failure with decode error details."""
+        from larva.shell import cli as cli_module
+
+        invalid_path = tmp_path / "invalid.json"
+        invalid_path.write_text('{"id": "test", "invalid json"', encoding="utf-8")
+
+        result = cli_module._read_spec_json(str(invalid_path))
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["code"] == "INTERNAL"
+        assert failure["numeric_code"] == 10
+        assert "not valid" in failure["message"].lower() and "json" in failure["message"].lower()
+        # JSONDecodeError provides line/column info when available
+        assert "line" in failure["details"] or "column" in failure["details"]
+
+    def test_os_error_returns_failure_with_error_details(self, tmp_path: Path) -> None:
+        """OS-level read error returns Failure with error details."""
+        from larva.shell import cli as cli_module
+
+        # Create a directory instead of a file - will cause OSError on open
+        error_path = tmp_path / "is-a-dir.json"
+        error_path.mkdir()
+
+        result = cli_module._read_spec_json(str(error_path))
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["code"] == "INTERNAL"
+        assert failure["numeric_code"] == 10
+        assert "read" in failure["message"].lower() or "failed" in failure["message"].lower()
+        assert "error" in failure["details"]
+
+    def test_non_dict_root_returns_failure(self, tmp_path: Path) -> None:
+        """JSON root that is not a dict returns Failure."""
+        from larva.shell import cli as cli_module
+
+        array_path = tmp_path / "array.json"
+        array_path.write_text('["not", "a", "dict"]', encoding="utf-8")
+
+        result = cli_module._read_spec_json(str(array_path))
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["code"] == "INTERNAL"
+        assert failure["numeric_code"] == 10
+        assert "object" in failure["message"].lower()
+
+    def test_valid_json_dict_returns_success(self, tmp_path: Path) -> None:
+        """Valid JSON file with dict root returns Success with loaded spec."""
+        from larva.shell import cli as cli_module
+
+        valid_path = tmp_path / "valid.json"
+        spec = _canonical_spec("test-persona")
+        valid_path.write_text(json.dumps(spec), encoding="utf-8")
+
+        result = cli_module._read_spec_json(str(valid_path))
+
+        assert isinstance(result, Success)
+        loaded = result.unwrap()
+        assert loaded["id"] == "test-persona"
+
+
+# ============================================================================
+# _dispatch Boundary Tests
+# ============================================================================
+# Regression tests for _dispatch command routing behavior:
+# - Validates correct command -> handler routing
+# - Tests error propagation from _read_spec_json in validate/register paths
+# - Tests error propagation from override parsing in assemble/resolve paths
+# - Component subcommand routing
+
+
+class TestDispatch:
+    """Tests for the _dispatch command routing function."""
+
+    def test_validate_command_routes_to_validate_handler(self, tmp_path: Path) -> None:
+        """Validate command routes to validate_command handler."""
+        from larva.shell import cli as cli_module
+
+        spec_path = tmp_path / "valid.json"
+        spec_path.write_text(json.dumps(_canonical_spec("test")), encoding="utf-8")
+
+        # Create args namespace that mimics argparse
+        class Args:
+            command = "validate"
+            spec = str(spec_path)
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        # Validate should call facade.validate
+        assert facade.validate_calls == 1
+
+    def test_register_command_routes_to_register_handler(self, tmp_path: Path) -> None:
+        """Register command routes to register_command handler."""
+        from larva.shell import cli as cli_module
+
+        spec_path = tmp_path / "valid.json"
+        spec_path.write_text(json.dumps(_canonical_spec("test")), encoding="utf-8")
+
+        class Args:
+            command = "register"
+            spec = str(spec_path)
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        assert facade.register_calls == 1
+
+    def test_validate_with_missing_file_returns_critical(self) -> None:
+        """Validate command with missing spec file returns critical failure."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "validate"
+            spec = "/nonexistent/path/spec.json"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        # Missing file should be critical (exit code 2)
+        assert failure["exit_code"] == EXIT_CRITICAL
+
+    def test_register_with_missing_file_returns_critical(self) -> None:
+        """Register command with missing spec file returns critical failure."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "register"
+            spec = "/nonexistent/path/spec.json"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_CRITICAL
+
+    def test_assemble_with_bad_override_returns_critical(self) -> None:
+        """Assemble with malformed override returns critical failure."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "assemble"
+            id = "test-id"
+            prompts = []
+            toolsets = []
+            constraints = []
+            overrides = ["not-a-valid-override"]  # Missing '='
+            variables = []
+            model = None
+            output = None
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_CRITICAL
+        assert "override" in failure["error"]["message"].lower()
+
+    def test_resolve_command_routes_to_resolve_handler(self) -> None:
+        """Resolve command routes to resolve_command handler."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "resolve"
+            id = "test-id"
+            overrides = []
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        assert facade.resolve_calls == 1
+        assert facade.last_resolve_id == "test-id"
+
+    def test_list_command_routes_to_list_handler(self) -> None:
+        """List command routes to list_command handler."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "list"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        assert facade.list_calls == 1
+
+    def test_component_list_routes_to_component_list_handler(self) -> None:
+        """Component list routes to component_list_command handler."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "component"
+            component_command = "list"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        # Component commands should NOT call facade methods
+        assert facade.validate_calls == 0
+        assert facade.assemble_calls == 0
+        assert facade.register_calls == 0
+        assert facade.resolve_calls == 0
+        assert facade.list_calls == 0
+
+    def test_component_show_routes_to_component_show_handler(self) -> None:
+        """Component show routes to component_show_command handler."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "component"
+            component_command = "show"
+            ref = "prompts/test-prompt"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        # Component commands should NOT call facade methods
+        assert facade.validate_calls == 0
+        assert facade.assemble_calls == 0
+        assert facade.register_calls == 0
+        assert facade.resolve_calls == 0
+        assert facade.list_calls == 0
+
+    def test_unknown_command_returns_critical(self) -> None:
+        """Unknown command returns critical failure."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "unknown-command"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_CRITICAL
