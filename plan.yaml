@@ -13026,7 +13026,7 @@ phases:
       - src/larva/cli.py delegates to shell main with no duplicate CLI logic'
   - id: followup_surface_hygiene.cli-compat-implement
     name: cli-compat-implement
-    status: pending
+    status: claimed
     description: 'Implement the agreed `src/larva/cli.py` compatibility cleanup.
 
 
@@ -13077,6 +13077,8 @@ phases:
     depends_on:
     - followup_surface_hygiene.cli-compat-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T17:28:44.402665+00:00'
   - id: followup_surface_hygiene.surface-doc-cleanup
     name: surface-doc-cleanup
     status: pending
