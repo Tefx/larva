@@ -8459,6 +8459,235 @@ phases:
       Gaps/Notes:
 
       - Retest confirms batched MCP remediation acceptance barrier is satisfied.'
+  - id: shell_mcp.shell-mcp-gate-fix-batch
+    name: shell-mcp-gate-fix-batch
+    status: pending
+    description: 'Fix ALL blockers and should-fix findings from `shell_mcp.shell-mcp-gate`
+      in ONE batched remediation step.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface (primary)`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.mcp`
+
+      - `ARCHITECTURE.md` :: `CLI, MCP, and Python entrypoints must remain thin adapters`
+
+
+      prior_loop:
+
+      - `shell_mcp.shell-mcp-fix-batch`
+
+      - `shell_mcp.shell-mcp-verify-retest`
+
+      remaining_blocker:
+
+      - CLI component list/show are still deferred while tests assert the INTERFACES
+      contract
+
+      - MCP error response contract shape is inconsistent between docs, handler behavior,
+      and tests
+
+      - numeric error code mapping remains duplicated across facade and MCP surfaces
+
+      - MCP handler callable typing is still erased as `Any`
+
+      why_new_loop:
+
+      - The earlier remediation loop only covered MCP malformed-parameter handling
+      and seam evidence.
+
+      - Gate review surfaced a broader cross-surface contract gap spanning CLI behavior,
+      MCP transport semantics, shared error-code parity, and typing discipline, so
+      the prior loop cannot simply be re-labeled.
+
+
+      harness_refs:
+
+      - `tests/shell/test_cli.py`
+
+      - `tests/shell/test_mcp.py`
+
+      - MCP handler seam through `larva.shell.mcp.MCPHandlers`
+
+      - CLI command entrypoints in `src/larva/shell/cli.py`
+
+
+      touch_paths:
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - `src/larva/app/facade.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `tests/shell/test_mcp.py`
+
+      - `INTERFACES.md`
+
+
+      conflict_rationale:
+
+      - Serialize after `shell_mcp.shell-mcp-gate` because this remediation responds
+      to gate findings and touches the same acceptance surface the gate evaluated.
+
+      - Must remain serialized before retest and before the gate reruns because it
+      changes shared shell adapters, shared tests, and documented interface semantics.
+
+      - Shared registries are not the risk here; the conflict is the cross-file CLI/MCP
+      contract surface and its test harnesses.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: CLI component commands are still stubbed and keep the repo test suite
+      red
+
+      Locations: `src/larva/shell/cli.py:503`, `src/larva/shell/cli.py:515`, `tests/shell/test_cli.py:977`
+
+      Remediation:
+
+      - implement `component list` and `component show` per the INTERFACES contract
+      instead of raising deferred `NotImplementedError`
+
+      - make the full repo test suite green with these commands wired through the
+      real CLI adapter path
+
+      - confirm behavior matches documented success/error semantics rather than patching
+      tests to accept stubs
+
+      Grep hint: `rg -n "NotImplementedError\(\"component (list|show) deferred" src/larva/shell/cli.py`
+
+      IMPORTANT: search for sibling deferred component command paths beyond the listed
+      lines and remove any remaining contract-breaking stubs.
+
+
+      ### B2: MCP error response contract shape is inconsistent end-to-end
+
+      Locations: `INTERFACES.md:480`, `src/larva/shell/mcp.py:241`, `src/larva/shell/mcp.py:346`,
+      `src/larva/shell/mcp.py:374`, `src/larva/shell/mcp.py:453`, `src/larva/shell/mcp.py:502`,
+      `src/larva/shell/mcp.py:538`
+
+      Remediation:
+
+      - choose one canonical error-response shape and enforce it consistently across
+      docs, handler behavior, and tests, or explicitly document transport-wrapper
+      semantics and lock that shape in code+tests
+
+      - verify the same shape holds for malformed params and downstream LarvaError
+      failures
+
+      - do not leave docs and tests each describing different wrappers
+
+      Grep hint: `rg -n "Error Response Format \(--json / MCP\)|\"error\"\s*:" INTERFACES.md
+      src/larva/shell/mcp.py tests/shell/test_mcp.py`
+
+      IMPORTANT: search sibling error emitters and assertions across the whole MCP
+      adapter, not only the listed handler lines.
+
+
+      ### S1: Numeric error-code mapping is duplicated across facade and MCP
+
+      Locations: `src/larva/app/facade.py:26`, `src/larva/shell/mcp.py:51`
+
+      Remediation:
+
+      - canonicalize the mapping into one source of truth OR add a parity-locking
+      test if duplication must remain temporarily
+
+      - prove that any future code additions cannot silently drift numeric codes between
+      facade and MCP
+
+      Grep hint: `rg -n "ERROR_NUMERIC_CODES|LARVA_ERROR_CODES" src/larva/app/facade.py
+      src/larva/shell/mcp.py`
+
+      IMPORTANT: search for any sibling numeric-code tables or hard-coded numeric
+      constants in shell error formatting paths.
+
+
+      ### S2: MCP handler callable typing is erased as `Any`
+
+      Locations: `src/larva/shell/mcp.py:213`
+
+      Remediation:
+
+      - replace `Any` with an explicit callable protocol or alias matching the real
+      handler contract
+
+      - keep the type contract precise enough that MCP dispatch and tool-handler signatures
+      are reviewable and checked
+
+      Grep hint: `rg -n "^MCPHandler\s*=\s*Any" src/larva/shell/mcp.py`
+
+      IMPORTANT: search sibling dispatch aliases and typed handler collections so
+      the fix is systemic, not one local annotation.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. A partial fix that only unblocks one CLI command or one MCP error case while
+      leaving sibling contract paths inconsistent.
+
+      2. Docs-vs-code-vs-tests drift on MCP error wrappers or message shape.
+
+      3. Green targeted tests with the full suite still red.
+
+      4. Duplicated numeric error tables without parity protection.
+
+      5. `Any`-typed handler dispatch that keeps the callable contract opaque.
+
+
+      ## Completion Criteria
+
+      - ALL blockers and should-fix items above are addressed together, not one-by-one.
+
+      - Sibling search completed for CLI deferred commands, MCP error emitters/assertions,
+      numeric-code mappings, and handler typing aliases.
+
+      - Full repo suite is green, not just focused shell subsets.
+
+      - Canonical MCP error-response semantics are explicit and consistent across
+      docs/code/tests.
+
+      - Numeric error-code parity is enforced by source-of-truth design or dedicated
+      regression coverage.
+
+      - MCP handler dispatch type is explicit and no longer erased as `Any`.
+
+
+      Out of scope:
+
+      - new CLI feature surface beyond making documented component list/show behavior
+      conformant
+
+      - unrelated facade business-rule changes outside shared error-code parity
+
+      - new MCP tools or transport startup changes'
+    verification: '- Main path: full repo suite passes after CLI component commands
+      are implemented and MCP contract semantics are aligned
+
+      - Failure path: focused regressions prove malformed/downstream MCP errors use
+      one canonical documented shape and no deferred CLI component stub remains
+
+      - Proof: sibling-search evidence shows no remaining deferred component command
+      paths, no unreviewed numeric-code drift, and no `MCPHandler = Any` alias left
+      in the MCP adapter'
+    depends_on:
+    - shell_mcp.shell-mcp-gate
+    agent: python-senior
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
