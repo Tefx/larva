@@ -7667,7 +7667,7 @@ phases:
       \ not full MCP stdio/SSE server runtime."
   - id: shell_mcp.shell-mcp-freeze
     name: shell-mcp-freeze
-    status: claimed
+    status: done
     description: 'Freeze the `larva.shell.mcp` snapshot before gate review.
 
 
@@ -7703,6 +7703,33 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T05:11:54.296278+00:00'
+    done_at: '2026-03-13T05:33:55.392877+00:00'
+    evidence: 'Commit hash(es): none (verification-only freeze step; no code/doc/test
+      changes expected)
+
+      Files changed: none
+
+      Verification:
+
+      - pwd -> /Users/tefx/Projects/larva/.vectl/worktrees/shell_mcp.shell-mcp-freeze
+
+      - git branch --show-current -> vectl/step-shell_mcp.shell-mcp-freeze
+
+      - git rev-parse HEAD -> 94c1a41a7417b27c7f6659249befecc2a0651874
+
+      - git status -> clean working tree
+
+      - uname/date UTC recorded (Darwin arm64, 2026-03-13T05:16:34Z)
+
+      Spec link:
+
+      - ARCHITECTURE.md section 11 handoff/freeze boundary
+
+      - README.md key design decisions
+
+      Gaps/Notes:
+
+      - Explicit no-code-changes freeze statement recorded for gate handoff.'
   - id: shell_mcp.shell-mcp-gate
     name: shell-mcp-gate
     status: pending
