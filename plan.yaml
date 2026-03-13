@@ -15026,7 +15026,7 @@ phases:
       \ closed."
   - id: followup_guard_full.guard-full-core-crosshair-fix-2
     name: guard-full-core-crosshair-fix-2
-    status: pending
+    status: claimed
     description: 'Second batched remediation escalation for the unresolved CrossHair
       blocker family only; do not reopen the already-cleared warning/error families
       and do not split this into serial micro-fixes.
@@ -15150,6 +15150,8 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T19:25:54.143474+00:00'
   - id: followup_guard_full.guard-full-core-crosshair-retest-2
     name: guard-full-core-crosshair-retest-2
     status: pending
