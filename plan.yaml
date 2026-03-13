@@ -8009,7 +8009,7 @@ phases:
       - discovered_issues: none'
   - id: shell_cli.shell-cli-verify-retest
     name: shell-cli-verify-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
       remediation from `shell_cli.shell-cli-verify-fix-batch` and verify that ALL
       blocker and should-fix findings from `shell_cli.shell-cli-verify` are resolved
@@ -8097,6 +8097,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-verify-fix-batch
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-13T06:34:49.423586+00:00'
 - id: shell_mcp
   name: larva.shell.mcp
   status: done
