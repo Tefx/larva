@@ -59,16 +59,30 @@ Design consequence:
 ## 3. Layer Model
 
 ```text
-shell/cli -----------+
-shell/mcp -----------+
-shell/python_api ----+--> app/facade --> core/spec
-                                         core/validate
-                                         core/assemble
-                                         core/normalize
-                                         shell/components
-                                         shell/registry
+                    +-- [facade] --> app/facade --> core/spec
+                    |                               core/validate
+shell/cli ---------+|                               core/assemble
+                    ||                              core/normalize
+                    |+-- [components] --> shell/components
+                    |                    shell/registry (via facade)
+                    |
+shell/mcp ----------+--> app/facade --> (same as above)
+shell/python_api ----+
+
+Dependency key:
+  [facade]      = persona operations (validate/assemble/register/resolve/list)
+  [components]  = component read operations (list/show components)
 ```
 
+### Rationale
+
+- `core/` stays deterministic and contract-friendly.
+- `shell/` owns all external effects.
+- `app/facade` centralizes persona use-case orchestration.
+- CLI routes component reads directly to `shell.components` (bypassing facade)
+  because component inspection is NOT use-case orchestration.
+
+---
 ### Rationale
 
 - `core/` stays deterministic and contract-friendly.
@@ -435,7 +449,37 @@ class RegistryStore(Protocol):
 ---
 
 ## Module: `larva.shell.cli`
+## Module: `larva.shell.cli`
 
+### Responsibility
+
+Adapt CLI input/output to facade calls (persona operations) and
+ComponentStore calls (component read operations).
+
+### Non-Responsibility
+
+- no business-rule ownership
+- no registry logic
+- no assembly logic
+
+### Depends on
+
+- `larva.app.facade` — for persona operations (validate, assemble, register, resolve, list personas)
+- `shell.components ComponentStore` — for component inspection (list components, show component)
+
+### Shell-Boundary Error Handling
+
+CLI commands map shell errors directly to exit codes and stderr:
+
+**Persona commands (facade-routed):**
+- Convert `Result[T, LarvaError]` to exit code and JSON/text output
+- Exit code 0 for success, 1 for application error, 2 for critical failure
+
+**Component commands (ComponentStore-routed):**
+- Convert `Result[T, ComponentStoreError]` to exit code
+- Exit code 0 for success, 1 for component not found or parse error
+
+---
 ### Responsibility
 
 Adapt CLI input/output to facade calls.
@@ -585,7 +629,94 @@ core/spec
 ---
 
 ## 10. Final Decisions
+## 10. Final Decisions
 
+### Decision 1: Keep an explicit `app/` layer
+
+- `app/` remains a first-class layer.
+- `app.facade` owns use-case orchestration across transports.
+- CLI, MCP, and Python entrypoints must remain thin adapters.
+
+Rationale:
+
+- Multiple public entrypoints already exist in the design.
+- Without an application layer, orchestration logic would drift into
+  transport adapters or shell storage modules.
+- This keeps `core/` pure and `shell/` thin while preserving one
+  authoritative use-case path.
+
+### Decision 2: `resolve(..., overrides=...)` is part of v1
+
+- `resolve` includes optional overrides in the v1 module contract.
+- Override application belongs in `app.facade`, not in registry or
+  transport adapters.
+- Any override path must re-enter validation and normalization before
+  returning a result.
+
+Rationale:
+
+- The public design already exposes resolve-with-overrides.
+- Making overrides part of the architecture now avoids a later interface
+  fork between documented and implemented behavior.
+- Revalidation and renormalization preserve canonical semantics.
+
+### Decision 3: Python API is a thin facade export
+
+- Python API remains part of the public surface.
+- It should begin as a thin export over `app.facade`, exposed from
+  `__init__.py`.
+- A thicker `shell.python_api` module is only justified if the Python
+  surface later needs behavior not shared with CLI and MCP.
+
+Rationale:
+
+- Current Python API needs are small and aligned with the same use cases.
+- A thin export avoids duplicating orchestration logic.
+- This keeps the public surface simple while preserving a path to split
+  later if real divergence appears.
+
+### Decision 4: CLI component subcommands use injected ComponentStore port
+
+- CLI `component list` and `component show` are NOT facade operations.
+- These commands route through an injected `ComponentStore` port directly.
+- `LarvaFacade` does NOT own component listing or component reading.
+
+**Dependency Model:**
+
+```text
+shell/cli depends on:
+  - larva.app.facade (for persona operations: list, resolve, register)
+  - shell/components ComponentStore (for component operations: list, show)
+```
+
+**Rationale:**
+
+1. **Separation of concerns:** Component read operations are NOT use-case
+   orchestration. They are direct storage reads without validation,
+   assembly, or normalization.
+2. **Facade scope:** `LarvaFacade` owns persona-centric orchestration
+   (validate → assemble → normalize → persist). Component inspection
+   is outside this scope.
+3. **Error boundary:** Component read failures (file not found, parse
+   error) are shell-level `ComponentStoreError` values, returned as
+   `Result[T, ComponentStoreError]`. CLI adapts these directly to exit
+   codes and stderr without facade intermediation.
+4. **No feature creep:** Adding component reads to facade would grow
+   facade indefinitely. Injected ports keep facade focused.
+
+**Exit-code mapping for CLI component commands:**
+
+| Error | Exit Code | Notes |
+|-------|-----------|-------|
+| Component not found | 1 | Path resolution failure |
+| Parse error (malformed YAML/markdown) | 1 | Component content invalid |
+| Success | 0 | JSON output on stdout (or formatted text without `--json`) |
+
+**No facade intermediation:** CLI converts `Result[T, ComponentStoreError]`
+directly to process exit, matching pattern of `shell.components` owning
+all I/O and format concerns.
+
+---
 ### Decision 1: Keep an explicit `app/` layer
 
 - `app/` remains a first-class layer.
