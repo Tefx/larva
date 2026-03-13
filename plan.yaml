@@ -8101,7 +8101,7 @@ phases:
       - Discovered out-of-scope note: src/larva/shell/mcp.py near size threshold warning.'
   - id: shell_mcp.shell-mcp-verify-retest
     name: shell-mcp-verify-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the full
       remediation batch from `shell_mcp.shell-mcp-fix-batch` and act as the verification
       barrier before `shell_mcp.shell-mcp-gate`.
@@ -8264,6 +8264,48 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T05:13:02.750941+00:00'
+    done_at: '2026-03-13T05:34:26.414221+00:00'
+    evidence: 'Commit hash(es): none (verification-only retest; no source edits made)
+
+      Files changed: none
+
+      Verification:
+
+      - uv run pytest -v tests/shell/test_mcp.py -> 59 passed
+
+      - Seam probes via uv run python exercised MCPHandlers success + malformed failure
+      paths and falsey override forwarding.
+
+      - Grep boundary checks confirmed facade delegation points in src/larva/shell/mcp.py
+      and no unittest.mock patching in tests/shell/test_mcp.py.
+
+      Seam-level proof:
+
+      - Success path sample: SUCCESS_VALIDATE={"errors": [], "valid": true, "warnings":
+      []}
+
+      - Failure path sample: FAIL_LIST_UNKNOWN={"code":"INTERNAL","numeric_code":10,"message":"Malformed
+      parameters for ''larva.list'': unknown parameter(s)","details":{...}}
+
+      - All five tools malformed payload cases returned stable envelope with code/numeric_code/message/details.
+
+      Findings:
+
+      - blocker: none
+
+      - should_fix: none
+
+      - suggestion: verifier environment lacks bare `pytest` binary; use `uv run pytest`
+
+      - tech_debt: none
+
+      Spec link:
+
+      - INTERFACES.md A + G; ARCHITECTURE.md module larva.shell.mcp thin-adapter boundary
+
+      Gaps/Notes:
+
+      - Retest confirms batched MCP remediation acceptance barrier is satisfied.'
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
