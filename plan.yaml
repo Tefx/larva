@@ -6854,7 +6854,7 @@ phases:
   steps:
   - id: shell_mcp.shell-mcp-contract
     name: shell-mcp-contract
-    status: claimed
+    status: done
     description: "Create the contract-only `larva.shell.mcp` module at `src/larva/shell/mcp.py`.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\nagent_source: default\n\nScope:\n\
@@ -6885,6 +6885,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T03:52:51.042642+00:00'
+    done_at: '2026-03-13T04:05:37.151944+00:00'
+    evidence: 'Artifact:
+
+      - PR/commit: 4cbb2d0 (worktree branch)
+
+      - squash merged to main as commit cc943a8
+
+
+      Verification:
+
+      - Run: `python3 -m py_compile src/larva/shell/mcp.py` -> Syntax OK.
+
+      - Scope check: only `src/larva/shell/mcp.py` introduced in this step.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md :: `larva.shell.mcp`
+
+      - INTERFACES.md :: A (MCP tools), G (error envelope model)
+
+      - README.md :: MCP interface (primary)
+
+
+      Gaps/Notes:
+
+      - Contract-only module delivered: signatures/type defs/interface notes/stubs.
+
+      - No runnable server startup, no facade invocation implementation, no registry/component
+      business logic, no transport runtime implementation.'
   - id: shell_mcp.shell-mcp-tests
     name: shell-mcp-tests
     status: pending
