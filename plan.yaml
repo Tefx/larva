@@ -12923,7 +12923,7 @@ phases:
       - No code/docs/tests were modified.'
   - id: followup_validate_warnings.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: verify follow-up validate-warnings completion and quality.
 
 
@@ -12959,6 +12959,8 @@ phases:
     - followup_validate_warnings.warning-verify
     - followup_validate_warnings.freeze
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-13T18:17:43.657518+00:00'
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
   status: done
