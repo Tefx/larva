@@ -12854,7 +12854,7 @@ phases:
     agent: gate-reviewer
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
-  status: pending
+  status: in_progress
   context: Append after completed shell transport work. The active plan snapshot has
     no distinct `shell_mcp_runtime` phase, so this phase is anchored to the completed
     `shell_mcp` phase while preserving the user-requested post-runtime ordering intent.
@@ -12865,7 +12865,7 @@ phases:
   steps:
   - id: followup_surface_hygiene.cli-compat-contract
     name: cli-compat-contract
-    status: pending
+    status: claimed
     description: 'Define the authoritative compatibility contract for `src/larva/cli.py`
       after review.
 
@@ -12924,6 +12924,8 @@ phases:
       - Acceptance examples identify the import/module smoke path and any README alignment
       needed'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-13T17:16:52.956201+00:00'
   - id: followup_surface_hygiene.cli-compat-tests
     name: cli-compat-tests
     status: pending
