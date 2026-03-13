@@ -13110,7 +13110,7 @@ phases:
       logic'
   - id: followup_surface_hygiene.surface-doc-cleanup
     name: surface-doc-cleanup
-    status: claimed
+    status: done
     description: 'Align stale surface commentary and architecture docs with the implemented
       public surface.
 
@@ -13158,6 +13158,29 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T17:32:10.161392+00:00'
+    done_at: '2026-03-13T17:35:16.703695+00:00'
+    evidence: 'Artifact:
+
+      - PR: 8f6549f (worktree), squashed to main as 1efadd4
+
+
+      Verification:
+
+      - git commit hooks with invar guard -> passed
+
+
+      Spec link:
+
+      - ARCHITECTURE.md AssembleRequest fields aligned to plural shape (`toolsets`,
+      `constraints`)
+
+      - src/larva/shell/python_api.py stale `contract-only stub / delegation deferred`
+      comments removed and replaced with accurate shell-result unwrap note
+
+
+      Notes:
+
+      - Scope bounded to docs/comments with no behavior changes.'
   - id: followup_surface_hygiene.surface-verify
     name: surface-verify
     status: pending
