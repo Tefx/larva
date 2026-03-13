@@ -13037,3 +13037,102 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_implement_entrypoint
     agent: software-architect
+  - id: shell_mcp_runtime.runtime_verify_stdio
+    name: runtime_verify_stdio
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      runnable stdio MCP server from a fresh runtime perspective.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      spec_refs:
+
+      - README.md :: MCP Server (primary)
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+
+      Touch paths:
+
+      - tests/shell/test_mcp_runtime.py
+
+      - src/larva/shell/mcp_runtime.py
+
+      - pyproject.toml
+
+
+      Harness refs:
+
+      - canonical runtime launch command from freeze step
+
+      - subprocess stdio runtime harness
+
+
+      Test for:
+
+      - happy path: runtime starts and serves at least one documented larva MCP tool
+      request end-to-end
+
+      - edge cases: startup with empty request stream, EOF-driven shutdown, interrupt/terminate
+      shutdown path
+
+      - error scenarios: malformed request or transport boundary issue produces protocol-safe
+      failure behavior without hanging the process
+
+      - architecture integrity: runtime delegates through `MCPHandlers` rather than
+      reimplementing business flow
+
+
+      Document ALL findings. Discovering issues is success for this step.'
+    verification: '- Launch the canonical stdio runtime entrypoint from a fresh process
+
+      - Exercise at least one real MCP request through the runtime path and capture
+      actual output
+
+      - Prove shutdown/lifecycle behavior with a focused EOF or terminate path regression
+
+      - Evidence must show commands and verbatim runtime output, not only a pass/fail
+      summary'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact runtime launch / verification command>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste stdout/stderr or test runner output>
+
+      ```
+
+
+      **Path exercised**: runtime entrypoint -> stdio transport -> MCPHandlers ->
+      larva.app.facade -> response
+
+
+      **Lifecycle proof**:
+
+      - startup observed: <yes/no>
+
+      - one real MCP request observed: <yes/no>
+
+      - clean shutdown observed: <yes/no>
+
+      '
+    depends_on:
+    - shell_mcp_runtime.runtime_freeze
+    agent: integration-verifier
