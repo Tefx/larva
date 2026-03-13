@@ -13257,8 +13257,8 @@ phases:
   - id: followup_guard_full.guard-scope-remediate
     name: guard-scope-remediate
     status: pending
-    description: 'Remediate guard scope/config if diagnosis confirms `.vectl/worktrees/**`
-      duplication is inflating full-project failure counts.
+    description: 'Remediate remaining guard scope/config only if diagnosis confirms
+      there is still authoritative-scope work after `.vectl` ignore lands.
 
 
       step_type: implementation
@@ -13284,25 +13284,34 @@ phases:
 
       - Do not hide real main-repo files from guard coverage
 
-      - Exclude only ephemeral duplicated worktree state if the diagnosis confirms
-      it is non-authoritative
+      - Treat `.vectl` ignore tightening as boundary confirmation only; the phase
+      must still focus on real repo debt
+
+      - Do not convert deferred package-root re-export policy or `~/.larva/components`
+      investigation items into blanket guard exclusions
 
       - Keep the core/shell path model intact
+
+      - Preserve the existing exclusion for `~/.larva/registry` init work
 
 
       Gate Preview:
 
-      1. Guard still traverses `.vectl/worktrees/**` and inflates debt counts.
+      1. Guard config still chases non-authoritative worktree copies or otherwise
+      misstates scope.
 
       2. Config change suppresses legitimate main-repo coverage.
 
-      3. The remediation explains away duplication without proving the scope boundary.'
-    verification: '- Main path: full-guard scope no longer counts duplicated non-authoritative
-      worktree copies if diagnosis confirmed that issue
+      3. The remediation uses ignore rules to bury package-root or components-root
+      follow-up items instead of classifying them honestly.'
+    verification: '- Main path: full-guard scope reflects the authoritative checkout
+      after `.vectl` ignore tightening, if any guard-scope change is still required
 
-      - Failure path: proof shows main checkout files remain covered by guard
+      - Failure path: proof shows main checkout files remain covered by guard and
+      no deferred package-root or components-root concern was hidden via ignore rules
 
-      - Config evidence cites the exact exclusion/scope behavior changed'
+      - Config evidence cites the exact exclusion/scope behavior changed, or explicitly
+      states that no additional scope change was needed'
     depends_on:
     - followup_guard_full.guard-diagnose
     agent: python-executor
