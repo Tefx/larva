@@ -7103,7 +7103,7 @@ phases:
       \ behavior; no facade internals reimplementation."
   - id: shell_mcp.shell-mcp-implement
     name: shell-mcp-implement
-    status: claimed
+    status: done
     description: "Implement `larva.shell.mcp` in `src/larva/shell/mcp.py` as the MCP\
       \ transport adapter for the documented tool set and nothing more.\n\nstep_type:\
       \ implementation\nagent_source: default\ntags:\n  - integration\n\nScope:\n\
@@ -7161,6 +7161,18 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T04:17:02.343593+00:00'
+    done_at: '2026-03-13T04:34:50.188178+00:00'
+    evidence: "Commit hash(es):\n- 2e65d6692b7ed6aa30685b15cf653fe60802c1a2\n- squash\
+      \ merged to main as commit 9098497\n\nFiles changed:\n- src/larva/shell/mcp.py\n\
+      - tests/shell/test_mcp.py\n\nVerification:\n- Commands run:\n  - `uv run pytest\
+      \ tests/shell/test_mcp.py -v --tb=short`\n- Key outputs/results:\n  - 51 passed.\n\
+      \  - MCP adapter implements five-tool surface with documented success/error\
+      \ shaping.\n  - Error envelope fidelity maintained with `code`, `numeric_code`,\
+      \ `message`, `details`.\n  - falsey/null override forwarding and malformed-parameter\
+      \ boundary checks covered in tests.\n\nSpec link:\n- INTERFACES.md A + G\n-\
+      \ ARCHITECTURE.md shell.mcp\n- README MCP interface\n\nGaps/Notes:\n- Scope\
+      \ constrained to `src/larva/shell/mcp.py` and `tests/shell/test_mcp.py`.\n-\
+      \ No business-logic duplication in adapter layer."
   - id: shell_mcp.shell-mcp-verify
     name: shell-mcp-verify
     status: pending
