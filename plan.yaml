@@ -16922,7 +16922,7 @@ phases:
 
       harness_refs:
 
-      - `uvx invar-tools guard --all`
+      - `uv run invar guard --all`
 
       - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
       tests/core/test_normalize.py`
@@ -16937,9 +16937,8 @@ phases:
 
       Test for:
 
-      - Happy path: `uvx invar-tools guard --all` returns green with BOTH narrowed
-      blockers for `src/larva/core/assemble.py` and `src/larva/core/normalize.py`
-      cleared
+      - Happy path: `uv run invar guard --all` returns green with BOTH narrowed blockers
+      for `src/larva/core/assemble.py` and `src/larva/core/normalize.py` cleared
 
       - Edge cases: focused core pytest stays green for assemble/validate/normalize
       after the batched residual-family fix
@@ -16963,7 +16962,7 @@ phases:
 
       - Do not broaden the blocker report beyond assemble+normalize unless the raw
       output proves it.'
-    verification: '- Main path: raw `uvx invar-tools guard --all` output and focused
+    verification: '- Main path: raw `uv run invar guard --all` output and focused
       core pytest output prove BOTH narrowed blockers are cleared
 
       - Failure path: any remaining symbolic failure is pinned to exact raw output
