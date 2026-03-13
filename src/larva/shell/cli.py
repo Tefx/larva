@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import IO, Literal, NoReturn, Sequence, TypedDict, cast
+from typing import IO, Callable, Literal, NoReturn, Sequence, TypedDict, cast
 
 from returns.result import Failure, Result, Success
 
@@ -18,7 +18,7 @@ from larva.core import spec as spec_module
 from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.shell.components import ComponentStore, FilesystemComponentStore
+from larva.shell.components import ComponentStore, ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import FileSystemRegistryStore
 
 CliExitCode = Literal[0, 1, 2]
@@ -131,6 +131,35 @@ def _render_payload_for_text(command: CommandName, payload: object) -> str:
     return json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True) + "\n"
 
 
+# @invar:allow shell_result: helper maps ComponentStore failures to transport envelope
+def _map_component_error(error: object) -> tuple[JsonErrorEnvelope, CliExitCode]:
+    if isinstance(error, ComponentStoreError):
+        details: dict[str, object] = {}
+        component_type = getattr(error, "component_type", None)
+        component_name = getattr(error, "component_name", None)
+        if component_type is not None:
+            details["component_type"] = component_type
+        if component_name is not None:
+            details["component_name"] = component_name
+        return (
+            {
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
+                "message": str(error),
+                "details": details,
+            },
+            EXIT_ERROR,
+        )
+
+    return (
+        _critical_error(
+            "component operation failed",
+            {"error_type": type(error).__name__, "message": str(error)},
+        ),
+        EXIT_CRITICAL,
+    )
+
+
 def _parse_key_value_pairs(
     raw_values: list[str], *, flag: str
 ) -> Result[dict[str, object], JsonErrorEnvelope]:
@@ -208,6 +237,16 @@ def _build_parser() -> _CliParser:
     list_parser = subparsers.add_parser("list")
     list_parser.add_argument("--json", action="store_true", dest="as_json")
 
+    component_parser = subparsers.add_parser("component")
+    component_subparsers = component_parser.add_subparsers(dest="component_command", required=True)
+
+    component_list_parser = component_subparsers.add_parser("list")
+    component_list_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    component_show_parser = component_subparsers.add_parser("show")
+    component_show_parser.add_argument("ref")
+    component_show_parser.add_argument("--json", action="store_true", dest="as_json")
+
     return parser
 
 
@@ -231,7 +270,10 @@ def _emit_result(
 
 
 def _dispatch(
-    args: argparse.Namespace, *, facade: LarvaFacade
+    args: argparse.Namespace,
+    *,
+    facade: LarvaFacade,
+    component_store: ComponentStore,
 ) -> Result[CliCommandResult, CliFailure]:
     command = cast("str", args.command)
     as_json = cast("bool", getattr(args, "as_json", False))
@@ -303,6 +345,26 @@ def _dispatch(
     if command == "list":
         return list_command(as_json=as_json, facade=facade)
 
+    if command == "component":
+        component_command = cast("str", getattr(args, "component_command", ""))
+        if component_command == "list":
+            return component_list_command(as_json=as_json, component_store=component_store)
+        if component_command == "show":
+            return component_show_command(
+                cast("str", args.ref),
+                as_json=as_json,
+                component_store=component_store,
+            )
+        return Failure(
+            {
+                "exit_code": EXIT_CRITICAL,
+                "stderr": f"Unsupported component command: {component_command}\n",
+                "error": _critical_error(
+                    "unsupported component command", {"command": component_command}
+                ),
+            }
+        )
+
     return Failure(
         {
             "exit_code": EXIT_CRITICAL,
@@ -326,9 +388,17 @@ def build_default_facade() -> LarvaFacade:
 
 # @invar:allow shell_result: CLI entry handler returns process exit code
 def run_cli(
-    argv: Sequence[str], *, facade: LarvaFacade, stdout: IO[str], stderr: IO[str]
+    argv: Sequence[str],
+    *,
+    facade: LarvaFacade,
+    stdout: IO[str],
+    stderr: IO[str],
+    component_store: ComponentStore | None = None,
 ) -> CliExitCode:
     parser = _build_parser()
+    active_component_store = (
+        component_store if component_store is not None else FilesystemComponentStore()
+    )
     try:
         args = parser.parse_args(list(argv))
     except _CliParseError as error:
@@ -345,7 +415,7 @@ def run_cli(
         )
 
     return _emit_result(
-        _dispatch(args, facade=facade),
+        _dispatch(args, facade=facade, component_store=active_component_store),
         as_json=cast("bool", getattr(args, "as_json", False)),
         stdout=stdout,
         stderr=stderr,
@@ -362,6 +432,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             facade=build_default_facade(),
             stdout=sys.stdout,
             stderr=sys.stderr,
+            component_store=FilesystemComponentStore(),
         )
     )
 
@@ -494,22 +565,96 @@ def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResu
     return Failure(failure)
 
 
-# @invar:allow dead_export: deferred command kept for future scope
-# @invar:allow dead_param: deferred command preserves contract signature
-# @invar:allow stub_body: intentionally deferred by task boundary
+# @shell_complexity: command-level error envelope mapping requires explicit branches
 def component_list_command(
     *, as_json: bool, component_store: ComponentStore
 ) -> Result[CliCommandResult, CliFailure]:
-    raise NotImplementedError("component list deferred for later step")
+    try:
+        result = component_store.list_components()
+    except Exception as error:
+        error_envelope, exit_code = _map_component_error(error)
+        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
+        return Failure(failure)
+    if isinstance(result, Success):
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("component list", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope, exit_code = _map_component_error(result.failure())
+    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
+    return Failure(failure)
 
 
-# @invar:allow dead_export: deferred command kept for future scope
-# @invar:allow dead_param: deferred command preserves contract signature
-# @invar:allow stub_body: intentionally deferred by task boundary
+# @shell_complexity: target parsing + loader routing requires explicit branching
 def component_show_command(
     component_ref: str,
     *,
     as_json: bool,
     component_store: ComponentStore,
 ) -> Result[CliCommandResult, CliFailure]:
-    raise NotImplementedError("component show deferred for later step")
+    component_type, separator, component_name = component_ref.partition("/")
+    if separator == "" or component_type == "" or component_name == "":
+        error_envelope: JsonErrorEnvelope = {
+            "code": "COMPONENT_NOT_FOUND",
+            "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
+            "message": f"invalid component target: {component_ref}",
+            "details": {"component_ref": component_ref},
+        }
+        failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+        return Failure(failure)
+
+    loaders: dict[str, Callable[[str], Result[object, object]]] = {
+        "prompts": cast("Callable[[str], Result[object, object]]", component_store.load_prompt),
+        "toolsets": cast("Callable[[str], Result[object, object]]", component_store.load_toolset),
+        "constraints": cast(
+            "Callable[[str], Result[object, object]]", component_store.load_constraint
+        ),
+        "models": cast("Callable[[str], Result[object, object]]", component_store.load_model),
+    }
+    loader = loaders.get(component_type)
+    if loader is None:
+        error_envelope = {
+            "code": "COMPONENT_NOT_FOUND",
+            "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
+            "message": f"invalid component target: {component_ref}",
+            "details": {"component_ref": component_ref, "component_type": component_type},
+        }
+        failure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+        return Failure(failure)
+
+    try:
+        load_result = loader(component_name)
+    except Exception as error:
+        error_envelope, exit_code = _map_component_error(error)
+        failure = {"exit_code": exit_code, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+        return Failure(failure)
+    if isinstance(load_result, Success):
+        payload = cast("dict[str, object]", dict(cast("dict[str, object]", load_result.unwrap())))
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("component show", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope, exit_code = _map_component_error(load_result.failure())
+    failure = {"exit_code": exit_code, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+    return Failure(failure)

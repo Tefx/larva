@@ -1,9 +1,9 @@
 """Boundary tests for ``larva.shell.cli`` facade-backed commands.
 
-Task boundary: shell_cli.shell-cli-tests
-- Tests facade-backed commands only: validate, assemble, register, resolve, list
-- Excludes component list/show from this step
-- Uses doubles/harness for downstream seams (facade, registry)
+Task boundary: shell_cli.shell-cli-component-implement
+- Tests facade-backed commands: validate, assemble, register, resolve, list
+- Tests component commands: component list/show via injected ComponentStore seam
+- Uses doubles/harness for downstream seams (facade, component store, registry)
 
 Coverage:
 - text + `--json` success path behavior
@@ -42,6 +42,7 @@ from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import cli
+from larva.shell.components import ComponentStoreError
 from larva.shell.cli import (
     EXIT_ERROR,
     EXIT_CRITICAL,
@@ -136,22 +137,58 @@ class SpyNormalizeModule:
 
 @dataclass
 class InMemoryComponentStore:
-    """Minimal component store double for CLI tests."""
+    """Minimal component store double for CLI component command tests."""
+
+    list_result: Result[dict[str, list[str]], Exception] = field(
+        default_factory=lambda: Success(
+            {
+                "prompts": ["default-prompt"],
+                "toolsets": ["default-toolset"],
+                "constraints": ["default-constraint"],
+                "models": ["default-model"],
+            }
+        )
+    )
+    prompt_result: Result[dict[str, str], Exception] = field(
+        default_factory=lambda: Success({"text": "Prompt body"})
+    )
+    toolset_result: Result[dict[str, dict[str, str]], Exception] = field(
+        default_factory=lambda: Success({"tools": {"shell": "read_only"}})
+    )
+    constraint_result: Result[dict[str, object], Exception] = field(
+        default_factory=lambda: Success({"side_effect_policy": "read_only"})
+    )
+    model_result: Result[dict[str, object], Exception] = field(
+        default_factory=lambda: Success({"model": "gpt-4o-mini"})
+    )
+    last_loaded: tuple[str, str] | None = None
 
     def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
-        return Success({"text": "Prompt body"})
+        self.last_loaded = ("prompts", name)
+        if name in {"missing", "nonexistent"}:
+            return Failure(ComponentStoreError(f"Prompt not found: {name}", "prompt", name))
+        return self.prompt_result
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], Exception]:
-        return Success({"tools": {"shell": "read_only"}})
+        self.last_loaded = ("toolsets", name)
+        if name in {"missing", "nonexistent"}:
+            return Failure(ComponentStoreError(f"Toolset not found: {name}", "toolset", name))
+        return self.toolset_result
 
     def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
-        return Success({"side_effect_policy": "read_only"})
+        self.last_loaded = ("constraints", name)
+        if name in {"missing", "nonexistent"}:
+            return Failure(ComponentStoreError(f"Constraint not found: {name}", "constraint", name))
+        return self.constraint_result
 
     def load_model(self, name: str) -> Result[dict[str, object], Exception]:
-        return Success({"model": "gpt-4o-mini"})
+        self.last_loaded = ("models", name)
+        if name in {"missing", "nonexistent"}:
+            return Failure(ComponentStoreError(f"Model not found: {name}", "model", name))
+        return self.model_result
 
     def list_components(self) -> Result[dict[str, list[str]], Exception]:
-        return Success({"prompts": [], "toolsets": [], "constraints": [], "models": []})
+        return self.list_result
 
 
 @dataclass
@@ -840,19 +877,27 @@ class RecordingFacade:
     list_result: Result[list[PersonaSummary], LarvaError] = field(
         default_factory=lambda: Success([])
     )
+    validate_calls: int = 0
+    assemble_calls: int = 0
+    register_calls: int = 0
+    resolve_calls: int = 0
+    list_calls: int = 0
     last_resolve_id: str | None = None
     last_resolve_overrides: dict[str, object] | None = None
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         del spec
+        self.validate_calls += 1
         return self.validate_report
 
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
         del request
+        self.assemble_calls += 1
         return self.assemble_result
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
         del spec
+        self.register_calls += 1
         return self.register_result
 
     def resolve(
@@ -860,11 +905,13 @@ class RecordingFacade:
         id: str,
         overrides: dict[str, object] | None = None,
     ) -> Result[PersonaSpec, LarvaError]:
+        self.resolve_calls += 1
         self.last_resolve_id = id
         self.last_resolve_overrides = overrides
         return self.resolve_result
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
+        self.list_calls += 1
         return self.list_result
 
 
@@ -954,6 +1001,104 @@ class TestRunCli:
         assert exit_code == EXIT_OK
         assert facade.last_resolve_id == "persona-1"
         assert facade.last_resolve_overrides == {"model": "gpt-4o-mini", "can_spawn": "false"}
+
+    def test_component_list_json_routes_to_component_store_only(self) -> None:
+        facade = RecordingFacade()
+        components = InMemoryComponentStore(
+            list_result=Success(
+                {
+                    "prompts": ["a"],
+                    "toolsets": ["b"],
+                    "constraints": ["c"],
+                    "models": ["d"],
+                }
+            )
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["component", "list", "--json"],
+            facade=facade,
+            component_store=components,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["prompts"] == ["a"]
+        assert stderr.getvalue() == ""
+        assert facade.validate_calls == 0
+        assert facade.assemble_calls == 0
+        assert facade.register_calls == 0
+        assert facade.resolve_calls == 0
+        assert facade.list_calls == 0
+
+    def test_component_show_routes_to_target_loader_only(self) -> None:
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["component", "show", "prompts/test-prompt", "--json"],
+            facade=facade,
+            component_store=components,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["text"] == "Prompt body"
+        assert components.last_loaded == ("prompts", "test-prompt")
+        assert stderr.getvalue() == ""
+        assert facade.validate_calls == 0
+        assert facade.assemble_calls == 0
+        assert facade.register_calls == 0
+        assert facade.resolve_calls == 0
+        assert facade.list_calls == 0
+
+    def test_component_show_missing_target_returns_not_found_envelope(self) -> None:
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["component", "show", "prompts/", "--json"],
+            facade=facade,
+            component_store=components,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "COMPONENT_NOT_FOUND"
+        assert payload["error"]["numeric_code"] == 105
+        assert stderr.getvalue() == ""
+
+    def test_component_list_generic_failure_maps_to_internal_without_text_leak(self) -> None:
+        facade = RecordingFacade()
+        components = InMemoryComponentStore(list_result=Failure(RuntimeError("boom")))
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["component", "list", "--json"],
+            facade=facade,
+            component_store=components,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
+        assert payload["error"]["numeric_code"] == 10
+        assert stderr.getvalue() == ""
 
 
 # ============================================================================
