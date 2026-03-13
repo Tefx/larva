@@ -6100,7 +6100,7 @@ phases:
       \ and tests.\n- No `src/larva/__init__.py` or other shared export wiring changes."
   - id: shell_python_api.shell-python-api-verify
     name: shell-python-api-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       `larva.shell.python_api` module from a fresh perspective.
 
@@ -6159,6 +6159,26 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T04:36:58.388459+00:00'
+    done_at: '2026-03-13T04:58:32.543369+00:00'
+    evidence: "Artifact:\n- verification run in isolated worktree (no code changes)\n\
+      \nVerification:\n- Run: `uv run pytest -v tests/shell/test_python_api.py` ->\
+      \ 13 passed.\n- Run: coverage for `src/larva/shell/python_api.py` under dedicated\
+      \ suite -> 0% (critical).\n- Run: grep probes showed tests calling facade directly\
+      \ rather than adapter wrappers.\n- Run: runtime probes showed override/failure\
+      \ forwarding behavior can work when invoking wrappers directly.\n\nSpec link:\n\
+      - ARCHITECTURE Decision 3 + module\n- README Python interface\n\nfindings:\n\
+      \  blockers:\n    - dedicated python_api tests were not exercising `larva.shell.python_api`\
+      \ wrapper functions directly.\n    - module coverage for `src/larva/shell/python_api.py`\
+      \ was effectively 0% in the dedicated suite.\n  should_fix:\n    - add explicit\
+      \ boundary tests preventing CLI/MCP/storage leakage from python_api surface.\n\
+      \    - verify public adapter surface behavior explicitly (not only facade-double\
+      \ behavior).\n  suggestions:\n    - use wrapper-direct invocation + no-leak\
+      \ assertions as baseline acceptance for this phase.\n  tech_debt:\n    - boundary\
+      \ suite naming/intent drift made false-positive confidence possible.\n\ndiscovered_issues:\n\
+      - verification-gap only; no immediate runtime failure in wrapper probes.\n\n\
+      Gaps/Notes:\n- Following batched-fix protocol, remediation chain added:\n  -\
+      \ `shell_python_api.shell-python-api-verify-fix`\n  - `shell_python_api.shell-python-api-verify-retest`\n\
+      - `shell_python_api.shell-python-api-gate` now depends on the retest step."
   - id: shell_python_api.shell-python-api-seam-proof
     name: shell-python-api-seam-proof
     status: done
