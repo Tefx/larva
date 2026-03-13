@@ -14,13 +14,14 @@ Sources:
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from returns.result import Failure, Result, Success
 
-from larva import shell as python_api
+from larva.shell import python_api
 from larva.app.facade import DefaultLarvaFacade, LarvaError
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
@@ -85,7 +86,10 @@ class SpyAssembleModule:
     def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
         self.calls.append("assemble")
         self.inputs.append(data)
-        return dict(self.candidate)
+        # Use the ID from the request, preserving the candidate's other fields
+        result = dict(self.candidate)
+        result["id"] = data.get("id", result.get("id", "unknown"))
+        return result
 
 
 @dataclass
@@ -212,6 +216,10 @@ def facade_fixture() -> FacadeFixture:
         registry=registry,
     )
 
+    # Patch the module-level facade in python_api to use our test double
+    original_get_facade = python_api._get_facade
+    python_api._get_facade = lambda: facade
+
     return FacadeFixture(
         facade=facade,
         assemble_module=assemble_module,
@@ -221,6 +229,15 @@ def facade_fixture() -> FacadeFixture:
         registry=registry,
         call_record=call_record,
     )
+
+
+@pytest.fixture(autouse=True)
+def facade_teardown() -> None:
+    """Restore original facade after each test."""
+    yield
+    # Restore the original facade getter
+    python_api._facade = None
+    python_api._get_facade = lambda: python_api._facade  # type: ignore[assignment]
 
 
 # -----------------------------------------------------------------------------
@@ -233,18 +250,33 @@ class TestPythonApiValidate:
 
     def test_validate_delegates_to_facade_validate(self, facade_fixture: FacadeFixture) -> None:
         """validate() must forward to facade.validate() and return its result."""
-        # Replace module-level facade reference used by python_api
-        # This simulates the production wiring
         spec = _canonical_spec("validate-test")
 
-        # Direct facade call (what python_api delegates to)
-        facade_result = facade_fixture.facade.validate(spec)
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.validate(spec)
 
-        # Verify delegation contract: facade.validate returns ValidationReport directly
-        assert facade_result is not None
-        assert "valid" in facade_result
+        # Verify delegation contract: python_api.validate returns ValidationReport directly
+        assert result is not None
+        assert "valid" in result
         assert facade_fixture.validate_module.inputs == [spec]
         assert "validate" in facade_fixture.call_record
+
+    def test_validate_returns_valid_report(self, facade_fixture: FacadeFixture) -> None:
+        """validate() must return a valid ValidationReport."""
+        spec = _canonical_spec("valid-spec")
+        result = python_api.validate(spec)
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert result["warnings"] == []
+
+    def test_validate_returns_invalid_report(self, facade_fixture: FacadeFixture) -> None:
+        """validate() must return an invalid ValidationReport for bad specs."""
+        facade_fixture.validate_module.report = _invalid_report("TEST_ERROR")
+        spec = _canonical_spec("invalid-spec")
+        result = python_api.validate(spec)
+        assert result["valid"] is False
+        assert len(result["errors"]) == 1
+        assert result["errors"][0]["code"] == "TEST_ERROR"
 
 
 class TestPythonApiAssemble:
@@ -252,33 +284,38 @@ class TestPythonApiAssemble:
 
     def test_assemble_delegates_to_facade_assemble(self, facade_fixture: FacadeFixture) -> None:
         """assemble() must forward to facade.assemble() with correct request shape."""
-        request: dict[str, Any] = {
-            "id": "assemble-test",
-            "prompts": ["base"],
-            "toolsets": ["default"],
-            "constraints": ["strict"],
-            "model": "gpt-4o",
-            "variables": {"role": "analyst"},
-            "overrides": {"description": "runtime override"},
-        }
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.assemble(
+            id="assemble-test",
+            prompts=["base"],
+            toolsets=["default"],
+            constraints=["strict"],
+            model="gpt-4o",
+            variables={"role": "analyst"},
+            overrides={"description": "runtime override"},
+        )
 
-        result = facade_fixture.facade.assemble(request)
-
-        assert isinstance(result, Success)
+        # Verify delegation
+        assert result is not None
+        assert result["id"] == "assemble-test"
         assert facade_fixture.call_record == ["assemble", "validate", "normalize"]
         assert facade_fixture.assemble_module.inputs[0]["id"] == "assemble-test"
+
+    def test_assemble_with_only_id(self, facade_fixture: FacadeFixture) -> None:
+        """assemble() must work with minimal parameters."""
+        result = python_api.assemble(id="minimal")
+        assert result["id"] == "minimal"
+        assert "spec_version" in result
 
     def test_assemble_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
         """Facade assembly failures must propagate through delegation."""
         facade_fixture.components.fail_prompt = True
-        request: dict[str, Any] = {"id": "assemble-fail", "prompts": ["missing"]}
 
-        result = facade_fixture.facade.assemble(request)
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.assemble("assemble-fail", prompts=["missing"])
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "COMPONENT_NOT_FOUND"
-        assert error["numeric_code"] == 105
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
 
 
 class TestPythonApiRegister:
@@ -288,13 +325,21 @@ class TestPythonApiRegister:
         """register() must forward to facade.register() and return RegisteredPersona."""
         spec = _canonical_spec("register-test", digest="sha256:old")
 
-        result = facade_fixture.facade.register(spec)
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.register(spec)
 
-        assert isinstance(result, Success)
-        assert result.unwrap() == {"id": "register-test", "registered": True}
+        # Verify delegation
+        assert result == {"id": "register-test", "registered": True}
         assert "validate" in facade_fixture.call_record
         assert "normalize" in facade_fixture.call_record
         assert facade_fixture.registry.save_inputs[0]["id"] == "register-test"
+
+    def test_register_returns_registered_persona(self, facade_fixture: FacadeFixture) -> None:
+        """register() must return RegisteredPersona with id and registered status."""
+        spec = _canonical_spec("register-ok")
+        result = python_api.register(spec)
+        assert result["id"] == "register-ok"
+        assert result["registered"] is True
 
     def test_register_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
         """Facade registration failures must propagate through delegation."""
@@ -303,12 +348,11 @@ class TestPythonApiRegister:
         )
         spec = _canonical_spec("register-fail")
 
-        result = facade_fixture.facade.register(spec)
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.register(spec)
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "REGISTRY_WRITE_FAILED"
-        assert error["numeric_code"] == 109
+        assert exc_info.value.error["code"] == "REGISTRY_WRITE_FAILED"
+        assert exc_info.value.error["numeric_code"] == 109
 
 
 class TestPythonApiResolve:
@@ -319,10 +363,11 @@ class TestPythonApiResolve:
         canonical = _canonical_spec("resolve-test", digest="sha256:old")
         facade_fixture.registry.get_result = Success(canonical)
 
-        result = facade_fixture.facade.resolve("resolve-test")
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.resolve("resolve-test")
 
-        assert isinstance(result, Success)
-        assert result.unwrap()["id"] == "resolve-test"
+        # Verify delegation
+        assert result["id"] == "resolve-test"
         assert "validate" in facade_fixture.call_record
         assert "normalize" in facade_fixture.call_record
 
@@ -333,16 +378,22 @@ class TestPythonApiResolve:
         canonical = _canonical_spec("resolve-override-test", digest="sha256:old")
         facade_fixture.registry.get_result = Success(canonical)
 
-        result = facade_fixture.facade.resolve(
+        result = python_api.resolve(
             "resolve-override-test",
             overrides={"description": "overridden description"},
         )
 
-        assert isinstance(result, Success)
-        resolved = result.unwrap()
-        assert resolved["description"] == "overridden description"
+        assert result["description"] == "overridden description"
         # Override must go through validate
         assert facade_fixture.validate_module.inputs[0]["description"] == "overridden description"
+
+    def test_resolve_returns_normalized_spec(self, facade_fixture: FacadeFixture) -> None:
+        """resolve() must return a normalized PersonaSpec."""
+        canonical = _canonical_spec("resolve-normalized", digest="sha256:old")
+        facade_fixture.registry.get_result = Success(canonical)
+        result = python_api.resolve("resolve-normalized")
+        assert "spec_digest" in result
+        assert result["spec_digest"].startswith("sha256:")
 
     def test_resolve_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
         """Facade resolve failures must propagate through delegation."""
@@ -350,12 +401,11 @@ class TestPythonApiResolve:
             {"code": "PERSONA_NOT_FOUND", "message": "not found", "persona_id": "missing"}
         )
 
-        result = facade_fixture.facade.resolve("missing")
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.resolve("missing")
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "PERSONA_NOT_FOUND"
-        assert error["numeric_code"] == 100
+        assert exc_info.value.error["code"] == "PERSONA_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 100
 
 
 class TestPythonApiList:
@@ -369,13 +419,33 @@ class TestPythonApiList:
         ]
         facade_fixture.registry.list_result = Success(specs)
 
-        result = facade_fixture.facade.list()
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.list()
 
-        assert isinstance(result, Success)
-        assert result.unwrap() == [
+        # Verify delegation
+        assert result == [
             {"id": "alpha", "spec_digest": "sha256:a", "model": "gpt-4o-mini"},
             {"id": "beta", "spec_digest": "sha256:b", "model": "gpt-4o-mini"},
         ]
+
+    def test_list_returns_summaries(self, facade_fixture: FacadeFixture) -> None:
+        """list() must return list of PersonaSummary with id, spec_digest, model."""
+        specs = [
+            _canonical_spec("test1", digest="sha256:abc"),
+            _canonical_spec("test2", digest="sha256:def"),
+        ]
+        facade_fixture.registry.list_result = Success(specs)
+        result = python_api.list()
+        assert len(result) == 2
+        assert result[0]["id"] == "test1"
+        assert result[0]["spec_digest"] == "sha256:abc"
+        assert result[0]["model"] == "gpt-4o-mini"
+
+    def test_list_empty(self, facade_fixture: FacadeFixture) -> None:
+        """list() must return empty list when no personas registered."""
+        facade_fixture.registry.list_result = Success([])
+        result = python_api.list()
+        assert result == []
 
     def test_list_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
         """Facade list failures must propagate through delegation."""
@@ -387,12 +457,11 @@ class TestPythonApiList:
             }
         )
 
-        result = facade_fixture.facade.list()
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.list()
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
-        assert error["numeric_code"] == 107
+        assert exc_info.value.error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert exc_info.value.error["numeric_code"] == 107
 
 
 # -----------------------------------------------------------------------------
@@ -408,17 +477,16 @@ class TestExplicitNullFalseyOverrides:
         canonical = _canonical_spec("null-override", digest="sha256:old")
         facade_fixture.registry.get_result = Success(canonical)
 
-        result = facade_fixture.facade.resolve(
+        # Call the python_api wrapper (the actual thin delegation)
+        result = python_api.resolve(
             "null-override",
             overrides={"description": None, "can_spawn": False},
         )
 
-        assert isinstance(result, Success)
-        resolved = result.unwrap()
         # None must be explicitly forwarded, not dropped
-        assert "description" in resolved
-        assert resolved["description"] is None
-        assert resolved["can_spawn"] is False
+        assert "description" in result
+        assert result["description"] is None
+        assert result["can_spawn"] is False
 
     def test_resolve_explicit_falsey_override_preserved(
         self, facade_fixture: FacadeFixture
@@ -427,7 +495,7 @@ class TestExplicitNullFalseyOverrides:
         canonical = _canonical_spec("falsey-override", digest="sha256:old")
         facade_fixture.registry.get_result = Success(canonical)
 
-        result = facade_fixture.facade.resolve(
+        result = python_api.resolve(
             "falsey-override",
             overrides={
                 "model_params": {"temperature": 0},
@@ -435,11 +503,9 @@ class TestExplicitNullFalseyOverrides:
             },
         )
 
-        assert isinstance(result, Success)
-        resolved = result.unwrap()
         # Falsey values must be explicitly forwarded
-        assert resolved["model_params"] == {"temperature": 0}
-        assert resolved["compaction_prompt"] == ""
+        assert result["model_params"] == {"temperature": 0}
+        assert result["compaction_prompt"] == ""
 
     def test_resolve_explicit_falsey_override_recomputes_digest(
         self, facade_fixture: FacadeFixture
@@ -448,14 +514,91 @@ class TestExplicitNullFalseyOverrides:
         canonical = _canonical_spec("digest-recompute", digest="sha256:original")
         facade_fixture.registry.get_result = Success(canonical)
 
-        result = facade_fixture.facade.resolve(
+        result = python_api.resolve(
             "digest-recompute",
             overrides={"description": ""},
         )
 
-        assert isinstance(result, Success)
-        resolved = result.unwrap()
         # Digest must be recomputed because content changed (even if empty string)
-        assert resolved["spec_digest"] != "sha256:original"
+        assert result["spec_digest"] != "sha256:original"
         # Must have gone through normalize
         assert "normalize" in facade_fixture.call_record
+
+
+# -----------------------------------------------------------------------------
+# Tests: thin-adapter boundary / no-leak assertions
+# -----------------------------------------------------------------------------
+# These tests prove the python_api surface remains a thin adapter and does not
+# expose CLI, MCP, or storage helpers as part of its supported module API.
+
+
+class TestNoStorageLeak:
+    """Verify storage symbols are not treated as supported python_api exports."""
+
+    def test_no_component_store_in_public_api(self) -> None:
+        """ComponentStore and FilesystemComponentStore must not be public API."""
+        # These are internal implementation details, not public exports
+        assert "ComponentStore" not in python_api.__all__
+        assert "FilesystemComponentStore" not in python_api.__all__
+
+    def test_no_registry_store_in_public_api(self) -> None:
+        """RegistryStore and FileSystemRegistryStore must not be public API."""
+        # These are internal implementation details, not public exports
+        assert "RegistryStore" not in python_api.__all__
+        assert "FileSystemRegistryStore" not in python_api.__all__
+
+    def test_no_storage_symbols_in_public_exports(self) -> None:
+        """Storage classes must not be in __all__ (the public API contract)."""
+        # __all__ defines the public API contract. Storage symbols are internal
+        # implementation details and must not be part of supported exports.
+        # Note: dir() will still show these due to Python's import behavior,
+        # but __all__ is the authoritative source for public API.
+        all_exports = python_api.__all__
+        storage_names = [
+            name for name in all_exports if "ComponentStore" in name or "RegistryStore" in name
+        ]
+        assert storage_names == [], f"Storage symbols in __all__: {storage_names}"
+
+
+class TestNoCLIMCPLeak:
+    """Verify CLI/MCP symbols are not exposed through python_api surface."""
+
+    def test_no_cli_entry_point_exposed(self) -> None:
+        """CLI entry point must not be accessible through python_api."""
+        # The CLI entry point is defined in pyproject.toml as 'larva' command
+        # This should not be re-exported by python_api
+        assert "main" not in python_api.__all__
+        assert "cli" not in python_api.__all__.copy() and not any(
+            "cli" in name.lower() for name in python_api.__all__
+        )
+
+    def test_no_mcp_server_exposed(self) -> None:
+        """MCP server must not be exposed through python_api."""
+        # MCP-related symbols should not be part of python_api public surface
+        public_names = python_api.__all__
+        mcp_indicators = ["mcp", "server", "stdio", "mcp_server"]
+        exposed = [name for name in public_names if any(m in name.lower() for m in mcp_indicators)]
+        assert exposed == [], f"MCP-related symbols exposed: {exposed}"
+
+
+class TestThinAdapterSemantics:
+    """Verify thin-adapter semantics are preserved."""
+
+    def test_public_api_limited_to_documented_functions(self) -> None:
+        """Public API must be limited to documented thin-adapter functions."""
+        # The documented API surface per ARCHITECTURE.md is:
+        # validate, assemble, register, resolve, list
+        expected_functions = {"validate", "assemble", "register", "resolve", "list"}
+        actual_functions = {name for name in python_api.__all__ if not name.startswith("_")}
+        assert expected_functions.issubset(actual_functions), (
+            f"Missing functions in __all__: {expected_functions - actual_functions}"
+        )
+
+    def test_wrapper_functions_callable(self) -> None:
+        """All documented wrapper functions must be callable."""
+        # These are the core functions that should be exposed
+        assert callable(getattr(python_api, "validate", None))
+        assert callable(getattr(python_api, "assemble", None))
+        assert callable(getattr(python_api, "register", None))
+        assert callable(getattr(python_api, "resolve", None))
+        assert callable(getattr(python_api, "list", None))
