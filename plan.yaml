@@ -5148,7 +5148,7 @@ phases:
       \ suite passed (17 passed, 0 skipped)."
   - id: app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3
     name: fix-app-facade-gate-blockers-b1-s1-s2-s3
-    status: pending
+    status: claimed
     description: 'Fix ALL findings from `app_facade.app-facade-gate` together — B1
       + S1 + S2 + S3, not just the first blocker.
 
@@ -5362,6 +5362,8 @@ phases:
     depends_on:
     - app_facade.app-facade-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T02:40:31.574610+00:00'
   - id: app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3
     name: retest-app-facade-gate-blockers-b1-s1-s2-s3
     status: pending
