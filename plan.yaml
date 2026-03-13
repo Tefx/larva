@@ -14968,7 +14968,7 @@ phases:
       \ no runtime/registry/shell_mcp_runtime scope duplication introduced"
   - id: followup_guard_full.guard-full-retest
     name: guard-full-retest
-    status: claimed
+    status: done
     description: "As an INDEPENDENT TESTER, rerun the full acceptance barrier after\
       \ the batched remediation and collect concrete red/green evidence.\n\nstep_type:\
       \ verification\nIndependence Level: L1\nspec_refs:\n- `pyproject.toml:53`\n\
@@ -15011,6 +15011,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T19:19:44.461894+00:00'
+    done_at: '2026-03-13T19:25:27.626328+00:00'
+    evidence: "Retest failed and triggered second-loop batched remediation planning.\n\
+      \nFailure evidence:\n- uvx invar-tools guard --all -> failed; residual blocker\
+      \ family is `crosshair.status=counterexample_found`\n- failed files reported:\
+      \ src/larva/core/validate.py, src/larva/core/assemble.py, src/larva/core/normalize.py\n\
+      - focused regressions passed:\n  - tests/shell/test_cli.py -> 84 passed\n  -\
+      \ tests/core/test_validate.py + tests/shell/test_mcp.py -> 85 passed\n\nSecond-loop\
+      \ remediation created:\n- followup_guard_full.guard-full-core-crosshair-fix-2\n\
+      - followup_guard_full.guard-full-core-crosshair-retest-2\n- followup_guard_full.guard-full-verify\
+      \ rewired to depend on new retest path\n- followup_guard_full.gate rewired to\
+      \ include second-loop fix/retest path\n\nNotes:\n- Remaining blocker narrowed\
+      \ to CrossHair core counterexample family; prior warning/error families remain\
+      \ closed."
   - id: followup_guard_full.guard-full-core-crosshair-fix-2
     name: guard-full-core-crosshair-fix-2
     status: pending
