@@ -7883,7 +7883,7 @@ phases:
       - Explicit no-code-changes freeze statement recorded for gate handoff.'
   - id: shell_mcp.shell-mcp-gate
     name: shell-mcp-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `shell_mcp` phase meets the quality bar for downstream review or integration
       work.
@@ -7967,6 +7967,42 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T05:46:08.311620+00:00'
+    done_at: '2026-03-13T06:02:29.415979+00:00'
+    evidence: 'Gate review reported ISSUES_FOUND and triggered batched remediation
+      planning.
+
+      Findings (all captured):
+
+      - blocker B1: repo suite not green due deferred CLI component command stubs
+      (src/larva/shell/cli.py:503,515; tests/shell/test_cli.py:977)
+
+      - blocker B2: MCP error-shape mismatch between INTERFACES.md (`{error:{...}}`)
+      and unwrapped LarvaError dict behavior in mcp handler/tests
+
+      - should_fix S1: duplicated numeric error mapping sources (facade vs mcp)
+
+      - should_fix S2: `MCPHandler = Any` weakens boundary typing
+
+      Planner remediation created ONE batched fix step + ONE retest step:
+
+      - shell_mcp.shell-mcp-gate-fix-batch
+
+      - shell_mcp.shell-mcp-gate-retest
+
+      Gate dependency rewired so gate now waits on shell_mcp.shell-mcp-gate-retest.
+
+      Commands observed by gate reviewer:
+
+      - uvx invar-tools guard --all --human (pass with warnings)
+
+      - uv run pytest -q tests/shell/test_mcp.py (59 passed)
+
+      - uv run pytest -q (reported failures before CLI component implementation merge)
+
+      Notes:
+
+      - Findings were batched per anti-serial-fix protocol and routed to planner;
+      no code changes made in gate step.'
   - id: shell_mcp.shell-mcp-fix-batch
     name: shell-mcp-fix-batch
     status: done
