@@ -349,8 +349,8 @@ Own the authoritative use-case flow for `validate`, `assemble`,
 class AssembleRequest(TypedDict, total=False):
     id: str
     prompts: list[str]
-    toolset: str
-    constraints: str
+    toolsets: list[str]
+    constraints: list[str]
     model: str
     overrides: dict[str, object]
     variables: dict[str, str]

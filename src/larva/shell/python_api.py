@@ -160,9 +160,7 @@ def validate(spec: PersonaSpec) -> ValidationReport:
     return _get_facade().validate(spec)
 
 
-# @invar:allow shell_result: contract-only stub; delegation deferred to implementation
-# @invar:allow dead_param: contract-only stub; parameters documented for API contract
-# @shell_orchestration: contract-only stub; I/O via facade delegation at runtime
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
 def assemble(
     id: str,
     prompts: list[str] | None = None,
@@ -212,9 +210,7 @@ def assemble(
     return cast("PersonaSpec", _unwrap_result(_get_facade().assemble(request)))
 
 
-# @invar:allow shell_result: contract-only stub; delegation deferred to implementation
-# @invar:allow dead_param: contract-only stub; parameters documented for API contract
-# @shell_orchestration: contract-only stub; I/O via facade delegation at runtime
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
 def register(spec: PersonaSpec) -> RegisteredPersona:
     """Register a canonical PersonaSpec in the global registry.
 
@@ -240,9 +236,7 @@ def register(spec: PersonaSpec) -> RegisteredPersona:
     return cast("RegisteredPersona", _unwrap_result(_get_facade().register(spec)))
 
 
-# @invar:allow shell_result: contract-only stub; delegation deferred to implementation
-# @invar:allow dead_param: contract-only stub; parameters documented for API contract
-# @shell_orchestration: contract-only stub; I/O via facade delegation at runtime
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
 def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
     """Resolve a registered persona by id, with optional runtime overrides.
 
@@ -273,9 +267,7 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
     return cast("PersonaSpec", _unwrap_result(_get_facade().resolve(id, overrides)))
 
 
-# @invar:allow shell_result: contract-only stub; delegation deferred to implementation
-# @invar:allow dead_param: contract-only stub; parameters documented for API contract
-# @shell_orchestration: contract-only stub; I/O via facade delegation at runtime
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
 def list() -> list[PersonaSummary]:
     """List all registered personas.
 
