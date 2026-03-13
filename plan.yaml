@@ -14698,3 +14698,170 @@ phases:
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
     agent: gate-reviewer
+  - id: followup_guard_full.guard-full-batched-fix
+    name: guard-full-batched-fix
+    status: pending
+    description: 'Fix ALL blocking and should-fix full-guard findings in one batched
+      remediation pass; do not split this into one-warning-at-a-time follow-ups.
+
+
+      step_type: implementation
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-verify
+
+      remaining_blocker: full-project guard is still red because core counterexamples
+      and repo-wide maintainability warnings remain after focused CLI remediation
+
+      why_new_loop: the failed full-guard run exposed cross-module debt that was not
+      in scope for `followup_guard_full.cli-complexity-remediate`; a single batched
+      pass is required to close the remaining authoritative findings without duplicating
+      already-completed phases
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - saved full-guard failure artifact from `followup_guard_full.guard-full-verify`
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - `src/larva/core/validate.py`
+
+      - `src/larva/core/**`
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/mcp.py`
+
+      - focused regression tests covering validate + CLI + MCP seams
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - `uv run pytest -q tests/shell/test_cli.py`
+
+      - any focused regression command added for `validate_spec` / core counterexample
+      closure
+
+      agent_source: default
+
+
+      ## Blockers to fix (ALL of these, not just the first)
+
+
+      ### B0: CrossHair counterexamples in core modules
+
+      - Use the saved full-guard artifact to enumerate EVERY `crosshair.status=counterexample_found`
+      occurrence under `src/larva/core/**`.
+
+      - Remediate by tightening contracts, simplifying control flow, or extracting
+      helper seams so the counterexample is closed without moving I/O into core.
+
+      - Grep hint: `rg -n "crosshair.status=counterexample_found|Counterexample" .`
+
+      - Sibling search guidance: inspect neighboring core helpers touched by the same
+      command path; do not stop at the first counterexample if the artifact lists
+      multiple core modules.
+
+
+      ### B1: `src/larva/core/validate.py::validate_spec` function-size warning (69
+      > 50)
+
+      - Reduce function size by extracting pure helpers while preserving current validation
+      semantics and contract coverage.
+
+      - Grep hint: `rg -n "def validate_spec\(" src/larva/core/validate.py`
+
+      - Sibling search guidance: check adjacent helpers in `src/larva/core/validate.py`
+      for logic that should move with the extraction so complexity is not merely displaced.
+
+
+      ### B2: shell pure-logic warnings in `src/larva/shell/cli.py`
+
+      - Resolve the pure-logic warnings for `_map_facade_error`, `_critical_error`,
+      `_render_validation_report`, `_render_list_summaries`, `_render_payload_for_text`,
+      `_map_component_error`, `_build_parser`, `build_default_facade`, and `_component_show_invalid_target`.
+
+      - Prefer moving pure transformation / formatting decisions to `src/larva/core/**`
+      or reducing shell-only logic to transport orchestration; do not duplicate work
+      already completed in prior CLI remediation.
+
+      - Grep hint: `rg -n "_map_facade_error|_critical_error|_render_validation_report|_render_list_summaries|_render_payload_for_text|_map_component_error|_build_parser|build_default_facade|_component_show_invalid_target"
+      src/larva/shell/cli.py`
+
+      - Sibling search guidance: inspect nearby render / mapping helpers in the same
+      file for the same shell-pure-logic pattern before claiming done.
+
+
+      ### B3: near-limit file-size warnings in `src/larva/shell/cli.py` and `src/larva/shell/mcp.py`
+
+      - Reduce file size structurally if required for guard green, but do not create
+      parallel registry / runtime rewiring already owned by completed phases.
+
+      - Keep wiring changes serial and scoped to these files plus any extracted helper
+      modules.
+
+      - Grep hint: `rg -n "def |class " src/larva/shell/cli.py src/larva/shell/mcp.py`
+
+      - Sibling search guidance: if extracting helpers, move closely related clusters
+      together and keep shared registries / entrypoints out of scope unless strictly
+      necessary for the warning closure.
+
+
+      ## Completion criteria
+
+      - ALL blocker / should-fix findings above are either resolved to green in the
+      subsequent retest or explicitly classified with repo-policy justification that
+      the full-guard acceptance barrier accepts.
+
+      - No duplication with completed `shell_cli`, `shell_mcp`, or earlier follow-up
+      phases; only remaining authoritative findings are addressed.
+
+      - Evidence includes a sibling-search note for each blocker family, not just
+      the named locations.
+
+
+      Known risks:
+
+      - Do not silence guard by suppressing authoritative repo files or by converting
+      core logic into shell logic.
+
+      - Do not change user-visible CLI or MCP behavior while relocating pure logic
+      and reducing file size.
+
+      - Do not introduce new runtime / registry scope already closed in completed
+      phases.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Fixing only one warning family while leaving other listed blocker families
+      unsearched.
+
+      2. Moving logic across core/shell boundaries in a way that violates project
+      purity rules.
+
+      3. File splitting that hides size warnings but creates duplicate runtime, registry,
+      or behavior drift.
+
+      4. Evidence that says "tests pass" without showing how every guard blocker family
+      was searched and closed.'
+    verification: '- Main path: the batched remediation closes every authoritative
+      blocker family from the failed full-guard run, including all CrossHair counterexamples
+      listed in the artifact
+
+      - Failure path: focused regressions prove helper extraction / file splitting
+      did not change validate, CLI text/JSON, or MCP behavior
+
+      - Proof includes sibling-search evidence for B0-B3 and explicit note that no
+      already-completed phase scope was duplicated'
+    depends_on:
+    - followup_guard_full.cli-complexity-remediate
+    agent: python-senior
