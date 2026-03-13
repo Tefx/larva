@@ -4697,7 +4697,7 @@ phases:
       - Read-only freeze verification only; no files modified.'
   - id: app_facade.app-facade-gate
     name: app-facade-gate
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `app_facade` phase meets the quality bar for proceeding to downstream transport
       work.
@@ -4785,6 +4785,29 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T02:28:16.964947+00:00'
+    done_at: '2026-03-13T02:39:52.310457+00:00'
+    evidence: "Artifact:\n- PR: 6d72ef572508bc63a92999d46f05b503f194085b\n\nVerification:\n\
+      - Run: `uv run pytest -q tests/app/test_facade.py` -> 17 passed.\n- Run: real\
+      \ seam execution through `DefaultLarvaFacade.register/list/resolve` with filesystem-backed\
+      \ shell collaborators -> successful path reproduced.\n- Run: `uvx invar-tools\
+      \ guard --all` -> passed (0 errors/0 warnings; infos present).\n\nSpec link:\n\
+      - INTERFACES.md normalization/register/list/error-code sections\n- ARCHITECTURE.md\
+      \ app-facade orchestration/error-boundary sections\n- README.md interfaces/key\
+      \ decisions\n\nfindings:\n  blockers:\n    - `spec_digest` canonical format\
+      \ parity drift: runtime normalization/facade output observed bare 64-hex while\
+      \ interface/docs/tests imply `sha256:<hex>` shape.\n  should_fix:\n    - `DefaultLarvaFacade.list()`\
+      \ potential KeyError boundary leak on malformed registry-record shape.\n   \
+      \ - seam-proof evidence reproducibility quality gap (placeholder-style command\
+      \ evidence in prior narrative).\n    - unknown-code fallback numeric_code uses\
+      \ undocumented value outside expected 100-110 range.\n  suggestions:\n    -\
+      \ align module docs/snippets with implemented facade/data-shape reality to reduce\
+      \ future drift.\n  tech_debt:\n    - keep repeatable real seam proof command\
+      \ in automated integration coverage to avoid mock-only confidence.\n\ndiscovered_issues:\n\
+      - app_facade gate requires remediation chain before downstream transport phases\
+      \ proceed.\n\nGaps/Notes:\n- Per batched-fix protocol, planner added a single\
+      \ consolidated remediation + retest chain:\n  - `app_facade.fix-app-facade-gate-blockers-b1-s1-s2-s3`\n\
+      \  - `app_facade.retest-app-facade-gate-blockers-b1-s1-s2-s3`\n- Gate completion\
+      \ records findings and routes closure through that chain."
   - id: app_facade.app-facade-implement-register-list
     name: app-facade-implement-register-list
     status: done
