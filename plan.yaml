@@ -7136,7 +7136,7 @@ phases:
     agent: gate-reviewer
   - id: shell_cli.shell-cli-component-tests
     name: shell-cli-component-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for the component-read subcommands of
       `larva.shell.cli` in `tests/shell/test_cli.py`.
 
@@ -7203,6 +7203,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T05:14:00.936643+00:00'
   - id: shell_cli.shell-cli-component-implement
     name: shell-cli-component-implement
     status: pending
