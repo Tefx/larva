@@ -8043,7 +8043,7 @@ phases:
       - Discovered out-of-scope note: src/larva/shell/mcp.py near size threshold warning.'
   - id: shell_mcp.shell-mcp-verify-retest
     name: shell-mcp-verify-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the full
       remediation batch from `shell_mcp.shell-mcp-fix-batch` and act as the verification
       barrier before `shell_mcp.shell-mcp-gate`.
@@ -8204,6 +8204,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-fix-batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T05:13:02.750941+00:00'
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
