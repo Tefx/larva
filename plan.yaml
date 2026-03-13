@@ -12747,7 +12747,7 @@ phases:
       - Scope kept to tests only per step boundary.'
   - id: followup_validate_warnings.warning-implement
     name: warning-implement
-    status: pending
+    status: claimed
     description: 'Implement the contracted warning semantics in `src/larva/core/validate.py`.
 
 
@@ -12803,6 +12803,8 @@ phases:
     depends_on:
     - followup_validate_warnings.warning-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T18:08:53.401086+00:00'
   - id: followup_validate_warnings.warning-verify
     name: warning-verify
     status: pending
