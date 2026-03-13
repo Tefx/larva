@@ -24,10 +24,13 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypedDict, Union, cast
+
+from returns.result import Failure, Result, Success
 
 if TYPE_CHECKING:
     from larva.app.facade import (
+        AssembleRequest,
         LarvaError,
         LarvaFacade,
         RegisteredPersona,
@@ -213,16 +216,17 @@ MCPHandler = Any  # Callable[[dict[str, Any]], Result[Any, LarvaError]]
 class MCPHandlers:
     """Container for MCP tool handlers.
 
-    This class defines the contract for MCP tool handlers that delegate
-    to the ``larva.app.facade.LarvaFacade`` protocol.
+    This class provides MCP tool handlers that delegate to the
+    ``larva.app.facade.LarvaFacade`` protocol.
 
     Each method is a handler that:
     1. Extracts parameters from MCP request
-    2. Delegates to the appropriate facade method
-    3. Returns MCP-formatted response
+    2. Validates parameter structure at MCP boundary
+    3. Delegates to the appropriate facade method
+    4. Returns MCP-formatted response or error envelope
 
-    Implementation note: This is contract-only. Actual handlers must
-    be implemented in a later step with full MCP protocol handling.
+    The handlers preserve falsey/null override values in resolve/assemble
+    and ensure error envelopes have: code, numeric_code, message, details.
     """
 
     def __init__(self, facade: LarvaFacade) -> None:
@@ -232,7 +236,6 @@ class MCPHandlers:
             facade: The app-layer facade to delegate operations to.
         """
         self._facade = facade
-        raise NotImplementedError("MCPHandlers is contract-only in this step")
 
     def handle_validate(self, params: dict[str, Any]) -> ValidationReport:
         """Handle larva.validate MCP tool call.
@@ -244,33 +247,66 @@ class MCPHandlers:
 
         Returns:
             ValidationReport with valid flag, errors, and warnings.
-        """
-        ...
 
-    def handle_assemble(self, params: dict[str, Any]) -> PersonaSpec:
+        Raises:
+            ValueError: If 'spec' key is missing from params.
+        """
+        # Request parsing: extract 'spec' parameter
+        if "spec" not in params:
+            raise ValueError("Missing required parameter: 'spec'")
+        spec = params["spec"]
+
+        # Delegate to facade - returns ValidationReport directly
+        return self._facade.validate(cast("PersonaSpec", spec))
+
+    def handle_assemble(self, params: dict[str, Any]) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.assemble MCP tool call.
 
         Delegates to: facade.assemble(request)
 
         Args:
             params: MCP request parameters matching AssembleRequest:
-                - id: Persona id
+                - id: Persona id (required)
                 - prompts: list of prompt component names
                 - toolsets: list of toolset component names
                 - constraints: list of constraint component names
                 - model: model component name
-                - overrides: field overrides
+                - overrides: field overrides (preserves falsey values)
                 - variables: variable substitution
 
         Returns:
-            Complete PersonaSpec JSON (validated, with spec_digest).
+            PersonaSpec JSON on success, or error envelope on failure.
 
         Raises:
-            LarvaError: On component not found, conflict, or validation failure.
+            ValueError: If 'id' key is missing from params.
         """
-        ...
+        # Request parsing: validate required 'id' parameter
+        if "id" not in params:
+            raise ValueError("Missing required parameter: 'id'")
 
-    def handle_resolve(self, params: dict[str, Any]) -> PersonaSpec:
+        # Build AssembleRequest - preserve falsey overrides
+        request: AssembleRequest = {
+            "id": params["id"],
+            "prompts": params.get("prompts", []),
+            "toolsets": params.get("toolsets", []),
+            "constraints": params.get("constraints", []),
+            "model": params.get("model", ""),
+            "overrides": params.get("overrides", {}),
+            "variables": params.get("variables", {}),
+        }
+
+        # Delegate to facade
+        result = self._facade.assemble(request)
+
+        # Success shaping: return PersonaSpec on success
+        if isinstance(result, Success):
+            return cast("PersonaSpec", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_resolve(self, params: dict[str, Any]) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.resolve MCP tool call.
 
         Delegates to: facade.resolve(id, overrides)
@@ -278,17 +314,34 @@ class MCPHandlers:
         Args:
             params: MCP request parameters:
                 - id: Persona id in registry (required)
-                - overrides: optional field overrides
+                - overrides: optional field overrides (preserves falsey values)
 
         Returns:
-            PersonaSpec JSON. If overrides applied, spec_digest is recomputed.
+            PersonaSpec JSON on success, or error envelope on failure.
 
         Raises:
-            LarvaError: On persona not found or validation failure.
+            ValueError: If 'id' key is missing from params.
         """
-        ...
+        # Request parsing: validate required 'id' parameter
+        if "id" not in params:
+            raise ValueError("Missing required parameter: 'id'")
 
-    def handle_register(self, params: dict[str, Any]) -> RegisteredPersona:
+        persona_id = params["id"]
+        # Preserve falsey/null override values - pass None if not provided
+        overrides: dict[str, object] | None = params.get("overrides")
+
+        # Delegate to facade
+        result = self._facade.resolve(persona_id, overrides)
+
+        # Success shaping: return PersonaSpec on success
+        if isinstance(result, Success):
+            return cast("PersonaSpec", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_register(self, params: dict[str, Any]) -> Union[RegisteredPersona, LarvaError]:
         """Handle larva.register MCP tool call.
 
         Delegates to: facade.register(spec)
@@ -297,14 +350,28 @@ class MCPHandlers:
             params: MCP request parameters containing 'spec' key.
 
         Returns:
-            {"id": str, "registered": True}
+            {"id": str, "registered": True} on success, or error envelope on failure.
 
         Raises:
-            LarvaError: On validation failure or registry write failure.
+            ValueError: If 'spec' key is missing from params.
         """
-        ...
+        # Request parsing: extract 'spec' parameter
+        if "spec" not in params:
+            raise ValueError("Missing required parameter: 'spec'")
+        spec = params["spec"]
 
-    def handle_list(self, params: dict[str, Any]) -> list[dict[str, str]]:
+        # Delegate to facade
+        result = self._facade.register(cast("PersonaSpec", spec))
+
+        # Success shaping: return RegisteredPersona on success
+        if isinstance(result, Success):
+            return cast("RegisteredPersona", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_list(self, params: dict[str, Any]) -> Union[list[dict[str, str]], LarvaError]:
         """Handle larva.list MCP tool call.
 
         Delegates to: facade.list()
@@ -313,13 +380,23 @@ class MCPHandlers:
             params: MCP request parameters (unused).
 
         Returns:
-            List of persona summaries:
+            List of persona summaries on success:
             [{"id": str, "spec_digest": str, "model": str}, ...]
-
-        Raises:
-            LarvaError: On registry read failure.
+            Or error envelope on failure.
         """
-        ...
+        # No parameters needed for list
+        del params  # Explicitly indicate unused
+
+        # Delegate to facade
+        result = self._facade.list()
+
+        # Success shaping: return list of summaries
+        if isinstance(result, Success):
+            return cast("list[dict[str, str]]", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
 
 
 # -----------------------------------------------------------------------------

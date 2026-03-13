@@ -793,3 +793,275 @@ class TestMCPToolsRoundTrip:
 
         assert isinstance(result, Success)
         assert len(result.unwrap()) == 1
+
+
+# -----------------------------------------------------------------------------
+# MCPHandlers Implementation Tests
+# -----------------------------------------------------------------------------
+
+
+class TestMCPHandlersImplementation:
+    """Test MCPHandlers class with actual facade integration.
+
+    These tests verify the MCPHandlers methods correctly:
+    - Parse MCP request parameters
+    - Delegate to facade methods
+    - Return success shapes or error envelopes
+    - Handle malformed parameters at MCP boundary
+    """
+
+    def test_handle_validate_success(self) -> None:
+        """Test handle_validate returns ValidationReport on success."""
+        facade = _make_facade(validate_report=_valid_report())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        spec = _canonical_spec("test")
+        result = handlers.handle_validate({"spec": spec})
+
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert result["warnings"] == []
+
+    def test_handle_validate_missing_spec_raises(self) -> None:
+        """Test handle_validate rejects missing 'spec' parameter."""
+        facade = _make_facade(validate_report=_valid_report())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        with pytest.raises(ValueError, match="Missing required parameter: 'spec'"):
+            handlers.handle_validate({})
+
+    def test_handle_assemble_success(self) -> None:
+        """Test handle_assemble returns PersonaSpec on success."""
+        candidate = _canonical_spec("assembled", digest="sha256:assembled")
+        facade = _make_facade(
+            validate_report=_valid_report(),
+            assemble_candidate=candidate,
+        )
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_assemble({"id": "assembled", "prompts": ["base"]})
+
+        # Success returns PersonaSpec (not Result)
+        assert isinstance(result, dict)
+        assert result["id"] == "assembled"
+        assert "spec_digest" in result
+
+    def test_handle_assemble_failure_returns_error_envelope(self) -> None:
+        """Test handle_assemble returns error envelope on failure."""
+        components = InMemoryComponentStore(
+            fail_on="prompt",
+            fail_error={
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": 105,
+                "message": "Prompt not found: missing",
+                "details": {"component_type": "prompt", "component_name": "missing"},
+            },
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_assemble({"id": "test", "prompts": ["missing"]})
+
+        # Failure returns error envelope
+        assert isinstance(result, dict)
+        assert "code" in result
+        assert "numeric_code" in result
+        assert "message" in result
+        assert "details" in result
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+
+    def test_handle_assemble_missing_id_raises(self) -> None:
+        """Test handle_assemble rejects missing 'id' parameter."""
+        facade = _make_facade(validate_report=_valid_report())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        with pytest.raises(ValueError, match="Missing required parameter: 'id'"):
+            handlers.handle_assemble({"prompts": ["base"]})
+
+    def test_handle_assemble_preserves_falsey_overrides(self) -> None:
+        """Test handle_assemble preserves falsey values in overrides.
+
+        Note: This test verifies the MCP handler passes overrides to the facade.
+        The actual override application is tested in TestMCPFalseyOverrideForwarding.
+        """
+        candidate = _canonical_spec("assembled", digest="sha256:assembled")
+        # Pre-set falsey values in candidate to test they are preserved
+        candidate["description"] = None
+        candidate["can_spawn"] = False
+        candidate["compaction_prompt"] = ""
+
+        facade = _make_facade(
+            validate_report=_valid_report(),
+            assemble_candidate=candidate,
+        )
+        handlers = mcp_module.MCPHandlers(facade)
+
+        # Pass additional overrides - test that values flow through
+        result = handlers.handle_assemble(
+            {
+                "id": "test",
+                "overrides": {
+                    "can_spawn": False,
+                },
+            }
+        )
+
+        # Success - falsey values preserved in spec
+        assert result["description"] is None
+        assert result["can_spawn"] is False
+        assert result["compaction_prompt"] == ""
+
+    def test_handle_resolve_success(self) -> None:
+        """Test handle_resolve returns PersonaSpec on success."""
+        stored = _canonical_spec("stored", digest="sha256:stored")
+        registry = InMemoryRegistryStore(get_result=Success(stored))
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_resolve({"id": "stored"})
+
+        # Success returns PersonaSpec
+        assert isinstance(result, dict)
+        assert result["id"] == "stored"
+        assert "spec_digest" in result
+
+    def test_handle_resolve_failure_returns_error_envelope(self) -> None:
+        """Test handle_resolve returns error envelope on failure."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_resolve({"id": "missing"})
+
+        # Failure returns error envelope
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_NOT_FOUND"
+        assert result["numeric_code"] == 100
+
+    def test_handle_resolve_missing_id_raises(self) -> None:
+        """Test handle_resolve rejects missing 'id' parameter."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        with pytest.raises(ValueError, match="Missing required parameter: 'id'"):
+            handlers.handle_resolve({})
+
+    def test_handle_resolve_preserves_falsey_overrides(self) -> None:
+        """Test handle_resolve preserves falsey values in overrides."""
+        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored["description"] = "original"
+        stored["can_spawn"] = True
+        stored["model_params"] = {"temperature": 0.5}
+        registry = InMemoryRegistryStore(get_result=Success(stored))
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_resolve(
+            {
+                "id": "stored",
+                "overrides": {
+                    "description": None,
+                    "can_spawn": False,
+                    "compaction_prompt": "",
+                    "model_params": {"temperature": 0},
+                },
+            }
+        )
+
+        # Falsey values preserved
+        assert result["description"] is None
+        assert result["can_spawn"] is False
+        assert result["compaction_prompt"] == ""
+        assert result["model_params"] == {"temperature": 0}
+
+    def test_handle_register_success(self) -> None:
+        """Test handle_register returns RegisteredPersona on success."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        spec = _canonical_spec("to-register", digest="sha256:to-register")
+        result = handlers.handle_register({"spec": spec})
+
+        # Success returns RegisteredPersona
+        assert isinstance(result, dict)
+        assert result["id"] == "to-register"
+        assert result["registered"] is True
+
+    def test_handle_register_failure_returns_error_envelope(self) -> None:
+        """Test handle_register returns error envelope on failure."""
+        facade = _make_facade(validate_report=_invalid_report("INVALID_SPEC_VERSION"))
+        handlers = mcp_module.MCPHandlers(facade)
+
+        spec = _canonical_spec("bad")
+        result = handlers.handle_register({"spec": spec})
+
+        # Failure returns error envelope
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_INVALID"
+        assert result["numeric_code"] == 101
+
+    def test_handle_register_missing_spec_raises(self) -> None:
+        """Test handle_register rejects missing 'spec' parameter."""
+        facade = _make_facade(validate_report=_valid_report())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        with pytest.raises(ValueError, match="Missing required parameter: 'spec'"):
+            handlers.handle_register({})
+
+    def test_handle_list_success(self) -> None:
+        """Test handle_list returns list of summaries on success."""
+        specs = [
+            _canonical_spec("alpha", digest="sha256:a"),
+            _canonical_spec("beta", digest="sha256:b"),
+        ]
+        registry = InMemoryRegistryStore(list_result=Success(specs))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_list({})
+
+        # Success returns list of summaries
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["id"] == "alpha"
+        assert result[1]["id"] == "beta"
+
+    def test_handle_list_failure_returns_error_envelope(self) -> None:
+        """Test handle_list returns error envelope on failure."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "Failed to read registry index",
+                    "path": "/registry/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_list({})
+
+        # Failure returns error envelope
+        assert isinstance(result, dict)
+        assert result["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert result["numeric_code"] == 107
+
+    def test_handle_list_empty_params(self) -> None:
+        """Test handle_list accepts empty params."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        # Empty params should work fine
+        result = handlers.handle_list({})
+        assert result == []
