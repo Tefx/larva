@@ -12589,7 +12589,7 @@ phases:
       - B1-B5 all closed; downstream core-gate blockers resolved.'
 - id: followup_validate_warnings
   name: Follow-up Validate Warnings
-  status: locked
+  status: pending
   context: This phase starts only after surface-hygiene gate closure. It must define
     authoritative warning semantics before implementation and keep scope inside validation
     docs/tests/core only.
@@ -12854,7 +12854,7 @@ phases:
     agent: gate-reviewer
 - id: followup_surface_hygiene
   name: Follow-up Surface Hygiene
-  status: in_progress
+  status: done
   context: Append after completed shell transport work. The active plan snapshot has
     no distinct `shell_mcp_runtime` phase, so this phase is anchored to the completed
     `shell_mcp` phase while preserving the user-requested post-runtime ordering intent.
@@ -13538,7 +13538,7 @@ phases:
       \ hooks with invar guard passed\n\ndiscovered_issues: none"
   - id: followup_surface_hygiene.retest-gate-should-fix
     name: retest-gate-should-fix
-    status: claimed
+    status: done
     description: 'Re-test the batched remediation for ALL should_fix findings from
       `followup_surface_hygiene.gate`.
 
@@ -13658,6 +13658,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T17:55:34.540857+00:00'
+    done_at: '2026-03-13T17:57:36.059686+00:00'
+    evidence: "## Verification Report\n**Tester**: integration-verifier\n**Scope**:\
+      \ batched retest for S1 and S2\n**Independence Level**: L1\n\n### Test Execution\n\
+      - Commands executed:\n  - rg -n '^def (assemble|register|resolve|list)\\(' src/larva/shell/python_api.py\
+      \ && rg -n '@shell_orchestration' src/larva/shell/python_api.py\n  - rg -n '__init__\\\
+      .py|larva\\.shell\\.python_api' ARCHITECTURE.md README.md src/larva/__init__.py\n\
+      \  - rg -n 'contract-only stub|delegation deferred' src ARCHITECTURE.md README.md\n\
+      - Output summary:\n  - S1: all wrapper defs present with explicit `@shell_orchestration`\
+      \ rationale on assemble/register/resolve/list\n  - S2: ARCHITECTURE and README\
+      \ align on `larva.shell.python_api`; Decision 3 explicitly states package-root\
+      \ exports remain deferred\n  - stale wording check returned no matches\n\n###\
+      \ Issues Found\n| Severity | Description | Location | Reproduction |\n| ---\
+      \ | --- | --- | --- |\n| suggestion | none | n/a | n/a |\n\n### Coverage Assessment\n\
+      - S1 wrapper rationale verified: ✅\n- S2 docs/import-surface alignment verified:\
+      \ ✅\n- Cross-file consistency verified: ✅\n- NOT tested: runtime behavior (out\
+      \ of scope for this docs/surface retest)\n\n### Verdict\n- PASS"
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
