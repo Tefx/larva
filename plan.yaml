@@ -12662,3 +12662,78 @@ phases:
       - Acceptance text states that runtime work must reuse `MCPHandlers` and must
       not duplicate facade/business logic'
     agent: software-architect
+  - id: shell_mcp_runtime.runtime_contract
+    name: runtime_contract
+    status: pending
+    description: 'Define the contract-only runtime surface needed to turn `larva.shell.mcp`
+      from handler layer into a runnable stdio MCP server.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+      agent_source: default
+
+
+      spec_refs:
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - ARCHITECTURE.md :: Module `larva.shell.mcp`
+
+      - src/larva/shell/mcp.py :: `MCPServerConfig`, `MCPServer`, `MCPHandlers`
+
+
+      Touch paths:
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_runtime.py
+
+      - tests/shell/test_mcp_runtime.py
+
+
+      Required contract coverage:
+
+      - dedicated stdio runtime entrypoint/module separate from `larva.shell.cli`
+
+      - startup configuration shape for transport=`stdio`
+
+      - runtime wiring from entrypoint -> handler container -> facade-backed tool
+      dispatch
+
+      - graceful shutdown semantics for EOF / interrupt / normal teardown
+
+      - explicit statement that runtime reuses `MCPHandlers` and does not duplicate
+      tool schemas or business logic
+
+      - explicit note that `SSE` remains a documented future transport but is not
+      implemented in this phase due to unresolved startup semantics
+
+
+      Conflict rationale:
+
+      - Shared runtime contracts in `src/larva/shell/mcp.py` must stabilize before
+      runtime harness tests and implementation can proceed'
+    verification: '- Contract artifacts define the stdio runtime startup path, configuration,
+      lifecycle, and delegation seam without shipping business logic
+
+      - The contract states one canonical runtime entrypoint and explicit shutdown
+      behavior
+
+      - Contract text preserves `SSE` as deferred rather than silently removing it
+      from the overall product surface'
+    depends_on:
+    - shell_mcp_runtime.transport_scope
+    agent: python-senior
