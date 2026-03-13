@@ -12603,6 +12603,15 @@ phases:
       agent_source: default
 
 
+      Prerequisite anchor:
+
+      - `shell_mcp` is already complete and is treated as the required handler-layer
+      foundation for this phase
+
+      - This phase exists specifically because completed `shell_mcp` stopped at handlers/contracts
+      and did not deliver runnable startup/transport behavior
+
+
       spec_refs:
 
       - README.md :: Interfaces / MCP Server (primary)
