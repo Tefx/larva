@@ -144,6 +144,7 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
     provided_vars_obj = spec.get("variables", {})
     provided_vars = provided_vars_obj if isinstance(provided_vars_obj, dict) else {}
 
+    # Check for unresolved variables (errors)
     if found_vars:
         unresolved = found_vars - set(provided_vars.keys())
         if unresolved:
@@ -159,6 +160,13 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
                     },
                 }
             )
+
+    # Check for unused variables (warnings)
+    unused_vars = set(provided_vars.keys()) - found_vars
+    if unused_vars:
+        warnings.append(
+            f"UNUSED_VARIABLES: supplied variables are not referenced by prompt: {', '.join(sorted(unused_vars))}"
+        )
 
     return {
         "valid": len(errors) == 0,
