@@ -14200,7 +14200,7 @@ phases:
       \ of scope for this docs/surface retest)\n\n### Verdict\n- PASS"
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
-  status: in_progress
+  status: done
   context: Start only after validate-warning gate closure. This is the final acceptance
     barrier for the follow-on gaps and must stay serial and worktree-safe.
   depends_on:
@@ -16956,7 +16956,7 @@ phases:
       pending steps.'
   - id: followup_guard_full.guard-full-core-crosshair-retest-7
     name: guard-full-core-crosshair-retest-7
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
       focused core regressions after the seventh-loop batched remediation for the
       narrowed assemble+normalize residual family.
@@ -17057,3 +17057,35 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T21:37:48.048285+00:00'
+    done_at: '2026-03-13T21:40:29.729031+00:00'
+    evidence: 'Verification:
+
+      - `uv run invar guard --all` -> PASS (`status=passed`, errors=0, warnings=0,
+      `crosshair.status=verified`, failed=[]).
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py` -> PASS (`65 passed`).
+
+
+      Files changed:
+
+      - none (verification-only)
+
+
+      Commit hash(es):
+
+      - none (verification-only)
+
+
+      Spec link:
+
+      - Both narrowed blockers (assemble + normalize) verified cleared together under
+      updated `uv run invar` policy.
+
+
+      Gaps/Notes:
+
+      - No blocking issues found.
+
+      - Guard reported info-level notices (non-blocking): redundant contract and shell
+      complexity hints.'
