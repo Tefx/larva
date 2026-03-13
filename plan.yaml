@@ -6749,7 +6749,7 @@ phases:
       discovered_issues: none'
   - id: shell_python_api.shell-python-api-gate-fix
     name: shell-python-api-gate-fix
-    status: pending
+    status: claimed
     description: 'Fix ALL issues found by `shell_python_api.shell-python-api-gate`
       in one batched remediation pass while preserving the deferred package-root export
       decision.
@@ -6886,6 +6886,8 @@ phases:
     - shell_python_api.shell-python-api-freeze
     - shell_python_api.shell-python-api-verify-retest
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T06:22:56.779159+00:00'
   - id: shell_python_api.shell-python-api-gate-retest
     name: shell-python-api-gate-retest
     status: pending
