@@ -7264,7 +7264,7 @@ phases:
     claimed_at: '2026-03-13T04:36:59.117333+00:00'
   - id: shell_mcp.shell-mcp-seam-proof
     name: shell-mcp-seam-proof
-    status: pending
+    status: claimed
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.mcp`.
 
@@ -7311,6 +7311,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T04:37:51.465220+00:00'
   - id: shell_mcp.shell-mcp-freeze
     name: shell-mcp-freeze
     status: pending
