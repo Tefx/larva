@@ -13273,7 +13273,7 @@ phases:
       - src/larva/shell/python_api.py comment cleanup'
   - id: followup_surface_hygiene.freeze
     name: freeze
-    status: pending
+    status: claimed
     description: 'Freeze the follow-up surface hygiene snapshot before gate review.
 
 
@@ -13290,6 +13290,8 @@ phases:
     depends_on:
     - followup_surface_hygiene.surface-verify
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T17:39:44.041788+00:00'
   - id: followup_surface_hygiene.gate
     name: gate
     status: pending
