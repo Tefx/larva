@@ -4038,7 +4038,7 @@ phases:
       \ for local import resolution."
 - id: app_facade
   name: larva.app.facade
-  status: in_progress
+  status: done
   depends_on:
   - shell_components
   - shell_registry
@@ -5742,7 +5742,7 @@ phases:
       \ behavior changes in facade/core beyond test expectation alignment."
   - id: app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual
     name: retest-app-facade-gate-blockers-b1-digest-parity-residual
-    status: claimed
+    status: done
     description: 'Re-test the residual B1 digest-parity closure after `app_facade.fix-retest-app-facade-gate-blockers-b1-digest-parity-residual`
       while confirming S1/S2/S3 remain closed.
 
@@ -5848,9 +5848,27 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T03:47:52.219922+00:00'
+    done_at: '2026-03-13T03:52:19.163546+00:00'
+    evidence: "Artifact:\n- PR: none (read-only gate retest in isolated worktree)\n\
+      - commit inspected: 25eb5ea on `vectl/step-app_facade.retest-app-facade-gate-blockers-b1-digest-parity-residual`\n\
+      \nVerification:\n- Run: `rg -n \"spec_digest\" src tests contracts README.md\
+      \ INTERFACES.md ARCHITECTURE.md` -> parity surfaces reviewed.\n- Run: `rg -n\
+      \ \"len\\(.*spec_digest.*\\)\\s*==\\s*64\" src tests contracts README.md INTERFACES.md\
+      \ ARCHITECTURE.md || true` -> no stale matches.\n- Run: `rg -n \"sha256:\" src\
+      \ tests contracts README.md INTERFACES.md ARCHITECTURE.md` -> canonical prefix\
+      \ usage present in runtime/docs/tests.\n- Run: `uv run pytest -q tests/core/test_normalize.py\
+      \ tests/app/test_facade.py tests/shell/test_registry.py` -> 47 passed.\n\nSpec\
+      \ link:\n- INTERFACES.md canonical digest contract sections (`sha256:<64-hex>`)\n\
+      \nfindings:\n  blockers: []\n  should_fix: []\n  suggestions: []\n  tech_debt:\
+      \ []\n\ndiscovered_issues:\n- `contracts/persona_spec.schema.json` currently\
+      \ appears looser than docs/runtime on `spec_digest` prefix constraint (not blocking\
+      \ this gate).\n\nGaps/Notes:\n- Preservation checks confirmed:\n  - S1 malformed-record\
+      \ handling remains closed.\n  - S2 seam-proof reproducibility remains closed.\n\
+      \  - S3 fallback numeric-code behavior remains closed.\n- No code changes were\
+      \ made in this retest step."
 - id: shell_python_api
   name: larva.shell.python_api
-  status: locked
+  status: pending
   depends_on:
   - meta.gate
   - app_facade
@@ -6232,7 +6250,7 @@ phases:
     agent: gate-reviewer
 - id: shell_cli
   name: larva.shell.cli
-  status: locked
+  status: pending
   depends_on:
   - app_facade
   steps:
@@ -6790,7 +6808,7 @@ phases:
     agent: python-senior
 - id: shell_mcp
   name: larva.shell.mcp
-  status: locked
+  status: pending
   depends_on:
   - app_facade
   steps:
