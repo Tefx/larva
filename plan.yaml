@@ -6922,7 +6922,7 @@ phases:
       - discovered_issues: none'
   - id: shell_python_api.shell-python-api-gate-retest
     name: shell-python-api-gate-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the batched
       remediation for `shell_python_api.shell-python-api-gate` from a fresh perspective.
 
@@ -6969,6 +6969,8 @@ phases:
     depends_on:
     - shell_python_api.shell-python-api-gate-fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T06:34:56.875556+00:00'
 - id: shell_cli
   name: larva.shell.cli
   status: in_progress
