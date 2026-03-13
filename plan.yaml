@@ -6581,7 +6581,7 @@ phases:
       \ excluded from this step per scope."
   - id: shell_cli.shell-cli-implement
     name: shell-cli-facade-command-implement
-    status: claimed
+    status: done
     description: "Implement the facade-backed command family in `src/larva/shell/cli.py`\
       \ as the user-facing CLI transport adapter and nothing more.\n\nstep_type: implementation\n\
       agent_source: default\ntags:\n  - integration\n\nScope:\n- implement command\
@@ -6641,6 +6641,18 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T04:36:47.462398+00:00'
+    done_at: '2026-03-13T04:49:42.467818+00:00'
+    evidence: "Commit hash(es):\n- d5dfac66214ebc60c1d29702593402d8d062a01a\n- squash\
+      \ merged to main as commit 14e3f44\n\nFiles changed:\n- src/larva/shell/cli.py\n\
+      - tests/shell/test_cli.py\n\nVerification:\n- Commands run:\n  - `invar_invar_guard(path=<worktree>,\
+      \ changed=true)`\n  - `uv run pytest tests/shell/test_cli.py -q`\n- Key outputs/results:\n\
+      \  - guard passed (0 errors; warnings noted in worker output, non-blocking for\
+      \ this step).\n  - CLI tests: 38 passed.\n  - implemented facade-backed commands\
+      \ validate/assemble/register/resolve/list with text/JSON modes and exit-code\
+      \ handling.\n\nSpec link:\n- ARCHITECTURE shell.cli\n- INTERFACES B + G\n- README\
+      \ CLI\n\nGaps/Notes:\n- `component list/show` intentionally remain deferred\
+      \ stubs (out of scope for this step).\n- `src/larva/cli.py` entrypoint wiring\
+      \ remained unchanged by design."
   - id: shell_cli.shell-cli-verify
     name: shell-cli-verify
     status: pending
