@@ -13120,7 +13120,8 @@ phases:
 
       '
     depends_on:
-    - followup_validate_warnings.gate
+    - followup_validate_warnings.warning-verify
+    - followup_validate_warnings.freeze
     agent: python-senior
   - id: followup_validate_warnings.retest-gate-blockers
     name: retest-gate-blockers
