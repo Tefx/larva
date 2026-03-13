@@ -12605,6 +12605,313 @@ phases:
     and docs.
   depends_on:
   - shell_mcp
+  steps:
+  - id: followup_surface_hygiene.cli-compat-contract
+    name: cli-compat-contract
+    status: pending
+    description: 'Define the authoritative compatibility contract for `src/larva/cli.py`
+      after review.
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - interface_notes
+
+      - stubs
+
+      - behavioral_examples
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:53`
+
+      - `pyproject.toml:31`
+
+      - `src/larva/cli.py:1`
+
+      touch_paths:
+
+      - `src/larva/cli.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `README.md`
+
+      harness_refs:
+
+      - `tests/shell/test_cli.py`
+
+      - import smoke for `larva.cli`
+
+      agent_source: default
+
+
+      Choose one explicit compatibility outcome for `larva.cli`; recommended default
+      is a thin compatibility shim to `larva.shell.cli:main` rather than a second
+      CLI implementation. Preserve the previously deferred package-root export decision
+      and do not reopen package-root re-exports, component-root bootstrap behavior,
+      registry-root init, or MCP runtime startup work.'
+    verification: '- Contract states one explicit `larva.cli` compatibility behavior
+
+      - Contract forbids duplicate CLI logic and package-root export expansion
+
+      - Acceptance examples identify the import/module smoke path and any README alignment
+      needed'
+    agent: software-architect
+  - id: followup_surface_hygiene.cli-compat-tests
+    name: cli-compat-tests
+    status: pending
+    description: 'Add focused tests for the chosen `larva.cli` compatibility contract
+      before implementation.
+
+
+      step_type: test
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `pyproject.toml:31`
+
+      - `src/larva/cli.py:1`
+
+      touch_paths:
+
+      - `tests/shell/test_cli.py`
+
+      harness_refs:
+
+      - `uv run pytest -q tests/shell/test_cli.py`
+
+      agent_source: default
+
+
+      Lock the expected import/module-invocation behavior for `larva.cli` without
+      broadening scope into a second CLI surface.'
+    verification: '- Targeted tests fail before implementation if the placeholder/debris
+      behavior remains
+
+      - Test scope stays limited to compatibility smoke and does not duplicate full
+      CLI behavior coverage'
+    depends_on:
+    - followup_surface_hygiene.cli-compat-contract
+    agent: python-executor
+  - id: followup_surface_hygiene.cli-compat-implement
+    name: cli-compat-implement
+    status: pending
+    description: 'Implement the agreed `src/larva/cli.py` compatibility cleanup.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:53`
+
+      - `pyproject.toml:31`
+
+      touch_paths:
+
+      - `src/larva/cli.py`
+
+      harness_refs:
+
+      - `tests/shell/test_cli.py`
+
+      - import smoke for `larva.cli`
+
+      agent_source: default
+
+
+      Known risks:
+
+      - Do not introduce duplicate CLI logic beside `larva.shell.cli`
+
+      - Do not reopen package-root export wiring
+
+      - Do not pull in MCP runtime or unrelated shell behavior
+
+
+      Gate Preview:
+
+      1. Placeholder print behavior still present.
+
+      2. A second CLI implementation appears beside `larva.shell.cli`.
+
+      3. The compatibility surface becomes less importable than before.'
+    verification: '- `src/larva/cli.py` no longer behaves as a stale placeholder
+
+      - Main path: compatibility smoke passes for the chosen shim behavior
+
+      - Failure path: no duplicate CLI logic or stray entrypoint semantics are introduced'
+    depends_on:
+    - followup_surface_hygiene.cli-compat-tests
+    agent: python-executor
+  - id: followup_surface_hygiene.surface-doc-cleanup
+    name: surface-doc-cleanup
+    status: pending
+    description: 'Align stale surface commentary and architecture docs with the implemented
+      public surface.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `ARCHITECTURE.md:348`
+
+      - `src/larva/shell/python_api.py:163`
+
+      touch_paths:
+
+      - `src/larva/shell/python_api.py`
+
+      - `ARCHITECTURE.md`
+
+      harness_refs:
+
+      - focused grep checks for stale comment text
+
+      agent_source: default
+
+
+      Update stale `contract-only stub / delegation deferred` comments in `src/larva/shell/python_api.py`
+      and fix `ARCHITECTURE.md` assemble-request field drift (`toolsets: list[str]`,
+      `constraints: list[str]`). Keep package-root re-exports deferred and do not
+      duplicate MCP runtime work.'
+    verification: '- No stale `contract-only stub` / `delegation deferred` comments
+      remain for active python API functions
+
+      - `ARCHITECTURE.md` request fields match the implemented plural-list surface
+
+      - No unrelated public-surface decisions are reopened'
+    depends_on:
+    - followup_surface_hygiene.cli-compat-implement
+    agent: python-executor
+  - id: followup_surface_hygiene.surface-verify
+    name: surface-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER, validate the follow-up surface hygiene
+      phase from a fresh perspective.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+      spec_refs:
+
+      - `README.md:40`
+
+      - `ARCHITECTURE.md:53`
+
+      - `ARCHITECTURE.md:348`
+
+      - `src/larva/cli.py:1`
+
+      - `src/larva/shell/python_api.py:163`
+
+      touch_paths:
+
+      - `src/larva/cli.py`
+
+      - `src/larva/shell/python_api.py`
+
+      - `ARCHITECTURE.md`
+
+      harness_refs:
+
+      - targeted `tests/shell/test_cli.py`
+
+      - import smoke for `larva.cli`
+
+      - grep/doc checks
+
+      agent_source: default
+
+
+      Your goal is to find remaining public-surface drift, not to confirm it works.'
+    verification: '- Main path: import/module smoke proves the cleaned `larva.cli`
+      surface works as contracted
+
+      - Drift path: grep/doc review confirms stale python_api comments and assemble-request
+      field drift are gone
+
+      - Proof states package-root exports remain deferred and MCP runtime work was
+      not duplicated'
+    depends_on:
+    - followup_surface_hygiene.surface-doc-cleanup
+    agent: integration-verifier
+  - id: followup_surface_hygiene.freeze
+    name: freeze
+    status: pending
+    description: 'Freeze the follow-up surface hygiene snapshot before gate review.
+
+
+      step_type: verification
+
+      agent_source: default'
+    verification: '- Record `git rev-parse HEAD`
+
+      - Record clean `git status`
+
+      - Record environment declaration
+
+      - State that no code changes are allowed until gate review completes'
+    depends_on:
+    - followup_surface_hygiene.surface-verify
+    agent: integration-verifier
+  - id: followup_surface_hygiene.gate
+    name: gate
+    status: pending
+    description: 'Gate review: verify follow-up surface hygiene completion and quality.
+
+
+      step_type: gate
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - Shared public-surface cleanup across code and docs
+
+      - Drift mistakes here would mislead downstream users even if tests stay green
+
+      cross_cutting_focus:
+
+      - `larva.cli` remains a compatibility surface, not a second CLI implementation
+
+      - python_api comments reflect real behavior
+
+      - architecture request fields match runtime surface
+
+      agent_source: default'
+    verification: '- All phase steps completed successfully
+
+      - Evidence shows stale placeholder behavior is removed or replaced by the contracted
+      shim behavior
+
+      - Evidence shows stale python_api comments and ARCHITECTURE request-field drift
+      are closed
+
+      - No package-root export work, component-root bootstrap work, registry-root
+      init work, or duplicate MCP runtime work was introduced'
+    depends_on:
+    - followup_surface_hygiene.cli-compat-contract
+    - followup_surface_hygiene.cli-compat-tests
+    - followup_surface_hygiene.cli-compat-implement
+    - followup_surface_hygiene.surface-doc-cleanup
+    - followup_surface_hygiene.surface-verify
+    - followup_surface_hygiene.freeze
+    agent: gate-reviewer
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
