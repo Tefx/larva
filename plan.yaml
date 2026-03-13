@@ -13317,7 +13317,7 @@ phases:
       - No code/docs/tests modified in this step.'
   - id: followup_surface_hygiene.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: verify follow-up surface hygiene completion and quality.
 
 
@@ -13361,6 +13361,41 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T17:41:25.052222+00:00'
+    done_at: '2026-03-13T17:49:17.808585+00:00'
+    evidence: 'Gate review verdict: ISSUES_FOUND
+
+
+      Findings captured:
+
+      - should_fix S1: missing `@shell_orchestration` rationale on python_api thin
+      wrappers (`src/larva/shell/python_api.py:164,214,240,271`)
+
+      - should_fix S2: stale ARCHITECTURE Decision 3 wording implying package-root
+      exports conflicts with deferred import-surface policy
+
+
+      Commands/evidence from gate reviewer:
+
+      - targeted pytest checks for CLI shim and python_api adapter semantics passed
+
+      - invar guard reported warning set including python_api annotation drift
+
+      - grep checks identified stale ARCHITECTURE wording lines
+
+
+      Batched remediation created before completion:
+
+      - followup_surface_hygiene.fix-gate-should-fix
+
+      - followup_surface_hygiene.retest-gate-should-fix
+
+      - gate rewired to depend on retest step
+
+
+      Notes:
+
+      - No code/docs edits in gate step; findings forwarded intact into single batched
+      fix chain per anti-serial protocol.'
   - id: followup_surface_hygiene.fix-gate-should-fix
     name: fix-gate-should-fix
     status: pending
