@@ -13360,6 +13360,126 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-13T17:41:25.052222+00:00'
+  - id: followup_surface_hygiene.fix-gate-should-fix
+    name: fix-gate-should-fix
+    status: pending
+    description: 'Fix ALL should_fix findings from `followup_surface_hygiene.gate`
+      in one batched remediation step.
+
+
+      step_type: implementation
+
+      spec_refs:
+
+      - `src/larva/shell/python_api.py:164`
+
+      - `ARCHITECTURE.md:667`
+
+      - `README.md:61`
+
+      touch_paths:
+
+      - `src/larva/shell/python_api.py`
+
+      - `ARCHITECTURE.md`
+
+      - `README.md`
+
+      - `src/larva/__init__.py`
+
+      harness_refs:
+
+      - `rg -n ''^def (assemble|register|resolve|list)\('' src/larva/shell/python_api.py
+      && rg -n ''@shell_orchestration'' src/larva/shell/python_api.py`
+
+      - `rg -n ''__init__\\.py|larva\\.shell\\.python_api'' ARCHITECTURE.md README.md
+      src/larva/__init__.py`
+
+      prior_loop:
+
+      - `followup_surface_hygiene.gate`
+
+      remaining_blocker: close the two remaining surface-hygiene should_fix findings
+      without reopening deferred export scope or reverting stale stub wording.
+
+      why_new_loop: gate review identified cross-file hygiene drift that requires
+      one coordinated code+docs remediation pass instead of separate micro-fixes.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### S1: restore explicit shell-orchestration rationale on thin python_api facade
+      wrappers
+
+      Locations: `src/larva/shell/python_api.py:164`, `src/larva/shell/python_api.py:214`,
+      `src/larva/shell/python_api.py:240`, `src/larva/shell/python_api.py:271`
+
+      Remediation: restore explicit accepted `@shell_orchestration` annotation/rationale
+      on the thin `assemble` / `register` / `resolve` / `list` wrappers. Keep the
+      wording aligned to current facade behavior; do NOT reintroduce stale `contract-only
+      stub` or `delegation deferred` language.
+
+      Grep hint: `rg -n ''^def (assemble|register|resolve|list)\('' src/larva/shell/python_api.py
+      && rg -n ''@shell_orchestration'' src/larva/shell/python_api.py`
+
+      IMPORTANT: search all four wrapper siblings before claiming done.
+
+
+      ### S2: align ARCHITECTURE Decision 3 with the deferred package-root export
+      policy
+
+      Locations: `ARCHITECTURE.md:667`, `ARCHITECTURE.md:753`, `README.md:61`, `src/larva/__init__.py:1`
+
+      Remediation: update stale Decision 3 wording so docs match the supported import
+      surface `larva.shell.python_api` and explicitly state that package-root `__init__.py`
+      exports remain deferred policy, consistent with README and the actual package
+      root.
+
+      Grep hint: `rg -n ''__init__\\.py|larva\\.shell\\.python_api'' ARCHITECTURE.md
+      README.md src/larva/__init__.py`
+
+      IMPORTANT: search for sibling wording around package-root exports beyond the
+      listed lines before claiming done.
+
+
+      ## Completion Criteria
+
+      - ALL should_fix findings closed in one pass
+
+      - Shell facade wrappers regain explicit accepted orchestration rationale on
+      every listed thin wrapper
+
+      - ARCHITECTURE wording matches the current supported import surface and deferred
+      package-root export policy
+
+      - No stale contract-stub wording returns
+
+      - No package-root export implementation work is introduced'
+    verification: '- Each grep hint returns only the expected accepted-wrapper / deferred-policy
+      wording
+
+      - Wrapper comments show `@shell_orchestration` rationale on `assemble`, `register`,
+      `resolve`, and `list`
+
+      - `ARCHITECTURE.md`, `README.md`, and `src/larva/__init__.py` all agree on the
+      supported `larva.shell.python_api` surface and deferred package-root exports
+
+      - Evidence includes sibling-search notes for both issue families'
+    evidence_template: "## Batched Fix Evidence\n\n**Scope**: close S1 and S2 together\n\
+      \n### S1 wrapper rationale restoration\n- Exact edits:\n  - <file:line>\n- Grep\
+      \ output after fix:\n```\nrg -n '^def (assemble|register|resolve|list)\\(' src/larva/shell/python_api.py\
+      \ && rg -n '@shell_orchestration' src/larva/shell/python_api.py\n```\n- Sibling\
+      \ search notes: <what was checked beyond listed lines>\n\n### S2 architecture\
+      \ wording alignment\n- Exact edits:\n  - <file:line>\n- Grep output after fix:\n\
+      ```\nrg -n '__init__\\.py|larva\\.shell\\.python_api' ARCHITECTURE.md README.md\
+      \ src/larva/__init__.py\n```\n- Sibling search notes: <what was checked beyond\
+      \ listed lines>\n\n### Guardrails\n- Confirm no stale `contract-only stub` /\
+      \ `delegation deferred` wording reintroduced\n- Confirm no package-root export\
+      \ implementation added"
+    depends_on:
+    - followup_surface_hygiene.surface-verify
+    agent: python-executor
 - id: followup_guard_full
   name: Follow-up Full Guard Remediation
   status: locked
