@@ -7649,6 +7649,96 @@ phases:
     depends_on:
     - shell_cli.shell-cli-verify
     agent: python-senior
+  - id: shell_cli.shell-cli-verify-retest
+    name: shell-cli-verify-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`blind-tester`), re-test the ONE batched
+      remediation from `shell_cli.shell-cli-verify-fix-batch` and verify that ALL
+      blocker and should-fix findings from `shell_cli.shell-cli-verify` are resolved
+      before `shell_cli.shell-cli-gate` can reopen.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `B. CLI Interface`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.cli`
+
+      - `README.md` :: `Interfaces / CLI`
+
+
+      touch_paths:
+
+      - `pyproject.toml`
+
+      - `src/larva/shell/cli.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `INTERFACES.md`
+
+
+      harness_refs:
+
+      - public CLI entrypoint via `uv run larva <subcommand>`
+
+      - `tests/shell/test_cli.py`
+
+      - CLI `--help` text and `--json` error envelope checks
+
+
+      conflict_rationale:
+
+      - Serialized after the batched fix because it validates the same published CLI
+      transport and shared shell harnesses.
+
+      - `shell_cli.shell-cli-gate` must wait on this retest because this step is the
+      acceptance barrier for the command-surface, parser-option, error-envelope, and
+      CLI-doc fixes.
+
+
+      Retest scope (ALL of these, not just the first):
+
+      - B1: `uv run larva --help` and `uv run larva component list --json` exercise
+      the real documented CLI surface instead of placeholder text
+
+      - B2: `larva assemble` accepts the documented `-o` / `--output` contract, or
+      the docs now state a justified and test-backed policy
+
+      - S1: CLI `--json` parse/file failure envelope numeric codes match the canonical
+      documented policy end-to-end
+
+      - S2: `INTERFACES.md` has one canonical CLI section with no conflicting duplicates
+
+      - Sibling-search proof exists for script wiring, CLI output-option handling,
+      JSON error mappings, and duplicated CLI contract snippets
+
+
+      A retest that finds issues is a SUCCESSFUL verification step and should feed
+      one consolidated remediation loop if needed.'
+    verification: '- Execute true public-entrypoint checks with actual commands and
+      outputs: `uv run larva --help` and `uv run larva component list --json`
+
+      - Re-run focused CLI contract tests covering `assemble -o/--output` and JSON
+      parse/file failure envelopes with actual command/output, not summary-only claims
+
+      - Verify the highest-risk failure path: `--json` parse/file failures emit the
+      documented numeric-code policy end-to-end
+
+      - Verify no remaining placeholder/deferred public CLI wiring matches and no
+      duplicate canonical CLI section remains in `INTERFACES.md`'
+    depends_on:
+    - shell_cli.shell-cli-verify-fix-batch
+    agent: blind-tester
 - id: shell_mcp
   name: larva.shell.mcp
   status: in_progress
