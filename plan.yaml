@@ -15203,7 +15203,7 @@ phases:
       state'
   - id: followup_guard_full.guard-full-core-crosshair-retest-2
     name: guard-full-core-crosshair-retest-2
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER, rerun the full guard plus focused core\
       \ regressions after the second batched CrossHair remediation escalation.\n\n\
       step_type: verification\nIndependence Level: L1\nprior_loop:\n- followup_guard_full.guard-full-retest\n\
@@ -15249,3 +15249,5 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-fix-2
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T19:34:23.286886+00:00'
