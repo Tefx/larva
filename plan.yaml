@@ -14728,44 +14728,43 @@ phases:
 
       - Repo-wide acceptance barrier
 
-      - Mixes core counterexample closure with shell purity and file-size debt remediation
+      - Repeated-remediation escalation: the first batched fix cleared warnings/errors
+      but left a residual core CrossHair blocker family
 
-      - A bad batched fix could hide real issues instead of resolving them
+      - A bad second loop could create churn or weaken core contracts instead of resolving
+      the counterexample family
 
-      - This review must confirm remediation stayed within remaining ownership and
-      did not reopen completed phases
+      - This review must confirm remediation stayed within the unresolved blocker
+      family and did not reopen completed surfaces
 
       cross_cutting_focus:
 
       - no fake guard pass by suppressing authoritative repo files
 
-      - all blocker families B0-B3 were searched for siblings, not just named sites
+      - residual CrossHair counterexamples in `validate.py`, `assemble.py`, and `normalize.py`
+      are actually closed, not redistributed
 
-      - package-root re-exports remain explicitly deferred / future-policy work rather
-      than silently ignored
+      - warning/error families remain zero after second-loop remediation
 
-      - `~/.larva/components` root-init concern remains classified correctly and is
-      not mixed into this batched fix
+      - core purity and contract strength are preserved while closing the residual
+      blocker family
 
-      - no new `~/.larva/registry` init scope and no duplicate MCP runtime work
-
-      - CLI and MCP behavior preserved while core/shell debt is genuinely reduced
-      or justified
+      - no duplicate CLI/MCP remediation scope was reopened during the second loop
 
       agent_source: default'
     verification: '- All phase steps completed successfully
 
-      - Evidence shows the failed full-guard root cause was remediated in one batched
-      pass rather than one-warning-at-a-time churn
+      - Evidence shows the repeated remediation stayed batched and scoped to the unresolved
+      CrossHair blocker family rather than restarting broad churn
 
-      - Evidence shows every blocker family B0-B3 was searched, addressed, and retested
-      with raw outputs attached
+      - Evidence shows raw outputs for `uvx invar-tools guard --all` and focused core
+      tests from `followup_guard_full.guard-full-core-crosshair-retest-2`
 
-      - Evidence shows no completed-phase ownership was duplicated and no authoritative
-      coverage was hidden
+      - Evidence shows warnings/errors stayed at zero and no completed-phase ownership
+      was duplicated
 
       - Full `uvx invar-tools guard --all` passes from the main checkout or the gate
-      clearly names the only remaining explicitly accepted non-blocking residue'
+      clearly names the only remaining explicitly unresolved CrossHair residue'
     depends_on:
     - followup_guard_full.guard-diagnose
     - followup_guard_full.guard-scope-remediate
@@ -14773,6 +14772,8 @@ phases:
     - followup_guard_full.cli-complexity-remediate
     - followup_guard_full.guard-full-batched-fix
     - followup_guard_full.guard-full-retest
+    - followup_guard_full.guard-full-core-crosshair-fix-2
+    - followup_guard_full.guard-full-core-crosshair-retest-2
     - followup_guard_full.guard-full-verify
     - followup_guard_full.freeze
     agent: gate-reviewer
