@@ -7049,7 +7049,7 @@ phases:
       \ remained unchanged by design."
   - id: shell_cli.shell-cli-verify
     name: shell-cli-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`blind-tester`), validate the `larva.shell.cli`
       module from a fresh user-facing perspective.
 
@@ -7104,6 +7104,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-component-implement
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-13T06:03:29.241355+00:00'
   - id: shell_cli.shell-cli-seam-proof
     name: shell-cli-seam-proof
     status: claimed
