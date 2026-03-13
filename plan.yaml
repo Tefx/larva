@@ -15302,3 +15302,159 @@ phases:
       - no source edits made
 
       - test execution produced untracked `.hypothesis/` artifacts'
+  - id: followup_guard_full.guard-full-core-crosshair-fix-3
+    name: guard-full-core-crosshair-fix-3
+    status: pending
+    description: 'Third batched remediation extension for the last remaining CrossHair
+      blocker family only; keep scope narrow to `src/larva/core/assemble.py::_merge_tools`
+      and any direct sibling root-cause patterns exposed by the same symbolic-typing
+      seam, and do not reopen already-green CLI/MCP/Python-API families.
+
+
+      step_type: implementation
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-core-crosshair-fix-2
+
+      - followup_guard_full.guard-full-core-crosshair-retest-2
+
+      - followup_guard_full.gate
+
+      remaining_blocker: residual CrossHair failure in `src/larva/core/assemble.py:129`
+      (`_merge_tools`) with `TypeError: typing.Literal cannot be used with issubclass()`
+      under symbolic checking
+
+      why_new_loop: the second-loop retest left one narrowed symbolic-checking blocker
+      in `_merge_tools`; this third loop extends the existing remediation chain instead
+      of reopening broad counterexample families that are already green
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - gate finding from `followup_guard_full.gate`
+
+      - prior retest artifact from `followup_guard_full.guard-full-core-crosshair-retest-2`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - `src/larva/core/assemble.py`
+
+      - direct sibling helpers or contracts used by `_merge_tools`
+
+      - focused core regressions for assemble/normalize/validate only where needed
+      to prove the shared symbolic root cause is closed
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - focused core pytest commands covering assemble plus direct sibling fallout
+      only
+
+      - CrossHair raw excerpt for `_merge_tools`
+
+      agent_source: default
+
+
+      ## Blocker to fix (ALL direct instances in this narrowed family)
+
+
+      ### B0-residual: symbolic typing seam around `_merge_tools`
+
+      - Close the residual CrossHair failure at `src/larva/core/assemble.py:129` where
+      symbolic checking reaches `typing.Literal` through an `issubclass()` path.
+
+      - Search for direct sibling root-cause patterns only: nearby helper branches,
+      annotation introspection, or type-normalization seams that feed `_merge_tools`
+      and could trigger the same `Literal`/`issubclass` mismatch under symbolic execution.
+
+      - Grep hint: `rg -n "_merge_tools|issubclass\(|Literal" src/larva/core/assemble.py
+      src/larva/core`
+
+      - IMPORTANT: Search for siblings beyond line 129, but do not broaden into already-green
+      CLI/MCP/Python-API or unrelated core families.
+
+
+      ## Completion criteria
+
+      - `uvx invar-tools guard --all` no longer reports the `_merge_tools` / `typing.Literal`
+      symbolic-checking failure.
+
+      - Any direct sibling root-cause pattern on the same symbolic typing seam is
+      closed in the same pass.
+
+      - CLI, MCP, and Python-API regression families remain untouched unless a direct
+      assemble-core root cause requires a minimal purity-preserving adjustment.
+
+      - Evidence explains the root cause seam and why the fix scope remained narrower
+      than prior loops.
+
+
+      ## Churn guard
+
+      - Reuse the existing CrossHair remediation family; do not create new warning-family
+      work.
+
+      - Do not weaken meaningful contracts or suppress CrossHair to get green.
+
+      - Do not reopen already-green surfaces or broaden test scope beyond authoritative
+      guard plus focused core regressions.
+
+
+      Known risks:
+
+      - Symbolic checking can hit annotation introspection paths that do not fail
+      in concrete runtime tests.
+
+      - A local fix at `_merge_tools` that leaves the sibling symbolic seam intact
+      will be rejected.
+
+      - Guard green must come from correctness, not from hiding the failing path.'
+    verification: '- Main path: the residual `_merge_tools` CrossHair blocker family
+      is closed with a purity-preserving core fix scoped to assemble and direct sibling
+      symbolic seams
+
+      - Failure path: evidence names the exact sibling-search result and raw CrossHair
+      excerpt for any still-failing symbolic typing branch instead of reopening broad
+      blocker families
+
+      - Proof explicitly states CLI/MCP/Python-API regressions stayed out of scope
+      and untouched'
+    evidence_template: '## Third-Loop CrossHair Fix Evidence
+
+
+      **Root cause seam**: <how `_merge_tools` reached `Literal`/`issubclass` under
+      symbolic checking>
+
+
+      **Files changed**:
+
+      - <list>
+
+
+      **Sibling search performed**:
+
+      - <exact nearby helpers / branches checked>
+
+
+      **Why scope stayed narrow**:
+
+      - <why no already-green family was reopened>
+
+
+      **Verification commands prepared for retest**:
+
+      ```bash
+
+      uvx invar-tools guard --all
+
+      uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py tests/core/test_normalize.py
+
+      ```'
+    depends_on:
+    - followup_guard_full.gate
+    agent: python-senior
