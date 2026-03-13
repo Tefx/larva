@@ -12818,3 +12818,111 @@ phases:
     depends_on:
     - shell_mcp_runtime.runtime_contract
     agent: python-executor
+  - id: shell_mcp_runtime.runtime_implement_stdio_adapter
+    name: runtime_implement_stdio_adapter
+    status: pending
+    description: 'Implement the stdio runtime adapter that turns the completed `MCPHandlers`
+      layer into a runnable MCP server.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      tags:
+
+      - integration
+
+
+      spec_refs:
+
+      - README.md :: `MCP server` primary interface
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+      - ARCHITECTURE.md :: shell adapters remain thin and delegate to `app.facade`
+
+      - src/larva/shell/mcp.py :: `MCPHandlers`, `MCPServerConfig`, `MCPServer`
+
+
+      Touch paths:
+
+      - src/larva/shell/mcp_runtime.py
+
+      - src/larva/shell/mcp.py
+
+      - tests/shell/test_mcp_runtime.py
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior: runtime startup must not invent CLI-style
+      file-path semantics; request payloads remain structured MCP params only
+
+      - missing-file fallback behavior: runtime startup failures or missing runtime
+      config must fail explicitly rather than silently dropping into a no-op process
+
+      - explicit clear / null overwrite semantics: runtime transport must preserve
+      handler parameter payloads exactly; null/false/empty values must survive framing
+      and dispatch
+
+      - stale-definition vs new-state precedence: all tool semantics remain authoritative
+      in `MCPHandlers` + `larva.app.facade`; runtime code must not add a second source
+      of truth
+
+      - partial-write / CAS-conflict behavior: transport failures or interrupted sessions
+      must not emit partial-success envelopes or leave ambiguous shutdown state
+
+
+      State semantics:
+
+      - last-writer-wins and persona override semantics remain downstream in facade/core
+      flows
+
+      - runtime state is limited to process lifecycle and transport/session dispatch
+
+      - backward-compatible behavior for this phase is the documented larva MCP tool
+      set, now reachable through a real stdio server process
+
+
+      Known risks:
+
+      - runtime-surface regression: a long history of handler-only completion caused
+      this gap; verify actual startup, not just callable handlers
+
+      - output/transport corruption: stdout must carry only MCP frames; debug text
+      must not leak into protocol output
+
+      - shared-wiring conflict: keep runtime logic out of CLI and Python API entrypoints
+
+
+      Out of scope:
+
+      - `SSE` transport implementation
+
+      - changes to business rules in `larva.app.facade`
+
+      - any new MCP tool surface beyond the documented larva tools
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any runtime implementation that still requires direct Python imports/test
+      hooks instead of a runnable process
+
+      2. Any duplicated tool registration or business logic outside `MCPHandlers`
+
+      3. Any stdio server that cannot prove clean startup, one real request, and clean
+      shutdown'
+    verification: '- Main path: targeted runtime tests prove the stdio adapter starts
+      and serves at least one documented MCP tool request end-to-end
+
+      - Failure path: shutdown/EOF regression proves the process exits cleanly without
+      hanging or corrupting stdout transport frames
+
+      - Proof: runtime adapter code delegates tool behavior through `MCPHandlers`
+      and introduces no duplicate assemble/validate/register/list/resolve business
+      flow'
+    depends_on:
+    - shell_mcp_runtime.runtime_tests_stdio
+    agent: python-executor
