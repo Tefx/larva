@@ -12587,3 +12587,6 @@ phases:
       Findings:
 
       - B1-B5 all closed; downstream core-gate blockers resolved.'
+- id: shell_mcp_runtime
+  name: shell_mcp_runtime
+  status: pending
