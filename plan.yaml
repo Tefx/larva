@@ -15325,9 +15325,10 @@ phases:
       (`_merge_tools`) with `TypeError: typing.Literal cannot be used with issubclass()`
       under symbolic checking
 
-      why_new_loop: the second-loop retest left one narrowed symbolic-checking blocker
-      in `_merge_tools`; this third loop extends the existing remediation chain instead
-      of reopening broad counterexample families that are already green
+      why_new_loop: the gate review narrowed the remaining work to one symbolic-checking
+      blocker in `_merge_tools`; this third loop extends the existing remediation
+      chain from the prior retest evidence without reopening broad counterexample
+      families that are already green
 
       spec_refs:
 
@@ -15456,7 +15457,7 @@ phases:
 
       ```'
     depends_on:
-    - followup_guard_full.gate
+    - followup_guard_full.guard-full-core-crosshair-retest-2
     agent: python-senior
   - id: followup_guard_full.guard-full-core-crosshair-retest-3
     name: guard-full-core-crosshair-retest-3
