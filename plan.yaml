@@ -7952,6 +7952,169 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-verify
     agent: python-senior
+  - id: shell_mcp.shell-mcp-verify-retest
+    name: shell-mcp-verify-retest
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), re-test the full
+      remediation batch from `shell_mcp.shell-mcp-fix-batch` and act as the verification
+      barrier before `shell_mcp.shell-mcp-gate`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      step_type: verification
+
+      agent_source: default
+
+      Independence Level: L2
+
+      tags: ["integration"]
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface (primary)`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.mcp`
+
+      - `README.md` :: `Interfaces / MCP Server (primary)`
+
+
+      touch_paths:
+
+      - `src/larva/shell/mcp.py`
+
+      - `tests/shell/test_mcp.py`
+
+
+      harness_refs:
+
+      - `tests/shell/test_mcp.py`
+
+      - MCP handler seam through `larva.shell.mcp.MCPHandlers`
+
+
+      conflict_rationale:
+
+      - Serialized after the batched fix because it validates the same MCP boundary
+      and the same harness.
+
+      - Gate must wait on this retest because this step is the acceptance barrier
+      for all findings from `shell_mcp.shell-mcp-verify`.
+
+
+      Retest scope:
+
+      - B1: malformed payloads for all five tools reject consistently with the documented
+      MCP error envelope; no raw `ValueError`, no silent acceptance drift
+
+      - B2: seam-level evidence is strong enough to escape the mock-island; include
+      at least one real handler-path success proof and one malformed-input failure
+      proof
+
+      - S1: explicit top-level parameter/schema validation exists before facade delegation
+      for all five tools
+
+      - S2: error-envelope fidelity checks include message semantics, not only `code`,
+      `numeric_code`, and `details`
+
+      - S3: `larva.list` unknown-param behavior is explicit, stable, and documented
+      by tests
+
+      - Boundary discipline: falsey override forwarding for `resolve` / `assemble`
+      still holds and business logic remains in `larva.app.facade`
+
+
+      A retest that finds issues is a SUCCESSFUL verification step and should feed
+      another remediation loop if needed.'
+    verification: '- Exercise all five MCP tools through `larva.shell.mcp.MCPHandlers`
+      with both valid and malformed payloads
+
+      - Verify the highest-risk failure path: malformed parameter rejection returns
+      the documented MCP envelope with stable `code`, `numeric_code`, `message`, and
+      `details`
+
+      - Verify boundary invariants: falsey override forwarding remains intact and
+      MCP stays a transport adapter over `larva.app.facade`
+
+      - Provide seam-level proof with actual command/test output, not a generic "tests
+      pass" summary'
+    evidence_template: '## MCP Retest Report
+
+
+      **Tester**: `integration-verifier`
+
+      **Scope**: batched remediation for `shell_mcp.shell-mcp-verify`
+
+      **Independence Level**: L2
+
+
+      ### Commands / tests executed
+
+      ```bash
+
+      pytest tests/shell/test_mcp.py -k "mcp and (malformed or envelope or falsey
+      or list)" -v
+
+      <add any second exact command if needed>
+
+      ```
+
+
+      ### Seam-level integration evidence
+
+      **Exact handler-path proof**:
+
+      ```text
+
+      <paste actual test runner output or command output showing one success path
+      and one malformed-input failure path>
+
+      ```
+
+
+      **Path exercised**: `larva.shell.mcp.MCPHandlers` -> `larva.app.facade`
+
+
+      ### Findings
+
+      - blocker:
+
+      - should_fix:
+
+      - suggestion:
+
+      - tech_debt:
+
+
+      ### Required assertions covered
+
+      - [ ] all five tools reject malformed parameters consistently
+
+      - [ ] envelope includes stable `code`, `numeric_code`, `message`, `details`
+
+      - [ ] `larva.list` unknown-param behavior locked
+
+      - [ ] falsey override forwarding preserved
+
+      - [ ] delegation boundary preserved
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - shell_mcp.shell-mcp-fix-batch
+    agent: integration-verifier
 - id: meta.gate
   name: Meta Freeze Gate
   status: done
