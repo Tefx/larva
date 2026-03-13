@@ -8503,7 +8503,7 @@ phases:
       - Retest confirms batched MCP remediation acceptance barrier is satisfied.'
   - id: shell_mcp.shell-mcp-gate-fix-batch
     name: shell-mcp-gate-fix-batch
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers and should-fix findings from `shell_mcp.shell-mcp-gate`
       in ONE batched remediation step.
 
@@ -8730,6 +8730,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T06:03:39.210666+00:00'
   - id: shell_mcp.shell-mcp-gate-retest
     name: shell-mcp-gate-retest
     status: pending
