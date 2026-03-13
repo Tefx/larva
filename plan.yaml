@@ -12589,7 +12589,7 @@ phases:
       - B1-B5 all closed; downstream core-gate blockers resolved.'
 - id: followup_validate_warnings
   name: Follow-up Validate Warnings
-  status: pending
+  status: in_progress
   context: This phase starts only after surface-hygiene gate closure. It must define
     authoritative warning semantics before implementation and keep scope inside validation
     docs/tests/core only.
@@ -12598,7 +12598,7 @@ phases:
   steps:
   - id: followup_validate_warnings.warning-contract
     name: warning-contract
-    status: pending
+    status: claimed
     description: 'Define authoritative warning semantics for `src/larva/core/validate.py`
       before implementation.
 
@@ -12654,6 +12654,8 @@ phases:
       - No unrelated validation or assemble semantics are changed in the contract
       step'
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-13T17:57:59.046173+00:00'
   - id: followup_validate_warnings.warning-tests
     name: warning-tests
     status: pending
