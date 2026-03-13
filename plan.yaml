@@ -15782,3 +15782,151 @@ phases:
     depends_on:
     - followup_guard_full.guard-full-core-crosshair-retest-3
     agent: python-senior
+  - id: followup_guard_full.guard-full-core-crosshair-retest-4
+    name: guard-full-core-crosshair-retest-4
+    status: pending
+    description: 'As an INDEPENDENT TESTER, rerun the authoritative full guard plus
+      focused core regressions after the fourth-loop narrowed CrossHair remediation.
+
+
+      step_type: verification
+
+      Independence Level: L1
+
+      prior_loop:
+
+      - followup_guard_full.guard-full-core-crosshair-retest-3
+
+      - followup_guard_full.gate
+
+      remaining_blocker: residual `crosshair.status=counterexample_found` limited
+      to `src/larva/core/assemble.py` and `src/larva/core/normalize.py` after the
+      third retest, while focused core pytest remained green
+
+      why_new_loop: the blocker surface is now narrowed to two files, so this retest
+      must prove those residual symbolic paths are closed without reopening already-green
+      families
+
+      spec_refs:
+
+      - `pyproject.toml:53`
+
+      - gate finding from `followup_guard_full.gate`
+
+      - retest evidence from `followup_guard_full.guard-full-core-crosshair-retest-3`
+
+      - `ARCHITECTURE.md:638`
+
+      touch_paths:
+
+      - retest evidence for `src/larva/core/assemble.py`
+
+      - retest evidence for `src/larva/core/normalize.py`
+
+      - retest evidence for `tests/core/test_assemble.py`
+
+      - retest evidence for `tests/core/test_validate.py`
+
+      - retest evidence for `tests/core/test_normalize.py`
+
+      harness_refs:
+
+      - `uvx invar-tools guard --all`
+
+      - `uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py
+      tests/core/test_normalize.py`
+
+      - raw CrossHair excerpts for assemble/normalize only
+
+      agent_source: default
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: `uvx invar-tools guard --all` returns green with the residual
+      assemble+normalize CrossHair failures cleared
+
+      - Edge cases: focused core pytest stays green for assemble/validate/normalize
+      after the narrowed fix
+
+      - Error scenarios: if CrossHair is still red, attach the exact raw excerpt for
+      `src/larva/core/assemble.py` and/or `src/larva/core/normalize.py` only
+
+      - Scope hygiene: already-green families stay closed and are not pulled back
+      into scope without raw evidence of a direct same-root-cause regression
+
+
+      ## Anti-churn guard
+
+      - Do not summarize away failures; paste raw command output.
+
+      - Do not broaden the blocker report beyond assemble+normalize unless the raw
+      output proves it.
+
+      - Do not reopen already-green families in the verdict.'
+    verification: '- Main path: raw `uvx invar-tools guard --all` output and focused
+      core pytest output are attached for the narrowed assemble+normalize blocker
+      family
+
+      - Failure path: any remaining symbolic failure is pinned to exact raw output
+      for `src/larva/core/assemble.py` and/or `src/larva/core/normalize.py` instead
+      of broad family summaries
+
+      - Evidence explicitly confirms already-green families were not reopened'
+    evidence_template: '## Fourth-Loop Narrowed CrossHair Retest Report
+
+
+      **Exact full guard command**:
+
+      ```bash
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Actual full guard output**:
+
+      ```text
+
+      <paste actual guard output>
+
+      ```
+
+
+      **Focused core regression command**:
+
+      ```bash
+
+      uv run pytest -q tests/core/test_assemble.py tests/core/test_validate.py tests/core/test_normalize.py
+
+      ```
+
+
+      **Actual focused core output**:
+
+      ```text
+
+      <paste actual pytest output>
+
+      ```
+
+
+      **Residual blocker matrix**:
+
+      - `src/larva/core/assemble.py`: cleared | remaining with exact raw excerpt
+
+      - `src/larva/core/normalize.py`: cleared | remaining with exact raw excerpt
+
+
+      **Scope hygiene proof**:
+
+      - <how you confirmed already-green families stayed closed and were not reopened>
+
+      '
+    depends_on:
+    - followup_guard_full.guard-full-core-crosshair-fix-4
+    agent: integration-verifier
