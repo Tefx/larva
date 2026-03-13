@@ -14865,3 +14865,46 @@ phases:
     depends_on:
     - followup_guard_full.cli-complexity-remediate
     agent: python-senior
+  - id: followup_guard_full.guard-full-retest
+    name: guard-full-retest
+    status: pending
+    description: "As an INDEPENDENT TESTER, rerun the full acceptance barrier after\
+      \ the batched remediation and collect concrete red/green evidence.\n\nstep_type:\
+      \ verification\nIndependence Level: L1\nspec_refs:\n- `pyproject.toml:53`\n\
+      - saved full-guard failure artifact from `followup_guard_full.guard-full-verify`\n\
+      - `README.md:40`\n- `ARCHITECTURE.md:638`\ntouch_paths:\n- `src/larva/core/validate.py`\n\
+      - `src/larva/core/**`\n- `src/larva/shell/cli.py`\n- `src/larva/shell/mcp.py`\n\
+      - focused regression tests for touched seams\nharness_refs:\n- `uvx invar-tools\
+      \ guard --all`\n- focused CLI regressions\n- focused core regressions for `validate_spec`\
+      \ / counterexample closure\nagent_source: default\n\nYOUR GOAL IS TO FIND PROBLEMS,\
+      \ not to confirm it works.\n\nTest for:\n- Happy path: full `uvx invar-tools\
+      \ guard --all` returns green, or any remaining warning is explicitly shown to\
+      \ be non-blocking under current acceptance policy\n- Edge cases: extracted helpers\
+      \ still preserve validate/CLI/MCP behavior across text/JSON and validation-report\
+      \ paths\n- Error scenarios: CrossHair no longer reports counterexamples for\
+      \ the remediated core modules\n- Scope hygiene: no hidden suppression of authoritative\
+      \ repo files\n\nevidence_template: |\n  ## Full Guard Retest Report\n\n  **Exact\
+      \ guard command**:\n  ```bash\n  uvx invar-tools guard --all\n  ```\n\n  **Actual\
+      \ output**:\n  ```text\n  <paste actual guard output>\n  ```\n\n  **Focused\
+      \ regression commands**:\n  ```bash\n  <paste validate/core regression command(s)>\n\
+      \  uv run pytest -q tests/shell/test_cli.py\n  <paste any focused MCP regression\
+      \ command(s)>\n  ```\n\n  **Actual focused outputs**:\n  ```text\n  <paste output>\n\
+      \  ```\n\n  **Finding matrix**:\n  - B0 CrossHair counterexamples: cleared |\
+      \ remaining with exact justification\n  - B1 validate_spec size: cleared | remaining\
+      \ with exact justification\n  - B2 CLI pure-logic warnings: cleared | remaining\
+      \ with exact justification\n  - B3 CLI/MCP file-size warnings: cleared | remaining\
+      \ with exact justification\n\n  **Sibling-search proof**: <what additional sites\
+      \ were checked for each blocker family>\n  **Scope hygiene proof**: <how you\
+      \ verified no authoritative files were hidden>\n\nA retest that finds remaining\
+      \ blockers is still successful evidence collection."
+    verification: '- Main path: full `uvx invar-tools guard --all` is rerun and its
+      raw output is attached
+
+      - Failure path: if guard is still red, the evidence pinpoints which blocker
+      family remains and why, instead of collapsing back into vague debt
+
+      - Focused regressions rerun for validate/core behavior and CLI behavior after
+      the batched fix'
+    depends_on:
+    - followup_guard_full.guard-full-batched-fix
+    agent: integration-verifier
