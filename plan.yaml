@@ -7106,7 +7106,7 @@ phases:
     agent: blind-tester
   - id: shell_cli.shell-cli-seam-proof
     name: shell-cli-seam-proof
-    status: pending
+    status: claimed
     description: 'Integration companion: provide seam-level real path evidence for
       `larva.shell.cli`.
 
@@ -7152,6 +7152,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-component-implement
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-13T06:03:19.785442+00:00'
   - id: shell_cli.shell-cli-freeze
     name: shell-cli-freeze
     status: pending
