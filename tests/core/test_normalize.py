@@ -116,7 +116,7 @@ class TestNormalizeSpecBehavior:
 
         result = normalize_spec({"id": "test", "spec_digest": "stale"})
         assert result["spec_digest"] != "stale"
-        assert len(result["spec_digest"]) == 64
+        assert len(result["spec_digest"]) == 71
 
     def test_digest_is_deterministic(self) -> None:
         """normalize_spec should produce deterministic digest for same input."""
