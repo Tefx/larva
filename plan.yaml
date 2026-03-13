@@ -7316,7 +7316,7 @@ phases:
       - discovered_issues: none'
   - id: shell_cli.shell-cli-component-implement
     name: shell-cli-component-implement
-    status: claimed
+    status: done
     description: "Implement the `component list` and `component show` subcommands\
       \ in `src/larva/shell/cli.py` after the facade-backed command family is stable.\n\
       \nstep_type: implementation\nagent_source: default\ntags:\n  - integration\n\
@@ -7362,6 +7362,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-13T05:45:56.774661+00:00'
+    done_at: '2026-03-13T05:57:14.503940+00:00'
+    evidence: 'Commit hash(es): 6af6216, acc80d2 (worktree), squashed to main as a35ad27
+
+      Files changed: src/larva/shell/cli.py, tests/shell/test_cli.py
+
+      Verification:
+
+      - invar guard via pre-commit on commits -> passed
+
+      - invar_guard(changed=true in worktree) -> PASS (0 errors; warnings only)
+
+      - target grep checks confirmed in-scope component handlers implemented and routed
+      through component seam
+
+      Spec link:
+
+      - ARCHITECTURE.md Decision 4 component subcommands via ComponentStore port
+
+      - INTERFACES.md component list/show behavior + error code mapping
+
+      - INTERFACES.md error envelope and numeric codes
+
+      - README component library interface boundary
+
+      Gaps/Notes:
+
+      - Scope preserved to cli.py + test_cli.py.
+
+      - discovered_issues: out-of-scope NotImplementedError occurrence in src/larva/shell/mcp.py;
+      existing file-size/complexity warnings remain tech debt.'
 - id: shell_mcp
   name: larva.shell.mcp
   status: in_progress
