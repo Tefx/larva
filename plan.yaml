@@ -12747,7 +12747,7 @@ phases:
       - Scope kept to tests only per step boundary.'
   - id: followup_validate_warnings.warning-implement
     name: warning-implement
-    status: claimed
+    status: done
     description: 'Implement the contracted warning semantics in `src/larva/core/validate.py`.
 
 
@@ -12805,6 +12805,15 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-13T18:08:53.401086+00:00'
+    done_at: '2026-03-13T18:13:27.567691+00:00'
+    evidence: "Artifact:\n- Commit: 521f6f5a25d36429fa8513ddceb11cae45206d76 (worktree),\
+      \ integrated to main as ad37f3a\n\nVerification:\n- uv run pytest tests/core/test_validate.py\
+      \ -v -> 25 passed\n\nImplementation:\n- `src/larva/core/validate.py` now detects\
+      \ unused supplied variables and emits deterministic warning:\n  `UNUSED_VARIABLES:\
+      \ supplied variables are not referenced by prompt: <sorted keys>`\n- unresolved\
+      \ variables remain `VARIABLE_UNRESOLVED` errors\n\nContract link:\n- warning\
+      \ family deterministic and canonical\n- unresolved remains error, unused remains\
+      \ warning"
   - id: followup_validate_warnings.warning-verify
     name: warning-verify
     status: pending
