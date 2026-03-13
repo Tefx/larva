@@ -50,8 +50,8 @@ from larva.app.facade import (
 )
 
 # Import shell modules for facade construction
-from larva.shell.components import ComponentStore, FilesystemComponentStore
-from larva.shell.registry import FileSystemRegistryStore, RegistryStore
+from larva.shell.components import FilesystemComponentStore
+from larva.shell.registry import FileSystemRegistryStore
 
 
 # -----------------------------------------------------------------------------
@@ -89,6 +89,33 @@ def _unwrap_result(result: Result[object, LarvaError]) -> object:
         # The facade already provides all error details in the LarvaError
         raise LarvaApiError(error)
     return result.unwrap()
+
+
+# @invar:allow shell_result: internal request builder for thin facade delegation
+# @shell_orchestration: preserves python_api thin-adapter request shaping only
+def _build_assemble_request(
+    id: str,
+    prompts: list[str] | None,
+    toolsets: list[str] | None,
+    constraints: list[str] | None,
+    model: str | None,
+    overrides: dict[str, Any] | None,
+    variables: dict[str, str] | None,
+) -> AssembleRequest:
+    """Construct AssembleRequest while preserving explicit falsey values."""
+    request: dict[str, object] = {"id": id}
+    optional_fields: tuple[tuple[str, object | None], ...] = (
+        ("prompts", prompts),
+        ("toolsets", toolsets),
+        ("constraints", constraints),
+        ("model", model),
+        ("overrides", overrides),
+        ("variables", variables),
+    )
+    for key, value in optional_fields:
+        if value is not None:
+            request[key] = value
+    return cast("AssembleRequest", request)
 
 
 class LarvaApiError(Exception):
@@ -173,23 +200,16 @@ def assemble(
         spec = assemble("code-reviewer", prompts=["code-reviewer"])
         assert spec["spec_version"] == "0.1.0"
     """
-    # Build request dict, omitting None values for optional fields
-    request: dict[str, object] = {"id": id}
-    if prompts is not None:
-        request["prompts"] = prompts
-    if toolsets is not None:
-        request["toolsets"] = toolsets
-    if constraints is not None:
-        request["constraints"] = constraints
-    if model is not None:
-        request["model"] = model
-    if overrides is not None:
-        request["overrides"] = overrides
-    if variables is not None:
-        request["variables"] = variables
-    return cast(
-        "PersonaSpec", _unwrap_result(_get_facade().assemble(cast("AssembleRequest", request)))
+    request = _build_assemble_request(
+        id=id,
+        prompts=prompts,
+        toolsets=toolsets,
+        constraints=constraints,
+        model=model,
+        overrides=overrides,
+        variables=variables,
     )
+    return cast("PersonaSpec", _unwrap_result(_get_facade().assemble(request)))
 
 
 # @invar:allow shell_result: contract-only stub; delegation deferred to implementation

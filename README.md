@@ -52,13 +52,13 @@ larva component show <type>/<name>
 ### Python Library
 
 ```python
-from larva import assemble, validate, resolve
+from larva.shell.python_api import assemble, resolve, validate
 
 spec = assemble(
     id="code-reviewer",
     prompts=["code-reviewer", "careful-reasoning"],
-    toolset="code-tools",
-    constraints="strict",
+    toolsets=["code-tools"],
+    constraints=["strict"],
     overrides={"model": "claude-opus-4-20250514"},
 )
 

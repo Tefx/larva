@@ -198,7 +198,7 @@ class FacadeFixture:
 
 
 @pytest.fixture
-def facade_fixture() -> FacadeFixture:
+def facade_fixture(monkeypatch: pytest.MonkeyPatch) -> FacadeFixture:
     """Create a facade with test doubles for delegation verification."""
     call_record: list[str] = []
     assemble_module = SpyAssembleModule(_canonical_spec("assembled"), call_record)
@@ -216,9 +216,8 @@ def facade_fixture() -> FacadeFixture:
         registry=registry,
     )
 
-    # Patch the module-level facade in python_api to use our test double
-    original_get_facade = python_api._get_facade
-    python_api._get_facade = lambda: facade
+    # Patch the module-level facade getter for this test only.
+    monkeypatch.setattr(python_api, "_get_facade", lambda: facade)
 
     return FacadeFixture(
         facade=facade,
@@ -229,15 +228,6 @@ def facade_fixture() -> FacadeFixture:
         registry=registry,
         call_record=call_record,
     )
-
-
-@pytest.fixture(autouse=True)
-def facade_teardown() -> None:
-    """Restore original facade after each test."""
-    yield
-    # Restore the original facade getter
-    python_api._facade = None
-    python_api._get_facade = lambda: python_api._facade  # type: ignore[assignment]
 
 
 # -----------------------------------------------------------------------------
