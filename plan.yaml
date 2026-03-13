@@ -14589,7 +14589,7 @@ phases:
       - no tests needed modification; existing suite covered behavior preservation'
   - id: followup_guard_full.guard-full-verify
     name: guard-full-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER, review the batched-remediation retest
       evidence and confirm the final full-guard acceptance conclusion before freeze.
 
@@ -14657,6 +14657,40 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-13T18:56:17.056025+00:00'
+    done_at: '2026-03-13T19:04:18.382506+00:00'
+    evidence: 'Verification reported FAIL and triggered batched remediation planning.
+
+
+      Failure evidence:
+
+      - `uvx invar-tools guard --all` -> status=failed, errors=0, warnings=12, infos=9
+
+      - blocker signal: `crosshair.status=counterexample_found`
+
+      - warning families include core validate function-size, CLI shell-pure-logic/complexity
+      debt, and CLI/MCP file-size pressure
+
+      - focused CLI regression suite remained green (`tests/shell/test_cli.py`: 84
+      passed)
+
+
+      Batched remediation created:
+
+      - followup_guard_full.guard-full-batched-fix
+
+      - followup_guard_full.guard-full-retest
+
+      - followup_guard_full.guard-full-verify rewired to depend on retest evidence
+      review
+
+      - followup_guard_full.gate updated to include new B0-B3 closure path
+
+
+      Notes:
+
+      - No code merged from failed verification worktree.
+
+      - Failure converted to anti-serial batched fix loop per protocol.'
   - id: followup_guard_full.freeze
     name: freeze
     status: pending
