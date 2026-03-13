@@ -7463,6 +7463,192 @@ phases:
 
       - discovered_issues: out-of-scope NotImplementedError occurrence in src/larva/shell/mcp.py;
       existing file-size/complexity warnings remain tech debt.'
+  - id: shell_cli.shell-cli-verify-fix-batch
+    name: shell-cli-verify-fix-batch
+    status: pending
+    description: 'Fix ALL findings from `shell_cli.shell-cli-verify` in one batched
+      remediation loop.
+
+
+      step_type: implementation
+
+      agent_source: default
+
+      priority: HIGH
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `B. CLI Interface`
+
+      - `INTERFACES.md` :: `G. Error Codes / Error Response Format (--json / MCP)`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.cli`
+
+      - `README.md` :: `Interfaces / CLI`
+
+
+      touch_paths:
+
+      - `pyproject.toml`
+
+      - `src/larva/shell/cli.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `INTERFACES.md`
+
+
+      harness_refs:
+
+      - `uv run larva --help`
+
+      - `uv run larva component list --json`
+
+      - `uv run larva assemble -o <path>`
+
+      - `tests/shell/test_cli.py`
+
+
+      conflict_rationale:
+
+      - This batched fix step owns the shared CLI transport surface, script wiring,
+      parser options, JSON envelope mapping, and CLI contract docs together.
+
+      - Serializing these repairs in one step avoids parallel edits to `src/larva/shell/cli.py`,
+      `tests/shell/test_cli.py`, `pyproject.toml`, and `INTERFACES.md`.
+
+      - `shell_cli.shell-cli-gate` must wait on the downstream retest because this
+      step changes the same command surface that failed verification.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Public CLI entrypoint contract broken
+
+      Locations: `pyproject.toml:31` and the user-facing `uv run larva <subcommand>`
+      path.
+
+      Remediation:
+
+      - Wire the published `larva` project script to the real shell CLI transport
+      so `uv run larva --help` reaches the documented command surface rather than
+      placeholder text.
+
+      - Add or update black-box coverage that invokes the public entrypoint as `uv
+      run larva <subcommand>` instead of only calling internal helpers.
+
+      - Search for sibling placeholder/deferred entrypoints beyond the observed command
+      path before claiming done.
+
+      Grep hint: `rg -n "\[project\.scripts\]|larva\s*=|CLI wiring is active|def main\("
+      pyproject.toml src/larva/shell/cli.py src/larva`
+
+
+      ### B2: Assemble `-o`/`--output` contract broken
+
+      Locations: `INTERFACES.md` assemble options and runtime parser behavior in `src/larva/shell/cli.py`.
+
+      Remediation:
+
+      - Implement or restore `-o` / `--output` handling for `larva assemble`, or update
+      the documented CLI contract with an explicit rationale if the option is intentionally
+      unsupported.
+
+      - Keep runtime behavior, parser help text, tests, and `INTERFACES.md` aligned
+      as one canonical contract.
+
+      - Search for sibling output-option drift in related command definitions and
+      tests.
+
+      Grep hint: `rg -n "assemble|--output|-o" src/larva/shell/cli.py tests/shell/test_cli.py
+      INTERFACES.md`
+
+
+      ### S1: JSON failure envelope numeric code mismatch
+
+      Locations: `INTERFACES.md` CLI error-code section and CLI error handling paths.
+
+      Remediation:
+
+      - Align CLI `--json` error behavior with the documented numeric-code policy,
+      or update the spec with explicit rationale covering parse/file failures.
+
+      - Add regression tests for the chosen policy so parse and missing-file failures
+      cannot drift silently.
+
+      - Search sibling CLI error emitters/assertions for the same numeric-code mismatch,
+      not just the observed cases.
+
+      Grep hint: `rg -n "numeric_code|INTERNAL|errors\.yaml|100-110|Argument parsing
+      failed|spec file not found" src/larva/shell/cli.py tests/shell/test_cli.py INTERFACES.md`
+
+
+      ### S2: INTERFACES CLI section duplicated
+
+      Locations: repeated CLI sections in `INTERFACES.md`.
+
+      Remediation:
+
+      - Consolidate duplicated CLI contract text into one canonical section.
+
+      - Ensure all CLI references point to the same assembled contract for command
+      names, flags, and JSON error semantics.
+
+      - Search for sibling duplicated CLI snippets before claiming done.
+
+      Grep hint: `rg -n "CLI Interface|larva assemble|larva validate|larva component"
+      INTERFACES.md`
+
+
+      ## Completion Criteria
+
+      - ALL findings above are resolved together, not piecemeal.
+
+      - Sibling search completed for script wiring, assemble output options, CLI JSON
+      error mappings, and duplicated CLI contract text.
+
+      - Public `uv run larva` entrypoint, CLI parser behavior, tests, and docs are
+      mutually consistent.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Placeholder or deferred public CLI entrypoints still present anywhere on
+      the published `uv run larva` path.
+
+      2. `assemble` help/docs/runtime disagree on `-o` / `--output` support.
+
+      3. JSON error numeric-code policy is undocumented, inconsistent, or untested
+      across parse/file failures.
+
+      4. Duplicate CLI contract sections remain in `INTERFACES.md`.
+
+
+      known_risks:
+
+      - CLI contract drift between `pyproject.toml`, `src/larva/shell/cli.py`, tests,
+      and `INTERFACES.md`
+
+      - Placeholder transport wiring hiding the documented command surface from black-box
+      users
+
+      - JSON error envelope/spec parity regressions across parse and missing-file
+      paths'
+    verification: '- `rg` sibling-search evidence is recorded for each finding family
+      and no unresolved placeholder CLI wiring or duplicate CLI section remains
+
+      - Black-box tests prove the real public entrypoint: `uv run larva --help` and
+      `uv run larva component list --json`
+
+      - Targeted CLI regressions cover `assemble -o/--output` and JSON parse/file
+      failure numeric-code policy
+
+      - Docs, parser help, and runtime behavior match the final chosen CLI contract'
+    depends_on:
+    - shell_cli.shell-cli-verify
+    agent: python-senior
 - id: shell_mcp
   name: larva.shell.mcp
   status: in_progress
