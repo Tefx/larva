@@ -6473,7 +6473,7 @@ phases:
       - No package export wiring or transport runtime behavior implemented.'
   - id: shell_cli.shell-cli-tests
     name: shell-cli-facade-command-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven tests for the facade-backed portion of `larva.shell.cli`
       in `tests/shell/test_cli.py`.
 
@@ -6549,6 +6549,8 @@ phases:
     depends_on:
     - shell_cli.shell-cli-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-13T04:18:04.001097+00:00'
   - id: shell_cli.shell-cli-implement
     name: shell-cli-facade-command-implement
     status: pending
