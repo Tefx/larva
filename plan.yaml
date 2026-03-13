@@ -12865,7 +12865,7 @@ phases:
   steps:
   - id: followup_surface_hygiene.cli-compat-contract
     name: cli-compat-contract
-    status: claimed
+    status: done
     description: 'Define the authoritative compatibility contract for `src/larva/cli.py`
       after review.
 
@@ -12926,6 +12926,36 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-13T17:16:52.956201+00:00'
+    done_at: '2026-03-13T17:22:05.361867+00:00'
+    evidence: 'Artifact:
+
+      - PR: 5c8d762 (worktree branch head), squashed to main as 928d403
+
+
+      Verification:
+
+      - invar guard on isolated worktree -> PASS (0 errors, 0 warnings)
+
+      - uv run pytest tests/shell/test_cli.py -k "package_cli_main_delegates_to_shell_cli
+      or python_module_cli_executes_same_shell_entrypoint" -> 2 passed, 67 deselected
+
+      - uv run python -m larva.cli --help -> module compatibility path executes and
+      emits help output
+
+
+      Spec link:
+
+      - README.md:40 and README compatibility example now document that `larva.cli`
+      is a compatibility shim only
+
+      - ARCHITECTURE.md:53 boundary preserved (CLI entrypoint remains in shell)
+
+      - pyproject.toml:31 still authoritative console script `larva.shell.cli:main`
+
+      - src/larva/cli.py now delegates to `larva.shell.cli.main(argv)` without duplicate
+      CLI logic
+
+      - tests/shell/test_cli.py includes import/module smoke assertions for the shim'
   - id: followup_surface_hygiene.cli-compat-tests
     name: cli-compat-tests
     status: pending
