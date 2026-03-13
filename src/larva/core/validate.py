@@ -21,7 +21,7 @@ See:
 """
 
 import re
-from typing import TypedDict
+from typing import TypedDict, cast
 
 from deal import post, pre
 
@@ -59,6 +59,103 @@ class ValidationReport(TypedDict):
     valid: bool
     errors: list[ValidationIssue]
     warnings: list[str]
+
+
+@pre(
+    lambda code, message, details: len(code) > 0 and len(message) > 0 and isinstance(details, dict)
+)
+@post(lambda result: "code" in result and "message" in result and "details" in result)
+def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
+    return {"code": code, "message": message, "details": details}
+
+
+@pre(lambda spec: isinstance(spec, dict))
+@post(lambda result: isinstance(result, list))
+def _validate_identity_fields(spec: PersonaSpec) -> list[ValidationIssue]:
+    errors: list[ValidationIssue] = []
+    persona_id = spec.get("id")
+    if (
+        not isinstance(persona_id, str)
+        or persona_id == ""
+        or not _PERSONA_ID_PATTERN.fullmatch(persona_id)
+    ):
+        errors.append(
+            _issue(
+                "INVALID_PERSONA_ID",
+                "id is required and must match ^[a-z0-9]+(-[a-z0-9]+)*$",
+                {"field": "id", "value": persona_id},
+            )
+        )
+
+    spec_version = spec.get("spec_version")
+    if spec_version is not None and spec_version != "0.1.0":
+        errors.append(
+            _issue(
+                "INVALID_SPEC_VERSION",
+                "spec_version must be '0.1.0'",
+                {"field": "spec_version", "value": spec_version},
+            )
+        )
+
+    side_effect_policy = spec.get("side_effect_policy")
+    valid_policies: set[str] = {"allow", "approval_required", "read_only"}
+    if side_effect_policy is not None and side_effect_policy not in valid_policies:
+        errors.append(
+            _issue(
+                "INVALID_SIDE_EFFECT_POLICY",
+                "side_effect_policy must be one of allow, approval_required, read_only",
+                {"field": "side_effect_policy", "value": side_effect_policy},
+            )
+        )
+
+    return errors
+
+
+@pre(lambda spec: isinstance(spec, dict))
+@post(lambda result: isinstance(result, dict) and "errors" in result and "warnings" in result)
+def _validate_prompt_variables(spec: PersonaSpec) -> dict[str, object]:
+    errors: list[ValidationIssue] = []
+    warnings: list[str] = []
+
+    prompt_obj = spec.get("prompt", "")
+    if not isinstance(prompt_obj, str):
+        errors.append(
+            _issue(
+                "INVALID_PROMPT",
+                "prompt must be a string",
+                {"field": "prompt", "value": prompt_obj},
+            )
+        )
+        return {"errors": errors, "warnings": warnings}
+    found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt_obj))
+
+    provided_vars_obj = spec.get("variables", {})
+    provided_vars: dict[str, str] = {}
+    if isinstance(provided_vars_obj, dict):
+        provided_vars = {
+            key: value
+            for key, value in provided_vars_obj.items()
+            if isinstance(key, str) and isinstance(value, str)
+        }
+
+    unresolved = found_vars - set(provided_vars.keys())
+    if unresolved:
+        errors.append(
+            _issue(
+                "VARIABLE_UNRESOLVED",
+                f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}",
+                {"field": "prompt", "unresolved_variables": sorted(unresolved)},
+            )
+        )
+
+    unused_vars = set(provided_vars.keys()) - found_vars
+    if unused_vars:
+        warnings.append(
+            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
+            + ", ".join(sorted(unused_vars))
+        )
+
+    return {"errors": errors, "warnings": warnings}
 
 
 @pre(lambda spec: isinstance(spec, dict))
@@ -101,72 +198,10 @@ def validate_spec(spec: PersonaSpec) -> ValidationReport:
         >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
         'INVALID_PERSONA_ID'
     """
-    errors: list[ValidationIssue] = []
-    warnings: list[str] = []
-
-    persona_id = spec.get("id")
-    if (
-        not isinstance(persona_id, str)
-        or persona_id == ""
-        or not _PERSONA_ID_PATTERN.fullmatch(persona_id)
-    ):
-        errors.append(
-            {
-                "code": "INVALID_PERSONA_ID",
-                "message": "id is required and must match ^[a-z0-9]+(-[a-z0-9]+)*$",
-                "details": {"field": "id", "value": persona_id},
-            }
-        )
-
-    spec_version = spec.get("spec_version")
-    if spec_version is not None and spec_version != "0.1.0":
-        errors.append(
-            {
-                "code": "INVALID_SPEC_VERSION",
-                "message": "spec_version must be '0.1.0'",
-                "details": {"field": "spec_version", "value": spec_version},
-            }
-        )
-
-    side_effect_policy = spec.get("side_effect_policy")
-    valid_policies: set[str] = {"allow", "approval_required", "read_only"}
-    if side_effect_policy is not None and side_effect_policy not in valid_policies:
-        errors.append(
-            {
-                "code": "INVALID_SIDE_EFFECT_POLICY",
-                "message": "side_effect_policy must be one of allow, approval_required, read_only",
-                "details": {"field": "side_effect_policy", "value": side_effect_policy},
-            }
-        )
-
-    prompt = spec.get("prompt", "")
-    found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt))
-    provided_vars_obj = spec.get("variables", {})
-    provided_vars = provided_vars_obj if isinstance(provided_vars_obj, dict) else {}
-
-    # Check for unresolved variables (errors)
-    if found_vars:
-        unresolved = found_vars - set(provided_vars.keys())
-        if unresolved:
-            errors.append(
-                {
-                    "code": "VARIABLE_UNRESOLVED",
-                    "message": (
-                        f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}"
-                    ),
-                    "details": {
-                        "field": "prompt",
-                        "unresolved_variables": sorted(unresolved),
-                    },
-                }
-            )
-
-    # Check for unused variables (warnings)
-    unused_vars = set(provided_vars.keys()) - found_vars
-    if unused_vars:
-        warnings.append(
-            f"UNUSED_VARIABLES: supplied variables are not referenced by prompt: {', '.join(sorted(unused_vars))}"
-        )
+    errors = _validate_identity_fields(spec)
+    variable_result = _validate_prompt_variables(spec)
+    errors.extend(cast("list[ValidationIssue]", variable_result["errors"]))
+    warnings = cast("list[str]", variable_result["warnings"])
 
     return {
         "valid": len(errors) == 0,

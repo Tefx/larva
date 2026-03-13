@@ -24,12 +24,20 @@ Boundary citations:
 
 from __future__ import annotations
 
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, TypedDict, Union, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, Union, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app import facade as facade_module
+from larva.shell.mcp_contract import (
+    LARVA_ERROR_CODES,
+    LARVA_MCP_TOOLS,
+    MCPServer,
+    MCPServerConfig,
+    MCPToolDefinition,
+    MCPTransportMode,
+    ValidationIssue,
+    ValidationReport,
+)
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -40,158 +48,6 @@ if TYPE_CHECKING:
     )
     from larva.core.spec import PersonaSpec
     from larva.core.validate import ValidationReport
-
-
-# -----------------------------------------------------------------------------
-# MCP Tool Definitions
-# -----------------------------------------------------------------------------
-# The MCP server exposes these tools. Each maps to a facade method.
-#
-# Tool signatures follow INTERFACES.md :: A. MCP Server Interface
-# -----------------------------------------------------------------------------
-
-# Canonical error map source is app facade; mapping proxy prevents local mutation.
-LARVA_ERROR_CODES = MappingProxyType(facade_module.ERROR_NUMERIC_CODES)
-
-
-class ValidationIssue(TypedDict):
-    """Error detail structure for validation failures."""
-
-    code: str
-    message: str
-    details: dict[str, Any]
-
-
-class ValidationReport(TypedDict):
-    """Response from larva.validate().
-
-    From INTERFACES.md :: larva.validate(spec) returns.
-
-    Example valid response:
-    {
-        "valid": True,
-        "errors": [],
-        "warnings": [
-            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
-        ]
-    }
-
-    Example invalid response:
-    {
-        "valid": False,
-        "errors": [
-            {
-                "code": "INVALID_SPEC_VERSION",
-                "message": "spec_version must be '0.1.0'",
-                "details": {"field": "spec_version", "value": "0.2.0"}
-            }
-        ],
-        "warnings": []
-    }
-    """
-
-    valid: bool
-    errors: list[ValidationIssue]
-    warnings: list[str]
-
-
-class MCPToolDefinition(TypedDict):
-    """MCP tool metadata for registration."""
-
-    name: str
-    description: str
-    input_schema: dict[str, Any]
-
-
-# Documented MCP tool set from INTERFACES.md :: A and README.md
-LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
-    {
-        "name": "larva.validate",
-        "description": "Validate a PersonaSpec JSON object against the canonical schema and semantic rules.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "spec": {
-                    "type": "object",
-                    "description": "PersonaSpec JSON to validate",
-                }
-            },
-            "required": ["spec"],
-        },
-    },
-    {
-        "name": "larva.assemble",
-        "description": "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Persona id"},
-                "prompts": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Prompt component names (concatenated in order)",
-                },
-                "toolsets": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Toolset component names",
-                },
-                "constraints": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Constraint component names",
-                },
-                "model": {"type": "string", "description": "Model component name"},
-                "overrides": {
-                    "type": "object",
-                    "description": "Field overrides (wins over components)",
-                },
-                "variables": {
-                    "type": "object",
-                    "description": "Variable substitution in prompt text",
-                },
-            },
-            "required": ["id"],
-        },
-    },
-    {
-        "name": "larva.resolve",
-        "description": "Resolve a pre-registered persona by id, optionally with runtime overrides.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Persona id in registry"},
-                "overrides": {
-                    "type": "object",
-                    "description": "Field overrides applied to the resolved spec",
-                },
-            },
-            "required": ["id"],
-        },
-    },
-    {
-        "name": "larva.register",
-        "description": "Register a PersonaSpec in the global registry.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "spec": {
-                    "type": "object",
-                    "description": "PersonaSpec JSON (must pass validation)",
-                }
-            },
-            "required": ["spec"],
-        },
-    },
-    {
-        "name": "larva.list",
-        "description": "List all registered personas.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        },
-    },
-]
 
 
 # -----------------------------------------------------------------------------
@@ -564,64 +420,6 @@ class MCPHandlers:
         # Error envelope fidelity: return error with code, numeric_code, message, details
         error = result.failure()
         return error
-
-
-# -----------------------------------------------------------------------------
-# MCP Transport Adapter Contract
-# -----------------------------------------------------------------------------
-# Defines the contract for the MCP server transport layer.
-# -----------------------------------------------------------------------------
-
-
-# Type alias for supported MCP transport modes
-MCPTransportMode = Literal["stdio", "sse"]
-"""Supported MCP transport modes: 'stdio' for Standard I/O, 'sse' for Server-Sent Events."""
-
-
-class MCPServerConfig(TypedDict, total=False):
-    """Configuration for MCP server startup."""
-
-    transport: MCPTransportMode
-    host: str | None  # For SSE mode
-    port: int | None  # For SSE mode
-
-
-class MCPServer(Protocol):
-    """Contract for MCP server runtime.
-
-    This protocol defines the interface for starting and stopping
-    the MCP server. Actual implementation handles:
-    - Transport layer (stdio/SSE)
-    - Protocol frame encoding/decoding
-    - Tool registration
-    - Request dispatch to handlers
-
-    Implementation note: This is contract-only for this step.
-    The actual server startup belongs to a later implementation step.
-    """
-
-    def __init__(self, handlers: MCPHandlers, config: MCPServerConfig) -> None:
-        """Initialize the MCP server.
-
-        Args:
-            handlers: Container with tool handlers.
-            config: Server configuration.
-        """
-        ...
-
-    def run(self) -> None:
-        """Start the MCP server and run until shutdown.
-
-        Raises:
-            NotImplementedError: Server startup is out of scope for contract.
-        """
-        raise NotImplementedError(
-            "MCP server runtime startup is not implemented in this contract step"
-        )
-
-    def shutdown(self) -> None:
-        """Gracefully stop the MCP server."""
-        ...
 
 
 # -----------------------------------------------------------------------------

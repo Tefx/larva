@@ -123,7 +123,9 @@ def _collect_scalar(
     return values[0]
 
 
-@pre(lambda toolsets: isinstance(toolsets, list))
+@pre(
+    lambda toolsets: isinstance(toolsets, list) and all(isinstance(item, dict) for item in toolsets)
+)
 @raises(AssemblyError)
 def _merge_tools(toolsets: list[ToolsetComponent]) -> dict[str, ToolPosture]:
     """Merge tools from multiple toolset components."""
@@ -181,6 +183,69 @@ def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
         ) from error
 
 
+@pre(lambda data: isinstance(data, dict))
+@post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
+def _collect_prompt_texts(data: AssemblyInput) -> list[str]:
+    prompts_obj = data.get("prompts", [])
+    prompts = prompts_obj if isinstance(prompts_obj, list) else []
+    variables_obj = data.get("variables", {})
+    variables = (
+        {
+            key: value
+            for key, value in variables_obj.items()
+            if isinstance(key, str) and isinstance(value, str)
+        }
+        if isinstance(variables_obj, dict)
+        else {}
+    )
+
+    prompt_texts: list[str] = []
+    for prompt_component in prompts:
+        if not isinstance(prompt_component, dict):
+            continue
+        text = prompt_component.get("text", "")
+        if not isinstance(text, str):
+            text = ""
+        if variables and "{" in text:
+            text = _inject_variables(text, variables)
+        prompt_texts.append(text)
+    return prompt_texts
+
+
+@pre(lambda data: isinstance(data, dict))
+@post(lambda result: isinstance(result, list) and all(isinstance(item, dict) for item in result))
+def _collect_constraint_sources(data: AssemblyInput) -> list[dict[str, Any]]:
+    constraints_obj = data.get("constraints", [])
+    constraints = constraints_obj if isinstance(constraints_obj, list) else []
+    constraint_sources: list[dict[str, Any]] = [
+        cast("dict[str, Any]", item) for item in constraints if isinstance(item, dict)
+    ]
+
+    model = data.get("model")
+    if isinstance(model, str):
+        constraint_sources.append({"model": model})
+    elif isinstance(model, dict):
+        constraint_sources.append(cast("dict[str, Any]", model))
+    return constraint_sources
+
+
+@pre(lambda result, overrides: isinstance(result, dict) and isinstance(overrides, dict))
+@post(lambda result: isinstance(result, dict))
+def _apply_overrides(result: PersonaSpec, overrides: dict[str, Any]) -> PersonaSpec:
+    updated = dict(result)
+    if "model_params" in updated and isinstance(overrides.get("model_params"), dict):
+        updated["model_params"] = _deep_merge(
+            cast("dict[str, Any]", updated["model_params"]),
+            cast("dict[str, Any]", overrides["model_params"]),
+        )
+        return cast("PersonaSpec", updated)
+
+    for key, value in overrides.items():
+        if key != "model_params":
+            updated[key] = value  # type: ignore[literal-required]
+    return cast("PersonaSpec", updated)
+
+
 @pre(lambda data: isinstance(data, dict) and "id" in data and not _has_scalar_conflicts(data))
 @post(lambda result: isinstance(result, dict) and "id" in result)
 @raises(AssemblyError)
@@ -219,39 +284,25 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
     persona_id = cast("str", data.get("id"))
     result: PersonaSpec = {"id": persona_id}
 
-    prompts = data.get("prompts", [])
-    prompt_texts: list[str] = []
-    for prompt_component in prompts:
-        text = prompt_component.get("text", "")
-        variables = data.get("variables", {})
-        if variables and "{" in text:
-            text = _inject_variables(text, variables)
-        prompt_texts.append(text)
+    prompt_texts = _collect_prompt_texts(data)
 
     if prompt_texts:
         result["prompt"] = "\n\n".join(prompt_texts)
 
-    constraints = data.get("constraints", [])
-    model_sources: list[dict[str, Any]] = []
     model = data.get("model")
-    if model:
-        if isinstance(model, str):
-            model_sources.append({"model": model})
-        elif isinstance(model, dict):
-            model_sources.append(cast("dict[str, Any]", model))
-
-    constraint_sources: list[dict[str, Any]] = []
-    for item in constraints:
-        if isinstance(item, dict):
-            constraint_sources.append(cast("dict[str, Any]", item))
-    constraint_sources.extend(model_sources)
+    constraint_sources = _collect_constraint_sources(data)
     scalar_fields = ["model", "can_spawn", "side_effect_policy", "compaction_prompt"]
     for field in scalar_fields:
         value = _collect_scalar(constraint_sources, field)
         if value is not None:
             result[field] = value  # type: ignore[literal-required]
 
-    toolsets = data.get("toolsets", [])
+    toolsets_obj = data.get("toolsets", [])
+    toolsets = (
+        [item for item in toolsets_obj if isinstance(item, dict)]
+        if isinstance(toolsets_obj, list)
+        else []
+    )
     if toolsets:
         result["tools"] = _merge_tools(toolsets)
 
@@ -264,15 +315,9 @@ def assemble_candidate(data: AssemblyInput) -> PersonaSpec:
     if model_component and "model_params" in model_component:
         result["model_params"] = dict(model_component["model_params"])
 
-    overrides = data.get("overrides", {})
-    if "model_params" in result and isinstance(overrides.get("model_params"), dict):
-        result["model_params"] = _deep_merge(
-            cast("dict[str, Any]", result["model_params"]),
-            cast("dict[str, Any]", overrides["model_params"]),
-        )
-    elif overrides:
-        for key, value in overrides.items():
-            if key != "model_params":
-                result[key] = value  # type: ignore[literal-required]
+    overrides_obj = data.get("overrides", {})
+    overrides = overrides_obj if isinstance(overrides_obj, dict) else {}
+    if overrides:
+        result = _apply_overrides(result, cast("dict[str, Any]", overrides))
 
     return result
