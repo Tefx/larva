@@ -7754,7 +7754,7 @@ phases:
     agent: gate-reviewer
   - id: shell_mcp.shell-mcp-fix-batch
     name: shell-mcp-fix-batch
-    status: pending
+    status: claimed
     description: 'Fix ALL issues from `shell_mcp.shell-mcp-verify` in one batched
       remediation step.
 
@@ -8005,6 +8005,8 @@ phases:
     depends_on:
     - shell_mcp.shell-mcp-verify
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-13T04:59:28.035147+00:00'
   - id: shell_mcp.shell-mcp-verify-retest
     name: shell-mcp-verify-retest
     status: pending
