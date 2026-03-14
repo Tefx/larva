@@ -308,6 +308,42 @@ Clear all registered personas from the registry.
 **Error:** `INVALID_CONFIRMATION_TOKEN` (112) if confirm token does not match.
 `REGISTRY_DELETE_FAILED` (111) if file system deletion fails.
 
+### larva.clone(source_id, new_id)
+
+Clone a registered persona to a new id.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `source_id` | string | yes | Persona id to clone from |
+| `new_id` | string | yes | New persona id for the clone |
+
+**Returns:**
+
+```json
+{
+  "spec_version": "0.1.0",
+  "id": "cloned-persona",
+  "description": "Original description",
+  "prompt": "Original prompt text",
+  "model": "claude-opus-4-20250514",
+  "model_params": {"temperature": 0.3},
+  "tools": {"filesystem": "read_write"},
+  "can_spawn": false,
+  "side_effect_policy": "approval_required",
+  "spec_digest": "sha256:..."
+}
+```
+
+All fields from the source persona are preserved except `id` and `spec_digest`:
+- `id` is replaced with `new_id`
+- `spec_digest` is recomputed for the cloned persona
+
+**Error:** `PERSONA_NOT_FOUND` (100) if source_id not in registry.
+`PERSONA_INVALID` (101) if new_id violates validation rules.
+`REGISTRY_WRITE_FAILED` (109) if save fails.
+
 ### App-Facade Seam-Proof Evidence Requirement
 
 When `larva.app.facade` orchestration changes (assemble/register/list/resolve), seam proof must be reproducible:
@@ -460,6 +496,24 @@ exactly with value `"CLEAR REGISTRY"` as a safety measure.
 **Routing:** Via facade to `RegistryStore.clear()`.
 
 Exit codes: 0 success, 1 domain error (INVALID_CONFIRMATION_TOKEN, REGISTRY_DELETE_FAILED), 2 input/critical failure.
+
+### `larva clone <source_id> <new_id> [--json]`
+
+Clone a registered persona to a new id.
+
+**Parameters:**
+- `source_id`: Persona id to clone from (must exist in registry)
+- `new_id`: New persona id for the clone (must be valid flat kebab-case)
+
+**Routing:** Via facade to `RegistryStore.get()` → copy with new id → validate → normalize → `RegistryStore.save()`.
+
+**Semantics:**
+- All fields from source persona are preserved except `id` and `spec_digest`
+- `id` is replaced with `new_id`
+- `spec_digest` is recomputed for the cloned persona
+- If `new_id` already exists in registry, overwrites (consistent with register)
+
+Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, PERSONA_INVALID, REGISTRY_WRITE_FAILED), 2 input/critical failure.
 
 ---
 
@@ -766,6 +820,36 @@ spec = update("my-persona", {"model_params": {"temperature": 0.7}})
 
 # Dot notation for nested updates
 spec = update("my-persona", {"model_params.temperature": 0.5})
+```
+
+### clone(source_id, new_id)
+
+Clone a registered persona to a new id.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `source_id` | str | Unique identifier of the source persona to clone |
+| `new_id` | str | Unique identifier for the new cloned persona |
+
+**Returns:** `PersonaSpec` — Cloned persona specification with new id and recomputed spec_digest.
+
+**Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if source persona does not exist, `PERSONA_INVALID` (101) if new_id violates validation rules, `REGISTRY_WRITE_FAILED` (109) on save failure.
+
+**Semantics:**
+- All fields from source persona are preserved except `id` and `spec_digest`
+- `id` is replaced with `new_id`
+- `spec_digest` is recomputed for the cloned persona
+- If `new_id` already exists in registry, overwrites (consistent with register)
+
+```python
+from larva.shell.python_api import clone
+
+# Clone a persona
+new_spec = clone("code-reviewer", "code-reviewer-v2")
+assert new_spec["id"] == "code-reviewer-v2"
+assert new_spec["model"] == original_spec["model"]  # All other fields preserved
 ```
 
 ### delete(persona_id)
