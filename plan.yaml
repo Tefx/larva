@@ -18842,3 +18842,41 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-clear
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
+    name: feature_registry_ops.tests-facade-delete-clear
+    status: pending
+    description: "Add facade-local acceptance tests for delete/clear mapping behavior\
+      \ after the facade contract is pinned and before facade implementation begins.\n\
+      \nspec_refs:\n- feature_registry_ops.feature-registry-ops-facade-delete-clear-contract\n\
+      - feature_registry_ops.feature-registry-ops-registry-contract\n- ARCHITECTURE.md\
+      \ > Module: `larva.app.facade`\n\ntouch_paths:\n- tests/app/test_facade.py\n\
+      - src/larva/app/facade.py\n- src/larva/shell/registry.py\n\nharness_refs:\n\
+      - tests/app/test_facade.py::_facade\n- tests/app/test_facade.py::InMemoryRegistryStore\n\
+      \nstep_type: test\n\nTasks:\n1. Extend the in-memory facade test double with\
+      \ contract-only delete/clear result injection so tests can pin facade behavior\
+      \ before implementation.\n2. Add pinned acceptance tests in `tests/app/test_facade.py`\
+      \ for:\n   - `test_delete_returns_deleted_persona_payload`\n   - `test_delete_maps_registry_delete_failure_to_app_error_details`\n\
+      \   - `test_clear_returns_cleared_registry_payload_with_count`\n   - `test_clear_maps_wrong_confirm_to_error_envelope_without_success_payload`\n\
+      3. Success assertions must pin exact payload semantics: delete returns only\
+      \ `{\"id\": <persona_id>, \"deleted\": True}`; clear returns only `{\"cleared\"\
+      : True, \"count\": <int>}` where count equals the registry-reported deleted\
+      \ count.\n4. Failure assertions must pin highest-risk mapping semantics: facade\
+      \ keeps registry `code`/`message`, `numeric_code` resolves through `ERROR_NUMERIC_CODES`,\
+      \ and registry extras such as `persona_id`, `confirm`, `failed_ids`, or `path`\
+      \ live under `details`.\n5. Keep this step test-only; facade implementation\
+      \ bodies and transport adapters remain out of scope.\n\nverification: |\n  -\
+      \ `tests/app/test_facade.py` contains the four pinned facade acceptance tests\
+      \ before implementation claim\n  - Success tests pin `count`/`deleted` payload\
+      \ semantics exactly\n  - Failure tests pin wrong-confirm and delete-failure\
+      \ error-envelope mapping exactly\n  - Tests fail or xfail against missing facade\
+      \ implementation until the implementation step lands\n"
+    verification: '- Facade-local delete/clear tests exist before implementation
+
+      - Main path payload semantics are pinned exactly
+
+      - Wrong-confirm and delete-failure envelope mapping is pinned exactly
+
+      - Step remains test-only with no facade business logic'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
+    agent: python-executor
