@@ -29,6 +29,8 @@ CommandName = Literal[
     "assemble",
     "register",
     "resolve",
+    "delete",
+    "clear",
     "list",
     "component list",
     "component show",
@@ -264,6 +266,14 @@ def _build_parser() -> _CliParser:
     component_show_parser = component_subparsers.add_parser("show")
     component_show_parser.add_argument("ref")
     component_show_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    delete_parser = subparsers.add_parser("delete")
+    delete_parser.add_argument("id")
+    delete_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    clear_parser = subparsers.add_parser("clear")
+    clear_parser.add_argument("--confirm", required=True)
+    clear_parser.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
 

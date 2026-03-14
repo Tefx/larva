@@ -236,7 +236,11 @@ class InMemoryRegistryStore:
     )
     list_result: Result[list[PersonaSpec], Any] = field(default_factory=lambda: Success([]))
     save_result: Result[None, Any] = field(default_factory=lambda: Success(None))
+    delete_result: Result[None, Any] = field(default_factory=lambda: Success(None))
+    clear_result: Result[int, Any] = field(default_factory=lambda: Success(0))
     save_inputs: list[PersonaSpec] = field(default_factory=list)
+    last_delete_id: str | None = None
+    last_clear_confirm: str | None = None
 
     def save(self, spec: PersonaSpec) -> Result[None, Any]:
         self.save_inputs.append(dict(spec))
@@ -247,6 +251,14 @@ class InMemoryRegistryStore:
 
     def list(self) -> Result[list[PersonaSpec], Any]:
         return self.list_result
+
+    def delete(self, persona_id: str) -> Result[None, Any]:
+        self.last_delete_id = persona_id
+        return self.delete_result
+
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[int, Any]:
+        self.last_clear_confirm = confirm
+        return self.clear_result
 
 
 def _make_facade(
@@ -707,6 +719,219 @@ class TestListCommand:
 
 
 # ============================================================================
+# Delete Command Tests
+# ============================================================================
+
+
+class TestDeleteCommand:
+    """Tests for the delete command handler."""
+
+    def test_delete_success_text_mode_returns_exit_ok(self) -> None:
+        """Delete existing persona returns exit code 0 in text mode."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import delete_command
+
+        result = delete_command("test-persona", as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert registry.last_delete_id == "test-persona"
+
+    def test_delete_success_json_mode_returns_json_payload(self) -> None:
+        """Delete existing persona returns JSON payload in JSON mode."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import delete_command
+
+        result = delete_command("test-persona", as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert cli_result["json"]["data"]["deleted"] is True
+        assert cli_result["json"]["data"]["id"] == "test-persona"
+
+    def test_delete_not_found_returns_exit_error(self) -> None:
+        """Delete non-existent persona returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import delete_command
+
+        result = delete_command("missing", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_delete_not_found_json_mode_returns_error_envelope(self) -> None:
+        """Delete non-existent persona returns JSON error envelope in JSON mode."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import delete_command
+
+        result = delete_command("missing", as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+
+    def test_delete_invalid_id_returns_exit_error(self) -> None:
+        """Delete with invalid persona id returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "INVALID_PERSONA_ID",
+                    "message": "invalid persona id 'Bad-Id': expected flat kebab-case",
+                    "persona_id": "Bad-Id",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import delete_command
+
+        result = delete_command("Bad-Id", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+
+# ============================================================================
+# Clear Command Tests
+# ============================================================================
+
+
+class TestClearCommand:
+    """Tests for the clear command handler."""
+
+    def test_clear_success_text_mode_returns_exit_ok(self) -> None:
+        """Clear with correct confirmation returns exit code 0 in text mode."""
+        registry = InMemoryRegistryStore(clear_result=Success(3))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("CLEAR REGISTRY", as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert registry.last_clear_confirm == "CLEAR REGISTRY"
+
+    def test_clear_success_json_mode_returns_json_payload(self) -> None:
+        """Clear with correct confirmation returns JSON payload in JSON mode."""
+        registry = InMemoryRegistryStore(clear_result=Success(5))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("CLEAR REGISTRY", as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert cli_result["json"]["data"]["cleared"] is True
+        assert cli_result["json"]["data"]["count"] == 5
+
+    def test_clear_wrong_confirm_returns_exit_error(self) -> None:
+        """Clear with wrong confirmation token returns exit code 1."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("wrong token", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "CLEAR REGISTRY" in failure.get("stderr", "")
+
+    def test_clear_wrong_confirm_json_mode_returns_error_envelope(self) -> None:
+        """Clear with wrong confirmation token returns JSON error envelope."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("wrong token", as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "INVALID_CONFIRMATION_TOKEN"
+
+    def test_clear_empty_registry_returns_exit_ok_with_count_zero(self) -> None:
+        """Clear with empty registry returns success with count 0."""
+        registry = InMemoryRegistryStore(clear_result=Success(0))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("CLEAR REGISTRY", as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert cli_result["json"]["data"]["count"] == 0
+
+    def test_clear_registry_failure_returns_exit_error(self) -> None:
+        """Clear with registry failure returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            clear_result=Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": "failed to delete one or more specs",
+                    "operation": "clear",
+                    "persona_id": None,
+                    "path": "/tmp/index.json",
+                    "failed_spec_paths": [],
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clear_command
+
+        result = clear_command("CLEAR REGISTRY", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+
+# ============================================================================
 # JSON/Text Separation Regression Tests
 # ============================================================================
 
@@ -913,13 +1138,23 @@ class RecordingFacade:
     list_result: Result[list[PersonaSummary], LarvaError] = field(
         default_factory=lambda: Success([])
     )
+    delete_result: Result[dict[str, object], LarvaError] = field(
+        default_factory=lambda: Success({"id": "deleted", "deleted": True})
+    )
+    clear_result: Result[dict[str, object], LarvaError] = field(
+        default_factory=lambda: Success({"cleared": True, "count": 0})
+    )
     validate_calls: int = 0
     assemble_calls: int = 0
     register_calls: int = 0
     resolve_calls: int = 0
     list_calls: int = 0
+    delete_calls: int = 0
+    clear_calls: int = 0
     last_resolve_id: str | None = None
     last_resolve_overrides: dict[str, object] | None = None
+    last_delete_id: str | None = None
+    last_clear_confirm: str | None = None
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         del spec
@@ -949,6 +1184,19 @@ class RecordingFacade:
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
         self.list_calls += 1
         return self.list_result
+
+    def delete(self, persona_id: str) -> Result[dict[str, object], LarvaError]:
+        self.delete_calls += 1
+        self.last_delete_id = persona_id
+        if isinstance(self.delete_result, Success):
+            # Return the persona_id in the result for success case
+            return Success({"id": persona_id, "deleted": True})
+        return self.delete_result
+
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[dict[str, object], LarvaError]:
+        self.clear_calls += 1
+        self.last_clear_confirm = confirm
+        return self.clear_result
 
 
 class TestRunCli:
@@ -1227,6 +1475,107 @@ class TestRunCli:
         payload = json.loads(stdout.getvalue())
         assert payload["error"]["code"] == "INTERNAL"
         assert payload["error"]["numeric_code"] == 10
+        assert stderr.getvalue() == ""
+
+    def test_delete_success_routes_to_facade_delete(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["delete", "test-persona", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["deleted"] is True
+        assert payload["data"]["id"] == "test-persona"
+        assert stderr.getvalue() == ""
+        assert facade.delete_calls == 1
+        assert facade.last_delete_id == "test-persona"
+
+    def test_delete_not_found_returns_exit_error(self) -> None:
+        facade = RecordingFacade(
+            delete_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "numeric_code": 100,
+                    "details": {"persona_id": "missing"},
+                }
+            )
+        )
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["delete", "missing", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "PERSONA_NOT_FOUND"
+        assert stderr.getvalue() == ""
+
+    def test_clear_success_with_confirmation_routes_to_facade_clear(self) -> None:
+        facade = RecordingFacade(clear_result=Success({"cleared": True, "count": 3}))
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["clear", "--confirm", "CLEAR REGISTRY", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["cleared"] is True
+        assert payload["data"]["count"] == 3
+        assert stderr.getvalue() == ""
+        assert facade.clear_calls == 1
+        assert facade.last_clear_confirm == "CLEAR REGISTRY"
+
+    def test_clear_wrong_confirm_returns_exit_error(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["clear", "--confirm", "wrong token", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INVALID_CONFIRMATION_TOKEN"
+        assert stderr.getvalue() == ""
+        assert facade.clear_calls == 0
+
+    def test_clear_missing_confirm_returns_parse_error(self) -> None:
+        facade = RecordingFacade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["clear", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
         assert stderr.getvalue() == ""
 
 

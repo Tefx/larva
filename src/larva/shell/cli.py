@@ -8,9 +8,15 @@ from typing import IO, Callable, Sequence, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import AssembleRequest, LarvaFacade
+from larva.app.facade import (
+    AssembleRequest,
+    ClearedRegistry,
+    DeletedPersona,
+    LarvaFacade,
+)
 from larva.core.spec import PersonaSpec
 from larva.shell.components import ComponentStore, FilesystemComponentStore
+from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
@@ -125,6 +131,20 @@ def _dispatch(
 
     if command == "list":
         return list_command(as_json=as_json, facade=facade)
+
+    if command == "delete":
+        return delete_command(
+            cast("str", args.id),
+            as_json=as_json,
+            facade=facade,
+        )
+
+    if command == "clear":
+        return clear_command(
+            confirm=cast("str", args.confirm),
+            as_json=as_json,
+            facade=facade,
+        )
 
     if command == "component":
         return _dispatch_component(args, as_json=as_json, component_store=component_store)
@@ -325,6 +345,68 @@ def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResu
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"List failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+# @shell_complexity: command-level envelope mapping requires explicit text/json branches
+def delete_command(
+    persona_id: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    result = facade.delete(persona_id)
+    if isinstance(result, Success):
+        payload: DeletedPersona = result.unwrap()
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("delete", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope = _map_facade_error(result.failure())
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Delete failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+# @shell_complexity: confirmation validation + envelope mapping requires explicit branches
+def clear_command(
+    confirm: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    if confirm != CLEAR_CONFIRMATION_TOKEN:
+        error_envelope: JsonErrorEnvelope = {
+            "code": "INVALID_CONFIRMATION_TOKEN",
+            "numeric_code": 112,  # INVALID_CONFIRMATION_TOKEN numeric code
+            "message": "clear requires exact confirmation token 'CLEAR REGISTRY'",
+            "details": {},
+        }
+        failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
+        return Failure(failure)
+
+    result = facade.clear(confirm)
+    if isinstance(result, Success):
+        payload: ClearedRegistry = result.unwrap()
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("clear", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope = _map_facade_error(result.failure())
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
