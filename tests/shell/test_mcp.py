@@ -89,6 +89,7 @@ class InMemoryComponentStore:
     models_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
     fail_on: str | None = None
     fail_error: LarvaError | None = None
+    list_fail: bool = False
 
     def load_prompt(self, name: str) -> Result[dict[str, str], LarvaError]:
         if self.fail_on == "prompt":
@@ -109,6 +110,19 @@ class InMemoryComponentStore:
         if self.fail_on == "model":
             return Failure(cast("LarvaError", self.fail_error))
         return Success(self.models_by_name.get(name, {"model": "gpt-4o-mini"}))
+
+    def list_components(self) -> Result[dict[str, list[str]], LarvaError]:
+        """List all available components by type."""
+        if self.list_fail and self.fail_error:
+            return Failure(cast("LarvaError", self.fail_error))
+        return Success(
+            {
+                "prompts": sorted(self.prompts_by_name.keys()),
+                "toolsets": sorted(self.toolsets_by_name.keys()),
+                "constraints": sorted(self.constraints_by_name.keys()),
+                "models": sorted(self.models_by_name.keys()),
+            }
+        )
 
 
 @dataclass
@@ -271,6 +285,35 @@ class TestMCPToolDefinitions:
             "required" not in list_tool["input_schema"]
             or list_tool["input_schema"]["required"] == []
         )
+
+    def test_component_list_tool_is_defined(self) -> None:
+        """Verify larva.component_list is defined in LARVA_MCP_TOOLS."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva.component_list" in tool_names
+
+        component_list_tool = next(
+            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.component_list"
+        )
+        # component_list takes no required params
+        assert component_list_tool["input_schema"]["properties"] == {}
+        assert (
+            "required" not in component_list_tool["input_schema"]
+            or component_list_tool["input_schema"]["required"] == []
+        )
+
+    def test_component_show_tool_is_defined(self) -> None:
+        """Verify larva.component_show is defined in LARVA_MCP_TOOLS."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva.component_show" in tool_names
+
+        component_show_tool = next(
+            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.component_show"
+        )
+        props = component_show_tool["input_schema"]["properties"]
+        assert "component_type" in props
+        assert "name" in props
+        assert "component_type" in component_show_tool["input_schema"]["required"]
+        assert "name" in component_show_tool["input_schema"]["required"]
 
 
 # -----------------------------------------------------------------------------
@@ -1181,3 +1224,258 @@ class TestMCPHandlersImplementation:
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["limit"]
+
+
+# -----------------------------------------------------------------------------
+# MCP Component Tools: Acceptance Tests (Implementation Pending)
+# -----------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(strict=True, reason="pending feature_registry_ops.mcp-components")
+class TestMCPComponentListAcceptance:
+    """Acceptance tests for larva.component_list MCP tool.
+
+    These tests define the contract for component_list before implementation.
+    Tests are marked xfail until MCPHandlers.handle_component_list is implemented.
+    """
+
+    def test_handle_component_list_accepts_empty_params(self) -> None:
+        """Test handle_component_list accepts empty params {}."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_list({})
+
+        # Success returns dict mapping component type keys to name lists
+        assert isinstance(result, dict)
+        # All four component type keys should be present
+        for key in ["prompts", "toolsets", "constraints", "models"]:
+            assert key in result
+            assert isinstance(result[key], list)
+
+    def test_handle_component_list_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_component_list rejects unknown params with INTERNAL error."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_list({"unexpected": "param"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_list",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["unexpected"]
+
+    def test_handle_component_list_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_component_list rejects non-object params."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_list([])
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_list",
+            reason="params must be an object",
+        )
+
+
+@pytest.mark.xfail(strict=True, reason="pending feature_registry_ops.mcp-components")
+class TestMCPComponentShowAcceptance:
+    """Acceptance tests for larva.component_show MCP tool.
+
+    These tests define the contract for component_show before implementation.
+    Tests are marked xfail until MCPHandlers.handle_component_show is implemented.
+    """
+
+    def test_handle_component_show_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects unknown params with INTERNAL error."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show(
+            {"component_type": "prompts", "name": "test", "extra": "param"}
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_component_show_non_string_type_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects non-string component_type."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": 123, "name": "test"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="parameter 'component_type' must be string",
+        )
+
+    def test_handle_component_show_non_string_name_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects non-string name."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "prompts", "name": ["test"]})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="parameter 'name' must be string",
+        )
+
+    def test_handle_component_show_missing_component_type_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects missing component_type."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"name": "test"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="missing required parameter 'component_type'",
+        )
+
+    def test_handle_component_show_missing_name_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects missing name."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "prompts"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="missing required parameter 'name'",
+        )
+
+    def test_handle_component_show_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_component_show rejects non-object params."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show("not-an-object")
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.component_show",
+            reason="params must be an object",
+        )
+
+    def test_handle_component_show_unsupported_type_returns_component_not_found(self) -> None:
+        """Test handle_component_show returns COMPONENT_NOT_FOUND for unsupported type."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "invalid_type", "name": "test"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+        assert result["numeric_code"] == 105
+
+    def test_handle_component_show_missing_component_returns_component_not_found(self) -> None:
+        """Test handle_component_show returns COMPONENT_NOT_FOUND for missing component."""
+        components = InMemoryComponentStore()
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show(
+            {"component_type": "prompts", "name": "nonexistent"}
+        )
+
+        assert isinstance(result, dict)
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+        assert result["numeric_code"] == 105
+
+    def test_handle_component_show_success_pins_loader_routing(self) -> None:
+        """Test handle_component_show success path routes to correct loader.
+
+        This test pins that at least one valid component type (prompts) routes
+        to the load_prompt loader and returns the component content.
+        """
+        components = InMemoryComponentStore(
+            prompts_by_name={"test-prompt": {"text": "You are a helpful assistant."}}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show(
+            {"component_type": "prompts", "name": "test-prompt"}
+        )
+
+        # Success returns the component content dict
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert result["text"] == "You are a helpful assistant."
+
+    def test_handle_component_show_success_for_toolset(self) -> None:
+        """Test handle_component_show success path for toolsets."""
+        components = InMemoryComponentStore(
+            toolsets_by_name={"readonly": {"tools": {"shell": "read_only"}}}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "toolsets", "name": "readonly"})
+
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert "tools" in result
+
+    def test_handle_component_show_success_for_constraint(self) -> None:
+        """Test handle_component_show success path for constraints."""
+        components = InMemoryComponentStore(
+            constraints_by_name={"safe-default": {"side_effect_policy": "read_only"}}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show(
+            {"component_type": "constraints", "name": "safe-default"}
+        )
+
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert "side_effect_policy" in result
+
+    def test_handle_component_show_success_for_model(self) -> None:
+        """Test handle_component_show success path for models."""
+        components = InMemoryComponentStore(
+            models_by_name={
+                "default": {"model": "gpt-4o-mini", "model_params": {"temperature": 0.1}}
+            }
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "models", "name": "default"})
+
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert "model" in result
