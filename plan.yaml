@@ -18216,7 +18216,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-docs-interfaces
     name: feature_registry_ops.docs-interfaces
-    status: pending
+    status: claimed
     description: "Update INTERFACES.md with all new operations and error code 111.\n\
       \nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\nAdd entries for:\n\
       - `larva.component_list()` — parameters: none, returns: `{\"prompts\": [...],\
@@ -18279,6 +18279,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-python-api-all
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T12:26:01.213361+00:00'
   - id: feature_registry_ops.feature-registry-ops-tests-registry
     name: feature_registry_ops.tests-registry
     status: done
