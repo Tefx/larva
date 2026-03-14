@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
@@ -27,8 +28,6 @@ from larva.shell.registry import (
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from larva.core.spec import PersonaSpec
 
 
@@ -341,3 +340,136 @@ class TestFileSystemRegistryStoreContract:
         persisted_index = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
         assert persisted_spec == initial
         assert persisted_index == {"rollback-agent": "sha256:original"}
+
+    # ========== DELETE CONTRACT TESTS (xfail until implementation) ==========
+
+    @pytest.mark.xfail(reason="delete implementation not yet complete")
+    def test_delete_success(self, registry_root: Path) -> None:
+        """save a persona, then delete it; confirm spec file gone and index entry removed."""
+        store = FileSystemRegistryStore(root=registry_root)
+        spec = _canonical_spec("delete-target", "sha256:delete-target")
+
+        save_result = store.save(spec)
+        assert save_result == Success(None)
+
+        spec_path = registry_root / "delete-target.json"
+        index_path = registry_root / INDEX_FILENAME
+
+        assert spec_path.exists()
+        assert spec_path.read_text(encoding="utf-8")
+        assert index_path.exists()
+        index_before = json.loads(index_path.read_text(encoding="utf-8"))
+        assert index_before == {"delete-target": "sha256:delete-target"}
+
+        delete_result = store.delete("delete-target")
+
+        assert delete_result == Success(None)
+        assert not spec_path.exists()
+
+        index_after = json.loads(index_path.read_text(encoding="utf-8"))
+        assert "delete-target" not in index_after
+
+    @pytest.mark.xfail(reason="delete implementation not yet complete")
+    def test_delete_not_found(self, registry_root: Path) -> None:
+        """delete non-existent id; confirm PERSONA_NOT_FOUND failure."""
+        _write_json(registry_root / INDEX_FILENAME, {})
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.delete("missing-persona")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["persona_id"] == "missing-persona"
+
+    @pytest.mark.xfail(reason="delete implementation not yet complete")
+    def test_delete_invalid_id(self, registry_root: Path) -> None:
+        """invalid id returns INVALID_PERSONA_ID and performs no filesystem access."""
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.delete("Invalid_Persona")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "INVALID_PERSONA_ID"
+        assert error["persona_id"] == "Invalid_Persona"
+
+        assert not (registry_root / "Invalid_Persona.json").exists()
+        assert not (registry_root / INDEX_FILENAME).exists()
+
+    @pytest.mark.xfail(reason="delete implementation not yet complete")
+    def test_delete_index_write_failure(
+        self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_write_json_atomic fails during index write; spec file remains untouched and index remains readable."""
+        spec = _canonical_spec("delete-index-fail", "sha256:delete-index-fail")
+        _write_json(registry_root / "delete-index-fail.json", spec)
+        _write_json(
+            registry_root / INDEX_FILENAME, {"delete-index-fail": "sha256:delete-index-fail"}
+        )
+
+        store = FileSystemRegistryStore(root=registry_root)
+
+        original_write_json_atomic = store._write_json_atomic
+
+        def fail_index_write(
+            path: Path,
+            payload: object,
+            kind: Literal["spec", "index"],
+            persona_id: str,
+        ) -> object:
+            if kind == "index":
+                return Failure(
+                    {
+                        "code": "REGISTRY_UPDATE_FAILED",
+                        "message": "simulated index write failure during delete",
+                        "persona_id": persona_id,
+                        "path": str(path),
+                    }
+                )
+            return original_write_json_atomic(path, payload, kind, persona_id)
+
+        monkeypatch.setattr(store, "_write_json_atomic", fail_index_write)
+
+        result = store.delete("delete-index-fail")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_UPDATE_FAILED"
+
+        assert (registry_root / "delete-index-fail.json").exists()
+
+        index_data = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
+        assert index_data == {"delete-index-fail": "sha256:delete-index-fail"}
+
+    @pytest.mark.xfail(reason="delete implementation not yet complete")
+    def test_delete_spec_unlink_failure(
+        self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """spec_path.unlink raises OSError; rollback restores the prior index entry and reports REGISTRY_DELETE_FAILED."""
+        spec = _canonical_spec("delete-unlink-fail", "sha256:delete-unlink-fail")
+        _write_json(registry_root / "delete-unlink-fail.json", spec)
+        _write_json(
+            registry_root / INDEX_FILENAME, {"delete-unlink-fail": "sha256:delete-unlink-fail"}
+        )
+
+        store = FileSystemRegistryStore(root=registry_root)
+
+        def fail_unlink_with_oserror(self: Path) -> None:
+            raise OSError("simulated unlink failure")
+
+        monkeypatch.setattr(Path, "unlink", fail_unlink_with_oserror)
+
+        result = store.delete("delete-unlink-fail")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_DELETE_FAILED"
+        assert error["operation"] == "delete"
+        assert error["persona_id"] == "delete-unlink-fail"
+        assert any("delete-unlink-fail.json" in p for p in error["failed_spec_paths"])
+
+        assert (registry_root / "delete-unlink-fail.json").exists()
+
+        index_data = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
+        assert index_data == {"delete-unlink-fail": "sha256:delete-unlink-fail"}
