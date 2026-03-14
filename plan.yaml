@@ -17804,7 +17804,7 @@ phases:
       - no temporary xfail markers remain for component tests.'
   - id: feature_registry_ops.feature-registry-ops-mcp-delete-clear
     name: feature_registry_ops.mcp-delete-clear
-    status: pending
+    status: claimed
     description: "Add delete and clear MCP handlers.\n\nFiles: src/larva/shell/mcp_contract.py,\
       \ src/larva/shell/mcp.py\n\n### mcp_contract.py changes\n\nAdd two new tool\
       \ definitions to `LARVA_MCP_TOOLS` list (after existing tools):\n\n```python\n\
@@ -17895,6 +17895,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
     - feature_registry_ops.feature-registry-ops-mcp-components
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T12:08:22.078828+00:00'
   - id: feature_registry_ops.feature-registry-ops-cli-delete-clear
     name: feature_registry_ops.cli-delete-clear
     status: claimed
