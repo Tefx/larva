@@ -563,40 +563,54 @@ class DefaultLarvaFacade(LarvaFacade):
     def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
         """Export all persona specs from the registry.
 
-        Contract acceptance stub:
-        - Returns canonical registry data without renormalize/revalidate
-        - Registry traversal delegated to `self._registry.list()` + `get(id)`
-        - Fail-fast on first registry error
+        Implementation follows `list()` method pattern:
+        - Call `self._registry.list()` to get all persona specs
+        - Pass-through registry errors
+        - Return full `list[PersonaSpec]` directly (no conversion to summaries)
+        - Empty registry -> Success([])
 
-        Note: Implementation pending in downstream step.
+        Note: Returned specs are canonical registry data. No revalidation or
+        renormalization is performed.
         """
-        # CONTRACT: This is an acceptance-only stub.
-        # Implementation must:
-        # 1. Call self._registry.list() to get all persona ids
-        # 2. For each id, call self._registry.get(id)
-        # 3. Return list of canonical PersonaSpec (no revalidation/renormalization)
-        # 4. Fail-fast on first registry error
-        raise NotImplementedError(
-            "export_all contract is defined; implementation pending in downstream step"
-        )
+        list_result = self._registry.list()
+        if isinstance(list_result, Failure):
+            error = list_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+        return Success(list_result.unwrap())
 
     def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
         """Export specific persona specs by id from the registry.
 
-        Contract acceptance stub:
+        Implementation follows `resolve()` error mapping pattern:
         - Empty `ids` -> return Success([]) immediately (no registry calls)
-        - Non-empty `ids` -> fail-fast on first PERSONA_NOT_FOUND or registry error
-        - Returns canonical registry data without renormalize/revalidate
-
-        Note: Implementation pending in downstream step.
+        - For each id in ids, call `self._registry.get(id)`
+        - Fail-fast on first error (PERSONA_NOT_FOUND or registry failure)
+        - Return list of canonical PersonaSpec in same order as input ids
+        - No revalidation/renormalization on returned specs
         """
-        # CONTRACT: This is an acceptance-only stub.
-        # Implementation must:
-        # 1. If ids is empty, return Success([]) immediately
-        # 2. For each id in ids, call self._registry.get(id)
-        # 3. Fail-fast on first error (PERSONA_NOT_FOUND or registry failure)
-        # 4. Return list of canonical PersonaSpec in same order as input ids
-        # 5. No revalidation/renormalization on returned specs
-        raise NotImplementedError(
-            "export_ids contract is defined; implementation pending in downstream step"
-        )
+        if not ids:
+            return Success([])
+
+        specs: list[PersonaSpec] = []
+        for persona_id in ids:
+            get_result = self._registry.get(persona_id)
+            if isinstance(get_result, Failure):
+                error = get_result.failure()
+                details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+                details["id"] = persona_id
+                return Failure(
+                    self._error(
+                        code=error["code"],
+                        message=error["message"],
+                        details=cast("dict[str, object]", details),
+                    )
+                )
+            specs.append(get_result.unwrap())
+        return Success(specs)
