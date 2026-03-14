@@ -20974,7 +20974,7 @@ phases:
       runnable merge logic is deferred to downstream implementation step.'
   - id: feature_update.feature-update-gate-fix-shell-complexity-batch
     name: feature_update.gate-fix-shell-complexity-batch
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by `feature_update.feature-update-gate` for
       `shell_complexity_debt`.
 
@@ -21162,6 +21162,49 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T23:00:17.267984+00:00'
+    done_at: '2026-03-14T23:09:15.770256+00:00'
+    evidence: '## Batched Fix Evidence
+
+
+      Artifact:
+
+      - PR: 4979da4 (squash merge commit from worktree commit 25c135c)
+
+
+      Command family locked:
+
+      - Run: uv run invar guard --all -> passed (errors=0)
+
+
+      Files changed:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_helpers.py
+
+      - src/larva/shell/mcp_export.py
+
+
+      Sibling-search / blocker closure:
+
+      - `_dispatch` in cli.py decomposed into table-driven helpers.
+
+      - `validate_command` and `assemble_command` simplified via helper extraction.
+
+      - `_read_spec_json` split into focused read/validate helpers.
+
+      - `handle_export` in mcp_export.py decomposed to reduce branch density while
+      preserving behavior.
+
+
+      Root cause vs symptom:
+
+      - Root cause: branch-heavy orchestration concentrated in single shell functions.
+
+      - Symptom: shell_complexity_debt blockers in gate guard.
+
+      - Fix: structural decomposition with behavior parity; blockers no longer appear
+      as guard errors.'
   - id: feature_update.feature-update-gate-retest-shell-complexity-batch
     name: feature_update.gate-retest-shell-complexity-batch
     status: pending
