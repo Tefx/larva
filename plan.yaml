@@ -18171,3 +18171,64 @@ phases:
       - Contract step remains acceptance-only: any added class methods are stubs /
       NotImplemented, not implementation'
     agent: python-senior
+  - id: feature_registry_ops.feature-registry-ops-tests-clear
+    name: feature_registry_ops.tests-clear
+    status: pending
+    description: 'Add registry-layer clear tests after the shared contract is pinned
+      and before clear implementation begins.
+
+
+      spec_refs:
+
+      - feature_registry_ops.feature-registry-ops-registry-contract
+
+      - ARCHITECTURE.md > Module: `larva.shell.registry`
+
+
+      touch_paths:
+
+      - tests/shell/test_registry.py
+
+      - src/larva/shell/registry.py
+
+
+      step_type: test
+
+
+      Tests for `FileSystemRegistryStore.clear`:
+
+      1. `test_clear_wrong_confirm` - wrong confirm string returns Failure and does
+      not touch filesystem
+
+      2. `test_clear_empty_registry` - correct confirm on empty registry returns `Success(0)`
+
+      3. `test_clear_success` - clear 2-3 saved personas; all spec files gone; index
+      gone; returned count matches prior registry size
+
+      4. `test_clear_partial_failure` - one spec unlink raises `OSError`; failure
+      reports failed ids while index removal still occurs
+
+      5. `test_clear_returns_correct_count` - count equals registry size from pre-clear
+      index snapshot
+
+
+      Fixture guidance:
+
+      - follow existing `tmp_path` store pattern in `tests/shell/test_registry.py`
+
+      - do not touch `DEFAULT_REGISTRY_ROOT`
+
+      - pin index/spec consistency expectations explicitly in assertions'
+    verification: '- All five clear tests exist and fail/pass for the intended contract
+      surface before/with implementation
+
+      - Wrong-confirm case proves no filesystem mutation
+
+      - Partial-failure case proves index removal semantics and failed-id reporting
+      are asserted explicitly
+
+      - No test touches `DEFAULT_REGISTRY_ROOT`'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-contract
+    - feature_registry_ops.feature-registry-ops-registry-delete
+    agent: python-executor
