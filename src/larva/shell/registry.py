@@ -335,9 +335,58 @@ class FileSystemRegistryStore(RegistryStore):
         return Success(None)
 
     def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[int, RegistryError]:
-        """Contract stub: clear behavior is acceptance-only in this step."""
+        if confirm != CLEAR_CONFIRMATION_TOKEN:
+            return Failure(
+                {
+                    "code": "INVALID_CONFIRMATION_TOKEN",
+                    "message": "clear requires exact confirmation token 'CLEAR REGISTRY'",
+                }
+            )
 
-        raise NotImplementedError("clear contract accepted; implementation is out of scope")
+        index_result = self._read_index()
+        if isinstance(index_result, Failure):
+            return index_result
+
+        index = index_result.unwrap()
+        clear_count = len(index)
+        index_path = self._index_path()
+
+        if index_path.exists():
+            try:
+                index_path.unlink()
+            except OSError as exc:
+                return Failure(
+                    {
+                        "code": "REGISTRY_DELETE_FAILED",
+                        "message": f"failed to remove registry index during clear: {exc}",
+                        "operation": "clear",
+                        "persona_id": None,
+                        "path": str(index_path),
+                        "failed_spec_paths": [],
+                    }
+                )
+
+        failed_spec_paths: list[str] = []
+        for persona_id in sorted(index):
+            spec_path = self._spec_path(persona_id)
+            try:
+                spec_path.unlink(missing_ok=True)
+            except OSError as exc:
+                failed_spec_paths.append(f"{spec_path}: {exc}")
+
+        if failed_spec_paths:
+            return Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": "failed to remove one or more persona specs during clear",
+                    "operation": "clear",
+                    "persona_id": None,
+                    "path": str(index_path),
+                    "failed_spec_paths": failed_spec_paths,
+                }
+            )
+
+        return Success(clear_count)
 
     def _index_path(self) -> Path:
         return self._root / INDEX_FILENAME

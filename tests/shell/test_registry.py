@@ -90,11 +90,12 @@ class TestFileSystemRegistryStoreContract:
         assert "exactly equal ``CLEAR_CONFIRMATION_TOKEN``" in clear_doc
         assert "Partial spec-file deletion failures" in clear_doc
 
-    def test_filesystem_clear_is_acceptance_only_stub(self, registry_root: Path) -> None:
+    def test_filesystem_clear_is_implemented(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
 
-        with pytest.raises(NotImplementedError):
-            store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+        result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
+        assert result == Success(0)
 
     def test_save_persists_spec_and_updates_index_digest_mapping(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
