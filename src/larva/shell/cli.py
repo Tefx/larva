@@ -35,6 +35,7 @@ from larva.shell.cli_helpers import (
     _map_facade_error,
     _operation_failure,
     _parse_key_value_pairs,
+    _parse_set_values,
     _read_spec_json,
     _render_payload_for_text,
     _render_validation_report,
@@ -159,6 +160,17 @@ def _dispatch(
     if command == "clear":
         return clear_command(
             confirm=cast("str", args.confirm),
+            as_json=as_json,
+            facade=facade,
+        )
+
+    if command == "update":
+        patches_result = _parse_set_values(cast("list[str]", args.set_values), flag="--set")
+        if isinstance(patches_result, Failure):
+            return Failure(_operation_failure("Update", patches_result.failure(), as_json=as_json))
+        return update_command(
+            cast("str", args.id),
+            patches=patches_result.unwrap(),
             as_json=as_json,
             facade=facade,
         )
@@ -497,6 +509,32 @@ def clear_command(
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+# @shell_complexity: command-level envelope mapping requires explicit text/json branches
+def update_command(
+    persona_id: str,
+    *,
+    patches: dict[str, object],
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    result = facade.update(persona_id, patches=patches)
+    if isinstance(result, Success):
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("update", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope = _map_facade_error(result.failure())
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Update failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 

@@ -34,6 +34,7 @@ CommandName = Literal[
     "clear",
     "list",
     "export",
+    "update",
     "component list",
     "component show",
 ]
@@ -183,6 +184,104 @@ def _parse_key_value_pairs(
     return Success(parsed)
 
 
+# @invar:allow shell_result: type inference helper for CLI --set argument parsing
+# @shell_orchestration: pure parsing logic colocated with CLI --set parsing
+# @shell_complexity: type inference requires 5 branches for bool/null/int/float/str
+def _infer_value_type(value: str) -> object:
+    """Infer type from a string value for --set arguments.
+
+    Infers: bool (true/false), null, number (int/float), string (fallback).
+    """
+    # Boolean inference
+    if value.lower() == "true":
+        return True
+    if value.lower() == "false":
+        return False
+    # Null inference
+    if value.lower() == "null":
+        return None
+    # Number inference (int first, then float)
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    # Fallback to string
+    return value
+
+
+# @shell_orchestration: nested dict construction for CLI --set dot-key parsing
+def _set_nested_value(data: dict[str, object], key: str, value: object) -> None:
+    """Set a nested value in a dict using dot notation key.
+
+    E.g., key="a.b.c" sets data["a"]["b"]["c"] = value, creating intermediate dicts.
+    """
+    parts = key.split(".")
+    current: dict[str, object] = data
+    for part in parts[:-1]:
+        if part not in current:
+            current[part] = {}
+        val = current[part]
+        if not isinstance(val, dict):
+            # Overwrite non-dict with dict to allow nested access
+            current[part] = {}
+        current = cast("dict[str, object]", current[part])
+    current[parts[-1]] = value
+
+
+# @shell_complexity: type inference has 5 branches by design for bool/null/int/float/str
+def _parse_set_values(
+    raw_values: list[str], *, flag: str
+) -> Result[dict[str, object], JsonErrorEnvelope]:
+    """Parse --set key=value arguments with type inference and dot-key support.
+
+    Args:
+        raw_values: List of "key=value" strings
+        flag: Flag name for error messages (e.g., "--set")
+
+    Returns:
+        Success with dict containing inferred values with nested structure,
+        or Failure with JsonErrorEnvelope on validation errors.
+
+    Type inference rules:
+        - "true" / "false" -> bool
+        - "null" -> None
+        - Integer-parseable -> int
+        - Float-parseable -> float
+        - Otherwise -> str
+
+    Dot-key handling:
+        - "a.b.c=value" -> {"a": {"b": {"c": value}}}
+        - Dots in key path create nested dict structure
+
+    Validation errors:
+        - Empty key: "key must be non-empty"
+        - Missing '=': "expected key=value"
+    """
+    result: dict[str, object] = {}
+    for raw in raw_values:
+        if "=" not in raw:
+            return Failure(
+                _critical_error(f"invalid {flag} value: expected key=value", {"value": raw})
+            )
+        key, value = raw.split("=", 1)
+        if key == "":
+            return Failure(
+                _critical_error(f"invalid {flag} value: key must be non-empty", {"value": raw})
+            )
+        # Type inference
+        inferred = _infer_value_type(value)
+        # Handle dot-keys (nested structure)
+        if "." in key:
+            _set_nested_value(result, key, inferred)
+        else:
+            result[key] = inferred
+    return Success(result)
+
+
 def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
     path_obj = Path(path)
     try:
@@ -286,6 +385,11 @@ def _build_parser() -> _CliParser:
     export_parser.add_argument("ids", nargs="*", default=[])
     export_parser.add_argument("--all", action="store_true", dest="export_all")
     export_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    update_parser = subparsers.add_parser("update")
+    update_parser.add_argument("id")
+    update_parser.add_argument("--set", dest="set_values", action="append", default=[])
+    update_parser.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
 
