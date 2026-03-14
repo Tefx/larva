@@ -20166,3 +20166,57 @@ phases:
     depends_on:
     - feature_update.feature-update-facade-update
     agent: python-executor
+  - id: feature_update.feature-update-python-api-update
+    name: feature_update.python-api-update
+    status: pending
+    description: "Add update function to the Python API.\n\nFile: src/larva/shell/python_api.py\n\
+      \n### Implementation\n\n```python\n# @invar:allow shell_result: Python API unwraps\
+      \ Result via exception passthrough\n# @shell_orchestration: thin delegation\
+      \ to facade\ndef update(persona_id: str, patches: dict[str, object]) -> PersonaSpec:\n\
+      \    \"\"\"Update a registered persona with partial field patches.\n\n    Applies\
+      \ patches to an existing registered persona. The patched spec is\n    re-validated\
+      \ and re-normalized before saving back to registry.\n\n    Args:\n        persona_id:\
+      \ Persona id to update.\n        patches: Fields to update. Supports dot notation\
+      \ for nested fields\n            (e.g. {\"model_params.temperature\": 0.3}).\n\
+      \n    Returns:\n        Updated, validated, normalized PersonaSpec with recomputed\
+      \ spec_digest.\n\n    Raises:\n        LarvaApiError: If persona not found,\
+      \ patches produce invalid spec,\n            or save fails.\n\n    Example:\n\
+      \        spec = update(\"python-senior\", {\"side_effect_policy\": \"allow\"\
+      })\n        assert spec[\"side_effect_policy\"] == \"allow\"\n    \"\"\"\n \
+      \   return cast(\"PersonaSpec\", _unwrap_result(\n        _get_facade().update(persona_id,\
+      \ patches)\n    ))\n```\n\nAdd `update` to `__all__`.\n\nstep_type: implementation\n\
+      refs:\n  - src/larva/shell/python_api.py\n  - src/larva/app/facade.py"
+    verification: '- invar guard passes
+
+      - update("id", {"model": "x"}) returns PersonaSpec on success
+
+      - update("nonexistent", {"model": "x"}) raises LarvaApiError
+
+      - update in __all__
+
+      - All existing python_api functions still work'
+    evidence_template: '## Python API Update Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Full python_api test suite**:
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_python_api.py -v>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-facade-update
+    agent: python-executor
