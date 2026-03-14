@@ -21373,7 +21373,7 @@ phases:
       - No re-validate/re-normalize performed (canonical registry data rule preserved).'
   - id: feature_export.mcp-export
     name: mcp-export
-    status: pending
+    status: claimed
     description: "Add `larva.export` MCP tool definition and handler.\n\n## Tool Definition\
       \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
       {\n    \"name\": \"larva.export\",\n    \"description\": \"Export full PersonaSpec\
@@ -21406,6 +21406,8 @@ phases:
     depends_on:
     - feature_export.facade-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:02:19.064084+00:00'
   - id: feature_export.cli-export
     name: cli-export
     status: pending
