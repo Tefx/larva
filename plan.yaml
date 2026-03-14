@@ -20527,6 +20527,32 @@ phases:
     - feature_update.feature-update-docs-interfaces
     - feature_update.feature-update-tests-transport
     agent: gate-reviewer
+  - id: feature_update.feature-update-core-contract
+    name: feature_update.core-contract
+    status: pending
+    description: "Define the contract-only patch-application surface in `src/larva/core/patch.py`\
+      \ before tests and implementation.\n\nstep_type: contract\ncontract_purity:\
+      \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
+      \  - stubs\n\nScope:\n- create `src/larva/core/patch.py` with the public signature\
+      \ `apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[str,\
+      \ object]`\n- declare the public constants `DEEP_MERGE_KEYS` and `PROTECTED_KEYS`\n\
+      - encode acceptance-only docstrings, doctest examples, and structured notes\
+      \ for protected-key stripping, dot-notation expansion, deep-merge keys, shallow-overwrite\
+      \ behavior, and stale `spec_digest` removal\n- allow only stub-level helpers\
+      \ such as `_expand_dot_keys()` with `pass`, `...`, or `raise NotImplementedError`\n\
+      - keep the module pure core code with required `@pre` / `@post` contract shape\
+      \ but no completed merge logic yet\n\nNon-goals:\n- no runnable merge implementation\n\
+      - no facade, registry, CLI, MCP, or Python API orchestration\n- no filesystem\
+      \ or shell imports"
+    verification: '- `src/larva/core/patch.py` exists with contract-only public signature,
+      constants, doctest examples, and helper stubs
+
+      - `@pre` / `@post` shape is explicit for the new core function
+
+      - Acceptance notes cover protected-key stripping, dot-key expansion, deep merge
+      on `model_params`/`tools`, and shallow overwrite elsewhere without shipping
+      business logic'
+    agent: python-senior
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: pending
