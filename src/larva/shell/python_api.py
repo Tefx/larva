@@ -558,6 +558,36 @@ def clear(*, confirm: str) -> int:
     return cast("ClearedRegistry", unwrapped)["count"]
 
 
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def clone(source_id: str, new_id: str) -> PersonaSpec:
+    """Clone a registered persona to a new id.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.clone`.
+    The facade orchestrates: registry lookup → copy with new id → revalidate → save.
+
+    Args:
+        source_id: Unique identifier of the source persona to clone.
+        new_id: Unique identifier for the new cloned persona.
+
+    Returns:
+        Cloned PersonaSpec with id set to new_id and spec_digest recalculated.
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Looks up source via shell.registry
+        - Copies all fields except id
+        - Validates via core.validate
+        - Saves to registry via shell.registry
+        - If new_id already exists, overwrites (consistent with register)
+
+    Example:
+        new_spec = clone("code-reviewer", "code-reviewer-v2")
+        assert new_spec["id"] == "code-reviewer-v2"
+    """
+    return cast("PersonaSpec", _unwrap_result(_get_facade().clone(source_id, new_id)))
+
+
 # -----------------------------------------------------------------------------
 # Public API Exports
 # -----------------------------------------------------------------------------
@@ -575,6 +605,7 @@ __all__ = [
     # Registry operations
     "delete",
     "clear",
+    "clone",
     # Re-export types for type checking
     "PersonaSpec",
     "ValidationReport",
