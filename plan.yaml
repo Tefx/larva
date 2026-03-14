@@ -20061,3 +20061,108 @@ phases:
     depends_on:
     - feature_update.feature-update-facade-update
     agent: python-executor
+  - id: feature_update.feature-update-cli-update
+    name: feature_update.cli-update
+    status: pending
+    description: "Add update subcommand to the CLI.\n\nFiles: src/larva/shell/cli_helpers.py,\
+      \ src/larva/shell/cli.py\n\n### cli_helpers.py changes\n\n1. Add \"update\"\
+      \ to `CommandName` literal type.\n\n2. Add update subcommand parser to `_build_parser()`:\n\
+      \   ```python\n   update_parser = subparsers.add_parser(\"update\")\n   update_parser.add_argument(\"\
+      id\")\n   update_parser.add_argument(\"--set\", dest=\"set_values\", action=\"\
+      append\", default=[])\n   update_parser.add_argument(\"--json\", action=\"store_true\"\
+      , dest=\"as_json\")\n   ```\n\n3. Add `_parse_set_values(raw_values: list[str])\
+      \ -> Result[dict[str, object], JsonErrorEnvelope]`:\n   Parses `--set key=value`\
+      \ entries with:\n   - Dot-notation keys preserved as-is (facade/core handles\
+      \ expansion)\n   - Value type inference:\n     - \"true\" / \"false\" -> bool\n\
+      \     - \"null\" -> None\n     - numeric strings (int/float) -> number\n   \
+      \  - everything else -> string\n   - Empty key -> error\n   - Missing \"=\"\
+      \ -> error\n\n### cli.py changes\n\n1. Add `update_command(persona_id, *, patches,\
+      \ as_json, facade) -> Result[CliCommandResult, CliFailure]`:\n   - Delegate\
+      \ to `facade.update(persona_id, patches)`\n   - On Success: stdout = rendered\
+      \ payload (full PersonaSpec); json = {\"data\": <PersonaSpec>}; exit 0\n   -\
+      \ On Failure: map via `_map_facade_error`; exit 1; stderr if not json\n\n2.\
+      \ Wire into `_dispatch`:\n   ```python\n   if command == \"update\":\n     \
+      \  set_values = _parse_set_values(cast(\"list[str]\", args.set_values))\n  \
+      \     if isinstance(set_values, Failure):\n           return Failure(_operation_failure(\"\
+      Update\", set_values.failure(), as_json=as_json))\n       return update_command(\n\
+      \           cast(\"str\", args.id),\n           patches=set_values.unwrap(),\n\
+      \           as_json=as_json,\n           facade=facade,\n       )\n   ```\n\n\
+      \   Insert BEFORE the final fallthrough.\n\n3. Import `_parse_set_values` from\
+      \ cli_helpers in cli.py's import block.\n\n### Type inference examples for --set\
+      \ values\n\n```\n--set model=claude-opus-4-20250514           -> {\"model\"\
+      : \"claude-opus-4-20250514\"}\n--set model_params.temperature=0.3  -> {\"model_params.temperature\"\
+      : 0.3}\n--set can_spawn=true                -> {\"can_spawn\": true}\n--set\
+      \ can_spawn=null                -> {\"can_spawn\": null}\n--set description=\"\
+      my persona\"      -> {\"description\": \"my persona\"}\n```\n\ntags: [\"integration\"\
+      ]\nstep_type: implementation\nrefs:\n  - src/larva/shell/cli_helpers.py\n  -\
+      \ src/larva/shell/cli.py\n  - src/larva/app/facade.py"
+    verification: '- invar guard passes
+
+      - larva update python-senior --set model=claude-opus-4-20250514 exits 0 on success
+
+      - larva update nonexistent --set model=x exits 1 with PERSONA_NOT_FOUND
+
+      - larva update (no id) exits 2 (argparse error)
+
+      - --set key=value type inference: numbers, bools, null, strings all handled
+
+      - --set without "=" returns exit 2
+
+      - All existing CLI commands unbroken
+
+      - "update" added to CommandName literal'
+    evidence_template: '## CLI Update Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Full CLI test suite** (existing + new):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_cli.py -v>
+
+      ```
+
+
+      **Type inference proof**:
+
+      ```
+
+      # Show --set temperature=0.3 is parsed as float 0.3 (not string)
+
+      <paste test output or REPL proof>
+
+
+      # Show --set can_spawn=true is parsed as bool True
+
+      <paste proof>
+
+
+      # Show --set can_spawn=null is parsed as None
+
+      <paste proof>
+
+      ```
+
+
+      **Regression** (existing commands still work):
+
+      ```
+
+      <paste: existing CLI test results showing all pass>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-facade-update
+    agent: python-executor
