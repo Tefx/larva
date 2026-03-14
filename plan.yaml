@@ -20888,6 +20888,47 @@ phases:
       - Clone overwrite/error semantics are explicit for downstream test and implementation
       steps'
     agent: python-executor
+  - id: feature_clone.feature-clone-facade-tests
+    name: feature_clone.facade-tests
+    status: pending
+    description: 'Add contract-driven facade tests for clone before transport implementation.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - add focused tests in `tests/app/test_facade.py` for `DefaultLarvaFacade.clone()`
+      only
+
+      - cover success, source-not-found, invalid `new_id`, overwrite-existing-target,
+      and recomputed `spec_digest`
+
+      - lock the clone contract that all non-id fields are preserved from the source
+      persona while `id` changes to `new_id`
+
+      - keep this step facade-scoped so transport surfaces can depend on already-defined
+      clone behavior instead of defining it themselves
+
+
+      Non-goals:
+
+      - no MCP/CLI/Python API tests here
+
+      - no docs updates
+
+      - no production implementation changes beyond minimal test doubles/fixtures'
+    verification: '- `uv run pytest tests/app/test_facade.py -k clone -v` defines
+      and exercises the clone contract
+
+      - Tests cover overwrite semantics, propagated registry errors, and spec_digest
+      recomputation expectations
+
+      - Test scope stays in `tests/app/test_facade.py`'
+    depends_on:
+    - feature_clone.feature-clone-contract
+    agent: python-executor
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
   status: pending
