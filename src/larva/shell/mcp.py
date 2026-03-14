@@ -578,6 +578,50 @@ class MCPHandlers(MCPParamValidationMixin):
         error = result.failure()
         return error
 
+    def handle_update(self, params: object) -> Union[PersonaSpec, LarvaError]:
+        """Handle larva.update MCP tool call.
+
+        Delegates to: facade.update(persona_id, patches)
+
+        Args:
+            params: MCP request parameters:
+                - id: Persona id to update (required)
+                - patches: JSON merge patches to apply (required, must be object)
+
+        Returns:
+            PersonaSpec JSON on success, or error envelope on failure.
+
+        Malformed requests return the documented MCP error envelope.
+        """
+        validated_params = self._require_params_object("larva.update", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.update", checked_params, {"id", "patches"}):
+            return error
+        if error := self._require_param("larva.update", checked_params, "id"):
+            return error
+        if error := self._require_param("larva.update", checked_params, "patches"):
+            return error
+        if error := self._require_type("larva.update", checked_params, "id", str, "string"):
+            return error
+        if error := self._require_type("larva.update", checked_params, "patches", dict, "object"):
+            return error
+
+        persona_id = checked_params["id"]
+        patches = checked_params["patches"]
+
+        # Delegate to facade
+        result = self._facade.update(persona_id, patches)
+
+        # Success shaping: return PersonaSpec on success
+        if isinstance(result, Success):
+            return cast("PersonaSpec", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
     def handle_export(self, params: object) -> Union[list["PersonaSpec"], LarvaError]:
         """Handle larva.export MCP tool call.
 

@@ -213,6 +213,24 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             },
         },
     },
+    {
+        "name": "larva.update",
+        "description": "Update a registered persona by applying JSON merge patches to selected fields.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Persona id to update",
+                },
+                "patches": {
+                    "type": "object",
+                    "description": "JSON merge patches to apply to the persona",
+                },
+            },
+            "required": ["id", "patches"],
+        },
+    },
 ]
 
 
