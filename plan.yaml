@@ -18096,7 +18096,7 @@ phases:
       and excluded from final accepted diff.'
   - id: feature_registry_ops.feature-registry-ops-python-api-all
     name: feature_registry_ops.python-api-all
-    status: pending
+    status: claimed
     description: "Add four new functions to the Python API.\n\nFile: src/larva/shell/python_api.py\n\
       \n### 1. Lazy component store initialization\n\nAdd a module-level singleton\
       \ and getter alongside the existing `_facade` singleton:\n\n```python\n_component_store:\
@@ -18173,6 +18173,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-mcp-components
     - feature_registry_ops.feature-registry-ops-cli-delete-clear
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T12:21:52.907060+00:00'
   - id: feature_registry_ops.feature-registry-ops-docs-interfaces
     name: feature_registry_ops.docs-interfaces
     status: pending
