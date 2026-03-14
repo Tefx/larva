@@ -18519,3 +18519,111 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-delete
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-tests-mcp-components
+    name: feature_registry_ops.tests-mcp-components
+    status: pending
+    description: 'Add feature-local acceptance tests for MCP `component_list` / `component_show`
+      before implementation is claimable.
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface`
+
+      - `INTERFACES.md` :: `C. Component Library`
+
+
+      touch_paths:
+
+      - `tests/shell/test_mcp.py`
+
+
+      harness_refs:
+
+      - `tests/shell/test_mcp.py::_assert_malformed_params_error`
+
+      - `tests/shell/test_mcp.py::_make_facade`
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Add explicit pre-implementation tests that pin both the success contract and
+      the highest-risk failure envelopes for this MCP increment.
+
+
+      Required tests:
+
+      - tool definition coverage for `larva.component_list` and `larva.component_show`
+
+      - `component_list` accepts `{}` and rejects unknown params with `_assert_malformed_params_error`
+
+      - `component_show` rejects unknown params and non-string `type` / `name` with
+      `_assert_malformed_params_error`
+
+      - `component_show` unknown component type returns a `COMPONENT_NOT_FOUND` envelope
+
+      - `component_show` missing component from the store returns the same `COMPONENT_NOT_FOUND`
+      envelope family
+
+      - `component_show` success path pins loader routing for at least one valid type
+
+
+      Execution rule:
+
+      - If the new tests would fail before `feature_registry_ops.mcp-components` is
+      implemented, mark only the new tests with `xfail(strict=True, reason="pending
+      feature_registry_ops.mcp-components")` so the suite stays executable while acceptance
+      remains pinned.
+
+      - Keep existing MCP tests green and untouched beyond local helper reuse.'
+    verification: '- `tests/shell/test_mcp.py` contains explicit named tests for main
+      path, unknown-param rejection, type-validation rejection, unsupported-type envelope,
+      and missing-component envelope
+
+      - Validation-path tests pin `_assert_malformed_params_error` so unknown params
+      and wrong runtime types cannot silently drift
+
+      - Lookup-failure tests pin `COMPONENT_NOT_FOUND` envelope consistency for unsupported
+      `type` and component-store miss paths
+
+      - Exact targeted command is documented: `uv run pytest tests/shell/test_mcp.py
+      -v -k "component_list or component_show"`
+
+      - If temporary `xfail(strict=True)` markers are used, they apply only to the
+      new component MCP tests'
+    evidence_template: '## MCP Component Acceptance Tests Evidence
+
+
+      **Targeted command**:
+
+      ```bash
+
+      uv run pytest tests/shell/test_mcp.py -v -k "component_list or component_show"
+
+      ```
+
+
+      **Tests added**:
+
+      - <list exact test names>
+
+
+      **Pinned acceptance split**:
+
+      - malformed params -> `_assert_malformed_params_error`
+
+      - unsupported type / missing component -> `COMPONENT_NOT_FOUND`
+
+
+      **If xfail used pre-implementation**:
+
+      - <list exact xfail test names and reason>
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-mcp-components-contract
+    agent: python-executor
