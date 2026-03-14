@@ -219,6 +219,52 @@ class LarvaFacade(Protocol):
         """
         ...
 
+    def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
+        """Export all persona specs from the registry.
+
+        Success contract:
+        - Returns `Result[list[PersonaSpec], LarvaError]` containing all
+          persona specs stored in the registry
+        - Each spec in the list is canonical registry data (already normalized
+          and validated at write time)
+        - The returned specs MUST NOT be re-validated or re-normalized downstream;
+          they are already in canonical form
+
+        Error mapping contract (facade-layer):
+        - Registry `list` failure -> facade `REGISTRY_INDEX_READ_FAILED`
+          with `details` containing `operation` and `error` context
+        - Registry `get` call failure during iteration -> facade `REGISTRY_SPEC_READ_FAILED`
+          with `details` containing `persona_id` and `error` context
+
+        Note: This is a contract-only signature. Implementation lives in
+        `DefaultLarvaFacade` but this step does not implement the body.
+        """
+        ...
+
+    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
+        """Export specific persona specs by id from the registry.
+
+        Success contract:
+        - Returns `Result[list[PersonaSpec], LarvaError]` containing the
+          requested persona specs in the same order as input `ids`
+        - Empty `ids` input returns `Success([])` immediately (no registry calls)
+        - Each spec in the list is canonical registry data (already normalized
+          and validated at write time)
+        - The returned specs MUST NOT be re-validated or re-normalized downstream;
+          they are already in canonical form
+
+        Error mapping contract (facade-layer):
+        - Any `PERSONA_NOT_FOUND` error -> fail-fast on first error, return
+          `Failure(LarvaError)` with code `PERSONA_NOT_FOUND` and `details.id`
+          containing the missing persona id
+        - Registry `get` call failure -> facade `REGISTRY_SPEC_READ_FAILED`
+          with `details` containing `persona_id` and `error` context
+
+        Note: This is a contract-only signature. Implementation lives in
+        `DefaultLarvaFacade` but this step does not implement the body.
+        """
+        ...
+
 
 class DefaultLarvaFacade(LarvaFacade):
     """Constructor-level DI contract for the concrete facade.
@@ -495,3 +541,44 @@ class DefaultLarvaFacade(LarvaFacade):
             )
 
         return Success({"cleared": True, "count": clear_result.unwrap()})
+
+    def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
+        """Export all persona specs from the registry.
+
+        Contract acceptance stub:
+        - Returns canonical registry data without renormalize/revalidate
+        - Registry traversal delegated to `self._registry.list()` + `get(id)`
+        - Fail-fast on first registry error
+
+        Note: Implementation pending in downstream step.
+        """
+        # CONTRACT: This is an acceptance-only stub.
+        # Implementation must:
+        # 1. Call self._registry.list() to get all persona ids
+        # 2. For each id, call self._registry.get(id)
+        # 3. Return list of canonical PersonaSpec (no revalidation/renormalization)
+        # 4. Fail-fast on first registry error
+        raise NotImplementedError(
+            "export_all contract is defined; implementation pending in downstream step"
+        )
+
+    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
+        """Export specific persona specs by id from the registry.
+
+        Contract acceptance stub:
+        - Empty `ids` -> return Success([]) immediately (no registry calls)
+        - Non-empty `ids` -> fail-fast on first PERSONA_NOT_FOUND or registry error
+        - Returns canonical registry data without renormalize/revalidate
+
+        Note: Implementation pending in downstream step.
+        """
+        # CONTRACT: This is an acceptance-only stub.
+        # Implementation must:
+        # 1. If ids is empty, return Success([]) immediately
+        # 2. For each id in ids, call self._registry.get(id)
+        # 3. Fail-fast on first error (PERSONA_NOT_FOUND or registry failure)
+        # 4. Return list of canonical PersonaSpec in same order as input ids
+        # 5. No revalidation/renormalization on returned specs
+        raise NotImplementedError(
+            "export_ids contract is defined; implementation pending in downstream step"
+        )
