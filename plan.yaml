@@ -17814,7 +17814,7 @@ phases:
     agent: python-executor
   - id: feature_registry_ops.feature-registry-ops-tests-registry
     name: feature_registry_ops.tests-registry
-    status: pending
+    status: claimed
     description: 'Add registry-layer delete tests after the contract step and before
       delete implementation.
 
@@ -17911,6 +17911,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:11:38.135221+00:00'
   - id: feature_registry_ops.feature-registry-ops-tests-transport
     name: feature_registry_ops.tests-transport
     status: pending
