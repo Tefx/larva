@@ -21007,7 +21007,7 @@ phases:
       dispatch branch.'
   - id: feature_clone.python-api-clone
     name: python-api-clone
-    status: pending
+    status: claimed
     description: 'Add `clone(source_id, new_id)` to the Python API module.
 
 
@@ -21056,6 +21056,8 @@ phases:
     depends_on:
     - feature_clone.facade-clone
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:18:56.250852+00:00'
   - id: feature_clone.docs-interfaces
     name: docs-interfaces
     status: pending
