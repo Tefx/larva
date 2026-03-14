@@ -19380,3 +19380,149 @@ phases:
 
       - Worker noted unrelated pre-existing `TestFacadeAssemble` failures outside
       this step scope.'
+  - id: feature_registry_ops.feature-registry-ops-fix-gate-batch
+    name: feature_registry_ops.fix-gate-batch
+    status: pending
+    description: 'Fix ALL issues, not just first, from `feature_registry_ops.feature-registry-ops-gate`.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+
+      ### B1: AssemblyError factory usage in facade tests
+
+      Locations: `tests/app/test_facade.py:111`, `tests/app/test_facade.py:124`
+
+      Remediation: replace direct `AssemblyError(...)` construction with the `_assembly_error`
+      factory so facade tests match the current assembly error contract.
+
+      Grep hint: `rg -n "AssemblyError\(" tests/app/test_facade.py`
+
+      IMPORTANT: search for sibling direct `AssemblyError(...)` constructions in facade
+      tests and update any remaining contract-violating call sites.
+
+
+      ### S1: INVALID_CONFIRMATION_TOKEN numeric code consistency
+
+      Locations: `INTERFACES.md`, `src/larva/app/facade.py`, corresponding facade-facing
+      tests
+
+      Remediation: add the `INVALID_CONFIRMATION_TOKEN` -> `112` mapping to `ERROR_NUMERIC_CODES`
+      so non-CLI surfaces stop falling back to numeric code `10`, and update the matching
+      test expectation to assert the documented code.
+
+      Grep hint: `rg -n "INVALID_CONFIRMATION_TOKEN|ERROR_NUMERIC_CODES|numeric_code"
+      INTERFACES.md src/larva/app tests`
+
+      IMPORTANT: search for sibling expectations across non-CLI surfaces so all published
+      interfaces agree on numeric code `112`.
+
+
+      ## Completion Criteria:
+
+      - ALL issues fixed in one batch, not just the first failure
+
+      - Full facade test file no longer uses direct `AssemblyError(...)` construction
+      where `_assembly_error` is required by contract
+
+      - `INVALID_CONFIRMATION_TOKEN` resolves to numeric code `112` consistently in
+      docs, facade, and non-CLI-facing tests
+
+      - No remaining sibling instances of either blocker pattern in the scoped search
+      results'
+    verification: '- `pytest tests/app/test_facade.py -q` covers the repaired AssemblyError
+      factory usage and numeric-code expectation updates
+
+      - Search evidence shows the listed grep hints have been checked and remaining
+      matches are either fixed or justified
+
+      - Change evidence explains why the numeric-code mapping now aligns non-CLI surfaces
+      with `INTERFACES.md`'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Gate source**: `feature_registry_ops.feature-registry-ops-gate`
+
+      **Instruction followed**: fix ALL issues, not just first
+
+
+      ### B1 Search + Repair
+
+      - Command:
+
+      ```
+
+      rg -n "AssemblyError\(" tests/app/test_facade.py
+
+      ```
+
+      - Matches reviewed:
+
+      ```
+
+      <paste results>
+
+      ```
+
+      - Repairs made:
+
+      ```
+
+      <file:line summary>
+
+      ```
+
+
+      ### S1 Search + Repair
+
+      - Command:
+
+      ```
+
+      rg -n "INVALID_CONFIRMATION_TOKEN|ERROR_NUMERIC_CODES|numeric_code" INTERFACES.md
+      src/larva/app tests
+
+      ```
+
+      - Matches reviewed:
+
+      ```
+
+      <paste results>
+
+      ```
+
+      - Repairs made:
+
+      ```
+
+      <file:line summary>
+
+      ```
+
+
+      ### Validation
+
+      - Command:
+
+      ```
+
+      pytest tests/app/test_facade.py -q
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Consistency Note
+
+      Explain why both issues are closed together and why no sibling mismatch remains.'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-gate
+    agent: python-senior
