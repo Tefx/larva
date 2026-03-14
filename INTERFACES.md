@@ -178,6 +178,63 @@ List all registered personas.
 ]
 ```
 
+### larva.update(id, patches)
+
+Update a registered persona by applying JSON merge patches.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `id` | string | yes | Persona id in registry |
+| `patches` | object | yes | JSON merge patches to apply to the persona |
+
+**Returns:** Updated, validated, and normalized PersonaSpec JSON.
+
+**Patches:**
+- `patches` must be a JSON object (dictionary)
+- Supported patch semantics:
+  - **Scalar overwrite**: `{"model": "new-model"}` replaces the `model` field
+  - **Deep merge**: Nested objects in `model_params` and `tools` are merged recursively
+  - **Dot notation**: `{"model_params.temperature": 0.7}` sets nested values
+  - **Protected fields**: `spec_digest` and `spec_version` are ignored and cannot be modified
+
+**Revalidation and Normalization:**
+1. Registry lookup by `id` → retrieve existing PersonaSpec
+2. Apply patches via deep-merge semantics (see Patch Semantics below)
+3. Revalidate the patched spec against the PersonaSpec schema
+4. Renormalize: recompute `spec_digest` from canonical JSON
+5. Save to registry and return the updated PersonaSpec
+
+**Error:** `PERSONA_NOT_FOUND` (100) if id not in registry.
+`PERSONA_INVALID` (101) if patched spec fails validation.
+`REGISTRY_WRITE_FAILED` (109) if save fails.
+
+```json
+// Request
+{
+  "id": "code-reviewer",
+  "patches": {
+    "model": "claude-sonnet-4",
+    "model_params": {
+      "temperature": 0.5
+    }
+  }
+}
+
+// Response (PersonaSpec on success)
+{
+  "spec_version": "0.1.0",
+  "id": "code-reviewer",
+  "model": "claude-sonnet-4",
+  "model_params": {
+    "temperature": 0.5,
+    "max_tokens": 4096
+  },
+  "spec_digest": "sha256:..."
+}
+```
+
 ### larva.component_list()
 
 List all available components by type.
@@ -323,6 +380,52 @@ Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 List all registered personas.
 
 Exit codes: 0 success, 1 domain error, 2 input/critical failure.
+
+### `larva update <id> --set key=value [--set ...] [--json]`
+
+Update a registered persona by applying patches.
+
+| Flag | Type | Description |
+| ---- | ---- | ----------- |
+| `--set` | str (repeatable) | Field patch: `key=value`. Can be repeated. |
+| `--json` | flag | Output JSON on stdout |
+
+**Type Inference for --set values:**
+- `true` / `false` → boolean
+- `null` → null
+- Integer-parseable → int
+- Float-parseable → float
+- Otherwise → string
+
+**Dot Notation:**
+- `--set model_params.temperature=0.7` sets nested values
+- Creates intermediate dicts as needed
+
+**Protected Fields:**
+- `spec_digest` and `spec_version` are ignored; cannot be modified via update
+
+**Revalidation:**
+- Patches are applied, then the result is re-validated
+- Invalid patches (schema violations) return `PERSONA_INVALID` error
+
+**Deep Merge:**
+- `model_params` and `tools` fields are deep-merged
+- Other fields are overwritten
+
+**Routing:** Via facade to `RegistryStore.get()` → `core.patch.apply_patches()` → `validate` → `normalize` → `RegistryStore.save()`.
+
+Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, PERSONA_INVALID), 2 input/critical failure.
+
+```bash
+# Simple field update
+larva update my-persona --set model=claude-sonnet-4 --json
+
+# Nested field with type inference
+larva update my-persona --set model_params.temperature=0.5
+
+# Multiple patches
+larva update my-persona --set can_spawn=true --set side_effect_policy=read_only
+```
 
 ### `larva component list [--json]`
 
@@ -625,6 +728,44 @@ from larva.shell.python_api import component_show
 
 prompt = component_show("prompt", "code-reviewer")
 assert "text" in prompt
+```
+
+### update(persona_id, patches)
+
+Update a registered persona by applying patches.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `persona_id` | str | Unique identifier of the persona to update |
+| `patches` | dict[str, Any] | Dictionary of patches to apply (supports JSON merge semantics) |
+
+**Returns:** `PersonaSpec` — Updated, validated, and normalized persona specification.
+
+**Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if persona does not exist, `PERSONA_INVALID` (101) if validation fails after patching, `REGISTRY_WRITE_FAILED` (109) on save failure.
+
+**Patch Semantics:**
+- **Scalar overwrite**: Non-dict values replace existing values
+- **Deep merge**: `model_params` and `tools` fields are deep-merged recursively
+- **Dot notation**: Keys like `"model_params.temperature"` are expanded to nested dicts
+- **Protected fields**: `spec_digest` and `spec_version` are stripped from patches
+
+**Revalidation:** After patches are applied, the resulting spec is validated. If validation fails, the update is rejected and the original persona is unchanged.
+
+```python
+from larva.shell.python_api import update
+
+# Simple field update
+spec = update("my-persona", {"model": "claude-sonnet-4"})
+assert spec["model"] == "claude-sonnet-4"
+
+# Nested update with deep merge
+spec = update("my-persona", {"model_params": {"temperature": 0.7}})
+# model_params.temperature is updated, other model_params fields preserved
+
+# Dot notation for nested updates
+spec = update("my-persona", {"model_params.temperature": 0.5})
 ```
 
 ### delete(persona_id)
