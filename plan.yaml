@@ -19870,7 +19870,7 @@ phases:
     agent: python-senior
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
-    status: claimed
+    status: done
     description: "Add contract-driven tests for core `apply_patches` before implementation.\n\
       \nFile: tests/core/test_patch.py (NEW FILE)\n\nstep_type: test\n\nThese tests\
       \ define the acceptance surface for the new core patch feature and therefore\
@@ -19918,6 +19918,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:26:49.291613+00:00'
+    done_at: '2026-03-14T21:48:48.361414+00:00'
+    evidence: 'Artifact:
+
+      - PR: f58c4bf (squash merge commit from repaired worktree branch f3d00a4; prior
+      overscoped attempt corrected)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_patch.py -v -> contract behavior tests
+      are xfail pending implementation; constants checks xpass as expected
+
+      - Run: uv run invar guard --all -> passed (0 errors)
+
+
+      Spec link:
+
+      - feature_update.feature-update-core-tests
+
+
+      Files changed:
+
+      - tests/core/test_patch.py
+
+
+      Gaps/Notes:
+
+      - Initial worker output violated step scope by including production implementation;
+      orchestrator rejected and required repair.
+
+      - Final merged diff is test-only for this step; production logic remains for
+      downstream implementation step.'
   - id: feature_update.feature-update-facade-update
     name: feature_update.facade-update
     status: pending
