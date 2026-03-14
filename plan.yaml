@@ -17517,3 +17517,118 @@ phases:
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
     - feature_registry_ops.feature-registry-ops-mcp-components
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-cli-delete-clear
+    name: feature_registry_ops.cli-delete-clear
+    status: pending
+    description: "Add delete and clear subcommands to the CLI.\n\nFiles: src/larva/shell/cli_helpers.py,\
+      \ src/larva/shell/cli.py\n\n### cli_helpers.py changes\n\n1. Add delete subcommand\
+      \ parser to `_build_parser()`:\n   ```\n   larva delete <id> [--json]\n   ```\n\
+      \   - positional: `id` (required)\n   - optional: `--json` flag (same as other\
+      \ subcommands)\n\n2. Add clear subcommand parser to `_build_parser()`:\n   ```\n\
+      \   larva clear --confirm \"DELETE ALL PERSONAS\" [--json]\n   ```\n   - required\
+      \ named arg: `--confirm` (string, required)\n   - optional: `--json` flag\n\n\
+      \   Note: Use `required=True` on `--confirm` so argparse rejects missing confirm\
+      \ before dispatch.\n\n### cli.py changes\n\n1. Add `delete_command(persona_id,\
+      \ *, as_json, facade) -> Result[CliCommandResult, CliFailure]`:\n   - Delegate\
+      \ to `facade.delete(persona_id)`\n   - On Success: stdout = rendered payload;\
+      \ json = {\"data\": {\"id\": ..., \"deleted\": True}}; exit 0\n   - On Failure:\
+      \ map via `_map_facade_error`; exit 1; stderr message if not json\n\n2. Add\
+      \ `clear_command(confirm, *, as_json, facade) -> Result[CliCommandResult, CliFailure]`:\n\
+      \   - Delegate to `facade.clear(confirm=confirm)`\n   - On Success: stdout =\
+      \ rendered payload; json = {\"data\": {\"cleared\": True, \"count\": N}}; exit\
+      \ 0\n   - On Failure: map via `_map_facade_error`; exit 1; stderr message if\
+      \ not json\n\n3. Wire both into `_dispatch`:\n   ```python\n   if command ==\
+      \ \"delete\":\n       return delete_command(cast(\"str\", args.id), as_json=as_json,\
+      \ facade=facade)\n\n   if command == \"clear\":\n       return clear_command(cast(\"\
+      str\", args.confirm), as_json=as_json, facade=facade)\n   ```\n\n   CRITICAL:\
+      \ New branches must be inserted BEFORE the final fallthrough `return Failure(...)`.\
+      \ Do NOT modify any existing branch.\n\ntags: [\"integration\"]\nstep_type:\
+      \ implementation\nrefs:\n  - src/larva/shell/cli_helpers.py\n  - src/larva/shell/cli.py\n\
+      \  - src/larva/app/facade.py\n  - tests/shell/test_cli.py"
+    verification: '- invar guard passes
+
+      - larva delete <id> exits 0 on success, 1 on not-found
+
+      - larva clear --confirm "DELETE ALL PERSONAS" exits 0 on success
+
+      - larva clear without --confirm: argparse error / exit 2
+
+      - larva clear --confirm "wrong" exits 1 with REGISTRY_DELETE_FAILED error
+
+      - Existing commands (validate, list, resolve, register, assemble, component)
+      unaffected
+
+      - Unknown command returns exit 2'
+    evidence_template: '## CLI Delete/Clear Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Full CLI test suite** (all existing + new tests must pass):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_cli.py -v>
+
+      ```
+
+
+      **Regression verification** (CRITICAL — existing commands must be unbroken):
+
+      ```
+
+      # Run each existing command and confirm exit 0 (or expected exit code):
+
+      <paste: uv run larva validate <some-spec> or equivalent test invocation showing
+      exit 0>
+
+      <paste: uv run larva list showing exit 0>
+
+      <paste: uv run larva resolve <id> or equivalent>
+
+      ```
+
+
+      **Unknown subcommand regression**:
+
+      ```
+
+      <paste: uv run larva unknown-cmd output — must show exit 2>
+
+      ```
+
+
+      **New delete command**:
+
+      ```
+
+      <paste: uv run larva delete <id> or equivalent test output showing correct result>
+
+      ```
+
+
+      **New clear command**:
+
+      ```
+
+      <paste: uv run larva clear --confirm "DELETE ALL PERSONAS" or equivalent test
+      output>
+
+      <paste: uv run larva clear --confirm "wrong" exit 1 output>
+
+      <paste: uv run larva clear (no --confirm) exit 2 output>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-facade-delete-clear
+    agent: python-executor
