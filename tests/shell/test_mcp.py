@@ -357,6 +357,7 @@ class TestMCPErrorCodes:
             "REGISTRY_SPEC_READ_FAILED",
             "REGISTRY_WRITE_FAILED",
             "REGISTRY_UPDATE_FAILED",
+            "REGISTRY_DELETE_FAILED",
         }
         assert set(mcp_module.LARVA_ERROR_CODES.keys()) == required_codes
 
