@@ -17711,3 +17711,68 @@ phases:
     - feature_registry_ops.feature-registry-ops-mcp-components
     - feature_registry_ops.feature-registry-ops-cli-delete-clear
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-docs-interfaces
+    name: feature_registry_ops.docs-interfaces
+    status: pending
+    description: "Update INTERFACES.md with all new operations and error code 111.\n\
+      \nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\nAdd entries for:\n\
+      - `larva.component_list()` — parameters: none, returns: `{\"prompts\": [...],\
+      \ \"toolsets\": [...], \"constraints\": [...], \"models\": [...]}`\n- `larva.component_show(type,\
+      \ name)` — parameters: type (string), name (string); returns: component content\
+      \ dict (shape varies by type)\n- `larva.delete(id)` — parameters: id (string);\
+      \ returns: `{\"id\": str, \"deleted\": true}`\n- `larva.clear(confirm)` — parameters:\
+      \ confirm (string, must equal \"DELETE ALL PERSONAS\"); returns: `{\"cleared\"\
+      : true, \"count\": int}`\n\n### Section B (CLI Interface)\nAdd entries for:\n\
+      - `larva delete <id> [--json]` — exit 0 on success, 1 on error, 2 on bad args\n\
+      - `larva clear --confirm \"DELETE ALL PERSONAS\" [--json]` — exit 0 on success,\
+      \ 1 on wrong confirm or error, 2 on missing --confirm\n\n### Section G (Python\
+      \ API / or equivalent section for Python API)\nAdd entries for:\n- `component_list()\
+      \ -> dict[str, list[str]]`\n- `component_show(type: str, name: str) -> dict[str,\
+      \ object]`\n- `delete(persona_id: str) -> None`\n- `clear(*, confirm: str) ->\
+      \ int` — keyword-only, raises LarvaApiError on wrong confirm\n\n### Error codes\
+      \ table\nAdd row: `111 | REGISTRY_DELETE_FAILED | Delete or clear operation\
+      \ failed (partial or complete)`\n\nstep_type: implementation\nrefs:\n  - INTERFACES.md"
+    verification: '- INTERFACES.md contains all 4 new MCP tool entries
+
+      - INTERFACES.md contains delete and clear CLI entries with correct exit codes
+
+      - INTERFACES.md contains all 4 new Python API function signatures
+
+      - Error code 111 / REGISTRY_DELETE_FAILED documented in error table
+
+      - Confirm token "DELETE ALL PERSONAS" documented for clear operation'
+    evidence_template: '## INTERFACES.md Update Evidence
+
+
+      **Diff summary** (paste git diff INTERFACES.md or equivalent):
+
+      ```
+
+      <paste relevant diff sections>
+
+      ```
+
+
+      **Checklist**:
+
+      - [ ] larva.component_list MCP entry present
+
+      - [ ] larva.component_show MCP entry present
+
+      - [ ] larva.delete MCP entry present
+
+      - [ ] larva.clear MCP entry with confirm param documented
+
+      - [ ] CLI delete entry with exit codes
+
+      - [ ] CLI clear entry with --confirm requirement and exit codes
+
+      - [ ] Python API: component_list, component_show, delete, clear signatures
+
+      - [ ] Error code 111 row in error table
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-python-api-all
+    agent: python-executor
