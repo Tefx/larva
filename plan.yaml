@@ -20701,7 +20701,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-gate
     name: feature_update.gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify feature_update phase completion and quality.\n\
       \nAs an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_update\
       \ phase meets the quality bar.\n\nYOU ARE THE QUALITY GATE. Block progress if:\n\
@@ -20868,6 +20868,8 @@ phases:
     - feature_update.feature-update-docs-interfaces
     - feature_update.feature-update-tests-transport
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T22:49:06.333799+00:00'
   - id: feature_update.feature-update-core-contract
     name: feature_update.core-contract
     status: done
