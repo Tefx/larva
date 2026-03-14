@@ -20543,7 +20543,7 @@ phases:
     claimed_at: '2026-03-14T22:30:03.429903+00:00'
   - id: feature_update.feature-update-tests-transport
     name: feature_update.tests-transport
-    status: claimed
+    status: done
     description: "Add transport-layer tests for update operation across all surfaces.\n\
       \nFiles:\n- tests/app/test_facade.py\n- tests/shell/test_mcp.py\n- tests/shell/test_cli.py\n\
       - tests/shell/test_python_api.py\n\n### tests/app/test_facade.py additions\n\
@@ -20634,6 +20634,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:29:44.691290+00:00'
+    done_at: '2026-03-14T22:47:18.964200+00:00'
+    evidence: '## Transport Tests Evidence
+
+
+      Artifact:
+
+      - PR: 24f9c49 (squash merge commit from worktree branch 3f2d1df)
+
+
+      Full test suite:
+
+      - Run: uv run pytest tests/ -v --tb=short -> 460 passed, 4 xfailed, 45 xpassed
+
+
+      New/expanded transport coverage:
+
+      - tests/shell/test_cli.py: update command + `--set` type inference tests
+
+      - tests/shell/test_mcp.py: handle_update validation/delegation tests
+
+      - tests/shell/test_python_api.py: update thin-delegation tests
+
+
+      Type inference focused coverage:
+
+      - bool/null/number/string parsing and invalid `--set` forms covered via new
+      CLI tests.
+
+
+      Regression:
+
+      - Existing test corpus remained green in full suite run.
+
+
+      Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-gate
     name: feature_update.gate
     status: pending
