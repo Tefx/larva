@@ -21016,6 +21016,8 @@ phases:
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
   status: pending
+  depends_on:
+  - meta.gate
   steps:
   - id: feature_export.facade-export
     name: facade-export
