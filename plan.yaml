@@ -21888,7 +21888,7 @@ phases:
     agent: python-executor
   - id: feature_export.plugin-opencode
     name: plugin-opencode
-    status: pending
+    status: claimed
     description: "Update opencode plugin to use `larva export --all --json` instead\
       \ of N resolve calls.\n\nFile: contrib/opencode-plugin/larva.ts\n\nReplace the\
       \ current N+1 pattern:\n```typescript\n// Old: list + N resolves\nconst personas\
@@ -21910,6 +21910,8 @@ phases:
     depends_on:
     - feature_export.facade-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:30:09.115278+00:00'
   - id: feature_export.tests-export
     name: tests-export
     status: claimed
