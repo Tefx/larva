@@ -19870,7 +19870,7 @@ phases:
     agent: python-senior
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
-    status: pending
+    status: claimed
     description: "Add contract-driven tests for core `apply_patches` before implementation.\n\
       \nFile: tests/core/test_patch.py (NEW FILE)\n\nstep_type: test\n\nThese tests\
       \ define the acceptance surface for the new core patch feature and therefore\
@@ -19916,6 +19916,8 @@ phases:
     depends_on:
     - feature_update.feature-update-core-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T21:26:49.291613+00:00'
   - id: feature_update.feature-update-facade-update
     name: feature_update.facade-update
     status: pending
