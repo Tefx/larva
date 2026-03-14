@@ -21956,7 +21956,7 @@ phases:
       coherent.'
   - id: feature_export.docs-interfaces
     name: docs-interfaces
-    status: pending
+    status: claimed
     description: 'Update INTERFACES.md to document the export operation across all
       three surfaces.
 
@@ -21991,6 +21991,8 @@ phases:
     depends_on:
     - feature_export.facade-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:48:36.916017+00:00'
   - id: feature_export.plugin-opencode
     name: plugin-opencode
     status: done
