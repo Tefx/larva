@@ -20701,7 +20701,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-gate
     name: feature_update.gate
-    status: claimed
+    status: done
     description: "Gate review: Verify feature_update phase completion and quality.\n\
       \nAs an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_update\
       \ phase meets the quality bar.\n\nYOU ARE THE QUALITY GATE. Block progress if:\n\
@@ -20870,6 +20870,50 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T22:49:06.333799+00:00'
+    done_at: '2026-03-14T22:58:25.870496+00:00'
+    evidence: '## Gate Review Report
+
+
+      Reviewer: gate-reviewer (independent)
+
+      Verdict: FAIL due to blocker requiring remediation.
+
+
+      Verification:
+
+      - Run: uv run invar guard --all -> failed (`shell_complexity_debt` blocker)
+
+      - Run: uv run pytest tests/ -v --tb=short -> passed (573 passed, 28 xpass, 4
+      xfail)
+
+
+      Detected blocker batch (from gate evidence):
+
+      1) src/larva/shell/cli.py:76 `_dispatch`
+
+      2) src/larva/shell/cli.py:241 `validate_command`
+
+      3) src/larva/shell/cli.py:277 `assemble_command`
+
+      4) src/larva/shell/cli_helpers.py:285 `_read_spec_json`
+
+      5) src/larva/shell/mcp_export.py:67 `handle_export`
+
+
+      Action taken:
+
+      - Created ONE batched fix step: `feature_update.feature-update-gate-fix-shell-complexity-batch`
+
+      - Created ONE retest step: `feature_update.feature-update-gate-retest-shell-complexity-batch`
+
+      - Dependency chain: gate -> fix-batch -> retest-batch
+
+
+      Spec link:
+
+      - feature_update.feature-update-gate
+
+      - planner remediation task ses_3116fec39ffeB15OoJeUsNpKlW'
   - id: feature_update.feature-update-core-contract
     name: feature_update.core-contract
     status: done
