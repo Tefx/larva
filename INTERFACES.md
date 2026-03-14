@@ -178,6 +178,79 @@ List all registered personas.
 ]
 ```
 
+### larva.component_list()
+
+List all available components by type.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "prompts": ["code-reviewer", "architect"],
+  "toolsets": ["readonly", "readwrite"],
+  "constraints": ["strict", "autonomous"],
+  "models": ["default", "claude-opus"]
+}
+```
+
+### larva.component_show(component_type, name)
+
+Show a specific component's content.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `component_type` | string | yes | One of: `prompts`, `toolsets`, `constraints`, `models` |
+| `name` | string | yes | Component name (without file extension) |
+
+**Returns:** Component content as JSON object.
+
+**Error:** `COMPONENT_NOT_FOUND` (105) if component does not exist or type is invalid.
+
+### larva.delete(id)
+
+Delete a registered persona from the registry.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `id` | string | yes | Persona id to delete |
+
+**Returns:**
+```json
+{
+  "id": "old-persona",
+  "deleted": true
+}
+```
+
+**Error:** `PERSONA_NOT_FOUND` (100) if persona does not exist.
+`REGISTRY_DELETE_FAILED` (111) if file system deletion fails.
+
+### larva.clear(confirm)
+
+Clear all registered personas from the registry.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `confirm` | string | yes | Must be exactly `"CLEAR REGISTRY"` (safety confirmation) |
+
+**Returns:**
+```json
+{
+  "cleared": true,
+  "count": 3
+}
+```
+
+**Error:** `INVALID_CONFIRMATION_TOKEN` (112) if confirm token does not match.
+`REGISTRY_DELETE_FAILED` (111) if file system deletion fails.
+
 ### App-Facade Seam-Proof Evidence Requirement
 
 When `larva.app.facade` orchestration changes (assemble/register/list/resolve), seam proof must be reproducible:
@@ -267,6 +340,23 @@ Show a component's content. Type is one of: `prompts`, `toolsets`,
 **Routing:** Direct to `ComponentStore.load_<type>(name)`. Bypasses facade.
 
 Exit codes: 0 success, 1 domain error, 2 input/critical failure.
+
+### `larva delete <id> [--json]`
+
+Delete a persona from the registry by id.
+
+**Routing:** Via facade to `RegistryStore.delete()`.
+
+Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, REGISTRY_DELETE_FAILED), 2 input/critical failure.
+
+### `larva clear --confirm "CLEAR REGISTRY" [--json]`
+
+Clear all personas from the registry. The `--confirm` flag must be passed
+exactly with value `"CLEAR REGISTRY"` as a safety measure.
+
+**Routing:** Via facade to `RegistryStore.clear()`.
+
+Exit codes: 0 success, 1 domain error (INVALID_CONFIRMATION_TOKEN, REGISTRY_DELETE_FAILED), 2 input/critical failure.
 
 ---
 
@@ -447,6 +537,8 @@ larva uses the 100-range from `contracts/errors.yaml`.
 | 108 | `REGISTRY_SPEC_READ_FAILED` | Registry `<id>.json` file could not be read or validated |
 | 109 | `REGISTRY_WRITE_FAILED` | Registry `<id>.json` file could not be written |
 | 110 | `REGISTRY_UPDATE_FAILED` | Registry `index.json` could not be updated |
+| 111 | `REGISTRY_DELETE_FAILED` | Registry persona file deletion failed after index was updated |
+| 112 | `INVALID_CONFIRMATION_TOKEN` | Confirm token for clear operation does not match required value |
 
 If an app-layer error `code` is not mapped in this table, `numeric_code` defaults to `10` (`INTERNAL`).
 
@@ -486,4 +578,112 @@ MCP handler example:
     "sources": ["constraints/strict", "constraints/autonomous"]
   }
 }
+```
+
+---
+
+## H. Python API Interface
+
+The Python API provides direct function access for programmatic use via `larva.shell.python_api`.
+
+### component_list()
+
+List all available components by type.
+
+**Returns:** `dict[str, list[str]]` — Dictionary mapping component type keys to lists of component names:
+- `"prompts"`: list of available prompt names
+- `"toolsets"`: list of available toolset names
+- `"constraints"`: list of available constraint names
+- `"models"`: list of available model names
+
+**Raises:** `LarvaApiError` with code `COMPONENT_NOT_FOUND` (105) on failure.
+
+```python
+from larva.shell.python_api import component_list
+
+components = component_list()
+assert "prompts" in components
+```
+
+### component_show(type, name)
+
+Show a specific component's content.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `type` | str | Component type: `"prompt"`, `"toolset"`, `"constraint"`, or `"model"` |
+| `name` | str | Component name (without file extension) |
+
+**Returns:** `dict[str, object]` — Component content as dictionary.
+
+**Raises:** `LarvaApiError` with code `COMPONENT_NOT_FOUND` (105) if component does not exist or type is invalid.
+
+```python
+from larva.shell.python_api import component_show
+
+prompt = component_show("prompt", "code-reviewer")
+assert "text" in prompt
+```
+
+### delete(persona_id)
+
+Delete a registered persona from the registry.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `persona_id` | str | Unique identifier of the persona to delete |
+
+**Returns:** `DeletedPersona` — `{"id": str, "deleted": bool}` on success.
+
+**Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if persona does not exist, `REGISTRY_DELETE_FAILED` (111) on deletion failure.
+
+```python
+from larva.shell.python_api import delete
+
+result = delete("old-persona")
+assert result["deleted"] is True
+```
+
+### clear(*, confirm)
+
+Clear all registered personas from the registry.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `confirm` | str | Keyword-only argument. Must be exactly `"CLEAR REGISTRY"` (safety confirmation) |
+
+**Returns:** `int` — Number of personas that were removed.
+
+**Raises:** `LarvaApiError` with code `INVALID_CONFIRMATION_TOKEN` (112) if confirm token does not match, `REGISTRY_DELETE_FAILED` (111) on deletion failure.
+
+```python
+from larva.shell.python_api import clear
+
+count = clear(confirm="CLEAR REGISTRY")
+print(f"Removed {count} personas")
+```
+
+### Python API Error Format
+
+All `LarvaApiError` exceptions contain structured error info:
+
+```python
+class LarvaApiError(Exception):
+    error: dict  # {"code": str, "numeric_code": int, "message": str, "details": dict}
+```
+
+Access error details:
+```python
+try:
+    delete("nonexistent")
+except LarvaApiError as e:
+    assert e.error["code"] == "PERSONA_NOT_FOUND"
+    assert e.error["numeric_code"] == 100
+```
 ```
