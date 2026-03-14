@@ -20258,7 +20258,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-cli-update
     name: feature_update.cli-update
-    status: claimed
+    status: done
     description: "Add update subcommand to the CLI.\n\nFiles: src/larva/shell/cli_helpers.py,\
       \ src/larva/shell/cli.py\n\n### cli_helpers.py changes\n\n1. Add \"update\"\
       \ to `CommandName` literal type.\n\n2. Add update subcommand parser to `_build_parser()`:\n\
@@ -20363,6 +20363,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:18:23.009403+00:00'
+    done_at: '2026-03-14T22:28:54.059897+00:00'
+    evidence: '## CLI Update Evidence
+
+
+      Artifact:
+
+      - PR: 50399f2 (squash merge commit from worktree branch f2dd65a)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed
+
+      - Run: uv run pytest tests/shell/test_cli.py -v -> passed
+
+      - Run: uv run larva update --help -> usage includes `id`, `--set`, `--json`
+
+      - Type inference behavior implemented for bool/null/number/string and validated
+      in helper parsing flow
+
+
+      Spec link:
+
+      - feature_update.feature-update-cli-update
+
+
+      Files changed:
+
+      - src/larva/shell/cli_helpers.py
+
+      - src/larva/shell/cli.py
+
+
+      Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-python-api-update
     name: feature_update.python-api-update
     status: claimed
