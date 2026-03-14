@@ -18,7 +18,7 @@ import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
-from larva.core.assemble import AssemblyError
+from larva.core.assemble import _assembly_error
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
@@ -108,7 +108,7 @@ class RaisingAssembleModule:
 
     def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
         self.calls.append("assemble")
-        raise AssemblyError(
+        raise _assembly_error(
             code="COMPONENT_CONFLICT",
             message="Multiple sources provide different values for 'side_effect_policy'",
             details={"field": "side_effect_policy"},
@@ -121,7 +121,7 @@ class RaisingUnknownCodeAssembleModule:
 
     def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
         self.calls.append("assemble")
-        raise AssemblyError(
+        raise _assembly_error(
             code="UNMAPPED_ASSEMBLY_ERROR",
             message="unmapped assembly failure",
             details={"field": "model"},
@@ -766,8 +766,7 @@ class TestFacadeClear:
 
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "INVALID_CONFIRMATION_TOKEN"
-        # INTERNAL numeric code fallback for unmapped code
-        assert error["numeric_code"] == 10
+        assert error["numeric_code"] == 112
         assert error["message"] == "clear requires exact confirmation token 'CLEAR REGISTRY'"
         # No extra fields leak into details for this error type
         assert error["details"] == {}

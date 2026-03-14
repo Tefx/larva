@@ -386,6 +386,7 @@ class TestMCPErrorCodes:
             "REGISTRY_WRITE_FAILED",
             "REGISTRY_UPDATE_FAILED",
             "REGISTRY_DELETE_FAILED",
+            "INVALID_CONFIRMATION_TOKEN",
         }
         assert set(mcp_module.LARVA_ERROR_CODES.keys()) == required_codes
 
@@ -1679,8 +1680,7 @@ class TestMCPHandleClear:
 
         assert isinstance(result, dict)
         assert result["code"] == "INVALID_CONFIRMATION_TOKEN"
-        # INTERNAL fallback numeric code for unmapped error codes
-        assert result["numeric_code"] == 10
+        assert result["numeric_code"] == 112
 
     def test_handle_clear_missing_confirm_returns_malformed_envelope(self) -> None:
         """Test handle_clear returns malformed-params envelope for missing confirm."""

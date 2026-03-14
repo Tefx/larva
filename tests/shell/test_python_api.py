@@ -911,6 +911,7 @@ class TestPythonApiClear:
             python_api.clear(confirm="WRONG TOKEN")
 
         assert exc_info.value.error["code"] == "INVALID_CONFIRMATION_TOKEN"
+        assert exc_info.value.error["numeric_code"] == 112
 
     def test_clear_positional_arg_raises_typeerror(self, facade_fixture: FacadeFixture) -> None:
         """clear() must be keyword-only - positional arg must raise TypeError."""
