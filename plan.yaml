@@ -21329,3 +21329,28 @@ phases:
     - feature_export.plugin-opencode
     - feature_export.tests-export
     agent: gate-reviewer
+  - id: feature_export.feature-export-contract
+    name: feature_export.contract
+    status: pending
+    description: "Define the contract-only bulk-export surface in `src/larva/app/facade.py`\
+      \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
+      contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
+      \nScope:\n- add `export_all() -> Result[list[PersonaSpec], LarvaError]` and\
+      \ `export_ids(ids: list[str]) -> Result[list[PersonaSpec], LarvaError]` to the\
+      \ `LarvaFacade` protocol\n- add acceptance-only behavioral notes or stub-level\
+      \ `DefaultLarvaFacade` scaffolding that makes both export contracts explicit\
+      \ without shipping registry iteration logic\n- lock the contract that `export_all()`\
+      \ returns all canonical registry specs, `export_ids()` fail-fast returns the\
+      \ first registry error, and empty inputs produce `Success([])` where documented\n\
+      - lock the no-renormalize/no-revalidate rule for already-canonical registry\
+      \ data so downstream transports share one export contract\n\nNon-goals:\n- no\
+      \ registry list/get implementation\n- no CLI, MCP, Python API, or plugin wiring\n\
+      - no docs or transport error-shaping changes"
+    verification: '- `src/larva/app/facade.py` exposes both export method signatures
+      in the protocol
+
+      - Contract artifacts stay acceptance-only and do not implement registry traversal
+
+      - Fail-fast, empty-input, and canonical-registry-data semantics are explicit
+      for downstream steps'
+    agent: python-executor
