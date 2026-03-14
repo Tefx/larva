@@ -21987,7 +21987,7 @@ phases:
     claimed_at: '2026-03-14T22:30:09.115278+00:00'
   - id: feature_export.tests-export
     name: tests-export
-    status: claimed
+    status: done
     description: 'Add tests for export across all layers.
 
 
@@ -22084,6 +22084,44 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:29:57.001526+00:00'
+    done_at: '2026-03-14T22:47:35.732039+00:00'
+    evidence: 'Artifact:
+
+      - PR: 34e4531 (conflict-resolved merge commit while landing export transport
+      tests)
+
+
+      Verification:
+
+      - Run: uv run python -m py_compile tests/shell/test_cli.py tests/shell/test_mcp.py
+      tests/shell/test_python_api.py -> passed
+
+      - Run: uv run pytest tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py
+      -v -k "update or clone or export" -> 107 passed
+
+      - Run: uv run invar guard -> passed
+
+      - No unmerged paths after resolution
+
+
+      Spec link:
+
+      - feature_export.tests-export
+
+
+      Files changed:
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_python_api.py
+
+
+      Gaps/Notes:
+
+      - Conflict resolution preserved update+clone+export coverage simultaneously
+      in shared shell test modules.'
   - id: feature_export.gate
     name: gate
     status: pending
