@@ -20862,6 +20862,32 @@ phases:
     - feature_clone.docs-interfaces
     - feature_clone.tests-clone
     agent: gate-reviewer
+  - id: feature_clone.feature-clone-contract
+    name: feature_clone.contract
+    status: pending
+    description: "Define the contract-only clone surface in `src/larva/app/facade.py`\
+      \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
+      contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
+      \nScope:\n- add `clone(source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]`\
+      \ to the `LarvaFacade` protocol\n- add acceptance-only behavioral notes or stub-level\
+      \ `DefaultLarvaFacade.clone()` scaffolding that makes the clone contract explicit\
+      \ without shipping registry orchestration logic\n- lock the contract semantics\
+      \ that clone reads the source persona, writes the cloned persona under `new_id`,\
+      \ reuses existing facade error codes, and returns the normalized saved `PersonaSpec`\n\
+      - lock the overwrite rule for an existing `new_id` as part of the contract so\
+      \ downstream CLI/MCP/Python API surfaces do not invent different semantics\n\
+      \nNon-goals:\n- no registry get/save implementation\n- no validate/normalize\
+      \ orchestration logic\n- no CLI, MCP, or Python API wiring\n- no transport error-shaping\
+      \ or docs updates"
+    verification: '- `src/larva/app/facade.py` exposes the clone method signature
+      in the protocol
+
+      - Contract artifacts remain acceptance-only: signatures, notes, stubs, no runnable
+      clone business logic
+
+      - Clone overwrite/error semantics are explicit for downstream test and implementation
+      steps'
+    agent: python-executor
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
   status: pending
