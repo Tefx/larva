@@ -21251,7 +21251,7 @@ phases:
       - Thin delegation wrapper added with module-consistent docstring and invar annotations.'
   - id: feature_clone.docs-interfaces
     name: docs-interfaces
-    status: pending
+    status: claimed
     description: 'Update INTERFACES.md to document the clone operation across all
       three surfaces.
 
@@ -21287,6 +21287,8 @@ phases:
     depends_on:
     - feature_clone.facade-clone
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:48:10.297262+00:00'
   - id: feature_clone.tests-clone
     name: tests-clone
     status: done
