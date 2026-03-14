@@ -20871,7 +20871,7 @@ phases:
       - Error mappings and overwrite-on-existing-new_id semantics follow plan contract/tests.'
   - id: feature_clone.mcp-clone
     name: mcp-clone
-    status: claimed
+    status: done
     description: "Add `larva.clone` MCP tool definition and handler.\n\n## Tool Definition\
       \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
       {\n    \"name\": \"larva.clone\",\n    \"description\": \"Clone a registered\
@@ -20900,6 +20900,41 @@ phases:
     agent: python-executor
     claimed_by: python-senior
     claimed_at: '2026-03-14T22:11:01.677741+00:00'
+    done_at: '2026-03-14T22:17:52.773681+00:00'
+    evidence: 'Artifact:
+
+      - PR: c8f98c3 (squash merge commit from retry branch commit 8b534cb)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (errors: 0; file-size warning only with
+      mcp.py under cap)
+
+      - Run: uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name''] == ''larva.clone'' for t in LARVA_MCP_TOOLS)"
+      -> succeeded
+
+
+      Spec link:
+
+      - feature_clone.mcp-clone
+
+
+      Files changed:
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp_params.py
+
+
+      Gaps/Notes:
+
+      - Initial python-executor attempt hit file-size guard; retried with python-senior
+      and extracted shared MCP param-validation helpers to keep mcp.py below limit
+      while preserving behavior.'
   - id: feature_clone.cli-clone
     name: cli-clone
     status: done
