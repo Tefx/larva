@@ -19738,7 +19738,7 @@ phases:
       - PASS. No remaining blocker/should-fix findings for this phase.'
 - id: feature_update
   name: 'Feature: Persona Update (Patch)'
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   steps:
@@ -20563,7 +20563,7 @@ phases:
     agent: gate-reviewer
   - id: feature_update.feature-update-core-contract
     name: feature_update.core-contract
-    status: pending
+    status: claimed
     description: "Define the contract-only patch-application surface in `src/larva/core/patch.py`\
       \ before tests and implementation.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
@@ -20587,6 +20587,8 @@ phases:
       on `model_params`/`tools`, and shallow overwrite elsewhere without shipping
       business logic'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T21:07:25.596216+00:00'
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: in_progress
