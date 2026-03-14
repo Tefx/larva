@@ -1892,7 +1892,6 @@ class TestMCPHandleUpdate:
             {"id": "update-test", "patches": {"description": "Updated"}}
         )
 
-        # Success returns PersonaSpec
         assert isinstance(result, dict)
         assert "error" not in result
         assert result["id"] == "update-test"
@@ -1914,7 +1913,6 @@ class TestMCPHandleUpdate:
 
         result = handlers.handle_update({"id": "missing", "patches": {"description": "x"}})
 
-        # Failure returns error envelope
         assert isinstance(result, dict)
         assert result["code"] == "PERSONA_NOT_FOUND"
         assert result["numeric_code"] == 100
@@ -2036,9 +2034,232 @@ class TestMCPHandleUpdate:
             {"id": "update-falsey", "patches": {"description": None, "can_spawn": False}}
         )
 
-        # The facade should preserve falsey values through validation
         assert isinstance(result, dict)
         assert "error" not in result
+
+
+# -----------------------------------------------------------------------------
+# MCP Export Handler Tests
+# -----------------------------------------------------------------------------
+
+
+class TestMCPHandleExport:
+    """Test MCPHandlers.handle_export parameter validation and delegation."""
+
+    def test_handle_export_all_success(self) -> None:
+        """Test handle_export returns all specs on success with all=True."""
+        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
+        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": True})
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["id"] == "export-alpha"
+        assert result[1]["id"] == "export-beta"
+
+    def test_handle_export_ids_success(self) -> None:
+        """Test handle_export returns ordered specs with ids parameter."""
+        spec_one = _canonical_spec("export-one", digest="sha256:one")
+        spec_two = _canonical_spec("export-two", digest="sha256:two")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, LarvaError]:
+            if persona_id == "export-one":
+                return Success(spec_one)
+            if persona_id == "export-two":
+                return Success(spec_two)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": f"not found: {persona_id}"})
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_one))
+        registry.get = get_by_id  # type: ignore[method-assign]
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": ["export-two", "export-one"]})
+
+        assert isinstance(result, list)
+        assert len(result) == 2
+        assert result[0]["id"] == "export-two"
+        assert result[1]["id"] == "export-one"
+
+    def test_handle_export_ids_single_returns_list_with_one(self) -> None:
+        """Test handle_export with single id returns list with one spec."""
+        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        registry = InMemoryRegistryStore(get_result=Success(spec_single))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": ["export-single"]})
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]["id"] == "export-single"
+
+    def test_handle_export_ids_empty_list_returns_empty_list(self) -> None:
+        """Test handle_export with empty ids returns empty list."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": []})
+
+        assert isinstance(result, list)
+        assert result == []
+
+    def test_handle_export_all_empty_registry_returns_empty_list(self) -> None:
+        """Test handle_export with all=True on empty registry returns empty list."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": True})
+
+        assert isinstance(result, list)
+        assert result == []
+
+    def test_handle_export_all_failure_returns_error_envelope(self) -> None:
+        """Test handle_export returns error envelope on registry failure."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index file unreadable",
+                    "path": "/tmp/registry/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": True})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert result["numeric_code"] == 107
+        assert result["details"]["path"] == "/tmp/registry/index.json"
+
+    def test_handle_export_ids_failure_returns_error_envelope(self) -> None:
+        """Test handle_export returns error envelope on persona not found."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": ["missing"]})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_NOT_FOUND"
+        assert result["numeric_code"] == 100
+        assert result["details"]["persona_id"] == "missing"
+
+    def test_handle_export_both_all_and_ids_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects both all and ids parameters."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": True, "ids": ["persona-1"]})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="cannot specify both 'all' and 'ids'",
+        )
+
+    def test_handle_export_neither_all_nor_ids_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects missing both all and ids."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="must specify either 'all' or 'ids'",
+        )
+
+    def test_handle_export_all_non_boolean_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects non-boolean all parameter."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": "yes"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="parameter 'all' must be boolean",
+        )
+
+    def test_handle_export_ids_non_list_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects non-list ids parameter."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": "persona-1"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="parameter 'ids' must be list[string]",
+        )
+
+    def test_handle_export_ids_non_string_elements_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects list with non-string elements."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"ids": ["persona-1", 123]})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="parameter 'ids' must be list[string]",
+        )
+
+    def test_handle_export_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects unknown parameters."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": True, "extra": "param"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_export_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_export rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export(["not", "an", "object"])
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.export",
+            reason="params must be an object",
+        )
 
 
 class TestMCPUpdateToolDefinition:

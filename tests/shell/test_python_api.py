@@ -1149,3 +1149,191 @@ class TestPythonApiExports:
     def test_cleared_registry_in_all(self) -> None:
         """ClearedRegistry must be in __all__."""
         assert "ClearedRegistry" in python_api.__all__
+
+    def test_export_all_in_all(self) -> None:
+        """export_all must be in __all__."""
+        assert "export_all" in python_api.__all__
+
+    def test_export_ids_in_all(self) -> None:
+        """export_ids must be in __all__."""
+        assert "export_ids" in python_api.__all__
+
+
+class TestPythonApiExportAll:
+    """Verify export_all() is thin delegation over facade.export_all."""
+
+    def test_export_all_delegates_to_facade_export_all(self, facade_fixture: FacadeFixture) -> None:
+        """export_all() must forward to facade.export_all()."""
+        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
+        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
+
+        result = python_api.export_all()
+
+        assert len(result) == 2
+        assert result[0]["id"] == "export-alpha"
+        assert result[1]["id"] == "export-beta"
+
+    def test_export_all_returns_empty_list_for_empty_registry(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """export_all() must return empty list when no personas registered."""
+        facade_fixture.registry.list_result = Success([])
+        result = python_api.export_all()
+        assert result == []
+
+    def test_export_all_returns_full_specs_not_summaries(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """export_all() returns complete PersonaSpec objects, not summaries."""
+        spec = _canonical_spec("full-spec", digest="sha256:full")
+        spec["description"] = "Full description"
+        spec["prompt"] = "Full prompt"
+        facade_fixture.registry.list_result = Success([spec])
+
+        result = python_api.export_all()
+
+        assert len(result) == 1
+        exported_spec = result[0]
+        assert exported_spec["id"] == "full-spec"
+        assert exported_spec["description"] == "Full description"
+        assert exported_spec["prompt"] == "Full prompt"
+        assert exported_spec["model"] == "gpt-4o-mini"
+        assert exported_spec["spec_digest"] == "sha256:full"
+
+    def test_export_all_failure_raises_larva_api_error(self, facade_fixture: FacadeFixture) -> None:
+        """Facade export_all failures must raise LarvaApiError."""
+        facade_fixture.registry.list_result = Failure(
+            {
+                "code": "REGISTRY_INDEX_READ_FAILED",
+                "message": "index corrupt",
+                "path": "/tmp/index.json",
+            }
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.export_all()
+
+        assert exc_info.value.error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert exc_info.value.error["numeric_code"] == 107
+
+
+class TestPythonApiExportIds:
+    """Verify export_ids() is thin delegation over facade.export_ids."""
+
+    def test_export_ids_delegates_to_facade_export_ids(self, facade_fixture: FacadeFixture) -> None:
+        """export_ids() must forward to facade.export_ids()."""
+        spec_one = _canonical_spec("export-one", digest="sha256:one")
+        spec_two = _canonical_spec("export-two", digest="sha256:two")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            if persona_id == "export-one":
+                return Success(spec_one)
+            if persona_id == "export-two":
+                return Success(spec_two)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": "not found"})
+
+        facade_fixture.registry.get_result = Success(spec_one)
+        facade_fixture.registry.get = get_by_id  # type: ignore[method-assign]
+
+        result = python_api.export_ids(["export-one", "export-two"])
+
+        assert len(result) == 2
+        assert result[0]["id"] == "export-one"
+        assert result[1]["id"] == "export-two"
+
+    def test_export_ids_preserves_input_order(self, facade_fixture: FacadeFixture) -> None:
+        """export_ids() must return specs in same order as input ids."""
+        spec_a = _canonical_spec("export-a", digest="sha256:a")
+        spec_b = _canonical_spec("export-b", digest="sha256:b")
+        spec_c = _canonical_spec("export-c", digest="sha256:c")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            if persona_id == "export-a":
+                return Success(spec_a)
+            if persona_id == "export-b":
+                return Success(spec_b)
+            if persona_id == "export-c":
+                return Success(spec_c)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": "not found"})
+
+        facade_fixture.registry.get_result = Success(spec_a)
+        facade_fixture.registry.get = get_by_id  # type: ignore[method-assign]
+
+        # Request in order b, a, c
+        result = python_api.export_ids(["export-b", "export-a", "export-c"])
+
+        assert len(result) == 3
+        assert result[0]["id"] == "export-b"
+        assert result[1]["id"] == "export-a"
+        assert result[2]["id"] == "export-c"
+
+    def test_export_ids_empty_list_returns_empty_list(self, facade_fixture: FacadeFixture) -> None:
+        """export_ids() with empty ids returns empty list immediately."""
+        result = python_api.export_ids([])
+        assert result == []
+
+    def test_export_ids_single_id_returns_single_element_list(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """Single id returns list with one spec, not the spec directly."""
+        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        facade_fixture.registry.get_result = Success(spec_single)
+
+        result = python_api.export_ids(["export-single"])
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0]["id"] == "export-single"
+
+    def test_export_ids_not_found_raises_larva_api_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """Facade PERSONA_NOT_FOUND failures must raise LarvaApiError."""
+        facade_fixture.registry.get_result = Failure(
+            {"code": "PERSONA_NOT_FOUND", "message": "not found", "persona_id": "missing"}
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.export_ids(["missing"])
+
+        assert exc_info.value.error["code"] == "PERSONA_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 100
+
+    def test_export_ids_returns_full_specs_not_summaries(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """export_ids() returns complete PersonaSpec objects, not summaries."""
+        spec = _canonical_spec("full-spec", digest="sha256:full")
+        spec["description"] = "Full description"
+        spec["prompt"] = "Full prompt"
+        facade_fixture.registry.get_result = Success(spec)
+
+        result = python_api.export_ids(["full-spec"])
+
+        assert len(result) == 1
+        exported_spec = result[0]
+        assert exported_spec["id"] == "full-spec"
+        assert exported_spec["description"] == "Full description"
+        assert exported_spec["prompt"] == "Full prompt"
+        assert exported_spec["model"] == "gpt-4o-mini"
+        assert exported_spec["spec_digest"] == "sha256:full"
+
+    def test_export_ids_registry_failure_raises_larva_api_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """Facade REGISTRY_SPEC_READ_FAILED failures must raise LarvaApiError."""
+        facade_fixture.registry.get_result = Failure(
+            {
+                "code": "REGISTRY_SPEC_READ_FAILED",
+                "message": "failed to read spec",
+                "persona_id": "broken",
+                "path": "/tmp/broken.json",
+            }
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.export_ids(["broken"])
+
+        assert exc_info.value.error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert exc_info.value.error["numeric_code"] == 108

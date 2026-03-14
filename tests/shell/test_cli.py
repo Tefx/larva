@@ -1345,6 +1345,12 @@ class RecordingFacade:
     clone_result: Result[PersonaSpec, LarvaError] = field(
         default_factory=lambda: Success(_canonical_spec("cloned"))
     )
+    export_all_result: Result[list[PersonaSpec], LarvaError] = field(
+        default_factory=lambda: Success([])
+    )
+    export_ids_result: Result[list[PersonaSpec], LarvaError] = field(
+        default_factory=lambda: Success([])
+    )
     validate_calls: int = 0
     assemble_calls: int = 0
     register_calls: int = 0
@@ -1354,6 +1360,8 @@ class RecordingFacade:
     clear_calls: int = 0
     update_calls: int = 0
     clone_calls: int = 0
+    export_all_calls: int = 0
+    export_ids_calls: int = 0
     last_resolve_id: str | None = None
     last_resolve_overrides: dict[str, object] | None = None
     last_delete_id: str | None = None
@@ -1362,6 +1370,7 @@ class RecordingFacade:
     last_update_patches: dict[str, object] | None = None
     last_clone_source: str | None = None
     last_clone_target: str | None = None
+    last_export_ids: list[str] | None = None
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         del spec
@@ -1420,6 +1429,265 @@ class RecordingFacade:
         self.last_clone_source = source_id
         self.last_clone_target = new_id
         return self.clone_result
+
+    def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
+        self.export_all_calls += 1
+        return self.export_all_result
+
+    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
+        self.export_ids_calls += 1
+        self.last_export_ids = ids
+        return self.export_ids_result
+
+
+# ============================================================================
+# Export Command Tests
+# ============================================================================
+
+
+class TestExportCommand:
+    """Tests for the export command handler."""
+
+    def test_export_all_success_text_mode_returns_exit_ok(self) -> None:
+        """Export all with valid specs returns exit code 0 in text mode."""
+        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
+        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "export-alpha" in cli_result["stdout"]
+        assert "export-beta" in cli_result["stdout"]
+
+    def test_export_all_success_json_mode_returns_json_payload(self) -> None:
+        """Export all returns JSON payload in JSON mode."""
+        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
+        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        data = cli_result["json"]["data"]
+        assert isinstance(data, list)
+        assert len(data) == 2
+        assert data[0]["id"] == "export-alpha"
+        assert data[1]["id"] == "export-beta"
+
+    def test_export_all_empty_registry_returns_ok_with_empty_text(self) -> None:
+        """Export all with empty registry returns success in text mode."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert cli_result["stdout"] == ""
+
+    def test_export_all_empty_registry_json_mode_returns_empty_array(self) -> None:
+        """Export all with empty registry returns empty JSON array."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert cli_result["json"]["data"] == []
+
+    def test_export_all_failure_returns_exit_error(self) -> None:
+        """Registry read failure returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index unreadable",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_export_all_failure_json_mode_returns_error_envelope(self) -> None:
+        """Registry failure returns JSON error envelope in JSON mode."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index unreadable",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=True, as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert error["numeric_code"] == 107
+
+    def test_export_ids_success_text_mode_returns_exit_ok(self) -> None:
+        """Export ids with valid specs returns exit code 0 in text mode."""
+        spec_one = _canonical_spec("export-one", digest="sha256:one")
+        spec_two = _canonical_spec("export-two", digest="sha256:two")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, Any]:
+            if persona_id == "export-one":
+                return Success(spec_one)
+            if persona_id == "export-two":
+                return Success(spec_two)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": "not found"})
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_one))
+        registry.get = get_by_id  # type: ignore[method-assign]
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command(
+            ["export-one", "export-two"], export_all=False, as_json=False, facade=facade
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "export-one" in cli_result["stdout"]
+        assert "export-two" in cli_result["stdout"]
+
+    def test_export_ids_success_json_mode_returns_json_payload(self) -> None:
+        """Export ids returns JSON payload in JSON mode."""
+        spec_one = _canonical_spec("export-one", digest="sha256:one")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, Any]:
+            if persona_id == "export-one":
+                return Success(spec_one)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": "not found"})
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_one))
+        registry.get = get_by_id  # type: ignore[method-assign]
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command(["export-one"], export_all=False, as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        data = cli_result["json"]["data"]
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] == "export-one"
+
+    def test_export_ids_empty_returns_ok_with_empty_text(self) -> None:
+        """Export ids with empty list returns success in text mode."""
+        facade = _make_facade()
+
+        from larva.shell.cli import export_command
+
+        result = export_command([], export_all=False, as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert cli_result["stdout"] == ""
+
+    def test_export_ids_not_found_returns_exit_error(self) -> None:
+        """Export ids with missing persona returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command(["missing"], export_all=False, as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_export_ids_not_found_json_mode_returns_error_envelope(self) -> None:
+        """Export ids with missing persona returns JSON error envelope."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import export_command
+
+        result = export_command(["missing"], export_all=False, as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+
+    def test_export_both_all_and_ids_returns_critical_failure(self) -> None:
+        """Export with both all and ids returns critical failure."""
+        facade = _make_facade()
+
+        from larva.shell.cli import export_command
+
+        result = export_command(["id1"], export_all=True, as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_CRITICAL
+        assert (
+            "both" in failure.get("stderr", "").lower()
+            or "both" in failure.get("error", {}).get("message", "").lower()
+        )
 
 
 class TestRunCli:
