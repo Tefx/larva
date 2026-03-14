@@ -18136,3 +18136,38 @@ phases:
     - feature_registry_ops.feature-registry-ops-tests-registry
     - feature_registry_ops.feature-registry-ops-tests-transport
     agent: gate-reviewer
+  - id: feature_registry_ops.feature-registry-ops-registry-contract
+    name: feature_registry_ops.registry-contract
+    status: pending
+    description: "Define acceptance-only contract artifacts for the registry delete/clear\
+      \ feature family before any implementation dispatch.\n\nspec_refs:\n- ARCHITECTURE.md\
+      \ > Module: `larva.shell.registry`\n- USAGE.md > registry layout and error behavior\
+      \ (`~/.larva/registry/`, `index.json`, `PERSONA_NOT_FOUND`)\n- Derived feature\
+      \ contract for delete/clear until `feature_registry_ops.docs-interfaces` publishes\
+      \ user-facing docs\n\ntouch_paths:\n- src/larva/shell/registry.py\n- tests/shell/test_registry.py\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n- signatures\n\
+      - type_defs\n- interfaces\n- stubs\n\nRequired contract artifacts:\n1. Define\
+      \ `DeleteFailureError` shape and add it to `RegistryError`.\n2. Extend `RegistryStore`\
+      \ with acceptance-defining signatures for `delete(persona_id)` and `clear(confirm=...)`.\n\
+      3. Add docstrings / structured behavioral notes that pin these rules without\
+      \ shipping filesystem logic:\n   - delete uses index-first ordering so the highest-risk\
+      \ invariant is \"no dangling index entry\"\n   - if spec unlink fails after\
+      \ index update, best-effort rollback must restore the prior index entry\n  \
+      \ - clear requires exact confirmation string and reports partial spec-file delete\
+      \ failures after index removal\n4. If class-level stubs are added for `FileSystemRegistryStore`,\
+      \ they MUST be `raise NotImplementedError` / `...` only.\n\nNon-goals:\n- no\
+      \ `_write_json_atomic`, `unlink`, or rollback implementation logic\n- no facade\
+      \ / CLI / MCP wiring\n- no runtime behavior beyond signatures, error shapes,\
+      \ and behavioral contract text"
+    verification: '- Contract artifacts exist in `src/larva/shell/registry.py` without
+      runnable delete/clear filesystem logic
+
+      - `DeleteFailureError`, `RegistryError`, and protocol signatures match the planned
+      feature family
+
+      - Behavioral notes explicitly cover index-first delete ordering, rollback obligation,
+      and clear confirmation semantics
+
+      - Contract step remains acceptance-only: any added class methods are stubs /
+      NotImplemented, not implementation'
+    agent: python-senior
