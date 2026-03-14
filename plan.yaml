@@ -21441,7 +21441,7 @@ phases:
     claimed_at: '2026-03-14T22:02:19.064084+00:00'
   - id: feature_export.cli-export
     name: cli-export
-    status: claimed
+    status: done
     description: "Add `larva export [--all | <id> ...] [--json]` CLI subcommand.\n\
       \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add export\
       \ subparser:\n```python\nexport_parser = subparsers.add_parser(\"export\")\n\
@@ -21476,6 +21476,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:02:23.130045+00:00'
+    done_at: '2026-03-14T22:10:25.619840+00:00'
+    evidence: 'Artifact:
+
+      - PR: a7eaa1c0cb47bf75e1dd80a167e00a42061a2da8 (conflict-resolved merge commit
+      while integrating feature_export.cli-export)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors)
+
+      - Run: uv run python -c "from larva.shell.cli import clone_command, export_command"
+      -> passed
+
+      - Run: uv run larva clone --help -> passed
+
+      - Run: uv run larva export --help -> passed
+
+
+      Spec link:
+
+      - feature_export.cli-export
+
+
+      Files changed:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_helpers.py
+
+
+      Gaps/Notes:
+
+      - Merge conflict with previously landed clone CLI step resolved by retaining
+      both command surfaces and consistent dispatch/parser wiring.'
   - id: feature_export.python-api-export
     name: python-api-export
     status: pending
