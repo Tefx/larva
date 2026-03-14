@@ -17804,7 +17804,7 @@ phases:
       - no temporary xfail markers remain for component tests.'
   - id: feature_registry_ops.feature-registry-ops-mcp-delete-clear
     name: feature_registry_ops.mcp-delete-clear
-    status: claimed
+    status: done
     description: "Add delete and clear MCP handlers.\n\nFiles: src/larva/shell/mcp_contract.py,\
       \ src/larva/shell/mcp.py\n\n### mcp_contract.py changes\n\nAdd two new tool\
       \ definitions to `LARVA_MCP_TOOLS` list (after existing tools):\n\n```python\n\
@@ -17897,6 +17897,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:08:22.078828+00:00'
+    done_at: '2026-03-14T12:21:39.576164+00:00'
+    evidence: '## MCP Delete/Clear Handler Evidence
+
+
+      Commit hash(es):
+
+      - 4985ff8 (squash merge of worker commit a348e59)
+
+
+      Files changed:
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp.py
+
+      - tests/shell/test_mcp.py
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_mcp.py -v` -> `92 passed`.
+
+      - Run: `uv run invar guard` -> passed (`0 errors`, doctest passed).
+
+
+      Behavioral seam evidence:
+
+      - `handle_delete` validates params, delegates to facade.delete, returns `{id,
+      deleted: True}` on success, returns LarvaError envelope on failure.
+
+      - `handle_clear` validates params, delegates to facade.clear, returns `{cleared:
+      True, count: N}` on success, returns LarvaError envelope on failure (including
+      wrong confirm path).
+
+      - Tool definitions `larva.delete` and `larva.clear` added with required-field
+      schemas in MCP contract list.
+
+
+      Gaps/Notes:
+
+      - none'
   - id: feature_registry_ops.feature-registry-ops-cli-delete-clear
     name: feature_registry_ops.cli-delete-clear
     status: done
