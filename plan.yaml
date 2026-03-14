@@ -18329,6 +18329,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-tests-clear
     - feature_registry_ops.feature-registry-ops-registry-clear
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
+    - feature_registry_ops.feature-registry-ops-mcp-components-contract
+    - feature_registry_ops.feature-registry-ops-tests-mcp-components
     - feature_registry_ops.feature-registry-ops-mcp-components
     - feature_registry_ops.feature-registry-ops-mcp-delete-clear
     - feature_registry_ops.feature-registry-ops-cli-delete-clear
