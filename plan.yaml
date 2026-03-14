@@ -21762,7 +21762,7 @@ phases:
       feature families in shared shell test files.'
   - id: feature_clone.gate
     name: gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify feature_clone phase completion and quality.\n\
       \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature now follows\
       \ explicit contract -> facade-tests -> implementation ordering before transport\
@@ -21804,6 +21804,8 @@ phases:
     - feature_clone.docs-interfaces
     - feature_clone.tests-clone
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T23:00:23.489305+00:00'
   - id: feature_clone.feature-clone-contract
     name: feature_clone.contract
     status: done
