@@ -20015,7 +20015,7 @@ phases:
       downstream implementation step.'
   - id: feature_update.feature-update-facade-update
     name: feature_update.facade-update
-    status: pending
+    status: claimed
     description: "Add update operation to the app facade.\n\nFile: src/larva/app/facade.py\n\
       \n### Protocol extension\n\nAdd to `LarvaFacade` protocol:\n```python\ndef update(\n\
       \    self,\n    persona_id: str,\n    patches: dict[str, object],\n) -> Result[PersonaSpec,\
@@ -20105,6 +20105,8 @@ phases:
     depends_on:
     - feature_update.feature-update-core-apply-patches
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T22:01:25.450741+00:00'
   - id: feature_update.feature-update-mcp-update
     name: feature_update.mcp-update
     status: pending
