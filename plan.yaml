@@ -17230,7 +17230,7 @@ phases:
       wiring.'
   - id: feature_registry_ops.feature-registry-ops-registry-clear
     name: feature_registry_ops.registry-clear
-    status: pending
+    status: claimed
     description: 'Implement the registry-layer clear operation only after the shared
       contract and clear-specific tests are in place.
 
@@ -17317,6 +17317,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-tests-clear
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T11:28:03.964135+00:00'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
     name: feature_registry_ops.facade-delete-clear
     status: pending
