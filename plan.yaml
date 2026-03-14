@@ -21186,7 +21186,7 @@ phases:
   steps:
   - id: feature_export.facade-export
     name: facade-export
-    status: claimed
+    status: done
     description: 'Add `export_all()` and `export_ids(ids)` to LarvaFacade protocol
       and DefaultLarvaFacade.
 
@@ -21271,6 +21271,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:49:14.351105+00:00'
+    done_at: '2026-03-14T22:00:43.552628+00:00'
+    evidence: 'Artifact:
+
+      - PR: 689a658 (squash merge commit from worktree branch 9cd9f265b9cec0ea7e870b252ac39d531c577174)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors, 1 warning file-size)
+
+      - Run: uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade;
+      assert hasattr(DefaultLarvaFacade, ''export_all''); assert hasattr(DefaultLarvaFacade,
+      ''export_ids'')" -> success
+
+
+      Spec link:
+
+      - feature_export.facade-export
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+
+      Gaps/Notes:
+
+      - `export_all()` implemented via registry.list() pass-through and direct Success(list)
+
+      - `export_ids(ids)` implemented with empty-list fast path and fail-fast registry.get
+      iteration
+
+      - No re-validate/re-normalize performed (canonical registry data rule preserved).'
   - id: feature_export.mcp-export
     name: mcp-export
     status: pending
