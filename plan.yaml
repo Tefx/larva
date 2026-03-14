@@ -20566,6 +20566,11 @@ phases:
       File: src/larva/app/facade.py
 
 
+      This is a non-simple feature path: it adds a new facade contract plus persistence-backed
+      clone semantics consumed by CLI, MCP, and Python API, so it MUST follow the
+      upstream contract -> facade-tests -> implementation order.
+
+
       ## LarvaFacade Protocol
 
       Add method signature:
@@ -20604,15 +20609,24 @@ phases:
 
       Do NOT add docstring explaining clone semantics to the Protocol method -- keep
       it consistent with other Protocol methods (delete/clear have docstrings but
-      resolve/list/register do not; follow the shorter pattern).'
+      resolve/list/register do not; follow the shorter pattern).
+
+
+      step_type: implementation'
     verification: '- `uv run invar guard` passes
 
       - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade"`
       succeeds
 
-      - Method signature matches spec'
+      - Method signature matches spec
+
+      - Facade implementation lands only after upstream clone contract and facade
+      tests are in place'
     refs:
     - src/larva/app/facade.py
+    depends_on:
+    - feature_clone.feature-clone-contract
+    - feature_clone.feature-clone-facade-tests
     agent: python-executor
   - id: feature_clone.mcp-clone
     name: mcp-clone
