@@ -19984,3 +19984,80 @@ phases:
     depends_on:
     - feature_update.feature-update-core-apply-patches
     agent: python-senior
+  - id: feature_update.feature-update-mcp-update
+    name: feature_update.mcp-update
+    status: pending
+    description: "Add larva.update MCP tool definition and handler.\n\nFiles: src/larva/shell/mcp_contract.py,\
+      \ src/larva/shell/mcp.py\n\n### mcp_contract.py changes\n\nAdd to `LARVA_MCP_TOOLS`:\n\
+      ```python\n{\n    \"name\": \"larva.update\",\n    \"description\": \"Update\
+      \ a registered persona with partial field patches.\",\n    \"input_schema\"\
+      : {\n        \"type\": \"object\",\n        \"properties\": {\n            \"\
+      id\": {\"type\": \"string\", \"description\": \"Persona id to update\"},\n \
+      \           \"patches\": {\n                \"type\": \"object\",\n        \
+      \        \"description\": \"Fields to update (supports dot notation for nested\
+      \ fields)\",\n            },\n        },\n        \"required\": [\"id\", \"\
+      patches\"],\n    },\n},\n```\n\n### mcp.py changes\n\nAdd `handle_update(self,\
+      \ params: object) -> Union[PersonaSpec, LarvaError]`:\n- Validate params object\n\
+      - Require \"id\" (string) and \"patches\" (object)\n- Reject unknown params\
+      \ (allowed_keys = {\"id\", \"patches\"})\n- Delegate to `self._facade.update(persona_id,\
+      \ patches)`\n- On Success: return PersonaSpec (the updated spec)\n- On Failure:\
+      \ return error envelope\n\nPattern: follow existing `handle_resolve` as the\
+      \ closest template (similar get+process pattern).\n\ntags: [\"integration\"\
+      ]\nstep_type: implementation\nrefs:\n  - src/larva/shell/mcp_contract.py\n \
+      \ - src/larva/shell/mcp.py\n  - src/larva/app/facade.py"
+    verification: '- invar guard passes
+
+      - LARVA_MCP_TOOLS contains larva.update entry
+
+      - handle_update validates id (string) and patches (object) params
+
+      - handle_update rejects unknown params
+
+      - Delegates to facade.update, returns PersonaSpec on success
+
+      - Returns error envelope on failure (not-found, invalid patch)
+
+      - All existing MCP handler tests still pass'
+    evidence_template: '## MCP Update Handler Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Full MCP test suite** (existing + new):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_mcp.py -v>
+
+      ```
+
+
+      **Integration evidence** — handle_update end-to-end:
+
+      ```
+
+      <paste: actual handler call result or test output>
+
+      ```
+
+
+      **Tool count** (verify N+1 from previous):
+
+      ```python
+
+      assert len(LARVA_MCP_TOOLS) == <expected>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-facade-update
+    agent: python-executor
