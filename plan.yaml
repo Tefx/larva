@@ -21632,7 +21632,7 @@ phases:
       both command surfaces and consistent dispatch/parser wiring.'
   - id: feature_export.python-api-export
     name: python-api-export
-    status: pending
+    status: claimed
     description: 'Add `export_all()` and `export_ids(ids)` to the Python API module.
 
 
@@ -21686,6 +21686,8 @@ phases:
     depends_on:
     - feature_export.facade-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:18:32.990368+00:00'
   - id: feature_export.docs-interfaces
     name: docs-interfaces
     status: pending
