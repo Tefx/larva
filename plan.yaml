@@ -18698,7 +18698,7 @@ phases:
       - ARCHITECTURE.md :: larva.shell.mcp / larva.shell.components'
   - id: feature_registry_ops.feature-registry-ops-tests-mcp-components
     name: feature_registry_ops.tests-mcp-components
-    status: pending
+    status: claimed
     description: 'Add feature-local acceptance tests for MCP `component_list` / `component_show`
       before implementation is claimable.
 
@@ -18804,3 +18804,5 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-mcp-components-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:38:46.764015+00:00'
