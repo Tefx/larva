@@ -20863,7 +20863,7 @@ phases:
     claimed_at: '2026-03-14T22:01:32.711603+00:00'
   - id: feature_clone.cli-clone
     name: cli-clone
-    status: pending
+    status: claimed
     description: "Add `larva clone <source-id> <new-id> [--json]` CLI subcommand.\n\
       \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add clone\
       \ subparser after delete_parser block (before clear_parser):\n```python\nclone_parser\
@@ -20892,6 +20892,8 @@ phases:
     depends_on:
     - feature_clone.facade-clone
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:02:14.944525+00:00'
   - id: feature_clone.python-api-clone
     name: python-api-clone
     status: pending
