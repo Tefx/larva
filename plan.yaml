@@ -19744,28 +19744,31 @@ phases:
     name: feature_update.core-apply-patches
     status: pending
     description: "Implement pure patch application function in core layer.\n\nFile:\
-      \ src/larva/core/patch.py (NEW FILE)\n\nThis is a pure core function: no I/O,\
-      \ no side effects, deterministic. It needs @pre/@post contracts and doctests\
-      \ per Invar rules.\n\n### Function signature\n\n```python\n@pre(lambda spec,\
-      \ patches: isinstance(spec, dict) and isinstance(patches, dict))\n@post(lambda\
-      \ result: isinstance(result, dict))\ndef apply_patches(spec: dict[str, object],\
-      \ patches: dict[str, object]) -> dict[str, object]:\n```\n\n### Constants\n\n\
-      ```python\nDEEP_MERGE_KEYS: frozenset[str] = frozenset({\"model_params\", \"\
-      tools\"})\nPROTECTED_KEYS: frozenset[str] = frozenset({\"spec_digest\", \"spec_version\"\
-      })\n```\n\n### Behavior\n\n1. **Protected field exclusion**: Remove `spec_digest`\
-      \ and `spec_version` from patches before applying. These are recomputed by normalize.\n\
-      \n2. **Dot-notation expansion**: Expand dot-separated keys into nested dicts.\n\
-      \   - `\"model_params.temperature\": 0.3` becomes `{\"model_params\": {\"temperature\"\
-      : 0.3}}`\n   - Single-level keys are unchanged\n\n3. **Merge strategy**:\n \
-      \  - Top-level scalar keys: last-writer-wins (patch overwrites spec)\n   - `model_params`\
-      \ (dict): deep merge (patch keys merged into existing dict, not replaced)\n\
-      \   - `tools` (dict): deep merge (same as model_params)\n   - All other dict-typed\
-      \ keys: shallow overwrite (patch replaces entire value)\n\n4. **Strip spec_digest\
-      \ from result**: Since normalize will recompute it, remove any stale spec_digest\
-      \ from the output.\n\n### Doctests (required by Invar)\n\n```python\n>>> apply_patches({\"\
-      id\": \"test\", \"model\": \"gpt-4\"}, {\"model\": \"claude-opus-4-20250514\"\
-      })[\"model\"]\n'claude-opus-4-20250514'\n\n>>> apply_patches({\"id\": \"test\"\
-      }, {\"spec_digest\": \"hack\", \"model\": \"x\"}).get(\"spec_digest\") is None\n\
+      \ src/larva/core/patch.py (NEW FILE)\n\nThis is a non-simple feature path: it\
+      \ introduces new core merge semantics with protected-field, precedence, and\
+      \ dot-notation rules, so it MUST follow the upstream contract -> tests -> implementation\
+      \ order.\n\nThis is a pure core function: no I/O, no side effects, deterministic.\
+      \ It needs @pre/@post contracts and doctests per Invar rules.\n\n### Function\
+      \ signature\n\n```python\n@pre(lambda spec, patches: isinstance(spec, dict)\
+      \ and isinstance(patches, dict))\n@post(lambda result: isinstance(result, dict))\n\
+      def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[str,\
+      \ object]:\n```\n\n### Constants\n\n```python\nDEEP_MERGE_KEYS: frozenset[str]\
+      \ = frozenset({\"model_params\", \"tools\"})\nPROTECTED_KEYS: frozenset[str]\
+      \ = frozenset({\"spec_digest\", \"spec_version\"})\n```\n\n### Behavior\n\n\
+      1. **Protected field exclusion**: Remove `spec_digest` and `spec_version` from\
+      \ patches before applying. These are recomputed by normalize.\n\n2. **Dot-notation\
+      \ expansion**: Expand dot-separated keys into nested dicts.\n   - `\"model_params.temperature\"\
+      : 0.3` becomes `{\"model_params\": {\"temperature\": 0.3}}`\n   - Single-level\
+      \ keys are unchanged\n\n3. **Merge strategy**:\n   - Top-level scalar keys:\
+      \ last-writer-wins (patch overwrites spec)\n   - `model_params` (dict): deep\
+      \ merge (patch keys merged into existing dict, not replaced)\n   - `tools` (dict):\
+      \ deep merge (same as model_params)\n   - All other dict-typed keys: shallow\
+      \ overwrite (patch replaces entire value)\n\n4. **Strip spec_digest from result**:\
+      \ Since normalize will recompute it, remove any stale spec_digest from the output.\n\
+      \n### Doctests (required by Invar)\n\n```python\n>>> apply_patches({\"id\":\
+      \ \"test\", \"model\": \"gpt-4\"}, {\"model\": \"claude-opus-4-20250514\"})[\"\
+      model\"]\n'claude-opus-4-20250514'\n\n>>> apply_patches({\"id\": \"test\"},\
+      \ {\"spec_digest\": \"hack\", \"model\": \"x\"}).get(\"spec_digest\") is None\n\
       True\n\n>>> result = apply_patches({\"model_params\": {\"temperature\": 0.7}},\
       \ {\"model_params\": {\"top_p\": 0.9}})\n>>> result[\"model_params\"][\"temperature\"\
       ]\n0.7\n>>> result[\"model_params\"][\"top_p\"]\n0.9\n\n>>> apply_patches({\"\
@@ -19788,7 +19791,10 @@ phases:
 
       - Top-level scalar overwrite works
 
-      - Function is pure: no imports from shell/ or app/'
+      - Function is pure: no imports from shell/ or app/
+
+      - Implementation lands only after the contract and contract-driven tests are
+      in place'
     evidence_template: '## Core apply_patches Evidence
 
 
@@ -19852,6 +19858,13 @@ phases:
 
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
+    refs:
+    - src/larva/core/patch.py
+    - src/larva/core/spec.py
+    - src/larva/core/normalize.py
+    depends_on:
+    - feature_update.feature-update-core-contract
+    - feature_update.feature-update-core-tests
     agent: python-senior
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
