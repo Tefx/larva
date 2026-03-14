@@ -21101,7 +21101,7 @@ phases:
       dispatch branch.'
   - id: feature_clone.python-api-clone
     name: python-api-clone
-    status: claimed
+    status: done
     description: 'Add `clone(source_id, new_id)` to the Python API module.
 
 
@@ -21152,6 +21152,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:18:56.250852+00:00'
+    done_at: '2026-03-14T22:29:12.661526+00:00'
+    evidence: 'Artifact:
+
+      - PR: a439925 (squash merge commit from worktree commit 3c30ade)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed
+
+      - Run: uv run python -c "from larva.shell.python_api import clone" -> succeeded
+
+      - `clone` appears in __all__ -> verified
+
+
+      Spec link:
+
+      - feature_clone.python-api-clone
+
+
+      Files changed:
+
+      - src/larva/shell/python_api.py
+
+
+      Gaps/Notes:
+
+      - Thin delegation wrapper added with module-consistent docstring and invar annotations.'
   - id: feature_clone.docs-interfaces
     name: docs-interfaces
     status: pending
