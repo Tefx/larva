@@ -21207,7 +21207,7 @@ phases:
       as guard errors.'
   - id: feature_update.feature-update-gate-retest-shell-complexity-batch
     name: feature_update.gate-retest-shell-complexity-batch
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT REVIEWER (`gate-reviewer`), re-test the `feature_update`\
       \ gate blocker family after the batched shell-complexity remediation.\n\nYOUR\
       \ GOAL IS TO FIND PROBLEMS, not to confirm it works.\n\nScope:\n- Re-run the\
@@ -21283,6 +21283,8 @@ phases:
     depends_on:
     - feature_update.feature-update-gate-fix-shell-complexity-batch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T23:09:47.575212+00:00'
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: done
