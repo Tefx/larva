@@ -21590,7 +21590,7 @@ phases:
       logic implemented in this step.'
   - id: feature_export.feature-export-facade-tests
     name: feature_export.facade-tests
-    status: claimed
+    status: done
     description: 'Add contract-driven facade tests for export before transport implementation.
 
 
@@ -21630,6 +21630,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:26:30.601977+00:00'
+    done_at: '2026-03-14T21:48:41.469534+00:00'
+    evidence: 'Artifact:
+
+      - PR: 1d121b4 (conflict-resolved merge commit after squash integration of branch
+      49b051e)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/app/test_facade.py -k "clone or export" -v -> 17
+      selected tests xfailed as expected for contract stubs, no failures/errors
+
+      - Run: uv run ruff check tests/app/test_facade.py -> passed
+
+      - Run: uv run python -m py_compile tests/app/test_facade.py -> passed
+
+
+      Spec link:
+
+      - feature_export.feature-export-facade-tests
+
+
+      Files changed:
+
+      - tests/app/test_facade.py
+
+
+      Gaps/Notes:
+
+      - Merge conflict with prior clone-test step was resolved by preserving both
+      clone and export contract coverage in one coherent test module; no conflict
+      markers remain.'
 - id: orchestrator_unblock
   name: Orchestrator Unblockers
   status: done
