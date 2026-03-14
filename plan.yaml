@@ -17776,3 +17776,68 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-python-api-all
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-tests-registry
+    name: feature_registry_ops.tests-registry
+    status: pending
+    description: "Add registry-layer tests for delete and clear operations.\n\nFile:\
+      \ tests/shell/test_registry.py\n\n### Tests for FileSystemRegistryStore.delete\n\
+      \n1. `test_delete_success` — save a persona, then delete it; confirm spec file\
+      \ gone and index entry removed\n2. `test_delete_not_found` — delete non-existent\
+      \ id; confirm PERSONA_NOT_FOUND failure\n3. `test_delete_invalid_id` — delete\
+      \ with invalid id (e.g. \"INVALID ID\"); confirm INVALID_PERSONA_ID failure,\
+      \ no filesystem access\n4. `test_delete_index_write_failure` — mock `_write_json_atomic`\
+      \ to fail on index write; confirm spec file untouched (still exists)\n5. `test_delete_spec_unlink_failure`\
+      \ — mock `spec_path.unlink` to raise OSError; confirm rollback attempted (index\
+      \ restored to pre-delete state)\n\n### Tests for FileSystemRegistryStore.clear\n\
+      \n6. `test_clear_wrong_confirm` — call with confirm=\"wrong\"; confirm Failure\
+      \ returned, no filesystem access (index not created/modified)\n7. `test_clear_empty_registry`\
+      \ — call with correct confirm on empty registry; confirm Success(0)\n8. `test_clear_success`\
+      \ — save 2-3 personas, then clear; confirm all spec files gone, index gone,\
+      \ Success(count)\n9. `test_clear_partial_failure` — save 2 personas, mock one\
+      \ `unlink` to fail; confirm Failure with failed_ids, but index still deleted\n\
+      10. `test_clear_returns_correct_count` — confirm returned count equals number\
+      \ of personas in registry before clear\n\n### Fixture guidance\n- Use existing\
+      \ tmp_path fixture pattern from the file (if present)\n- Create a `FileSystemRegistryStore(root=tmp_path)`\
+      \ for isolation\n- Avoid touching `DEFAULT_REGISTRY_ROOT` in any test\n\nstep_type:\
+      \ test\nrefs:\n  - tests/shell/test_registry.py\n  - src/larva/shell/registry.py"
+    verification: '- All 10 new tests pass
+
+      - invar guard passes after adding tests
+
+      - No test touches DEFAULT_REGISTRY_ROOT (home directory)
+
+      - Rollback test (test_delete_spec_unlink_failure) verifies index is restored'
+    evidence_template: '## Registry Tests Evidence
+
+
+      **Test run**:
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_registry.py -v>
+
+      ```
+
+
+      **Rollback test output** (must show index restored):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_registry.py -v -k spec_unlink_failure>
+
+      ```
+
+
+      **Confirm guard test** (must show no filesystem access):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_registry.py -v -k wrong_confirm>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-clear
+    agent: python-executor
