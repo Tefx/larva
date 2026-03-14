@@ -17297,3 +17297,130 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-clear
     agent: python-senior
+  - id: feature_registry_ops.feature-registry-ops-mcp-components
+    name: feature_registry_ops.mcp-components
+    status: pending
+    description: "Expose component_list and component_show operations to MCP.\n\n\
+      Files: src/larva/shell/mcp_contract.py, src/larva/shell/mcp.py\n\n### mcp_contract.py\
+      \ changes\n\nAdd two new tool definitions to `LARVA_MCP_TOOLS` list:\n\n```python\n\
+      {\n    \"name\": \"larva.component_list\",\n    \"description\": \"List all\
+      \ available components (prompts, toolsets, constraints, models).\",\n    \"\
+      input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {},\n\
+      \    },\n},\n{\n    \"name\": \"larva.component_show\",\n    \"description\"\
+      : \"Show the content of a named component by type and name.\",\n    \"input_schema\"\
+      : {\n        \"type\": \"object\",\n        \"properties\": {\n            \"\
+      type\": {\n                \"type\": \"string\",\n                \"description\"\
+      : \"Component type: prompts | toolsets | constraints | models\",\n         \
+      \   },\n            \"name\": {\"type\": \"string\", \"description\": \"Component\
+      \ name\"},\n        },\n        \"required\": [\"type\", \"name\"],\n    },\n\
+      },\n```\n\n### mcp.py changes\n\n1. Update `MCPHandlers.__init__` signature\
+      \ using **default-value pattern** (backward-compatible):\n   ```python\n   from\
+      \ larva.shell.components import ComponentStore, FilesystemComponentStore\n\n\
+      \   def __init__(\n       self,\n       facade: LarvaFacade,\n       components:\
+      \ ComponentStore | None = None,\n   ) -> None:\n       self._facade = facade\n\
+      \       self._components = components if components is not None else FilesystemComponentStore()\n\
+      \   ```\n   CRITICAL: `components` defaults to None so all existing call sites\
+      \ `MCPHandlers(facade=...)` remain valid without modification.\n\n2. Add private\
+      \ helper `_component_store_error(self, error: Exception) -> LarvaError`:\n \
+      \  Maps `ComponentStoreError` (and generic exceptions) to `LarvaError` envelope\
+      \ with code=\"COMPONENT_NOT_FOUND\", numeric_code from LARVA_ERROR_CODES.\n\n\
+      3. Add `handle_component_list(self, params: object) -> Union[dict[str, list[str]],\
+      \ LarvaError]`:\n   - Validate params as empty object (reject unknown params)\n\
+      \   - Call `self._components.list_components()`\n   - On Success: return the\
+      \ components dict\n   - On Failure / Exception: return `_component_store_error(error)`\n\
+      \n4. Add `handle_component_show(self, params: object) -> Union[dict[str, object],\
+      \ LarvaError]`:\n   - Validate params: require \"type\" (string) and \"name\"\
+      \ (string), reject unknown\n   - Validate \"type\" is one of: prompts, toolsets,\
+      \ constraints, models\n   - Route to correct loader: `load_prompt / load_toolset\
+      \ / load_constraint / load_model`\n   - On Success: return component content\
+      \ dict\n   - On Failure / Exception: return `_component_store_error(error)`\n\
+      \ntags: [\"integration\"]\nstep_type: implementation\nrefs:\n  - src/larva/shell/mcp_contract.py\n\
+      \  - src/larva/shell/mcp.py\n  - src/larva/shell/components.py\n  - tests/shell/test_mcp.py"
+    verification: '- invar guard passes
+
+      - LARVA_MCP_TOOLS contains larva.component_list and larva.component_show entries
+
+      - MCPHandlers(facade=facade) (no components arg) works without error — backward
+      compat
+
+      - MCPHandlers(facade=facade, components=store) also works
+
+      - handle_component_list returns dict with prompts/toolsets/constraints/models
+      keys
+
+      - handle_component_show routes to correct loader per type param
+
+      - Unknown type param returns COMPONENT_NOT_FOUND error envelope
+
+      - All existing MCP handler tests pass without modification'
+    evidence_template: '## MCP Component Handlers Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Backward-compatibility proof** (CRITICAL — existing tests must pass unmodified):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_mcp.py -v>
+
+      ```
+
+      Confirm: ALL existing tests pass. If any test was modified to accommodate the
+      new signature, list which ones and why.
+
+
+      **New handler tests**:
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_mcp.py -v -k "component">
+
+      ```
+
+
+      **Integration evidence** (seam-level, not just unit):
+
+      ```
+
+      # Demonstrate MCPHandlers(facade=...) backward compat call:
+
+      <paste actual Python snippet or test output showing no-arg components construction
+      works>
+
+
+      # Demonstrate component_list end-to-end:
+
+      <paste: actual handle_component_list({}) call result or test output>
+
+
+      # Demonstrate component_show end-to-end:
+
+      <paste: actual handle_component_show({"type": "prompts", "name": "<name>"})
+      result>
+
+      ```
+
+
+      **Tool count verification**:
+
+      ```python
+
+      # Confirm LARVA_MCP_TOOLS now has N+2 entries (was N before this step)
+
+      assert len(LARVA_MCP_TOOLS) == <expected_count>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-delete
+    agent: python-executor
