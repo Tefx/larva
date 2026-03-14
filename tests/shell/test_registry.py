@@ -10,13 +10,21 @@ These tests define expected shell-boundary behavior for FileSystemRegistryStore:
 
 from __future__ import annotations
 
+import inspect
 import json
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 import pytest
 from returns.result import Failure, Success
 
-from larva.shell.registry import INDEX_FILENAME, FileSystemRegistryStore
+from larva.shell.registry import (
+    CLEAR_CONFIRMATION_TOKEN,
+    INDEX_FILENAME,
+    DeleteFailureError,
+    FileSystemRegistryStore,
+    RegistryError,
+    RegistryStore,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -52,6 +60,35 @@ def registry_root(tmp_path: Path) -> Path:
 
 
 class TestFileSystemRegistryStoreContract:
+    def test_registry_error_includes_delete_failure_shape(self) -> None:
+        assert DeleteFailureError in get_args(RegistryError)
+
+    def test_registry_store_protocol_declares_delete_and_clear_contract_signatures(self) -> None:
+        delete_signature = inspect.signature(RegistryStore.delete)
+        clear_signature = inspect.signature(RegistryStore.clear)
+
+        assert tuple(delete_signature.parameters) == ("self", "persona_id")
+        assert tuple(clear_signature.parameters) == ("self", "confirm")
+        assert clear_signature.parameters["confirm"].default == CLEAR_CONFIRMATION_TOKEN
+
+    def test_registry_store_contract_docstrings_pin_delete_and_clear_ordering(self) -> None:
+        delete_doc = RegistryStore.delete.__doc__ or ""
+        clear_doc = RegistryStore.clear.__doc__ or ""
+
+        assert "no dangling index entry" in delete_doc
+        assert "best-effort rollback" in delete_doc
+        assert "exactly equal ``CLEAR_CONFIRMATION_TOKEN``" in clear_doc
+        assert "Partial spec-file deletion failures" in clear_doc
+
+    def test_filesystem_delete_clear_are_acceptance_only_stubs(self, registry_root: Path) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
+
+        with pytest.raises(NotImplementedError):
+            store.delete("ops-analyst")
+
+        with pytest.raises(NotImplementedError):
+            store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
     def test_save_persists_spec_and_updates_index_digest_mapping(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
         spec = _canonical_spec("ops-analyst", "sha256:ops-analyst")

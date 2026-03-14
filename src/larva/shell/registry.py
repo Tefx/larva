@@ -39,6 +39,7 @@ if TYPE_CHECKING:
 DEFAULT_REGISTRY_ROOT = Path("~/.larva/registry").expanduser()
 INDEX_FILENAME = "index.json"
 SPEC_FILENAME_TEMPLATE = "{id}.json"
+CLEAR_CONFIRMATION_TOKEN = "CLEAR REGISTRY"
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
@@ -93,6 +94,17 @@ class UpdateFailureError(TypedDict):
     path: str
 
 
+class DeleteFailureError(TypedDict):
+    """Failure removing one or more persona spec files from registry storage."""
+
+    code: Literal["REGISTRY_DELETE_FAILED"]
+    message: str
+    operation: Literal["delete", "clear"]
+    persona_id: str | None
+    path: str
+    failed_spec_paths: list[str]
+
+
 RegistryError: TypeAlias = (
     MissingPersonaError
     | InvalidPersonaIdError
@@ -100,6 +112,7 @@ RegistryError: TypeAlias = (
     | SpecReadError
     | WriteFailureError
     | UpdateFailureError
+    | DeleteFailureError
 )
 """Typed shell error surface for registry persistence operations."""
 
@@ -121,6 +134,31 @@ class RegistryStore(Protocol):
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
         """Enumerate canonical PersonaSpec records from registry boundary."""
+        ...
+
+    def delete(self, persona_id: str) -> Result[None, RegistryError]:
+        """Delete one persona using index-first safety ordering.
+
+        Behavioral contract:
+        - MUST update ``index.json`` first so the highest-risk invariant is
+          ``no dangling index entry``.
+        - If spec-file unlink fails after index update, implementation MUST
+          perform best-effort rollback restoring the prior index entry.
+        - Missing ids MUST surface ``PERSONA_NOT_FOUND``.
+        """
+
+        ...
+
+    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[None, RegistryError]:
+        """Delete all personas only when ``confirm`` exactly matches token.
+
+        Behavioral contract:
+        - ``confirm`` must exactly equal ``CLEAR_CONFIRMATION_TOKEN``.
+        - Index removal is ordered before per-spec file deletions.
+        - Partial spec-file deletion failures after index removal MUST be
+          reported as ``REGISTRY_DELETE_FAILED`` with remaining failed paths.
+        """
+
         ...
 
 
@@ -240,6 +278,16 @@ class FileSystemRegistryStore(RegistryStore):
             specs.append(spec_result.unwrap())
 
         return Success(specs)
+
+    def delete(self, persona_id: str) -> Result[None, RegistryError]:
+        """Contract stub: delete behavior is acceptance-only in this step."""
+
+        raise NotImplementedError("delete contract accepted; implementation is out of scope")
+
+    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[None, RegistryError]:
+        """Contract stub: clear behavior is acceptance-only in this step."""
+
+        raise NotImplementedError("clear contract accepted; implementation is out of scope")
 
     def _index_path(self) -> Path:
         return self._root / INDEX_FILENAME
@@ -479,7 +527,9 @@ class FileSystemRegistryStore(RegistryStore):
 
 
 __all__ = [
+    "CLEAR_CONFIRMATION_TOKEN",
     "DEFAULT_REGISTRY_ROOT",
+    "DeleteFailureError",
     "INDEX_FILENAME",
     "SPEC_FILENAME_TEMPLATE",
     "FileSystemRegistryStore",
