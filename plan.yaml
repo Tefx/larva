@@ -17230,7 +17230,7 @@ phases:
       wiring.'
   - id: feature_registry_ops.feature-registry-ops-registry-clear
     name: feature_registry_ops.registry-clear
-    status: claimed
+    status: done
     description: 'Implement the registry-layer clear operation only after the shared
       contract and clear-specific tests are in place.
 
@@ -17319,6 +17319,52 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T11:28:03.964135+00:00'
+    done_at: '2026-03-14T11:34:22.485031+00:00'
+    evidence: '## Registry Clear Implementation Evidence
+
+
+      **invar guard output**:
+
+      - Run: `uv run invar guard` (worker worktree) -> `status=passed`, `errors=0`,
+      `warnings=1` (file-size advisory only).
+
+
+      **Test run**:
+
+      - Run: `uv run pytest tests/shell/test_registry.py -v -k clear` -> `9 passed,
+      23 deselected`.
+
+
+      **Confirm guard proof**:
+
+      - `clear()` checks `confirm != CLEAR_CONFIRMATION_TOKEN` and returns `INVALID_CONFIRMATION_TOKEN`
+      failure before `_read_index` or any filesystem access.
+
+
+      **Files changed**:
+
+      - src/larva/shell/registry.py
+
+      - tests/shell/test_registry.py
+
+
+      **Commit hash(es)**:
+
+      - 6bf413d (squash merge of worker commit e7336ac)
+
+
+      **Spec link**:
+
+      - feature_registry_ops.feature-registry-ops-registry-contract
+
+      - feature_registry_ops.feature-registry-ops-tests-clear
+
+      - ARCHITECTURE.md module `larva.shell.registry`
+
+
+      **Gaps / SPEC QUESTIONS**:
+
+      - none'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
     name: feature_registry_ops.facade-delete-clear
     status: pending
