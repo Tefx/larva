@@ -19853,3 +19853,42 @@ phases:
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
     agent: python-senior
+  - id: feature_update.feature-update-core-tests
+    name: feature_update.core-tests
+    status: pending
+    description: "Add tests for core apply_patches function.\n\nFile: tests/core/test_patch.py\
+      \ (NEW FILE)\n\n### Test cases\n\n1. `test_apply_patches_scalar_overwrite` —\
+      \ top-level scalar field replaced\n2. `test_apply_patches_protected_fields_stripped`\
+      \ — spec_digest and spec_version in patches are ignored\n3. `test_apply_patches_deep_merge_model_params`\
+      \ — existing model_params keys preserved, new keys added\n4. `test_apply_patches_deep_merge_tools`\
+      \ — existing tools keys preserved, new tools keys added\n5. `test_apply_patches_shallow_overwrite_other_dicts`\
+      \ — non-deep-merge dict fields are fully replaced\n6. `test_apply_patches_dot_notation_single_level`\
+      \ — \"model_params.temperature\" expands to nested dict\n7. `test_apply_patches_dot_notation_multi_level`\
+      \ — \"a.b.c\" expands to {\"a\": {\"b\": {\"c\": value}}}\n8. `test_apply_patches_dot_notation_merges_with_existing`\
+      \ — dot-notation patches merge into existing nested dicts\n9. `test_apply_patches_empty_patches`\
+      \ — empty patches dict returns spec unchanged (minus spec_digest)\n10. `test_apply_patches_new_key_allowed`\
+      \ — patching a key not in original spec adds it\n11. `test_apply_patches_spec_digest_removed_from_result`\
+      \ — result never contains spec_digest (will be recomputed by normalize)\n12.\
+      \ `test_apply_patches_does_not_mutate_inputs` — original spec and patches dicts\
+      \ are not modified\n\nstep_type: test\nrefs:\n  - src/larva/core/patch.py"
+    verification: '- All 12 tests pass
+
+      - invar guard passes
+
+      - No test touches filesystem or I/O'
+    evidence_template: '## Core Patch Tests Evidence
+
+
+      **Test run**:
+
+      ```
+
+      <paste: uv run pytest tests/core/test_patch.py -v>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-core-apply-patches
+    agent: python-executor
