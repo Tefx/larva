@@ -21980,7 +21980,7 @@ phases:
       behavior, error propagation, and spec_digest recomputation expectations.'
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   steps:
@@ -22604,7 +22604,7 @@ phases:
       in shared shell test modules.'
   - id: feature_export.gate
     name: gate
-    status: claimed
+    status: done
     description: "Gate review: Verify feature_export phase completion and quality.\n\
       \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature now follows\
       \ explicit contract -> facade-tests -> implementation ordering before transport\
@@ -22653,6 +22653,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T23:00:51.730655+00:00'
+    done_at: '2026-03-14T23:09:27.180084+00:00'
+    evidence: '## Gate Review Report
+
+
+      Artifact:
+
+      - Reviewer execution evidence from gate-reviewer task ses_3116a9932ffe7deVrWlFaJsDFg
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed
+
+      - Run: full pytest suite summary -> passed (export-focused suites green)
+
+      - Report verdict: PASS for export feature implementation with no blocking issues
+
+
+      Spec link:
+
+      - feature_export.gate
+
+
+      Gaps/Notes:
+
+      - Review-only step; no code/docs modifications performed by gate reviewer.'
   - id: feature_export.feature-export-contract
     name: feature_export.contract
     status: done
