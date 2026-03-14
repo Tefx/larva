@@ -17091,7 +17091,7 @@ phases:
       complexity hints.'
 - id: feature_registry_ops
   name: 'Feature: Registry Delete/Clear + MCP Components'
-  status: in_progress
+  status: done
   steps:
   - id: feature_registry_ops.feature-registry-ops-registry-delete
     name: feature_registry_ops.registry-delete
@@ -19587,7 +19587,7 @@ phases:
       \ no remaining sibling mismatch found in scoped search."
   - id: feature_registry_ops.feature-registry-ops-gate-retest
     name: feature_registry_ops.gate-retest
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), re-run full validation
       and gate checks after `feature_registry_ops.feature-registry-ops-fix-gate-batch`.
 
@@ -19699,3 +19699,40 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T12:47:33.389165+00:00'
+    done_at: '2026-03-14T12:49:27.446916+00:00'
+    evidence: '## Retest Report
+
+
+      Retest target:
+
+      - `feature_registry_ops.feature-registry-ops-fix-gate-batch`
+
+
+      Verification commands and outputs:
+
+      - `uv run invar guard` -> passed (`0 errors`, `0 warnings`).
+
+      - `uv run pytest tests/ -v --tb=short` -> `408 passed`, `0 failed`.
+
+
+      B1 verification:
+
+      - `rg -n ''AssemblyError\('' tests/app/test_facade.py` -> no matches.
+
+      - Confirmed test doubles now use `_assembly_error(...)` helper path instead
+      of invalid direct constructor usage.
+
+
+      S1 verification:
+
+      - Confirmed `INVALID_CONFIRMATION_TOKEN: 112` mapping exists in `src/larva/app/facade.py`.
+
+      - Confirmed non-CLI tests expect `112` in facade/MCP/Python API wrong-confirm
+      paths.
+
+      - Confirmed docs already aligned with `112`.
+
+
+      Verdict:
+
+      - PASS. No remaining blocker/should-fix findings for this phase.'
