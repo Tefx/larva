@@ -21410,7 +21410,7 @@ phases:
     claimed_at: '2026-03-14T22:02:19.064084+00:00'
   - id: feature_export.cli-export
     name: cli-export
-    status: pending
+    status: claimed
     description: "Add `larva export [--all | <id> ...] [--json]` CLI subcommand.\n\
       \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add export\
       \ subparser:\n```python\nexport_parser = subparsers.add_parser(\"export\")\n\
@@ -21443,6 +21443,8 @@ phases:
     depends_on:
     - feature_export.facade-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:02:23.130045+00:00'
   - id: feature_export.python-api-export
     name: python-api-export
     status: pending
