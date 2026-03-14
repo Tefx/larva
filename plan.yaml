@@ -17095,7 +17095,7 @@ phases:
   steps:
   - id: feature_registry_ops.feature-registry-ops-registry-delete
     name: feature_registry_ops.registry-delete
-    status: pending
+    status: claimed
     description: "Implement the registry-layer delete operation only after explicit\
       \ contract and test coverage are in place.\n\nspec_refs:\n- feature_registry_ops.feature-registry-ops-registry-contract\n\
       - feature_registry_ops.feature-registry-ops-tests-registry\n- ARCHITECTURE.md\
@@ -17175,6 +17175,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-tests-registry
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T11:18:23.308826+00:00'
   - id: feature_registry_ops.feature-registry-ops-registry-clear
     name: feature_registry_ops.registry-clear
     status: pending
