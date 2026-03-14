@@ -20277,3 +20277,94 @@ phases:
     depends_on:
     - feature_update.feature-update-python-api-update
     agent: python-executor
+  - id: feature_update.feature-update-tests-transport
+    name: feature_update.tests-transport
+    status: pending
+    description: "Add transport-layer tests for update operation across all surfaces.\n\
+      \nFiles:\n- tests/app/test_facade.py\n- tests/shell/test_mcp.py\n- tests/shell/test_cli.py\n\
+      - tests/shell/test_python_api.py\n\n### tests/app/test_facade.py additions\n\
+      \n1. `test_facade_update_success` — mock registry.get returns spec, mock registry.save\
+      \ succeeds; confirm returned PersonaSpec has patches applied and new spec_digest\n\
+      2. `test_facade_update_not_found` — mock registry.get returns PERSONA_NOT_FOUND\
+      \ Failure; confirm LarvaError\n3. `test_facade_update_invalid_patch` — mock\
+      \ registry.get returns spec, patch produces invalid spec (e.g. model=\"\" fails\
+      \ validate); confirm PERSONA_INVALID error\n4. `test_facade_update_revalidates`\
+      \ — confirm validate() is called on the patched spec (not skipped)\n5. `test_facade_update_renormalizes`\
+      \ — confirm normalize() is called (spec_digest recomputed)\n6. `test_facade_update_save_failure`\
+      \ — mock registry.save returns Failure; confirm LarvaError propagated\n\n###\
+      \ tests/shell/test_mcp.py additions\n\n7. `test_handle_update_success` — mock\
+      \ facade.update Success; confirm PersonaSpec returned\n8. `test_handle_update_missing_id`\
+      \ — confirm INTERNAL error (missing required param)\n9. `test_handle_update_missing_patches`\
+      \ — confirm INTERNAL error\n10. `test_handle_update_not_found` — mock facade.update\
+      \ Failure; confirm error envelope\n11. `test_handle_update_rejects_unknown_params`\
+      \ — confirm INTERNAL error on unknown params\n\n### tests/shell/test_cli.py\
+      \ additions\n\n12. `test_cli_update_success` — mock facade.update Success; confirm\
+      \ exit 0 and output\n13. `test_cli_update_json_mode` — confirm --json output\
+      \ shape {\"data\": <PersonaSpec>}\n14. `test_cli_update_not_found` — confirm\
+      \ exit 1 and stderr\n15. `test_cli_update_missing_id` — confirm exit 2 (argparse)\n\
+      16. `test_cli_update_set_type_inference_number` — --set temperature=0.3 parsed\
+      \ as float\n17. `test_cli_update_set_type_inference_bool` — --set flag=true\
+      \ parsed as True\n18. `test_cli_update_set_type_inference_null` — --set value=null\
+      \ parsed as None\n19. `test_cli_update_set_type_inference_string` — --set name=hello\
+      \ parsed as \"hello\"\n20. `test_cli_update_set_bad_format` — --set noequals\
+      \ exits 2\n\n### tests/shell/test_python_api.py additions\n\n21. `test_update_success`\
+      \ — mock facade.update Success; confirm PersonaSpec returned\n22. `test_update_not_found_raises`\
+      \ — mock facade.update Failure; confirm LarvaApiError raised\n23. `test_update_invalid_patch_raises`\
+      \ — mock facade.update Failure(PERSONA_INVALID); confirm LarvaApiError\n\nstep_type:\
+      \ test\nrefs:\n  - tests/app/test_facade.py\n  - tests/shell/test_mcp.py\n \
+      \ - tests/shell/test_cli.py\n  - tests/shell/test_python_api.py"
+    verification: '- All 23 new tests pass
+
+      - Full test suite passes: uv run pytest tests/ -v
+
+      - No existing test modified (only additions)
+
+      - invar guard passes'
+    evidence_template: '## Transport Tests Evidence
+
+
+      **Full test suite** (all tests):
+
+      ```
+
+      <paste: uv run pytest tests/ -v --tb=short>
+
+      ```
+
+
+      **New test counts per file**:
+
+      - test_facade.py: <N> new update tests
+
+      - test_mcp.py: <N> new update tests
+
+      - test_cli.py: <N> new update tests (including type inference)
+
+      - test_python_api.py: <N> new update tests
+
+
+      **Type inference tests** (CLI --set parsing):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_cli.py -v -k "update_set_type">
+
+      ```
+
+
+      **Regression** (existing tests unmodified):
+
+      ```
+
+      <paste summary line showing total test count>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-mcp-update
+    - feature_update.feature-update-cli-update
+    - feature_update.feature-update-python-api-update
+    - feature_update.feature-update-core-tests
+    agent: python-executor
