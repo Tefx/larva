@@ -21513,3 +21513,41 @@ phases:
   status: pending
   depends_on:
   - meta.gate
+  steps:
+  - id: orchestrator_unblock.fix-precommit-invar-contrib-web
+    name: Fix pre-commit invar blockers in contrib/web/server.py
+    status: pending
+    description: 'Resolve repository-wide invar guard blockers preventing commit during
+      worktree squash merge.
+
+
+      Target file: contrib/web/server.py
+
+
+      Required fixes:
+
+      1) shell_result error at _api_error_response (line ~48): update shell function
+      contract/return shape to satisfy shell Result[T,E] rule, or add explicit justified
+      invar allow if function is framework-only adapter and not shell business function.
+
+      2) entry_point_too_thick at api_update_persona (line ~94): refactor route to
+      keep entry point <=15 lines by extracting logic into helper/shell function while
+      preserving behavior.
+
+
+      Constraints:
+
+      - Preserve external API behavior.
+
+      - Prefer real refactor over allow-hatch unless technically required.
+
+      - If allow-hatch is used, include precise reason comments.
+
+      - Do not modify plan files.
+
+      '
+    verification: '- `uv run invar guard` passes with zero errors
+
+      - `uv run python -m py_compile contrib/web/server.py` succeeds
+
+      - No behavior-changing diff beyond structural refactor for compliance'
