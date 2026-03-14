@@ -280,9 +280,47 @@ class FileSystemRegistryStore(RegistryStore):
         return Success(specs)
 
     def delete(self, persona_id: str) -> Result[None, RegistryError]:
-        """Contract stub: delete behavior is acceptance-only in this step."""
-
-        raise NotImplementedError("delete contract accepted; implementation is out of scope")
+        if (invalid := self._invalid_id_error(persona_id)) is not None:
+            return Failure(invalid)
+        spec_path = self._spec_path(persona_id)
+        if not spec_path.exists():
+            return Failure(self._not_found(persona_id))
+        index_result = self._read_index()
+        if isinstance(index_result, Failure):
+            return index_result
+        old_index = index_result.unwrap()
+        updated_index = dict(old_index)
+        updated_index.pop(persona_id, None)
+        index_path = self._index_path()
+        if isinstance(
+            index_write_result := self._write_json_atomic(
+                index_path, updated_index, "index", persona_id
+            ),
+            Failure,
+        ):
+            return index_write_result
+        try:
+            spec_path.unlink()
+        except OSError as exc:
+            message = f"failed to unlink spec file: {exc}"
+            if isinstance(
+                rollback_result := self._write_json_atomic(
+                    index_path, old_index, "index", persona_id
+                ),
+                Failure,
+            ):
+                message = f"{message}; rollback failed while restoring index: {rollback_result.failure()['message']}"
+            return Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": message,
+                    "operation": "delete",
+                    "persona_id": persona_id,
+                    "path": str(spec_path),
+                    "failed_spec_paths": [str(spec_path)],
+                }
+            )
+        return Success(None)
 
     def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[None, RegistryError]:
         """Contract stub: clear behavior is acceptance-only in this step."""

@@ -79,11 +79,8 @@ class TestFileSystemRegistryStoreContract:
         assert "exactly equal ``CLEAR_CONFIRMATION_TOKEN``" in clear_doc
         assert "Partial spec-file deletion failures" in clear_doc
 
-    def test_filesystem_delete_clear_are_acceptance_only_stubs(self, registry_root: Path) -> None:
+    def test_filesystem_clear_is_acceptance_only_stub(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
-
-        with pytest.raises(NotImplementedError):
-            store.delete("ops-analyst")
 
         with pytest.raises(NotImplementedError):
             store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
@@ -343,7 +340,6 @@ class TestFileSystemRegistryStoreContract:
 
     # ========== DELETE CONTRACT TESTS (xfail until implementation) ==========
 
-    @pytest.mark.xfail(reason="delete implementation not yet complete")
     def test_delete_success(self, registry_root: Path) -> None:
         """save a persona, then delete it; confirm spec file gone and index entry removed."""
         store = FileSystemRegistryStore(root=registry_root)
@@ -369,7 +365,6 @@ class TestFileSystemRegistryStoreContract:
         index_after = json.loads(index_path.read_text(encoding="utf-8"))
         assert "delete-target" not in index_after
 
-    @pytest.mark.xfail(reason="delete implementation not yet complete")
     def test_delete_not_found(self, registry_root: Path) -> None:
         """delete non-existent id; confirm PERSONA_NOT_FOUND failure."""
         _write_json(registry_root / INDEX_FILENAME, {})
@@ -382,7 +377,6 @@ class TestFileSystemRegistryStoreContract:
         assert error["code"] == "PERSONA_NOT_FOUND"
         assert error["persona_id"] == "missing-persona"
 
-    @pytest.mark.xfail(reason="delete implementation not yet complete")
     def test_delete_invalid_id(self, registry_root: Path) -> None:
         """invalid id returns INVALID_PERSONA_ID and performs no filesystem access."""
         store = FileSystemRegistryStore(root=registry_root)
@@ -397,7 +391,6 @@ class TestFileSystemRegistryStoreContract:
         assert not (registry_root / "Invalid_Persona.json").exists()
         assert not (registry_root / INDEX_FILENAME).exists()
 
-    @pytest.mark.xfail(reason="delete implementation not yet complete")
     def test_delete_index_write_failure(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -442,7 +435,6 @@ class TestFileSystemRegistryStoreContract:
         index_data = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
         assert index_data == {"delete-index-fail": "sha256:delete-index-fail"}
 
-    @pytest.mark.xfail(reason="delete implementation not yet complete")
     def test_delete_spec_unlink_failure(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
