@@ -20015,7 +20015,7 @@ phases:
       downstream implementation step.'
   - id: feature_update.feature-update-facade-update
     name: feature_update.facade-update
-    status: claimed
+    status: done
     description: "Add update operation to the app facade.\n\nFile: src/larva/app/facade.py\n\
       \n### Protocol extension\n\nAdd to `LarvaFacade` protocol:\n```python\ndef update(\n\
       \    self,\n    persona_id: str,\n    patches: dict[str, object],\n) -> Result[PersonaSpec,\
@@ -20107,6 +20107,45 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T22:01:25.450741+00:00'
+    done_at: '2026-03-14T22:10:33.202345+00:00'
+    evidence: '## Facade Update Evidence
+
+
+      Artifact:
+
+      - PR: fb42a36 (squash merge commit from worktree commit f778d7a)
+
+
+      **invar guard output**:
+
+      - Run: uv run invar guard -> passed (0 errors, file-size warning only)
+
+
+      **Test run**:
+
+      - Run: uv run pytest tests/app/test_facade.py -v -k update -> 3 passed
+
+
+      **Flow verification**:
+
+      - Implementation follows required order: get -> apply_patches -> validate ->
+      normalize -> save
+
+
+      **Existing facade tests still pass**:
+
+      - Run: uv run pytest tests/app/test_facade.py -v -> passing with expected xpass/xfail
+      contract markers
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+
+      Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-mcp-update
     name: feature_update.mcp-update
     status: pending
