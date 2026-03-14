@@ -17096,39 +17096,50 @@ phases:
   - id: feature_registry_ops.feature-registry-ops-registry-delete
     name: feature_registry_ops.registry-delete
     status: pending
-    description: "Add delete operation to the registry layer.\n\nFile: src/larva/shell/registry.py\n\
-      \nTasks:\n1. Add new TypedDict `DeleteFailureError`:\n   ```python\n   class\
-      \ DeleteFailureError(TypedDict):\n       code: Literal[\"REGISTRY_DELETE_FAILED\"\
-      ]\n       message: str\n       persona_id: str\n       path: str\n   ```\n2.\
-      \ Add `DeleteFailureError` to `RegistryError` union (alongside existing error\
-      \ types).\n3. Extend `RegistryStore` protocol with:\n   ```python\n   def delete(self,\
-      \ persona_id: str) -> Result[None, RegistryError]: ...\n   ```\n4. Implement\
-      \ `FileSystemRegistryStore.delete(self, persona_id)`:\n   - Validate persona_id\
-      \ with `_invalid_id_error`; return Failure if invalid\n   - Check spec_path\
-      \ exists; return `_not_found` Failure if missing\n   - Read current index via\
-      \ `_read_index`; return Failure if index unreadable\n   - Remove persona_id\
-      \ from index dict\n   - Write updated index atomically via `_write_json_atomic`\
-      \ (index-first ordering)\n   - If index write fails: return Failure immediately\
-      \ (spec file untouched — preferred over dangling index entry)\n   - Delete spec\
-      \ file: `spec_path.unlink()`\n   - If spec delete fails: rollback index by re-writing\
-      \ old index (best-effort rollback); return `_delete_failed` with rollback note\n\
-      \   - On full success: return `Success(None)`\n5. Add private helper `_delete_failed(self,\
-      \ persona_id, path, message) -> DeleteFailureError`.\n\nAtomicity rationale\
-      \ (from spec):\n- Index-first: richer to have orphan spec file than dangling\
-      \ index entry\n- Rollback: if spec delete fails after index update, attempt\
-      \ to restore index entry\n\nAdd `DeleteFailureError` to `__all__`.\n\nstep_type:\
-      \ implementation\nrefs:\n  - src/larva/shell/registry.py"
-    verification: '- invar guard passes with no new violations
+    description: "Implement the registry-layer delete operation only after explicit\
+      \ contract and test coverage are in place.\n\nspec_refs:\n- feature_registry_ops.feature-registry-ops-registry-contract\n\
+      - feature_registry_ops.feature-registry-ops-tests-registry\n- ARCHITECTURE.md\
+      \ > Module: `larva.shell.registry`\n\ntouch_paths:\n- src/larva/shell/registry.py\n\
+      - tests/shell/test_registry.py\n\nstep_type: implementation\n\nTasks:\n1. Implement\
+      \ the contracted `DeleteFailureError` helper / error-union wiring required by\
+      \ the prior contract step.\n2. Implement `FileSystemRegistryStore.delete(self,\
+      \ persona_id)` to:\n   - validate persona_id with `_invalid_id_error` and return\
+      \ Failure without filesystem access when invalid\n   - return `_not_found` if\
+      \ the spec path is missing before mutation starts\n   - read the current index\
+      \ via `_read_index`\n   - remove `persona_id` from the in-memory index snapshot\n\
+      \   - write the updated index atomically via `_write_json_atomic` before spec\
+      \ unlink\n   - unlink the spec file only after the updated index is durable\n\
+      \   - if unlink fails, attempt best-effort rollback by restoring the old index\
+      \ snapshot before returning `_delete_failed`\n3. Keep scope local to registry\
+      \ persistence. Facade / CLI / MCP / docs changes remain out of scope for this\
+      \ step.\n\nFailure-mode checklist:\n- relative vs absolute path behavior: all\
+      \ paths remain rooted under the configured registry root; no home-directory\
+      \ fallback in tests or implementation\n- missing-file fallback behavior: missing\
+      \ spec path returns `PERSONA_NOT_FOUND` before index mutation\n- explicit clear\
+      \ / null overwrite semantics: not in scope here; do not introduce clear-side\
+      \ behavior or shared mutation shortcuts\n- stale-definition vs new-state precedence:\
+      \ index state is authoritative for lookup consistency, but rollback must restore\
+      \ prior index contents when spec unlink fails\n- partial-write / rollback behavior:\
+      \ failed index write leaves spec untouched; failed spec unlink triggers best-effort\
+      \ index restore\n\nState semantics:\n- last-writer-wins: the durable `index.json`\
+      \ snapshot written by this operation becomes the registry truth on success\n\
+      - preserved exactly: the pre-delete index snapshot must be restorable byte-for-byte\
+      \ enough to reintroduce the removed persona mapping on rollback\n- backward-compatible\
+      \ legacy behavior: invalid ids and unknown personas still surface existing `INVALID_PERSONA_ID`\
+      \ / `PERSONA_NOT_FOUND` failures\n\nOut-of-scope guardrail:\n- no clear implementation\n\
+      - no transport or facade call-site migration\n- no compatibility wrapper beyond\
+      \ the contracted error/helper surface"
+    verification: '- Main path: targeted delete tests prove successful deletion removes
+      both the spec file and index entry
 
-      - FileSystemRegistryStore.delete removes spec file and index entry on success
+      - Failure path: rollback regression proves an unlink failure restores prior
+      index contents and returns `REGISTRY_DELETE_FAILED`
 
-      - Rollback path: if spec unlink fails, index entry is restored
+      - Focused regression also covers invalid-id short-circuit and index-write failure
+      leaving the spec file untouched
 
-      - Invalid persona_id returns INVALID_PERSONA_ID failure (no filesystem access)
-
-      - Missing persona returns PERSONA_NOT_FOUND failure
-
-      - DeleteFailureError is in RegistryError union and __all__'
+      - Proof includes union/export coverage for `DeleteFailureError` in the contracted
+      registry surface'
     evidence_template: '## Registry Delete Implementation Evidence
 
 
@@ -17158,6 +17169,11 @@ phases:
 
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
+    refs:
+    - src/larva/shell/registry.py
+    - tests/shell/test_registry.py
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-tests-registry
     agent: python-senior
   - id: feature_registry_ops.feature-registry-ops-registry-clear
     name: feature_registry_ops.registry-clear
