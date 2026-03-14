@@ -19422,7 +19422,7 @@ phases:
       this step scope.'
   - id: feature_registry_ops.feature-registry-ops-fix-gate-batch
     name: feature_registry_ops.fix-gate-batch
-    status: claimed
+    status: done
     description: 'Fix ALL issues, not just first, from `feature_registry_ops.feature-registry-ops-gate`.
 
 
@@ -19568,6 +19568,23 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T12:42:37.873092+00:00'
+    done_at: '2026-03-14T12:47:26.458963+00:00'
+    evidence: "## Batched Fix Evidence\n\nGate source:\n- `feature_registry_ops.feature-registry-ops-gate`\n\
+      - Instruction followed: fixed ALL issues in one batch (B1 + S1).\n\nCommit hash(es):\n\
+      - 3c732e0 (squash merge of worker commit 145401d)\n\nB1 search + repair:\n-\
+      \ Command: `rg -n \"AssemblyError\\(\" tests/app/test_facade.py`\n- Result after\
+      \ repair: no direct `AssemblyError(...)` constructor calls remain.\n- Repairs:\
+      \ replaced two test-double constructions with `_assembly_error(...)` factory-compatible\
+      \ behavior in `tests/app/test_facade.py`.\n\nS1 search + repair:\n- Command:\
+      \ `rg -n \"INVALID_CONFIRMATION_TOKEN|ERROR_NUMERIC_CODES|numeric_code\" INTERFACES.md\
+      \ src/larva/app tests`\n- Repairs:\n  - Added `INVALID_CONFIRMATION_TOKEN: 112`\
+      \ mapping in `src/larva/app/facade.py`.\n  - Updated non-CLI test expectations\
+      \ to `112` in `tests/app/test_facade.py`, `tests/shell/test_mcp.py`, and `tests/shell/test_python_api.py`.\n\
+      \  - Verified docs already documented `112` consistently.\n\nValidation:\n-\
+      \ `uv run pytest tests/app/test_facade.py -q` -> `27 passed`.\n- Targeted non-CLI\
+      \ checks for wrong-confirm/error-code assertions passed.\n\nConsistency note:\n\
+      - Numeric-code behavior is now aligned across docs/facade/non-CLI surfaces;\
+      \ no remaining sibling mismatch found in scoped search."
   - id: feature_registry_ops.feature-registry-ops-gate-retest
     name: feature_registry_ops.gate-retest
     status: pending
