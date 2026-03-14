@@ -17367,7 +17367,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
     name: feature_registry_ops.facade-delete-clear
-    status: claimed
+    status: done
     description: 'Implement the app-facade delete/clear methods only after the facade
       contract and facade-local acceptance tests are complete.
 
@@ -17514,6 +17514,49 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T12:02:15.356708+00:00'
+    done_at: '2026-03-14T12:06:45.788558+00:00'
+    evidence: '## Facade Delete/Clear Implementation Evidence
+
+
+      Commit hash(es):
+
+      - 4100d2a (squash merge of worker commit 39d3364)
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+
+      Verification:
+
+      - Run: `uv run python -c "from larva.app.facade import ERROR_NUMERIC_CODES;
+      assert ERROR_NUMERIC_CODES[''REGISTRY_DELETE_FAILED'']==111; print(ERROR_NUMERIC_CODES[''REGISTRY_DELETE_FAILED''])"`
+      -> `111`.
+
+      - Run: `uv run pytest tests/app/test_facade.py -v -k "delete or clear"` -> `7
+      passed, 20 deselected`.
+
+      - Run: `uv run invar guard` -> passed (`0 errors`, `0 warnings`).
+
+
+      Behavioral proof:
+
+      - `DefaultLarvaFacade.delete` delegates to registry delete and returns `{"id":
+      persona_id, "deleted": True}` on success.
+
+      - `DefaultLarvaFacade.clear` delegates to registry clear and returns `{"cleared":
+      True, "count": <int>}` on success.
+
+      - Failure mapping preserves registry `code`/`message` and places remaining fields
+      into `details` via facade error mapping pattern.
+
+
+      Gaps/Notes:
+
+      - none'
   - id: feature_registry_ops.feature-registry-ops-mcp-components
     name: feature_registry_ops.mcp-components
     status: claimed
