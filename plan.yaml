@@ -19856,10 +19856,13 @@ phases:
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
     status: pending
-    description: "Add tests for core apply_patches function.\n\nFile: tests/core/test_patch.py\
-      \ (NEW FILE)\n\n### Test cases\n\n1. `test_apply_patches_scalar_overwrite` —\
-      \ top-level scalar field replaced\n2. `test_apply_patches_protected_fields_stripped`\
-      \ — spec_digest and spec_version in patches are ignored\n3. `test_apply_patches_deep_merge_model_params`\
+    description: "Add contract-driven tests for core `apply_patches` before implementation.\n\
+      \nFile: tests/core/test_patch.py (NEW FILE)\n\nstep_type: test\n\nThese tests\
+      \ define the acceptance surface for the new core patch feature and therefore\
+      \ MUST land after the contract step and before the implementation step.\n\n\
+      ### Test cases\n\n1. `test_apply_patches_scalar_overwrite` — top-level scalar\
+      \ field replaced\n2. `test_apply_patches_protected_fields_stripped` — spec_digest\
+      \ and spec_version in patches are ignored\n3. `test_apply_patches_deep_merge_model_params`\
       \ — existing model_params keys preserved, new keys added\n4. `test_apply_patches_deep_merge_tools`\
       \ — existing tools keys preserved, new tools keys added\n5. `test_apply_patches_shallow_overwrite_other_dicts`\
       \ — non-deep-merge dict fields are fully replaced\n6. `test_apply_patches_dot_notation_single_level`\
@@ -19870,12 +19873,15 @@ phases:
       \ — patching a key not in original spec adds it\n11. `test_apply_patches_spec_digest_removed_from_result`\
       \ — result never contains spec_digest (will be recomputed by normalize)\n12.\
       \ `test_apply_patches_does_not_mutate_inputs` — original spec and patches dicts\
-      \ are not modified\n\nstep_type: test\nrefs:\n  - src/larva/core/patch.py"
+      \ are not modified\n\nrefs:\n  - src/larva/core/patch.py"
     verification: '- All 12 tests pass
 
       - invar guard passes
 
-      - No test touches filesystem or I/O'
+      - No test touches filesystem or I/O
+
+      - Tests are authored against the upstream contract before merge logic implementation
+      begins'
     evidence_template: '## Core Patch Tests Evidence
 
 
@@ -19889,8 +19895,11 @@ phases:
 
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
+    refs:
+    - tests/core/test_patch.py
+    - src/larva/core/patch.py
     depends_on:
-    - feature_update.feature-update-core-apply-patches
+    - feature_update.feature-update-core-contract
     agent: python-executor
   - id: feature_update.feature-update-facade-update
     name: feature_update.facade-update
