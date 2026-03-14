@@ -20950,7 +20950,7 @@ phases:
     agent: gate-reviewer
   - id: feature_clone.feature-clone-contract
     name: feature_clone.contract
-    status: claimed
+    status: done
     description: "Define the contract-only clone surface in `src/larva/app/facade.py`\
       \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
       contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
@@ -20976,6 +20976,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:06:46.992950+00:00'
+    done_at: '2026-03-14T21:25:23.272887+00:00'
+    evidence: 'Artifact:
+
+      - PR: 37db9aa (squash merge commit from worktree branch b3db62061847bb1c08ba5bd43a9cb53890715796)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors, 0 warnings)
+
+      - Run: uv run python -c "from larva.app.facade import LarvaFacade; import inspect;
+      print(inspect.signature(LarvaFacade.clone))" -> (self, source_id: ''str'', new_id:
+      ''str'') -> ''Result[PersonaSpec, LarvaError]''
+
+
+      Spec link:
+
+      - plan step feature_clone.feature-clone-contract
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+
+      Gaps/Notes:
+
+      - Initial merge commit attempt was blocked by unrelated untracked workspace
+      files; orchestrator resolved by temporary stash of untracked files during merge
+      flow; this step output itself remains contract-only and scoped.'
   - id: feature_clone.feature-clone-facade-tests
     name: feature_clone.facade-tests
     status: pending
