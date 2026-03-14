@@ -17841,3 +17841,102 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-clear
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-tests-transport
+    name: feature_registry_ops.tests-transport
+    status: pending
+    description: "Add transport-layer tests for all new operations.\n\nFiles:\n- tests/shell/test_mcp.py\n\
+      - tests/shell/test_cli.py\n- tests/shell/test_python_api.py\n- tests/app/test_facade.py\n\
+      \n### tests/app/test_facade.py additions\n\n1. `test_facade_delete_success`\
+      \ — mock registry.delete returning Success(None); confirm DeletedPersona returned\n\
+      2. `test_facade_delete_not_found` — mock registry.delete returning Failure(PERSONA_NOT_FOUND);\
+      \ confirm LarvaError propagation\n3. `test_facade_clear_success` — mock registry.clear\
+      \ returning Success(3); confirm ClearedRegistry(cleared=True, count=3)\n4. `test_facade_clear_wrong_confirm`\
+      \ — mock registry.clear returning Failure(REGISTRY_DELETE_FAILED); confirm LarvaError\
+      \ with code REGISTRY_DELETE_FAILED\n5. `test_error_numeric_codes_111` — assert\
+      \ `ERROR_NUMERIC_CODES[\"REGISTRY_DELETE_FAILED\"] == 111`\n\n### tests/shell/test_mcp.py\
+      \ additions\n\n6. `test_handle_component_list_success` — MCPHandlers with mocked\
+      \ component store; confirm correct dict shape returned\n7. `test_handle_component_list_no_args`\
+      \ — confirm empty params {} accepted\n8. `test_handle_component_show_success`\
+      \ — confirm routing to correct loader by type\n9. `test_handle_component_show_unknown_type`\
+      \ — confirm COMPONENT_NOT_FOUND error envelope\n10. `test_handle_delete_success`\
+      \ — mock facade.delete Success; confirm {\"id\": ..., \"deleted\": True}\n11.\
+      \ `test_handle_delete_not_found` — mock facade.delete Failure; confirm error\
+      \ envelope\n12. `test_handle_clear_success` — mock facade.clear Success; confirm\
+      \ {\"cleared\": True, \"count\": N}\n13. `test_handle_clear_wrong_confirm` —\
+      \ mock facade.clear Failure; confirm error envelope\n14. `test_mcp_handlers_backward_compat`\
+      \ — MCPHandlers(facade=mock) without components arg; confirm handle_validate\
+      \ still works\n\n### tests/shell/test_cli.py additions\n\n15. `test_cli_delete_success`\
+      \ — mock facade.delete Success; confirm exit 0 and output\n16. `test_cli_delete_not_found`\
+      \ — mock facade.delete Failure; confirm exit 1 and stderr\n17. `test_cli_delete_json_mode`\
+      \ — confirm --json output shape {\"data\": {\"id\": ..., \"deleted\": True}}\n\
+      18. `test_cli_clear_success` — mock facade.clear Success; confirm exit 0\n19.\
+      \ `test_cli_clear_wrong_confirm` — mock facade.clear Failure; confirm exit 1\n\
+      20. `test_cli_clear_missing_confirm_flag` — call with no --confirm; confirm\
+      \ exit 2 (argparse error)\n21. `test_cli_existing_commands_unbroken` — run validate/list/resolve\
+      \ through run_cli with mocks; confirm exit 0 (regression)\n\n### tests/shell/test_python_api.py\
+      \ additions\n\n22. `test_component_list_returns_dict` — mock store; confirm\
+      \ dict with 4 keys\n23. `test_component_show_valid_type` — mock store.load_prompt;\
+      \ confirm result returned\n24. `test_component_show_invalid_type` — confirm\
+      \ LarvaApiError raised\n25. `test_delete_success` — mock facade.delete Success;\
+      \ confirm None returned\n26. `test_delete_raises_on_failure` — mock facade.delete\
+      \ Failure; confirm LarvaApiError raised\n27. `test_clear_success` — mock facade.clear\
+      \ Success(3); confirm 3 returned\n28. `test_clear_wrong_confirm_raises` — mock\
+      \ facade.clear Failure; confirm LarvaApiError raised\n29. `test_clear_keyword_only`\
+      \ — call `clear(\"DELETE ALL PERSONAS\")` positionally; confirm TypeError\n\n\
+      step_type: test\nrefs:\n  - tests/shell/test_mcp.py\n  - tests/shell/test_cli.py\n\
+      \  - tests/shell/test_python_api.py\n  - tests/app/test_facade.py"
+    verification: '- All 29 new tests pass
+
+      - Full test suite passes: uv run pytest tests/ -v
+
+      - No existing test modified (only additions)
+
+      - invar guard passes'
+    evidence_template: '## Transport Layer Tests Evidence
+
+
+      **Full test suite** (all tests — existing + new):
+
+      ```
+
+      <paste: uv run pytest tests/ -v --tb=short>
+
+      ```
+
+
+      **New tests summary** (counts per file):
+
+      - test_facade.py: <N> new tests, all pass
+
+      - test_mcp.py: <N> new tests, all pass
+
+      - test_cli.py: <N> new tests, all pass
+
+      - test_python_api.py: <N> new tests, all pass
+
+
+      **Regression confirmation** (existing tests unmodified):
+
+      ```
+
+      <paste: uv run pytest tests/ -v --tb=short | grep -E "PASSED|FAILED" | wc -l>
+
+      # Compare to expected count
+
+      ```
+
+
+      **keyword-only enforcement test**:
+
+      ```
+
+      <paste: test_clear_keyword_only test output showing TypeError raised>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-python-api-all
+    - feature_registry_ops.feature-registry-ops-tests-registry
+    agent: python-executor
