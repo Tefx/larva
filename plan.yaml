@@ -20862,3 +20862,6 @@ phases:
     - feature_clone.docs-interfaces
     - feature_clone.tests-clone
     agent: gate-reviewer
+- id: feature_export
+  name: 'Feature: Persona Bulk Export (3-layer sync)'
+  status: pending
