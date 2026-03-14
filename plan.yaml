@@ -21478,7 +21478,7 @@ phases:
       - No re-validate/re-normalize performed (canonical registry data rule preserved).'
   - id: feature_export.mcp-export
     name: mcp-export
-    status: claimed
+    status: done
     description: "Add `larva.export` MCP tool definition and handler.\n\n## Tool Definition\
       \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
       {\n    \"name\": \"larva.export\",\n    \"description\": \"Export full PersonaSpec\
@@ -21513,6 +21513,45 @@ phases:
     agent: python-executor
     claimed_by: python-senior
     claimed_at: '2026-03-14T22:11:22.094323+00:00'
+    done_at: '2026-03-14T22:18:02.803668+00:00'
+    evidence: 'Artifact:
+
+      - PR: 0fcacab (conflict-resolved merge commit after integrating retry branch
+      50174b1f4064295a295c3a9a16828e3c71005ef4)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors; mcp.py 618/700)
+
+      - Run: uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name'']==''larva.clone'' for t in LARVA_MCP_TOOLS);
+      assert any(t[''name'']==''larva.export'' for t in LARVA_MCP_TOOLS)" -> ok
+
+      - Run: uv run python -m py_compile src/larva/shell/mcp.py src/larva/shell/mcp_contract.py
+      -> passed
+
+
+      Spec link:
+
+      - feature_export.mcp-export
+
+
+      Files changed:
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp_export.py
+
+
+      Gaps/Notes:
+
+      - Preserved both clone/export MCP tools while resolving merge conflict.
+
+      - Export handler logic extracted into helper module to satisfy file-size guard
+      without changing API behavior.'
   - id: feature_export.cli-export
     name: cli-export
     status: done
