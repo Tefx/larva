@@ -18096,7 +18096,7 @@ phases:
       and excluded from final accepted diff.'
   - id: feature_registry_ops.feature-registry-ops-python-api-all
     name: feature_registry_ops.python-api-all
-    status: claimed
+    status: done
     description: "Add four new functions to the Python API.\n\nFile: src/larva/shell/python_api.py\n\
       \n### 1. Lazy component store initialization\n\nAdd a module-level singleton\
       \ and getter alongside the existing `_facade` singleton:\n\n```python\n_component_store:\
@@ -18175,6 +18175,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:21:52.907060+00:00'
+    done_at: '2026-03-14T12:25:51.906389+00:00'
+    evidence: '## Python API Evidence
+
+
+      Commit hash(es):
+
+      - 387b9ba (squash merge of worker commit 13b4616)
+
+
+      Files changed:
+
+      - src/larva/shell/python_api.py
+
+      - tests/shell/test_python_api.py
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_python_api.py -v` -> `49 passed`.
+
+      - Run: `uv run invar guard` -> passed (`0 errors`, `0 warnings`).
+
+
+      Behavioral proof:
+
+      - Added lazy component-store singleton and `_get_component_store()`.
+
+      - Added `component_list()`, `component_show(type, name)`, `delete(persona_id)`,
+      `clear(*, confirm)` and exported them.
+
+      - `component_show("invalid_type", ...)` raises `LarvaApiError` with `COMPONENT_NOT_FOUND`
+      / `105`.
+
+      - keyword-only enforcement covered: positional call to `clear(...)` raises `TypeError`.
+
+
+      Gaps/Notes:
+
+      - none'
   - id: feature_registry_ops.feature-registry-ops-docs-interfaces
     name: feature_registry_ops.docs-interfaces
     status: pending
