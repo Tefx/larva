@@ -17367,7 +17367,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
     name: feature_registry_ops.facade-delete-clear
-    status: pending
+    status: claimed
     description: 'Implement the app-facade delete/clear methods only after the facade
       contract and facade-local acceptance tests are complete.
 
@@ -17512,6 +17512,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T12:02:15.356708+00:00'
   - id: feature_registry_ops.feature-registry-ops-mcp-components
     name: feature_registry_ops.mcp-components
     status: pending
