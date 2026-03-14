@@ -20983,6 +20983,11 @@ phases:
       File: src/larva/app/facade.py
 
 
+      This is a non-simple feature path: it adds new facade contracts consumed by
+      MCP, CLI, Python API, and plugin export flows, so it MUST follow the upstream
+      contract -> facade-tests -> implementation order.
+
+
       ## LarvaFacade Protocol
 
       Add two method signatures:
@@ -21035,14 +21040,23 @@ phases:
 
 
       Pattern to follow: `list()` method for export_all, `resolve()` error mapping
-      for export_ids.'
+      for export_ids.
+
+
+      step_type: implementation'
     verification: '- `uv run invar guard` passes
 
       - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade;
       assert hasattr(DefaultLarvaFacade, ''export_all''); assert hasattr(DefaultLarvaFacade,
-      ''export_ids'')"` succeeds'
+      ''export_ids'')"` succeeds
+
+      - Export implementation lands only after upstream export contract and facade
+      tests are in place'
     refs:
     - src/larva/app/facade.py
+    depends_on:
+    - feature_export.feature-export-contract
+    - feature_export.feature-export-facade-tests
     agent: python-executor
   - id: feature_export.mcp-export
     name: mcp-export
