@@ -20368,3 +20368,162 @@ phases:
     - feature_update.feature-update-python-api-update
     - feature_update.feature-update-core-tests
     agent: python-executor
+  - id: feature_update.feature-update-gate
+    name: feature_update.gate
+    status: pending
+    description: "Gate review: Verify feature_update phase completion and quality.\n\
+      \nAs an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_update\
+      \ phase meets the quality bar.\n\nYOU ARE THE QUALITY GATE. Block progress if:\n\
+      - Core apply_patches has no @pre/@post contracts or doctests fail\n- Patch protected\
+      \ field exclusion is missing (spec_digest/spec_version patchable)\n- Deep merge\
+      \ not working for model_params/tools\n- Dot-notation expansion not working\n\
+      - Facade update flow does not include revalidation\n- Any transport layer (MCP/CLI/Python\
+      \ API) is missing update support\n- CLI --set type inference is broken\n- Existing\
+      \ tests were modified\n\nreview_depth: THOROUGH\nreview_depth_rationale:\n \
+      \ - Core layer change requires Invar contract verification\n  - Patch semantics\
+      \ (deep merge vs shallow, protected fields) are subtle\n  - Type inference in\
+      \ CLI is easy to get wrong\n  - Cross-layer operation spanning 5 files\n\ncross_cutting_focus:\n\
+      \  - \"Protected fields: spec_digest and spec_version must not be patchable\
+      \ via ANY surface\"\n  - \"Revalidation: patched spec MUST go through validate\
+      \ + normalize before save\"\n  - \"Deep merge: model_params and tools must merge,\
+      \ not replace\"\n  - \"Dot notation: model_params.temperature=0.3 must work\
+      \ in CLI --set AND MCP patches\"\n\nReview criteria:\n1. Core contracts: @pre/@post\
+      \ present and enforced? Doctests pass?\n2. Facade flow: get -> patch -> validate\
+      \ -> normalize -> save in correct order?\n3. Transport parity: all three surfaces\
+      \ support update with same semantics?\n4. Evidence quality: specific and verifiable?\n\
+      5. Regression: all existing tests pass without modification?"
+    verification: '- All prior steps completed with evidence
+
+      - invar guard: zero violations (final run)
+
+      - Full test suite: uv run pytest tests/ passes
+
+      - Core @pre/@post contracts verified by invar guard
+
+      - Protected field exclusion verified
+
+      - Deep merge verified for model_params and tools
+
+      - Revalidation flow confirmed
+
+      - CLI type inference works for numbers, bools, null, strings
+
+      - All three transport surfaces support larva.update
+
+      - INTERFACES.md updated
+
+      - All existing tests pass without modification'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent)
+
+      **Phase**: feature_update
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### Final invar guard (must be clean):
+
+      ```
+
+      <paste: uv run invar guard output>
+
+      ```
+
+
+      ### Final full test suite:
+
+      ```
+
+      <paste: uv run pytest tests/ -v --tb=short summary>
+
+      ```
+
+
+      ### Step-by-Step Review
+
+
+      | Step | Status | Evidence Quality | Concerns |
+
+      |------|--------|-----------------|----------|
+
+      | core-apply-patches | | | |
+
+      | core-tests | | | |
+
+      | facade-update | | | |
+
+      | mcp-update | | | |
+
+      | cli-update | | | |
+
+      | python-api-update | | | |
+
+      | docs-interfaces | | | |
+
+      | tests-transport | | | |
+
+
+      ### Cross-Cutting Checks
+
+
+      **Protected field exclusion**:
+
+      ```
+
+      <evidence: spec_digest and spec_version stripped from patches>
+
+      ```
+
+
+      **Revalidation flow**:
+
+      ```
+
+      <evidence: validate() called on patched spec>
+
+      ```
+
+
+      **Deep merge**:
+
+      ```
+
+      <evidence: model_params keys preserved during merge>
+
+      ```
+
+
+      **CLI type inference**:
+
+      ```
+
+      <evidence: --set temperature=0.3 -> float, --set flag=true -> bool>
+
+      ```
+
+
+      ### Issues Found
+
+
+      | Severity | Description | Related Step | Blocking? |
+
+      |----------|-------------|--------------|-----------|
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: Phase passes gate
+
+      - [ ] BLOCKED: <list blocking issues>'
+    depends_on:
+    - feature_update.feature-update-core-apply-patches
+    - feature_update.feature-update-core-tests
+    - feature_update.feature-update-facade-update
+    - feature_update.feature-update-mcp-update
+    - feature_update.feature-update-cli-update
+    - feature_update.feature-update-python-api-update
+    - feature_update.feature-update-docs-interfaces
+    - feature_update.feature-update-tests-transport
+    agent: gate-reviewer
