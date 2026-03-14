@@ -19422,7 +19422,7 @@ phases:
       this step scope.'
   - id: feature_registry_ops.feature-registry-ops-fix-gate-batch
     name: feature_registry_ops.fix-gate-batch
-    status: pending
+    status: claimed
     description: 'Fix ALL issues, not just first, from `feature_registry_ops.feature-registry-ops-gate`.
 
 
@@ -19566,6 +19566,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-gate
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T12:42:37.873092+00:00'
   - id: feature_registry_ops.feature-registry-ops-gate-retest
     name: feature_registry_ops.gate-retest
     status: pending
