@@ -284,9 +284,22 @@ def _parse_set_values(
 
 def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
     path_obj = Path(path)
+    loaded_result = _load_json_file(path_obj)
+    if isinstance(loaded_result, Failure):
+        return Failure(loaded_result.failure())
+    loaded = loaded_result.unwrap()
+    if not isinstance(loaded, dict):
+        return Failure(
+            _critical_error("spec file root must be a JSON object", {"path": str(path_obj)})
+        )
+    return Success(cast("PersonaSpec", loaded))
+
+
+def _load_json_file(path_obj: Path) -> Result[object, JsonErrorEnvelope]:
     try:
         with open(path_obj, encoding="utf-8") as spec_file:
             loaded = json.load(spec_file)
+        return Success(loaded)
     except FileNotFoundError:
         return Failure(_critical_error("spec file not found", {"path": str(path_obj)}))
     except json.JSONDecodeError as error:
@@ -302,12 +315,6 @@ def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
                 "failed to read spec file", {"path": str(path_obj), "error": str(error)}
             )
         )
-
-    if not isinstance(loaded, dict):
-        return Failure(
-            _critical_error("spec file root must be a JSON object", {"path": str(path_obj)})
-        )
-    return Success(cast("PersonaSpec", loaded))
 
 
 def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnvelope]:

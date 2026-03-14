@@ -16,6 +16,7 @@ from larva.app.facade import (
     LarvaFacade,
 )
 from larva.core.spec import PersonaSpec
+from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore, FilesystemComponentStore
 from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
 from larva.shell.cli_helpers import (
@@ -73,6 +74,105 @@ def _dispatch_component(
     )
 
 
+def _dispatch_validate(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    loaded_spec = _read_spec_json(cast("str", args.spec))
+    if isinstance(loaded_spec, Failure):
+        return Failure(_operation_failure("Validate", loaded_spec.failure(), as_json=as_json))
+    return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
+
+
+def _build_assemble_request(
+    args: argparse.Namespace,
+) -> Result[AssembleRequest, JsonErrorEnvelope]:
+    overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
+    if isinstance(overrides, Failure):
+        return Failure(overrides.failure())
+    variables = _parse_key_value_pairs(cast("list[str]", args.variables), flag="--var")
+    if isinstance(variables, Failure):
+        return Failure(variables.failure())
+
+    request: AssembleRequest = {
+        "id": cast("str", args.id),
+        "prompts": cast("list[str]", args.prompts),
+        "toolsets": cast("list[str]", args.toolsets),
+        "constraints": cast("list[str]", args.constraints),
+        "overrides": overrides.unwrap(),
+        "variables": cast("dict[str, str]", variables.unwrap()),
+    }
+    model = cast("str | None", args.model)
+    if model is not None:
+        request["model"] = model
+    return Success(request)
+
+
+def _dispatch_assemble(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    request_result = _build_assemble_request(args)
+    if isinstance(request_result, Failure):
+        return Failure(_operation_failure("Assemble", request_result.failure(), as_json=as_json))
+    return assemble_command(
+        request_result.unwrap(),
+        as_json=as_json,
+        facade=facade,
+        output_path=cast("str | None", args.output),
+    )
+
+
+def _dispatch_register(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    loaded_spec = _read_spec_json(cast("str", args.spec))
+    if isinstance(loaded_spec, Failure):
+        return Failure(_operation_failure("Register", loaded_spec.failure(), as_json=as_json))
+    return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
+
+
+def _dispatch_resolve(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
+    if isinstance(overrides, Failure):
+        return Failure(_operation_failure("Resolve", overrides.failure(), as_json=as_json))
+    return resolve_command(
+        cast("str", args.id),
+        overrides=overrides.unwrap(),
+        as_json=as_json,
+        facade=facade,
+    )
+
+
+def _dispatch_update(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    patches_result = _parse_set_values(cast("list[str]", args.set_values), flag="--set")
+    if isinstance(patches_result, Failure):
+        return Failure(_operation_failure("Update", patches_result.failure(), as_json=as_json))
+    return update_command(
+        cast("str", args.id),
+        patches=patches_result.unwrap(),
+        as_json=as_json,
+        facade=facade,
+    )
+
+
 def _dispatch(
     args: argparse.Namespace,
     *,
@@ -82,101 +182,33 @@ def _dispatch(
     command = cast("str", args.command)
     as_json = cast("bool", getattr(args, "as_json", False))
 
-    if command == "validate":
-        loaded_spec = _read_spec_json(cast("str", args.spec))
-        if isinstance(loaded_spec, Failure):
-            return Failure(_operation_failure("Validate", loaded_spec.failure(), as_json=as_json))
-        return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
-
-    if command == "assemble":
-        overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
-        if isinstance(overrides, Failure):
-            return Failure(_operation_failure("Assemble", overrides.failure(), as_json=as_json))
-        variables = _parse_key_value_pairs(cast("list[str]", args.variables), flag="--var")
-        if isinstance(variables, Failure):
-            return Failure(_operation_failure("Assemble", variables.failure(), as_json=as_json))
-
-        request: AssembleRequest = {
-            "id": cast("str", args.id),
-            "prompts": cast("list[str]", args.prompts),
-            "toolsets": cast("list[str]", args.toolsets),
-            "constraints": cast("list[str]", args.constraints),
-            "overrides": overrides.unwrap(),
-            "variables": cast("dict[str, str]", variables.unwrap()),
-        }
-        model = cast("str | None", args.model)
-        if model is not None:
-            request["model"] = model
-        return assemble_command(
-            request,
-            as_json=as_json,
-            facade=facade,
-            output_path=cast("str | None", args.output),
-        )
-
-    if command == "register":
-        loaded_spec = _read_spec_json(cast("str", args.spec))
-        if isinstance(loaded_spec, Failure):
-            return Failure(_operation_failure("Register", loaded_spec.failure(), as_json=as_json))
-        return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
-
-    if command == "resolve":
-        overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
-        if isinstance(overrides, Failure):
-            return Failure(_operation_failure("Resolve", overrides.failure(), as_json=as_json))
-        return resolve_command(
-            cast("str", args.id),
-            overrides=overrides.unwrap(),
-            as_json=as_json,
-            facade=facade,
-        )
-
-    if command == "clone":
-        return clone_command(
-            cast("str", args.source_id),
-            cast("str", args.new_id),
-            as_json=as_json,
-            facade=facade,
-        )
-
-    if command == "list":
-        return list_command(as_json=as_json, facade=facade)
-
-    if command == "export":
-        return export_command(
+    command_dispatchers: dict[str, Callable[[], Result[CliCommandResult, CliFailure]]] = {
+        "validate": lambda: _dispatch_validate(args, as_json=as_json, facade=facade),
+        "assemble": lambda: _dispatch_assemble(args, as_json=as_json, facade=facade),
+        "register": lambda: _dispatch_register(args, as_json=as_json, facade=facade),
+        "resolve": lambda: _dispatch_resolve(args, as_json=as_json, facade=facade),
+        "clone": lambda: clone_command(
+            cast("str", args.source_id), cast("str", args.new_id), as_json=as_json, facade=facade
+        ),
+        "list": lambda: list_command(as_json=as_json, facade=facade),
+        "export": lambda: export_command(
             ids=cast("list[str]", args.ids),
             export_all=cast("bool", args.export_all),
             as_json=as_json,
             facade=facade,
-        )
-
-    if command == "delete":
-        return delete_command(
-            cast("str", args.id),
-            as_json=as_json,
-            facade=facade,
-        )
-
-    if command == "clear":
-        return clear_command(
-            confirm=cast("str", args.confirm),
-            as_json=as_json,
-            facade=facade,
-        )
-
-    if command == "update":
-        patches_result = _parse_set_values(cast("list[str]", args.set_values), flag="--set")
-        if isinstance(patches_result, Failure):
-            return Failure(_operation_failure("Update", patches_result.failure(), as_json=as_json))
-        return update_command(
-            cast("str", args.id),
-            patches=patches_result.unwrap(),
-            as_json=as_json,
-            facade=facade,
-        )
-
-    if command == "component":
-        return _dispatch_component(args, as_json=as_json, component_store=component_store)
+        ),
+        "delete": lambda: delete_command(cast("str", args.id), as_json=as_json, facade=facade),
+        "clear": lambda: clear_command(
+            confirm=cast("str", args.confirm), as_json=as_json, facade=facade
+        ),
+        "update": lambda: _dispatch_update(args, as_json=as_json, facade=facade),
+        "component": lambda: _dispatch_component(
+            args, as_json=as_json, component_store=component_store
+        ),
+    }
+    dispatch = command_dispatchers.get(command)
+    if dispatch is not None:
+        return dispatch()
 
     return Failure(
         {
@@ -246,25 +278,40 @@ def validate_command(
 ) -> Result[CliCommandResult, CliFailure]:
     report = facade.validate(spec)
     if report["valid"]:
-        result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_validation_report(report),
-        }
-        if as_json:
-            result["json"] = {
-                "data": {
-                    "valid": True,
-                    "errors": [],
-                    "warnings": report.get("warnings", []),
-                }
-            }
-        return Success(result)
+        return _validation_success_result(report, as_json=as_json)
+    return _validation_failure_result(report, as_json=as_json)
 
+
+def _validation_success_result(
+    report: ValidationReport, *, as_json: bool
+) -> Result[CliCommandResult, CliFailure]:
+    result: CliCommandResult = {
+        "exit_code": EXIT_OK,
+        "stdout": _render_validation_report(report),
+    }
+    if as_json:
+        result["json"] = {
+            "data": {
+                "valid": True,
+                "errors": [],
+                "warnings": cast("list[str]", report.get("warnings", [])),
+            }
+        }
+    return Success(result)
+
+
+def _validation_failure_result(
+    report: ValidationReport, *, as_json: bool
+) -> Result[CliCommandResult, CliFailure]:
+    errors = cast("list[dict[str, object]]", report.get("errors", []))
+    message = "validation failed"
+    if errors:
+        message = cast("str", errors[0].get("message", message))
     error_envelope = _map_facade_error(
         {
             "code": "PERSONA_INVALID",
             "numeric_code": 101,
-            "message": report["errors"][0]["message"] if report["errors"] else "validation failed",
+            "message": message,
             "details": {"report": report},
         }
     )
@@ -284,26 +331,47 @@ def assemble_command(
     result = facade.assemble(request)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
-        if output_path is not None:
-            write_result = _write_output_json(output_path, payload)
-            if isinstance(write_result, Failure):
-                error_envelope = write_result.failure()
-                failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error_envelope}
-                if not as_json:
-                    failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
-                return Failure(failure)
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": ""
-            if output_path is not None
-            else _render_payload_for_text("assemble", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
+        return _assemble_success_result(
+            payload,
+            as_json=as_json,
+            output_path=output_path,
+        )
 
     error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    return _assemble_failure_result(error_envelope, exit_code=EXIT_ERROR, as_json=as_json)
+
+
+def _assemble_success_result(
+    payload: dict[str, object],
+    *,
+    as_json: bool,
+    output_path: str | None,
+) -> Result[CliCommandResult, CliFailure]:
+    if output_path is not None:
+        write_result = _write_output_json(output_path, payload)
+        if isinstance(write_result, Failure):
+            return _assemble_failure_result(
+                write_result.failure(),
+                exit_code=EXIT_CRITICAL,
+                as_json=as_json,
+            )
+
+    cli_result: CliCommandResult = {
+        "exit_code": EXIT_OK,
+        "stdout": "" if output_path is not None else _render_payload_for_text("assemble", payload),
+    }
+    if as_json:
+        cli_result["json"] = {"data": payload}
+    return Success(cli_result)
+
+
+def _assemble_failure_result(
+    error_envelope: JsonErrorEnvelope,
+    *,
+    exit_code: CliExitCode,
+    as_json: bool,
+) -> Result[CliCommandResult, CliFailure]:
+    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
     return Failure(failure)

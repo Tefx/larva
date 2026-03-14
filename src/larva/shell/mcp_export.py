@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from returns.result import Failure
+from returns.result import Failure, Success
 
 if TYPE_CHECKING:
     from returns.result import Result
@@ -69,12 +69,34 @@ def handle_export(
     params: object,
 ) -> "Result[list[PersonaSpec], LarvaError]":
     """Handle ``larva.export`` with ``all`` xor ``ids`` validation."""
+    return _handle_export_impl(handlers, params)
+
+
+def _handle_export_impl(
+    handlers: ExportHandlerDeps,
+    params: object,
+) -> "Result[list[PersonaSpec], LarvaError]":
     validated_params = handlers._require_params_object("larva.export", params)
     if isinstance(validated_params, Failure):
         return Failure(validated_params.failure())
     checked_params = validated_params.unwrap()
     if error := handlers._reject_unknown_params("larva.export", checked_params, {"all", "ids"}):
         return Failure(error)
+
+    export_target = _validate_export_target(handlers, checked_params)
+    if isinstance(export_target, Failure):
+        return Failure(export_target.failure())
+    use_all, ids = export_target.unwrap()
+    if use_all:
+        return handlers._facade.export_all()
+    return handlers._facade.export_ids(ids)
+
+
+def _validate_export_target(
+    handlers: ExportHandlerDeps,
+    checked_params: dict[str, Any],
+) -> "Result[tuple[bool, list[str]], LarvaError]":
+    """Validate export selector and return execution target."""
 
     has_all = "all" in checked_params
     has_ids = "ids" in checked_params
@@ -99,10 +121,8 @@ def handle_export(
     if has_all:
         if error := handlers._require_type("larva.export", checked_params, "all", bool, "boolean"):
             return Failure(error)
-        result = handlers._facade.export_all()
-    else:
-        if error := handlers._require_list_of_strings("larva.export", checked_params, "ids"):
-            return Failure(error)
-        result = handlers._facade.export_ids(cast("list[str]", checked_params["ids"]))
+        return Success((True, []))
 
-    return result
+    if error := handlers._require_list_of_strings("larva.export", checked_params, "ids"):
+        return Failure(error)
+    return Success((False, cast("list[str]", checked_params["ids"])))
