@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from typing import IO, Callable, Sequence, cast
 
@@ -139,6 +140,14 @@ def _dispatch(
 
     if command == "list":
         return list_command(as_json=as_json, facade=facade)
+
+    if command == "export":
+        return export_command(
+            ids=cast("list[str]", args.ids),
+            export_all=cast("bool", args.export_all),
+            as_json=as_json,
+            facade=facade,
+        )
 
     if command == "delete":
         return delete_command(
@@ -378,6 +387,54 @@ def clone_command(
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Clone failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+# @shell_complexity: text output renders specs as pretty JSON separated by ---
+def export_command(
+    ids: list[str],
+    *,
+    export_all: bool,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    # Validate mutual exclusion: --all xor ids
+    if export_all and ids:
+        error_envelope: JsonErrorEnvelope = {
+            "code": "ARGUMENT_CONFLICT",
+            "numeric_code": 113,
+            "message": "Cannot specify both --all and persona ids",
+            "details": {},
+        }
+        failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error_envelope}
+        if not as_json:
+            failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
+        return Failure(failure)
+
+    result = facade.export_all() if export_all else facade.export_ids(ids)
+    if isinstance(result, Success):
+        specs = list(result.unwrap())
+
+        # Text mode: pretty JSON for each spec, separated by ---
+        text_output = ""
+        if specs:
+            text_parts = [
+                json.dumps(spec, indent=2, sort_keys=True, ensure_ascii=True) for spec in specs
+            ]
+            text_output = "\n---\n".join(text_parts) + "\n"
+
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": text_output,
+        }
+        if as_json:
+            cli_result["json"] = {"data": specs}
+        return Success(cli_result)
+
+    error_envelope = _map_facade_error(result.failure())
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 

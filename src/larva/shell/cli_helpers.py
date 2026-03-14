@@ -33,6 +33,7 @@ CommandName = Literal[
     "delete",
     "clear",
     "list",
+    "export",
     "component list",
     "component show",
 ]
@@ -280,6 +281,11 @@ def _build_parser() -> _CliParser:
     clone_parser.add_argument("source_id")
     clone_parser.add_argument("new_id")
     clone_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    export_parser = subparsers.add_parser("export")
+    export_parser.add_argument("ids", nargs="*", default=[])
+    export_parser.add_argument("--all", action="store_true", dest="export_all")
+    export_parser.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
 
