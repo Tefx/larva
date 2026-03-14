@@ -20863,7 +20863,7 @@ phases:
     claimed_at: '2026-03-14T22:01:32.711603+00:00'
   - id: feature_clone.cli-clone
     name: cli-clone
-    status: claimed
+    status: done
     description: "Add `larva clone <source-id> <new-id> [--json]` CLI subcommand.\n\
       \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add clone\
       \ subparser after delete_parser block (before clear_parser):\n```python\nclone_parser\
@@ -20894,6 +20894,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:02:14.944525+00:00'
+    done_at: '2026-03-14T22:10:17.952423+00:00'
+    evidence: 'Artifact:
+
+      - PR: 5b88812 (squash merge commit from worktree commit cda54f77a2eb4030ed32f7aa7007c3a8518cb01f)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors)
+
+      - Run: uv run python -c "from larva.shell.cli import clone_command" -> succeeded
+
+      - Run: uv run larva clone --help -> shows `source_id`, `new_id`, and `--json`
+
+
+      Spec link:
+
+      - feature_clone.cli-clone
+
+
+      Files changed:
+
+      - src/larva/shell/cli_helpers.py
+
+      - src/larva/shell/cli.py
+
+
+      Gaps/Notes:
+
+      - Added parser, CommandName literal entry, clone command implementation, and
+      dispatch branch.'
   - id: feature_clone.python-api-clone
     name: python-api-clone
     status: pending
