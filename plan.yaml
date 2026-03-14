@@ -18606,7 +18606,7 @@ phases:
       \ tests."
   - id: feature_registry_ops.feature-registry-ops-gate
     name: feature_registry_ops.gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify feature_registry_ops phase completion and quality.
 
 
@@ -18761,6 +18761,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-docs-interfaces
     - feature_registry_ops.feature-registry-ops-tests-transport
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T12:33:20.068453+00:00'
   - id: feature_registry_ops.feature-registry-ops-registry-contract
     name: feature_registry_ops.registry-contract
     status: done
