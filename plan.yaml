@@ -20865,3 +20865,400 @@ phases:
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
   status: pending
+  steps:
+  - id: feature_export.facade-export
+    name: facade-export
+    status: pending
+    description: 'Add `export_all()` and `export_ids(ids)` to LarvaFacade protocol
+      and DefaultLarvaFacade.
+
+
+      File: src/larva/app/facade.py
+
+
+      ## LarvaFacade Protocol
+
+      Add two method signatures:
+
+      ```python
+
+      def export_all(self) -> Result[list[PersonaSpec], LarvaError]: ...
+
+      def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
+      ...
+
+      ```
+
+
+      ## DefaultLarvaFacade Implementation
+
+
+      ### export_all()
+
+      Flow: `self._registry.list()` -> on success, return the full `list[PersonaSpec]`
+      directly.
+
+      Registry `list()` already returns complete specs. No validate/normalize needed
+      (registry data is already validated+normalized).
+
+      Empty registry returns `Success([])`.
+
+      Error mapping: registry list failure -> pass-through error (same pattern as
+      `list()` method at lines 407-426).
+
+
+      ### export_ids(ids)
+
+      Flow: for each id in ids, call `self._registry.get(id)`. Fail-fast on first
+      error.
+
+      Collect successful specs into a list and return `Success(specs)`.
+
+      Error mapping: registry get failure -> pass-through (PERSONA_NOT_FOUND / INVALID_PERSONA_ID),
+      same pattern as `resolve()` at lines 384-394.
+
+
+      Key details:
+
+      - No validate/normalize needed -- registry specs are already canonical
+
+      - Empty ids list returns `Success([])`
+
+      - Fail-fast: first not-found id stops iteration and returns the error
+
+
+      Pattern to follow: `list()` method for export_all, `resolve()` error mapping
+      for export_ids.'
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade;
+      assert hasattr(DefaultLarvaFacade, ''export_all''); assert hasattr(DefaultLarvaFacade,
+      ''export_ids'')"` succeeds'
+    refs:
+    - src/larva/app/facade.py
+    agent: python-executor
+  - id: feature_export.mcp-export
+    name: mcp-export
+    status: pending
+    description: "Add `larva.export` MCP tool definition and handler.\n\n## Tool Definition\
+      \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
+      {\n    \"name\": \"larva.export\",\n    \"description\": \"Export full PersonaSpec\
+      \ for registered personas. Use all=true for all, or ids=[...] for specific ones.\"\
+      ,\n    \"input_schema\": {\n        \"type\": \"object\",\n        \"properties\"\
+      : {\n            \"all\": {\"type\": \"boolean\", \"description\": \"Export\
+      \ all registered personas\"},\n            \"ids\": {\n                \"type\"\
+      : \"array\",\n                \"items\": {\"type\": \"string\"},\n         \
+      \       \"description\": \"List of persona ids to export\",\n            },\n\
+      \        },\n    },\n}\n```\nNote: neither `all` nor `ids` is individually required\
+      \ in the schema -- but the handler validates that exactly one is provided.\n\
+      \n## Handler (src/larva/shell/mcp.py)\nAdd `handle_export(self, params)` to\
+      \ `MCPHandlers` class.\n\nAllowed params: `{\"all\", \"ids\"}`.\nValidation\
+      \ logic:\n1. `_require_params_object` + `_reject_unknown_params`\n2. If both\
+      \ `all` and `ids` present, or neither present: return `_malformed_params_error`\
+      \ with reason \"provide either 'all' or 'ids', not both\"\n3. If `all` present:\
+      \ `_require_type(..., bool, \"boolean\")`, then delegate to `self._facade.export_all()`\n\
+      4. If `ids` present: `_require_list_of_strings(...)`, then delegate to `self._facade.export_ids(ids)`\n\
+      \nReturn `list[PersonaSpec]` on success (cast and unwrap), error envelope on\
+      \ failure.\n\nPattern to follow: `handle_list()` for export_all path, `handle_resolve()`\
+      \ for error unwrapping."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name''] == ''larva.export'' for t in
+      LARVA_MCP_TOOLS)"` succeeds'
+    refs:
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/mcp.py
+    depends_on:
+    - feature_export.facade-export
+    agent: python-executor
+  - id: feature_export.cli-export
+    name: cli-export
+    status: pending
+    description: "Add `larva export [--all | <id> ...] [--json]` CLI subcommand.\n\
+      \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add export\
+      \ subparser:\n```python\nexport_parser = subparsers.add_parser(\"export\")\n\
+      export_parser.add_argument(\"ids\", nargs=\"*\", default=[])\nexport_parser.add_argument(\"\
+      --all\", action=\"store_true\", dest=\"export_all\")\nexport_parser.add_argument(\"\
+      --json\", action=\"store_true\", dest=\"as_json\")\n```\n\nAlso add `\"export\"\
+      ` to the `CommandName` Literal type.\n\n## Command function (src/larva/shell/cli.py)\n\
+      Add `export_command(ids, *, export_all, as_json, facade)` function.\n\nValidation:\
+      \ if `export_all` is False and `ids` is empty, return Failure with INTERNAL\
+      \ error \"provide --all or at least one persona id\".\nIf both `export_all`\
+      \ and `ids` non-empty, return Failure with INTERNAL error \"use --all or specify\
+      \ ids, not both\".\n\nOn `export_all=True`: delegate to `facade.export_all()`.\n\
+      On ids provided: delegate to `facade.export_ids(ids)`.\n\nSuccess output:\n\
+      - text mode: print each spec as indented JSON separated by `---\\n` delimiter\
+      \ (human-readable)\n- json mode: `{\"data\": [spec1, spec2, ...]}`\n\nFailure:\
+      \ `_map_facade_error()` + stderr `\"Export failed: ...\"` in text mode.\n\n\
+      Add dispatch branch in `_dispatch()` for `command == \"export\"`:\n```python\n\
+      if command == \"export\":\n    return export_command(\n        cast(\"list[str]\"\
+      , args.ids),\n        export_all=cast(\"bool\", args.export_all),\n        as_json=as_json,\n\
+      \        facade=facade,\n    )\n```\n\nExit codes: 0 success, 1 domain error,\
+      \ 2 input/critical failure."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.cli import export_command"` succeeds
+
+      - `uv run larva export --help` shows usage with --all flag and positional ids'
+    refs:
+    - src/larva/shell/cli_helpers.py
+    - src/larva/shell/cli.py
+    depends_on:
+    - feature_export.facade-export
+    agent: python-executor
+  - id: feature_export.python-api-export
+    name: python-api-export
+    status: pending
+    description: 'Add `export_all()` and `export_ids(ids)` to the Python API module.
+
+
+      File: src/larva/shell/python_api.py
+
+
+      Add two functions:
+
+      ```python
+
+      def export_all() -> list[PersonaSpec]:
+
+      def export_ids(ids: list[str]) -> list[PersonaSpec]:
+
+      ```
+
+
+      Pattern to follow: `list()` at lines 277-295 for export_all (thin delegation
+      + `_unwrap_result` + cast).
+
+
+      export_all body: `return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_all()))`
+
+      export_ids body: `return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_ids(ids)))`
+
+
+      Add invar annotations matching existing pattern:
+
+      ```python
+
+      # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+
+      # @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+
+      ```
+
+
+      Add `"export_all"` and `"export_ids"` to the `__all__` list.
+
+
+      Add docstrings following the list()/resolve() pattern: args, returns, contract,
+      example.'
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.python_api import export_all, export_ids"`
+      succeeds
+
+      - Both appear in `__all__`'
+    refs:
+    - src/larva/shell/python_api.py
+    depends_on:
+    - feature_export.facade-export
+    agent: python-executor
+  - id: feature_export.docs-interfaces
+    name: docs-interfaces
+    status: pending
+    description: 'Update INTERFACES.md to document the export operation across all
+      three surfaces.
+
+
+      File: INTERFACES.md
+
+
+      Add export entries in:
+
+      - **Section A (MCP)**: `larva.export` tool with input schema `{all?: boolean,
+      ids?: string[]}`, returns `list[PersonaSpec]`
+
+      - **Section B (CLI)**: `larva export [--all | <id> ...] [--json]` with exit
+      codes 0/1/2. Document text mode separator format (`---`).
+
+      - **Section H (Python API)**: `export_all() -> list[PersonaSpec]` and `export_ids(ids:
+      list[str]) -> list[PersonaSpec]`
+
+
+      Follow the formatting pattern of existing entries (list, resolve, clone) in
+      each section.
+
+
+      No new error codes to document -- export reuses PERSONA_NOT_FOUND (100).'
+    verification: '- INTERFACES.md contains `larva.export` in MCP section
+
+      - INTERFACES.md contains `larva export` in CLI section
+
+      - INTERFACES.md contains `export_all` and `export_ids` in Python API section'
+    refs:
+    - INTERFACES.md
+    depends_on:
+    - feature_export.facade-export
+    agent: python-executor
+  - id: feature_export.plugin-opencode
+    name: plugin-opencode
+    status: pending
+    description: "Update opencode plugin to use `larva export --all --json` instead\
+      \ of N resolve calls.\n\nFile: contrib/opencode-plugin/larva.ts\n\nReplace the\
+      \ current N+1 pattern:\n```typescript\n// Old: list + N resolves\nconst personas\
+      \ = await larvaList($)\nfor (const p of personas) {\n  const spec = await larvaResolve($,\
+      \ p.id)\n}\n```\n\nWith single export call:\n```typescript\nconst r = await\
+      \ $`uv run --project ${LARVA_PROJECT} larva export --all --json`.quiet()\nconst\
+      \ allSpecs = JSON.parse(r.stdout.toString()).data\n```\n\nPreserve error handling\
+      \ pattern. If the export call fails, fall back gracefully.\n\nIMPORTANT: Read\
+      \ the file first to understand the exact current code structure before making\
+      \ changes. The snippets above are illustrative -- match the actual variable\
+      \ names, error handling, and coding style in the file."
+    verification: '- Plugin compiles without TypeScript errors (if tsconfig exists)
+
+      - Plugin uses `larva export --all --json` instead of per-persona resolve calls
+
+      - Error handling preserved'
+    refs:
+    - contrib/opencode-plugin/larva.ts
+    depends_on:
+    - feature_export.facade-export
+    agent: python-executor
+  - id: feature_export.tests-export
+    name: tests-export
+    status: pending
+    description: 'Add tests for export across all layers.
+
+
+      ## Test files and coverage:
+
+
+      ### tests/app/test_facade.py
+
+      Add tests for `DefaultLarvaFacade.export_all()` and `export_ids()`:
+
+      1. `test_export_all_success` -- registry has 2+ personas, returns all full specs
+
+      2. `test_export_all_empty` -- empty registry returns `Success([])`
+
+      3. `test_export_all_registry_failure` -- registry.list() fails, returns error
+
+      4. `test_export_ids_success` -- export specific ids, returns matching specs
+
+      5. `test_export_ids_not_found` -- one id doesn''t exist, fail-fast with PERSONA_NOT_FOUND
+
+      6. `test_export_ids_empty_list` -- empty ids list returns `Success([])`
+
+
+      Pattern: follow existing `test_list_*` and `test_resolve_*` test patterns.
+
+
+      ### tests/shell/test_mcp.py
+
+      Add tests for `MCPHandlers.handle_export()`:
+
+      1. `test_handle_export_all_success` -- `{"all": true}` returns list of specs
+
+      2. `test_handle_export_ids_success` -- `{"ids": ["a", "b"]}` returns list
+
+      3. `test_handle_export_both_params` -- both `all` and `ids` -> malformed error
+
+      4. `test_handle_export_neither_param` -- neither -> malformed error
+
+      5. `test_handle_export_unknown_params` -- extra params rejected
+
+      6. `test_handle_export_ids_not_found` -- facade returns Failure
+
+
+      ### tests/shell/test_cli.py
+
+      Add tests for `export_command()`:
+
+      1. `test_export_all_success_json` -- JSON output wraps in `{"data": [...]}`
+
+      2. `test_export_all_success_text` -- text output shows specs separated by `---`
+
+      3. `test_export_ids_success_json` -- specific ids, JSON output
+
+      4. `test_export_no_args` -- neither --all nor ids -> exit code 2
+
+      5. `test_export_both_args` -- --all plus ids -> exit code 2
+
+      6. `test_export_not_found` -- stderr shows error, exit code 1
+
+      7. `test_export_parser` -- argparse produces correct ids / export_all attributes
+
+
+      ### tests/shell/test_python_api.py
+
+      Add tests for `export_all()` and `export_ids()`:
+
+      1. `test_export_all_success` -- returns list of PersonaSpec
+
+      2. `test_export_ids_success` -- returns list of PersonaSpec
+
+      3. `test_export_ids_not_found_raises` -- raises LarvaApiError
+
+
+      Total: ~22 tests across 4 files.'
+    verification: '- `uv run pytest tests/app/test_facade.py -k export -v` -- all
+      pass
+
+      - `uv run pytest tests/shell/test_mcp.py -k export -v` -- all pass
+
+      - `uv run pytest tests/shell/test_cli.py -k export -v` -- all pass
+
+      - `uv run pytest tests/shell/test_python_api.py -k export -v` -- all pass
+
+      - `uv run invar guard` passes'
+    refs:
+    - tests/app/test_facade.py
+    - tests/shell/test_mcp.py
+    - tests/shell/test_cli.py
+    - tests/shell/test_python_api.py
+    depends_on:
+    - feature_export.mcp-export
+    - feature_export.cli-export
+    - feature_export.python-api-export
+    agent: python-executor
+  - id: feature_export.gate
+    name: gate
+    status: pending
+    description: "Gate review: Verify feature_export phase completion and quality.\n\
+      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature follows established\
+      \ list/resolve pattern\n  - No output formatting complexity beyond simple JSON\
+      \ array + separator\n  - No known rework patterns in touch paths\n  - Plugin\
+      \ change is mechanical substitution\n\nReview criteria:\n1. **Completeness**:\
+      \ All 7 implementation/test steps completed\n2. **Facade**: export_all uses\
+      \ registry.list(), export_ids uses registry.get() with fail-fast\n3. **MCP**:\
+      \ Tool definition registered, handler validates mutual exclusivity of all/ids\n\
+      4. **CLI**: Parser accepts `export [--all | <id> ...] [--json]`, dispatch wired\n\
+      5. **Python API**: Two thin delegation functions, both added to `__all__`\n\
+      6. **Plugin**: opencode plugin uses single `larva export --all --json` call\n\
+      7. **Tests**: All ~22 tests pass, covering success + error + edge cases + mutual\
+      \ exclusivity\n8. **Docs**: INTERFACES.md updated across MCP/CLI/Python API\
+      \ sections\n9. **Guard**: `uv run invar guard` clean\n10. **Error codes**: No\
+      \ new error codes introduced (reuses PERSONA_NOT_FOUND 100)\n\nIndependence:\
+      \ gate-reviewer is NOT any implementation agent in this phase."
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed for each step
+
+      - `uv run invar guard` passes on final state
+
+      - `uv run pytest tests/ -k export -v` -- all export tests pass
+
+      - No unresolved blockers
+
+      - INTERFACES.md consistent with implementation
+
+      - Plugin uses export instead of N resolve calls'
+    depends_on:
+    - feature_export.facade-export
+    - feature_export.mcp-export
+    - feature_export.cli-export
+    - feature_export.python-api-export
+    - feature_export.docs-interfaces
+    - feature_export.plugin-opencode
+    - feature_export.tests-export
+    agent: gate-reviewer
