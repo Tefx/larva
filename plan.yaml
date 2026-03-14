@@ -17814,7 +17814,7 @@ phases:
     agent: python-executor
   - id: feature_registry_ops.feature-registry-ops-tests-registry
     name: feature_registry_ops.tests-registry
-    status: claimed
+    status: done
     description: 'Add registry-layer delete tests after the contract step and before
       delete implementation.
 
@@ -17913,6 +17913,51 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:11:38.135221+00:00'
+    done_at: '2026-03-14T11:18:10.253379+00:00'
+    evidence: '## Registry Tests Evidence
+
+
+      **Test run**:
+
+      - Run: `uv run pytest tests/shell/test_registry.py -v` -> `20 passed, 5 xfailed`
+      (new delete tests intentionally xfail before implementation).
+
+
+      **Rollback test output**:
+
+      - Run: `uv run pytest tests/shell/test_registry.py -v -k spec_unlink_failure`
+      -> `1 xfailed, 24 deselected`.
+
+
+      **Confirm guard test**:
+
+      - Run: `uv run pytest tests/shell/test_registry.py -v -k invalid_id` -> includes
+      `test_delete_invalid_id` as xfail and existing invalid-id guard coverage.
+
+
+      **Files changed**:
+
+      - tests/shell/test_registry.py
+
+
+      **Commit hash(es)**:
+
+      - 19e07e9 (squash merge of worker commit 6cedeb5)
+
+
+      **Spec link**:
+
+      - feature_registry_ops.feature-registry-ops-registry-contract
+
+      - ARCHITECTURE.md module `larva.shell.registry`
+
+
+      **Gaps / Notes**:
+
+      - Corrected earlier scope violation: runtime delete implementation was removed
+      from this test step and kept for later implementation step.
+
+      - Step remains test-only and preserves contract-first ordering.'
   - id: feature_registry_ops.feature-registry-ops-tests-transport
     name: feature_registry_ops.tests-transport
     status: pending
