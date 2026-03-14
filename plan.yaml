@@ -18806,3 +18806,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:38:46.764015+00:00'
+  - id: feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
+    name: feature_registry_ops.facade-delete-clear-contract
+    status: pending
+    description: "Contract step: pin the app-facade delete/clear surface before any\
+      \ facade implementation or transport wiring.\n\nspec_refs:\n- feature_registry_ops.feature-registry-ops-registry-contract\n\
+      - ARCHITECTURE.md > Module: `larva.app.facade`\n- INTERFACES.md > App facade\
+      \ error envelopes\n\ntouch_paths:\n- src/larva/app/facade.py\n- tests/app/test_facade.py\n\
+      - src/larva/shell/registry.py\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
+      contract_outputs:\n- signatures\n- type_defs\n- interfaces\n- stubs\n\neffective_truth_owner:\
+      \ larva.app.facade\nconsumer_surfaces:\n- shell_cli\n- shell_mcp\n- shell_python_api\n\
+      state_strata:\n- resolved contract\n- transport-neutral error envelope\n\nTasks:\n\
+      1. Extend the facade contract surface only: add `REGISTRY_DELETE_FAILED` numeric\
+      \ code mapping, add `DeletedPersona` and `ClearedRegistry` typed outputs, and\
+      \ extend `LarvaFacade` / `DefaultLarvaFacade` stub signatures for `delete(persona_id)`\
+      \ and `clear(confirm=...)`.\n2. Keep this step contract-pure: no business logic,\
+      \ no registry delegation logic, no transport adapter changes.\n3. Document facade-level\
+      \ mapping expectations so downstream tests can pin them before implementation:\
+      \ success delete returns `{id, deleted: True}`, success clear returns `{cleared:\
+      \ True, count: <registry_count>}`, wrong-confirm and delete-failure cases return\
+      \ `LarvaError` envelopes that preserve registry `code`/`message` and move remaining\
+      \ registry fields into `details`.\n4. Out of scope: implementation bodies, transport\
+      \ wiring, or CLI/MCP docs updates.\n\nverification: |\n  - `src/larva/app/facade.py`\
+      \ exposes the new typed outputs and method signatures without shipping facade\
+      \ business logic in this step\n  - Contract text explicitly defines success\
+      \ payload semantics (`deleted`, `cleared`, `count`) and failure-envelope mapping\
+      \ for wrong-confirm and delete-failure cases\n  - No CLI/MCP/Python API surface\
+      \ is changed in this step\n"
+    verification: '- Contract artifacts exist in `src/larva/app/facade.py` only
+
+      - Delete/clear signatures and typed outputs are pinned before implementation
+
+      - Mapping expectations for `REGISTRY_DELETE_FAILED`, wrong-confirm, and delete-failure
+      are explicit and implementation-free'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-clear
+    agent: python-executor
