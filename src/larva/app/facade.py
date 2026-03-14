@@ -494,23 +494,41 @@ class DefaultLarvaFacade(LarvaFacade):
         return Success(summaries)
 
     def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
-        """Clone a registered persona to a new id.
+        get_result = self._registry.get(source_id)
+        if isinstance(get_result, Failure):
+            error = get_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
 
-        Implementation flow (contract-only stub):
-        1. `self._registry.get(source_id)` -> get source persona
-           - On failure: pass-through PERSONA_NOT_FOUND / INVALID_PERSONA_ID
-        2. Copy dict, set `id = new_id`, delete `spec_digest`
-        3. `self.validate()` -> validate the cloned spec
-           - On failure: return PERSONA_INVALID via `self._validation_error(report)`
-        4. `self._normalize.normalize_spec()` -> recalculate spec_digest
-        5. `self._registry.save()` -> persist cloned persona
-           - On failure: pass-through REGISTRY_WRITE_FAILED
-           - Note: Overwrites if `new_id` already exists (no existence check)
-        6. Return normalized PersonaSpec
+        cloned = dict(get_result.unwrap())
+        cloned["id"] = new_id
+        if "spec_digest" in cloned:
+            del cloned["spec_digest"]
 
-        Note: This is a contract-only stub. Implementation lands in facade-clone step.
-        """
-        raise NotImplementedError("contract-only stub: implementation in facade-clone step")
+        report = self.validate(cast("PersonaSpec", cloned))
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized = self._normalize.normalize_spec(cast("PersonaSpec", cloned))
+        save_result = self._registry.save(normalized)
+        if isinstance(save_result, Failure):
+            error = save_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        return Success(normalized)
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
         delete_result = self._registry.delete(persona_id)
