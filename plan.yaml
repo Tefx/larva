@@ -20663,7 +20663,7 @@ phases:
   steps:
   - id: feature_clone.facade-clone
     name: facade-clone
-    status: claimed
+    status: done
     description: 'Add `clone(source_id, new_id)` to LarvaFacade protocol and DefaultLarvaFacade.
 
 
@@ -20734,6 +20734,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:49:08.846251+00:00'
+    done_at: '2026-03-14T22:00:35.918434+00:00'
+    evidence: 'Artifact:
+
+      - PR: d04e664 (squash merge commit from worktree branch 1d1bc4c)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed (0 errors, 1 warning file-size)
+
+      - Run: uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade"
+      -> Import OK
+
+      - Run: uv run invar sig src/larva/app/facade.py::DefaultLarvaFacade.clone ->
+      signature `(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]`
+
+
+      Spec link:
+
+      - feature_clone.facade-clone
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+
+      Gaps/Notes:
+
+      - Implemented required flow: get -> clone dict/id swap -> strip spec_digest
+      -> validate -> normalize -> save.
+
+      - Error mappings and overwrite-on-existing-new_id semantics follow plan contract/tests.'
   - id: feature_clone.mcp-clone
     name: mcp-clone
     status: pending
