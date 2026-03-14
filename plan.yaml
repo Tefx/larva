@@ -17632,3 +17632,82 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-python-api-all
+    name: feature_registry_ops.python-api-all
+    status: pending
+    description: "Add four new functions to the Python API.\n\nFile: src/larva/shell/python_api.py\n\
+      \n### 1. Lazy component store initialization\n\nAdd a module-level singleton\
+      \ and getter alongside the existing `_facade` singleton:\n\n```python\n_component_store:\
+      \ FilesystemComponentStore | None = None\n\n# @invar:allow shell_result: lazy\
+      \ initialization is internal helper\ndef _get_component_store() -> FilesystemComponentStore:\n\
+      \    global _component_store\n    if _component_store is None:\n        _component_store\
+      \ = FilesystemComponentStore()\n    return _component_store\n```\n\n### 2. component_list()\
+      \ function\n\n```python\n# @invar:allow shell_result: Python API returns typed\
+      \ dict directly (not Result)\n# @shell_orchestration: thin delegation to component\
+      \ store\ndef component_list() -> dict[str, list[str]]:\n    \"\"\"List all available\
+      \ components.\n\n    Returns:\n        Dict with keys: prompts, toolsets, constraints,\
+      \ models — each a list of names.\n\n    Example:\n        components = component_list()\n\
+      \        assert \"prompts\" in components\n    \"\"\"\n    result = _get_component_store().list_components()\n\
+      \    return cast(\"dict[str, list[str]]\", _unwrap_result(result))\n```\n\n\
+      ### 3. component_show(type, name) function\n\n```python\n# @invar:allow shell_result:\
+      \ Python API raises on failure via _unwrap_result\n# @shell_orchestration: thin\
+      \ delegation to component store\ndef component_show(type: str, name: str) ->\
+      \ dict[str, object]:\n    \"\"\"Show the content of a named component.\n\n \
+      \   Args:\n        type: Component type — one of: prompts, toolsets, constraints,\
+      \ models\n        name: Component name\n\n    Returns:\n        Component content\
+      \ dict (shape varies by type).\n\n    Raises:\n        LarvaApiError: If component\
+      \ not found or type is invalid.\n\n    Example:\n        prompt = component_show(\"\
+      prompts\", \"code-reviewer\")\n    \"\"\"\n    loaders = {\n        \"prompts\"\
+      : _get_component_store().load_prompt,\n        \"toolsets\": _get_component_store().load_toolset,\n\
+      \        \"constraints\": _get_component_store().load_constraint,\n        \"\
+      models\": _get_component_store().load_model,\n    }\n    loader = loaders.get(type)\n\
+      \    if loader is None:\n        raise LarvaApiError({\n            \"code\"\
+      : \"COMPONENT_NOT_FOUND\",\n            \"numeric_code\": 105,\n           \
+      \ \"message\": f\"unknown component type '{type}'\",\n            \"details\"\
+      : {\"type\": type},\n        })\n    result = loader(name)\n    return cast(\"\
+      dict[str, object]\", _unwrap_result(result))\n```\n\n### 4. delete(persona_id)\
+      \ function\n\n```python\n# @invar:allow shell_result: Python API raises on failure\
+      \ via _unwrap_result\n# @shell_orchestration: thin delegation to facade\ndef\
+      \ delete(persona_id: str) -> None:\n    \"\"\"Delete a registered persona by\
+      \ id.\n\n    Args:\n        persona_id: Persona id to delete.\n\n    Raises:\n\
+      \        LarvaApiError: If persona not found or delete fails.\n\n    Example:\n\
+      \        delete(\"code-reviewer\")\n    \"\"\"\n    _unwrap_result(_get_facade().delete(persona_id))\n\
+      ```\n\n### 5. clear(*, confirm) function (keyword-only)\n\n```python\n# @invar:allow\
+      \ shell_result: Python API raises on failure via _unwrap_result\n# @shell_orchestration:\
+      \ thin delegation to facade\ndef clear(*, confirm: str) -> int:\n    \"\"\"\
+      Delete all registered personas.\n\n    Args:\n        confirm: Must be exactly\
+      \ \"DELETE ALL PERSONAS\" to proceed.\n\n    Returns:\n        Number of personas\
+      \ deleted.\n\n    Raises:\n        LarvaApiError: If confirm string is wrong\
+      \ or deletion fails.\n\n    Example:\n        count = clear(confirm=\"DELETE\
+      \ ALL PERSONAS\")\n    \"\"\"\n    result = _get_facade().clear(confirm=confirm)\n\
+      \    cleared = cast(\"ClearedRegistry\", _unwrap_result(result))\n    return\
+      \ int(cleared[\"count\"])\n```\n\nImport `ClearedRegistry` from `larva.app.facade`.\n\
+      \nAdd all four new functions to `__all__`.\n\nstep_type: implementation\nrefs:\n\
+      \  - src/larva/shell/python_api.py\n  - src/larva/app/facade.py\n  - src/larva/shell/components.py"
+    verification: '- invar guard passes
+
+      - component_list() returns dict with 4 keys (prompts/toolsets/constraints/models)
+
+      - component_show("prompts", name) returns prompt content dict
+
+      - component_show("invalid-type", name) raises LarvaApiError
+
+      - delete(id) returns None on success, raises LarvaApiError on not-found
+
+      - clear(confirm="DELETE ALL PERSONAS") returns int count
+
+      - clear(confirm="wrong") raises LarvaApiError
+
+      - clear() without keyword arg is a TypeError (keyword-only enforced)
+
+      - All existing python_api functions still work'
+    evidence_template: "## Python API Evidence\n\n**invar guard output**:\n```\n<paste\
+      \ full invar guard output>\n```\n\n**Full python_api test suite**:\n```\n<paste:\
+      \ uv run pytest tests/shell/test_python_api.py -v>\n```\n\n**keyword-only enforcement**:\n\
+      ```python\n# Must raise TypeError:\ntry:\n    clear(\"DELETE ALL PERSONAS\"\
+      )  # positional — should fail\nexcept TypeError as e:\n    print(f\"Correctly\
+      \ rejected: {e}\")\n```\n\n**Gaps / SPEC QUESTIONS**: <none or list>"
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-mcp-components
+    - feature_registry_ops.feature-registry-ops-cli-delete-clear
+    agent: python-executor
