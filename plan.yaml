@@ -21910,7 +21910,7 @@ phases:
     agent: python-executor
   - id: feature_export.tests-export
     name: tests-export
-    status: pending
+    status: claimed
     description: 'Add tests for export across all layers.
 
 
@@ -22005,6 +22005,8 @@ phases:
     - feature_export.cli-export
     - feature_export.python-api-export
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:29:57.001526+00:00'
   - id: feature_export.gate
     name: gate
     status: pending
