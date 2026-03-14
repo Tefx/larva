@@ -20590,6 +20590,8 @@ phases:
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: pending
+  depends_on:
+  - meta.gate
   steps:
   - id: feature_clone.facade-clone
     name: facade-clone
