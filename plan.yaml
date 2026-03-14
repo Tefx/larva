@@ -21473,7 +21473,7 @@ phases:
     agent: gate-reviewer
   - id: feature_export.feature-export-contract
     name: feature_export.contract
-    status: claimed
+    status: done
     description: "Define the contract-only bulk-export surface in `src/larva/app/facade.py`\
       \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
       contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
@@ -21498,6 +21498,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T21:07:22.101973+00:00'
+    done_at: '2026-03-14T21:25:29.703118+00:00'
+    evidence: 'Artifact:
+
+      - PR: d776a18 (squash merge commit from worktree branch 55f342d)
+
+
+      Verification:
+
+      - Run: uv run invar guard --changed -> passed (0 errors, 0 warnings)
+
+      - Run: uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade"
+      -> Import OK
+
+
+      Spec link:
+
+      - plan step feature_export.feature-export-contract
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+
+      Gaps/Notes:
+
+      - Contract-only signatures/stubs and semantics were added; no registry traversal
+      logic implemented in this step.'
   - id: feature_export.feature-export-facade-tests
     name: feature_export.facade-tests
     status: pending
