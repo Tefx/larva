@@ -21354,3 +21354,43 @@ phases:
       - Fail-fast, empty-input, and canonical-registry-data semantics are explicit
       for downstream steps'
     agent: python-executor
+  - id: feature_export.feature-export-facade-tests
+    name: feature_export.facade-tests
+    status: pending
+    description: 'Add contract-driven facade tests for export before transport implementation.
+
+
+      step_type: test
+
+
+      Scope:
+
+      - add focused tests in `tests/app/test_facade.py` for `DefaultLarvaFacade.export_all()`
+      and `export_ids()` only
+
+      - cover export-all success, empty registry, registry.list failure, export-ids
+      success, fail-fast not-found behavior, and empty id list behavior
+
+      - lock the contract that registry-backed export returns full canonical `PersonaSpec`
+      records without transport shaping
+
+      - keep this step facade-scoped so transport surfaces inherit a fixed export
+      behavior contract rather than defining their own semantics
+
+
+      Non-goals:
+
+      - no MCP/CLI/Python API/export plugin tests here
+
+      - no docs updates
+
+      - no production implementation changes beyond minimal test doubles/fixtures'
+    verification: '- `uv run pytest tests/app/test_facade.py -k export -v` defines
+      and exercises the export contract
+
+      - Tests cover empty-list and fail-fast semantics explicitly
+
+      - Test scope stays in `tests/app/test_facade.py`'
+    depends_on:
+    - feature_export.feature-export-contract
+    agent: python-executor
