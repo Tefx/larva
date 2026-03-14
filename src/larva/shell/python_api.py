@@ -5,6 +5,7 @@ This module defines the public Python interface for larva use-cases:
 - assemble(...)
 - register(spec)
 - resolve(id, overrides=None)
+- update(persona_id, patches)
 - list()
 
 Responsibility (from ARCHITECTURE.md):
@@ -274,6 +275,37 @@ def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
 # @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def update(persona_id: str, patches: dict[str, Any]) -> PersonaSpec:
+    """Update a registered persona by id with patches.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.update`.
+    The facade orchestrates: registry lookup → apply patches → revalidate → renormalize → save.
+
+    Args:
+        persona_id: Unique identifier of the persona to update.
+        patches: Dictionary of patches to apply to the persona spec.
+            Supports RFC 6902 JSON Patch operations via core.patch.apply_patches.
+
+    Returns:
+        Updated, validated, and normalized PersonaSpec.
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Looks up via shell.registry
+        - Applies patches via core.patch.apply_patches
+        - Revalidates via core.validate (after patch)
+        - Renormalizes via core.normalize (after patch)
+        - Saves via shell.registry
+
+    Example:
+        spec = update("my-persona", {"model": "claude-opus-4-20250514"})
+        assert spec["model"] == "claude-opus-4-20250514"
+    """
+    return cast("PersonaSpec", _unwrap_result(_get_facade().update(persona_id, patches)))
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def list() -> list[PersonaSummary]:
     """List all registered personas.
 
@@ -535,6 +567,7 @@ __all__ = [
     "assemble",
     "register",
     "resolve",
+    "update",
     "list",
     # Component operations
     "component_list",
