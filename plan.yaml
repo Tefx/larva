@@ -18779,7 +18779,7 @@ phases:
       - ARCHITECTURE.md :: larva.shell.mcp / larva.shell.components'
   - id: feature_registry_ops.feature-registry-ops-tests-mcp-components
     name: feature_registry_ops.tests-mcp-components
-    status: claimed
+    status: done
     description: 'Add feature-local acceptance tests for MCP `component_list` / `component_show`
       before implementation is claimable.
 
@@ -18887,6 +18887,54 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:38:46.764015+00:00'
+    done_at: '2026-03-14T11:47:46.137630+00:00'
+    evidence: '## MCP Component Acceptance Tests Evidence
+
+
+      Targeted command:
+
+      - `uv run pytest tests/shell/test_mcp.py -v -k "component_list or component_show"`
+
+      - Output summary: `17 collected, 2 passed, 15 xfailed`.
+
+
+      Tests added:
+
+      - `TestMCPToolDefinitions::test_component_list_tool_is_defined`
+
+      - `TestMCPToolDefinitions::test_component_show_tool_is_defined`
+
+      - `TestMCPComponentListAcceptance::*` (3 tests)
+
+      - `TestMCPComponentShowAcceptance::*` (12 tests)
+
+
+      Pinned acceptance split:
+
+      - malformed params -> `_assert_malformed_params_error` (`INTERNAL`/10)
+
+      - unsupported type / missing component -> `COMPONENT_NOT_FOUND` (105)
+
+
+      If xfail used pre-implementation:
+
+      - yes; applied only to new component handler acceptance tests with `xfail(strict=True,
+      reason="pending feature_registry_ops.mcp-components")`.
+
+
+      Files changed:
+
+      - tests/shell/test_mcp.py
+
+
+      Commit hash(es):
+
+      - a06d728 (squash merge of worker commit 7c2dea4)
+
+
+      Gaps / SPEC QUESTIONS:
+
+      - none'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
     name: feature_registry_ops.facade-delete-clear-contract
     status: pending
