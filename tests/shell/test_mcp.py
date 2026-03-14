@@ -151,6 +151,8 @@ class InMemoryRegistryStore:
     list_result: Result[list[PersonaSpec], LarvaError] = field(default_factory=lambda: Success([]))
     save_result: Result[None, LarvaError] = field(default_factory=lambda: Success(None))
     save_inputs: list[PersonaSpec] = field(default_factory=list)
+    delete_result: Result[None, LarvaError] = field(default_factory=lambda: Success(None))
+    clear_result: Result[int, LarvaError] = field(default_factory=lambda: Success(0))
 
     def save(self, spec: PersonaSpec) -> Result[None, LarvaError]:
         self.save_inputs.append(dict(spec))
@@ -161,6 +163,12 @@ class InMemoryRegistryStore:
 
     def list(self) -> Result[list[PersonaSpec], LarvaError]:
         return self.list_result
+
+    def delete(self, persona_id: str) -> Result[None, LarvaError]:
+        return self.delete_result
+
+    def clear(self, confirm: str) -> Result[int, LarvaError]:
+        return self.clear_result
 
 
 def _canonical_spec(
@@ -330,6 +338,26 @@ class TestMCPToolDefinitions:
         assert "name" in props
         assert "component_type" in component_show_tool["input_schema"]["required"]
         assert "name" in component_show_tool["input_schema"]["required"]
+
+    def test_delete_tool_is_defined(self) -> None:
+        """Verify larva.delete is defined in LARVA_MCP_TOOLS."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva.delete" in tool_names
+
+        delete_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.delete")
+        props = delete_tool["input_schema"]["properties"]
+        assert "id" in props
+        assert "id" in delete_tool["input_schema"]["required"]
+
+    def test_clear_tool_is_defined(self) -> None:
+        """Verify larva.clear is defined in LARVA_MCP_TOOLS."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva.clear" in tool_names
+
+        clear_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.clear")
+        props = clear_tool["input_schema"]["properties"]
+        assert "confirm" in props
+        assert "confirm" in clear_tool["input_schema"]["required"]
 
 
 # -----------------------------------------------------------------------------
@@ -1494,3 +1522,220 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         assert "error" not in result
         assert "model" in result
+
+
+# -----------------------------------------------------------------------------
+# MCP Delete/Clear Handler Tests
+# -----------------------------------------------------------------------------
+
+
+class TestMCPHandleDelete:
+    """Test MCPHandlers.handle_delete parameter validation and delegation."""
+
+    def test_handle_delete_success(self) -> None:
+        """Test handle_delete returns DeletedPersona on success."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete({"id": "test-persona"})
+
+        assert isinstance(result, dict)
+        assert result["id"] == "test-persona"
+        assert result["deleted"] is True
+
+    def test_handle_delete_failure_returns_error_envelope(self) -> None:
+        """Test handle_delete returns error envelope on failure."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete({"id": "missing"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_NOT_FOUND"
+        assert result["numeric_code"] == 100
+        assert "missing" in result["message"]
+
+    def test_handle_delete_missing_id_returns_malformed_envelope(self) -> None:
+        """Test handle_delete returns malformed-params envelope for missing id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.delete",
+            reason="missing required parameter 'id'",
+        )
+
+    def test_handle_delete_non_string_id_returns_malformed_envelope(self) -> None:
+        """Test handle_delete rejects non-string id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete({"id": 123})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.delete",
+            reason="parameter 'id' must be string",
+        )
+
+    def test_handle_delete_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_delete rejects unknown params."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete({"id": "test", "extra": "param"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.delete",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_delete_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_delete rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_delete("not-an-object")
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.delete",
+            reason="params must be an object",
+        )
+
+
+class TestMCPHandleClear:
+    """Test MCPHandlers.handle_clear parameter validation and delegation."""
+
+    def test_handle_clear_success(self) -> None:
+        """Test handle_clear returns ClearedRegistry on success."""
+        registry = InMemoryRegistryStore(clear_result=Success(3))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        # Note: The facade/registry layer checks the confirm token, not MCP
+        result = handlers.handle_clear({"confirm": "CLEAR REGISTRY"})
+
+        assert isinstance(result, dict)
+        assert result["cleared"] is True
+        assert result["count"] == 3
+
+    def test_handle_clear_failure_returns_error_envelope(self) -> None:
+        """Test handle_clear returns error envelope on failure."""
+        registry = InMemoryRegistryStore(
+            clear_result=Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": "failed to delete specs",
+                    "operation": "clear",
+                    "path": "/registry",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear({"confirm": "CLEAR REGISTRY"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "REGISTRY_DELETE_FAILED"
+        assert result["numeric_code"] == 111
+
+    def test_handle_clear_wrong_confirm_returns_error_envelope(self) -> None:
+        """Test handle_clear returns error envelope for wrong confirm token."""
+        # The facade/registry layer maps wrong confirm to INVALID_CONFIRMATION_TOKEN
+        registry = InMemoryRegistryStore(
+            clear_result=Failure(
+                {
+                    "code": "INVALID_CONFIRMATION_TOKEN",
+                    "message": "clear requires exact confirmation token 'CLEAR REGISTRY'",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear({"confirm": "WRONG TOKEN"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "INVALID_CONFIRMATION_TOKEN"
+        # INTERNAL fallback numeric code for unmapped error codes
+        assert result["numeric_code"] == 10
+
+    def test_handle_clear_missing_confirm_returns_malformed_envelope(self) -> None:
+        """Test handle_clear returns malformed-params envelope for missing confirm."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clear",
+            reason="missing required parameter 'confirm'",
+        )
+
+    def test_handle_clear_non_string_confirm_returns_malformed_envelope(self) -> None:
+        """Test handle_clear rejects non-string confirm."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear({"confirm": 123})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clear",
+            reason="parameter 'confirm' must be string",
+        )
+
+    def test_handle_clear_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_clear rejects unknown params."""
+        registry = InMemoryRegistryStore()
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear({"confirm": "CLEAR REGISTRY", "extra": "param"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clear",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_clear_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_clear rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clear(["not", "an", "object"])
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clear",
+            reason="params must be an object",
+        )

@@ -152,6 +152,31 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "required": ["component_type", "name"],
         },
     },
+    {
+        "name": "larva.delete",
+        "description": "Delete a registered persona by id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "Persona id to delete"},
+            },
+            "required": ["id"],
+        },
+    },
+    {
+        "name": "larva.clear",
+        "description": "Delete all registered personas. Requires confirm='DELETE ALL PERSONAS'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "confirm": {
+                    "type": "string",
+                    "description": "Must be exactly 'DELETE ALL PERSONAS' to proceed",
+                },
+            },
+            "required": ["confirm"],
+        },
+    },
 ]
 
 

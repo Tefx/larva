@@ -43,6 +43,8 @@ from larva.shell.components import ComponentStore
 if TYPE_CHECKING:
     from larva.app.facade import (
         AssembleRequest,
+        ClearedRegistry,
+        DeletedPersona,
         LarvaError,
         LarvaFacade,
         RegisteredPersona,
@@ -573,6 +575,83 @@ class MCPHandlers:
         # Success shaping: return list of summaries
         if isinstance(result, Success):
             return cast("list[dict[str, str]]", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_delete(self, params: object) -> Union["DeletedPersona", LarvaError]:
+        """Handle larva.delete MCP tool call.
+
+        Delegates to: facade.delete(persona_id)
+
+        Args:
+            params: MCP request parameters:
+                - id: Persona id to delete (required)
+
+        Returns:
+            {"id": str, "deleted": True} on success, or error envelope on failure.
+
+        Malformed requests return the documented MCP error envelope.
+        """
+        validated_params = self._require_params_object("larva.delete", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.delete", checked_params, {"id"}):
+            return error
+        if error := self._require_param("larva.delete", checked_params, "id"):
+            return error
+        if error := self._require_type("larva.delete", checked_params, "id", str, "string"):
+            return error
+
+        persona_id = checked_params["id"]
+
+        # Delegate to facade
+        result = self._facade.delete(persona_id)
+
+        # Success shaping: return DeletedPersona on success
+        if isinstance(result, Success):
+            return cast("DeletedPersona", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_clear(self, params: object) -> Union["ClearedRegistry", LarvaError]:
+        """Handle larva.clear MCP tool call.
+
+        Delegates to: facade.clear(confirm)
+
+        Args:
+            params: MCP request parameters:
+                - confirm: Confirmation string, must match exactly (required)
+
+        Returns:
+            {"cleared": True, "count": int} on success, or error envelope on failure.
+            Wrong confirm token returns INVALID_CONFIRMATION_TOKEN error.
+
+        Malformed requests return the documented MCP error envelope.
+        """
+        validated_params = self._require_params_object("larva.clear", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.clear", checked_params, {"confirm"}):
+            return error
+        if error := self._require_param("larva.clear", checked_params, "confirm"):
+            return error
+        if error := self._require_type("larva.clear", checked_params, "confirm", str, "string"):
+            return error
+
+        confirm = checked_params["confirm"]
+
+        # Delegate to facade
+        result = self._facade.clear(confirm)
+
+        # Success shaping: return ClearedRegistry on success
+        if isinstance(result, Success):
+            return cast("ClearedRegistry", result.unwrap())
 
         # Error envelope fidelity: return error with code, numeric_code, message, details
         error = result.failure()
