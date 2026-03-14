@@ -20530,3 +20530,335 @@ phases:
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: pending
+  steps:
+  - id: feature_clone.facade-clone
+    name: facade-clone
+    status: pending
+    description: 'Add `clone(source_id, new_id)` to LarvaFacade protocol and DefaultLarvaFacade.
+
+
+      File: src/larva/app/facade.py
+
+
+      ## LarvaFacade Protocol
+
+      Add method signature:
+
+      ```python
+
+      def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
+      ...
+
+      ```
+
+
+      ## DefaultLarvaFacade Implementation
+
+      Flow: `self._registry.get(source_id)` -> copy dict -> set `id = new_id` -> delete
+      `spec_digest` -> `self.validate()` -> `self._normalize.normalize_spec()` ->
+      `self._registry.save()` -> return normalized spec.
+
+
+      Error mapping (all reuse existing codes):
+
+      - Registry get failure -> pass-through (PERSONA_NOT_FOUND / INVALID_PERSONA_ID)
+
+      - Validation failure -> PERSONA_INVALID via `self._validation_error(report)`
+
+      - Registry save failure -> pass-through (REGISTRY_WRITE_FAILED)
+
+
+      Pattern to follow: `resolve()` method at lines 379-405 for get + error mapping,
+      then `register()` at lines 358-377 for validate + normalize + save flow.
+
+
+      Key detail: If `new_id` already exists, overwrite (consistent with `register`
+      behavior -- no existence check).
+
+
+      Do NOT add docstring explaining clone semantics to the Protocol method -- keep
+      it consistent with other Protocol methods (delete/clear have docstrings but
+      resolve/list/register do not; follow the shorter pattern).'
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade"`
+      succeeds
+
+      - Method signature matches spec'
+    refs:
+    - src/larva/app/facade.py
+    agent: python-executor
+  - id: feature_clone.mcp-clone
+    name: mcp-clone
+    status: pending
+    description: "Add `larva.clone` MCP tool definition and handler.\n\n## Tool Definition\
+      \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
+      {\n    \"name\": \"larva.clone\",\n    \"description\": \"Clone a registered\
+      \ persona to a new id.\",\n    \"input_schema\": {\n        \"type\": \"object\"\
+      ,\n        \"properties\": {\n            \"source_id\": {\"type\": \"string\"\
+      , \"description\": \"Source persona id to clone\"},\n            \"new_id\"\
+      : {\"type\": \"string\", \"description\": \"New persona id (kebab-case)\"},\n\
+      \        },\n        \"required\": [\"source_id\", \"new_id\"],\n    },\n}\n\
+      ```\n\n## Handler (src/larva/shell/mcp.py)\nAdd `handle_clone(self, params)`\
+      \ to `MCPHandlers` class.\nPattern to follow: `handle_resolve()` at lines 467-514\
+      \ (param validation + facade delegation + Success/Failure unwrap).\n\nAllowed\
+      \ params: `{\"source_id\", \"new_id\"}`, both required, both string type.\n\
+      Delegate to `self._facade.clone(source_id, new_id)`.\nReturn `PersonaSpec` on\
+      \ success, error envelope on failure.\n\nNo changes to `__all__` needed (LARVA_MCP_TOOLS\
+      \ is already exported)."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name''] == ''larva.clone'' for t in LARVA_MCP_TOOLS)"`
+      succeeds'
+    refs:
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/mcp.py
+    depends_on:
+    - feature_clone.facade-clone
+    agent: python-executor
+  - id: feature_clone.cli-clone
+    name: cli-clone
+    status: pending
+    description: "Add `larva clone <source-id> <new-id> [--json]` CLI subcommand.\n\
+      \n## Parser (src/larva/shell/cli_helpers.py)\nIn `_build_parser()`, add clone\
+      \ subparser after delete_parser block (before clear_parser):\n```python\nclone_parser\
+      \ = subparsers.add_parser(\"clone\")\nclone_parser.add_argument(\"source_id\"\
+      )\nclone_parser.add_argument(\"new_id\")\nclone_parser.add_argument(\"--json\"\
+      , action=\"store_true\", dest=\"as_json\")\n```\n\nAlso add `\"clone\"` to the\
+      \ `CommandName` Literal type.\n\n## Command function (src/larva/shell/cli.py)\n\
+      Add `clone_command(source_id, new_id, *, as_json, facade)` function.\nPattern\
+      \ to follow: `resolve_command()` at lines 307-329 (facade call + Success/Failure\
+      \ branching + text/json output).\n\nOn success: return full PersonaSpec as payload\
+      \ (same as resolve).\nOn failure: `_map_facade_error()` + stderr `\"Clone failed:\
+      \ ...\"` in text mode.\n\nAdd dispatch branch in `_dispatch()` for `command\
+      \ == \"clone\"`:\n```python\nif command == \"clone\":\n    return clone_command(\n\
+      \        cast(\"str\", args.source_id),\n        cast(\"str\", args.new_id),\n\
+      \        as_json=as_json,\n        facade=facade,\n    )\n```\n\nExit codes:\
+      \ 0 success, 1 domain error, 2 input/critical failure."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.cli import clone_command"` succeeds
+
+      - `uv run larva clone --help` shows usage with source_id and new_id positional
+      args'
+    refs:
+    - src/larva/shell/cli_helpers.py
+    - src/larva/shell/cli.py
+    depends_on:
+    - feature_clone.facade-clone
+    agent: python-executor
+  - id: feature_clone.python-api-clone
+    name: python-api-clone
+    status: pending
+    description: 'Add `clone(source_id, new_id)` to the Python API module.
+
+
+      File: src/larva/shell/python_api.py
+
+
+      Add function:
+
+      ```python
+
+      def clone(source_id: str, new_id: str) -> PersonaSpec:
+
+      ```
+
+
+      Pattern to follow: `resolve()` at lines 245-272 (thin delegation + `_unwrap_result`
+      + cast).
+
+
+      Body: `return cast("PersonaSpec", _unwrap_result(_get_facade().clone(source_id,
+      new_id)))`
+
+
+      Add invar annotations matching existing pattern:
+
+      ```python
+
+      # @invar:allow shell_result: Python API unwraps Result via exception passthrough
+
+      # @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+
+      ```
+
+
+      Add `"clone"` to the `__all__` list (in the main exports section, after `"resolve"`).
+
+
+      Add docstring following the resolve() pattern: args, returns, contract, example.'
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.python_api import clone"` succeeds
+
+      - `clone` appears in `__all__`'
+    refs:
+    - src/larva/shell/python_api.py
+    depends_on:
+    - feature_clone.facade-clone
+    agent: python-executor
+  - id: feature_clone.docs-interfaces
+    name: docs-interfaces
+    status: pending
+    description: 'Update INTERFACES.md to document the clone operation across all
+      three surfaces.
+
+
+      File: INTERFACES.md
+
+
+      Add clone entries in:
+
+      - **Section A (MCP)**: `larva.clone` tool with input schema `{source_id, new_id}`,
+      returns PersonaSpec
+
+      - **Section B (CLI)**: `larva clone <source-id> <new-id> [--json]` with exit
+      codes 0/1/2
+
+      - **Section H (Python API)** (or whichever section covers Python API): `clone(source_id,
+      new_id) -> PersonaSpec`
+
+
+      Follow the formatting pattern of existing entries (delete, clear, resolve) in
+      each section.
+
+
+      No new error codes to document -- clone reuses PERSONA_NOT_FOUND (100), INVALID_PERSONA_ID
+      (104), PERSONA_INVALID (101), REGISTRY_WRITE_FAILED (109).'
+    verification: '- INTERFACES.md contains `larva.clone` in MCP section
+
+      - INTERFACES.md contains `larva clone` in CLI section
+
+      - INTERFACES.md contains `clone()` in Python API section'
+    refs:
+    - INTERFACES.md
+    depends_on:
+    - feature_clone.facade-clone
+    agent: python-executor
+  - id: feature_clone.tests-clone
+    name: tests-clone
+    status: pending
+    description: 'Add tests for clone across all layers.
+
+
+      ## Test files and coverage:
+
+
+      ### tests/app/test_facade.py
+
+      Add tests for `DefaultLarvaFacade.clone()`:
+
+      1. `test_clone_success` -- clone existing persona, verify new id + new spec_digest
+      + all other fields preserved
+
+      2. `test_clone_source_not_found` -- source_id doesn''t exist, expect PERSONA_NOT_FOUND
+
+      3. `test_clone_invalid_new_id` -- new_id fails kebab-case validation, expect
+      INVALID_PERSONA_ID or PERSONA_INVALID
+
+      4. `test_clone_overwrites_existing` -- new_id already registered, clone succeeds
+      (overwrite)
+
+      5. `test_clone_spec_digest_recalculated` -- verify spec_digest differs from
+      source
+
+
+      Pattern: follow existing `test_register_*` and `test_resolve_*` test patterns
+      in the same file.
+
+
+      ### tests/shell/test_mcp.py
+
+      Add tests for `MCPHandlers.handle_clone()`:
+
+      1. `test_handle_clone_success` -- valid params, returns PersonaSpec
+
+      2. `test_handle_clone_missing_source_id` -- missing required param
+
+      3. `test_handle_clone_missing_new_id` -- missing required param
+
+      4. `test_handle_clone_unknown_params` -- extra params rejected
+
+      5. `test_handle_clone_source_not_found` -- facade returns Failure
+
+
+      ### tests/shell/test_cli.py
+
+      Add tests for `clone_command()`:
+
+      1. `test_clone_command_success_text` -- text output shows PersonaSpec JSON
+
+      2. `test_clone_command_success_json` -- JSON output wraps in `{"data": ...}`
+
+      3. `test_clone_command_not_found` -- stderr shows error, exit code 1
+
+      4. `test_clone_parser` -- argparse produces correct source_id / new_id attributes
+
+
+      ### tests/shell/test_python_api.py
+
+      Add tests for `clone()`:
+
+      1. `test_clone_success` -- returns PersonaSpec
+
+      2. `test_clone_not_found_raises` -- raises LarvaApiError
+
+
+      Total: ~16 tests across 4 files.'
+    verification: '- `uv run pytest tests/app/test_facade.py -k clone -v` -- all pass
+
+      - `uv run pytest tests/shell/test_mcp.py -k clone -v` -- all pass
+
+      - `uv run pytest tests/shell/test_cli.py -k clone -v` -- all pass
+
+      - `uv run pytest tests/shell/test_python_api.py -k clone -v` -- all pass
+
+      - `uv run invar guard` passes'
+    refs:
+    - tests/app/test_facade.py
+    - tests/shell/test_mcp.py
+    - tests/shell/test_cli.py
+    - tests/shell/test_python_api.py
+    depends_on:
+    - feature_clone.mcp-clone
+    - feature_clone.cli-clone
+    - feature_clone.python-api-clone
+    agent: python-executor
+  - id: feature_clone.gate
+    name: gate
+    status: pending
+    description: "Gate review: Verify feature_clone phase completion and quality.\n\
+      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature follows established\
+      \ delete/clear/resolve pattern exactly\n  - No output formatting complexity\n\
+      \  - No known rework patterns in touch paths\n  - No cross-cutting concerns\n\
+      \nReview criteria:\n1. **Completeness**: All 6 implementation/test steps completed\n\
+      2. **Facade**: clone method follows resolve+register composition pattern\n3.\
+      \ **MCP**: Tool definition registered, handler validates params correctly\n\
+      4. **CLI**: Parser accepts `clone <source-id> <new-id> [--json]`, dispatch wired\n\
+      5. **Python API**: Thin delegation with `_unwrap_result`, added to `__all__`\n\
+      6. **Tests**: All ~16 tests pass, covering success + error + edge cases\n7.\
+      \ **Docs**: INTERFACES.md updated across MCP/CLI/Python API sections\n8. **Guard**:\
+      \ `uv run invar guard` clean\n9. **Error codes**: No new error codes introduced\
+      \ (reuses 100, 101, 104, 109)\n\nIndependence: gate-reviewer is NOT any implementation\
+      \ agent in this phase."
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed for each step
+
+      - `uv run invar guard` passes on final state
+
+      - `uv run pytest tests/ -k clone -v` -- all clone tests pass
+
+      - No unresolved blockers
+
+      - INTERFACES.md consistent with implementation'
+    depends_on:
+    - feature_clone.facade-clone
+    - feature_clone.mcp-clone
+    - feature_clone.cli-clone
+    - feature_clone.python-api-clone
+    - feature_clone.docs-interfaces
+    - feature_clone.tests-clone
+    agent: gate-reviewer
