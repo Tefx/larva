@@ -17899,7 +17899,7 @@ phases:
     claimed_at: '2026-03-14T12:08:22.078828+00:00'
   - id: feature_registry_ops.feature-registry-ops-cli-delete-clear
     name: feature_registry_ops.cli-delete-clear
-    status: claimed
+    status: done
     description: "Add delete and clear subcommands to the CLI.\n\nFiles: src/larva/shell/cli_helpers.py,\
       \ src/larva/shell/cli.py\n\n### cli_helpers.py changes\n\n1. Add delete subcommand\
       \ parser to `_build_parser()`:\n   ```\n   larva delete <id> [--json]\n   ```\n\
@@ -18014,6 +18014,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:07:33.436975+00:00'
+    done_at: '2026-03-14T12:21:26.755972+00:00'
+    evidence: '## CLI Delete/Clear Evidence
+
+
+      Commit hash(es):
+
+      - no new squash commit in this pass (worker-reported implementation commit `156a101`
+      already present in main history; branch had no additional delta at merge time)
+
+
+      Files changed for this step implementation:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_helpers.py
+
+      - tests/shell/test_cli.py
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_cli.py -v` -> `100 passed`.
+
+      - Run: `uv run invar guard` -> passed.
+
+
+      Coverage proof:
+
+      - Added delete/clear subcommand behavior tests (success, json mode, not-found/wrong-confirm
+      failures, missing confirm argparse exit 2).
+
+      - Existing CLI command regressions remain green; unknown command fallthrough
+      exit 2 preserved.
+
+
+      Scope note:
+
+      - Out-of-scope facade file change reported in an earlier attempt was repaired
+      and excluded from final accepted diff.'
   - id: feature_registry_ops.feature-registry-ops-python-api-all
     name: feature_registry_ops.python-api-all
     status: pending
