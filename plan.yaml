@@ -20928,6 +20928,194 @@ phases:
 
       - This step intentionally delivers contract-only stubs and acceptance notes;
       runnable merge logic is deferred to downstream implementation step.'
+  - id: feature_update.feature-update-gate-fix-shell-complexity-batch
+    name: feature_update.gate-fix-shell-complexity-batch
+    status: pending
+    description: 'Fix ALL blockers found by `feature_update.feature-update-gate` for
+      `shell_complexity_debt`.
+
+
+      symbolic_testing: true
+
+
+      ## Root Cause vs Symptom:
+
+      - Root cause: `src/larva/shell/cli.py` and `src/larva/shell/mcp_export.py` still
+      mix command routing, parameter validation, JSON/spec loading, and transport
+      formatting in large branch-heavy helpers.
+
+      - Symptom: full guard reports 5 unaddressed `shell_complexity_debt` warnings
+      at the guard threshold.
+
+      - Why this fix is not surface-level: reduce complexity by extracting or consolidating
+      branch logic without changing update/export behavior or transport contracts.
+
+      - Command lock: `uv run invar guard --all`
+
+      - Fresh/cold retest required after implementation.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+
+      ### B1: `_dispatch` remains over branch budget
+
+      Locations: `src/larva/shell/cli.py:76`
+
+      Remediation: split command routing and shared dispatch preparation into focused
+      helpers so `_dispatch` drops below the guard threshold while preserving CLI
+      command behavior for validate/assemble/update/export flows.
+
+      Grep hint: `rg "def _dispatch|class Args|_dispatch\(" src/larva/shell/cli.py
+      tests/shell/test_cli.py -n`
+
+      IMPORTANT: search for sibling routing branches beyond the listed location before
+      claiming done.
+
+
+      ### B2: `validate_command` still bundles validation/report rendering branches
+
+      Locations: `src/larva/shell/cli.py:241`
+
+      Remediation: extract result rendering / error mapping seams so command semantics
+      stay identical for text and JSON modes.
+
+      Grep hint: `rg "def validate_command|ValidationReport|as_json" src/larva/shell/cli.py
+      tests/shell/test_cli.py -n`
+
+      IMPORTANT: verify sibling output paths, not just the happy path.
+
+
+      ### B3: `assemble_command` still bundles assembly/result formatting branches
+
+      Locations: `src/larva/shell/cli.py:277`
+
+      Remediation: isolate facade invocation from text/JSON response formatting and
+      preserve current payload structure.
+
+      Grep hint: `rg "def assemble_command|assemble_command\(|as_json" src/larva/shell/cli.py
+      tests/shell/test_cli.py -n`
+
+      IMPORTANT: preserve both text and JSON output contracts.
+
+
+      ### B4: `_read_spec_json` still carries too many failure branches
+
+      Locations: `src/larva/shell/cli_helpers.py:285`
+
+      Remediation: factor file-read / parse / schema-shape checks into smaller helpers
+      while preserving error mapping for missing, invalid, and non-object payload
+      cases.
+
+      Grep hint: `rg "def _read_spec_json|SPEC_JSON|json" src/larva/shell/cli_helpers.py
+      tests/shell/test_cli.py -n`
+
+      IMPORTANT: keep boundary behavior identical for existing regression tests.
+
+
+      ### B5: `handle_export` remains branch-heavy in MCP export transport
+
+      Locations: `src/larva/shell/mcp_export.py:67`
+
+      Remediation: split argument validation from export execution / envelope construction
+      without changing MCP export response shape.
+
+      Grep hint: `rg "def handle_export|handle_export\(|ids|all" src/larva/shell/mcp_export.py
+      tests/shell/test_mcp.py -n`
+
+      IMPORTANT: search sibling envelope/error branches beyond the listed location.
+
+
+      ## Completion Criteria:
+
+      - ALL five blockers fixed in one batched change
+
+      - Sibling search completed for each blocker family
+
+      - No new `shell_complexity_debt` instances introduced in touched modules
+
+      - CLI and MCP transport behavior preserved for existing feature_update flows
+
+      - Root cause evidence explains why complexity debt is reduced instead of merely
+      reshuffled
+
+
+      ## Known Risks:
+
+      - `shell_complexity_debt` has already been diagnosed as shared CLI transport
+      layering debt in `.vectl/worktrees/feature_update.feature-update-gate/guard-diagnosis.md`
+
+      - Output-mode regressions can hide in JSON/text branches; verify both modes
+      when splitting helpers
+
+
+      ## Gate Preview (what the retest/gate will reject)
+
+      1. Guard still reporting any of the five listed complexity warnings
+
+      2. Refactor that moves branches around without lowering the measured debt
+
+      3. CLI JSON/text parity regressions in `validate_command` or `assemble_command`
+
+      4. MCP export envelope regressions after `handle_export` extraction'
+    verification: '- Use exactly `uv run invar guard --all` for the follow-up validation
+      command family
+
+      - Focused regressions cover `_dispatch`, `validate_command`, `assemble_command`,
+      `_read_spec_json`, and `handle_export`
+
+      - Evidence includes sibling-search results for each blocker family
+
+      - Root-cause note explains how branch count was reduced without changing transport
+      contracts'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Command family locked**:
+
+      ```bash
+
+      uv run invar guard --all
+
+      ```
+
+
+      **Files changed**:
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/cli_helpers.py`
+
+      - `src/larva/shell/mcp_export.py`
+
+      - `tests/shell/test_cli.py`
+
+      - `tests/shell/test_mcp.py`
+
+
+      **Sibling-search evidence**:
+
+      - B1 `_dispatch`: <paste grep result / note>
+
+      - B2 `validate_command`: <paste grep result / note>
+
+      - B3 `assemble_command`: <paste grep result / note>
+
+      - B4 `_read_spec_json`: <paste grep result / note>
+
+      - B5 `handle_export`: <paste grep result / note>
+
+
+      **Root cause vs symptom**:
+
+      - Root cause: <transport/helper layering issue addressed>
+
+      - Symptom closed: <guard warning removed>
+
+      - Why this is not a surface patch: <one line>'
+    depends_on:
+    - feature_update.feature-update-gate
+    agent: python-senior
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: in_progress
