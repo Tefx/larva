@@ -21563,7 +21563,7 @@ phases:
       - Thin delegation wrapper added with module-consistent docstring and invar annotations.'
   - id: feature_clone.docs-interfaces
     name: docs-interfaces
-    status: claimed
+    status: done
     description: 'Update INTERFACES.md to document the clone operation across all
       three surfaces.
 
@@ -21601,6 +21601,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:48:10.297262+00:00'
+    done_at: '2026-03-14T23:00:01.686667+00:00'
+    evidence: 'Artifact:
+
+      - PR: dbf4fe0 (squash merge commit from worktree commit 7e3b28e)
+
+
+      Verification:
+
+      - INTERFACES.md updated with clone docs for MCP (`larva.clone`), CLI (`larva
+      clone`), and Python API (`clone`).
+
+      - Documented semantics: preserve fields except id/spec_digest and recompute
+      digest.
+
+
+      Spec link:
+
+      - feature_clone.docs-interfaces
+
+
+      Files changed:
+
+      - INTERFACES.md
+
+
+      Gaps/Notes:
+
+      - Clone docs integrated in existing interface style and error-code conventions.'
   - id: feature_clone.tests-clone
     name: tests-clone
     status: done
