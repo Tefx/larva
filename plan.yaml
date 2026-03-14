@@ -20892,17 +20892,20 @@ phases:
     name: gate
     status: pending
     description: "Gate review: Verify feature_clone phase completion and quality.\n\
-      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature follows established\
-      \ delete/clear/resolve pattern exactly\n  - No output formatting complexity\n\
-      \  - No known rework patterns in touch paths\n  - No cross-cutting concerns\n\
-      \nReview criteria:\n1. **Completeness**: All 6 implementation/test steps completed\n\
-      2. **Facade**: clone method follows resolve+register composition pattern\n3.\
-      \ **MCP**: Tool definition registered, handler validates params correctly\n\
-      4. **CLI**: Parser accepts `clone <source-id> <new-id> [--json]`, dispatch wired\n\
-      5. **Python API**: Thin delegation with `_unwrap_result`, added to `__all__`\n\
-      6. **Tests**: All ~16 tests pass, covering success + error + edge cases\n7.\
-      \ **Docs**: INTERFACES.md updated across MCP/CLI/Python API sections\n8. **Guard**:\
-      \ `uv run invar guard` clean\n9. **Error codes**: No new error codes introduced\
+      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature now follows\
+      \ explicit contract -> facade-tests -> implementation ordering before transport\
+      \ work\n  - No output formatting complexity\n  - No known rework patterns in\
+      \ touch paths\n  - No cross-cutting concerns beyond cross-surface parity\n\n\
+      Review criteria:\n1. **Completeness**: All contract, implementation, transport,\
+      \ docs, and test steps completed\n2. **Contract-first**: clone contract and\
+      \ facade tests landed before facade implementation dispatch\n3. **Facade**:\
+      \ clone method follows resolve+register composition pattern\n4. **MCP**: Tool\
+      \ definition registered, handler validates params correctly\n5. **CLI**: Parser\
+      \ accepts `clone <source-id> <new-id> [--json]`, dispatch wired\n6. **Python\
+      \ API**: Thin delegation with `_unwrap_result`, added to `__all__`\n7. **Tests**:\
+      \ Facade contract tests and cross-surface clone tests both pass\n8. **Docs**:\
+      \ INTERFACES.md updated across MCP/CLI/Python API sections\n9. **Guard**: `uv\
+      \ run invar guard` clean\n10. **Error codes**: No new error codes introduced\
       \ (reuses 100, 101, 104, 109)\n\nIndependence: gate-reviewer is NOT any implementation\
       \ agent in this phase."
     verification: '- All phase steps completed successfully
@@ -20911,12 +20914,17 @@ phases:
 
       - `uv run invar guard` passes on final state
 
+      - `uv run pytest tests/app/test_facade.py -k clone -v` passes before transport
+      review
+
       - `uv run pytest tests/ -k clone -v` -- all clone tests pass
 
       - No unresolved blockers
 
       - INTERFACES.md consistent with implementation'
     depends_on:
+    - feature_clone.feature-clone-contract
+    - feature_clone.feature-clone-facade-tests
     - feature_clone.facade-clone
     - feature_clone.mcp-clone
     - feature_clone.cli-clone
