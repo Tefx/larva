@@ -20148,7 +20148,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-mcp-update
     name: feature_update.mcp-update
-    status: pending
+    status: claimed
     description: "Add larva.update MCP tool definition and handler.\n\nFiles: src/larva/shell/mcp_contract.py,\
       \ src/larva/shell/mcp.py\n\n### mcp_contract.py changes\n\nAdd to `LARVA_MCP_TOOLS`:\n\
       ```python\n{\n    \"name\": \"larva.update\",\n    \"description\": \"Update\
@@ -20223,6 +20223,8 @@ phases:
     depends_on:
     - feature_update.feature-update-facade-update
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:18:17.134773+00:00'
   - id: feature_update.feature-update-cli-update
     name: feature_update.cli-update
     status: pending
