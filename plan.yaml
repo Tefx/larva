@@ -22561,7 +22561,7 @@ phases:
       in shared shell test modules.'
   - id: feature_export.gate
     name: gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify feature_export phase completion and quality.\n\
       \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature now follows\
       \ explicit contract -> facade-tests -> implementation ordering before transport\
@@ -22608,6 +22608,8 @@ phases:
     - feature_export.plugin-opencode
     - feature_export.tests-export
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T23:00:51.730655+00:00'
   - id: feature_export.feature-export-contract
     name: feature_export.contract
     status: done
