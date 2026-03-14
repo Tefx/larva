@@ -1,131 +1,193 @@
-"""Contract-only patch application surface for PersonaSpec overrides.
+"""Pure patch application logic for PersonaSpec overrides.
 
-This module defines the core patch-application contract used by resolve-time
-overrides.
+Examples:
+    Scalar overwrite:
+    >>> apply_patches({"model": "gpt-4", "spec_digest": "old"}, {"model": "gpt-5"})
+    {'model': 'gpt-5'}
 
-Acceptance notes (contract only, no business logic shipped in this step):
-- Protected keys are stripped from incoming patches.
-- Dot-notation keys are expanded into nested dictionaries.
-- `model_params` and `tools` use deep-merge semantics.
-- Other keys overwrite shallowly at the top level.
+    Protected stripping:
+    >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
+    {'spec_version': '0.1.0', 'x': 1}
 
-See:
-- INTERFACES.md :: D. Global Registry :: Resolution
-- INTERFACES.md :: C. Assembly Rules (`tools`, `model_params` merge semantics)
+    Deep merge:
+    >>> apply_patches(
+    ...     {"model_params": {"temperature": 0.2, "top_p": 0.9}},
+    ...     {"model_params": {"temperature": 0.7}},
+    ... )
+    {'model_params': {'temperature': 0.7, 'top_p': 0.9}}
+
+    Dot-notation expansion:
+    >>> apply_patches({"model_params": {"top_p": 0.95}}, {"model_params.temperature": 0.4})
+    {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
 """
 
-from typing import Mapping
+from typing import TypeGuard
 
 from deal import post, pre
 
-from larva.core.spec import PersonaSpec
-
-PROTECTED_KEYS: frozenset[str] = frozenset({"id", "spec_digest", "spec_version"})
-"""Keys that runtime patches must not override."""
-
-DEEP_MERGE_KEYS: frozenset[str] = frozenset({"model_params", "tools"})
-"""Top-level fields that use recursive merge semantics."""
-
+PROTECTED_KEYS = frozenset({"spec_digest", "spec_version"})
+DEEP_MERGE_KEYS = frozenset({"model_params", "tools"})
 DOT_KEY_SEPARATOR = "."
-"""Separator used for dot-notation patch paths."""
-
-_PATCH_CONTRACT_READY = False
-"""Contract gate: patch behavior is intentionally not implemented in this step."""
 
 
-@pre(lambda patches: isinstance(patches, Mapping) and _PATCH_CONTRACT_READY)
+@post(lambda result: isinstance(result, bool))
+def _is_str_dict(value: object) -> TypeGuard[dict[str, object]]:
+    """Return True when value is a dictionary with string keys."""
+    return isinstance(value, dict) and all(isinstance(key, str) for key in value)
+
+
 @post(lambda result: isinstance(result, dict))
-def _strip_protected_keys(patches: Mapping[str, object]) -> dict[str, object]:
-    """Return patch mapping with protected keys removed.
+@pre(lambda mapping: isinstance(mapping, dict))
+def _copy_dict(mapping: dict[str, object]) -> dict[str, object]:
+    """Copy dictionary structure recursively.
+
+    Args:
+        mapping: Dictionary to copy.
+
+    Returns:
+        A new dictionary with recursively copied dictionary values.
+    """
+    copied: dict[str, object] = {}
+    for key, value in mapping.items():
+        if _is_str_dict(value):
+            copied[key] = _copy_dict(value)
+            continue
+        copied[key] = value
+    return copied
+
+
+@post(lambda result: isinstance(result, dict))
+@pre(lambda patches: isinstance(patches, dict))
+def _strip_protected_keys(patches: dict[str, object]) -> dict[str, object]:
+    """Remove protected keys from incoming patches.
 
     Args:
         patches: Runtime override mapping.
 
     Returns:
-        Patch mapping without protected keys.
-
-    Raises:
-        NotImplementedError: Always, until behavior implementation step.
+        Patch mapping without protected top-level keys or protected dot-path roots.
     """
-    _ = patches
-    raise NotImplementedError("Contract only: _strip_protected_keys is not implemented.")
+    stripped: dict[str, object] = {}
+    for key, value in patches.items():
+        if not isinstance(key, str):
+            continue
+        if key.split(DOT_KEY_SEPARATOR, 1)[0] in PROTECTED_KEYS:
+            continue
+        stripped[key] = _copy_dict(value) if _is_str_dict(value) else value
+    return stripped
 
 
-@pre(lambda patches: isinstance(patches, Mapping) and _PATCH_CONTRACT_READY)
 @post(lambda result: isinstance(result, dict))
-def _expand_dot_keys(patches: Mapping[str, object]) -> dict[str, object]:
-    """Expand dot-notation patch keys into nested dictionaries.
-
-    Args:
-        patches: Runtime override mapping with optional dot-notation keys.
-
-    Returns:
-        Expanded mapping where `a.b=value` becomes `{\"a\": {\"b\": value}}`.
-
-    Raises:
-        NotImplementedError: Always, until behavior implementation step.
-    """
-    _ = patches
-    raise NotImplementedError("Contract only: _expand_dot_keys is not implemented.")
-
-
-@pre(
-    lambda base, patch: (
-        isinstance(base, Mapping) and isinstance(patch, Mapping) and _PATCH_CONTRACT_READY
-    )
-)
-@post(lambda result: isinstance(result, dict))
-def _deep_merge_dicts(base: Mapping[str, object], patch: Mapping[str, object]) -> dict[str, object]:
-    """Deep-merge two dictionaries for merge-qualified top-level fields.
+@pre(lambda base, patch: isinstance(base, dict) and isinstance(patch, dict))
+def _deep_merge_dicts(base: dict[str, object], patch: dict[str, object]) -> dict[str, object]:
+    """Recursively merge ``patch`` into ``base``.
 
     Args:
         base: Existing mapping.
         patch: Incoming mapping.
 
     Returns:
-        Deep-merged mapping.
-
-    Raises:
-        NotImplementedError: Always, until behavior implementation step.
+        Deep-merged mapping where patch values take precedence.
     """
-    _ = (base, patch)
-    raise NotImplementedError("Contract only: _deep_merge_dicts is not implemented.")
+    merged: dict[str, object] = _copy_dict(base)
+    for key, patch_value in patch.items():
+        base_value = merged.get(key)
+        if isinstance(base_value, dict) and isinstance(patch_value, dict):
+            merged[key] = _deep_merge_dicts(base_value, patch_value)
+            continue
+        merged[key] = _copy_dict(patch_value) if _is_str_dict(patch_value) else patch_value
+    return merged
 
 
-@pre(
-    lambda spec, patches: (
-        isinstance(spec, Mapping)
-        and "id" in spec
-        and isinstance(patches, Mapping)
-        and _PATCH_CONTRACT_READY
-    )
-)
-@post(lambda result: isinstance(result, dict) and "id" in result)
-def apply_patches(spec: Mapping[str, object], patches: Mapping[str, object]) -> PersonaSpec:
-    """Apply runtime patches to a PersonaSpec using contract-defined semantics.
+@post(lambda result: isinstance(result, dict))
+@pre(lambda patches: isinstance(patches, dict))
+def _expand_dot_keys(patches: dict[str, object]) -> dict[str, object]:
+    """Expand dot-notation patch keys into nested dictionaries.
 
     Args:
-        spec: Canonical PersonaSpec from registry.
+        patches: Runtime override mapping with optional dot-notation keys.
+
+    Returns:
+        Expanded mapping where ``a.b = value`` becomes ``{"a": {"b": value}}``.
+    """
+    expanded: dict[str, object] = {}
+    for key, value in patches.items():
+        if not isinstance(key, str):
+            continue
+        if DOT_KEY_SEPARATOR not in key:
+            existing = expanded.get(key)
+            if isinstance(existing, dict) and isinstance(value, dict):
+                expanded[key] = _deep_merge_dicts(existing, value)
+            else:
+                expanded[key] = _copy_dict(value) if _is_str_dict(value) else value
+            continue
+
+        parts = [part for part in key.split(DOT_KEY_SEPARATOR) if part]
+        if not parts:
+            continue
+        nested: object = _copy_dict(value) if _is_str_dict(value) else value
+        for part in reversed(parts):
+            nested = {part: nested}
+        if not isinstance(nested, dict):
+            continue
+        top_key = parts[0]
+        existing_top = expanded.get(top_key)
+        nested_top = nested[top_key]
+        if isinstance(existing_top, dict) and isinstance(nested_top, dict):
+            expanded[top_key] = _deep_merge_dicts(existing_top, nested_top)
+        else:
+            expanded[top_key] = _copy_dict(nested_top) if _is_str_dict(nested_top) else nested_top
+    return expanded
+
+
+@pre(lambda spec, patches: isinstance(spec, dict) and isinstance(patches, dict))
+@post(lambda result: isinstance(result, dict))
+def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[str, object]:
+    """Apply runtime patches to a spec using plan-defined merge semantics.
+
+    Args:
+        spec: Canonical base specification.
         patches: Runtime override mapping.
 
     Returns:
-        Patched PersonaSpec candidate for validation/normalization.
-
-    Raises:
-        NotImplementedError: Always, until behavior implementation step.
+        New dictionary containing patched values.
 
     Examples:
-        >>> sorted(PROTECTED_KEYS)
-        ['id', 'spec_digest', 'spec_version']
-        >>> sorted(DEEP_MERGE_KEYS)
-        ['model_params', 'tools']
-        >>> DOT_KEY_SEPARATOR
-        '.'
+        >>> apply_patches({"model": "gpt-4", "spec_digest": "old"}, {"model": "gpt-5"})
+        {'model': 'gpt-5'}
+        >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
+        {'spec_version': '0.1.0', 'x': 1}
+        >>> apply_patches(
+        ...     {"model_params": {"temperature": 0.2, "top_p": 0.9}},
+        ...     {"model_params": {"temperature": 0.7}},
+        ... )
+        {'model_params': {'temperature': 0.7, 'top_p': 0.9}}
+        >>> apply_patches(
+        ...     {"model_params": {"top_p": 0.95}},
+        ...     {"model_params.temperature": 0.4},
+        ... )
+        {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
     """
-    _ = (spec, patches)
-    raise NotImplementedError(
-        "Contract only: apply_patches behavior is specified but not implemented."
-    )
+    sanitized = _strip_protected_keys(patches)
+    expanded = _expand_dot_keys(sanitized)
+
+    result: dict[str, object] = _copy_dict(spec)
+    for key, patch_value in expanded.items():
+        current_value = result.get(key)
+        if (
+            key in DEEP_MERGE_KEYS
+            and isinstance(current_value, dict)
+            and isinstance(patch_value, dict)
+        ):
+            result[key] = _deep_merge_dicts(current_value, patch_value)
+            continue
+        if isinstance(patch_value, dict):
+            result[key] = _copy_dict(patch_value)
+            continue
+        result[key] = patch_value
+
+    result.pop("spec_digest", None)
+    return result
 
 
 __all__ = [
