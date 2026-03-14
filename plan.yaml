@@ -20484,7 +20484,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-docs-interfaces
     name: feature_update.docs-interfaces
-    status: pending
+    status: claimed
     description: "Update INTERFACES.md with the update operation across all three\
       \ surfaces.\n\nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\n\
       Add entry for:\n- `larva.update(id, patches)` — parameters: id (string, required),\
@@ -20539,6 +20539,8 @@ phases:
     depends_on:
     - feature_update.feature-update-python-api-update
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:30:03.429903+00:00'
   - id: feature_update.feature-update-tests-transport
     name: feature_update.tests-transport
     status: claimed
