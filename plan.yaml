@@ -19587,7 +19587,7 @@ phases:
       \ no remaining sibling mismatch found in scoped search."
   - id: feature_registry_ops.feature-registry-ops-gate-retest
     name: feature_registry_ops.gate-retest
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), re-run full validation
       and gate checks after `feature_registry_ops.feature-registry-ops-fix-gate-batch`.
 
@@ -19697,3 +19697,5 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-fix-gate-batch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-14T12:47:33.389165+00:00'
