@@ -24,9 +24,9 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, Union, cast
 
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Success
 
 from larva.shell.mcp_contract import (
     LARVA_ERROR_CODES,
@@ -38,6 +38,7 @@ from larva.shell.mcp_contract import (
     ValidationIssue,
     ValidationReport,
 )
+from larva.shell.mcp_params import MCPParamValidationMixin
 from larva.shell.components import ComponentStore
 
 if TYPE_CHECKING:
@@ -69,7 +70,7 @@ class MCPHandler(Protocol[_HandlerSuccessT]):
     def __call__(self, params: object) -> _HandlerSuccessT | LarvaError: ...
 
 
-class MCPHandlers:
+class MCPHandlers(MCPParamValidationMixin):
     """Container for MCP tool handlers.
 
     This class provides MCP tool handlers that delegate to the
@@ -99,133 +100,6 @@ class MCPHandlers:
         """
         self._facade = facade
         self._components = components
-
-    @staticmethod
-    def _malformed_params_error(
-        tool_name: str,
-        reason: str,
-        details: dict[str, object],
-    ) -> LarvaError:
-        """Build a documented MCP error envelope for malformed request params."""
-        return {
-            "code": "INTERNAL",
-            "numeric_code": LARVA_ERROR_CODES["INTERNAL"],
-            "message": f"Malformed parameters for '{tool_name}': {reason}",
-            "details": {"tool": tool_name, "reason": reason, **details},
-        }
-
-    def _require_params_object(
-        self,
-        tool_name: str,
-        params: object,
-    ) -> Result[dict[str, Any], LarvaError]:
-        """Validate MCP params top-level shape as JSON object."""
-        if not isinstance(params, dict):
-            return Failure(
-                self._malformed_params_error(
-                    tool_name,
-                    "params must be an object",
-                    {"field": "params", "received_type": type(params).__name__},
-                )
-            )
-        return Success(params)
-
-    def _reject_unknown_params(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        allowed_keys: set[str],
-    ) -> LarvaError | None:
-        """Reject unsupported parameters at MCP boundary."""
-        unknown_keys = sorted(key for key in params if key not in allowed_keys)
-        if unknown_keys:
-            return self._malformed_params_error(
-                tool_name,
-                "unknown parameter(s)",
-                {"field": "params", "unknown": unknown_keys},
-            )
-        return None
-
-    def _require_param(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        key: str,
-    ) -> LarvaError | None:
-        """Require key presence for mandatory parameters."""
-        if key not in params:
-            return self._malformed_params_error(
-                tool_name,
-                f"missing required parameter '{key}'",
-                {"field": key},
-            )
-        return None
-
-    def _require_type(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        key: str,
-        expected_type: type[object],
-        expected_label: str,
-    ) -> LarvaError | None:
-        """Require parameter runtime type at MCP boundary."""
-        value = params.get(key)
-        if not isinstance(value, expected_type):
-            return self._malformed_params_error(
-                tool_name,
-                f"parameter '{key}' must be {expected_label}",
-                {
-                    "field": key,
-                    "expected_type": expected_label,
-                    "received_type": type(value).__name__,
-                },
-            )
-        return None
-
-    def _require_list_of_strings(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        key: str,
-    ) -> LarvaError | None:
-        """Require optional list[str] parameter shape when present."""
-        if key not in params:
-            return None
-
-        value = params[key]
-        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
-            return self._malformed_params_error(
-                tool_name,
-                f"parameter '{key}' must be list[string]",
-                {
-                    "field": key,
-                    "expected_type": "list[string]",
-                    "received_type": type(value).__name__,
-                },
-            )
-        return None
-
-    @staticmethod
-    def _component_store_error(
-        tool_name: str,
-        reason: str,
-        details: dict[str, object],
-    ) -> LarvaError:
-        """Build a documented MCP error envelope for component store failures.
-
-        Boundary: This error maps to COMPONENT_NOT_FOUND (numeric code 105) for:
-        - Unsupported component type
-        - Component lookup failures (not found or parse error)
-
-        For malformed/unknown/type-invalid params, use _malformed_params_error (INTERNAL, 10).
-        """
-        return {
-            "code": "COMPONENT_NOT_FOUND",
-            "numeric_code": LARVA_ERROR_CODES["COMPONENT_NOT_FOUND"],
-            "message": f"Component error for '{tool_name}': {reason}",
-            "details": {"tool": tool_name, "reason": reason, **details},
-        }
 
     def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
         """Handle larva.component_list MCP tool call.
@@ -652,6 +526,52 @@ class MCPHandlers:
         # Success shaping: return ClearedRegistry on success
         if isinstance(result, Success):
             return cast("ClearedRegistry", result.unwrap())
+
+        # Error envelope fidelity: return error with code, numeric_code, message, details
+        error = result.failure()
+        return error
+
+    def handle_clone(self, params: object) -> Union[PersonaSpec, LarvaError]:
+        """Handle larva.clone MCP tool call.
+
+        Delegates to: facade.clone(source_id, new_id)
+
+        Args:
+            params: MCP request parameters:
+                - source_id: Persona id to clone from (required)
+                - new_id: New persona id for the clone (required)
+
+        Returns:
+            PersonaSpec JSON on success, or error envelope on failure.
+
+        Malformed requests return the documented MCP error envelope.
+        """
+        validated_params = self._require_params_object("larva.clone", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params(
+            "larva.clone", checked_params, {"source_id", "new_id"}
+        ):
+            return error
+        if error := self._require_param("larva.clone", checked_params, "source_id"):
+            return error
+        if error := self._require_param("larva.clone", checked_params, "new_id"):
+            return error
+        if error := self._require_type("larva.clone", checked_params, "source_id", str, "string"):
+            return error
+        if error := self._require_type("larva.clone", checked_params, "new_id", str, "string"):
+            return error
+
+        source_id = checked_params["source_id"]
+        new_id = checked_params["new_id"]
+
+        # Delegate to facade
+        result = self._facade.clone(source_id, new_id)
+
+        # Success shaping: return PersonaSpec on success
+        if isinstance(result, Success):
+            return cast("PersonaSpec", result.unwrap())
 
         # Error envelope fidelity: return error with code, numeric_code, message, details
         error = result.failure()

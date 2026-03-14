@@ -177,6 +177,24 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "required": ["confirm"],
         },
     },
+    {
+        "name": "larva.clone",
+        "description": "Clone a registered persona to a new id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "source_id": {
+                    "type": "string",
+                    "description": "Persona id to clone from",
+                },
+                "new_id": {
+                    "type": "string",
+                    "description": "New persona id for the clone",
+                },
+            },
+            "required": ["source_id", "new_id"],
+        },
+    },
 ]
 
 
