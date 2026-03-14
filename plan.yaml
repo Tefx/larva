@@ -18429,7 +18429,7 @@ phases:
       - Step remains test-only and preserves contract-first ordering.'
   - id: feature_registry_ops.feature-registry-ops-tests-transport
     name: feature_registry_ops.tests-transport
-    status: pending
+    status: claimed
     description: "Add transport-layer tests for all new operations.\n\nFiles:\n- tests/shell/test_mcp.py\n\
       - tests/shell/test_cli.py\n- tests/shell/test_python_api.py\n- tests/app/test_facade.py\n\
       \n### tests/app/test_facade.py additions\n\n1. `test_facade_delete_success`\
@@ -18526,6 +18526,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-python-api-all
     - feature_registry_ops.feature-registry-ops-tests-registry
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T12:26:38.457970+00:00'
   - id: feature_registry_ops.feature-registry-ops-gate
     name: feature_registry_ops.gate
     status: pending
