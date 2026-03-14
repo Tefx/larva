@@ -228,9 +228,9 @@ class MCPHandlers:
     def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
         """Handle larva.component_list MCP tool call.
 
-        Contract stub for listing all available components by type.
+        Lists all available components by type.
 
-        Returns (contract-only, not implemented):
+        Returns:
             dict mapping component type keys to name lists:
             {
                 "prompts": ["name1", "name2", ...],
@@ -241,31 +241,117 @@ class MCPHandlers:
 
         Malformed requests return the documented MCP error envelope (INTERNAL, 10).
         Component store failures return COMPONENT_NOT_FOUND (105).
-
-        Note: Implementation routing logic is out of scope for this contract step.
         """
-        raise NotImplementedError("MCP handler implementation is not part of this contract step")
+        validated_params = self._require_params_object("larva.component_list", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params("larva.component_list", checked_params, set()):
+            return error
+
+        # Require components store to be provided
+        if self._components is None:
+            return self._component_store_error(
+                "larva.component_list",
+                "Component store not available",
+                {},
+            )
+
+        result = self._components.list_components()
+
+        if isinstance(result, Failure):
+            error = result.failure()
+            return self._component_store_error(
+                "larva.component_list",
+                str(error),
+                {
+                    "component_type": error.component_type,
+                    "component_name": error.component_name,
+                },
+            )
+
+        return cast("dict[str, list[str]]", result.unwrap())
 
     def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
         """Handle larva.component_show MCP tool call.
 
-        Contract stub for showing a specific component's content.
+        Shows a specific component's content.
 
-        Args (contract-only):
+        Args:
             params: MCP request parameters:
                 - component_type: one of 'prompts', 'toolsets', 'constraints', 'models' (required)
                 - name: component name without extension (required)
 
-        Returns (contract-only, not implemented):
+        Returns:
             Component content dict on success, or error envelope on failure.
 
         Boundary split (pinned):
             - malformed/unknown/type-invalid component_type => INTERNAL / 10
             - unsupported component type or component lookup failure => COMPONENT_NOT_FOUND / 105
-
-        Note: Implementation routing logic is out of scope for this contract step.
         """
-        raise NotImplementedError("MCP handler implementation is not part of this contract step")
+        validated_params = self._require_params_object("larva.component_show", params)
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        if error := self._reject_unknown_params(
+            "larva.component_show", checked_params, {"component_type", "name"}
+        ):
+            return error
+        if error := self._require_param("larva.component_show", checked_params, "component_type"):
+            return error
+        if error := self._require_param("larva.component_show", checked_params, "name"):
+            return error
+        if error := self._require_type(
+            "larva.component_show", checked_params, "component_type", str, "string"
+        ):
+            return error
+        if error := self._require_type(
+            "larva.component_show", checked_params, "name", str, "string"
+        ):
+            return error
+
+        component_type = checked_params["component_type"]
+        name = checked_params["name"]
+
+        # Validate component type
+        valid_types = {"prompts", "toolsets", "constraints", "models"}
+        if component_type not in valid_types:
+            return self._component_store_error(
+                "larva.component_show",
+                f"Unsupported component type: {component_type}",
+                {"component_type": component_type, "valid_types": sorted(valid_types)},
+            )
+
+        # Require components store to be provided
+        if self._components is None:
+            return self._component_store_error(
+                "larva.component_show",
+                "Component store not available",
+                {},
+            )
+
+        # Route to appropriate loader
+        loader_map = {
+            "prompts": self._components.load_prompt,
+            "toolsets": self._components.load_toolset,
+            "constraints": self._components.load_constraint,
+            "models": self._components.load_model,
+        }
+
+        result = loader_map[component_type](name)
+
+        if isinstance(result, Failure):
+            error = result.failure()
+            return self._component_store_error(
+                "larva.component_show",
+                str(error),
+                {
+                    "component_type": component_type,
+                    "component_name": name,
+                },
+            )
+
+        return cast("dict[str, object]", result.unwrap())
 
     def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
         """Handle larva.validate MCP tool call.

@@ -91,25 +91,41 @@ class InMemoryComponentStore:
     fail_error: LarvaError | None = None
     list_fail: bool = False
 
+    def _make_not_found_error(self, component_type: str, name: str) -> LarvaError:
+        return {
+            "code": "COMPONENT_NOT_FOUND",
+            "numeric_code": 105,
+            "message": f"{component_type.capitalize()} not found: {name}",
+            "details": {"component_type": component_type, "component_name": name},
+        }
+
     def load_prompt(self, name: str) -> Result[dict[str, str], LarvaError]:
         if self.fail_on == "prompt":
             return Failure(cast("LarvaError", self.fail_error))
-        return Success(self.prompts_by_name.get(name, {"text": f"Prompt: {name}"}))
+        if name not in self.prompts_by_name:
+            return Failure(self._make_not_found_error("prompt", name))
+        return Success(self.prompts_by_name[name])
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], LarvaError]:
         if self.fail_on == "toolset":
             return Failure(cast("LarvaError", self.fail_error))
-        return Success(self.toolsets_by_name.get(name, {"tools": {"shell": "read_only"}}))
+        if name not in self.toolsets_by_name:
+            return Failure(self._make_not_found_error("toolset", name))
+        return Success(self.toolsets_by_name[name])
 
     def load_constraint(self, name: str) -> Result[dict[str, object], LarvaError]:
         if self.fail_on == "constraint":
             return Failure(cast("LarvaError", self.fail_error))
-        return Success(self.constraints_by_name.get(name, {"side_effect_policy": "read_only"}))
+        if name not in self.constraints_by_name:
+            return Failure(self._make_not_found_error("constraint", name))
+        return Success(self.constraints_by_name[name])
 
     def load_model(self, name: str) -> Result[dict[str, object], LarvaError]:
         if self.fail_on == "model":
             return Failure(cast("LarvaError", self.fail_error))
-        return Success(self.models_by_name.get(name, {"model": "gpt-4o-mini"}))
+        if name not in self.models_by_name:
+            return Failure(self._make_not_found_error("model", name))
+        return Success(self.models_by_name[name])
 
     def list_components(self) -> Result[dict[str, list[str]], LarvaError]:
         """List all available components by type."""
@@ -397,7 +413,7 @@ class TestMCPAssembleSuccessShape:
             assemble_candidate=candidate,
         )
 
-        result = facade.assemble({"id": "assembled", "prompts": ["base"]})
+        result = facade.assemble({"id": "assembled"})
 
         assert isinstance(result, Success)
         spec = result.unwrap()
@@ -681,11 +697,13 @@ class TestMCPAssembleConflictCodePreservation:
 
         class ConflictAssembleModule:
             def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
-                raise AssemblyError(
-                    code="COMPONENT_CONFLICT",
-                    message="Multiple sources provide 'side_effect_policy'",
-                    details={"field": "side_effect_policy"},
+                error = AssemblyError(
+                    "COMPONENT_CONFLICT: Multiple sources provide 'side_effect_policy'"
                 )
+                error.code = "COMPONENT_CONFLICT"
+                error.message = "Multiple sources provide 'side_effect_policy'"
+                error.details = {"field": "side_effect_policy"}
+                raise error
 
         class SpyValidateModule:
             def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
@@ -826,7 +844,13 @@ class TestMCPToolsRoundTrip:
 
     def test_assemble_tool_params_extraction(self) -> None:
         """Simulate MCP tool handler extracting assemble params and calling facade."""
-        facade = _make_facade(validate_report=_valid_report())
+        components = InMemoryComponentStore(
+            prompts_by_name={"base-prompt": {"text": "You are helpful."}},
+            toolsets_by_name={"readonly-tools": {"tools": {"shell": "read_only"}}},
+            constraints_by_name={"no-spawn": {"can_spawn": False}},
+            models_by_name={"default-model": {"model": "gpt-4o-mini"}},
+        )
+        facade = _make_facade(validate_report=_valid_report(), components=components)
 
         # MCP handler would extract these from params
         request = {
@@ -964,7 +988,7 @@ class TestMCPHandlersImplementation:
         )
         handlers = mcp_module.MCPHandlers(facade)
 
-        result = handlers.handle_assemble({"id": "assembled", "prompts": ["base"]})
+        result = handlers.handle_assemble({"id": "assembled"})
 
         # Success returns PersonaSpec (not Result)
         assert isinstance(result, dict)
@@ -1231,13 +1255,8 @@ class TestMCPHandlersImplementation:
 # -----------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="pending feature_registry_ops.mcp-components")
 class TestMCPComponentListAcceptance:
-    """Acceptance tests for larva.component_list MCP tool.
-
-    These tests define the contract for component_list before implementation.
-    Tests are marked xfail until MCPHandlers.handle_component_list is implemented.
-    """
+    """Acceptance tests for larva.component_list MCP tool."""
 
     def test_handle_component_list_accepts_empty_params(self) -> None:
         """Test handle_component_list accepts empty params {}."""
@@ -1286,13 +1305,8 @@ class TestMCPComponentListAcceptance:
         )
 
 
-@pytest.mark.xfail(strict=True, reason="pending feature_registry_ops.mcp-components")
 class TestMCPComponentShowAcceptance:
-    """Acceptance tests for larva.component_show MCP tool.
-
-    These tests define the contract for component_show before implementation.
-    Tests are marked xfail until MCPHandlers.handle_component_show is implemented.
-    """
+    """Acceptance tests for larva.component_show MCP tool."""
 
     def test_handle_component_show_unknown_param_returns_malformed_envelope(self) -> None:
         """Test handle_component_show rejects unknown params with INTERNAL error."""
