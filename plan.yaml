@@ -18534,7 +18534,7 @@ phases:
       \ step).\n- No test touches `DEFAULT_REGISTRY_ROOT`."
   - id: feature_registry_ops.feature-registry-ops-mcp-components-contract
     name: feature_registry_ops.mcp-components-contract
-    status: claimed
+    status: done
     description: 'Define the MCP contract for `larva.component_list` and `larva.component_show`
       before implementation.
 
@@ -18641,6 +18641,61 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:34:41.440601+00:00'
+    done_at: '2026-03-14T11:38:32.309593+00:00'
+    evidence: '## MCP Component Contract Evidence
+
+
+      Contract artifacts added:
+
+      - Added `larva.component_list` and `larva.component_show` tool schemas to `LARVA_MCP_TOOLS`
+      in `src/larva/shell/mcp_contract.py`.
+
+      - Updated `MCPHandlers.__init__` signature to `components: ComponentStore |
+      None = None` (backward-compatible default-value pattern).
+
+      - Added acceptance stubs/signatures for `_component_store_error`, `handle_component_list`,
+      and `handle_component_show` in `src/larva/shell/mcp.py`.
+
+
+      Boundary split pinned:
+
+      - malformed params -> `INTERNAL` / `10` via `_malformed_params_error`
+
+      - unsupported component type or missing component -> `COMPONENT_NOT_FOUND` /
+      `105` via `_component_store_error`
+
+
+      Purity check:
+
+      - No component-store calls or loader routing logic implemented in this contract
+      step; handlers remain acceptance stubs.
+
+
+      Verification:
+
+      - Run: `uv run invar guard --changed` -> passed (`0 errors`, warnings only).
+
+      - Run: `uv run pytest tests/shell/test_mcp.py` -> contract-related tests pass;
+      one unrelated pre-existing failure reported by worker.
+
+
+      Files changed:
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp.py
+
+
+      Commit hash(es):
+
+      - fadb620 (squash merge of worker commit c96d6d5)
+
+
+      Spec link:
+
+      - INTERFACES.md :: MCP Server Interface / Component Library
+
+      - ARCHITECTURE.md :: larva.shell.mcp / larva.shell.components'
   - id: feature_registry_ops.feature-registry-ops-tests-mcp-components
     name: feature_registry_ops.tests-mcp-components
     status: pending
