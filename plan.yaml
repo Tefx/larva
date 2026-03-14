@@ -21991,7 +21991,7 @@ phases:
     agent: python-executor
   - id: feature_export.plugin-opencode
     name: plugin-opencode
-    status: claimed
+    status: done
     description: "Update opencode plugin to use `larva export --all --json` instead\
       \ of N resolve calls.\n\nFile: contrib/opencode-plugin/larva.ts\n\nReplace the\
       \ current N+1 pattern:\n```typescript\n// Old: list + N resolves\nconst personas\
@@ -22015,6 +22015,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:30:09.115278+00:00'
+    done_at: '2026-03-14T22:48:00.789698+00:00'
+    evidence: 'Artifact:
+
+      - PR: e773642 (squash merge commit from worktree commit 6b4b517)
+
+
+      Verification:
+
+      - Updated plugin workflow to use `larva export --all --json` for bulk fetch,
+      replacing list+resolve N+1 approach.
+
+      - Preserved existing plugin behavior for configuration/chat pipeline.
+
+
+      Spec link:
+
+      - feature_export.plugin-opencode
+
+
+      Files changed:
+
+      - contrib/opencode-plugin/larva.ts
+
+
+      Gaps/Notes:
+
+      - No plugin host runtime in worktree for full end-to-end runtime execution;
+      static integration and command wiring completed.'
   - id: feature_export.tests-export
     name: tests-export
     status: done
