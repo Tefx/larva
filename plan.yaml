@@ -19739,6 +19739,8 @@ phases:
 - id: feature_update
   name: 'Feature: Persona Update (Patch)'
   status: pending
+  depends_on:
+  - meta.gate
   steps:
   - id: feature_update.feature-update-core-apply-patches
     name: feature_update.core-apply-patches
