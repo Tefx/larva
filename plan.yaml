@@ -18164,7 +18164,7 @@ phases:
     agent: gate-reviewer
   - id: feature_registry_ops.feature-registry-ops-registry-contract
     name: feature_registry_ops.registry-contract
-    status: claimed
+    status: done
     description: "Define acceptance-only contract artifacts for the registry delete/clear\
       \ feature family before any implementation dispatch.\n\nspec_refs:\n- ARCHITECTURE.md\
       \ > Module: `larva.shell.registry`\n- USAGE.md > registry layout and error behavior\
@@ -18199,6 +18199,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T11:06:53.268042+00:00'
+    done_at: '2026-03-14T11:11:16.743984+00:00'
+    evidence: 'Artifact:
+
+      - PR: e8c43da (squash merge of worker commit ebab7d0)
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_registry.py` -> `20 passed in 0.39s`.
+
+      - Run: `invar_guard(path=.vectl/worktrees/feature_registry_ops.feature-registry-ops-registry-contract,
+      changed=true)` -> `status=passed`, `errors=0`, `warnings=0`.
+
+      - Run: `git status --short` (worker worktree) -> clean.
+
+
+      Spec link:
+
+      - ARCHITECTURE.md > Module `larva.shell.registry`
+
+      - USAGE.md derived registry layout and error behavior constraints
+
+      - Step contract requirements for delete/clear acceptance-only behavior
+
+
+      Files changed:
+
+      - src/larva/shell/registry.py
+
+      - tests/shell/test_registry.py
+
+
+      Gaps/Notes:
+
+      - Contract-only scope preserved: no filesystem delete/clear implementation logic
+      added, no facade/CLI/MCP wiring.'
   - id: feature_registry_ops.feature-registry-ops-tests-clear
     name: feature_registry_ops.tests-clear
     status: pending
