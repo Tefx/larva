@@ -19526,3 +19526,115 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-gate
     agent: python-senior
+  - id: feature_registry_ops.feature-registry-ops-gate-retest
+    name: feature_registry_ops.gate-retest
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), re-run full validation
+      and gate checks after `feature_registry_ops.feature-registry-ops-fix-gate-batch`.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm it works.
+
+
+      Re-test scope:
+
+      - full suite regression status for the batched facade fixes
+
+      - B1 factory-contract compliance for assembly errors in facade tests
+
+      - S1 numeric-code consistency for `INVALID_CONFIRMATION_TOKEN` across documented
+      and non-CLI surfaces
+
+      - original `feature_registry_ops` gate criteria for delete/clear facade, transport,
+      and docs alignment
+
+
+      Independence Level: L1
+
+
+      If issues remain, report them as a single batched finding set against this retest.'
+    verification: '- Run the full validation/gate command set needed to confirm the
+      prior `406 passed, 2 failed` state is resolved
+
+      - Evidence includes actual command output for the full suite or gate-equivalent
+      validation, not just a summary
+
+      - Evidence confirms `INVALID_CONFIRMATION_TOKEN` now resolves to numeric code
+      `112` on non-CLI surfaces and matches `INTERFACES.md`
+
+      - Evidence re-checks the original `feature_registry_ops.feature-registry-ops-gate`
+      criteria after the batched fix'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: `gate-reviewer`
+
+      **Retest target**: `feature_registry_ops.feature-registry-ops-fix-gate-batch`
+
+      **Independence Level**: L1
+
+
+      ### Full Validation
+
+      - Commands executed:
+
+      ```
+
+      <paste full suite / gate validation commands>
+
+      ```
+
+      - Actual output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### B1 Verification
+
+      - Confirmed `tests/app/test_facade.py:111` and `tests/app/test_facade.py:124`
+      now use `_assembly_error` contract or equivalent validated helper path.
+
+      - Any remaining `AssemblyError(` matches reviewed:
+
+      ```
+
+      <paste review>
+
+      ```
+
+
+      ### S1 Verification
+
+      - Confirmed `INVALID_CONFIRMATION_TOKEN` maps to `112` in `src/larva/app/facade.py`
+      and aligns with `INTERFACES.md`.
+
+      - Updated expectations reviewed:
+
+      ```
+
+      <paste review>
+
+      ```
+
+
+      ### Gate Re-check
+
+      - Original gate criteria re-evaluated: pass/fail with notes
+
+      - Remaining issues (if any): batched list only
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-fix-gate-batch
+    agent: gate-reviewer
