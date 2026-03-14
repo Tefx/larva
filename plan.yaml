@@ -18216,7 +18216,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-docs-interfaces
     name: feature_registry_ops.docs-interfaces
-    status: claimed
+    status: done
     description: "Update INTERFACES.md with all new operations and error code 111.\n\
       \nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\nAdd entries for:\n\
       - `larva.component_list()` — parameters: none, returns: `{\"prompts\": [...],\
@@ -18281,6 +18281,49 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:26:01.213361+00:00'
+    done_at: '2026-03-14T12:32:44.887854+00:00'
+    evidence: '## INTERFACES.md Update Evidence
+
+
+      Commit hash(es):
+
+      - 86ae6e3 (squash merge of worker commit d8339435263911fdca779a28457a21ab6221bfc4)
+
+
+      Files changed:
+
+      - INTERFACES.md
+
+
+      Checklist:
+
+      - [x] `larva.component_list` MCP entry present
+
+      - [x] `larva.component_show` MCP entry present
+
+      - [x] `larva.delete` MCP entry present
+
+      - [x] `larva.clear` MCP entry present with confirm token requirement
+
+      - [x] CLI `delete` entry with exit codes
+
+      - [x] CLI `clear` entry with `--confirm` requirement and exit codes
+
+      - [x] Python API signatures documented: `component_list`, `component_show`,
+      `delete`, `clear(*, confirm)`
+
+      - [x] Error table documents `111 | REGISTRY_DELETE_FAILED`
+
+
+      Verification:
+
+      - Run: `uv run invar guard --changed` -> passed.
+
+
+      Gaps/Notes:
+
+      - Documentation also includes row for `INVALID_CONFIRMATION_TOKEN` where applicable
+      to current interface behavior.'
   - id: feature_registry_ops.feature-registry-ops-tests-registry
     name: feature_registry_ops.tests-registry
     status: done
