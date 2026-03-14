@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -174,6 +175,9 @@ class InMemoryRegistryStore:
         default_factory=lambda: Success([])
     )
     save_result: Result[None, RegistryError] = field(default_factory=lambda: Success(None))
+    delete_result: Result[None, RegistryError] = field(default_factory=lambda: Success(None))
+    clear_result: Result[int, RegistryError] = field(default_factory=lambda: Success(0))
+    clear_count: int = 0
     save_inputs: list[PersonaSpec] = field(default_factory=list)
     get_inputs: list[str] = field(default_factory=list)
 
@@ -187,6 +191,14 @@ class InMemoryRegistryStore:
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
         return self.list_result
+
+    def delete(self, persona_id: str) -> Result[None, RegistryError]:
+        """In-memory delete for facade testing."""
+        return self.delete_result
+
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[int, RegistryError]:
+        """In-memory clear for facade testing."""
+        return self.clear_result
 
 
 def _facade(
@@ -620,6 +632,187 @@ class TestFacadeList:
         assert error["numeric_code"] == 101
         assert "malformed" in error["message"]
         assert "record" in error["details"]
+
+
+class TestFacadeDelete:
+    """Pinned acceptance tests for facade delete operation.
+
+    These tests pin the contract between shell/registry and app/facade
+    before implementation. Tests xfail until facade.delete() is implemented.
+    """
+
+    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
+    def test_delete_returns_deleted_persona_payload(self) -> None:
+        """Success delete returns exactly {id, deleted: True}."""
+        registry = InMemoryRegistryStore(
+            delete_result=Success(None),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.delete("persona-to-delete")
+
+        assert isinstance(result, Success)
+        payload = result.unwrap()
+        assert payload == {"id": "persona-to-delete", "deleted": True}
+        # Pin: only these two keys allowed in success shape
+        assert set(payload.keys()) == {"id", "deleted"}
+
+    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
+    def test_delete_maps_persona_not_found_to_app_error_envelope(self) -> None:
+        """PERSONA_NOT_FOUND from registry maps to LarvaError preserving code/message."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            ),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.delete("missing")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+        assert error["details"]["persona_id"] == "missing"
+
+    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
+    def test_delete_maps_invalid_persona_id_to_app_error_envelope(self) -> None:
+        """INVALID_PERSONA_ID from registry maps to LarvaError preserving code/message."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "INVALID_PERSONA_ID",
+                    "message": "invalid persona id 'Bad_Id': expected flat kebab-case",
+                    "persona_id": "Bad_Id",
+                }
+            ),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.delete("Bad_Id")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_PERSONA_ID"
+        assert error["numeric_code"] == 104
+        assert error["details"]["persona_id"] == "Bad_Id"
+
+    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
+    def test_delete_maps_registry_delete_failure_to_app_error_details(self) -> None:
+        """DeleteFailureError from registry maps to REGISTRY_DELETE_FAILED with details."""
+        registry = InMemoryRegistryStore(
+            delete_result=Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": "failed to unlink spec file: OSError",
+                    "operation": "delete",
+                    "persona_id": "stuck-persona",
+                    "path": "/home/.larva/registry/stuck-persona.json",
+                    "failed_spec_paths": ["/home/.larva/registry/stuck-persona.json"],
+                }
+            ),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.delete("stuck-persona")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_DELETE_FAILED"
+        assert error["numeric_code"] == 111
+        # Registry code/message preserved at facade level
+        assert "failed to unlink" in error["message"]
+        # Extra registry fields moved to details
+        assert error["details"]["operation"] == "delete"
+        assert error["details"]["persona_id"] == "stuck-persona"
+        assert error["details"]["path"] == "/home/.larva/registry/stuck-persona.json"
+        assert error["details"]["failed_spec_paths"] == ["/home/.larva/registry/stuck-persona.json"]
+
+
+class TestFacadeClear:
+    """Pinned acceptance tests for facade clear operation.
+
+    These tests pin the contract between shell/registry and app/facade
+    before implementation. Tests xfail until facade.clear() is implemented.
+    """
+
+    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
+    def test_clear_returns_cleared_registry_payload_with_count(self) -> None:
+        """Success clear returns exactly {cleared: True, count: <int>}."""
+        registry = InMemoryRegistryStore(
+            clear_result=Success(3),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.clear(confirm="CLEAR REGISTRY")
+
+        assert isinstance(result, Success)
+        payload = result.unwrap()
+        assert payload == {"cleared": True, "count": 3}
+        # Pin: only these two keys allowed in success shape
+        assert set(payload.keys()) == {"cleared", "count"}
+        # Pin: count is an int equal to registry-reported deleted count
+        assert isinstance(payload["count"], int)
+
+    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
+    def test_clear_maps_wrong_confirm_to_error_envelope_without_success_payload(self) -> None:
+        """Wrong confirm token returns LarvaError with INVALID_CONFIRMATION_TOKEN."""
+        registry = InMemoryRegistryStore(
+            clear_result=Failure(
+                {
+                    "code": "INVALID_CONFIRMATION_TOKEN",
+                    "message": "clear requires exact confirmation token 'CLEAR REGISTRY'",
+                }
+            ),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.clear(confirm="WRONG TOKEN")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_CONFIRMATION_TOKEN"
+        # INTERNAL numeric code fallback for unmapped code
+        assert error["numeric_code"] == 10
+        assert error["message"] == "clear requires exact confirmation token 'CLEAR REGISTRY'"
+        # No extra fields leak into details for this error type
+        assert error["details"] == {}
+
+    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
+    def test_clear_maps_registry_delete_failure_to_app_error_details(self) -> None:
+        """DeleteFailureError during clear maps to REGISTRY_DELETE_FAILED with details."""
+        registry = InMemoryRegistryStore(
+            clear_result=Failure(
+                {
+                    "code": "REGISTRY_DELETE_FAILED",
+                    "message": "failed to remove one or more persona specs during clear",
+                    "operation": "clear",
+                    "persona_id": None,
+                    "path": "/home/.larva/registry/index.json",
+                    "failed_spec_paths": [
+                        "/home/.larva/registry/broken-one.json",
+                        "/home/.larva/registry/broken-two.json",
+                    ],
+                }
+            ),
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.clear(confirm="CLEAR REGISTRY")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_DELETE_FAILED"
+        assert error["numeric_code"] == 111
+        # Registry code/message preserved at facade level
+        assert "failed to remove one or more persona specs" in error["message"]
+        # Extra registry fields moved to details
+        assert error["details"]["operation"] == "clear"
+        assert error["details"]["persona_id"] is None
+        assert error["details"]["path"] == "/home/.larva/registry/index.json"
+        assert error["details"]["failed_spec_paths"] == [
+            "/home/.larva/registry/broken-one.json",
+            "/home/.larva/registry/broken-two.json",
+        ]
 
 
 class TestFacadeSeamProof:
