@@ -21222,7 +21222,7 @@ phases:
     agent: python-executor
   - id: feature_clone.tests-clone
     name: tests-clone
-    status: pending
+    status: claimed
     description: 'Add tests for clone across all layers.
 
 
@@ -21309,6 +21309,8 @@ phases:
     - feature_clone.cli-clone
     - feature_clone.python-api-clone
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:29:50.868100+00:00'
   - id: feature_clone.gate
     name: gate
     status: pending
