@@ -344,6 +344,57 @@ All fields from the source persona are preserved except `id` and `spec_digest`:
 `PERSONA_INVALID` (101) if new_id violates validation rules.
 `REGISTRY_WRITE_FAILED` (109) if save fails.
 
+### larva.export(all) / larva.export(ids)
+
+Export persona specs from the registry.
+
+**Parameters (one of):**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `all` | boolean | yes* | Export all registered personas |
+| `ids` | list[string] | yes* | Export specific personas by id |
+
+*Exactly one of `all` or `ids` must be provided (mutual exclusion).
+
+**Returns:** List of complete PersonaSpec objects.
+
+**All persons example:**
+```json
+// Request
+{"all": true}
+
+// Response
+[
+  {"spec_version": "0.1.0", "id": "persona-1", ...},
+  {"spec_version": "0.1.0", "id": "persona-2", ...}
+]
+```
+
+**Specific ids example:**
+```json
+// Request
+{"ids": ["persona-1", "persona-2"]}
+
+// Response
+[
+  {"spec_version": "0.1.0", "id": "persona-1", ...},
+  {"spec_version": "0.1.0", "id": "persona-2", ...}
+]
+```
+
+**Error:** `PERSONA_NOT_FOUND` (100) if any requested id does not exist (fail-fast on first missing id).
+`REGISTRY_INDEX_READ_FAILED` (107) if registry index cannot be read.
+`REGISTRY_SPEC_READ_FAILED` (108) if a persona file cannot be read.
+
+**Malformed params errors:**
+- Both `all` and `ids` provided → `code: "INTERNAL"`, `numeric_code: 10`
+- Neither `all` nor `ids` provided → `code: "INTERNAL"`, `numeric_code: 10`
+- `all` is not boolean → `code: "INTERNAL"`, `numeric_code: 10`
+- `ids` is not a list → `code: "INTERNAL"`, `numeric_code: 10`
+- `ids` contains non-string elements → `code: "INTERNAL"`, `numeric_code: 10`
+- Unknown parameters provided → `code: "INTERNAL"`, `numeric_code: 10`
+
 ### App-Facade Seam-Proof Evidence Requirement
 
 When `larva.app.facade` orchestration changes (assemble/register/list/resolve), seam proof must be reproducible:
@@ -514,6 +565,41 @@ Clone a registered persona to a new id.
 - If `new_id` already exists in registry, overwrites (consistent with register)
 
 Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, PERSONA_INVALID, REGISTRY_WRITE_FAILED), 2 input/critical failure.
+
+### `larva export [--all] [--id ID...] [--json]`
+
+Export persona specs from the registry.
+
+| Flag | Type | Description |
+| ---- | ---- | ----------- |
+| `--all` | flag | Export all registered personas |
+| `--id` | str (repeatable) | Export specific persona by id (can be repeated) |
+
+**Mutual Exclusion:** Exactly one of `--all` or `--id` must be provided.
+
+**Output Format:**
+- **Text mode (default):** Each spec as pretty JSON, separated by `---`. Trailing newline after last spec.
+- **JSON mode (`--json`):** `{"data": [<PersonaSpec>, ...]}`
+
+```bash
+# Export all personas
+larva export --all
+
+# Export specific personas
+larva export --id persona-1 --id persona-2
+
+# JSON output
+larva export --all --json
+```
+
+**Error:** `ARGUMENT_CONFLICT` (CLI-local, exit code 2) if both `--all` and `--id` are provided.
+`PERSONA_NOT_FOUND` (100) if any requested id does not exist.
+`REGISTRY_INDEX_READ_FAILED` (107) if registry index cannot be read.
+`REGISTRY_SPEC_READ_FAILED` (108) if a persona file cannot be read.
+
+**Routing:** Via facade to `LarvaFacade.export_all()` or `LarvaFacade.export_ids()`.
+
+Exit codes: 0 success, 1 domain error, 2 input/critical failure.
 
 ---
 
@@ -892,6 +978,53 @@ from larva.shell.python_api import clear
 
 count = clear(confirm="CLEAR REGISTRY")
 print(f"Removed {count} personas")
+```
+
+### export_all()
+
+Export all persona specs from the registry.
+
+**Returns:** `list[PersonaSpec]` — List of all PersonaSpec objects stored in the registry.
+
+**Contract:**
+- Delegates to app.facade for orchestration
+- Lists via shell.registry
+- Each spec is canonical registry data (already normalized/validated)
+- Empty registry returns empty list
+
+```python
+from larva.shell.python_api import export_all
+
+specs = export_all()
+for spec in specs:
+    print(spec["id"])
+```
+
+### export_ids(ids)
+
+Export specific persona specs by id from the registry.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `ids` | list[str] | List of persona ids to export |
+
+**Returns:** `list[PersonaSpec]` — List of PersonaSpec objects in the same order as input ids.
+
+**Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if any persona id is not found.
+
+**Contract:**
+- Delegates to app.facade for orchestration
+- Gets via shell.registry for each id
+- Each spec is canonical registry data (already normalized/validated)
+- Empty ids returns empty list immediately
+
+```python
+from larva.shell.python_api import export_ids
+
+specs = export_ids(["persona-1", "persona-2"])
+assert len(specs) == 2
 ```
 
 ### Python API Error Format
