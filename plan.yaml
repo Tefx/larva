@@ -17091,7 +17091,7 @@ phases:
       complexity hints.'
 - id: feature_registry_ops
   name: 'Feature: Registry Delete/Clear + MCP Components'
-  status: pending
+  status: in_progress
   steps:
   - id: feature_registry_ops.feature-registry-ops-registry-delete
     name: feature_registry_ops.registry-delete
@@ -18164,7 +18164,7 @@ phases:
     agent: gate-reviewer
   - id: feature_registry_ops.feature-registry-ops-registry-contract
     name: feature_registry_ops.registry-contract
-    status: pending
+    status: claimed
     description: "Define acceptance-only contract artifacts for the registry delete/clear\
       \ feature family before any implementation dispatch.\n\nspec_refs:\n- ARCHITECTURE.md\
       \ > Module: `larva.shell.registry`\n- USAGE.md > registry layout and error behavior\
@@ -18197,6 +18197,8 @@ phases:
       - Contract step remains acceptance-only: any added class methods are stubs /
       NotImplemented, not implementation'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T11:06:53.268042+00:00'
   - id: feature_registry_ops.feature-registry-ops-tests-clear
     name: feature_registry_ops.tests-clear
     status: pending
