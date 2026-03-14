@@ -20220,3 +20220,60 @@ phases:
     depends_on:
     - feature_update.feature-update-facade-update
     agent: python-executor
+  - id: feature_update.feature-update-docs-interfaces
+    name: feature_update.docs-interfaces
+    status: pending
+    description: "Update INTERFACES.md with the update operation across all three\
+      \ surfaces.\n\nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\n\
+      Add entry for:\n- `larva.update(id, patches)` — parameters: id (string, required),\
+      \ patches (object, required, supports dot notation); returns: full PersonaSpec\
+      \ JSON with recomputed spec_digest\n\n### Section B (CLI Interface)\nAdd entry\
+      \ for:\n- `larva update <id> --set key=value [--set key=value]... [--json]`\n\
+      \  - Repeatable --set flag\n  - Dot notation for nested fields: `--set model_params.temperature=0.3`\n\
+      \  - Type inference: numbers, bools (true/false), null, strings\n  - Exit codes:\
+      \ 0 success, 1 domain error, 2 input/critical failure\n\n### Section G/H (Python\
+      \ API)\nAdd entry for:\n- `update(persona_id: str, patches: dict[str, object])\
+      \ -> PersonaSpec`\n  - Returns updated PersonaSpec\n  - Raises LarvaApiError\
+      \ on failure\n\n### Semantic notes to include\n- Update = get -> patch -> validate\
+      \ -> normalize -> save\n- Revalidation is mandatory (patched spec must pass\
+      \ validation)\n- spec_digest and spec_version cannot be patched (protected;\
+      \ recomputed by normalize)\n- Deep merge for model_params and tools; shallow\
+      \ overwrite for other dicts\n\nstep_type: implementation\nrefs:\n  - INTERFACES.md"
+    verification: '- INTERFACES.md contains larva.update MCP entry
+
+      - INTERFACES.md contains update CLI entry with --set syntax and exit codes
+
+      - INTERFACES.md contains update Python API entry
+
+      - Semantic notes on revalidation and protected fields present'
+    evidence_template: '## INTERFACES.md Update Evidence
+
+
+      **Diff summary**:
+
+      ```
+
+      <paste relevant diff sections>
+
+      ```
+
+
+      **Checklist**:
+
+      - [ ] larva.update MCP entry with id + patches params
+
+      - [ ] CLI update entry with --set repeatable flag and type inference docs
+
+      - [ ] Python API update() signature
+
+      - [ ] Revalidation note
+
+      - [ ] Protected fields note (spec_digest, spec_version)
+
+      - [ ] Deep merge note (model_params, tools)
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-python-api-update
+    agent: python-executor
