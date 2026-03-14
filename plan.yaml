@@ -17516,7 +17516,7 @@ phases:
     claimed_at: '2026-03-14T12:02:15.356708+00:00'
   - id: feature_registry_ops.feature-registry-ops-mcp-components
     name: feature_registry_ops.mcp-components
-    status: pending
+    status: claimed
     description: 'Implement the MCP `component_list` and `component_show` handlers
       only after the local contract and acceptance tests are pinned.
 
@@ -17713,6 +17713,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-tests-mcp-components
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T12:02:38.346582+00:00'
   - id: feature_registry_ops.feature-registry-ops-mcp-delete-clear
     name: feature_registry_ops.mcp-delete-clear
     status: pending
