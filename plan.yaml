@@ -17159,3 +17159,72 @@ phases:
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
     agent: python-senior
+  - id: feature_registry_ops.feature-registry-ops-registry-clear
+    name: feature_registry_ops.registry-clear
+    status: pending
+    description: "Add clear operation to the registry layer.\n\nFile: src/larva/shell/registry.py\n\
+      \nTasks:\n1. Extend `RegistryStore` protocol with:\n   ```python\n   def clear(self,\
+      \ *, confirm: str) -> Result[int, RegistryError]: ...\n   ```\n   Returns count\
+      \ of deleted personas on success.\n\n2. Implement `FileSystemRegistryStore.clear(self,\
+      \ *, confirm)`:\n   - Guard first: if `confirm != \"DELETE ALL PERSONAS\"`,\
+      \ return `Failure(_delete_failed(..., \"confirm string must be 'DELETE ALL PERSONAS'\"\
+      ))` — do NOT touch filesystem\n   - Read index via `_read_index`; if index missing/empty,\
+      \ return `Success(0)`\n   - Best-effort deletion loop:\n     - For each persona_id\
+      \ in index: attempt `spec_path.unlink(missing_ok=True)`; collect failures into\
+      \ `failed_ids`\n   - Delete index file: `index_path.unlink(missing_ok=True)`\n\
+      \   - If any spec deletes failed: return `Failure(DeleteFailureError(code=\"\
+      REGISTRY_DELETE_FAILED\", message=\"partial clear\", details={\"failed_ids\"\
+      : [...]}))` — but note: index is already gone, so this is informational\n  \
+      \ - If all succeeded: return `Success(len(index))`\n\nDeletion order (from spec):\n\
+      1. Read index (get list of ids)\n2. Delete each `<id>.json` (best-effort, collect\
+      \ failures)\n3. Delete `index.json` (once index is gone, registry is effectively\
+      \ clear)\n4. Report partial failure if any spec deletes failed\n\nNote: `DeleteFailureError`\
+      \ TypedDict may need a `details` field added (or use `message` to encode failed_ids\
+      \ as list representation) — align with how existing error helpers work in this\
+      \ file. Check `_delete_failed` helper shape added in prior step.\n\nstep_type:\
+      \ implementation\nrefs:\n  - src/larva/shell/registry.py"
+    verification: '- invar guard passes
+
+      - confirm guard: wrong confirm string returns Failure without touching filesystem
+
+      - empty registry returns Success(0)
+
+      - full success returns Success(count) equal to number of personas deleted
+
+      - partial failure returns Failure with failed_ids information
+
+      - index deletion happens after spec deletions (best-effort loop)'
+    evidence_template: '## Registry Clear Implementation Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Test run**:
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_registry.py -v -k clear>
+
+      ```
+
+
+      **Confirm guard proof** (paste relevant code lines):
+
+      ```
+
+      <confirm check must be first, before any filesystem access>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-delete
+    agent: python-senior
