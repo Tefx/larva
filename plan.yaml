@@ -18412,3 +18412,110 @@ phases:
       - src/larva/shell/registry.py\n\nGaps/Notes:\n- Clear tests are contract-first\
       \ and remain pre-implementation (`xfail` expected until clear implementation\
       \ step).\n- No test touches `DEFAULT_REGISTRY_ROOT`."
+  - id: feature_registry_ops.feature-registry-ops-mcp-components-contract
+    name: feature_registry_ops.mcp-components-contract
+    status: pending
+    description: 'Define the MCP contract for `larva.component_list` and `larva.component_show`
+      before implementation.
+
+
+      spec_refs:
+
+      - `INTERFACES.md` :: `A. MCP Server Interface`
+
+      - `INTERFACES.md` :: `C. Component Library`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.mcp`
+
+      - `ARCHITECTURE.md` :: `Module: larva.shell.components`
+
+
+      touch_paths:
+
+      - `src/larva/shell/mcp_contract.py`
+
+      - `src/larva/shell/mcp.py`
+
+
+      step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+      agent_source: default
+
+
+      Acceptance contract only; no runnable handler logic yet.
+
+
+      Tasks:
+
+      - Add MCP tool definitions for `larva.component_list` and `larva.component_show`
+      to `LARVA_MCP_TOOLS` with explicit empty-object vs required-field schemas.
+
+      - Update `MCPHandlers.__init__` signature to accept `components: ComponentStore
+      | None = None` using the backward-compatible default-value pattern.
+
+      - Add acceptance-only signatures/docstrings/stubs for `_component_store_error`,
+      `handle_component_list`, and `handle_component_show`; stubs may use `...` or
+      `raise NotImplementedError` but MUST NOT include component loading or routing
+      logic.
+
+      - Pin the intended boundary split in docstrings/comments: malformed/unknown/type-invalid
+      params stay on `_malformed_params_error` (`INTERNAL`, numeric code 10), while
+      unsupported component type and component lookup failures map to `COMPONENT_NOT_FOUND`
+      (numeric code 105).
+
+
+      Out of scope:
+
+      - component store invocation logic
+
+      - loader routing implementation
+
+      - MCP runtime / entrypoint changes'
+    verification: '- `LARVA_MCP_TOOLS` declares both new MCP tools with the contract-only
+      input schemas
+
+      - `MCPHandlers.__init__`, `_component_store_error`, `handle_component_list`,
+      and `handle_component_show` signatures/stubs exist without shipping handler
+      business logic
+
+      - Contract text explicitly separates malformed-param envelopes from component-not-found
+      envelopes
+
+      - No component store calls or loader routing are implemented in this step'
+    evidence_template: '## MCP Component Contract Evidence
+
+
+      **Contract artifacts added**:
+
+      - <paste signatures / stubs / schema snippets>
+
+
+      **Boundary split pinned**:
+
+      - malformed params -> `INTERNAL` / `10`
+
+      - unsupported type or missing component -> `COMPONENT_NOT_FOUND` / `105`
+
+
+      **Purity check**:
+
+      - Confirm no component store call or loader routing logic was implemented in
+      this step
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-delete
+    agent: python-executor
