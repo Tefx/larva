@@ -21756,7 +21756,7 @@ phases:
       both command surfaces and consistent dispatch/parser wiring.'
   - id: feature_export.python-api-export
     name: python-api-export
-    status: claimed
+    status: done
     description: 'Add `export_all()` and `export_ids(ids)` to the Python API module.
 
 
@@ -21812,6 +21812,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:18:32.990368+00:00'
+    done_at: '2026-03-14T22:29:23.990437+00:00'
+    evidence: 'Artifact:
+
+      - PR: 6b088ba415c66bdd01fe97c191fb0e99e690b03e (conflict-resolved merge commit
+      after integrating branch bc0506a)
+
+
+      Verification:
+
+      - Run: uv run invar guard -> passed
+
+      - Run: uv run python -c "from larva.shell.python_api import update, clone, export_all,
+      export_ids" -> passed
+
+      - No unmerged paths after resolution
+
+
+      Spec link:
+
+      - feature_export.python-api-export
+
+
+      Files changed:
+
+      - src/larva/shell/python_api.py
+
+
+      Gaps/Notes:
+
+      - Resolved merge conflict to keep update+clone+export APIs and __all__ exports
+      coherent.'
   - id: feature_export.docs-interfaces
     name: docs-interfaces
     status: pending
