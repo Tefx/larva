@@ -19892,3 +19892,95 @@ phases:
     depends_on:
     - feature_update.feature-update-core-apply-patches
     agent: python-executor
+  - id: feature_update.feature-update-facade-update
+    name: feature_update.facade-update
+    status: pending
+    description: "Add update operation to the app facade.\n\nFile: src/larva/app/facade.py\n\
+      \n### Protocol extension\n\nAdd to `LarvaFacade` protocol:\n```python\ndef update(\n\
+      \    self,\n    persona_id: str,\n    patches: dict[str, object],\n) -> Result[PersonaSpec,\
+      \ LarvaError]: ...\n```\n\n### Implementation in DefaultLarvaFacade\n\n```python\n\
+      def update(\n    self,\n    persona_id: str,\n    patches: dict[str, object],\n\
+      ) -> Result[PersonaSpec, LarvaError]:\n    # 1. Get existing spec from registry\n\
+      \    get_result = self._registry.get(persona_id)\n    if isinstance(get_result,\
+      \ Failure):\n        error = get_result.failure()\n        details = {k: v for\
+      \ k, v in error.items() if k not in {\"code\", \"message\"}}\n        return\
+      \ Failure(self._error(\n            code=error[\"code\"],\n            message=error[\"\
+      message\"],\n            details=cast(\"dict[str, object]\", details),\n   \
+      \     ))\n\n    # 2. Apply patches via core function\n    from larva.core.patch\
+      \ import apply_patches\n    existing_spec = dict(get_result.unwrap())\n    patched\
+      \ = apply_patches(existing_spec, patches)\n\n    # 3. Validate patched spec\n\
+      \    report = self.validate(cast(\"PersonaSpec\", patched))\n    if not report[\"\
+      valid\"]:\n        return Failure(self._validation_error(report))\n\n    # 4.\
+      \ Normalize (recomputes spec_digest, ensures spec_version)\n    normalized =\
+      \ self._normalize.normalize_spec(cast(\"PersonaSpec\", patched))\n\n    # 5.\
+      \ Save back to registry\n    save_result = self._registry.save(normalized)\n\
+      \    if isinstance(save_result, Failure):\n        error = save_result.failure()\n\
+      \        details = {k: v for k, v in error.items() if k not in {\"code\", \"\
+      message\"}}\n        return Failure(self._error(\n            code=error[\"\
+      code\"],\n            message=error[\"message\"],\n            details=cast(\"\
+      dict[str, object]\", details),\n        ))\n\n    return Success(normalized)\n\
+      ```\n\n### Import\n\nAdd `from larva.core.patch import apply_patches` (can be\
+      \ at top of file or inline in method — prefer top-level).\n\n### Error reuse\n\
+      \nNo new error codes needed. Uses existing:\n- PERSONA_NOT_FOUND (100): id does\
+      \ not exist\n- PERSONA_INVALID (101): patched spec fails validation\n- INVALID_PERSONA_ID\
+      \ (104): bad id format\n- REGISTRY_WRITE_FAILED (109): save failure\n- REGISTRY_UPDATE_FAILED\
+      \ (110): index update failure\n\nstep_type: implementation\nrefs:\n  - src/larva/app/facade.py\n\
+      \  - src/larva/core/patch.py\n  - src/larva/shell/registry.py"
+    verification: '- invar guard passes
+
+      - LarvaFacade protocol has update() signature
+
+      - DefaultLarvaFacade.update follows get -> patch -> validate -> normalize ->
+      save flow
+
+      - PERSONA_NOT_FOUND on missing id
+
+      - PERSONA_INVALID on invalid patched spec
+
+      - Returns full normalized PersonaSpec with recomputed spec_digest on success
+
+      - Existing facade methods unmodified'
+    evidence_template: '## Facade Update Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Test run**:
+
+      ```
+
+      <paste: uv run pytest tests/app/test_facade.py -v -k update>
+
+      ```
+
+
+      **Flow verification** (paste relevant code lines showing get->patch->validate->normalize->save
+      order):
+
+      ```python
+
+      <paste implementation showing the 5-step flow>
+
+      ```
+
+
+      **Existing facade tests still pass**:
+
+      ```
+
+      <paste: uv run pytest tests/app/test_facade.py -v — all pass>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_update.feature-update-core-apply-patches
+    agent: python-senior
