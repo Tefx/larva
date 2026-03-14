@@ -20541,7 +20541,7 @@ phases:
     agent: python-executor
   - id: feature_update.feature-update-tests-transport
     name: feature_update.tests-transport
-    status: pending
+    status: claimed
     description: "Add transport-layer tests for update operation across all surfaces.\n\
       \nFiles:\n- tests/app/test_facade.py\n- tests/shell/test_mcp.py\n- tests/shell/test_cli.py\n\
       - tests/shell/test_python_api.py\n\n### tests/app/test_facade.py additions\n\
@@ -20630,6 +20630,8 @@ phases:
     - feature_update.feature-update-python-api-update
     - feature_update.feature-update-core-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:29:44.691290+00:00'
   - id: feature_update.feature-update-gate
     name: feature_update.gate
     status: pending
