@@ -21376,26 +21376,32 @@ phases:
     name: gate
     status: pending
     description: "Gate review: Verify feature_export phase completion and quality.\n\
-      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature follows established\
-      \ list/resolve pattern\n  - No output formatting complexity beyond simple JSON\
-      \ array + separator\n  - No known rework patterns in touch paths\n  - Plugin\
-      \ change is mechanical substitution\n\nReview criteria:\n1. **Completeness**:\
-      \ All 7 implementation/test steps completed\n2. **Facade**: export_all uses\
-      \ registry.list(), export_ids uses registry.get() with fail-fast\n3. **MCP**:\
+      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Feature now follows\
+      \ explicit contract -> facade-tests -> implementation ordering before transport\
+      \ and plugin work\n  - No output formatting complexity beyond simple JSON array\
+      \ + separator\n  - No known rework patterns in touch paths\n  - Plugin change\
+      \ is mechanical substitution after facade contract is fixed\n\nReview criteria:\n\
+      1. **Completeness**: All contract, implementation, transport, plugin, docs,\
+      \ and test steps completed\n2. **Contract-first**: export contract and facade\
+      \ tests landed before facade implementation dispatch\n3. **Facade**: export_all\
+      \ uses registry.list(), export_ids uses registry.get() with fail-fast\n4. **MCP**:\
       \ Tool definition registered, handler validates mutual exclusivity of all/ids\n\
-      4. **CLI**: Parser accepts `export [--all | <id> ...] [--json]`, dispatch wired\n\
-      5. **Python API**: Two thin delegation functions, both added to `__all__`\n\
-      6. **Plugin**: opencode plugin uses single `larva export --all --json` call\n\
-      7. **Tests**: All ~22 tests pass, covering success + error + edge cases + mutual\
-      \ exclusivity\n8. **Docs**: INTERFACES.md updated across MCP/CLI/Python API\
-      \ sections\n9. **Guard**: `uv run invar guard` clean\n10. **Error codes**: No\
-      \ new error codes introduced (reuses PERSONA_NOT_FOUND 100)\n\nIndependence:\
-      \ gate-reviewer is NOT any implementation agent in this phase."
+      5. **CLI**: Parser accepts `export [--all | <id> ...] [--json]`, dispatch wired\n\
+      6. **Python API**: Two thin delegation functions, both added to `__all__`\n\
+      7. **Plugin**: opencode plugin uses single `larva export --all --json` call\n\
+      8. **Tests**: Facade contract tests and cross-surface export tests both pass\n\
+      9. **Docs**: INTERFACES.md updated across MCP/CLI/Python API sections\n10. **Guard**:\
+      \ `uv run invar guard` clean\n11. **Error codes**: No new error codes introduced\
+      \ (reuses PERSONA_NOT_FOUND 100)\n\nIndependence: gate-reviewer is NOT any implementation\
+      \ agent in this phase."
     verification: '- All phase steps completed successfully
 
       - Evidence collected and reviewed for each step
 
       - `uv run invar guard` passes on final state
+
+      - `uv run pytest tests/app/test_facade.py -k export -v` passes before transport/plugin
+      review
 
       - `uv run pytest tests/ -k export -v` -- all export tests pass
 
@@ -21405,6 +21411,8 @@ phases:
 
       - Plugin uses export instead of N resolve calls'
     depends_on:
+    - feature_export.feature-export-contract
+    - feature_export.feature-export-facade-tests
     - feature_export.facade-export
     - feature_export.mcp-export
     - feature_export.cli-export
