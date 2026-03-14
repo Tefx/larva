@@ -21259,7 +21259,7 @@ phases:
     agent: python-executor
   - id: feature_clone.tests-clone
     name: tests-clone
-    status: claimed
+    status: done
     description: 'Add tests for clone across all layers.
 
 
@@ -21348,6 +21348,44 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:29:50.868100+00:00'
+    done_at: '2026-03-14T22:47:27.229957+00:00'
+    evidence: 'Artifact:
+
+      - PR: 49e8e5ddbe5c2221b529b040d923eb2a5864e9de (conflict-resolved merge commit
+      while landing clone tests)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_cli.py -v -k "clone or update" -> 24 passed
+
+      - Run: uv run pytest tests/shell/test_mcp.py -k clone -v -> clone MCP tests
+      pass
+
+      - Run: uv run pytest tests/shell/test_python_api.py -k clone -v -> clone python_api
+      tests pass
+
+      - Run: uv run invar guard -> passed
+
+
+      Spec link:
+
+      - feature_clone.tests-clone
+
+
+      Files changed:
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_python_api.py
+
+
+      Gaps/Notes:
+
+      - Merge conflict with update transport tests was resolved by preserving both
+      feature families in shared shell test files.'
   - id: feature_clone.gate
     name: gate
     status: pending
