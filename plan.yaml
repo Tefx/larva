@@ -20484,7 +20484,7 @@ phases:
       Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-docs-interfaces
     name: feature_update.docs-interfaces
-    status: claimed
+    status: done
     description: "Update INTERFACES.md with the update operation across all three\
       \ surfaces.\n\nFile: INTERFACES.md\n\n### Section A (MCP Server Interface)\n\
       Add entry for:\n- `larva.update(id, patches)` — parameters: id (string, required),\
@@ -20541,6 +20541,36 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:30:03.429903+00:00'
+    done_at: '2026-03-14T22:47:46.851805+00:00'
+    evidence: '## INTERFACES.md Update Evidence
+
+
+      Artifact:
+
+      - PR: 945fc38 (squash merge commit from worktree commit d37aa71)
+
+
+      Diff summary:
+
+      - Added update feature documentation across MCP, CLI, and Python API sections.
+
+
+      Checklist:
+
+      - [x] larva.update MCP entry with id + patches params
+
+      - [x] CLI update entry with repeatable --set and type inference
+
+      - [x] Python API update() signature
+
+      - [x] Revalidation note
+
+      - [x] Protected fields note (spec_digest, spec_version)
+
+      - [x] Deep merge note (model_params, tools)
+
+
+      Gaps / SPEC QUESTIONS: none'
   - id: feature_update.feature-update-tests-transport
     name: feature_update.tests-transport
     status: done
