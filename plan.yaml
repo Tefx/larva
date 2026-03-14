@@ -22296,7 +22296,7 @@ phases:
       coherent.'
   - id: feature_export.docs-interfaces
     name: docs-interfaces
-    status: claimed
+    status: done
     description: 'Update INTERFACES.md to document the export operation across all
       three surfaces.
 
@@ -22333,6 +22333,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T22:48:36.916017+00:00'
+    done_at: '2026-03-14T23:00:09.330237+00:00'
+    evidence: 'Artifact:
+
+      - PR: 91150b9 (conflict-resolved merge commit after integrating export docs
+      branch)
+
+
+      Verification:
+
+      - INTERFACES.md now documents export surfaces in MCP/CLI/Python API sections.
+
+      - Sanity compile check passed: `uv run python -m py_compile src/larva/shell/cli.py
+      src/larva/shell/mcp.py src/larva/shell/python_api.py`
+
+      - Conflict markers removed and section ordering coherent.
+
+
+      Spec link:
+
+      - feature_export.docs-interfaces
+
+
+      Files changed:
+
+      - INTERFACES.md
+
+
+      Gaps/Notes:
+
+      - Merge conflict with clone docs was resolved by preserving both doc additions
+      cleanly.'
   - id: feature_export.plugin-opencode
     name: plugin-opencode
     status: done
