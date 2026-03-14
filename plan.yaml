@@ -18254,16 +18254,17 @@ phases:
       - clear confirmation and partial-failure semantics remain aligned across surfaces
 
       - docs and public interfaces match the contracted delete/clear behavior'
-    verification: '- All contract, test, implementation, transport, and docs steps
-      in `feature_registry_ops` are completed
+    verification: '- All contract, facade-local test, implementation, transport, and
+      docs steps in `feature_registry_ops` are complete
 
-      - Delete main path and rollback failure-path evidence are both specific and
-      credible
+      - Delete/clear facade work shows contract-first ordering: contract -> facade
+      tests -> implementation
 
-      - Clear confirmation and partial-failure evidence are present and consistent
-      with registry contract/docs
+      - Gate evidence includes main-path payload proof and failure-path envelope proof
+      for wrong-confirm and delete-failure mapping fidelity
 
-      - No downstream surface re-derives delete/clear semantics inconsistently'
+      - Remaining transport and docs surfaces consume the finalized facade contract
+      without redefining delete/clear semantics'
     evidence_template: '## Gate Review Report
 
 
@@ -18374,6 +18375,8 @@ phases:
     - feature_registry_ops.feature-registry-ops-registry-delete
     - feature_registry_ops.feature-registry-ops-tests-clear
     - feature_registry_ops.feature-registry-ops-registry-clear
+    - feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
+    - feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
     - feature_registry_ops.feature-registry-ops-mcp-components-contract
     - feature_registry_ops.feature-registry-ops-tests-mcp-components
