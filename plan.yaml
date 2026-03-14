@@ -19009,7 +19009,7 @@ phases:
       - No transport wiring changes included.'
   - id: feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     name: feature_registry_ops.tests-facade-delete-clear
-    status: pending
+    status: claimed
     description: "Add facade-local acceptance tests for delete/clear mapping behavior\
       \ after the facade contract is pinned and before facade implementation begins.\n\
       \nspec_refs:\n- feature_registry_ops.feature-registry-ops-facade-delete-clear-contract\n\
@@ -19045,3 +19045,5 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:54:10.154409+00:00'
