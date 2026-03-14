@@ -17940,3 +17940,199 @@ phases:
     - feature_registry_ops.feature-registry-ops-python-api-all
     - feature_registry_ops.feature-registry-ops-tests-registry
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-gate
+    name: feature_registry_ops.gate
+    status: pending
+    description: 'Gate review: Verify feature_registry_ops phase completion and quality.
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_registry_ops
+      phase meets the quality bar.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if:
+
+      - Any invar guard violation remains
+
+      - Any new operation is missing from any layer (registry / facade / MCP / CLI
+      / Python API / docs)
+
+      - Confirm guard is missing or bypassable
+
+      - Backward compatibility of MCPHandlers is broken
+
+      - Existing CLI commands (validate, list, resolve, register, assemble, component)
+      return wrong exit codes
+
+      - Tests were modified (rather than only extended)
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase introduces atomicity/rollback semantics in registry layer
+
+      - MCPHandlers constructor signature change carries backward-compat risk
+
+      - _dispatch mutation in CLI carries regression risk
+
+      - Confirm guard correctness is safety-critical (prevents accidental mass deletion)
+
+
+      cross_cutting_focus:
+
+      - "Confirm guard: wrong confirm must not touch filesystem in ANY code path"
+
+      - "MCPHandlers(facade=...) with no components arg must construct without error"
+
+      - "Error code 111 must appear in: registry.py, facade.py, mcp_contract.py (via
+      LARVA_ERROR_CODES), INTERFACES.md"
+
+      - "All existing tests must pass without modification"
+
+
+      Review criteria:
+
+      1. Completeness: all 10 implementation steps executed?
+
+      2. Evidence quality: each step has specific, verifiable evidence (not ''tests
+      pass'')?
+
+      3. Invar guard: final clean run with zero violations?
+
+      4. Cross-cutting: backward compat, confirm guard, error code consistency verified?
+
+      5. Documentation: INTERFACES.md updated?'
+    verification: '- All 10 prior steps completed with evidence
+
+      - invar guard: zero violations (final run)
+
+      - Full test suite: uv run pytest tests/ passes
+
+      - All four new operations present across all five surfaces (registry/facade/MCP/CLI/Python
+      API)
+
+      - MCPHandlers backward compat verified
+
+      - Confirm guard verified (wrong confirm = no filesystem access)
+
+      - Error code 111 consistent across all files
+
+      - INTERFACES.md updated'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent)
+
+      **Phase**: feature_registry_ops
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### Final invar guard (must be clean):
+
+      ```
+
+      <paste: uv run invar guard output — must show zero violations>
+
+      ```
+
+
+      ### Final full test suite:
+
+      ```
+
+      <paste: uv run pytest tests/ -v --tb=short summary line>
+
+      ```
+
+
+      ### Step-by-Step Review
+
+
+      | Step | Status | Evidence Quality | Concerns |
+
+      |------|--------|-----------------|----------|
+
+      | registry-delete | ✅/⚠️/❌ | excellent/adequate/insufficient | |
+
+      | registry-clear | ✅/⚠️/❌ | | |
+
+      | facade-delete-clear | ✅/⚠️/❌ | | |
+
+      | mcp-components | ✅/⚠️/❌ | | |
+
+      | mcp-delete-clear | ✅/⚠️/❌ | | |
+
+      | cli-delete-clear | ✅/⚠️/❌ | | |
+
+      | python-api-all | ✅/⚠️/❌ | | |
+
+      | docs-interfaces | ✅/⚠️/❌ | | |
+
+      | tests-registry | ✅/⚠️/❌ | | |
+
+      | tests-transport | ✅/⚠️/❌ | | |
+
+
+      ### Cross-Cutting Checks
+
+
+      **Confirm guard (no filesystem access on wrong confirm)**:
+
+      ```
+
+      <evidence>
+
+      ```
+
+
+      **MCPHandlers backward compat**:
+
+      ```
+
+      <evidence: MCPHandlers(facade=mock) construction without components arg>
+
+      ```
+
+
+      **Error code 111 consistency**:
+
+      - [ ] registry.py: DeleteFailureError code literal = "REGISTRY_DELETE_FAILED"
+
+      - [ ] facade.py: ERROR_NUMERIC_CODES["REGISTRY_DELETE_FAILED"] == 111
+
+      - [ ] LARVA_ERROR_CODES (mcp_contract.py): mirrors facade — numeric code 111
+      present
+
+      - [ ] INTERFACES.md: error table row 111
+
+
+      ### Issues Found
+
+
+      | Severity | Description | Related Step | Blocking? |
+
+      |----------|-------------|--------------|-----------|
+
+      | | | | |
+
+
+      ### Gate Decision
+
+      - [ ] OPEN: Phase passes gate, all operations implemented correctly
+
+      - [ ] BLOCKED: <list blocking issues>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-delete
+    - feature_registry_ops.feature-registry-ops-registry-clear
+    - feature_registry_ops.feature-registry-ops-facade-delete-clear
+    - feature_registry_ops.feature-registry-ops-mcp-components
+    - feature_registry_ops.feature-registry-ops-mcp-delete-clear
+    - feature_registry_ops.feature-registry-ops-cli-delete-clear
+    - feature_registry_ops.feature-registry-ops-python-api-all
+    - feature_registry_ops.feature-registry-ops-docs-interfaces
+    - feature_registry_ops.feature-registry-ops-tests-registry
+    - feature_registry_ops.feature-registry-ops-tests-transport
+    agent: gate-reviewer
