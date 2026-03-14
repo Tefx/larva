@@ -6,6 +6,9 @@ This module defines the public Python interface for larva use-cases:
 - register(spec)
 - resolve(id, overrides=None)
 - update(persona_id, patches)
+- clone(source_id, new_id)
+- export_all()
+- export_ids(ids)
 - list()
 
 Responsibility (from ARCHITECTURE.md):
@@ -588,6 +591,59 @@ def clone(source_id: str, new_id: str) -> PersonaSpec:
     return cast("PersonaSpec", _unwrap_result(_get_facade().clone(source_id, new_id)))
 
 
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def export_all() -> list[PersonaSpec]:
+    """Export all persona specs from the registry.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.export_all`.
+    The facade orchestrates: registry list → iterate → collect specs.
+
+    Returns:
+        List of all PersonaSpec objects stored in the registry.
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Lists via shell.registry
+        - Each spec is canonical registry data (already normalized/validated)
+
+    Example:
+        specs = export_all()
+        assert len(specs) >= 0
+    """
+    return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_all()))
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def export_ids(ids: list[str]) -> list[PersonaSpec]:
+    """Export specific persona specs by id from the registry.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.export_ids`.
+    The facade orchestrates: iterate ids → registry get → collect specs.
+
+    Args:
+        ids: List of persona ids to export.
+
+    Returns:
+        List of PersonaSpec objects in the same order as input ids.
+
+    Raises:
+        LarvaApiError: If any persona id is not found, with code PERSONA_NOT_FOUND (100).
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Gets via shell.registry for each id
+        - Each spec is canonical registry data (already normalized/validated)
+        - Empty ids returns empty list immediately
+
+    Example:
+        specs = export_ids(["persona-1", "persona-2"])
+        assert len(specs) == 2
+    """
+    return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_ids(ids)))
+
+
 # -----------------------------------------------------------------------------
 # Public API Exports
 # -----------------------------------------------------------------------------
@@ -606,6 +662,8 @@ __all__ = [
     "delete",
     "clear",
     "clone",
+    "export_all",
+    "export_ids",
     # Re-export types for type checking
     "PersonaSpec",
     "ValidationReport",
