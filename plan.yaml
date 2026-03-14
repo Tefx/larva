@@ -21560,7 +21560,7 @@ phases:
       logic implemented in this step.'
   - id: feature_export.feature-export-facade-tests
     name: feature_export.facade-tests
-    status: pending
+    status: claimed
     description: 'Add contract-driven facade tests for export before transport implementation.
 
 
@@ -21598,6 +21598,8 @@ phases:
     depends_on:
     - feature_export.feature-export-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T21:26:30.601977+00:00'
 - id: orchestrator_unblock
   name: Orchestrator Unblockers
   status: done
