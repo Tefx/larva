@@ -20227,7 +20227,7 @@ phases:
     claimed_at: '2026-03-14T22:18:17.134773+00:00'
   - id: feature_update.feature-update-cli-update
     name: feature_update.cli-update
-    status: pending
+    status: claimed
     description: "Add update subcommand to the CLI.\n\nFiles: src/larva/shell/cli_helpers.py,\
       \ src/larva/shell/cli.py\n\n### cli_helpers.py changes\n\n1. Add \"update\"\
       \ to `CommandName` literal type.\n\n2. Add update subcommand parser to `_build_parser()`:\n\
@@ -20330,6 +20330,8 @@ phases:
     depends_on:
     - feature_update.feature-update-facade-update
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T22:18:23.009403+00:00'
   - id: feature_update.feature-update-python-api-update
     name: feature_update.python-api-update
     status: pending
