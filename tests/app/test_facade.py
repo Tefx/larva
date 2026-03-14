@@ -641,7 +641,6 @@ class TestFacadeDelete:
     before implementation. Tests xfail until facade.delete() is implemented.
     """
 
-    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
     def test_delete_returns_deleted_persona_payload(self) -> None:
         """Success delete returns exactly {id, deleted: True}."""
         registry = InMemoryRegistryStore(
@@ -657,7 +656,6 @@ class TestFacadeDelete:
         # Pin: only these two keys allowed in success shape
         assert set(payload.keys()) == {"id", "deleted"}
 
-    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
     def test_delete_maps_persona_not_found_to_app_error_envelope(self) -> None:
         """PERSONA_NOT_FOUND from registry maps to LarvaError preserving code/message."""
         registry = InMemoryRegistryStore(
@@ -678,7 +676,6 @@ class TestFacadeDelete:
         assert error["numeric_code"] == 100
         assert error["details"]["persona_id"] == "missing"
 
-    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
     def test_delete_maps_invalid_persona_id_to_app_error_envelope(self) -> None:
         """INVALID_PERSONA_ID from registry maps to LarvaError preserving code/message."""
         registry = InMemoryRegistryStore(
@@ -699,7 +696,6 @@ class TestFacadeDelete:
         assert error["numeric_code"] == 104
         assert error["details"]["persona_id"] == "Bad_Id"
 
-    @pytest.mark.xfail(strict=True, reason="facade.delete() not yet implemented")
     def test_delete_maps_registry_delete_failure_to_app_error_details(self) -> None:
         """DeleteFailureError from registry maps to REGISTRY_DELETE_FAILED with details."""
         registry = InMemoryRegistryStore(
@@ -737,7 +733,6 @@ class TestFacadeClear:
     before implementation. Tests xfail until facade.clear() is implemented.
     """
 
-    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
     def test_clear_returns_cleared_registry_payload_with_count(self) -> None:
         """Success clear returns exactly {cleared: True, count: <int>}."""
         registry = InMemoryRegistryStore(
@@ -755,7 +750,6 @@ class TestFacadeClear:
         # Pin: count is an int equal to registry-reported deleted count
         assert isinstance(payload["count"], int)
 
-    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
     def test_clear_maps_wrong_confirm_to_error_envelope_without_success_payload(self) -> None:
         """Wrong confirm token returns LarvaError with INVALID_CONFIRMATION_TOKEN."""
         registry = InMemoryRegistryStore(
@@ -778,7 +772,6 @@ class TestFacadeClear:
         # No extra fields leak into details for this error type
         assert error["details"] == {}
 
-    @pytest.mark.xfail(strict=True, reason="facade.clear() not yet implemented")
     def test_clear_maps_registry_delete_failure_to_app_error_details(self) -> None:
         """DeleteFailureError during clear maps to REGISTRY_DELETE_FAILED with details."""
         registry = InMemoryRegistryStore(

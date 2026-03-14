@@ -425,46 +425,31 @@ class DefaultLarvaFacade(LarvaFacade):
         return Success(summaries)
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
-        """Delete one persona by id from the registry.
+        delete_result = self._registry.delete(persona_id)
+        if isinstance(delete_result, Failure):
+            error = delete_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
 
-        Contract-only stub for delete operation facade signature.
-
-        Success payload mapping:
-        - Registry success -> DeletedPersona(id=<persona_id>, deleted=True)
-
-        Error envelope mapping:
-        - PERSONA_NOT_FOUND: pass-through from shell/registry
-        - INVALID_PERSONA_ID: pass-through from shell/registry
-        - DeleteFailureError -> REGISTRY_DELETE_FAILED with details containing
-          operation, path, and failed_spec_paths
-
-        Note: Implementation body to be added in follow-up step.
-        This signature pins the contract for downstream transport adapters.
-        """
-        # Contract-only stub: implementation not in scope for this step
-        # See: feature_registry_ops.feature-registry-ops-facade-delete-clear-impl
-        raise NotImplementedError(
-            "delete() facade contract stub - implementation pending in follow-up step"
-        )
+        return Success({"id": persona_id, "deleted": True})
 
     def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
-        """Clear all personas from the registry.
+        clear_result = self._registry.clear(confirm)
+        if isinstance(clear_result, Failure):
+            error = clear_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
 
-        Contract-only stub for clear operation facade signature.
-
-        Success payload mapping:
-        - Registry success -> ClearedRegistry(cleared=True, count=<registry_count>)
-
-        Error envelope mapping:
-        - Wrong confirmation token -> INVALID_CONFIRMATION_TOKEN
-        - DeleteFailureError -> REGISTRY_DELETE_FAILED with details containing
-          operation, path, and failed_spec_paths
-
-        Note: Implementation body to be added in follow-up step.
-        This signature pins the contract for downstream transport adapters.
-        """
-        # Contract-only stub: implementation not in scope for this step
-        # See: feature_registry_ops.feature-registry-ops-facade-delete-clear-impl
-        raise NotImplementedError(
-            "clear() facade contract stub - implementation pending in follow-up step"
-        )
+        return Success({"cleared": True, "count": clear_result.unwrap()})
