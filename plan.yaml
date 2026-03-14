@@ -20563,7 +20563,7 @@ phases:
     agent: gate-reviewer
   - id: feature_update.feature-update-core-contract
     name: feature_update.core-contract
-    status: claimed
+    status: done
     description: "Define the contract-only patch-application surface in `src/larva/core/patch.py`\
       \ before tests and implementation.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n\
@@ -20589,6 +20589,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T21:07:25.596216+00:00'
+    done_at: '2026-03-14T21:25:36.011790+00:00'
+    evidence: 'Artifact:
+
+      - PR: c3cf40c (squash merge commit from worktree branch ff292cc5b8ff5e9c1cb244de3969ff4689830725)
+
+
+      Verification:
+
+      - Run: invar guard (hook + subagent validation) -> passed (0 errors, 0 warnings)
+
+      - Run: uv run python -m doctest src/larva/core/patch.py -> passed for contract-only
+      doctest examples
+
+
+      Spec link:
+
+      - plan step feature_update.feature-update-core-contract
+
+      - INTERFACES.md (patching semantics references used by contract notes)
+
+
+      Files changed:
+
+      - src/larva/core/patch.py
+
+
+      Gaps/Notes:
+
+      - This step intentionally delivers contract-only stubs and acceptance notes;
+      runnable merge logic is deferred to downstream implementation step.'
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: in_progress
