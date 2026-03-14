@@ -29,6 +29,7 @@ CommandName = Literal[
     "assemble",
     "register",
     "resolve",
+    "clone",
     "delete",
     "clear",
     "list",
@@ -274,6 +275,11 @@ def _build_parser() -> _CliParser:
     clear_parser = subparsers.add_parser("clear")
     clear_parser.add_argument("--confirm", required=True)
     clear_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    clone_parser = subparsers.add_parser("clone")
+    clone_parser.add_argument("source_id")
+    clone_parser.add_argument("new_id")
+    clone_parser.add_argument("--json", action="store_true", dest="as_json")
 
     return parser
 

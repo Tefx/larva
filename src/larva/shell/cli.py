@@ -129,6 +129,14 @@ def _dispatch(
             facade=facade,
         )
 
+    if command == "clone":
+        return clone_command(
+            cast("str", args.source_id),
+            cast("str", args.new_id),
+            as_json=as_json,
+            facade=facade,
+        )
+
     if command == "list":
         return list_command(as_json=as_json, facade=facade)
 
@@ -345,6 +353,31 @@ def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResu
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"List failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+def clone_command(
+    source_id: str,
+    new_id: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    result = facade.clone(source_id, new_id)
+    if isinstance(result, Success):
+        payload = dict(result.unwrap())
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("clone", payload),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+
+    error_envelope = _map_facade_error(result.failure())
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Clone failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 
