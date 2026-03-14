@@ -18337,7 +18337,7 @@ phases:
       added, no facade/CLI/MCP wiring.'
   - id: feature_registry_ops.feature-registry-ops-tests-clear
     name: feature_registry_ops.tests-clear
-    status: claimed
+    status: done
     description: 'Add registry-layer clear tests after the shared contract is pinned
       and before clear implementation begins.
 
@@ -18398,3 +18398,15 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:23:33.446271+00:00'
+    done_at: '2026-03-14T11:27:52.873812+00:00'
+    evidence: "Artifact:\n- PR: c5a476d (squash merge of worker commit e1766e3ee89555e58b40511c3e1c106bd8c5c280)\n\
+      \nVerification:\n- Run: `uv run pytest tests/shell/test_registry.py -v` -> `27\
+      \ passed, 5 xfailed` (clear acceptance tests xfail before clear implementation).\n\
+      - Run: `uv run invar guard` -> passed (`0 errors`, `1 warning` file-size advisory).\n\
+      - Added and verified clear tests:\n  - `test_clear_wrong_confirm`\n  - `test_clear_empty_registry`\n\
+      \  - `test_clear_success`\n  - `test_clear_partial_failure`\n  - `test_clear_returns_correct_count`\n\
+      \nSpec link:\n- feature_registry_ops.feature-registry-ops-registry-contract\n\
+      - ARCHITECTURE.md > Module `larva.shell.registry`\n\nFiles changed:\n- tests/shell/test_registry.py\n\
+      - src/larva/shell/registry.py\n\nGaps/Notes:\n- Clear tests are contract-first\
+      \ and remain pre-implementation (`xfail` expected until clear implementation\
+      \ step).\n- No test touches `DEFAULT_REGISTRY_ROOT`."
