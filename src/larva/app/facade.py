@@ -17,6 +17,7 @@ from typing import Any, Protocol, TypedDict, cast
 from returns.result import Failure, Result, Success
 
 from larva.core.assemble import AssemblyError
+from larva.core.patch import apply_patches
 from larva.core.spec import AssemblyInput, PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore
@@ -158,6 +159,12 @@ class LarvaFacade(Protocol):
         self,
         id: str,
         overrides: dict[str, object] | None = None,
+    ) -> Result[PersonaSpec, LarvaError]: ...
+
+    def update(
+        self,
+        persona_id: str,
+        patches: dict[str, object],
     ) -> Result[PersonaSpec, LarvaError]: ...
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
@@ -470,6 +477,45 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._validation_error(report))
 
         normalized = self._normalize.normalize_spec(cast("PersonaSpec", resolved))
+        return Success(normalized)
+
+    def update(
+        self,
+        persona_id: str,
+        patches: dict[str, object],
+    ) -> Result[PersonaSpec, LarvaError]:
+        get_result = self._registry.get(persona_id)
+        if isinstance(get_result, Failure):
+            error = get_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        existing = cast("dict[str, object]", dict(get_result.unwrap()))
+        patched = apply_patches(existing, patches)
+
+        report = self.validate(cast("PersonaSpec", patched))
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized = self._normalize.normalize_spec(cast("PersonaSpec", patched))
+        save_result = self._registry.save(normalized)
+        if isinstance(save_result, Failure):
+            error = save_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
         return Success(normalized)
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
