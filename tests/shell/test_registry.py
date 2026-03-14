@@ -23,6 +23,7 @@ from larva.shell.registry import (
     INDEX_FILENAME,
     DeleteFailureError,
     FileSystemRegistryStore,
+    InvalidConfirmError,
     RegistryError,
     RegistryStore,
 )
@@ -62,6 +63,9 @@ class TestFileSystemRegistryStoreContract:
     def test_registry_error_includes_delete_failure_shape(self) -> None:
         assert DeleteFailureError in get_args(RegistryError)
 
+    def test_registry_error_includes_invalid_confirm_error_shape(self) -> None:
+        assert InvalidConfirmError in get_args(RegistryError)
+
     def test_registry_store_protocol_declares_delete_and_clear_contract_signatures(self) -> None:
         delete_signature = inspect.signature(RegistryStore.delete)
         clear_signature = inspect.signature(RegistryStore.clear)
@@ -69,6 +73,13 @@ class TestFileSystemRegistryStoreContract:
         assert tuple(delete_signature.parameters) == ("self", "persona_id")
         assert tuple(clear_signature.parameters) == ("self", "confirm")
         assert clear_signature.parameters["confirm"].default == CLEAR_CONFIRMATION_TOKEN
+
+    def test_registry_store_clear_contract_returns_int_count(self) -> None:
+        clear_signature = inspect.signature(RegistryStore.clear)
+        return_annotation = clear_signature.return_annotation
+
+        # Result[int, RegistryError] -> extract the success type
+        assert return_annotation == "Result[int, RegistryError]"
 
     def test_registry_store_contract_docstrings_pin_delete_and_clear_ordering(self) -> None:
         delete_doc = RegistryStore.delete.__doc__ or ""
@@ -465,3 +476,113 @@ class TestFileSystemRegistryStoreContract:
 
         index_data = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
         assert index_data == {"delete-unlink-fail": "sha256:delete-unlink-fail"}
+
+    # ========== CLEAR CONTRACT TESTS ==========
+
+    def test_clear_wrong_confirm(self, registry_root: Path) -> None:
+        """Wrong confirm string returns Failure and does not touch filesystem."""
+        _write_json(registry_root / INDEX_FILENAME, {})
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.clear(confirm="WRONG TOKEN")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "INVALID_CONFIRMATION_TOKEN"
+        # Filesystem untouched - index still exists
+        assert (registry_root / INDEX_FILENAME).exists()
+
+    def test_clear_empty_registry(self, registry_root: Path) -> None:
+        """Clear on empty registry returns Success(0)."""
+        store = FileSystemRegistryStore(root=registry_root)
+
+        result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
+        assert result == Success(0)
+
+    def test_clear_success(self, registry_root: Path) -> None:
+        """Clear 2-3 saved personas; all spec files gone, index gone, returned count matches."""
+        store = FileSystemRegistryStore(root=registry_root)
+
+        # Save 3 personas
+        for name in ("clear-a", "clear-b", "clear-c"):
+            spec = _canonical_spec(name, f"sha256:{name}")
+            save_result = store.save(spec)
+            assert save_result == Success(None)
+
+        # Verify all files exist before clear
+        for name in ("clear-a", "clear-b", "clear-c"):
+            assert (registry_root / f"{name}.json").exists()
+        assert (registry_root / INDEX_FILENAME).exists()
+
+        result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
+        assert result == Success(3)
+        # All spec files gone
+        for name in ("clear-a", "clear-b", "clear-c"):
+            assert not (registry_root / f"{name}.json").exists()
+        # Index gone (empty registry = no index file)
+        assert not (registry_root / INDEX_FILENAME).exists()
+
+    def test_clear_partial_failure(
+        self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """One spec unlink raises OSError; failure reports failed ids while index removal still occurs."""
+        store = FileSystemRegistryStore(root=registry_root)
+
+        # Save 3 personas
+        for name in ("partial-a", "partial-b", "partial-c"):
+            spec = _canonical_spec(name, f"sha256:{name}")
+            save_result = store.save(spec)
+            assert save_result == Success(None)
+
+        # Track which files have been unlinked
+        unlinked_files: list[str] = []
+
+        original_unlink = Path.unlink
+
+        def fail_on_partial_b(self: Path, *args: object, **kwargs: object) -> None:
+            # Record the file path being unlinked
+            if "partial-b" in str(self):
+                raise OSError("simulated unlink failure for partial-b")
+            unlinked_files.append(str(self))
+            original_unlink(self)
+
+        monkeypatch.setattr(Path, "unlink", fail_on_partial_b)
+
+        result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_DELETE_FAILED"
+        assert error["operation"] == "clear"
+        assert error["persona_id"] is None
+        # failed_spec_paths should contain partial-b
+        failed_paths: list[str] = error["failed_spec_paths"]
+        assert any("partial-b" in p for p in failed_paths)
+        # Index should be removed (clear proceeds even if some unlinks fail)
+        assert not (registry_root / INDEX_FILENAME).exists()
+        # partial-a and partial-c should be unlinked
+        assert any("partial-a" in f for f in unlinked_files)
+        assert any("partial-c" in f for f in unlinked_files)
+        # partial-b should still exist (failed to unlink)
+        assert (registry_root / "partial-b.json").exists()
+
+    def test_clear_returns_correct_count(self, registry_root: Path) -> None:
+        """Count equals registry size from pre-clear index snapshot."""
+        store = FileSystemRegistryStore(root=registry_root)
+
+        # Save 2 personas
+        for name in ("count-a", "count-b"):
+            spec = _canonical_spec(name, f"sha256:{name}")
+            save_result = store.save(spec)
+            assert save_result == Success(None)
+
+        # Snapshot index before clear
+        index_before = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
+        expected_count = len(index_before)
+        assert expected_count == 2
+
+        result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
+
+        assert result == Success(expected_count)

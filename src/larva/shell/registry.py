@@ -59,6 +59,13 @@ class InvalidPersonaIdError(TypedDict):
     persona_id: str
 
 
+class InvalidConfirmError(TypedDict):
+    """Confirmation token does not match required value for destructive operation."""
+
+    code: Literal["INVALID_CONFIRMATION_TOKEN"]
+    message: str
+
+
 class IndexReadError(TypedDict):
     """Failure reading or decoding ``index.json`` from registry root."""
 
@@ -108,6 +115,7 @@ class DeleteFailureError(TypedDict):
 RegistryError: TypeAlias = (
     MissingPersonaError
     | InvalidPersonaIdError
+    | InvalidConfirmError
     | IndexReadError
     | SpecReadError
     | WriteFailureError
@@ -149,11 +157,15 @@ class RegistryStore(Protocol):
 
         ...
 
-    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[None, RegistryError]:
+    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[int, RegistryError]:
         """Delete all personas only when ``confirm`` exactly matches token.
+
+        Returns the count of personas that were cleared on success.
 
         Behavioral contract:
         - ``confirm`` must exactly equal ``CLEAR_CONFIRMATION_TOKEN``.
+        - Wrong confirmation token returns ``INVALID_CONFIRMATION_TOKEN`` error
+          without any filesystem mutation.
         - Index removal is ordered before per-spec file deletions.
         - Partial spec-file deletion failures after index removal MUST be
           reported as ``REGISTRY_DELETE_FAILED`` with remaining failed paths.
@@ -322,7 +334,7 @@ class FileSystemRegistryStore(RegistryStore):
             )
         return Success(None)
 
-    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[None, RegistryError]:
+    def clear(self, confirm: str = CLEAR_CONFIRMATION_TOKEN) -> Result[int, RegistryError]:
         """Contract stub: clear behavior is acceptance-only in this step."""
 
         raise NotImplementedError("clear contract accepted; implementation is out of scope")
@@ -569,6 +581,7 @@ __all__ = [
     "DEFAULT_REGISTRY_ROOT",
     "DeleteFailureError",
     "INDEX_FILENAME",
+    "InvalidConfirmError",
     "SPEC_FILENAME_TEMPLATE",
     "FileSystemRegistryStore",
     "IndexReadError",
