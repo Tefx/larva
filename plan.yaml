@@ -18429,7 +18429,7 @@ phases:
       - Step remains test-only and preserves contract-first ordering.'
   - id: feature_registry_ops.feature-registry-ops-tests-transport
     name: feature_registry_ops.tests-transport
-    status: claimed
+    status: done
     description: "Add transport-layer tests for all new operations.\n\nFiles:\n- tests/shell/test_mcp.py\n\
       - tests/shell/test_cli.py\n- tests/shell/test_python_api.py\n- tests/app/test_facade.py\n\
       \n### tests/app/test_facade.py additions\n\n1. `test_facade_delete_success`\
@@ -18528,6 +18528,39 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:26:38.457970+00:00'
+    done_at: '2026-03-14T12:29:16.829028+00:00'
+    evidence: "## Transport Layer Tests Evidence\n\n**Commit Hash:** `6d62660` (pre-existing\
+      \ at step claim)\n\n**Test Coverage Summary:**\nAll transport-layer tests for\
+      \ delete/clear operations already exist from previous steps:\n\n### tests/shell/test_mcp.py\
+      \ (13 tests)\n- `TestMCPHandleDelete` (6 tests): success, failure envelope,\
+      \ missing/non-string/unknown params\n- `TestMCPHandleClear` (7 tests): success,\
+      \ failure envelope, wrong/missing confirm, malformed params\n\n### tests/shell/test_cli.py\
+      \ (10 tests)\n- `TestDeleteCommand` (5 tests): text/json success, not-found\
+      \ error, invalid-id error\n- `TestClearCommand` (5 tests): text/json success,\
+      \ wrong confirm error, empty registry, registry failure\n\n### tests/shell/test_python_api.py\
+      \ (7 tests)\n- `TestPythonApiDelete` (3 tests): delegation, return shape, error\
+      \ passthrough\n- `TestPythonApiClear` (4 tests): delegation, count return, error,\
+      \ keyword-only enforcement\n- `TestPythonApiExports` (6 tests): delete/clear/component_list/component_show\
+      \ in __all__\n\n### tests/app/test_facade.py (7 tests)\n- `TestFacadeDelete`\
+      \ (4 tests): success payload `{id, deleted}`, error envelopes\n- `TestFacadeClear`\
+      \ (3 tests): success payload `{cleared, count}`, wrong confirm error, registry\
+      \ failure\n\n**Test Execution:**\n```\nuv run pytest tests/ -v --tb=short\n\
+      => 406 passed, 2 failed\n\nFailed tests (pre-existing, unrelated to delete/clear):\n\
+      - test_assemble_component_conflict_maps_to_app_error\n- test_assemble_unknown_error_code_falls_back_to_internal_numeric_code\n\
+      (AssemblyError fixture issues, not in scope)\n\nuv run pytest tests/shell/test_mcp.py::TestMCPHandleDelete\
+      \ \\\n             tests/shell/test_mcp.py::TestMCPHandleClear \\\n        \
+      \     tests/shell/test_cli.py::TestDeleteCommand \\\n             tests/shell/test_cli.py::TestClearCommand\
+      \ \\\n             tests/shell/test_python_api.py::TestPythonApiDelete \\\n\
+      \             tests/shell/test_python_api.py::TestPythonApiClear \\\n      \
+      \       tests/app/test_facade.py::TestFacadeDelete \\\n             tests/app/test_facade.py::TestFacadeClear\n\
+      => 38 passed in 0.11s\n```\n\n**Keyword-Only Enforcement Evidence:**\n```python\n\
+      # src/larva/shell/python_api.py\ndef clear(*, confirm: str) -> int:  # ✓ keyword-only\n\
+      \n# tests/shell/test_python_api.py\ntest_clear_positional_arg_raises_typeerror\
+      \ PASSED ✓\n```\n\n**Invar Guard:**\n```json\n{\n  \"status\": \"passed\",\n\
+      \  \"static\": {\"passed\": true, \"errors\": 0, \"warnings\": 0, \"infos\"\
+      : 0},\n  \"doctest\": {\"passed\": true, \"output\": \"\"}\n}\n```\n\n**Gaps:**\
+      \ None - all transport surfaces covered with success/failure/malformed-param\
+      \ tests."
   - id: feature_registry_ops.feature-registry-ops-gate
     name: feature_registry_ops.gate
     status: pending
