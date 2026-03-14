@@ -162,6 +162,28 @@ class LarvaFacade(Protocol):
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
 
+    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
+        """Clone a registered persona to a new id.
+
+        Success contract:
+        - Returns `PersonaSpec` with `id` set to `new_id`
+        - All non-id fields preserved from source persona
+        - `spec_digest` recalculated for the new persona
+
+        Error mapping contract (facade-layer):
+        - Registry get failure -> pass-through (PERSONA_NOT_FOUND / INVALID_PERSONA_ID)
+        - Validation failure -> PERSONA_INVALID via `_validation_error(report)`
+        - Registry save failure -> pass-through (REGISTRY_WRITE_FAILED)
+
+        Overwrite semantics:
+        - If `new_id` already exists in registry, overwrite (consistent with `register`)
+        - No existence check before save
+
+        Note: This is a contract-only signature. Implementation lives in
+        `DefaultLarvaFacade` but this step does not implement the body.
+        """
+        ...
+
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
         """Delete one persona by id from the registry.
 
@@ -424,6 +446,25 @@ class DefaultLarvaFacade(LarvaFacade):
                 return summary_result
             summaries.append(summary_result.unwrap())
         return Success(summaries)
+
+    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
+        """Clone a registered persona to a new id.
+
+        Implementation flow (contract-only stub):
+        1. `self._registry.get(source_id)` -> get source persona
+           - On failure: pass-through PERSONA_NOT_FOUND / INVALID_PERSONA_ID
+        2. Copy dict, set `id = new_id`, delete `spec_digest`
+        3. `self.validate()` -> validate the cloned spec
+           - On failure: return PERSONA_INVALID via `self._validation_error(report)`
+        4. `self._normalize.normalize_spec()` -> recalculate spec_digest
+        5. `self._registry.save()` -> persist cloned persona
+           - On failure: pass-through REGISTRY_WRITE_FAILED
+           - Note: Overwrites if `new_id` already exists (no existence check)
+        6. Return normalized PersonaSpec
+
+        Note: This is a contract-only stub. Implementation lands in facade-clone step.
+        """
+        raise NotImplementedError("contract-only stub: implementation in facade-clone step")
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
         delete_result = self._registry.delete(persona_id)
