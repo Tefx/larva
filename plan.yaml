@@ -21510,13 +21510,13 @@ phases:
     agent: python-executor
 - id: orchestrator_unblock
   name: Orchestrator Unblockers
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   steps:
   - id: orchestrator_unblock.fix-precommit-invar-contrib-web
     name: Fix pre-commit invar blockers in contrib/web/server.py
-    status: pending
+    status: claimed
     description: 'Resolve repository-wide invar guard blockers preventing commit during
       worktree squash merge.
 
@@ -21551,3 +21551,5 @@ phases:
       - `uv run python -m py_compile contrib/web/server.py` succeeds
 
       - No behavior-changing diff beyond structural refactor for compliance'
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T21:22:37.805424+00:00'
