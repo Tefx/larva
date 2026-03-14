@@ -17559,7 +17559,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-mcp-components
     name: feature_registry_ops.mcp-components
-    status: claimed
+    status: done
     description: 'Implement the MCP `component_list` and `component_show` handlers
       only after the local contract and acceptance tests are pinned.
 
@@ -17758,6 +17758,50 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T12:02:38.346582+00:00'
+    done_at: '2026-03-14T12:07:24.416014+00:00'
+    evidence: '## MCP Component Handler Evidence
+
+
+      Commit hash(es):
+
+      - none (implementation already present from prior commit `1275bc9`; this pass
+      verified/accepted current implementation)
+
+      - supporting alignment commit already in main history: `ca409a4`
+
+
+      Files changed in this acceptance pass:
+
+      - none
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_mcp.py -v -k "component_list or component_show
+      or backward_compat"` -> `17 passed, 60 deselected`.
+
+      - Run: `uv run pytest tests/shell/test_mcp.py -v` -> `77 passed`.
+
+      - Run: `uv run invar guard --all` -> passed (`0 errors`, doctest passed).
+
+
+      Envelope split proof:
+
+      - malformed params -> `_malformed_params_error` => `INTERNAL` / `10`.
+
+      - unsupported type & store miss -> `_component_store_error` => `COMPONENT_NOT_FOUND`
+      / `105`.
+
+
+      Backward compatibility:
+
+      - `MCPHandlers(facade)` and `MCPHandlers(facade=facade, components=store)` pass
+      regression coverage.
+
+
+      Gaps/Notes:
+
+      - no temporary xfail markers remain for component tests.'
   - id: feature_registry_ops.feature-registry-ops-mcp-delete-clear
     name: feature_registry_ops.mcp-delete-clear
     status: pending
