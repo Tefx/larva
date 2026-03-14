@@ -18016,80 +18016,34 @@ phases:
     description: 'Gate review: Verify feature_registry_ops phase completion and quality.
 
 
-      As an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_registry_ops
-      phase meets the quality bar.
-
-
-      YOU ARE THE QUALITY GATE. Block progress if:
-
-      - Any invar guard violation remains
-
-      - Any new operation is missing from any layer (registry / facade / MCP / CLI
-      / Python API / docs)
-
-      - Confirm guard is missing or bypassable
-
-      - Backward compatibility of MCPHandlers is broken
-
-      - Existing CLI commands (validate, list, resolve, register, assemble, component)
-      return wrong exit codes
-
-      - Tests were modified (rather than only extended)
-
-
       review_depth: THOROUGH
 
       review_depth_rationale:
 
-      - Phase introduces atomicity/rollback semantics in registry layer
+      - phase now includes contract-first delete/clear persistence work
 
-      - MCPHandlers constructor signature change carries backward-compat risk
+      - registry delete carries rollback/index-consistency failure risk
 
-      - _dispatch mutation in CLI carries regression risk
-
-      - Confirm guard correctness is safety-critical (prevents accidental mass deletion)
+      - phase spans registry, facade, CLI, MCP, python-api, and docs surfaces
 
 
       cross_cutting_focus:
 
-      - "Confirm guard: wrong confirm must not touch filesystem in ANY code path"
+      - delete rollback restores index/spec consistency on failure
 
-      - "MCPHandlers(facade=...) with no components arg must construct without error"
+      - clear confirmation and partial-failure semantics remain aligned across surfaces
 
-      - "Error code 111 must appear in: registry.py, facade.py, mcp_contract.py (via
-      LARVA_ERROR_CODES), INTERFACES.md"
+      - docs and public interfaces match the contracted delete/clear behavior'
+    verification: '- All contract, test, implementation, transport, and docs steps
+      in `feature_registry_ops` are completed
 
-      - "All existing tests must pass without modification"
+      - Delete main path and rollback failure-path evidence are both specific and
+      credible
 
+      - Clear confirmation and partial-failure evidence are present and consistent
+      with registry contract/docs
 
-      Review criteria:
-
-      1. Completeness: all 10 implementation steps executed?
-
-      2. Evidence quality: each step has specific, verifiable evidence (not ''tests
-      pass'')?
-
-      3. Invar guard: final clean run with zero violations?
-
-      4. Cross-cutting: backward compat, confirm guard, error code consistency verified?
-
-      5. Documentation: INTERFACES.md updated?'
-    verification: '- All 10 prior steps completed with evidence
-
-      - invar guard: zero violations (final run)
-
-      - Full test suite: uv run pytest tests/ passes
-
-      - All four new operations present across all five surfaces (registry/facade/MCP/CLI/Python
-      API)
-
-      - MCPHandlers backward compat verified
-
-      - Confirm guard verified (wrong confirm = no filesystem access)
-
-      - Error code 111 consistent across all files
-
-      - INTERFACES.md updated'
+      - No downstream surface re-derives delete/clear semantics inconsistently'
     evidence_template: '## Gate Review Report
 
 
@@ -18195,7 +18149,10 @@ phases:
 
       - [ ] BLOCKED: <list blocking issues>'
     depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-contract
+    - feature_registry_ops.feature-registry-ops-tests-registry
     - feature_registry_ops.feature-registry-ops-registry-delete
+    - feature_registry_ops.feature-registry-ops-tests-clear
     - feature_registry_ops.feature-registry-ops-registry-clear
     - feature_registry_ops.feature-registry-ops-facade-delete-clear
     - feature_registry_ops.feature-registry-ops-mcp-components
@@ -18203,7 +18160,6 @@ phases:
     - feature_registry_ops.feature-registry-ops-cli-delete-clear
     - feature_registry_ops.feature-registry-ops-python-api-all
     - feature_registry_ops.feature-registry-ops-docs-interfaces
-    - feature_registry_ops.feature-registry-ops-tests-registry
     - feature_registry_ops.feature-registry-ops-tests-transport
     agent: gate-reviewer
   - id: feature_registry_ops.feature-registry-ops-registry-contract
