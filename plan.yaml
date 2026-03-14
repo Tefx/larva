@@ -19744,7 +19744,7 @@ phases:
   steps:
   - id: feature_update.feature-update-core-apply-patches
     name: feature_update.core-apply-patches
-    status: pending
+    status: claimed
     description: "Implement pure patch application function in core layer.\n\nFile:\
       \ src/larva/core/patch.py (NEW FILE)\n\nThis is a non-simple feature path: it\
       \ introduces new core merge semantics with protected-field, precedence, and\
@@ -19868,6 +19868,8 @@ phases:
     - feature_update.feature-update-core-contract
     - feature_update.feature-update-core-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-14T21:49:18.124326+00:00'
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
     status: done
