@@ -849,6 +849,117 @@ class TestPythonApiComponentShow:
         assert exc_info.value.error["details"]["component_name"] == "missing-prompt"
 
 
+class TestPythonApiClone:
+    """Verify clone() is thin delegation over facade.clone."""
+
+    def test_clone_delegates_to_facade_clone(self, facade_fixture: FacadeFixture) -> None:
+        """clone() must forward to facade.clone() and return PersonaSpec."""
+        source_spec = _canonical_spec("source-to-clone", digest="sha256:original")
+        facade_fixture.registry.get_result = Success(source_spec)
+
+        result = python_api.clone("source-to-clone", "cloned-persona")
+
+        assert result["id"] == "cloned-persona"
+        assert facade_fixture.registry.get_inputs == ["source-to-clone"]
+        assert len(facade_fixture.registry.save_inputs) == 1
+        assert facade_fixture.registry.save_inputs[0]["id"] == "cloned-persona"
+
+    def test_clone_returns_cloned_persona_with_new_id(self, facade_fixture: FacadeFixture) -> None:
+        """clone() must return PersonaSpec with new_id and recomputed spec_digest."""
+        source_spec = _canonical_spec("original-persona", digest="sha256:old")
+        facade_fixture.registry.get_result = Success(source_spec)
+
+        result = python_api.clone("original-persona", "new-persona")
+
+        assert result["id"] == "new-persona"
+        assert result["description"] == "Persona original-persona"
+        # Digest should differ from source because content changed
+        assert result["spec_digest"] != "sha256:old"
+
+    def test_clone_preserves_all_fields_without_id_and_digest(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """clone() must preserve all fields from source except id and spec_digest."""
+        source_spec: PersonaSpec = {
+            "id": "source-preserves",
+            "description": "Original description",
+            "prompt": "You are careful.",
+            "model": "gpt-4",
+            "tools": {"shell": "full_access"},
+            "model_params": {"temperature": 0.5, "max_tokens": 2000},
+            "side_effect_policy": "full_access",
+            "can_spawn": True,
+            "compaction_prompt": "Summarize everything.",
+            "spec_version": "0.2.0",
+            "spec_digest": "sha256:source-digest",
+            "custom_field": "custom_value",
+        }
+        facade_fixture.registry.get_result = Success(source_spec)
+
+        result = python_api.clone("source-preserves", "target-preserves")
+
+        assert result["description"] == "Original description"
+        assert result["prompt"] == "You are careful."
+        assert result["model"] == "gpt-4"
+        assert result["tools"] == {"shell": "full_access"}
+        assert result["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
+        assert result["side_effect_policy"] == "full_access"
+        assert result["can_spawn"] is True
+        assert result["compaction_prompt"] == "Summarize everything."
+        assert result["spec_version"] == "0.2.0"
+        assert result["custom_field"] == "custom_value"
+        assert result["id"] == "target-preserves"
+        # spec_digest is recomputed, not copied from source
+        assert result["spec_digest"] != "sha256:source-digest"
+
+    def test_clone_not_found_raises_larva_api_error(self, facade_fixture: FacadeFixture) -> None:
+        """clone() with non-existent source_id must raise LarvaApiError."""
+        facade_fixture.registry.get_result = Failure(
+            {"code": "PERSONA_NOT_FOUND", "message": "not found", "persona_id": "missing"}
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.clone("missing", "cloned")
+
+        assert exc_info.value.error["code"] == "PERSONA_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 100
+
+    def test_clone_validation_failure_raises_larva_api_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """clone() with validation failure on cloned spec must raise LarvaApiError."""
+        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        facade_fixture.registry.get_result = Success(source_spec)
+        facade_fixture.validate_module.report = _invalid_report("PERSONA_INVALID")
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.clone("valid-source", "Invalid_Clone_Id")
+
+        assert exc_info.value.error["code"] == "PERSONA_INVALID"
+        assert exc_info.value.error["numeric_code"] == 101
+
+    def test_clone_write_failure_raises_larva_api_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """clone() with registry save failure must raise LarvaApiError."""
+        source_spec = _canonical_spec("source-write-fail", digest="sha256:source")
+        facade_fixture.registry.get_result = Success(source_spec)
+        facade_fixture.registry.save_result = Failure(
+            {
+                "code": "REGISTRY_WRITE_FAILED",
+                "message": "disk full",
+                "persona_id": "cloned-write-fail",
+                "path": "/tmp/cloned-write-fail.json",
+            }
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.clone("source-write-fail", "cloned-write-fail")
+
+        assert exc_info.value.error["code"] == "REGISTRY_WRITE_FAILED"
+        assert exc_info.value.error["numeric_code"] == 109
+
+
 class TestPythonApiDelete:
     """Verify delete() is thin delegation over facade.delete."""
 
@@ -990,6 +1101,30 @@ class TestPythonApiUpdate:
 
 class TestPythonApiExports:
     """Verify Python API exports include new functions."""
+
+    def test_validate_in_all(self) -> None:
+        """validate must be in __all__."""
+        assert "validate" in python_api.__all__
+
+    def test_assemble_in_all(self) -> None:
+        """assemble must be in __all__."""
+        assert "assemble" in python_api.__all__
+
+    def test_register_in_all(self) -> None:
+        """register must be in __all__."""
+        assert "register" in python_api.__all__
+
+    def test_resolve_in_all(self) -> None:
+        """resolve must be in __all__."""
+        assert "resolve" in python_api.__all__
+
+    def test_list_in_all(self) -> None:
+        """list must be in __all__."""
+        assert "list" in python_api.__all__
+
+    def test_clone_in_all(self) -> None:
+        """clone must be in __all__."""
+        assert "clone" in python_api.__all__
 
     def test_component_list_in_all(self) -> None:
         """component_list must be in __all__."""

@@ -1625,6 +1625,138 @@ class TestMCPHandleDelete:
         )
 
 
+class TestMCPHandleClone:
+    """Test MCPHandlers.handle_clone parameter validation and delegation."""
+
+    def test_handle_clone_success(self) -> None:
+        """Test handle_clone returns PersonaSpec on success."""
+        source_spec = _canonical_spec("source-persona", digest="sha256:source")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"source_id": "source-persona", "new_id": "cloned-persona"})
+
+        assert isinstance(result, dict)
+        assert result["id"] == "cloned-persona"
+        assert result["description"] == "Persona source-persona"
+        assert result["spec_digest"] != "sha256:source"  # Digest recomputed
+
+    def test_handle_clone_failure_returns_error_envelope(self) -> None:
+        """Test handle_clone returns error envelope on facade failure."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"source_id": "missing", "new_id": "cloned-persona"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_NOT_FOUND"
+        assert result["numeric_code"] == 100
+        assert "missing" in result["message"]
+
+    def test_handle_clone_missing_source_id_returns_malformed_envelope(self) -> None:
+        """Test handle_clone returns malformed-params envelope for missing source_id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"new_id": "cloned-persona"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="missing required parameter 'source_id'",
+        )
+
+    def test_handle_clone_missing_new_id_returns_malformed_envelope(self) -> None:
+        """Test handle_clone returns malformed-params envelope for missing new_id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"source_id": "source-persona"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="missing required parameter 'new_id'",
+        )
+
+    def test_handle_clone_unknown_params_returns_malformed_envelope(self) -> None:
+        """Test handle_clone rejects unknown params."""
+        source_spec = _canonical_spec("source-persona")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone(
+            {
+                "source_id": "source-persona",
+                "new_id": "cloned-persona",
+                "extra": "param",
+            }
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_clone_non_string_source_id_returns_malformed_envelope(self) -> None:
+        """Test handle_clone rejects non-string source_id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"source_id": 123, "new_id": "cloned-persona"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="parameter 'source_id' must be string",
+        )
+
+    def test_handle_clone_non_string_new_id_returns_malformed_envelope(self) -> None:
+        """Test handle_clone rejects non-string new_id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone({"source_id": "source-persona", "new_id": 456})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="parameter 'new_id' must be string",
+        )
+
+    def test_handle_clone_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_clone rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_clone("not-an-object")
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.clone",
+            reason="params must be an object",
+        )
+
+
 class TestMCPHandleClear:
     """Test MCPHandlers.handle_clear parameter validation and delegation."""
 

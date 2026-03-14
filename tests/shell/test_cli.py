@@ -825,6 +825,201 @@ class TestDeleteCommand:
 
 
 # ============================================================================
+# Clone Command Tests
+# ============================================================================
+
+
+class TestCloneCommand:
+    """Tests for the clone command handler."""
+
+    def test_clone_success_text_mode_returns_exit_ok(self) -> None:
+        """Clone existing persona returns exit code 0 in text mode."""
+        source_spec = _canonical_spec("source-persona", digest="sha256:source")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("source-persona", "cloned-persona", as_json=False, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert len(registry.save_inputs) == 1
+        assert registry.save_inputs[0]["id"] == "cloned-persona"
+
+    def test_clone_success_json_mode_returns_json_payload(self) -> None:
+        """Clone existing persona returns JSON payload in JSON mode."""
+        source_spec = _canonical_spec("source-to-clone", digest="sha256:original")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("source-to-clone", "clone-target", as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert cli_result["json"]["data"]["id"] == "clone-target"
+        # Digest should be recomputed, not copied
+        assert cli_result["json"]["data"]["spec_digest"] != "sha256:original"
+
+    def test_clone_source_not_found_returns_exit_error(self) -> None:
+        """Clone non-existent persona returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("missing", "cloned-persona", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "Clone failed" in failure.get("stderr", "")
+
+    def test_clone_source_not_found_json_mode_returns_error_envelope(self) -> None:
+        """Clone non-existent persona returns JSON error envelope in JSON mode."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found in registry",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("missing", "cloned-persona", as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+
+    def test_clone_invalid_new_id_returns_exit_error(self) -> None:
+        """Clone with invalid new_id returns exit code 1."""
+        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(
+            report=_invalid_report("INVALID_PERSONA_ID"),
+            registry=registry,
+        )
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("valid-source", "Bad_Clone_Id", as_json=False, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_clone_invalid_new_id_json_mode_returns_error_envelope(self) -> None:
+        """Clone with invalid new_id returns JSON error envelope in JSON mode."""
+        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(
+            report=_invalid_report("PERSONA_INVALID"),
+            registry=registry,
+        )
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("valid-source", "Bad_Clone_Id", as_json=True, facade=facade)
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["numeric_code"] == 101
+
+    def test_clone_registry_write_failure_returns_exit_error(self) -> None:
+        """Clone with registry write failure returns exit code 1."""
+        source_spec = _canonical_spec("source-write-fail", digest="sha256:source")
+        registry = InMemoryRegistryStore(
+            get_result=Success(source_spec),
+            save_result=Failure(
+                {
+                    "code": "REGISTRY_WRITE_FAILED",
+                    "message": "disk full during save",
+                    "persona_id": "cloned-write-fail",
+                    "path": "/tmp/cloned-write-fail.json",
+                }
+            ),
+        )
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command(
+            "source-write-fail", "cloned-write-fail", as_json=False, facade=facade
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "Clone failed" in failure.get("stderr", "")
+
+    def test_clone_preserves_all_fields_except_id_and_digest(self) -> None:
+        """Clone preserves all source fields except id and spec_digest."""
+        source_spec: PersonaSpec = {
+            "id": "original-persona",
+            "description": "Original description",
+            "prompt": "Original prompt text",
+            "model": "gpt-4",
+            "tools": {"shell": "full_access"},
+            "model_params": {"temperature": 0.7, "max_tokens": 4000},
+            "side_effect_policy": "full_access",
+            "can_spawn": True,
+            "compaction_prompt": "Custom compaction",
+            "spec_version": "0.2.0",
+            "spec_digest": "sha256:stale",
+            "custom_field": "custom_value",
+        }
+        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import clone_command
+
+        result = clone_command("original-persona", "cloned-persona", as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        cloned = cli_result["json"]["data"]
+        assert cloned["id"] == "cloned-persona"
+        assert cloned["description"] == "Original description"
+        assert cloned["prompt"] == "Original prompt text"
+        assert cloned["model"] == "gpt-4"
+        assert cloned["tools"] == {"shell": "full_access"}
+        assert cloned["model_params"] == {"temperature": 0.7, "max_tokens": 4000}
+        assert cloned["side_effect_policy"] == "full_access"
+        assert cloned["can_spawn"] is True
+        assert cloned["compaction_prompt"] == "Custom compaction"
+        assert cloned["spec_version"] == "0.2.0"
+        assert cloned["custom_field"] == "custom_value"
+        # Digest must be recomputed
+        assert cloned["spec_digest"] != "sha256:stale"
+
+
+# ============================================================================
 # Clear Command Tests
 # ============================================================================
 
@@ -1147,6 +1342,9 @@ class RecordingFacade:
     update_result: Result[PersonaSpec, LarvaError] = field(
         default_factory=lambda: Success(_canonical_spec("updated"))
     )
+    clone_result: Result[PersonaSpec, LarvaError] = field(
+        default_factory=lambda: Success(_canonical_spec("cloned"))
+    )
     validate_calls: int = 0
     assemble_calls: int = 0
     register_calls: int = 0
@@ -1155,12 +1353,15 @@ class RecordingFacade:
     delete_calls: int = 0
     clear_calls: int = 0
     update_calls: int = 0
+    clone_calls: int = 0
     last_resolve_id: str | None = None
     last_resolve_overrides: dict[str, object] | None = None
     last_delete_id: str | None = None
     last_clear_confirm: str | None = None
     last_update_id: str | None = None
     last_update_patches: dict[str, object] | None = None
+    last_clone_source: str | None = None
+    last_clone_target: str | None = None
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         del spec
@@ -1213,6 +1414,12 @@ class RecordingFacade:
         self.last_update_id = persona_id
         self.last_update_patches = patches
         return self.update_result
+
+    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
+        self.clone_calls += 1
+        self.last_clone_source = source_id
+        self.last_clone_target = new_id
+        return self.clone_result
 
 
 class TestRunCli:
@@ -2164,6 +2371,26 @@ class TestDispatch:
 
         assert isinstance(result, Success)
         assert facade.list_calls == 1
+
+    def test_clone_command_routes_to_clone_handler(self) -> None:
+        """Clone command routes to clone_command handler."""
+        from larva.shell import cli as cli_module
+
+        class Args:
+            command = "clone"
+            source_id = "source-persona"
+            new_id = "cloned-persona"
+            as_json = False
+
+        facade = RecordingFacade()
+        components = InMemoryComponentStore()
+
+        result = cli_module._dispatch(Args(), facade=facade, component_store=components)
+
+        assert isinstance(result, Success)
+        assert facade.clone_calls == 1
+        assert facade.last_clone_source == "source-persona"
+        assert facade.last_clone_target == "cloned-persona"
 
     def test_component_list_routes_to_component_list_handler(self) -> None:
         """Component list routes to component_list_command handler."""
