@@ -17424,3 +17424,96 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-delete
     agent: python-executor
+  - id: feature_registry_ops.feature-registry-ops-mcp-delete-clear
+    name: feature_registry_ops.mcp-delete-clear
+    status: pending
+    description: "Add delete and clear MCP handlers.\n\nFiles: src/larva/shell/mcp_contract.py,\
+      \ src/larva/shell/mcp.py\n\n### mcp_contract.py changes\n\nAdd two new tool\
+      \ definitions to `LARVA_MCP_TOOLS` list (after existing tools):\n\n```python\n\
+      {\n    \"name\": \"larva.delete\",\n    \"description\": \"Delete a registered\
+      \ persona by id.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n\
+      \        \"properties\": {\n            \"id\": {\"type\": \"string\", \"description\"\
+      : \"Persona id to delete\"},\n        },\n        \"required\": [\"id\"],\n\
+      \    },\n},\n{\n    \"name\": \"larva.clear\",\n    \"description\": \"Delete\
+      \ all registered personas. Requires confirm='DELETE ALL PERSONAS'.\",\n    \"\
+      input_schema\": {\n        \"type\": \"object\",\n        \"properties\": {\n\
+      \            \"confirm\": {\n                \"type\": \"string\",\n       \
+      \         \"description\": \"Must be exactly 'DELETE ALL PERSONAS' to proceed\"\
+      ,\n            },\n        },\n        \"required\": [\"confirm\"],\n    },\n\
+      },\n```\n\n### mcp.py changes\n\n1. Add `handle_delete(self, params: object)\
+      \ -> Union[dict[str, object], LarvaError]`:\n   - Validate params object, require\
+      \ \"id\" (string), reject unknown params\n   - Delegate to `self._facade.delete(persona_id)`\n\
+      \   - On Success: return `{\"id\": persona_id, \"deleted\": True}`\n   - On\
+      \ Failure: return error envelope\n\n2. Add `handle_clear(self, params: object)\
+      \ -> Union[dict[str, object], LarvaError]`:\n   - Validate params object, require\
+      \ \"confirm\" (string), reject unknown params\n   - Delegate to `self._facade.clear(confirm=confirm_value)`\n\
+      \   - On Success: return `{\"cleared\": True, \"count\": count}`\n   - On Failure:\
+      \ return error envelope (wrong confirm string produces LarvaError)\n\ntags:\
+      \ [\"integration\"]\nstep_type: implementation\nrefs:\n  - src/larva/shell/mcp_contract.py\n\
+      \  - src/larva/shell/mcp.py\n  - src/larva/app/facade.py\n  - tests/shell/test_mcp.py"
+    verification: '- invar guard passes
+
+      - LARVA_MCP_TOOLS contains larva.delete and larva.clear entries
+
+      - handle_delete with valid id delegates to facade.delete, returns {"id": ...,
+      "deleted": True}
+
+      - handle_clear with correct confirm delegates to facade.clear, returns {"cleared":
+      True, "count": N}
+
+      - handle_clear with wrong confirm returns LarvaError (REGISTRY_DELETE_FAILED)
+
+      - All existing MCP tests still pass'
+    evidence_template: '## MCP Delete/Clear Handler Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Full MCP test suite** (must all pass):
+
+      ```
+
+      <paste: uv run pytest tests/shell/test_mcp.py -v>
+
+      ```
+
+
+      **Integration evidence** — handle_delete seam:
+
+      ```
+
+      <paste actual handler call result or test output showing facade delegation>
+
+      ```
+
+
+      **Integration evidence** — handle_clear seam (both success and wrong-confirm):
+
+      ```
+
+      <paste actual handler call results>
+
+      ```
+
+
+      **Final tool count**:
+
+      ```python
+
+      assert len(LARVA_MCP_TOOLS) == <expected N+4 total>
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-facade-delete-clear
+    - feature_registry_ops.feature-registry-ops-mcp-components
+    agent: python-executor
