@@ -18606,7 +18606,7 @@ phases:
       \ tests."
   - id: feature_registry_ops.feature-registry-ops-gate
     name: feature_registry_ops.gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify feature_registry_ops phase completion and quality.
 
 
@@ -18763,6 +18763,46 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T12:33:20.068453+00:00'
+    done_at: '2026-03-14T12:42:22.090666+00:00'
+    evidence: '## Gate Review Report
+
+
+      Reviewer verdict: FAIL (needs batched remediation).
+
+
+      Verification executed:
+
+      - `uv run invar guard` -> pass.
+
+      - `uv run pytest tests/ -v --tb=short` -> `406 passed, 2 failed`.
+
+
+      Detected issues (batched):
+
+      - BLOCKER B1: `tests/app/test_facade.py` uses `AssemblyError(...)` ctor with
+      keyword args in two places (lines ~111, ~124), causing two full-suite failures;
+      must use `_assembly_error(...)` factory.
+
+      - SHOULD_FIX S1: `INVALID_CONFIRMATION_TOKEN` numeric code inconsistency (`INTERFACES.md`
+      documents 112 while `ERROR_NUMERIC_CODES` fallback behavior yields 10 in non-CLI
+      path).
+
+
+      Action taken per batched-fix protocol:
+
+      - Created batched fix step: `feature_registry_ops.feature-registry-ops-fix-gate-batch`
+      (fix ALL issues, not just first).
+
+      - Created retest step: `feature_registry_ops.feature-registry-ops-gate-retest`
+      (independent gate verification).
+
+
+      Notes:
+
+      - These findings came from independent gate-reviewer evidence; no fabricated
+      outputs.
+
+      - Continue execution through batched fix + retest path.'
   - id: feature_registry_ops.feature-registry-ops-registry-contract
     name: feature_registry_ops.registry-contract
     status: done
