@@ -20396,29 +20396,38 @@ phases:
     description: "Gate review: Verify feature_update phase completion and quality.\n\
       \nAs an INDEPENDENT REVIEWER (gate-reviewer), assess whether the feature_update\
       \ phase meets the quality bar.\n\nYOU ARE THE QUALITY GATE. Block progress if:\n\
+      - Core patch contract is missing or implementation dispatch could bypass it\n\
       - Core apply_patches has no @pre/@post contracts or doctests fail\n- Patch protected\
       \ field exclusion is missing (spec_digest/spec_version patchable)\n- Deep merge\
       \ not working for model_params/tools\n- Dot-notation expansion not working\n\
       - Facade update flow does not include revalidation\n- Any transport layer (MCP/CLI/Python\
       \ API) is missing update support\n- CLI --set type inference is broken\n- Existing\
       \ tests were modified\n\nreview_depth: THOROUGH\nreview_depth_rationale:\n \
-      \ - Core layer change requires Invar contract verification\n  - Patch semantics\
-      \ (deep merge vs shallow, protected fields) are subtle\n  - Type inference in\
-      \ CLI is easy to get wrong\n  - Cross-layer operation spanning 5 files\n\ncross_cutting_focus:\n\
+      \ - Core layer change requires explicit contract -> tests -> implementation\
+      \ ordering before dispatch\n  - Patch semantics (deep merge vs shallow, protected\
+      \ fields) are subtle\n  - Type inference in CLI is easy to get wrong\n  - Cross-layer\
+      \ operation spanning core, facade, and 3 transport surfaces\n\ncross_cutting_focus:\n\
       \  - \"Protected fields: spec_digest and spec_version must not be patchable\
       \ via ANY surface\"\n  - \"Revalidation: patched spec MUST go through validate\
       \ + normalize before save\"\n  - \"Deep merge: model_params and tools must merge,\
       \ not replace\"\n  - \"Dot notation: model_params.temperature=0.3 must work\
-      \ in CLI --set AND MCP patches\"\n\nReview criteria:\n1. Core contracts: @pre/@post\
-      \ present and enforced? Doctests pass?\n2. Facade flow: get -> patch -> validate\
-      \ -> normalize -> save in correct order?\n3. Transport parity: all three surfaces\
-      \ support update with same semantics?\n4. Evidence quality: specific and verifiable?\n\
-      5. Regression: all existing tests pass without modification?"
+      \ in CLI --set AND MCP patches\"\n  - \"Contract-first dispatch: core contract\
+      \ and contract-driven tests must exist upstream of implementation\"\n\nReview\
+      \ criteria:\n1. Core contracts: contract step exists, @pre/@post present and\
+      \ enforced, doctests pass\n2. Contract-first ordering: core-tests depend on\
+      \ contract and implementation depends on both contract and tests\n3. Facade\
+      \ flow: get -> patch -> validate -> normalize -> save in correct order\n4. Transport\
+      \ parity: all three surfaces support update with same semantics\n5. Evidence\
+      \ quality: specific and verifiable\n6. Regression: all existing tests pass without\
+      \ modification"
     verification: '- All prior steps completed with evidence
 
       - invar guard: zero violations (final run)
 
       - Full test suite: uv run pytest tests/ passes
+
+      - Core contract step exists and is completed before implementation evidence
+      is reviewed
 
       - Core @pre/@post contracts verified by invar guard
 
@@ -20540,6 +20549,7 @@ phases:
 
       - [ ] BLOCKED: <list blocking issues>'
     depends_on:
+    - feature_update.feature-update-core-contract
     - feature_update.feature-update-core-apply-patches
     - feature_update.feature-update-core-tests
     - feature_update.feature-update-facade-update
