@@ -29,7 +29,7 @@ from larva.core import validate as validate_module
 from larva.core.assemble import AssemblyError
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.shell.components import ComponentStoreError
+from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import RegistryError
 
 if TYPE_CHECKING:
@@ -164,8 +164,12 @@ class InMemoryRegistryStore:
         default_factory=lambda: Success([])
     )
     save_result: Result[None, RegistryError] = field(default_factory=lambda: Success(None))
+    delete_result: Result[None, RegistryError] = field(default_factory=lambda: Success(None))
+    clear_result: Result[int, RegistryError] = field(default_factory=lambda: Success(0))
     save_inputs: list[PersonaSpec] = field(default_factory=list)
     get_inputs: list[str] = field(default_factory=list)
+    delete_inputs: list[str] = field(default_factory=list)
+    clear_inputs: list[str] = field(default_factory=list)
 
     def save(self, spec: PersonaSpec) -> Result[None, RegistryError]:
         self.save_inputs.append(dict(spec))
@@ -177,6 +181,14 @@ class InMemoryRegistryStore:
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
         return self.list_result
+
+    def delete(self, persona_id: str) -> Result[None, RegistryError]:
+        self.delete_inputs.append(persona_id)
+        return self.delete_result
+
+    def clear(self, confirm: str) -> Result[int, RegistryError]:
+        self.clear_inputs.append(confirm)
+        return self.clear_result
 
 
 # -----------------------------------------------------------------------------
@@ -592,3 +604,343 @@ class TestThinAdapterSemantics:
         assert callable(getattr(python_api, "register", None))
         assert callable(getattr(python_api, "resolve", None))
         assert callable(getattr(python_api, "list", None))
+
+
+class TestPythonApiComponentList:
+    """Verify component_list() is thin delegation over FilesystemComponentStore.list_components."""
+
+    def test_component_list_delegates_to_component_store(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_list() must forward to FilesystemComponentStore.list_components()."""
+        call_record: list[str] = []
+
+        class MockComponentStore:
+            def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
+                call_record.append("list_components")
+                return Success(
+                    {
+                        "prompts": ["code-reviewer", "analyst"],
+                        "toolsets": ["default"],
+                        "constraints": ["strict"],
+                        "models": ["gpt-4o-mini"],
+                    }
+                )
+
+        mock_store = MockComponentStore()
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: mock_store)
+
+        result = python_api.component_list()
+
+        assert call_record == ["list_components"]
+        assert "prompts" in result
+        assert result["prompts"] == ["code-reviewer", "analyst"]
+
+    def test_component_list_returns_dict_with_all_keys(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_list() must return dict with all component type keys."""
+
+        class MockComponentStore:
+            def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
+                return Success(
+                    {
+                        "prompts": [],
+                        "toolsets": [],
+                        "constraints": [],
+                        "models": [],
+                    }
+                )
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        result = python_api.component_list()
+        assert result == {"prompts": [], "toolsets": [], "constraints": [], "models": []}
+
+    def test_component_list_failure_raises_larva_api_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_list() failures must raise LarvaApiError."""
+
+        class MockComponentStore:
+            def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
+                return Failure(
+                    ComponentStoreError(
+                        "Components directory not found",
+                        component_type=None,
+                        component_name=None,
+                    )
+                )
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_list()
+
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+
+
+class TestPythonApiComponentShow:
+    """Verify component_show() is thin delegation over FilesystemComponentStore loaders."""
+
+    def test_component_show_prompt_delegates_to_load_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show('prompt', name) must forward to load_prompt()."""
+        call_record: list[str] = []
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                call_record.append(f"load_prompt:{name}")
+                return Success({"text": f"Prompt {name} content"})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        result = python_api.component_show("prompt", "test-prompt")
+
+        assert call_record == ["load_prompt:test-prompt"]
+        assert result == {"text": "Prompt test-prompt content"}
+
+    def test_component_show_toolset_delegates_to_load_toolset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show('toolset', name) must forward to load_toolset()."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({"tools": {"shell": "read_write"}})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        result = python_api.component_show("toolset", "default")
+        assert result == {"tools": {"shell": "read_write"}}
+
+    def test_component_show_constraint_delegates_to_load_constraint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show('constraint', name) must forward to load_constraint()."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({"side_effect_policy": "read_only"})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        result = python_api.component_show("constraint", "strict")
+        assert result == {"side_effect_policy": "read_only"}
+
+    def test_component_show_model_delegates_to_load_model(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show('model', name) must forward to load_model()."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({"model": "gpt-4o-mini"})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        result = python_api.component_show("model", "gpt-4")
+        assert result == {"model": "gpt-4o-mini"}
+
+    def test_component_show_invalid_type_raises_component_not_found(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show() with invalid type must raise LarvaApiError with code COMPONENT_NOT_FOUND/105."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_show("invalid_type", "some-name")
+
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+        assert "Invalid component type" in exc_info.value.error["message"]
+
+    def test_component_show_not_found_raises_component_not_found(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show() for missing component must raise LarvaApiError with code COMPONENT_NOT_FOUND/105."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Failure(
+                    ComponentStoreError(
+                        f"Prompt not found: {name}",
+                        component_type="prompt",
+                        component_name=name,
+                    )
+                )
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_show("prompt", "missing-prompt")
+
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+        assert exc_info.value.error["details"]["component_type"] == "prompt"
+        assert exc_info.value.error["details"]["component_name"] == "missing-prompt"
+
+
+class TestPythonApiDelete:
+    """Verify delete() is thin delegation over facade.delete."""
+
+    def test_delete_delegates_to_facade_delete(self, facade_fixture: FacadeFixture) -> None:
+        """delete() must forward to facade.delete() and return DeletedPersona."""
+        facade_fixture.registry.delete_result = Success(None)  # type: ignore
+
+        result = python_api.delete("test-persona")
+
+        assert result == {"id": "test-persona", "deleted": True}
+        assert facade_fixture.registry.delete_inputs == ["test-persona"]  # type: ignore
+
+    def test_delete_returns_deleted_persona(self, facade_fixture: FacadeFixture) -> None:
+        """delete() must return DeletedPersona with id and deleted status."""
+        facade_fixture.registry.delete_result = Success(None)  # type: ignore
+
+        result = python_api.delete("old-persona")
+        assert result["id"] == "old-persona"
+        assert result["deleted"] is True
+
+    def test_delete_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
+        """Facade delete failures must propagate through delegation."""
+        facade_fixture.registry.delete_result = Failure(
+            {"code": "PERSONA_NOT_FOUND", "message": "persona not found", "persona_id": "missing"}
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.delete("missing")
+
+        assert exc_info.value.error["code"] == "PERSONA_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 100
+
+
+class TestPythonApiClear:
+    """Verify clear() is thin delegation over facade.clear."""
+
+    def test_clear_delegates_to_facade_clear(self, facade_fixture: FacadeFixture) -> None:
+        """clear() must forward to facade.clear() and return count."""
+        facade_fixture.registry.clear_result = Success(5)  # type: ignore
+
+        result = python_api.clear(confirm="CLEAR REGISTRY")
+
+        assert result == 5
+        assert facade_fixture.registry.clear_inputs == ["CLEAR REGISTRY"]  # type: ignore
+
+    def test_clear_returns_count(self, facade_fixture: FacadeFixture) -> None:
+        """clear() must return the count of personas removed."""
+        facade_fixture.registry.clear_result = Success(3)  # type: ignore
+
+        result = python_api.clear(confirm="CLEAR REGISTRY")
+        assert result == 3
+
+    def test_clear_wrong_confirm_raises_error(self, facade_fixture: FacadeFixture) -> None:
+        """clear() with wrong confirm token must raise LarvaApiError."""
+        facade_fixture.registry.clear_result = Failure(
+            {"code": "INVALID_CONFIRMATION_TOKEN", "message": "wrong confirm token"}
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.clear(confirm="WRONG TOKEN")
+
+        assert exc_info.value.error["code"] == "INVALID_CONFIRMATION_TOKEN"
+
+    def test_clear_positional_arg_raises_typeerror(self, facade_fixture: FacadeFixture) -> None:
+        """clear() must be keyword-only - positional arg must raise TypeError."""
+        with pytest.raises(TypeError):
+            python_api.clear("CLEAR REGISTRY")  # type: ignore
+
+
+class TestPythonApiExports:
+    """Verify Python API exports include new functions."""
+
+    def test_component_list_in_all(self) -> None:
+        """component_list must be in __all__."""
+        assert "component_list" in python_api.__all__
+
+    def test_component_show_in_all(self) -> None:
+        """component_show must be in __all__."""
+        assert "component_show" in python_api.__all__
+
+    def test_delete_in_all(self) -> None:
+        """delete must be in __all__."""
+        assert "delete" in python_api.__all__
+
+    def test_clear_in_all(self) -> None:
+        """clear must be in __all__."""
+        assert "clear" in python_api.__all__
+
+    def test_deleted_persona_in_all(self) -> None:
+        """DeletedPersona must be in __all__."""
+        assert "DeletedPersona" in python_api.__all__
+
+    def test_cleared_registry_in_all(self) -> None:
+        """ClearedRegistry must be in __all__."""
+        assert "ClearedRegistry" in python_api.__all__

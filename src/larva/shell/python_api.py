@@ -43,7 +43,9 @@ from larva.core.validate import ValidationReport
 # Import app-layer types and facade
 from larva.app.facade import (
     AssembleRequest,
+    ClearedRegistry,
     DefaultLarvaFacade,
+    DeletedPersona,
     LarvaError,
     PersonaSummary,
     RegisteredPersona,
@@ -294,6 +296,237 @@ def list() -> list[PersonaSummary]:
 
 
 # -----------------------------------------------------------------------------
+# Lazy ComponentStore Initialization
+# -----------------------------------------------------------------------------
+# The component store is lazily initialized on first use to defer filesystem
+# I/O until the Python API is actually called.
+
+
+_component_store: FilesystemComponentStore | None = None
+
+
+# @invar:allow shell_result: lazy initialization is internal helper returning store instance
+# @shell_orchestration: creating FilesystemComponentStore instance is deferred I/O initialization
+# @shell_complexity: simple lazy singleton pattern for deferred filesystem access
+def _get_component_store() -> FilesystemComponentStore:
+    """Lazily initialize and return the default component store instance."""
+    global _component_store
+    if _component_store is None:
+        _component_store = FilesystemComponentStore()
+    return _component_store
+
+
+# -----------------------------------------------------------------------------
+# New Registry Operations API
+# -----------------------------------------------------------------------------
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def component_list() -> dict[str, list[str]]:
+    """List all available components by type.
+
+    This is a thin delegation to `larva.shell.components.FilesystemComponentStore.list_components`.
+    The facade orchestrates: listing available components from the filesystem.
+
+    Returns:
+        Dictionary mapping component types to lists of available component names:
+        - "prompts": list of available prompt names
+        - "toolsets": list of available toolset names
+        - "constraints": list of available constraint names
+        - "models": list of available model names
+
+    Contract:
+        - Delegates to shell.components for filesystem I/O
+        - Returns component list directly (no Result wrapper)
+
+    Example:
+        components = component_list()
+        assert "prompts" in components
+    """
+    result = _get_component_store().list_components()
+    if isinstance(result, Failure):
+        error = result.failure()
+        # Map ComponentStoreError to LarvaApiError
+        raise LarvaApiError(
+            {
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": 105,
+                "message": str(error),
+                "details": {
+                    "component_type": getattr(error, "component_type", None),
+                    "component_name": getattr(error, "component_name", None),
+                },
+            }
+        )
+    return result.unwrap()
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+# @shell_complexity: thin adapter with type dispatch for component loaders
+def component_show(type: str, name: str) -> dict[str, object]:
+    """Show details of a specific component.
+
+    This is a thin delegation to the component store loader methods.
+    The facade orchestrates: loading component from filesystem.
+
+    Args:
+        type: Component type - one of "prompt", "toolset", "constraint", "model".
+        name: Component name (without file extension).
+
+    Returns:
+        Component data as a dictionary.
+
+    Raises:
+        LarvaApiError: If component is not found, with code COMPONENT_NOT_FOUND (105).
+
+    Contract:
+        - Delegates to shell.components for filesystem I/O
+        - Invalid type raises LarvaApiError with code COMPONENT_NOT_FOUND/105
+
+    Example:
+        prompt = component_show("prompt", "code-reviewer")
+        assert "text" in prompt
+    """
+    store = _get_component_store()
+
+    if type == "prompt":
+        result = store.load_prompt(name)
+        if isinstance(result, Failure):
+            error = result.failure()
+            raise LarvaApiError(
+                {
+                    "code": "COMPONENT_NOT_FOUND",
+                    "numeric_code": 105,
+                    "message": str(error),
+                    "details": {
+                        "component_type": getattr(error, "component_type", type),
+                        "component_name": getattr(error, "component_name", name),
+                    },
+                }
+            )
+        return result.unwrap()
+
+    if type == "toolset":
+        result = store.load_toolset(name)
+        if isinstance(result, Failure):
+            error = result.failure()
+            raise LarvaApiError(
+                {
+                    "code": "COMPONENT_NOT_FOUND",
+                    "numeric_code": 105,
+                    "message": str(error),
+                    "details": {
+                        "component_type": getattr(error, "component_type", type),
+                        "component_name": getattr(error, "component_name", name),
+                    },
+                }
+            )
+        return result.unwrap()
+
+    if type == "constraint":
+        result = store.load_constraint(name)
+        if isinstance(result, Failure):
+            error = result.failure()
+            raise LarvaApiError(
+                {
+                    "code": "COMPONENT_NOT_FOUND",
+                    "numeric_code": 105,
+                    "message": str(error),
+                    "details": {
+                        "component_type": getattr(error, "component_type", type),
+                        "component_name": getattr(error, "component_name", name),
+                    },
+                }
+            )
+        return result.unwrap()
+
+    if type == "model":
+        result = store.load_model(name)
+        if isinstance(result, Failure):
+            error = result.failure()
+            raise LarvaApiError(
+                {
+                    "code": "COMPONENT_NOT_FOUND",
+                    "numeric_code": 105,
+                    "message": str(error),
+                    "details": {
+                        "component_type": getattr(error, "component_type", type),
+                        "component_name": getattr(error, "component_name", name),
+                    },
+                }
+            )
+        return result.unwrap()
+
+    # Invalid type - raise COMPONENT_NOT_FOUND with code 105
+    raise LarvaApiError(
+        {
+            "code": "COMPONENT_NOT_FOUND",
+            "numeric_code": 105,
+            "message": f"Invalid component type: {type}",
+            "details": {
+                "component_type": type,
+                "component_name": name,
+            },
+        }
+    )
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def delete(persona_id: str) -> DeletedPersona:
+    """Delete a registered persona by id.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.delete`.
+    The facade orchestrates: registry delete.
+
+    Args:
+        persona_id: Unique identifier of the persona to delete.
+
+    Returns:
+        DeletedPersona with id and deleted status.
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Deletes via shell.registry
+
+    Example:
+        result = delete("old-persona")
+        assert result["deleted"] is True
+    """
+    return cast("DeletedPersona", _unwrap_result(_get_facade().delete(persona_id)))
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def clear(*, confirm: str) -> int:
+    """Clear all registered personas from the registry.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.clear`.
+    The facade orchestrates: registry clear with confirmation.
+
+    Args:
+        confirm: Confirmation token required for safety (must be "CLEAR REGISTRY").
+
+    Returns:
+        Number of personas that were removed.
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Clears via shell.registry
+        - Wrong confirm token raises LarvaApiError
+
+    Example:
+        count = clear(confirm="CLEAR REGISTRY")
+        assert count >= 0
+    """
+    result = _get_facade().clear(confirm=confirm)
+    unwrapped = _unwrap_result(result)
+    return cast("ClearedRegistry", unwrapped)["count"]
+
+
+# -----------------------------------------------------------------------------
 # Public API Exports
 # -----------------------------------------------------------------------------
 
@@ -303,6 +536,12 @@ __all__ = [
     "register",
     "resolve",
     "list",
+    # Component operations
+    "component_list",
+    "component_show",
+    # Registry operations
+    "delete",
+    "clear",
     # Re-export types for type checking
     "PersonaSpec",
     "ValidationReport",
@@ -310,6 +549,8 @@ __all__ = [
     "RegisteredPersona",
     "PersonaSummary",
     "LarvaError",
+    "DeletedPersona",
+    "ClearedRegistry",
     # Exception for failure passthrough
     "LarvaApiError",
 ]
