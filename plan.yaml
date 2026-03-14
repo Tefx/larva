@@ -19738,7 +19738,7 @@ phases:
       - PASS. No remaining blocker/should-fix findings for this phase.'
 - id: feature_update
   name: 'Feature: Persona Update (Patch)'
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   steps:
@@ -21207,7 +21207,7 @@ phases:
       as guard errors.'
   - id: feature_update.feature-update-gate-retest-shell-complexity-batch
     name: feature_update.gate-retest-shell-complexity-batch
-    status: claimed
+    status: done
     description: "As an INDEPENDENT REVIEWER (`gate-reviewer`), re-test the `feature_update`\
       \ gate blocker family after the batched shell-complexity remediation.\n\nYOUR\
       \ GOAL IS TO FIND PROBLEMS, not to confirm it works.\n\nScope:\n- Re-run the\
@@ -21285,6 +21285,39 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-14T23:09:47.575212+00:00'
+    done_at: '2026-03-14T23:12:03.665790+00:00'
+    evidence: '## Retest Report
+
+
+      Artifact:
+
+      - gate-reviewer verification task ses_31162b319ffeO5N6HBU293SRTe
+
+
+      Commands executed:
+
+      - uv run invar guard --all -> passed (errors=0)
+
+      - uv run pytest tests/shell/test_cli.py tests/shell/test_mcp.py -q -> 278 passed
+
+
+      Blocker closure check:
+
+      - `_dispatch` (cli.py): closed
+
+      - `validate_command` (cli.py): closed
+
+      - `assemble_command` (cli.py): closed
+
+      - `_read_spec_json` (cli_helpers.py): closed
+
+      - `handle_export` (mcp_export.py): closed
+
+
+      Verdict:
+
+      - PASS; blocker family resolved. Remaining complexity findings are info-level
+      and non-blocking.'
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: done
