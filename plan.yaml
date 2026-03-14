@@ -21116,6 +21116,84 @@ phases:
     depends_on:
     - feature_update.feature-update-gate
     agent: python-senior
+  - id: feature_update.feature-update-gate-retest-shell-complexity-batch
+    name: feature_update.gate-retest-shell-complexity-batch
+    status: pending
+    description: "As an INDEPENDENT REVIEWER (`gate-reviewer`), re-test the `feature_update`\
+      \ gate blocker family after the batched shell-complexity remediation.\n\nYOUR\
+      \ GOAL IS TO FIND PROBLEMS, not to confirm it works.\n\nScope:\n- Re-run the\
+      \ authoritative guard command in a fresh/cold environment: `uv run invar guard\
+      \ --all`\n- Re-run relevant transport regressions covering the touched blocker\
+      \ surfaces:\n  - `tests/shell/test_cli.py`\n  - `tests/shell/test_mcp.py`\n\
+      \  - any focused feature-update transport tests needed to confirm update flow\
+      \ still works\n- Verify the five original blocker locations no longer trigger\
+      \ `shell_complexity_debt`\n- Verify JSON/text CLI paths and MCP export envelope\
+      \ semantics still match existing contracts\n\nIndependence Level: L1\n\nA successful\
+      \ retest may still find issues; record them explicitly if present."
+    verification: '- Fresh/cold environment declaration included
+
+      - `uv run invar guard --all` passes without the five listed `shell_complexity_debt`
+      warnings
+
+      - Relevant tests pass for CLI and MCP touched surfaces
+
+      - Evidence includes actual commands and output, not only a pass/fail summary
+
+      - Any residual blocker is reported with exact file:line and reproduction'
+    evidence_template: '## Retest Report
+
+
+      **Tester**: gate-reviewer
+
+      **Scope**: feature_update shell-complexity blocker family
+
+      **Independence Level**: L1
+
+
+      ### Environment
+
+      - Fresh/cold declaration: <paste>
+
+
+      ### Commands executed
+
+      ```bash
+
+      uv run invar guard --all
+
+      uv run pytest tests/shell/test_cli.py tests/shell/test_mcp.py -q
+
+      ```
+
+
+      ### Output
+
+      ```text
+
+      <paste key guard/test output>
+
+      ```
+
+
+      ### Blocker closure check
+
+      - `_dispatch` (`src/larva/shell/cli.py:76`): closed | residual
+
+      - `validate_command` (`src/larva/shell/cli.py:241`): closed | residual
+
+      - `assemble_command` (`src/larva/shell/cli.py:277`): closed | residual
+
+      - `_read_spec_json` (`src/larva/shell/cli_helpers.py:285`): closed | residual
+
+      - `handle_export` (`src/larva/shell/mcp_export.py:67`): closed | residual
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - feature_update.feature-update-gate-fix-shell-complexity-batch
+    agent: gate-reviewer
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
   status: in_progress
