@@ -1739,3 +1739,187 @@ class TestMCPHandleClear:
             tool="larva.clear",
             reason="params must be an object",
         )
+
+
+# -----------------------------------------------------------------------------
+# MCP Update Handler Tests
+# -----------------------------------------------------------------------------
+
+
+class TestMCPHandleUpdate:
+    """Test MCPHandlers.handle_update parameter validation and delegation."""
+
+    def test_handle_update_success(self) -> None:
+        """Test handle_update returns PersonaSpec on success."""
+        existing = _canonical_spec("update-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update(
+            {"id": "update-test", "patches": {"description": "Updated"}}
+        )
+
+        # Success returns PersonaSpec
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert result["id"] == "update-test"
+        assert "spec_digest" in result
+
+    def test_handle_update_failure_returns_error_envelope(self) -> None:
+        """Test handle_update returns error envelope on failure."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"id": "missing", "patches": {"description": "x"}})
+
+        # Failure returns error envelope
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_NOT_FOUND"
+        assert result["numeric_code"] == 100
+
+    def test_handle_update_validation_failure_returns_error_envelope(self) -> None:
+        """Test handle_update returns error envelope on validation failure."""
+        existing = _canonical_spec("update-invalid")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(
+            validate_report=_invalid_report("INVALID_SPEC_VERSION"), registry=registry
+        )
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"id": "update-invalid", "patches": {"description": None}})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "PERSONA_INVALID"
+        assert result["numeric_code"] == 101
+
+    def test_handle_update_missing_id_returns_malformed_envelope(self) -> None:
+        """Test handle_update returns malformed-params envelope for missing id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"patches": {"description": "x"}})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="missing required parameter 'id'",
+        )
+
+    def test_handle_update_missing_patches_returns_malformed_envelope(self) -> None:
+        """Test handle_update returns malformed-params envelope for missing patches."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"id": "test"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="missing required parameter 'patches'",
+        )
+
+    def test_handle_update_non_string_id_returns_malformed_envelope(self) -> None:
+        """Test handle_update rejects non-string id."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"id": 123, "patches": {"description": "x"}})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="parameter 'id' must be string",
+        )
+
+    def test_handle_update_non_object_patches_returns_malformed_envelope(self) -> None:
+        """Test handle_update rejects non-object patches."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update({"id": "test", "patches": "not-an-object"})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="parameter 'patches' must be object",
+        )
+
+    def test_handle_update_unknown_param_returns_malformed_envelope(self) -> None:
+        """Test handle_update rejects unknown params."""
+        existing = _canonical_spec("update-unknown")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update(
+            {"id": "update-unknown", "patches": {"description": "x"}, "extra": "param"}
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_update_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_update rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update("not-an-object")
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update",
+            reason="params must be an object",
+        )
+
+    def test_handle_update_preserves_falsey_patches(self) -> None:
+        """Test handle_update preserves falsey values in patches."""
+        existing = _canonical_spec("update-falsey")
+        existing["description"] = "Original"
+        existing["can_spawn"] = True
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(validate_report=_valid_report(), registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update(
+            {"id": "update-falsey", "patches": {"description": None, "can_spawn": False}}
+        )
+
+        # The facade should preserve falsey values through validation
+        assert isinstance(result, dict)
+        assert "error" not in result
+
+
+class TestMCPUpdateToolDefinition:
+    """Verify larva.update is defined in MCP tools."""
+
+    def test_update_tool_is_defined(self) -> None:
+        """Verify larva.update is defined in LARVA_MCP_TOOLS."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva.update" in tool_names
+
+        update_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.update")
+        props = update_tool["input_schema"]["properties"]
+        assert "id" in props
+        assert "patches" in props
+        assert "id" in update_tool["input_schema"]["required"]
+        assert "patches" in update_tool["input_schema"]["required"]

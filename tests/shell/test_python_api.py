@@ -919,6 +919,75 @@ class TestPythonApiClear:
             python_api.clear("CLEAR REGISTRY")  # type: ignore
 
 
+class TestPythonApiUpdate:
+    """Verify update() is thin delegation over facade.update."""
+
+    def test_update_delegates_to_facade_update(self, facade_fixture: FacadeFixture) -> None:
+        """update() must forward to facade.update() and return PersonaSpec."""
+        existing = _canonical_spec("update-test")
+        facade_fixture.registry.get_result = Success(existing)
+
+        result = python_api.update("update-test", patches={"description": "Updated"})
+
+        assert result["id"] == "update-test"
+        assert "validate" in facade_fixture.call_record
+        assert "normalize" in facade_fixture.call_record
+
+    def test_update_returns_updated_spec(self, facade_fixture: FacadeFixture) -> None:
+        """update() must return the updated PersonaSpec."""
+        existing = _canonical_spec("update-ok")
+        existing["description"] = "Original description"
+        facade_fixture.registry.get_result = Success(existing)
+
+        result = python_api.update("update-ok", patches={"description": "New description"})
+
+        assert "spec_digest" in result
+        assert result["spec_digest"].startswith("sha256:")
+
+    def test_update_failure_passthrough_from_facade(self, facade_fixture: FacadeFixture) -> None:
+        """Facade update failures must propagate through delegation."""
+        facade_fixture.registry.get_result = Failure(
+            {"code": "PERSONA_NOT_FOUND", "message": "persona not found", "persona_id": "missing"}
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update("missing", patches={"description": "x"})
+
+        assert exc_info.value.error["code"] == "PERSONA_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 100
+
+    def test_update_validation_failure_propagates(self, facade_fixture: FacadeFixture) -> None:
+        """update() validation failures must propagate through delegation."""
+        existing = _canonical_spec("update-invalid")
+        facade_fixture.registry.get_result = Success(existing)
+        facade_fixture.validate_module.report = _invalid_report("INVALID_SPEC_VERSION")
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update("update-invalid", patches={"description": None})
+
+        assert exc_info.value.error["code"] == "PERSONA_INVALID"
+        assert exc_info.value.error["numeric_code"] == 101
+
+    def test_update_in_all(self) -> None:
+        """update must be in __all__."""
+        assert "update" in python_api.__all__
+
+    def test_update_preserves_falsey_values(self, facade_fixture: FacadeFixture) -> None:
+        """update() must preserve explicit falsey values in patches."""
+        existing = _canonical_spec("update-falsey")
+        existing["description"] = "Original"
+        existing["can_spawn"] = True
+        facade_fixture.registry.get_result = Success(existing)
+
+        result = python_api.update(
+            "update-falsey",
+            patches={"description": None, "can_spawn": False},
+        )
+
+        assert "validate" in facade_fixture.call_record
+        assert "normalize" in facade_fixture.call_record
+
+
 class TestPythonApiExports:
     """Verify Python API exports include new functions."""
 

@@ -1144,6 +1144,9 @@ class RecordingFacade:
     clear_result: Result[dict[str, object], LarvaError] = field(
         default_factory=lambda: Success({"cleared": True, "count": 0})
     )
+    update_result: Result[PersonaSpec, LarvaError] = field(
+        default_factory=lambda: Success(_canonical_spec("updated"))
+    )
     validate_calls: int = 0
     assemble_calls: int = 0
     register_calls: int = 0
@@ -1151,10 +1154,13 @@ class RecordingFacade:
     list_calls: int = 0
     delete_calls: int = 0
     clear_calls: int = 0
+    update_calls: int = 0
     last_resolve_id: str | None = None
     last_resolve_overrides: dict[str, object] | None = None
     last_delete_id: str | None = None
     last_clear_confirm: str | None = None
+    last_update_id: str | None = None
+    last_update_patches: dict[str, object] | None = None
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         del spec
@@ -1197,6 +1203,16 @@ class RecordingFacade:
         self.clear_calls += 1
         self.last_clear_confirm = confirm
         return self.clear_result
+
+    def update(
+        self,
+        persona_id: str,
+        patches: dict[str, object],
+    ) -> Result[PersonaSpec, LarvaError]:
+        self.update_calls += 1
+        self.last_update_id = persona_id
+        self.last_update_patches = patches
+        return self.update_result
 
 
 class TestRunCli:
@@ -2210,3 +2226,494 @@ class TestDispatch:
         assert isinstance(result, Failure)
         failure = result.failure()
         assert failure["exit_code"] == EXIT_CRITICAL
+
+
+# ============================================================================
+# Update Command Tests
+# ============================================================================
+
+
+class TestUpdateCommand:
+    """Tests for the update command handler."""
+
+    def test_update_success_text_mode_returns_exit_ok(self) -> None:
+        """Update with valid patches returns exit code 0 in text mode."""
+        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("update-me")))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "update-me",
+            patches={"description": "Updated description"},
+            as_json=False,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+
+    def test_update_success_json_mode_returns_json_payload(self) -> None:
+        """Update with valid patches returns JSON payload in JSON mode."""
+        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("update-me")))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "update-me",
+            patches={"description": "Updated"},
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert cli_result["json"]["data"]["id"] == "update-me"
+
+    def test_update_not_found_returns_exit_error(self) -> None:
+        """Update non-existent persona returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "missing", patches={"description": "x"}, as_json=False, facade=facade
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_update_not_found_json_mode_returns_error_envelope(self) -> None:
+        """Update not-found returns JSON error envelope in JSON mode."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": "persona 'missing' not found",
+                    "persona_id": "missing",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "missing", patches={"description": "x"}, as_json=True, facade=facade
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+
+    def test_update_validation_failure_returns_exit_error(self) -> None:
+        """Update with invalid patches returns exit code 1."""
+        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("update-invalid")))
+        facade = _make_facade(
+            report=_invalid_report("INVALID_SPEC_VERSION"),
+            registry=registry,
+        )
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "update-invalid", patches={"description": None}, as_json=False, facade=facade
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_update_success_applies_patches_and_returns_updated_spec(self) -> None:
+        """Update applies patches and returns updated spec."""
+        existing = _canonical_spec("patch-test", digest="sha256:old")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli import update_command
+
+        result = update_command(
+            "patch-test",
+            patches={"description": "New description"},
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        # Verify the patches were applied (the spec would have been updated)
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+
+
+class TestRunLoopUpdateCommandRouting:
+    """Tests for run_cli routing to update_command."""
+
+    def test_update_success_routes_to_facade_update(self) -> None:
+        """Update command routes to update_command and calls facade.update."""
+        existing = _canonical_spec("route-update")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+
+        facade = RecordingFacade()
+        facade.update_result = Success(existing)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "route-update", "--set", "description=Updated"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        assert stderr.getvalue() == ""
+        assert facade.update_calls == 1
+        assert facade.last_update_id == "route-update"
+        assert facade.last_update_patches == {"description": "Updated"}
+
+
+# ============================================================================
+# --set Type Inference Tests (CLI)
+# ============================================================================
+
+
+class TestParseSetValues:
+    """Tests for _parse_set_values type inference."""
+
+    def test_parse_boolean_true(self) -> None:
+        """Boolean 'true' is inferred as Python True."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["enabled=true"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"enabled": True}
+
+    def test_parse_boolean_false(self) -> None:
+        """Boolean 'false' is inferred as Python False."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["disabled=false"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"disabled": False}
+
+    def test_parse_boolean_case_insensitive(self) -> None:
+        """Boolean inference is case-insensitive."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["enabled=TRUE", "disabled=FALSE"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"enabled": True, "disabled": False}
+
+    def test_parse_null(self) -> None:
+        """Null 'null' is inferred as Python None."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["cleared=null"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"cleared": None}
+
+    def test_parse_null_case_insensitive(self) -> None:
+        """Null inference is case-insensitive."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["value=NULL"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"value": None}
+
+    def test_parse_integer(self) -> None:
+        """Integer strings are inferred as Python int."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["count=42"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"count": 42}
+
+    def test_parse_negative_integer(self) -> None:
+        """Negative integer strings are inferred as Python int."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["offset=-10"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"offset": -10}
+
+    def test_parse_float(self) -> None:
+        """Float strings are inferred as Python float."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["temperature=0.7"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"temperature": 0.7}
+
+    def test_parse_negative_float(self) -> None:
+        """Negative float strings are inferred as Python float."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["delta=-0.5"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"delta": -0.5}
+
+    def test_parse_string_fallback(self) -> None:
+        """Non-type strings fall back to string."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["name=gpt-4o"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"name": "gpt-4o"}
+
+    def test_parse_string_with_equals(self) -> None:
+        """Strings containing equals preserve the equals."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["equation=a=b"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"equation": "a=b"}
+
+    def test_parse_multiple_values(self) -> None:
+        """Multiple values are parsed and combined."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(
+            ["enabled=true", "count=5", "name=test"],
+            flag="--set",
+        )
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"enabled": True, "count": 5, "name": "test"}
+
+    def test_parse_dot_key_creates_nested_dict(self) -> None:
+        """Dot notation creates nested dict structure."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["model_params.temperature=0.7"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"model_params": {"temperature": 0.7}}
+
+    def test_parse_nested_dot_key_creates_deep_nesting(self) -> None:
+        """Multiple dots create deeper nesting."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["a.b.c=1"], flag="--set")
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"a": {"b": {"c": 1}}}
+
+    def test_parse_multiple_nested_keys(self) -> None:
+        """Multiple nested keys merge correctly."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(
+            ["model_params.temperature=0.7", "model_params.max_tokens=1000"],
+            flag="--set",
+        )
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"model_params": {"temperature": 0.7, "max_tokens": 1000}}
+
+    def test_parse_empty_key_returns_failure(self) -> None:
+        """Empty key returns failure."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["=value"], flag="--set")
+        assert isinstance(result, Failure)
+
+    def test_parse_missing_equals_returns_failure(self) -> None:
+        """Missing equals returns failure."""
+        from larva.shell.cli_helpers import _parse_set_values
+
+        result = _parse_set_values(["novalue"], flag="--set")
+        assert isinstance(result, Failure)
+
+
+class TestRunLoopUpdateTypeInference:
+    """Tests for CLI --set type inference through run_cli."""
+
+    def test_update_set_boolean_true(self) -> None:
+        """Update --set with boolean true is inferred correctly."""
+        existing = _canonical_spec("bool-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "bool-test", "--set", "can_spawn=true", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["can_spawn"] is True
+
+    def test_update_set_boolean_false(self) -> None:
+        """Update --set with boolean false is inferred correctly."""
+        existing = _canonical_spec("bool-test-false")
+        existing["can_spawn"] = True
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "bool-test-false", "--set", "can_spawn=false", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["can_spawn"] is False
+
+    def test_update_set_null(self) -> None:
+        """Update --set with null is inferred correctly."""
+        existing = _canonical_spec("null-test")
+        existing["description"] = "Will be nulled"
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "null-test", "--set", "description=null", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["description"] is None
+
+    def test_update_set_integer(self) -> None:
+        """Update --set with integer is inferred correctly."""
+        existing = _canonical_spec("int-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "int-test", "--set", "model_params.max_tokens=1000", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["model_params"]["max_tokens"] == 1000
+
+    def test_update_set_float(self) -> None:
+        """Update --set with float is inferred correctly."""
+        existing = _canonical_spec("float-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "float-test", "--set", "model_params.temperature=0.9", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["model_params"]["temperature"] == 0.9
+
+    def test_update_set_string_fallback(self) -> None:
+        """Update --set with string falls back correctly."""
+        existing = _canonical_spec("string-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "string-test", "--set", "description=A new description", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["description"] == "A new description"
+
+    def test_update_set_nested_path(self) -> None:
+        """Update --set with nested path creates nested dict."""
+        existing = _canonical_spec("nested-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update", "nested-test", "--set", "model_params.max_tokens=2000", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["model_params"]["max_tokens"] == 2000
+
+    def test_update_set_multiple_values(self) -> None:
+        """Update --set with multiple values processes all correctly."""
+        existing = _canonical_spec("multi-test")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update",
+                "multi-test",
+                "--set",
+                "description=Updated",
+                "--set",
+                "can_spawn=true",
+                "--set",
+                "model_params.temperature=0.5",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["description"] == "Updated"
+        assert payload["data"]["can_spawn"] is True
+        assert payload["data"]["model_params"]["temperature"] == 0.5
