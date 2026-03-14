@@ -36,6 +36,7 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
     "REGISTRY_SPEC_READ_FAILED": 108,
     "REGISTRY_WRITE_FAILED": 109,
     "REGISTRY_UPDATE_FAILED": 110,
+    "REGISTRY_DELETE_FAILED": 111,
 }
 
 
@@ -64,6 +65,46 @@ class PersonaSummary(TypedDict):
     id: str
     spec_digest: str
     model: str
+
+
+class DeletedPersona(TypedDict):
+    """Result shape for a successful delete operation.
+
+    Success payload contract:
+    - `id`: the persona id that was deleted
+    - `deleted`: always `True` on success
+
+    Error envelope contract for delete failures:
+    - Registry `DeleteFailureError` preserves `code`/`message` at app layer
+    - Remaining registry fields (`operation`, `persona_id`, `path`, `failed_spec_paths`)
+      move into `details` envelope
+    - Wrong-confirm for clear operation returns `INVALID_CONFIRMATION_TOKEN` error
+
+    Note: This is a contract-only type. Implementation lives in `shell/registry`.
+    """
+
+    id: str
+    deleted: bool
+
+
+class ClearedRegistry(TypedDict):
+    """Result shape for a successful clear operation.
+
+    Success payload contract:
+    - `cleared`: always `True` on success
+    - `count`: number of personas that were removed from registry
+
+    Error envelope contract for clear failures:
+    - Wrong `confirm` token returns `LarvaError` with code `INVALID_CONFIRMATION_TOKEN`
+      (from shell/registry) mapped through to app layer
+    - Partial delete failures after index removal surface `REGISTRY_DELETE_FAILED`
+      with `details.failed_spec_paths` containing remaining paths
+
+    Note: This is a contract-only type. Implementation lives in `shell/registry`.
+    """
+
+    cleared: bool
+    count: int
 
 
 class LarvaError(TypedDict):
@@ -119,6 +160,41 @@ class LarvaFacade(Protocol):
     ) -> Result[PersonaSpec, LarvaError]: ...
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
+
+    def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
+        """Delete one persona by id from the registry.
+
+        Success contract:
+        - Returns `DeletedPersona` with `{id, deleted: True}`
+
+        Error mapping contract (facade-layer):
+        - Registry `PERSONA_NOT_FOUND` -> facade `PERSONA_NOT_FOUND` (pass-through)
+        - Registry `INVALID_PERSONA_ID` -> facade `INVALID_PERSONA_ID` (pass-through)
+        - Registry `DeleteFailureError` -> facade `REGISTRY_DELETE_FAILED`
+          with `details` containing `operation`, `path`, and `failed_spec_paths`
+
+        Note: This is a contract-only signature. Implementation lives in
+        `DefaultLarvaFacade` but this step does not implement the body.
+        """
+        ...
+
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
+        """Clear all personas from the registry.
+
+        Success contract:
+        - Returns `ClearedRegistry` with `{cleared: True, count: <int>}`
+          where `count` is the number of personas removed
+
+        Error mapping contract (facade-layer):
+        - Wrong `confirm` token -> facade `INVALID_CONFIRMATION_TOKEN`
+          (shell-level error code preserved via mapping)
+        - Registry `DeleteFailureError` during clear -> facade `REGISTRY_DELETE_FAILED`
+          with `details` containing `operation`, `path`, and `failed_spec_paths`
+
+        Note: This is a contract-only signature. Implementation lives in
+        `DefaultLarvaFacade` but this step does not implement the body.
+        """
+        ...
 
 
 class DefaultLarvaFacade(LarvaFacade):
@@ -347,3 +423,48 @@ class DefaultLarvaFacade(LarvaFacade):
                 return summary_result
             summaries.append(summary_result.unwrap())
         return Success(summaries)
+
+    def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
+        """Delete one persona by id from the registry.
+
+        Contract-only stub for delete operation facade signature.
+
+        Success payload mapping:
+        - Registry success -> DeletedPersona(id=<persona_id>, deleted=True)
+
+        Error envelope mapping:
+        - PERSONA_NOT_FOUND: pass-through from shell/registry
+        - INVALID_PERSONA_ID: pass-through from shell/registry
+        - DeleteFailureError -> REGISTRY_DELETE_FAILED with details containing
+          operation, path, and failed_spec_paths
+
+        Note: Implementation body to be added in follow-up step.
+        This signature pins the contract for downstream transport adapters.
+        """
+        # Contract-only stub: implementation not in scope for this step
+        # See: feature_registry_ops.feature-registry-ops-facade-delete-clear-impl
+        raise NotImplementedError(
+            "delete() facade contract stub - implementation pending in follow-up step"
+        )
+
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
+        """Clear all personas from the registry.
+
+        Contract-only stub for clear operation facade signature.
+
+        Success payload mapping:
+        - Registry success -> ClearedRegistry(cleared=True, count=<registry_count>)
+
+        Error envelope mapping:
+        - Wrong confirmation token -> INVALID_CONFIRMATION_TOKEN
+        - DeleteFailureError -> REGISTRY_DELETE_FAILED with details containing
+          operation, path, and failed_spec_paths
+
+        Note: Implementation body to be added in follow-up step.
+        This signature pins the contract for downstream transport adapters.
+        """
+        # Contract-only stub: implementation not in scope for this step
+        # See: feature_registry_ops.feature-registry-ops-facade-delete-clear-impl
+        raise NotImplementedError(
+            "clear() facade contract stub - implementation pending in follow-up step"
+        )
