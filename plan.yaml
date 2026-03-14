@@ -18337,7 +18337,7 @@ phases:
       added, no facade/CLI/MCP wiring.'
   - id: feature_registry_ops.feature-registry-ops-tests-clear
     name: feature_registry_ops.tests-clear
-    status: pending
+    status: claimed
     description: 'Add registry-layer clear tests after the shared contract is pinned
       and before clear implementation begins.
 
@@ -18396,3 +18396,5 @@ phases:
     - feature_registry_ops.feature-registry-ops-registry-contract
     - feature_registry_ops.feature-registry-ops-registry-delete
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:23:33.446271+00:00'
