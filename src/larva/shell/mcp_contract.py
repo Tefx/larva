@@ -195,6 +195,24 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "required": ["source_id", "new_id"],
         },
     },
+    {
+        "name": "larva.export",
+        "description": "Export persona specs from the registry. Either 'all' or 'ids' must be provided, but not both.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "all": {
+                    "type": "boolean",
+                    "description": "Export all persona specs from the registry",
+                },
+                "ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Export specific persona specs by id",
+                },
+            },
+        },
+    },
 ]
 
 
