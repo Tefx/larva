@@ -18937,7 +18937,7 @@ phases:
       - none'
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
     name: feature_registry_ops.facade-delete-clear-contract
-    status: pending
+    status: claimed
     description: "Contract step: pin the app-facade delete/clear surface before any\
       \ facade implementation or transport wiring.\n\nspec_refs:\n- feature_registry_ops.feature-registry-ops-registry-contract\n\
       - ARCHITECTURE.md > Module: `larva.app.facade`\n- INTERFACES.md > App facade\
@@ -18971,6 +18971,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-clear
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:47:53.591758+00:00'
   - id: feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     name: feature_registry_ops.tests-facade-delete-clear
     status: pending
