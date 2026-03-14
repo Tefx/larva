@@ -17228,3 +17228,72 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-delete
     agent: python-senior
+  - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
+    name: feature_registry_ops.facade-delete-clear
+    status: pending
+    description: "Extend the app facade with delete and clear operations.\n\nFile:\
+      \ src/larva/app/facade.py\n\nTasks:\n1. Add error code 111 to `ERROR_NUMERIC_CODES`:\n\
+      \   ```python\n   \"REGISTRY_DELETE_FAILED\": 111,\n   ```\n\n2. Add new TypedDict\
+      \ `DeletedPersona`:\n   ```python\n   class DeletedPersona(TypedDict):\n   \
+      \    id: str\n       deleted: bool\n   ```\n\n3. Add `ClearedRegistry` TypedDict:\n\
+      \   ```python\n   class ClearedRegistry(TypedDict):\n       cleared: bool\n\
+      \       count: int\n   ```\n\n4. Extend `LarvaFacade` protocol:\n   ```python\n\
+      \   def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:\
+      \ ...\n   def clear(self, *, confirm: str) -> Result[ClearedRegistry, LarvaError]:\
+      \ ...\n   ```\n\n5. Implement in `DefaultLarvaFacade`:\n   - `delete(self, persona_id)`:\
+      \ delegate to `self._registry.delete(persona_id)`; on Success return `{\"id\"\
+      : persona_id, \"deleted\": True}`; on Failure map registry error via `_error(code=...,\
+      \ message=..., details=...)`\n   - `clear(self, *, confirm)`: delegate to `self._registry.clear(confirm=confirm)`;\
+      \ on Success return `{\"cleared\": True, \"count\": result}`; on Failure map\
+      \ registry error\n\nError mapping pattern: follow existing `register`/`resolve`\
+      \ pattern — extract code/message from registry error, pass remaining fields\
+      \ as details.\n\nAdd `DeletedPersona`, `ClearedRegistry` to `__all__` (if present)\
+      \ or module exports.\n\nstep_type: implementation\nrefs:\n  - src/larva/app/facade.py\n\
+      \  - src/larva/shell/registry.py"
+    verification: '- invar guard passes
+
+      - ERROR_NUMERIC_CODES["REGISTRY_DELETE_FAILED"] == 111
+
+      - LarvaFacade protocol has delete() and clear() signatures
+
+      - DefaultLarvaFacade.delete delegates to registry.delete, returns DeletedPersona
+      on success
+
+      - DefaultLarvaFacade.clear delegates to registry.clear, returns ClearedRegistry
+      on success
+
+      - Wrong confirm string propagates as LarvaError (code=REGISTRY_DELETE_FAILED)'
+    evidence_template: '## Facade Delete/Clear Implementation Evidence
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste full invar guard output>
+
+      ```
+
+
+      **Test run**:
+
+      ```
+
+      <paste: uv run pytest tests/app/test_facade.py -v -k "delete or clear">
+
+      ```
+
+
+      **Error code verification**:
+
+      ```python
+
+      # Paste: assert ERROR_NUMERIC_CODES["REGISTRY_DELETE_FAILED"] == 111
+
+      ```
+
+
+      **Gaps / SPEC QUESTIONS**: <none or list>'
+    depends_on:
+    - feature_registry_ops.feature-registry-ops-registry-clear
+    agent: python-senior
