@@ -20871,7 +20871,7 @@ phases:
       - Error mappings and overwrite-on-existing-new_id semantics follow plan contract/tests.'
   - id: feature_clone.mcp-clone
     name: mcp-clone
-    status: claimed
+    status: pending
     description: "Add `larva.clone` MCP tool definition and handler.\n\n## Tool Definition\
       \ (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS` list:\n```python\n\
       {\n    \"name\": \"larva.clone\",\n    \"description\": \"Clone a registered\
@@ -20898,8 +20898,6 @@ phases:
     depends_on:
     - feature_clone.facade-clone
     agent: python-executor
-    claimed_by: python-executor
-    claimed_at: '2026-03-14T22:01:32.711603+00:00'
   - id: feature_clone.cli-clone
     name: cli-clone
     status: done
