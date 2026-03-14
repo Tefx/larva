@@ -21017,7 +21017,7 @@ phases:
     agent: python-executor
 - id: feature_export
   name: 'Feature: Persona Bulk Export (3-layer sync)'
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   steps:
@@ -21441,7 +21441,7 @@ phases:
     agent: gate-reviewer
   - id: feature_export.feature-export-contract
     name: feature_export.contract
-    status: pending
+    status: claimed
     description: "Define the contract-only bulk-export surface in `src/larva/app/facade.py`\
       \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
       contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
@@ -21464,6 +21464,8 @@ phases:
       - Fail-fast, empty-input, and canonical-registry-data semantics are explicit
       for downstream steps'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T21:07:22.101973+00:00'
   - id: feature_export.feature-export-facade-tests
     name: feature_export.facade-tests
     status: pending
