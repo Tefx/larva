@@ -17368,38 +17368,116 @@ phases:
   - id: feature_registry_ops.feature-registry-ops-facade-delete-clear
     name: feature_registry_ops.facade-delete-clear
     status: pending
-    description: "Extend the app facade with delete and clear operations.\n\nFile:\
-      \ src/larva/app/facade.py\n\nTasks:\n1. Add error code 111 to `ERROR_NUMERIC_CODES`:\n\
-      \   ```python\n   \"REGISTRY_DELETE_FAILED\": 111,\n   ```\n\n2. Add new TypedDict\
-      \ `DeletedPersona`:\n   ```python\n   class DeletedPersona(TypedDict):\n   \
-      \    id: str\n       deleted: bool\n   ```\n\n3. Add `ClearedRegistry` TypedDict:\n\
-      \   ```python\n   class ClearedRegistry(TypedDict):\n       cleared: bool\n\
-      \       count: int\n   ```\n\n4. Extend `LarvaFacade` protocol:\n   ```python\n\
-      \   def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:\
-      \ ...\n   def clear(self, *, confirm: str) -> Result[ClearedRegistry, LarvaError]:\
-      \ ...\n   ```\n\n5. Implement in `DefaultLarvaFacade`:\n   - `delete(self, persona_id)`:\
-      \ delegate to `self._registry.delete(persona_id)`; on Success return `{\"id\"\
-      : persona_id, \"deleted\": True}`; on Failure map registry error via `_error(code=...,\
-      \ message=..., details=...)`\n   - `clear(self, *, confirm)`: delegate to `self._registry.clear(confirm=confirm)`;\
-      \ on Success return `{\"cleared\": True, \"count\": result}`; on Failure map\
-      \ registry error\n\nError mapping pattern: follow existing `register`/`resolve`\
-      \ pattern — extract code/message from registry error, pass remaining fields\
-      \ as details.\n\nAdd `DeletedPersona`, `ClearedRegistry` to `__all__` (if present)\
-      \ or module exports.\n\nstep_type: implementation\nrefs:\n  - src/larva/app/facade.py\n\
-      \  - src/larva/shell/registry.py"
-    verification: '- invar guard passes
+    description: 'Implement the app-facade delete/clear methods only after the facade
+      contract and facade-local acceptance tests are complete.
 
-      - ERROR_NUMERIC_CODES["REGISTRY_DELETE_FAILED"] == 111
 
-      - LarvaFacade protocol has delete() and clear() signatures
+      spec_refs:
 
-      - DefaultLarvaFacade.delete delegates to registry.delete, returns DeletedPersona
-      on success
+      - feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
 
-      - DefaultLarvaFacade.clear delegates to registry.clear, returns ClearedRegistry
-      on success
+      - feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
 
-      - Wrong confirm string propagates as LarvaError (code=REGISTRY_DELETE_FAILED)'
+      - feature_registry_ops.feature-registry-ops-registry-contract
+
+      - ARCHITECTURE.md > Module: `larva.app.facade`
+
+      - INTERFACES.md > App facade error envelopes
+
+
+      touch_paths:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+      - src/larva/shell/registry.py
+
+
+      harness_refs:
+
+      - tests/app/test_facade.py::_facade
+
+      - tests/app/test_facade.py::InMemoryRegistryStore
+
+
+      step_type: implementation
+
+
+      Tasks:
+
+      1. Implement `DefaultLarvaFacade.delete(self, persona_id)` using the already-pinned
+      contract surface and the existing register/resolve mapping pattern.
+
+      2. Implement `DefaultLarvaFacade.clear(self, *, confirm)` using the already-pinned
+      contract surface and registry delegation.
+
+      3. On success, return exact facade payloads already pinned by tests: delete
+      -> `{"id": persona_id, "deleted": True}`; clear -> `{"cleared": True, "count":
+      registry_result}`.
+
+      4. On failure, preserve registry `code` and `message`, resolve `numeric_code`
+      through `ERROR_NUMERIC_CODES`, and move all remaining registry fields into `details`
+      without leaking a success payload.
+
+      5. Keep scope local to `src/larva/app/facade.py`; CLI/MCP/Python API wiring
+      remains out of scope for this step.
+
+
+      Failure-mode checklist:
+
+      - relative vs absolute path behavior: facade must not invent path semantics;
+      any path data returned by registry failures passes through in `details` only
+
+      - missing-file fallback behavior: `PERSONA_NOT_FOUND` and wrong-confirm failures
+      stay registry-driven and map to a pure `LarvaError` envelope without synthetic
+      success fields
+
+      - explicit clear / null overwrite semantics: `clear(confirm=...)` must preserve
+      the exact registry confirmation semantics; no facade-side coercion of confirm
+      values
+
+      - stale-definition vs new-state precedence: delete/clear success payloads must
+      reflect the registry operation result (`deleted=True`, `count=<int>`) rather
+      than any recomputed facade-side count
+
+      - partial-write / delete-failure behavior: `REGISTRY_DELETE_FAILED` mapping
+      must preserve registry extras such as `failed_ids`, `path`, or `persona_id`
+      in `details`
+
+
+      State semantics:
+
+      - last-writer-wins: registry remains the mutation authority; facade only reports
+      the delegated result
+
+      - preserved exactly: registry `code`, `message`, and extra fields must survive
+      facade mapping unchanged except for relocation into `details`
+
+      - backward-compatible legacy behavior: existing register/resolve/list error-envelope
+      mapping pattern remains the template; no new transport-specific wrapper shape
+      is introduced
+
+
+      Out-of-scope guardrail:
+
+      - no contract artifact redesign beyond what the upstream contract step pinned
+
+      - no CLI/MCP/Python API transport mapping changes
+
+      - no registry persistence changes
+
+      '
+    verification: '- Main path: facade delete/clear acceptance tests pass with exact
+      payload semantics for `deleted` and `count`
+
+      - Failure path: wrong-confirm and delete-failure tests prove `LarvaError` mapping
+      preserves registry `code`/`message`, numeric-code resolution, and all extra
+      fields under `details`
+
+      - Focused regression proves no success payload leaks into failure envelopes
+      and no facade-side recomputation changes the registry-reported delete/clear
+      semantics'
     evidence_template: '## Facade Delete/Clear Implementation Evidence
 
 
@@ -17432,7 +17510,7 @@ phases:
 
       **Gaps / SPEC QUESTIONS**: <none or list>'
     depends_on:
-    - feature_registry_ops.feature-registry-ops-registry-clear
+    - feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     agent: python-senior
   - id: feature_registry_ops.feature-registry-ops-mcp-components
     name: feature_registry_ops.mcp-components
