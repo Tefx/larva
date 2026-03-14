@@ -19744,7 +19744,7 @@ phases:
   steps:
   - id: feature_update.feature-update-core-apply-patches
     name: feature_update.core-apply-patches
-    status: claimed
+    status: done
     description: "Implement pure patch application function in core layer.\n\nFile:\
       \ src/larva/core/patch.py (NEW FILE)\n\nThis is a non-simple feature path: it\
       \ introduces new core merge semantics with protected-field, precedence, and\
@@ -19870,6 +19870,67 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-14T21:49:18.124326+00:00'
+    done_at: '2026-03-14T22:00:56.919957+00:00'
+    evidence: '## Core apply_patches Evidence
+
+
+      **Commit hash(es)**:
+
+      - `bb940a1` (worker branch commit), merged as `6acc27a`
+
+
+      **Files changed**:
+
+      - `src/larva/core/patch.py`
+
+
+      **invar guard output**:
+
+      - Run: `uv run invar guard` -> passed (0 errors, 0 warnings, info-only redundant-contract
+      notes)
+
+
+      **Doctest run**:
+
+      - Run: `uv run python -m doctest src/larva/core/patch.py -v` -> 8 passed, 0
+      failed
+
+
+      **Contract verification**:
+
+      ```python
+
+      @pre(lambda spec, patches: isinstance(spec, dict) and isinstance(patches, dict))
+
+      @post(lambda result: isinstance(result, dict))
+
+      def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[str,
+      object]:
+
+      ```
+
+
+      **Purity check**:
+
+      - Run: `grep -n "from larva.shell\|from larva.app" src/larva/core/patch.py`
+      -> no output
+
+
+      **Deep merge proof**:
+
+      - Run: `uv run python -c "from larva.core.patch import apply_patches; print(apply_patches({''model_params'':
+      {''temperature'': 0.2, ''top_p'': 0.9}}, {''model_params'': {''temperature'':
+      0.7}}))"` -> `{''model_params'': {''temperature'': 0.7, ''top_p'': 0.9}}`
+
+
+      **Dot-notation proof**:
+
+      - Run: `uv run python -c "from larva.core.patch import apply_patches; print(apply_patches({''model_params'':
+      {''top_p'': 0.95}}, {''model_params.temperature'': 0.4}))"` -> `{''model_params'':
+      {''top_p'': 0.95, ''temperature'': 0.4}}`
+
+
+      **Gaps / SPEC QUESTIONS**: none'
   - id: feature_update.feature-update-core-tests
     name: feature_update.core-tests
     status: done
