@@ -18534,7 +18534,7 @@ phases:
       \ step).\n- No test touches `DEFAULT_REGISTRY_ROOT`."
   - id: feature_registry_ops.feature-registry-ops-mcp-components-contract
     name: feature_registry_ops.mcp-components-contract
-    status: pending
+    status: claimed
     description: 'Define the MCP contract for `larva.component_list` and `larva.component_show`
       before implementation.
 
@@ -18639,6 +18639,8 @@ phases:
     depends_on:
     - feature_registry_ops.feature-registry-ops-registry-delete
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T11:34:41.440601+00:00'
   - id: feature_registry_ops.feature-registry-ops-tests-mcp-components
     name: feature_registry_ops.tests-mcp-components
     status: pending
