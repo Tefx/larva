@@ -126,6 +126,32 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "properties": {},
         },
     },
+    {
+        "name": "larva.component_list",
+        "description": "List all available components by type (prompts, toolsets, constraints, models).",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
+        "name": "larva.component_show",
+        "description": "Show content for a specific component by type and name.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "component_type": {
+                    "type": "string",
+                    "description": "Component type (prompts, toolsets, constraints, or models)",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Component name (without file extension)",
+                },
+            },
+            "required": ["component_type", "name"],
+        },
+    },
 ]
 
 

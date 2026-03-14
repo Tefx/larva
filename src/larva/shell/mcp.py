@@ -38,6 +38,7 @@ from larva.shell.mcp_contract import (
     ValidationIssue,
     ValidationReport,
 )
+from larva.shell.components import ComponentStore
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -80,15 +81,22 @@ class MCPHandlers:
 
     The handlers preserve falsey/null override values in resolve/assemble
     and ensure error envelopes have: code, numeric_code, message, details.
+
+    Boundary Split (pinned for component operations):
+    - Malformed/unknown/type-invalid params => _malformed_params_error (INTERNAL, numeric 10)
+    - Unsupported component type or component lookup failures => COMPONENT_NOT_FOUND (numeric 105)
     """
 
-    def __init__(self, facade: LarvaFacade) -> None:
-        """Initialize handlers with a facade instance.
+    def __init__(self, facade: LarvaFacade, components: ComponentStore | None = None) -> None:
+        """Initialize handlers with a facade instance and optional component store.
 
         Args:
             facade: The app-layer facade to delegate operations to.
+            components: Optional component store for component operations.
+                Defaults to None for backward compatibility.
         """
         self._facade = facade
+        self._components = components
 
     @staticmethod
     def _malformed_params_error(
@@ -195,6 +203,69 @@ class MCPHandlers:
                 },
             )
         return None
+
+    @staticmethod
+    def _component_store_error(
+        tool_name: str,
+        reason: str,
+        details: dict[str, object],
+    ) -> LarvaError:
+        """Build a documented MCP error envelope for component store failures.
+
+        Boundary: This error maps to COMPONENT_NOT_FOUND (numeric code 105) for:
+        - Unsupported component type
+        - Component lookup failures (not found or parse error)
+
+        For malformed/unknown/type-invalid params, use _malformed_params_error (INTERNAL, 10).
+        """
+        return {
+            "code": "COMPONENT_NOT_FOUND",
+            "numeric_code": LARVA_ERROR_CODES["COMPONENT_NOT_FOUND"],
+            "message": f"Component error for '{tool_name}': {reason}",
+            "details": {"tool": tool_name, "reason": reason, **details},
+        }
+
+    def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
+        """Handle larva.component_list MCP tool call.
+
+        Contract stub for listing all available components by type.
+
+        Returns (contract-only, not implemented):
+            dict mapping component type keys to name lists:
+            {
+                "prompts": ["name1", "name2", ...],
+                "toolsets": ["name1", ...],
+                "constraints": ["name1", ...],
+                "models": ["name1", ...]
+            }
+
+        Malformed requests return the documented MCP error envelope (INTERNAL, 10).
+        Component store failures return COMPONENT_NOT_FOUND (105).
+
+        Note: Implementation routing logic is out of scope for this contract step.
+        """
+        raise NotImplementedError("MCP handler implementation is not part of this contract step")
+
+    def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
+        """Handle larva.component_show MCP tool call.
+
+        Contract stub for showing a specific component's content.
+
+        Args (contract-only):
+            params: MCP request parameters:
+                - component_type: one of 'prompts', 'toolsets', 'constraints', 'models' (required)
+                - name: component name without extension (required)
+
+        Returns (contract-only, not implemented):
+            Component content dict on success, or error envelope on failure.
+
+        Boundary split (pinned):
+            - malformed/unknown/type-invalid component_type => INTERNAL / 10
+            - unsupported component type or component lookup failure => COMPONENT_NOT_FOUND / 105
+
+        Note: Implementation routing logic is out of scope for this contract step.
+        """
+        raise NotImplementedError("MCP handler implementation is not part of this contract step")
 
     def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
         """Handle larva.validate MCP tool call.
