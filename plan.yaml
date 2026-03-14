@@ -19009,7 +19009,7 @@ phases:
       - No transport wiring changes included.'
   - id: feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
     name: feature_registry_ops.tests-facade-delete-clear
-    status: claimed
+    status: done
     description: "Add facade-local acceptance tests for delete/clear mapping behavior\
       \ after the facade contract is pinned and before facade implementation begins.\n\
       \nspec_refs:\n- feature_registry_ops.feature-registry-ops-facade-delete-clear-contract\n\
@@ -19047,3 +19047,38 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-14T11:54:10.154409+00:00'
+    done_at: '2026-03-14T11:59:19.064304+00:00'
+    evidence: 'Artifact:
+
+      - PR: dbd079e (squash merge of worker commit 37e965f63feee645c213548f52b94ed12e22da63)
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/app/test_facade.py::TestFacadeDelete tests/app/test_facade.py::TestFacadeClear
+      -v --tb=line` -> `7 xfailed` (expected pre-implementation behavior).
+
+      - Run: `uv run invar guard --changed` -> passed (no errors).
+
+
+      Spec link:
+
+      - feature_registry_ops.feature-registry-ops-tests-facade-delete-clear
+
+      - feature_registry_ops.feature-registry-ops-facade-delete-clear-contract
+
+      - ARCHITECTURE.md module `larva.app.facade`
+
+
+      Files changed:
+
+      - tests/app/test_facade.py
+
+
+      Gaps/Notes:
+
+      - New facade delete/clear tests are `xfail(strict=True)` pending implementation
+      step.
+
+      - Worker noted unrelated pre-existing `TestFacadeAssemble` failures outside
+      this step scope.'
