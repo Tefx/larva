@@ -20589,7 +20589,7 @@ phases:
     agent: python-senior
 - id: feature_clone
   name: 'Feature: Persona Clone (3-layer sync)'
-  status: pending
+  status: in_progress
   depends_on:
   - meta.gate
   steps:
@@ -20948,7 +20948,7 @@ phases:
     agent: gate-reviewer
   - id: feature_clone.feature-clone-contract
     name: feature_clone.contract
-    status: pending
+    status: claimed
     description: "Define the contract-only clone surface in `src/larva/app/facade.py`\
       \ before implementation.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
       contract_outputs:\n  - signatures\n  - type_defs\n  - interfaces\n  - stubs\n\
@@ -20972,6 +20972,8 @@ phases:
       - Clone overwrite/error semantics are explicit for downstream test and implementation
       steps'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-14T21:06:46.992950+00:00'
   - id: feature_clone.feature-clone-facade-tests
     name: feature_clone.facade-tests
     status: pending
