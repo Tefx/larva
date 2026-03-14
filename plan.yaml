@@ -17089,3 +17089,6 @@ phases:
 
       - Guard reported info-level notices (non-blocking): redundant contract and shell
       complexity hints.'
+- id: feature_registry_ops
+  name: 'Feature: Registry Delete/Clear + MCP Components'
+  status: pending
