@@ -842,9 +842,7 @@ class TestFacadeClone:
 
         assert isinstance(result, Success)
         cloned = result.unwrap()
-        # Lock contract: id changes to new_id
         assert cloned["id"] == "cloned-persona"
-        # Lock contract: all other fields preserved from source
         assert cloned["description"] == "Persona source-persona"
         assert cloned["prompt"] == "You are careful."
         assert cloned["model"] == "gpt-4o-mini"
@@ -854,10 +852,8 @@ class TestFacadeClone:
         assert cloned["can_spawn"] is False
         assert cloned["compaction_prompt"] == "Summarize facts."
         assert cloned["spec_version"] == "0.1.0"
-        # spec_digest is recomputed (not the source's old digest)
         assert cloned["spec_digest"] == _digest_for(cloned)
         assert cloned["spec_digest"] != "sha256:old-digest"
-        # Verify flow: get -> validate -> normalize -> save
         assert calls == ["validate", "normalize"]
         assert registry.get_inputs == ["source-persona"]
         assert validate_module.inputs[0]["id"] == "cloned-persona"
@@ -866,7 +862,6 @@ class TestFacadeClone:
     @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_preserves_all_non_id_fields_from_source(self) -> None:
         """Clone preserves all fields except id (which changes) and spec_digest (recomputed)."""
-        # Use a spec with additional fields to test complete preservation
         source_spec: PersonaSpec = {
             "id": "original",
             "description": "Original persona description",
@@ -888,7 +883,6 @@ class TestFacadeClone:
 
         assert isinstance(result, Success)
         cloned = result.unwrap()
-        # Verify preserved fields (non-id fields stay same)
         assert cloned["description"] == "Original persona description"
         assert cloned["prompt"] == "Original prompt"
         assert cloned["model"] == "gpt-4"
@@ -899,7 +893,6 @@ class TestFacadeClone:
         assert cloned["compaction_prompt"] == "Custom compaction"
         assert cloned["spec_version"] == "0.2.0"
         assert cloned["custom_field"] == "custom_value"
-        # Only id and spec_digest should differ from source
         assert cloned["id"] == "clone-target"
         assert cloned["spec_digest"] == _digest_for(cloned)
 
@@ -924,7 +917,6 @@ class TestFacadeClone:
         assert error["numeric_code"] == 100
         assert error["details"]["persona_id"] == "missing-source"
         assert registry.get_inputs == ["missing-source"]
-        # No validation/normalization when get fails
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
 
@@ -951,17 +943,13 @@ class TestFacadeClone:
 
     @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_invalid_new_id_returns_validation_error(self) -> None:
-        """Clone with invalid new_id validates cloned spec and returns PERSONA_INVALID
+        """Clone with invalid new_id validates cloned spec.
 
-        On failure.
+        Returns PERSONA_INVALID on failure.
         """
-        # Create a source spec that would pass validation with proper id
-        # but we'll configure validate to fail for the cloned spec
         source_spec = _canonical_spec("valid-source", digest="sha256:valid")
         calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
-        # Configure validation to fail for the cloned spec
-        # We use an invalid report to simulate validation failure for the cloned id
         facade, _, validate_module, normalize_module = _facade(
             report=_invalid_report("INVALID_PERSONA_ID"),
             registry=registry,
@@ -973,12 +961,9 @@ class TestFacadeClone:
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
-        # Validation was called with new_id
         assert validate_module.inputs[0]["id"] == "Invalid_Clone_Id"
-        # Normalization not called when validation fails
         assert normalize_module.inputs == []
         assert calls == ["validate"]
-        # Source was retrieved
         assert registry.get_inputs == ["valid-source"]
 
     @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
@@ -990,18 +975,15 @@ class TestFacadeClone:
 
         result = facade.clone("source-clone", "existing-target")
 
-        # Success even if target exists (overwrite semantics like register)
         assert isinstance(result, Success)
         cloned = result.unwrap()
         assert cloned["id"] == "existing-target"
-        # Verify save was called (overwrite semantics)
         assert len(registry.save_inputs) == 1
         assert registry.save_inputs[0]["id"] == "existing-target"
 
     @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_spec_digest_recomputed_not_copied(self) -> None:
         """Clone recomputes spec_digest based on cloned content, not copied from source."""
-        # Source has a specific spec_digest
         source_spec = _canonical_spec("digest-source", digest="sha256:source-digest")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
@@ -1010,7 +992,6 @@ class TestFacadeClone:
 
         assert isinstance(result, Success)
         cloned = result.unwrap()
-        # The spec_digest must be recalculated for the new id
         expected_digest = _digest_for(
             {
                 "id": "digest-clone",
@@ -1018,7 +999,6 @@ class TestFacadeClone:
             }
         )
         assert cloned["spec_digest"] == expected_digest
-        # Should not match source's digest (id changed)
         assert cloned["spec_digest"] != "sha256:source-digest"
 
     @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
@@ -1061,19 +1041,223 @@ class TestFacadeClone:
         result = facade.clone("ordered-source", "ordered-clone")
 
         assert isinstance(result, Success)
-        # Verify call order: validate -> normalize
-        # (get happens before validate, save happens after normalize)
         assert calls == ["validate", "normalize"]
-        # Verify registry.get was called first
         assert registry.get_inputs == ["ordered-source"]
-        # Verify validate received cloned spec with new id
         assert validate_module.inputs[0]["id"] == "ordered-clone"
-        # Verify normalize received cloned spec
         assert normalize_module.inputs[0]["id"] == "ordered-clone"
-        # Verify save was called with normalized spec
         saved_spec = registry.save_inputs[0]
         assert saved_spec["id"] == "ordered-clone"
         assert saved_spec["spec_digest"] == _digest_for(saved_spec)
+
+
+class TestFacadeExportAll:
+    """Pinned acceptance tests for facade export_all operation.
+
+    These tests pin the contract between shell/registry and app/facade
+    before implementation. Tests xfail until facade.export_all() is implemented.
+    """
+
+    @pytest.mark.xfail(reason="export_all implementation pending")
+    def test_export_all_returns_full_canonical_specs_from_registry(self) -> None:
+        """Success export_all returns complete PersonaSpec records, not summaries."""
+        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha-digest")
+        spec_beta = _canonical_spec("export-beta", digest="sha256:beta-digest")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_all()
+
+        assert isinstance(result, Success)
+        exported_specs = result.unwrap()
+        assert len(exported_specs) == 2
+        assert exported_specs[0] == spec_alpha
+        assert exported_specs[1] == spec_beta
+        for spec in exported_specs:
+            assert "id" in spec
+            assert "description" in spec
+            assert "prompt" in spec
+            assert "model" in spec
+            assert "tools" in spec
+            assert "model_params" in spec
+            assert "side_effect_policy" in spec
+            assert "can_spawn" in spec
+            assert "compaction_prompt" in spec
+            assert "spec_version" in spec
+            assert "spec_digest" in spec
+
+    @pytest.mark.xfail(reason="export_all implementation pending")
+    def test_export_all_returns_exactly_empty_list_for_empty_registry(self) -> None:
+        """Verify empty registry returns exactly Success([]), no transport envelope."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_all()
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == []
+        assert isinstance(result.unwrap(), list)
+        assert len(result.unwrap()) == 0
+        assert result.unwrap() is not None
+        assert result.unwrap() != [None]
+        assert result.unwrap() != [{"error": None}]
+        assert result.unwrap() != {"data": [], "error": None}
+
+    @pytest.mark.xfail(reason="export_all implementation pending")
+    def test_export_all_maps_registry_list_failure_to_app_error(self) -> None:
+        """REGISTRY_INDEX_READ_FAILED from registry maps to LarvaError."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index file unreadable",
+                    "path": "/tmp/registry/index.json",
+                }
+            )
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_all()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert error["numeric_code"] == 107
+        assert error["details"]["path"] == "/tmp/registry/index.json"
+
+
+class TestFacadeExportIds:
+    """Pinned acceptance tests for facade export_ids operation.
+
+    These tests pin the contract between shell/registry and app/facade
+    before implementation. Tests xfail until facade.export_ids() is implemented.
+    """
+
+    @pytest.mark.xfail(reason="export_ids implementation pending")
+    def test_export_ids_returns_full_canonical_specs_in_input_order(self) -> None:
+        """Success export_ids returns complete PersonaSpec records preserving order."""
+        spec_one = _canonical_spec("export-one", digest="sha256:one-digest")
+        spec_two = _canonical_spec("export-two", digest="sha256:two-digest")
+        spec_three = _canonical_spec("export-three", digest="sha256:three-digest")
+
+        def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            if persona_id == "export-one":
+                return Success(spec_one)
+            if persona_id == "export-two":
+                return Success(spec_two)
+            if persona_id == "export-three":
+                return Success(spec_three)
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": f"not found: {persona_id}"})
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_one))
+        registry.get = get_by_id  # type: ignore[method-assign]
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids(["export-two", "export-one", "export-three"])
+
+        assert isinstance(result, Success)
+        exported_specs = result.unwrap()
+        assert len(exported_specs) == 3
+        assert exported_specs[0] == spec_two
+        assert exported_specs[1] == spec_one
+        assert exported_specs[2] == spec_three
+        for spec in exported_specs:
+            assert "id" in spec
+            assert "description" in spec
+            assert "prompt" in spec
+            assert "model" in spec
+            assert "tools" in spec
+            assert "model_params" in spec
+            assert "side_effect_policy" in spec
+            assert "can_spawn" in spec
+            assert "compaction_prompt" in spec
+            assert "spec_version" in spec
+            assert "spec_digest" in spec
+
+    @pytest.mark.xfail(reason="export_ids implementation pending")
+    def test_export_ids_returns_empty_list_for_empty_ids_immediately(self) -> None:
+        """Empty ids list returns Success([]) immediately with no registry calls."""
+        get_calls: list[str] = []
+        spec_default = _canonical_spec("default")
+
+        def track_get_calls(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            get_calls.append(persona_id)
+            return Success(spec_default)
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_default))
+        registry.get = track_get_calls  # type: ignore[method-assign]
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids([])
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == []
+        assert isinstance(result.unwrap(), list)
+        assert len(result.unwrap()) == 0
+        assert get_calls == []
+
+    @pytest.mark.xfail(reason="export_ids implementation pending")
+    def test_export_ids_fail_fast_on_first_not_found(self) -> None:
+        """First PERSONA_NOT_FOUND stops iteration, returns error immediately."""
+        spec_valid = _canonical_spec("export-valid", digest="sha256:valid")
+
+        def get_with_not_found(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            if persona_id == "export-valid":
+                return Success(spec_valid)
+            return Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": f"persona '{persona_id}' not found in registry",
+                    "persona_id": persona_id,
+                }
+            )
+
+        registry = InMemoryRegistryStore(get_result=Success(spec_valid))
+        registry.get = get_with_not_found  # type: ignore[method-assign]
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids(["export-valid", "export-missing", "export-another"])
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["numeric_code"] == 100
+        assert error["details"]["persona_id"] == "export-missing"
+
+    @pytest.mark.xfail(reason="export_ids implementation pending")
+    def test_export_ids_maps_registry_spec_read_failed_to_app_error(self) -> None:
+        """REGISTRY_SPEC_READ_FAILED from registry maps to LarvaError with context."""
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "REGISTRY_SPEC_READ_FAILED",
+                    "message": "failed to read spec json",
+                    "persona_id": "broken-spec",
+                    "path": "/tmp/registry/broken-spec.json",
+                }
+            )
+        )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids(["broken-spec"])
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert error["numeric_code"] == 108
+        assert error["details"]["persona_id"] == "broken-spec"
+        assert error["details"]["path"] == "/tmp/registry/broken-spec.json"
+
+    @pytest.mark.xfail(reason="export_ids implementation pending")
+    def test_export_ids_single_id_returns_single_element_list(self) -> None:
+        """Single id returns list with one spec, not the spec directly."""
+        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        registry = InMemoryRegistryStore(get_result=Success(spec_single))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids(["export-single"])
+
+        assert isinstance(result, Success)
+        exported = result.unwrap()
+        assert isinstance(exported, list)
+        assert len(exported) == 1
+        assert exported[0] == spec_single
 
 
 class TestFacadeSeamProof:
