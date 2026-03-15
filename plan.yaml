@@ -23262,7 +23262,7 @@ phases:
       shell_result); remediated in same step before final merge'
   - id: feature_update_batch.python-api-update-batch
     name: python-api-update-batch
-    status: claimed
+    status: done
     description: "Add `update_batch(where, patches, dry_run)` to the Python API module.\n\
       \nFile: src/larva/shell/python_api.py\n\nAdd function:\n```python\ndef update_batch(\n\
       \    where: dict[str, object],\n    patches: dict[str, object],\n    dry_run:\
@@ -23289,6 +23289,43 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T16:56:51.108181+00:00'
+    done_at: '2026-03-15T17:19:57.604312+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hashes: d6b166b, a959281
+
+      - Main merge commit hash: 58eb7f5
+
+
+      Verification:
+
+      - Run: `uv run invar guard` -> passed with 0 errors
+
+      - Run: `uv run python -c "from larva.shell.python_api import update_batch, BatchUpdateResult"`
+      -> imports successful
+
+      - Run: `uv run python -c "from larva.shell.python_api import __all__; print(''update_batch''
+      in __all__, ''BatchUpdateResult'' in __all__)"` -> True True
+
+      - Run: `wc -l src/larva/shell/python_api.py` -> 548 (<=700)
+
+
+      Files changed:
+
+      - src/larva/shell/python_api.py
+
+      - src/larva/shell/python_api_components.py
+
+
+      Spec link:
+
+      - feature_update_batch.python-api-update-batch
+
+
+      Gaps/Notes:
+
+      - Initial merge attempt failed on file-size guard; remediated by splitting component
+      adapter logic to `python_api_components.py` while preserving python_api exports'
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
     status: pending
