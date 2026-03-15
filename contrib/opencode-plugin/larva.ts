@@ -399,6 +399,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
     // Tool enforcement: block denied tools before execution
     // ----------------------------------------------------------------
     "tool.execute.before": async (input: any, _output: any) => {
+      // no debug logging
       if (!active) return
       if (isToolDenied(active, input.tool)) {
         throw new Error(
