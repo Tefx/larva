@@ -23662,7 +23662,7 @@ phases:
       - Scope limited to facade tests only (no MCP/CLI/Python API tests)'
   - id: feature_update_batch.facade-update-batch-verify
     name: facade-update-batch-verify
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       facade batch-update behavior from a fresh perspective before shell and web adapters
       build on it.
@@ -23772,3 +23772,74 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-15T16:51:06.905823+00:00'
+    done_at: '2026-03-15T16:55:41.037038+00:00'
+    evidence: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: facade batch update
+
+      **Independence Level**: L2
+
+
+      ### Test Execution
+
+      - Command:
+
+      ```
+
+      uv run pytest tests/app/test_facade.py -k update_batch -v
+
+      ```
+
+      - Main-path evidence:
+
+      ```
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_success_returns_counts_and_items_in_registry_order
+      PASSED [ 14%]
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_where_uses_and_across_clauses
+      PASSED [ 28%]
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_missing_dotted_key_is_non_match
+      PASSED [ 42%]
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_delegates_update_in_order
+      PASSED [ 85%]
+
+      ======================= 7 passed, 47 deselected in 1.26s =======================
+
+      ```
+
+      - Highest-risk failure-path evidence:
+
+      ```
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_dry_run_returns_matched_ids_without_writes
+      PASSED [ 57%]
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_registry_list_failure_maps_to_facade_error
+      PASSED [ 71%]
+
+      tests/app/test_facade.py::TestFacadeUpdateBatch::test_update_batch_fails_fast_on_first_delegated_error_no_rollback
+      PASSED [100%]
+
+      ```
+
+
+      ### Findings
+
+      - Dry-run no-write guarantee: PASS
+
+      - Fail-fast partial-update semantics: PASS
+
+      - Dot-path missing-key non-match behavior: PASS
+
+      - Error propagation from registry/list/update: PASS
+
+
+      ### Verdict
+
+      - PASS'
