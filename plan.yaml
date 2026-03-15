@@ -23465,7 +23465,7 @@ phases:
     agent: gate-reviewer
   - id: feature_update_batch.facade-update-batch-contract
     name: facade-update-batch-contract
-    status: claimed
+    status: done
     description: "Define the batch-update facade contract before implementation.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n  - behavioral_notes\nagent_source:\
@@ -23496,6 +23496,41 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-15T16:26:52.133743+00:00'
+    done_at: '2026-03-15T16:32:36.750482+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: 683ee35
+
+
+      Verification:
+
+      - Run: `python3 -m compileall src/larva/app/facade.py` -> `Compiling ''src/larva/app/facade.py''...`
+      (syntax check passed)
+
+      - Run: `rg -n ''class BatchUpdateItemResult|class BatchUpdateResult|def update_batch\(|AND
+      `where`|missing key => non-match|dry-run performs no writes|fail-fast with no
+      rollback|pass through registry `list\(\)` or delegated `update\(\)` failures|Contract-only
+      stub'' src/larva/app/facade.py` -> matched required type defs and contract semantics
+      text plus contract-only stub
+
+      - Run: `git show --stat --oneline 683ee35` -> `src/larva/app/facade.py | 33
+      +++++++++++++++++++++++++++++++++`
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+
+      Spec link:
+
+      - feature_update_batch.facade-update-batch-contract
+
+
+      Gaps/Notes:
+
+      - Scope intentionally contract-only: no runnable batch-update loop, no adapter/web
+      wiring'
   - id: feature_update_batch.facade-update-batch-tests
     name: facade-update-batch-tests
     status: claimed
