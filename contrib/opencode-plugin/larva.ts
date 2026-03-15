@@ -87,10 +87,10 @@ async function larvaExportAll($: any): Promise<PersonaSpec[] | null> {
   try {
     const r = await larvaExec($, ["export", "--all", "--json"])
     const parsed = JSON.parse(r)
-    console.log(`[larva-plugin] export --all: ${parsed.data?.length ?? 0} personas`)
+    // debug: console.log(`[larva-plugin] export --all: ${parsed.data?.length ?? 0} personas`)
     return parsed.data ?? null
   } catch (e: any) {
-    console.error(`[larva-plugin] export --all failed:`, e?.message ?? e)
+    // debug: console.error(`[larva-plugin] export --all failed:`, e?.message ?? e)
     return null
   }
 }
@@ -159,7 +159,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
     const pyproject = await $`cat ${directory}/pyproject.toml`.quiet()
     if (pyproject.stdout.toString().includes('name = "larva"')) {
       _projectDir = directory
-      console.log(`[larva-plugin] Auto-detected larva project at ${directory}`)
+      // debug: console.log(`[larva-plugin] Auto-detected larva project at ${directory}`)
     }
   } catch { /* not a larva project — will use bare `larva` from PATH */ }
 
@@ -179,7 +179,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
         managed.add(spec.id)
 
         // Register agent with mapped permissions and model
-        console.log(`[larva-plugin] Registered agent: ${spec.id}`)
+        // debug: console.log(`[larva-plugin] Registered agent: ${spec.id}`)
         config.agent[spec.id] = {
           description: spec.description
             ? `[larva] ${spec.description}`
@@ -243,7 +243,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
 
         const entry = getCached(id)
         if (!entry) {
-          console.log(`[larva-plugin] system.transform: no cache for ${id}, skipping`)
+          // debug: console.log(`[larva-plugin] system.transform: no cache for ${id}, skipping`)
           break
         }
 
@@ -252,7 +252,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
           `When asked "who are you" or "what persona", mention that you are the "${id}" persona loaded from larva.`,
         ].join("\n")
         output.system[0] = sys.replace(ph, entry.prompt + "\n\n" + watermark)
-        console.log(`[larva-plugin] system.transform: injected prompt for ${id}`)
+        // debug: console.log(`[larva-plugin] system.transform: injected prompt for ${id}`)
         break
       }
     },
