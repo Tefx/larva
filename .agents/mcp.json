@@ -1,11 +1,9 @@
 {
   "mcpServers": {
     "invar": {
-      "command": "uvx",
-      "args": [
-        "invar-tools",
-        "mcp"
-      ]
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "invar", "mcp"]
     }
   }
 }

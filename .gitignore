@@ -60,8 +60,11 @@ Thumbs.db
 # Local agent/tooling artifacts
 .claude/
 .gemini/
+.hypothesis/
 .invar/
 .opencode/
+.serena/
+.vectl/
 .mcp.json
 AGENTS.md
 CLAUDE.md
