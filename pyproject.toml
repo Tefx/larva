@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "PersonaSpec toolkit for LLM agents"
 readme = "README.md"
 requires-python = ">=3.11"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 keywords = ["llm", "persona", "persona-spec", "mcp", "validation", "agent"]
 classifiers = [
     "Development Status :: 3 - Alpha",
