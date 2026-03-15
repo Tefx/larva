@@ -23533,7 +23533,7 @@ phases:
       wiring'
   - id: feature_update_batch.facade-update-batch-tests
     name: facade-update-batch-tests
-    status: claimed
+    status: done
     description: 'Add focused facade acceptance tests before implementation.
 
 
@@ -23591,6 +23591,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T16:27:29.786350+00:00'
+    done_at: '2026-03-15T16:32:46.477730+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: 16c4595
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/app/test_facade.py::TestFacadeUpdateBatch -v` ->
+      8 xfailed tests collected
+
+      - Run: `uv run pytest tests/app/test_facade.py -v` -> 30 passed, 8 xfailed,
+      17 xpassed (no regressions)
+
+
+      Files changed:
+
+      - tests/app/test_facade.py
+
+
+      Spec link:
+
+      - feature_update_batch.facade-update-batch-tests
+
+
+      Gaps/Notes:
+
+      - Tests are contract-defining and currently marked xfail pending implementation
+      step
+
+      - Scope limited to facade tests only (no MCP/CLI/Python API tests)'
   - id: feature_update_batch.facade-update-batch-verify
     name: facade-update-batch-verify
     status: pending
