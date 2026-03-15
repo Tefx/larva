@@ -18,6 +18,15 @@ from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import FileSystemRegistryStore
 
+
+def _get_version() -> str:
+    """Read version from package metadata."""
+    try:
+        from importlib.metadata import version
+        return version("larva")
+    except Exception:
+        return "unknown"
+
 CliExitCode = Literal[0, 1, 2]
 
 EXIT_OK: CliExitCode = 0
@@ -336,6 +345,10 @@ def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnve
 # @shell_orchestration: argparse wiring defines shell command boundary
 def _build_parser() -> _CliParser:
     parser = _CliParser(prog="larva", add_help=True)
+    parser.add_argument(
+        "-V", "--version", action="version",
+        version=f"%(prog)s {_get_version()}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     validate_parser = subparsers.add_parser("validate")
