@@ -120,26 +120,30 @@ function setCache(id: string, spec: PersonaSpec) {
 // Permission mapping: larva side_effect_policy + can_spawn → opencode rules
 // ---------------------------------------------------------------------------
 
-function toPermissions(spec: PersonaSpec) {
-  const rules: Array<{ permission: string; pattern: string; action: string }> = []
+/**
+ * Map larva side_effect_policy + can_spawn to opencode permission object.
+ * opencode expects { [permission_name]: "allow" | "deny" | "ask" }
+ */
+function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
+  const perms: Record<string, string> = {}
 
   switch (spec.side_effect_policy) {
     case "read_only":
-      rules.push({ permission: "edit", pattern: "*", action: "deny" })
-      rules.push({ permission: "bash", pattern: "*", action: "deny" })
+      perms.edit = "deny"
+      perms.bash = "deny"
       break
     case "approval_required":
-      rules.push({ permission: "edit", pattern: "*", action: "ask" })
-      rules.push({ permission: "bash", pattern: "*", action: "ask" })
+      perms.edit = "ask"
+      perms.bash = "ask"
       break
     // "allow" → no restrictions
   }
 
   if (spec.can_spawn === false) {
-    rules.push({ permission: "task", pattern: "*", action: "deny" })
+    perms.task = "deny"
   }
 
-  return rules.length > 0 ? rules : undefined
+  return Object.keys(perms).length > 0 ? perms : undefined
 }
 
 // ---------------------------------------------------------------------------
