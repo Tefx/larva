@@ -23363,3 +23363,34 @@ phases:
     - feature_update_batch.web-frontend
     - feature_update_batch.tests-update-batch
     agent: gate-reviewer
+  - id: feature_update_batch.facade-update-batch-contract
+    name: facade-update-batch-contract
+    status: pending
+    description: "Define the batch-update facade contract before implementation.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
+      \  - type_defs\n  - interfaces\n  - stubs\n  - behavioral_notes\nagent_source:\
+      \ default\n\nFiles:\n- src/larva/app/facade.py\n\nScope:\n- Add `BatchUpdateItemResult`\
+      \ and `BatchUpdateResult` type definitions.\n- Extend `LarvaFacade` with `update_batch(where,\
+      \ patches, dry_run=False)` as a contract-only signature.\n- Add contract-only\
+      \ notes or stub shape in `DefaultLarvaFacade` without shipping business logic.\n\
+      - Pin the acceptance contract for batch semantics in docstrings / structured\
+      \ behavioral notes.\n\nRequired contract semantics:\n- `where` uses AND matching\
+      \ across all clauses.\n- Dot-path lookup in `where` uses nested dict traversal;\
+      \ a missing key is a non-match, not an exception.\n- `dry_run=True` returns\
+      \ matched ids with `updated=False`, reports `updated=0`, and performs no writes.\n\
+      - `dry_run=False` applies existing `update()` semantics per matched persona.\n\
+      - Batch execution is fail-fast: stop on the first error, do not roll back earlier\
+      \ successful updates.\n- Registry `list()` failures and delegated `update()`\
+      \ failures are passed through as facade errors.\n- Result ordering follows registry\
+      \ list order for matched personas.\n\nOut of scope:\n- No registry iteration\
+      \ logic, filtering loop, or save behavior implementation in this step.\n- No\
+      \ MCP, CLI, Python API, or web wiring in this step."
+    verification: '- Contract artifacts exist in `src/larva/app/facade.py` for `BatchUpdateResult`
+      and `update_batch`
+
+      - Contract text explicitly covers AND matching, dot-path missing-key semantics,
+      dry-run no-write guarantee, fail-fast/no-rollback behavior, and error pass-through
+
+      - Review confirms this step adds signatures/types/stubs only and does not ship
+      runnable batch-update logic'
+    agent: python-senior
