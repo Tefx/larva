@@ -32,9 +32,9 @@ See:
 
 from __future__ import annotations
 
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Result
 
 # Import contract types from core modules
 from larva.core import assemble as assemble_module
@@ -47,12 +47,18 @@ from larva.core.validate import ValidationReport
 # Import app-layer types and facade
 from larva.app.facade import (
     AssembleRequest,
+    BatchUpdateResult,
     ClearedRegistry,
     DefaultLarvaFacade,
     DeletedPersona,
     LarvaError,
     PersonaSummary,
     RegisteredPersona,
+)
+from larva.shell.python_api_components import (
+    LarvaApiError,
+    component_list,
+    component_show,
 )
 
 # Import shell modules for facade construction
@@ -122,18 +128,6 @@ def _build_assemble_request(
         if value is not None:
             request[key] = value
     return cast("AssembleRequest", request)
-
-
-class LarvaApiError(Exception):
-    """Exception raised when facade operations fail.
-
-    This provides failure passthrough from facade to python_api caller
-    without Python-API-specific mutation.
-    """
-
-    def __init__(self, error: LarvaError) -> None:
-        self.error = error
-        super().__init__(error["message"])
 
 
 # -----------------------------------------------------------------------------
@@ -309,6 +303,58 @@ def update(persona_id: str, patches: dict[str, Any]) -> PersonaSpec:
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
 # @shell_orchestration: thin delegation to facade which performs I/O via core/registry
+def update_batch(
+    where: dict[str, Any],
+    patches: dict[str, Any],
+    dry_run: bool = False,
+) -> BatchUpdateResult:
+    """Update multiple personas matching where clauses.
+
+    This is a thin delegation to `larva.app.facade.LarvaFacade.update_batch`.
+    The facade orchestrates: registry list → filter by where → apply patches → revalidate → save.
+
+    Args:
+        where: Dictionary of dotted-key filter clauses. All clauses must match (AND).
+            Keys like "model" match top-level fields; "prompts.0" matches nested paths.
+        patches: Dictionary of patches to apply to matched personas.
+            Supports RFC 6902 JSON Patch operations via core.patch.apply_patches.
+        dry_run: If True, return matched personas without applying updates.
+
+    Returns:
+        BatchUpdateResult with:
+            - items: list of {id, updated} per matched persona
+            - matched: count of personas matching where clauses
+            - updated: count of successfully updated personas (0 if dry_run)
+
+    Contract:
+        - Delegates to app.facade for orchestration
+        - Lists via shell.registry
+        - Filters by where clauses (AND semantics)
+        - For each match: applies patches → validates → normalizes → saves (unless dry_run)
+        - Stops on first validation/save error
+
+    Example:
+        result = update_batch(
+            where={"model": "claude-3"},
+            patches={"model": "claude-opus-4-20250514"}
+        )
+        assert result["matched"] > 0
+
+        # Dry-run to preview without applying
+        preview = update_batch(
+            where={"model": "claude-3"},
+            patches={"model": "claude-opus-4-20250514"},
+            dry_run=True
+        )
+        assert preview["updated"] == 0
+    """
+    return cast(
+        "BatchUpdateResult", _unwrap_result(_get_facade().update_batch(where, patches, dry_run))
+    )
+
+
+# @invar:allow shell_result: Python API unwraps Result via exception passthrough
+# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
 def list() -> list[PersonaSummary]:
     """List all registered personas.
 
@@ -328,184 +374,6 @@ def list() -> list[PersonaSummary]:
         assert len(personas) >= 0
     """
     return cast("list[PersonaSummary]", _unwrap_result(_get_facade().list()))
-
-
-# -----------------------------------------------------------------------------
-# Lazy ComponentStore Initialization
-# -----------------------------------------------------------------------------
-# The component store is lazily initialized on first use to defer filesystem
-# I/O until the Python API is actually called.
-
-
-_component_store: FilesystemComponentStore | None = None
-
-
-# @invar:allow shell_result: lazy initialization is internal helper returning store instance
-# @shell_orchestration: creating FilesystemComponentStore instance is deferred I/O initialization
-# @shell_complexity: simple lazy singleton pattern for deferred filesystem access
-def _get_component_store() -> FilesystemComponentStore:
-    """Lazily initialize and return the default component store instance."""
-    global _component_store
-    if _component_store is None:
-        _component_store = FilesystemComponentStore()
-    return _component_store
-
-
-# -----------------------------------------------------------------------------
-# New Registry Operations API
-# -----------------------------------------------------------------------------
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def component_list() -> dict[str, list[str]]:
-    """List all available components by type.
-
-    This is a thin delegation to `larva.shell.components.FilesystemComponentStore.list_components`.
-    The facade orchestrates: listing available components from the filesystem.
-
-    Returns:
-        Dictionary mapping component types to lists of available component names:
-        - "prompts": list of available prompt names
-        - "toolsets": list of available toolset names
-        - "constraints": list of available constraint names
-        - "models": list of available model names
-
-    Contract:
-        - Delegates to shell.components for filesystem I/O
-        - Returns component list directly (no Result wrapper)
-
-    Example:
-        components = component_list()
-        assert "prompts" in components
-    """
-    result = _get_component_store().list_components()
-    if isinstance(result, Failure):
-        error = result.failure()
-        # Map ComponentStoreError to LarvaApiError
-        raise LarvaApiError(
-            {
-                "code": "COMPONENT_NOT_FOUND",
-                "numeric_code": 105,
-                "message": str(error),
-                "details": {
-                    "component_type": getattr(error, "component_type", None),
-                    "component_name": getattr(error, "component_name", None),
-                },
-            }
-        )
-    return result.unwrap()
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-# @shell_complexity: thin adapter with type dispatch for component loaders
-def component_show(type: str, name: str) -> dict[str, object]:
-    """Show details of a specific component.
-
-    This is a thin delegation to the component store loader methods.
-    The facade orchestrates: loading component from filesystem.
-
-    Args:
-        type: Component type - one of "prompt", "toolset", "constraint", "model".
-        name: Component name (without file extension).
-
-    Returns:
-        Component data as a dictionary.
-
-    Raises:
-        LarvaApiError: If component is not found, with code COMPONENT_NOT_FOUND (105).
-
-    Contract:
-        - Delegates to shell.components for filesystem I/O
-        - Invalid type raises LarvaApiError with code COMPONENT_NOT_FOUND/105
-
-    Example:
-        prompt = component_show("prompt", "code-reviewer")
-        assert "text" in prompt
-    """
-    store = _get_component_store()
-
-    if type == "prompt":
-        result = store.load_prompt(name)
-        if isinstance(result, Failure):
-            error = result.failure()
-            raise LarvaApiError(
-                {
-                    "code": "COMPONENT_NOT_FOUND",
-                    "numeric_code": 105,
-                    "message": str(error),
-                    "details": {
-                        "component_type": getattr(error, "component_type", type),
-                        "component_name": getattr(error, "component_name", name),
-                    },
-                }
-            )
-        return result.unwrap()
-
-    if type == "toolset":
-        result = store.load_toolset(name)
-        if isinstance(result, Failure):
-            error = result.failure()
-            raise LarvaApiError(
-                {
-                    "code": "COMPONENT_NOT_FOUND",
-                    "numeric_code": 105,
-                    "message": str(error),
-                    "details": {
-                        "component_type": getattr(error, "component_type", type),
-                        "component_name": getattr(error, "component_name", name),
-                    },
-                }
-            )
-        return result.unwrap()
-
-    if type == "constraint":
-        result = store.load_constraint(name)
-        if isinstance(result, Failure):
-            error = result.failure()
-            raise LarvaApiError(
-                {
-                    "code": "COMPONENT_NOT_FOUND",
-                    "numeric_code": 105,
-                    "message": str(error),
-                    "details": {
-                        "component_type": getattr(error, "component_type", type),
-                        "component_name": getattr(error, "component_name", name),
-                    },
-                }
-            )
-        return result.unwrap()
-
-    if type == "model":
-        result = store.load_model(name)
-        if isinstance(result, Failure):
-            error = result.failure()
-            raise LarvaApiError(
-                {
-                    "code": "COMPONENT_NOT_FOUND",
-                    "numeric_code": 105,
-                    "message": str(error),
-                    "details": {
-                        "component_type": getattr(error, "component_type", type),
-                        "component_name": getattr(error, "component_name", name),
-                    },
-                }
-            )
-        return result.unwrap()
-
-    # Invalid type - raise COMPONENT_NOT_FOUND with code 105
-    raise LarvaApiError(
-        {
-            "code": "COMPONENT_NOT_FOUND",
-            "numeric_code": 105,
-            "message": f"Invalid component type: {type}",
-            "details": {
-                "component_type": type,
-                "component_name": name,
-            },
-        }
-    )
 
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
@@ -654,6 +522,7 @@ __all__ = [
     "register",
     "resolve",
     "update",
+    "update_batch",
     "list",
     # Component operations
     "component_list",
@@ -673,6 +542,7 @@ __all__ = [
     "LarvaError",
     "DeletedPersona",
     "ClearedRegistry",
+    "BatchUpdateResult",
     # Exception for failure passthrough
     "LarvaApiError",
 ]
