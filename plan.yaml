@@ -23169,7 +23169,7 @@ phases:
     refs:
     - src/larva/shell/python_api.py
     depends_on:
-    - feature_update_batch.facade-update-batch
+    - feature_update_batch.facade-update-batch-verify
     agent: python-executor
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
