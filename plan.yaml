@@ -22917,11 +22917,11 @@ phases:
     skipped_reason: irrelevant
 - id: feature_update_batch
   name: 'Feature: Persona Batch Update (4-layer sync)'
-  status: pending
+  status: in_progress
   steps:
   - id: feature_update_batch.facade-update-batch
     name: facade-update-batch
-    status: pending
+    status: claimed
     description: "Add `update_batch(where, patches, dry_run)` to LarvaFacade protocol\
       \ and DefaultLarvaFacade.\n\nFile: src/larva/app/facade.py\n\n## New TypedDict:\
       \ BatchUpdateResult\n```python\nclass BatchUpdateItemResult(TypedDict):\n  \
@@ -22956,6 +22956,8 @@ phases:
     refs:
     - src/larva/app/facade.py
     agent: python-executor
+    claimed_by: agent
+    claimed_at: '2026-03-15T14:41:26.905161+00:00'
   - id: feature_update_batch.mcp-update-batch
     name: mcp-update-batch
     status: pending
