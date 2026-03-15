@@ -23055,7 +23055,7 @@ phases:
     - src/larva/shell/mcp_contract.py
     - src/larva/shell/mcp.py
     depends_on:
-    - feature_update_batch.facade-update-batch
+    - feature_update_batch.facade-update-batch-verify
     agent: python-executor
   - id: feature_update_batch.cli-update-batch
     name: cli-update-batch
