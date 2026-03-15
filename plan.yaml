@@ -22922,40 +22922,103 @@ phases:
   - id: feature_update_batch.facade-update-batch
     name: facade-update-batch
     status: claimed
-    description: "Add `update_batch(where, patches, dry_run)` to LarvaFacade protocol\
-      \ and DefaultLarvaFacade.\n\nFile: src/larva/app/facade.py\n\n## New TypedDict:\
-      \ BatchUpdateResult\n```python\nclass BatchUpdateItemResult(TypedDict):\n  \
-      \  id: str\n    updated: bool\n\nclass BatchUpdateResult(TypedDict):\n    matched:\
-      \ int\n    updated: int\n    dry_run: bool\n    results: list[BatchUpdateItemResult]\n\
-      ```\n\n## LarvaFacade Protocol\nAdd method signature:\n```python\ndef update_batch(\n\
-      \    self,\n    where: dict[str, object],\n    patches: dict[str, object],\n\
-      \    dry_run: bool = False,\n) -> Result[BatchUpdateResult, LarvaError]: ...\n\
-      ```\n\n## DefaultLarvaFacade Implementation\nFlow:\n1. `self._registry.list()`\
-      \ -> get all specs. On failure, pass-through error.\n2. Filter: for each spec,\
-      \ check if ALL where conditions match. Support dot notation in where keys using\
-      \ the same dot-path traversal as update patches (e.g., `model_params.temperature`\
-      \ traverses into nested dicts). Simple equality comparison.\n3. If `dry_run=True`:\
-      \ return `BatchUpdateResult(matched=len(filtered), updated=0, dry_run=True,\
-      \ results=[{\"id\": s[\"id\"], \"updated\": False} for s in filtered])`\n4.\
-      \ If `dry_run=False`: for each matched spec, call `self.update(spec[\"id\"],\
-      \ patches)`. Fail-fast on first error -- return the error immediately. Already-updated\
-      \ specs are NOT rolled back.\n5. Collect results: `{\"id\": id, \"updated\"\
-      : True}` for each success.\n6. Return `BatchUpdateResult(matched=len(filtered),\
-      \ updated=len(results), dry_run=False, results=results)`\n\nHelper method for\
-      \ dot-notation value lookup:\n```python\ndef _get_nested(self, spec: dict, dotted_key:\
-      \ str) -> object:\n    parts = dotted_key.split(\".\")\n    current = spec\n\
-      \    for part in parts:\n        if not isinstance(current, dict) or part not\
-      \ in current:\n            return _SENTINEL  # unique sentinel for 'not found'\n\
-      \        current = current[part]\n    return current\n```\n\nPattern to follow:\
-      \ `list()` method for registry.list() + error mapping, `update()` for per-item\
-      \ application."
-    verification: '- `uv run invar guard` passes
+    description: 'Implement the facade batch-update flow after the contract and focused
+      tests are in place.
 
-      - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade,
-      BatchUpdateResult; assert hasattr(DefaultLarvaFacade, ''update_batch'')"` succeeds'
+
+      step_type: implementation
+
+      risk_level: high
+
+      agent_source: upgraded_for_stateful_semantics
+
+
+      File:
+
+      - src/larva/app/facade.py
+
+
+      Deliverables:
+
+      - Complete `BatchUpdateItemResult` / `BatchUpdateResult` support in the facade
+      surface.
+
+      - Implement `LarvaFacade.update_batch(where, patches, dry_run=False)` in `DefaultLarvaFacade`.
+
+      - Add a helper for dotted-key lookup that returns a unique not-found sentinel
+      instead of throwing.
+
+
+      Execution contract:
+
+      1. Call `self._registry.list()` once to load registry specs; on failure, pass
+      through the mapped facade error.
+
+      2. Filter registry specs using AND semantics across all `where` clauses.
+
+      3. Support dotted `where` keys via nested dict traversal; missing dotted keys
+      are treated as non-matches.
+
+      4. Preserve registry list order in the filtered result set.
+
+      5. If `dry_run=True`, return `BatchUpdateResult(matched=<count>, updated=0,
+      dry_run=True, results=[{"id": <matched-id>, "updated": False}, ...])` and perform
+      no writes.
+
+      6. If `dry_run=False`, iterate matched personas in order and delegate to `self.update(spec["id"],
+      patches)`.
+
+      7. Fail fast on the first delegated error; return that error immediately.
+
+      8. Do not roll back personas already updated before the failure.
+
+      9. On full success, return `BatchUpdateResult(matched=<count>, updated=<count>,
+      dry_run=False, results=[{"id": <matched-id>, "updated": True}, ...])`.
+
+
+      Failure-mode coverage that MUST be honored:
+
+      - dot-path missing key behavior: non-match, not exception
+
+      - where matching semantics: all clauses must match, no OR/coercion shortcuts
+
+      - dry_run no-write guarantee: no registry save/update side effects
+
+      - fail-fast partial-update semantics: earlier successes persist, later matches
+      are not attempted after the first failure
+
+      - error propagation: registry.list and delegated update/validation/save/get
+      failures bubble with their mapped facade codes/details
+
+
+      Pattern references:
+
+      - Follow `list()` for registry.list error handling.
+
+      - Follow `update()` for delegated per-persona patch/validate/normalize/save
+      semantics.
+
+
+      Out of scope:
+
+      - No MCP, CLI, Python API, docs, or web changes in this step.'
+    verification: '- `uv run pytest tests/app/test_facade.py -k update_batch -v` passes
+
+      - Verification proves the main path, AND matching, dotted-path missing-key non-match
+      behavior, dry-run no-write guarantee, fail-fast partial-update semantics, and
+      error propagation cases all pass
+
+      - `uv run invar guard` passes
+
+      - A targeted smoke check confirms `DefaultLarvaFacade.update_batch` exists and
+      returns `BatchUpdateResult` on success'
     refs:
     - src/larva/app/facade.py
-    agent: python-executor
+    - tests/app/test_facade.py
+    depends_on:
+    - feature_update_batch.facade-update-batch-contract
+    - feature_update_batch.facade-update-batch-tests
+    agent: python-senior
     claimed_by: agent
     claimed_at: '2026-03-15T14:41:26.905161+00:00'
   - id: feature_update_batch.mcp-update-batch
