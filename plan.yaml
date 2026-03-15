@@ -23482,7 +23482,7 @@ phases:
       - Added POST /api/personas/batch-update endpoint delegating to python_api.update_batch'
   - id: feature_update_batch.web-frontend
     name: web-frontend
-    status: claimed
+    status: done
     description: "Add batch update modal to the web UI.\n\nFile: contrib/web/index.html\n\
       \nAdd a \"Batch Update\" button in the header actions area (`.header-actions`),\
       \ next to existing buttons.\n\nAdd a modal component (Alpine.js) with:\n1. **WHERE\
@@ -23518,6 +23518,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T17:34:24.961826+00:00'
+    done_at: '2026-03-15T17:37:05.187772+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: 119b812
+
+      - Main merge commit hash: 8dd54e9
+
+
+      Verification:
+
+      - Run: HTML validation passed (no unclosed tags)
+
+      - Run: `git log -1 --oneline` -> 119b812 feat(web): add batch update modal for
+      personas
+
+
+      Files changed:
+
+      - contrib/web/index.html
+
+
+      Spec link:
+
+      - feature_update_batch.web-frontend
+
+
+      Gaps/Notes:
+
+      - Modal width set to 700px for better visibility
+
+      - Debounced preview (500ms) auto-triggers on WHERE clause change
+
+      - Apply shows confirmation dialog before executing
+
+      - Results display shows per-persona update status after successful apply'
   - id: feature_update_batch.tests-update-batch
     name: tests-update-batch
     status: done
