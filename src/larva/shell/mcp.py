@@ -41,6 +41,7 @@ from larva.shell.mcp_contract import (
 from larva.shell.mcp_params import MCPParamValidationMixin
 from larva.shell.components import ComponentStore
 from larva.shell.mcp_export import handle_export as handle_export_tool
+from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_tool
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -621,6 +622,16 @@ class MCPHandlers(MCPParamValidationMixin):
         # Error envelope fidelity: return error with code, numeric_code, message, details
         error = result.failure()
         return error
+
+    def handle_update_batch(self, params: object) -> Union[dict[str, object], LarvaError]:
+        """Handle larva.update_batch MCP tool call.
+
+        Delegates to shared update_batch handler logic with where/patches/dry_run validation.
+        """
+        result = handle_update_batch_tool(self, params)
+        if isinstance(result, Success):
+            return cast("dict[str, object]", result.unwrap())
+        return result.failure()
 
     def handle_export(self, params: object) -> Union[list["PersonaSpec"], LarvaError]:
         """Handle larva.export MCP tool call.

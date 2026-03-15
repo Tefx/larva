@@ -231,6 +231,28 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "required": ["id", "patches"],
         },
     },
+    {
+        "name": "larva.update_batch",
+        "description": "Batch-update all personas matching 'where' clauses by applying JSON merge patches.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "where": {
+                    "type": "object",
+                    "description": "WHERE clauses: all personas matching all key=value pairs are updated",
+                },
+                "patches": {
+                    "type": "object",
+                    "description": "JSON merge patches to apply to each matched persona",
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "If true, return matched ids without applying updates",
+                },
+            },
+            "required": ["where", "patches"],
+        },
+    },
 ]
 
 
