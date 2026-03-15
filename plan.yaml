@@ -23142,7 +23142,7 @@ phases:
     - src/larva/shell/cli_helpers.py
     - src/larva/shell/cli.py
     depends_on:
-    - feature_update_batch.facade-update-batch
+    - feature_update_batch.facade-update-batch-verify
     agent: python-executor
   - id: feature_update_batch.python-api-update-batch
     name: python-api-update-batch
