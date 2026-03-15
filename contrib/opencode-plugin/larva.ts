@@ -191,10 +191,19 @@ async function loadToolPolicy($: any, directory: string): Promise<void> {
 }
 
 function parseToolPolicyYaml(text: string): ToolPolicy {
+  // Pre-process: collapse multi-line flow sequences [...] into single lines
+  const collapsed = text.replace(/(\[)\s*\n([\s\S]*?)\]/g, (_, open, body) => {
+    const items = body.split(",").map((s: string) => s.trim()).filter((s: string) => s && !s.startsWith("#"))
+    // Remove trailing empty from last comma
+    if (items.length && items[items.length - 1] === "") items.pop()
+    return `[${items.join(", ")}]`
+  })
+
   const policy: ToolPolicy = {}
   let currentAgent: string | null = null
+  let currentKey: "deny" | "allow" | null = null
 
-  for (const line of text.split("\n")) {
+  for (const line of collapsed.split("\n")) {
     const trimmed = line.trimEnd()
     if (!trimmed || trimmed.startsWith("#")) continue
 
@@ -206,34 +215,31 @@ function parseToolPolicyYaml(text: string): ToolPolicy {
     if (agentMatch) {
       currentAgent = agentMatch[1]
       policy[currentAgent] = {}
+      currentKey = null
       continue
     }
 
-    // deny/allow list (4-space indent)
     if (currentAgent) {
+      // Inline list: deny: [a, b, c]
       const listMatch = trimmed.match(/^    (deny|allow):\s*\[(.+)\]$/)
       if (listMatch) {
         const key = listMatch[1] as "deny" | "allow"
-        const items = listMatch[2].split(",").map(s => s.trim())
+        const items = listMatch[2].split(",").map(s => s.trim()).filter(s => s)
         policy[currentAgent][key] = items
+        currentKey = null
         continue
       }
-      // Multi-line list format
+      // Block list header: deny:
       const keyMatch = trimmed.match(/^    (deny|allow):$/)
       if (keyMatch) {
-        const key = keyMatch[1] as "deny" | "allow"
-        policy[currentAgent][key] = []
+        currentKey = keyMatch[1] as "deny" | "allow"
+        policy[currentAgent][currentKey] = []
         continue
       }
+      // Block list item: - value
       const itemMatch = trimmed.match(/^      - (.+)$/)
-      if (itemMatch && currentAgent) {
-        const entry = policy[currentAgent]
-        // Find the last defined list
-        if (entry.allow && !entry.deny) {
-          entry.allow.push(itemMatch[1].trim())
-        } else if (entry.deny) {
-          entry.deny.push(itemMatch[1].trim())
-        }
+      if (itemMatch && currentKey) {
+        policy[currentAgent][currentKey]!.push(itemMatch[1].trim())
       }
     }
   }
