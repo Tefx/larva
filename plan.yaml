@@ -23328,7 +23328,7 @@ phases:
       adapter logic to `python_api_components.py` while preserving python_api exports'
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
-    status: pending
+    status: claimed
     description: 'Update INTERFACES.md to document the verified update-batch operation
       across all three surfaces.
 
@@ -23392,6 +23392,8 @@ phases:
     - feature_update_batch.cli-update-batch
     - feature_update_batch.python-api-update-batch
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T17:20:19.650027+00:00'
   - id: feature_update_batch.web-backend
     name: web-backend
     status: pending
