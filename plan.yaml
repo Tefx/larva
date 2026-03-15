@@ -22915,3 +22915,6 @@ phases:
     claimed_by: python-senior
     claimed_at: '2026-03-14T21:22:37.805424+00:00'
     skipped_reason: irrelevant
+- id: feature_update_batch
+  name: 'Feature: Persona Batch Update (4-layer sync)'
+  status: pending
