@@ -23099,7 +23099,7 @@ phases:
     claimed_at: '2026-03-15T16:56:18.407948+00:00'
   - id: feature_update_batch.cli-update-batch
     name: cli-update-batch
-    status: pending
+    status: claimed
     description: 'Add `larva update-batch --where key=value [--where ...] --set key=value
       [--set ...] [--dry-run] [--json]` CLI subcommand.
 
@@ -23184,6 +23184,8 @@ phases:
     depends_on:
     - feature_update_batch.facade-update-batch-verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T16:56:45.147511+00:00'
   - id: feature_update_batch.python-api-update-batch
     name: python-api-update-batch
     status: pending
