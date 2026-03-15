@@ -411,6 +411,10 @@ def _build_parser() -> _CliParser:
     update_parser.add_argument("--set", dest="set_values", action="append", default=[])
     update_parser.add_argument("--json", action="store_true", dest="as_json")
 
+    serve_parser = subparsers.add_parser("serve", help="Start web UI server")
+    serve_parser.add_argument("--port", type=int, default=7400)
+    serve_parser.add_argument("--no-open", action="store_true", dest="no_open")
+
     return parser
 
 

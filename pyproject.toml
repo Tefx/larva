@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "larva"
-version = "0.1.2"
+version = "0.2.0"
 description = "PersonaSpec toolkit for LLM agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,6 +28,9 @@ dependencies = [
     "rich>=13.0",
     "returns>=0.24",
 ]
+
+[project.optional-dependencies]
+web = ["fastapi>=0.100", "uvicorn>=0.20"]
 
 [project.scripts]
 larva = "larva.shell.cli:main"
@@ -60,7 +63,7 @@ max_function_lines = 50
 require_contracts = true
 require_doctests = true
 forbidden_imports = ["os", "sys", "socket", "requests", "urllib", "subprocess", "shutil", "io", "pathlib"]
-exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build"]
+exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build", "src/larva/shell/web.py"]
 
 [dependency-groups]
 dev = [

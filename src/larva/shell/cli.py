@@ -247,6 +247,16 @@ def run_cli(
             stderr=stderr,
         )
 
+    # serve is a special case — starts a long-running server, not a one-shot command
+    if getattr(args, "command", None) == "serve":
+        try:
+            from larva.shell.web import main as web_main
+        except ImportError:
+            stderr.write("Web dependencies not installed. Run: pip install larva[web]\n")
+            return EXIT_CRITICAL
+        web_main(port=args.port, no_open=args.no_open)
+        return EXIT_OK
+
     return _emit_result(
         _dispatch(args, facade=facade, component_store=active_component_store),
         as_json=cast("bool", getattr(args, "as_json", False)),
