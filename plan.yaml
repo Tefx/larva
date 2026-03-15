@@ -23405,27 +23405,41 @@ phases:
     name: gate
     status: pending
     description: "Gate review: Verify feature_update_batch phase completion and quality.\n\
-      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Core 3-layer steps\
-      \ follow established patterns from update/clone/export\n  - Web UI is additive\
-      \ (contrib/) and not production-critical\n  - No known rework patterns in touch\
-      \ paths\n  - Dot-notation where matching follows existing dot-notation patterns\n\
-      \nReview criteria:\n1. **Completeness**: All 8 implementation/test steps completed\n\
-      2. **Facade**: update_batch uses list() + where filter + update() loop, fail-fast\
-      \ on error\n3. **Where matching**: dot-notation key traversal works, simple\
-      \ equality comparison\n4. **Dry run**: returns matches without modifying, updated=0\n\
-      5. **MCP**: Tool definition registered, handler validates where/patches/dry_run\
-      \ params\n6. **CLI**: Parser accepts --where (repeatable) --set (repeatable)\
-      \ --dry-run --json\n7. **Python API**: Thin delegation, BatchUpdateResult in\
-      \ __all__\n8. **Web backend**: POST /api/personas/batch-update endpoint functional\n\
-      9. **Web frontend**: Modal with WHERE/SET inputs, preview, apply buttons\n10.\
-      \ **Tests**: All ~22 tests pass across 4 test files\n11. **Docs**: INTERFACES.md\
-      \ updated with BatchUpdateResult shape\n12. **Guard**: `uv run invar guard`\
-      \ clean\n13. **Error codes**: No new error codes (reuses PERSONA_INVALID 101,\
-      \ REGISTRY_WRITE_FAILED 109)\n\nIndependence: gate-reviewer is NOT any implementation\
-      \ agent in this phase."
+      \nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Batch\
+      \ update changes stateful facade behavior with fail-fast/no-rollback semantics\n\
+      \  - Dot-path filtering and dry-run guarantees are easy to mis-specify\n  -\
+      \ Multiple adapter surfaces consume this contract after the facade layer\n \
+      \ - Independent facade verification is now required before shell/web rollout\n\
+      \ncross_cutting_focus:\n  - \"dry_run performs no writes anywhere in the facade\
+      \ path\"\n  - \"fail-fast stops after the first error and preserves earlier\
+      \ successful writes without rollback\"\n  - \"dotted where lookups treat missing\
+      \ keys as non-matches, not exceptions\"\n  - \"all surfaces document and expose\
+      \ the same batch semantics\"\n\nReview criteria:\n1. Completeness: all implementation,\
+      \ contract, test, verification, docs, and web steps in this phase completed\n\
+      2. Contract-first: `feature_update_batch.facade-update-batch` depends on explicit\
+      \ contract and test steps\n3. Facade semantics: update_batch uses list() + where\
+      \ filter + update() loop, fail-fast on error, no rollback\n4. Where matching:\
+      \ dotted key traversal works; missing keys are non-matches; all clauses use\
+      \ AND semantics\n5. Dry run: returns matches without modifying registry state\
+      \ and reports `updated=0`\n6. Error propagation: registry.list and delegated\
+      \ update/save/validation failures surface with mapped facade errors\n7. Verification\
+      \ depth: independent facade verification includes both main path and highest-risk\
+      \ failure paths\n8. MCP: tool definition registered, handler validates where/patches/dry_run\
+      \ params\n9. CLI: parser accepts --where (repeatable) --set (repeatable) --dry-run\
+      \ --json\n10. Python API: thin delegation, BatchUpdateResult in __all__\n11.\
+      \ Web backend: POST /api/personas/batch-update endpoint functional\n12. Web\
+      \ frontend: modal with WHERE/SET inputs, preview, apply buttons\n13. Tests:\
+      \ focused facade tests plus cross-surface update_batch tests pass\n14. Docs:\
+      \ INTERFACES.md matches the verified semantics and result shape\n15. Guard:\
+      \ `uv run invar guard` clean\n16. Error codes: no new error codes beyond existing\
+      \ mapped families\n\nIndependence: gate-reviewer is NOT any implementation agent\
+      \ in this phase."
     verification: '- All phase steps completed successfully
 
       - Evidence collected and reviewed for each step
+
+      - Independent facade verification proves the main path and highest-risk failure
+      paths
 
       - `uv run invar guard` passes on final state
 
@@ -23435,9 +23449,12 @@ phases:
 
       - No unresolved blockers
 
-      - INTERFACES.md consistent with implementation'
+      - INTERFACES.md is consistent with implementation and verification evidence'
     depends_on:
+    - feature_update_batch.facade-update-batch-contract
+    - feature_update_batch.facade-update-batch-tests
     - feature_update_batch.facade-update-batch
+    - feature_update_batch.facade-update-batch-verify
     - feature_update_batch.mcp-update-batch
     - feature_update_batch.cli-update-batch
     - feature_update_batch.python-api-update-batch
