@@ -404,6 +404,7 @@
     <div class="header-title">LARVA</div>
     <div class="header-actions">
       <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Components</button>
+      <button class="btn" @click="openBatchUpdate()">Batch Update</button>
       <button class="btn" @click="modals.import = true">Import</button>
       <button class="btn btn-accent" @click="modals.assemble = true" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
     </div>
@@ -822,6 +823,105 @@
     </div>
   </div>
 
+  <!-- BATCH UPDATE MODAL -->
+  <div class="modal-overlay" x-show="batchUpdate.show" @click.self="batchUpdate.show = false" @keydown.escape.window="batchUpdate.show = false" x-cloak>
+    <div class="modal" style="width:700px;">
+      <div class="modal-header">
+        <div class="modal-title">Batch Update Personas</div>
+        <button class="modal-close" @click="batchUpdate.show = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- WHERE section -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-header" style="margin-bottom:8px;">
+            <div class="section-label">WHERE (Match personas)</div>
+            <button class="btn btn-sm" @click="batchUpdate.whereClauses.push({key: '', value: ''})">+ Add Condition</button>
+          </div>
+          <template x-for="(clause, i) in batchUpdate.whereClauses" :key="i">
+            <div class="kv-row">
+              <input type="text" x-model="clause.key" @input="debouncedBatchPreview" placeholder="field (e.g., model)" style="width:180px;">
+              <span style="color:var(--text-muted);">=</span>
+              <input type="text" x-model="clause.value" @input="debouncedBatchPreview" placeholder="value" style="width:180px;">
+              <button class="pill-remove" @click="batchUpdate.whereClauses.splice(i, 1); debouncedBatchPreview();" x-show="batchUpdate.whereClauses.length > 1">&times;</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- SET section -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-header" style="margin-bottom:8px;">
+            <div class="section-label">SET (Update fields)</div>
+            <button class="btn btn-sm" @click="batchUpdate.setClauses.push({key: '', value: ''})">+ Add Field</button>
+          </div>
+          <template x-for="(clause, i) in batchUpdate.setClauses" :key="i">
+            <div class="kv-row">
+              <input type="text" x-model="clause.key" placeholder="field (e.g., model)" style="width:180px;">
+              <span style="color:var(--text-muted);">=</span>
+              <input type="text" x-model="clause.value" placeholder="value" style="width:180px;">
+              <button class="pill-remove" @click="batchUpdate.setClauses.splice(i, 1)" x-show="batchUpdate.setClauses.length > 1">&times;</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Preview area -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">PREVIEW (Matched Personas)</div>
+          <div style="background:var(--bg-primary);border-radius:4px;padding:12px;min-height:60px;max-height:150px;overflow-y:auto;">
+            <template x-if="batchUpdate.loading">
+              <div style="color:var(--text-muted);">Loading...</div>
+            </template>
+            <template x-if="!batchUpdate.loading && batchUpdate.preview">
+              <div>
+                <div style="color:var(--text-secondary);font-size:12px;margin-bottom:8px;">
+                  <span x-text="batchUpdate.preview.matched_count"></span> persona(s) matched
+                </div>
+                <template x-if="batchUpdate.preview.matched_ids.length > 0">
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                    <template x-for="id in batchUpdate.preview.matched_ids" :key="id">
+                      <span class="pill" style="font-size:11px;">
+                        <span x-text="id"></span>
+                      </span>
+                    </template>
+                  </div>
+                </template>
+                <template x-if="batchUpdate.preview.matched_count === 0">
+                  <div style="color:var(--text-muted);font-style:italic;">No personas match the WHERE conditions</div>
+                </template>
+              </div>
+            </template>
+            <template x-if="!batchUpdate.loading && !batchUpdate.preview">
+              <div style="color:var(--text-muted);font-style:italic;">Enter WHERE conditions to preview matches</div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Results area -->
+        <div class="section" x-show="batchUpdate.result" style="margin-bottom:16px;">
+          <div class="section-label">RESULTS</div>
+          <div style="background:var(--bg-primary);border-radius:4px;padding:12px;">
+            <div style="color:var(--text-secondary);font-size:12px;margin-bottom:8px;">
+              Updated: <span x-text="batchUpdate.result?.updated_count || 0"></span> persona(s)
+            </div>
+            <template x-if="batchUpdate.result?.persona_results?.length">
+              <div style="font-size:11px;color:var(--text-muted);">
+                <template x-for="pr in batchUpdate.result.persona_results" :key="pr.persona_id">
+                  <div style="margin-bottom:4px;">
+                    <span x-text="pr.persona_id"></span>: <span x-text="pr.updated ? '✓ updated' : '✗ failed'"></span>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" @click="batchUpdate.show = false">Close</button>
+        <button class="btn" :disabled="batchUpdate.loading" @click="runBatchPreview()">Preview (Dry Run)</button>
+        <button class="btn btn-accent" :disabled="batchUpdate.loading || !batchUpdate.preview?.matched_count" @click="runBatchApply()">Apply</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -853,6 +953,15 @@ function larvaApp() {
     importJson: '',
     importValidation: null,
     assembleForm: { id: '', prompts: [], toolsets: [], constraints: [], model: '' },
+    batchUpdate: {
+      show: false,
+      whereClauses: [{key: '', value: ''}],
+      setClauses: [{key: '', value: ''}],
+      preview: null,
+      result: null,
+      loading: false,
+    },
+    batchUpdateDebounce: null,
 
     get selectedPersona() {
       return this.personas.find(p => p.id === this.selected) || null;
@@ -1181,6 +1290,125 @@ function larvaApp() {
 
     isValidId(id) {
       return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
+    },
+
+    // Batch Update
+    openBatchUpdate() {
+      this.batchUpdate = {
+        show: true,
+        whereClauses: [{key: '', value: ''}],
+        setClauses: [{key: '', value: ''}],
+        preview: null,
+        result: null,
+        loading: false,
+      };
+    },
+
+    buildBatchWhere() {
+      const where = {};
+      for (const clause of this.batchUpdate.whereClauses) {
+        if (clause.key.trim() && clause.value.trim()) {
+          where[clause.key.trim()] = clause.value.trim();
+        }
+      }
+      return where;
+    },
+
+    buildBatchPatches() {
+      const patches = {};
+      for (const clause of this.batchUpdate.setClauses) {
+        if (clause.key.trim()) {
+          patches[clause.key.trim()] = clause.value.trim();
+        }
+      }
+      return patches;
+    },
+
+    debouncedBatchPreview() {
+      if (this.batchUpdateDebounce) {
+        clearTimeout(this.batchUpdateDebounce);
+      }
+      this.batchUpdateDebounce = setTimeout(() => {
+        this.runBatchPreview(true);
+      }, 500);
+    },
+
+    async runBatchPreview(isAutoUpdate = false) {
+      const where = this.buildBatchWhere();
+      if (Object.keys(where).length === 0) {
+        if (isAutoUpdate) return;
+        this.batchUpdate.preview = null;
+        return;
+      }
+      this.batchUpdate.loading = true;
+      this.batchUpdate.preview = null;
+      try {
+        const resp = await fetch('/api/personas/batch-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            where: where,
+            patches: this.buildBatchPatches(),
+            dry_run: true,
+          }),
+        });
+        const data = await resp.json();
+        if (data.error) {
+          console.error('Batch preview error:', data.error);
+          if (!isAutoUpdate) {
+            alert('Preview failed: ' + (data.error.message || JSON.stringify(data.error)));
+          }
+        } else {
+          this.batchUpdate.preview = data.data;
+        }
+      } catch (e) {
+        console.error('Batch preview error:', e);
+        if (!isAutoUpdate) {
+          alert('Preview failed: ' + e.message);
+        }
+      } finally {
+        this.batchUpdate.loading = false;
+      }
+    },
+
+    async runBatchApply() {
+      const where = this.buildBatchWhere();
+      if (Object.keys(where).length === 0) {
+        alert('Please specify at least one WHERE condition');
+        return;
+      }
+      const patches = this.buildBatchPatches();
+      if (Object.keys(patches).length === 0) {
+        alert('Please specify at least one SET field');
+        return;
+      }
+      if (!confirm(`Apply changes to ${this.batchUpdate.preview?.matched_count || 0} persona(s)?`)) {
+        return;
+      }
+      this.batchUpdate.loading = true;
+      try {
+        const resp = await fetch('/api/personas/batch-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            where: where,
+            patches: patches,
+            dry_run: false,
+          }),
+        });
+        const data = await resp.json();
+        if (data.error) {
+          alert('Apply failed: ' + (data.error.message || JSON.stringify(data.error)));
+          return;
+        }
+        this.batchUpdate.result = data.data;
+        await this.loadPersonas();
+        this.showToast('Batch update completed');
+      } catch (e) {
+        alert('Apply failed: ' + e.message);
+      } finally {
+        this.batchUpdate.loading = false;
+      }
     },
   };
 }
