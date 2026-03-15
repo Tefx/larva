@@ -21,6 +21,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "deal>=4.24",
     "ruamel.yaml>=0.18",
     "pydantic>=2.0",
     "click>=8.0",
