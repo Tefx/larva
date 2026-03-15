@@ -22918,3 +22918,446 @@ phases:
 - id: feature_update_batch
   name: 'Feature: Persona Batch Update (4-layer sync)'
   status: pending
+  steps:
+  - id: feature_update_batch.facade-update-batch
+    name: facade-update-batch
+    status: pending
+    description: "Add `update_batch(where, patches, dry_run)` to LarvaFacade protocol\
+      \ and DefaultLarvaFacade.\n\nFile: src/larva/app/facade.py\n\n## New TypedDict:\
+      \ BatchUpdateResult\n```python\nclass BatchUpdateItemResult(TypedDict):\n  \
+      \  id: str\n    updated: bool\n\nclass BatchUpdateResult(TypedDict):\n    matched:\
+      \ int\n    updated: int\n    dry_run: bool\n    results: list[BatchUpdateItemResult]\n\
+      ```\n\n## LarvaFacade Protocol\nAdd method signature:\n```python\ndef update_batch(\n\
+      \    self,\n    where: dict[str, object],\n    patches: dict[str, object],\n\
+      \    dry_run: bool = False,\n) -> Result[BatchUpdateResult, LarvaError]: ...\n\
+      ```\n\n## DefaultLarvaFacade Implementation\nFlow:\n1. `self._registry.list()`\
+      \ -> get all specs. On failure, pass-through error.\n2. Filter: for each spec,\
+      \ check if ALL where conditions match. Support dot notation in where keys using\
+      \ the same dot-path traversal as update patches (e.g., `model_params.temperature`\
+      \ traverses into nested dicts). Simple equality comparison.\n3. If `dry_run=True`:\
+      \ return `BatchUpdateResult(matched=len(filtered), updated=0, dry_run=True,\
+      \ results=[{\"id\": s[\"id\"], \"updated\": False} for s in filtered])`\n4.\
+      \ If `dry_run=False`: for each matched spec, call `self.update(spec[\"id\"],\
+      \ patches)`. Fail-fast on first error -- return the error immediately. Already-updated\
+      \ specs are NOT rolled back.\n5. Collect results: `{\"id\": id, \"updated\"\
+      : True}` for each success.\n6. Return `BatchUpdateResult(matched=len(filtered),\
+      \ updated=len(results), dry_run=False, results=results)`\n\nHelper method for\
+      \ dot-notation value lookup:\n```python\ndef _get_nested(self, spec: dict, dotted_key:\
+      \ str) -> object:\n    parts = dotted_key.split(\".\")\n    current = spec\n\
+      \    for part in parts:\n        if not isinstance(current, dict) or part not\
+      \ in current:\n            return _SENTINEL  # unique sentinel for 'not found'\n\
+      \        current = current[part]\n    return current\n```\n\nPattern to follow:\
+      \ `list()` method for registry.list() + error mapping, `update()` for per-item\
+      \ application."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.app.facade import LarvaFacade, DefaultLarvaFacade,
+      BatchUpdateResult; assert hasattr(DefaultLarvaFacade, ''update_batch'')"` succeeds'
+    refs:
+    - src/larva/app/facade.py
+    agent: python-executor
+  - id: feature_update_batch.mcp-update-batch
+    name: mcp-update-batch
+    status: pending
+    description: "Add `larva.update_batch` MCP tool definition and handler.\n\n##\
+      \ Tool Definition (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS`\
+      \ list:\n```python\n{\n    \"name\": \"larva.update_batch\",\n    \"description\"\
+      : \"Batch update personas matching a where filter. Supports dry_run to preview\
+      \ matches.\",\n    \"input_schema\": {\n        \"type\": \"object\",\n    \
+      \    \"properties\": {\n            \"where\": {\n                \"type\":\
+      \ \"object\",\n                \"description\": \"Filter conditions (simple\
+      \ equality match, supports dot notation keys)\",\n            },\n         \
+      \   \"patches\": {\n                \"type\": \"object\",\n                \"\
+      description\": \"Patches to apply (same semantics as larva.update)\",\n    \
+      \        },\n            \"dry_run\": {\n                \"type\": \"boolean\"\
+      ,\n                \"description\": \"If true, only report matches without applying\
+      \ patches\",\n            },\n        },\n        \"required\": [\"where\",\
+      \ \"patches\"],\n    },\n}\n```\n\n## Handler (src/larva/shell/mcp.py)\nAdd\
+      \ `handle_update_batch(self, params)` to `MCPHandlers` class.\n\nAllowed params:\
+      \ `{\"where\", \"patches\", \"dry_run\"}`.\nValidation:\n1. `_require_params_object`\
+      \ + `_reject_unknown_params`\n2. `_require_param` for `where` and `patches`\n\
+      3. `_require_type` for `where` (dict) and `patches` (dict)\n4. Optional `dry_run`:\
+      \ if present, `_require_type(..., bool, \"boolean\")`\n\nDelegate to `self._facade.update_batch(where,\
+      \ patches, dry_run)`.\nReturn `BatchUpdateResult` on success, error envelope\
+      \ on failure.\n\nPattern to follow: `handle_resolve()` for param validation\
+      \ + Success/Failure unwrapping."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name''] == ''larva.update_batch'' for
+      t in LARVA_MCP_TOOLS)"` succeeds'
+    refs:
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/mcp.py
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: python-executor
+  - id: feature_update_batch.cli-update-batch
+    name: cli-update-batch
+    status: pending
+    description: 'Add `larva update-batch --where key=value [--where ...] --set key=value
+      [--set ...] [--dry-run] [--json]` CLI subcommand.
+
+
+      ## Parser (src/larva/shell/cli_helpers.py)
+
+      In `_build_parser()`, add update-batch subparser:
+
+      ```python
+
+      update_batch_parser = subparsers.add_parser("update-batch")
+
+      update_batch_parser.add_argument("--where", dest="where_clauses", action="append",
+      default=[])
+
+      update_batch_parser.add_argument("--set", dest="set_clauses", action="append",
+      default=[])
+
+      update_batch_parser.add_argument("--dry-run", action="store_true", dest="dry_run")
+
+      update_batch_parser.add_argument("--json", action="store_true", dest="as_json")
+
+      ```
+
+
+      Also add `"update-batch"` to the `CommandName` Literal type.
+
+
+      ## Command function (src/larva/shell/cli.py)
+
+      Add `update_batch_command(where_clauses, set_clauses, *, dry_run, as_json, facade)`
+      function.
+
+
+      Validation:
+
+      - Parse `where_clauses` using `_parse_key_value_pairs(where_clauses, flag="--where")`
+      -> `where` dict
+
+      - Parse `set_clauses` using `_parse_key_value_pairs(set_clauses, flag="--set")`
+      -> `patches` dict
+
+      - Apply same type inference as `update` command''s `--set` flag (numbers, bools,
+      null, strings). IMPORTANT: check how the existing `update` CLI command handles
+      `--set` type inference and reuse the same logic. If update uses a helper for
+      type inference, call it here too.
+
+      - If `where_clauses` is empty: return Failure with INTERNAL error "at least
+      one --where is required"
+
+      - If `set_clauses` is empty: return Failure with INTERNAL error "at least one
+      --set is required"
+
+
+      Delegate to `facade.update_batch(where, patches, dry_run=dry_run)`.
+
+
+      Success output:
+
+      - text mode: `Matched: N, Updated: N` summary + one line per result `  id: updated`
+
+      - json mode: `{"data": BatchUpdateResult}`
+
+
+      Add dispatch branch in `_dispatch()` for `command == "update-batch"`.
+
+
+      Exit codes: 0 success, 1 domain error, 2 input/critical failure.
+
+
+      IMPORTANT: Read the existing `update` command dispatch in cli.py to see how
+      --set type inference is handled, and reuse that pattern.'
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.cli import update_batch_command"` succeeds
+
+      - `uv run larva update-batch --help` shows usage with --where, --set, --dry-run
+      flags'
+    refs:
+    - src/larva/shell/cli_helpers.py
+    - src/larva/shell/cli.py
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: python-executor
+  - id: feature_update_batch.python-api-update-batch
+    name: python-api-update-batch
+    status: pending
+    description: "Add `update_batch(where, patches, dry_run)` to the Python API module.\n\
+      \nFile: src/larva/shell/python_api.py\n\nAdd function:\n```python\ndef update_batch(\n\
+      \    where: dict[str, object],\n    patches: dict[str, object],\n    dry_run:\
+      \ bool = False,\n) -> BatchUpdateResult:\n```\n\nPattern to follow: `resolve()`\
+      \ at lines 245-272 (thin delegation + `_unwrap_result` + cast).\n\nBody: `return\
+      \ cast(\"BatchUpdateResult\", _unwrap_result(_get_facade().update_batch(where,\
+      \ patches, dry_run=dry_run)))`\n\nAdd invar annotations matching existing pattern:\n\
+      ```python\n# @invar:allow shell_result: Python API unwraps Result via exception\
+      \ passthrough\n# @shell_orchestration: thin delegation to facade which performs\
+      \ I/O via core/registry\n```\n\nAdd `\"update_batch\"` and `\"BatchUpdateResult\"\
+      ` to the `__all__` list.\nAdd import: `from larva.app.facade import BatchUpdateResult`\
+      \ (alongside existing imports).\n\nAdd docstring following the resolve() pattern:\
+      \ args, returns, contract, example."
+    verification: '- `uv run invar guard` passes
+
+      - `uv run python -c "from larva.shell.python_api import update_batch, BatchUpdateResult"`
+      succeeds
+
+      - Both appear in `__all__`'
+    refs:
+    - src/larva/shell/python_api.py
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: python-executor
+  - id: feature_update_batch.docs-interfaces
+    name: docs-interfaces
+    status: pending
+    description: 'Update INTERFACES.md to document the update-batch operation across
+      all three surfaces.
+
+
+      File: INTERFACES.md
+
+
+      Add update-batch entries in:
+
+      - **Section A (MCP)**: `larva.update_batch` tool with input schema `{where,
+      patches, dry_run?}`, returns `BatchUpdateResult`
+
+      - **Section B (CLI)**: `larva update-batch --where key=value [--where ...] --set
+      key=value [--set ...] [--dry-run] [--json]` with exit codes 0/1/2. Document
+      --where AND semantics, --set type inference, dry-run behavior.
+
+      - **Section H (Python API)**: `update_batch(where, patches, dry_run=False) ->
+      BatchUpdateResult`
+
+
+      Document the BatchUpdateResult shape:
+
+      ```json
+
+      {"matched": int, "updated": int, "dry_run": bool, "results": [{"id": str, "updated":
+      bool}]}
+
+      ```
+
+
+      Follow the formatting pattern of existing entries. No new error codes to document.'
+    verification: '- INTERFACES.md contains `larva.update_batch` in MCP section
+
+      - INTERFACES.md contains `larva update-batch` in CLI section
+
+      - INTERFACES.md contains `update_batch` in Python API section
+
+      - BatchUpdateResult shape documented'
+    refs:
+    - INTERFACES.md
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: python-executor
+  - id: feature_update_batch.web-backend
+    name: web-backend
+    status: pending
+    description: "Add `POST /api/personas/batch-update` endpoint to the web server.\n\
+      \nFile: contrib/web/server.py\n\nAdd import of `update_batch` from `larva.shell.python_api`.\n\
+      \nAdd endpoint:\n```python\n@app.post(\"/api/personas/batch-update\")\nasync\
+      \ def api_batch_update_personas(request: Request):\n    body = await request.json()\n\
+      \    where = body.get(\"where\", {})\n    patches = body.get(\"patches\", {})\n\
+      \    dry_run = body.get(\"dry_run\", False)\n    try:\n        result = update_batch(where=where,\
+      \ patches=patches, dry_run=dry_run)\n        return {\"data\": result}\n   \
+      \ except LarvaApiError as e:\n        return _api_error_response(e)\n```\n\n\
+      Pattern to follow: `api_clear_personas()` at lines 135-143 for async request\
+      \ body + try/except + LarvaApiError handling.\n\nPlace the endpoint after the\
+      \ existing persona endpoints (after `api_assemble_persona`) and before the component\
+      \ endpoints section."
+    verification: '- Server starts without import errors: `uv run python -c "from
+      contrib.web.server import app"`
+
+      - Endpoint registered: check app.routes contains /api/personas/batch-update'
+    refs:
+    - contrib/web/server.py
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: python-executor
+  - id: feature_update_batch.web-frontend
+    name: web-frontend
+    status: pending
+    description: "Add batch update modal to the web UI.\n\nFile: contrib/web/index.html\n\
+      \nAdd a \"Batch Update\" button in the header actions area (`.header-actions`),\
+      \ next to existing buttons.\n\nAdd a modal component (Alpine.js) with:\n1. **WHERE\
+      \ section**: repeatable key=value input rows for filter conditions. Each row\
+      \ has a key input and value input. Add/remove row buttons.\n2. **SET section**:\
+      \ repeatable key=value input rows for patches. Same pattern as WHERE.\n3. **Preview\
+      \ area**: shows matched persona count and list of matching persona ids. Auto-updates\
+      \ as WHERE conditions change (debounced fetch to `/api/personas/batch-update`\
+      \ with `dry_run=true`).\n4. **Action buttons**:\n   - \"Preview\" button ->\
+      \ calls endpoint with `dry_run=true`, shows results\n   - \"Apply\" button ->\
+      \ calls endpoint with `dry_run=false`, shows results, refreshes persona list\n\
+      \   - \"Close\" button\n5. **Results display**: after apply, show matched/updated\
+      \ counts and per-persona results.\n\nAlpine.js data model:\n```javascript\n\
+      batchUpdate: {\n    show: false,\n    whereClauses: [{key: '', value: ''}],\n\
+      \    setClauses: [{key: '', value: ''}],\n    preview: null,\n    result: null,\n\
+      \    loading: false,\n}\n```\n\nStyling: follow existing modal patterns in the\
+      \ file (look for `.modal` class). Use the existing color variables and button\
+      \ styles.\n\nIMPORTANT: Read the full index.html first to understand the existing\
+      \ Alpine.js data model, modal patterns, and coding style before implementing."
+    verification: '- HTML is valid (no unclosed tags)
+
+      - Alpine.js data model includes batchUpdate state
+
+      - Modal opens/closes correctly
+
+      - Preview button calls /api/personas/batch-update with dry_run=true
+
+      - Apply button calls /api/personas/batch-update with dry_run=false'
+    refs:
+    - contrib/web/index.html
+    depends_on:
+    - feature_update_batch.web-backend
+    agent: python-executor
+  - id: feature_update_batch.tests-update-batch
+    name: tests-update-batch
+    status: pending
+    description: 'Add tests for update-batch across facade, MCP, CLI, and Python API
+      layers.
+
+
+      ## Test files and coverage:
+
+
+      ### tests/app/test_facade.py
+
+      Tests for `DefaultLarvaFacade.update_batch()`:
+
+      1. `test_update_batch_success` -- 3 personas, where matches 2, patches applied
+      to both
+
+      2. `test_update_batch_no_matches` -- where matches nothing, returns matched=0,
+      updated=0, results=[]
+
+      3. `test_update_batch_dry_run` -- matches 2, dry_run=True, updated=0, specs
+      unchanged
+
+      4. `test_update_batch_dot_notation_where` -- where={"model_params.temperature":
+      0.3}, matches correctly
+
+      5. `test_update_batch_fail_fast` -- second persona fails validation after patch,
+      first already updated, error returned with failing id
+
+      6. `test_update_batch_registry_list_failure` -- registry.list() fails, error
+      passed through
+
+      7. `test_update_batch_empty_registry` -- no personas, returns matched=0, updated=0
+
+
+      Pattern: follow existing `test_update_*` and `test_list_*` patterns.
+
+
+      ### tests/shell/test_mcp.py
+
+      Tests for `MCPHandlers.handle_update_batch()`:
+
+      1. `test_handle_update_batch_success` -- valid params, returns BatchUpdateResult
+
+      2. `test_handle_update_batch_dry_run` -- dry_run=true
+
+      3. `test_handle_update_batch_missing_where` -- missing required param
+
+      4. `test_handle_update_batch_missing_patches` -- missing required param
+
+      5. `test_handle_update_batch_unknown_params` -- extra params rejected
+
+      6. `test_handle_update_batch_invalid_where_type` -- where is not object
+
+
+      ### tests/shell/test_cli.py
+
+      Tests for `update_batch_command()`:
+
+      1. `test_update_batch_success_json` -- JSON output with BatchUpdateResult
+
+      2. `test_update_batch_success_text` -- text output shows matched/updated summary
+
+      3. `test_update_batch_dry_run_json` -- dry_run mode
+
+      4. `test_update_batch_no_where` -- missing --where, exit code 2
+
+      5. `test_update_batch_no_set` -- missing --set, exit code 2
+
+      6. `test_update_batch_parser` -- argparse produces correct attributes
+
+
+      ### tests/shell/test_python_api.py
+
+      Tests for `update_batch()`:
+
+      1. `test_update_batch_success` -- returns BatchUpdateResult
+
+      2. `test_update_batch_dry_run` -- dry_run mode
+
+      3. `test_update_batch_failure_raises` -- raises LarvaApiError
+
+
+      Total: ~22 tests across 4 files.'
+    verification: '- `uv run pytest tests/app/test_facade.py -k update_batch -v` --
+      all pass
+
+      - `uv run pytest tests/shell/test_mcp.py -k update_batch -v` -- all pass
+
+      - `uv run pytest tests/shell/test_cli.py -k update_batch -v` -- all pass
+
+      - `uv run pytest tests/shell/test_python_api.py -k update_batch -v` -- all pass
+
+      - `uv run invar guard` passes'
+    refs:
+    - tests/app/test_facade.py
+    - tests/shell/test_mcp.py
+    - tests/shell/test_cli.py
+    - tests/shell/test_python_api.py
+    depends_on:
+    - feature_update_batch.mcp-update-batch
+    - feature_update_batch.cli-update-batch
+    - feature_update_batch.python-api-update-batch
+    agent: python-executor
+  - id: feature_update_batch.gate
+    name: gate
+    status: pending
+    description: "Gate review: Verify feature_update_batch phase completion and quality.\n\
+      \nreview_depth: STANDARD\nreview_depth_rationale: |\n  - Core 3-layer steps\
+      \ follow established patterns from update/clone/export\n  - Web UI is additive\
+      \ (contrib/) and not production-critical\n  - No known rework patterns in touch\
+      \ paths\n  - Dot-notation where matching follows existing dot-notation patterns\n\
+      \nReview criteria:\n1. **Completeness**: All 8 implementation/test steps completed\n\
+      2. **Facade**: update_batch uses list() + where filter + update() loop, fail-fast\
+      \ on error\n3. **Where matching**: dot-notation key traversal works, simple\
+      \ equality comparison\n4. **Dry run**: returns matches without modifying, updated=0\n\
+      5. **MCP**: Tool definition registered, handler validates where/patches/dry_run\
+      \ params\n6. **CLI**: Parser accepts --where (repeatable) --set (repeatable)\
+      \ --dry-run --json\n7. **Python API**: Thin delegation, BatchUpdateResult in\
+      \ __all__\n8. **Web backend**: POST /api/personas/batch-update endpoint functional\n\
+      9. **Web frontend**: Modal with WHERE/SET inputs, preview, apply buttons\n10.\
+      \ **Tests**: All ~22 tests pass across 4 test files\n11. **Docs**: INTERFACES.md\
+      \ updated with BatchUpdateResult shape\n12. **Guard**: `uv run invar guard`\
+      \ clean\n13. **Error codes**: No new error codes (reuses PERSONA_INVALID 101,\
+      \ REGISTRY_WRITE_FAILED 109)\n\nIndependence: gate-reviewer is NOT any implementation\
+      \ agent in this phase."
+    verification: '- All phase steps completed successfully
+
+      - Evidence collected and reviewed for each step
+
+      - `uv run invar guard` passes on final state
+
+      - `uv run pytest tests/ -k update_batch -v` -- all tests pass
+
+      - Web UI modal functional (manual or screenshot evidence)
+
+      - No unresolved blockers
+
+      - INTERFACES.md consistent with implementation'
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    - feature_update_batch.mcp-update-batch
+    - feature_update_batch.cli-update-batch
+    - feature_update_batch.python-api-update-batch
+    - feature_update_batch.docs-interfaces
+    - feature_update_batch.web-backend
+    - feature_update_batch.web-frontend
+    - feature_update_batch.tests-update-batch
+    agent: gate-reviewer
