@@ -256,6 +256,21 @@ function applyToolPolicy(
   return perms
 }
 
+/** Simple wildcard match: "serena_*" matches "serena_find_symbol" */
+function wildcardMatch(value: string, pattern: string): boolean {
+  if (pattern === "*") return true
+  if (!pattern.includes("*")) return value === pattern
+  const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$")
+  return regex.test(value)
+}
+
+/** Check if a tool is denied for a given agent */
+function isToolDenied(agentId: string, toolName: string): boolean {
+  const entry = _toolPolicy[agentId]
+  if (!entry?.deny) return false
+  return entry.deny.some(pattern => wildcardMatch(toolName, pattern))
+}
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -368,7 +383,21 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
         ].join("\n")
         output.system[0] = sys.replace(ph, entry.prompt + "\n\n" + watermark)
         // debug: console.log(`[larva-plugin] system.transform: injected prompt for ${id}`)
+        // Also track which agent is active (system.transform runs before chat.params)
+        active = id
         break
+      }
+    },
+
+    // ----------------------------------------------------------------
+    // Tool enforcement: block denied tools before execution
+    // ----------------------------------------------------------------
+    "tool.execute.before": async (input: any, _output: any) => {
+      if (!active) return
+      if (isToolDenied(active, input.tool)) {
+        throw new Error(
+          `[larva] Tool "${input.tool}" is denied for agent "${active}" by tool-policy.yaml`
+        )
       }
     },
   }
