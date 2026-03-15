@@ -3,8 +3,8 @@
 # This file is owned by vectl. Direct edits bypass CAS write
 # protection, lock recalculation, and schema validation.
 #
-# Use: uvx vectl <command>  OR  vectl_* MCP tools
-# Docs: uvx vectl guide
+# Use: vectl_* MCP tools (preferred)  OR  vectl <command> (CLI fallback)
+# Docs: vectl guide  OR  MCP: vectl_guide
 # =============================================================
 version: 1
 project: larva
@@ -22921,7 +22921,7 @@ phases:
   steps:
   - id: feature_update_batch.facade-update-batch
     name: facade-update-batch
-    status: claimed
+    status: done
     description: 'Implement the facade batch-update flow after the contract and focused
       tests are in place.
 
@@ -23021,6 +23021,44 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-15T16:33:21.436008+00:00'
+    done_at: '2026-03-15T16:50:54.470489+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: 7a878bc
+
+      - Main merge commit hash: b0ede86
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/app/test_facade.py -k update_batch -v` -> 7 passed,
+      47 deselected
+
+      - Run: `uv run invar guard` -> passed (errors: 0, warnings: 1 file-size warning
+      on src/larva/app/facade.py)
+
+      - Run: targeted smoke check for `DefaultLarvaFacade.update_batch` -> success;
+      result shape includes `items`, `matched`, `updated`
+
+
+      Files changed:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+
+      Spec link:
+
+      - feature_update_batch.facade-update-batch
+
+
+      Gaps/Notes:
+
+      - Merge conflict occurred during squash in `tests/app/test_facade.py`; resolved
+      via conflict-resolver, then re-verified
+
+      - Scope kept to facade implementation + facade tests'
   - id: feature_update_batch.mcp-update-batch
     name: mcp-update-batch
     status: pending
