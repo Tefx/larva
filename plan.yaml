@@ -23328,7 +23328,7 @@ phases:
       adapter logic to `python_api_components.py` while preserving python_api exports'
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
-    status: claimed
+    status: done
     description: 'Update INTERFACES.md to document the verified update-batch operation
       across all three surfaces.
 
@@ -23394,6 +23394,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T17:20:19.650027+00:00'
+    done_at: '2026-03-15T17:31:57.230250+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: fe2855447b1c511a310c7cba3cf53fc5c0a66c06
+
+      - Main merge commit hash: 9e4c466
+
+
+      Verification:
+
+      - Run: `git log -1 --format=''%H''` -> fe2855447b1c511a310c7cba3cf53fc5c0a66c06
+      (worktree commit)
+
+      - Run: `invar_invar_doc_toc INTERFACES.md depth=2` -> section nesting/formatting
+      verified
+
+
+      Files changed:
+
+      - INTERFACES.md
+
+
+      Spec link:
+
+      - feature_update_batch.docs-interfaces
+
+
+      Gaps/Notes:
+
+      - Added update-batch docs for MCP/CLI/Python API and documented BatchUpdateResult
+      schema'
   - id: feature_update_batch.web-backend
     name: web-backend
     status: claimed
