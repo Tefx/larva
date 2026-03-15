@@ -1335,30 +1335,13 @@ class TestFacadeExportIds:
 
 
 class TestFacadeUpdateBatch:
-    """Pinned acceptance tests for facade update_batch operation.
+    """Acceptance tests for facade update_batch operation."""
 
-    These tests define the contract for batch update semantics before implementation.
-    Tests xfail until facade.update_batch() is implemented.
-
-    Contract summary:
-    - where: filter predicates ANDed together
-    - patches: applied to each matched persona
-    - dry_run: preview matches without persistence
-    - fail-fast: first error stops iteration; prior updates persist (no rollback)
-    - order: result order matches registry.list() order
-    """
-
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_main_path_two_matched_personas_updated_successfully(
-        self,
-    ) -> None:
-        """Main path: two matched personas updated successfully with correct shape and order."""
+    def test_update_batch_success_returns_counts_and_items_in_registry_order(self) -> None:
         spec_alpha = _canonical_spec("alpha", digest="sha256:alpha-old")
         spec_beta = _canonical_spec("beta", digest="sha256:beta-old")
         calls: list[str] = []
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_alpha, spec_beta]),
-        )
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade, _, validate_module, normalize_module = _facade(
             report=_valid_report(),
             registry=registry,
@@ -1366,186 +1349,77 @@ class TestFacadeUpdateBatch:
         )
 
         result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
+            where={"model": "gpt-4o-mini"},
             patches={"model_params.temperature": 0.5},
         )
 
         assert isinstance(result, Success)
-        batch_result = result.unwrap()
-        # Verify result shape
-        assert len(batch_result) == 2
-        # Verify result order matches registry order
-        assert batch_result[0]["matched"] is True
-        assert batch_result[0]["updated"] is True
-        assert batch_result[0]["id"] == "alpha"
-        assert batch_result[1]["matched"] is True
-        assert batch_result[1]["updated"] is True
-        assert batch_result[1]["id"] == "beta"
-        # Verify flow: each matched persona goes through validate -> normalize -> save
+        payload = result.unwrap()
+        assert payload["matched"] == 2
+        assert payload["updated"] == 2
+        assert payload["items"] == [
+            {"id": "alpha", "updated": True},
+            {"id": "beta", "updated": True},
+        ]
         assert calls == ["validate", "normalize", "validate", "normalize"]
         assert len(validate_module.inputs) == 2
-        assert validate_module.inputs[0]["id"] == "alpha"
-        assert validate_module.inputs[1]["id"] == "beta"
         assert len(normalize_module.inputs) == 2
-        assert normalize_module.inputs[0]["id"] == "alpha"
-        assert normalize_module.inputs[1]["id"] == "beta"
-        # Verify both save calls persisted the patched specs
         assert len(registry.save_inputs) == 2
-        assert registry.save_inputs[0]["id"] == "alpha"
-        assert registry.save_inputs[0]["model_params"] == {"temperature": 0.5}
-        assert registry.save_inputs[1]["id"] == "beta"
-        assert registry.save_inputs[1]["model_params"] == {"temperature": 0.5}
 
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_where_semantics_multiple_clauses_use_and_matching(
-        self,
-    ) -> None:
-        """Where semantics: multiple where clauses use AND matching."""
-        spec_match = {
-            "id": "match-me",
-            "description": "Match target",
-            "prompt": "Be helpful",
-            "model": "gpt-4o",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.7, "max_tokens": 1000},
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:match-old",
-        }
-        spec_nomatch_model = {
-            "id": "wrong-model",
-            "description": "No match",
-            "prompt": "Be helpful",
-            "model": "gpt-3.5-turbo",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.7, "max_tokens": 1000},
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:wrong-model",
-        }
-        spec_nomatch_temp = {
-            "id": "wrong-temp",
-            "description": "No match",
-            "prompt": "Be helpful",
-            "model": "gpt-4o",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.3, "max_tokens": 1000},
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:wrong-temp",
-        }
+    def test_update_batch_where_uses_and_across_clauses(self) -> None:
+        spec_match = _canonical_spec("match-me", digest="sha256:match-old")
+        spec_match["model"] = "gpt-4o"
+        spec_match["model_params"] = {"temperature": 0.7, "max_tokens": 1000}
+
+        spec_wrong_model = _canonical_spec("wrong-model")
+        spec_wrong_temp = _canonical_spec("wrong-temp")
+        spec_wrong_temp["model"] = "gpt-4o"
+        spec_wrong_temp["model_params"] = {"temperature": 0.3, "max_tokens": 1000}
+
         registry = InMemoryRegistryStore(
-            list_result=Success([spec_match, spec_nomatch_model, spec_nomatch_temp]),
+            list_result=Success([spec_match, spec_wrong_model, spec_wrong_temp])
         )
-        facade, _, validate_module, normalize_module = _facade(
-            report=_valid_report(),
-            registry=registry,
-        )
+        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
-        # AND semantics: model == gpt-4o AND temperature == 0.7
         result = facade.update_batch(
-            where=[
-                {"field": "model", "op": "eq", "value": "gpt-4o"},
-                {"field": "model_params.temperature", "op": "eq", "value": 0.7},
-            ],
+            where={"model": "gpt-4o", "model_params.temperature": 0.7},
             patches={"description": "Updated"},
         )
 
         assert isinstance(result, Success)
-        batch_result = result.unwrap()
-        # Only one persona matches ALL where clauses
-        assert len(batch_result) == 3
-        matched_items = [r for r in batch_result if r["matched"]]
-        assert len(matched_items) == 1
-        assert matched_items[0]["id"] == "match-me"
-        assert matched_items[0]["updated"] is True
-        # Verify exactly one save call
+        payload = result.unwrap()
+        assert payload["matched"] == 1
+        assert payload["updated"] == 1
+        assert payload["items"] == [{"id": "match-me", "updated": True}]
         assert len(registry.save_inputs) == 1
-        assert registry.save_inputs[0]["id"] == "match-me"
         assert registry.save_inputs[0]["description"] == "Updated"
-        # Verify non-matched personas not validated/normalized/saved
-        assert len(validate_module.inputs) == 1
-        assert validate_module.inputs[0]["id"] == "match-me"
 
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_dot_path_filter_semantics_nested_match_works(
-        self,
-    ) -> None:
-        """Dot-path filter semantics: nested match works, missing paths are non-match."""
-        spec_nested = {
-            "id": "nested-match",
-            "description": "Nested target",
-            "prompt": "Be helpful",
-            "model": "gpt-4o",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.7, "nested": {"deep": "value"}},
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:nested-old",
-        }
-        spec_missing = {
-            "id": "missing-path",
-            "description": "No nested field",
-            "prompt": "Be helpful",
-            "model": "gpt-4o",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.7},  # no 'nested' key
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:missing-old",
-        }
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_nested, spec_missing]),
-        )
-        facade, _, validate_module, _ = _facade(
-            report=_valid_report(),
-            registry=registry,
-        )
+    def test_update_batch_missing_dotted_key_is_non_match(self) -> None:
+        spec_nested = _canonical_spec("nested-match")
+        spec_nested["model_params"] = {"temperature": 0.7, "nested": {"deep": "value"}}
 
-        # Nested dot-path match
+        spec_missing = _canonical_spec("missing-path")
+        spec_missing["model_params"] = {"temperature": 0.7}
+
+        registry = InMemoryRegistryStore(list_result=Success([spec_nested, spec_missing]))
+        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
+
         result = facade.update_batch(
-            where=[{"field": "model_params.nested.deep", "op": "eq", "value": "value"}],
+            where={"model_params.nested.deep": "value"},
             patches={"description": "Nested updated"},
         )
 
         assert isinstance(result, Success)
-        batch_result = result.unwrap()
-        assert len(batch_result) == 2
-        matched_items = [r for r in batch_result if r["matched"]]
-        assert len(matched_items) == 1
-        assert matched_items[0]["id"] == "nested-match"
-        assert matched_items[0]["updated"] is True
-        # Missing dot-path is non-match, not an error
-        non_matched = [r for r in batch_result if not r["matched"]]
-        assert len(non_matched) == 1
-        assert non_matched[0]["id"] == "missing-path"
-        assert non_matched[0]["matched"] is False
-        assert non_matched[0].get("updated") is None or non_matched[0].get("updated") is False
-        # Only one validated/saved
-        assert len(validate_module.inputs) == 1
-        assert validate_module.inputs[0]["id"] == "nested-match"
+        payload = result.unwrap()
+        assert payload["matched"] == 1
+        assert payload["updated"] == 1
+        assert payload["items"] == [{"id": "nested-match", "updated": True}]
 
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_dry_run_returns_matched_ids_without_persistence(
-        self,
-    ) -> None:
-        """Dry-run guarantee: dry_run=True returns matched ids with updated=False, no save calls."""
+    def test_update_batch_dry_run_returns_matched_ids_without_writes(self) -> None:
         spec_alpha = _canonical_spec("alpha", digest="sha256:alpha-old")
         spec_beta = _canonical_spec("beta", digest="sha256:beta-old")
         calls: list[str] = []
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_alpha, spec_beta]),
-        )
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade, _, validate_module, normalize_module = _facade(
             report=_valid_report(),
             registry=registry,
@@ -1553,91 +1427,25 @@ class TestFacadeUpdateBatch:
         )
 
         result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
+            where={"model": "gpt-4o-mini"},
             patches={"description": "Should not persist"},
             dry_run=True,
         )
 
         assert isinstance(result, Success)
-        batch_result = result.unwrap()
-        # Dry-run: matched=True, updated=False
-        assert len(batch_result) == 2
-        assert batch_result[0]["matched"] is True
-        assert batch_result[0]["updated"] is False
-        assert batch_result[0]["id"] == "alpha"
-        assert batch_result[1]["matched"] is True
-        assert batch_result[1]["updated"] is False
-        assert batch_result[1]["id"] == "beta"
-        # Dry-run guarantees: NO save calls made
+        payload = result.unwrap()
+        assert payload["matched"] == 2
+        assert payload["updated"] == 0
+        assert payload["items"] == [
+            {"id": "alpha", "updated": False},
+            {"id": "beta", "updated": False},
+        ]
         assert registry.save_inputs == []
-        # Dry-run skips validation/normalization (preview only)
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
         assert calls == []
 
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_fail_fast_partial_update_first_successful_persists(
-        self,
-    ) -> None:
-        """Fail-fast: second matched persona fails; first successful update persists, no rollback."""
-        spec_first = _canonical_spec("first-ok", digest="sha256:first-old")
-        spec_second = _canonical_spec("second-fail", digest="sha256:second-old")
-        calls: list[str] = []
-
-        # Create a registry that succeeds first save, fails second save
-        save_call_count = 0
-
-        def save_with_failure(spec: PersonaSpec) -> Result[None, RegistryError]:
-            nonlocal save_call_count
-            save_call_count += 1
-            if save_call_count == 1:
-                # First save succeeds
-                return Success(None)
-            # Second save fails
-            return Failure(
-                {
-                    "code": "REGISTRY_WRITE_FAILED",
-                    "message": "disk full on second write",
-                    "persona_id": "second-fail",
-                    "path": "/tmp/second-fail.json",
-                }
-            )
-
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_first, spec_second]),
-        )
-        registry.save = save_with_failure  # type: ignore[method-assign]
-        facade, _, validate_module, normalize_module = _facade(
-            report=_valid_report(),
-            registry=registry,
-            calls=calls,
-        )
-
-        result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
-            patches={"description": "Updated"},
-        )
-
-        # Result is Failure (fail-fast on second error)
-        assert isinstance(result, Failure)
-        error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "REGISTRY_WRITE_FAILED"
-        assert error["details"]["persona_id"] == "second-fail"
-        # First update validated/normalized/saved
-        assert "validate" in calls
-        assert "normalize" in calls
-        assert isinstance(validate_module.inputs[0], dict)
-        assert validate_module.inputs[0]["id"] == "first-ok"
-        # Second update attempted validate/normalize before hitting save failure
-        # The flow should show validation started for second before failing
-        # Verify the first update was actually attempted
-        assert save_call_count == 1  # Only first save called before fail-fast
-
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_error_propagation_registry_list_failure_passes_through(
-        self,
-    ) -> None:
-        """Error propagation: registry list() failure passes through unchanged."""
+    def test_update_batch_registry_list_failure_maps_to_facade_error(self) -> None:
         registry = InMemoryRegistryStore(
             list_result=Failure(
                 {
@@ -1645,106 +1453,103 @@ class TestFacadeUpdateBatch:
                     "message": "cannot read registry index",
                     "path": "/tmp/registry/index.json",
                 }
-            ),
+            )
         )
         facade, _, validate_module, normalize_module = _facade(registry=registry)
 
         result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
+            where={"model": "gpt-4o-mini"},
             patches={"description": "Should not matter"},
         )
 
-        assert isinstance(result, Failure)
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
         assert error["numeric_code"] == 107
         assert error["message"] == "cannot read registry index"
         assert error["details"]["path"] == "/tmp/registry/index.json"
-        # No validation/normalization attempted
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
 
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_error_propagation_delegated_validation_failure_surfaces(
-        self,
-    ) -> None:
-        """Error propagation: delegated validation failure surfaces as PERSONA_INVALID."""
-        spec_invalid = {
-            "id": "invalid-spec",
-            "description": "Invalid",
-            "prompt": "Be helpful",
-            "model": "gpt-4o-mini",
-            "tools": {"shell": "read_only"},
-            "model_params": {"temperature": 0.1},
-            "side_effect_policy": "read_only",
-            "can_spawn": False,
-            "compaction_prompt": "Summarize",
-            "spec_version": "invalid-version",  # Invalid!
-            "spec_digest": "sha256:invalid",
-        }
-        calls: list[str] = []
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_invalid]),
-        )
-        facade, _, _, normalize_module = _facade(
-            report=_invalid_report("INVALID_SPEC_VERSION"),
-            registry=registry,
-            calls=calls,
-        )
+    def test_update_batch_delegates_update_in_order(self) -> None:
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        spec_skip = _canonical_spec("skip")
+        spec_skip["model"] = "gpt-4o"
 
-        result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
-            patches={"description": "Patched"},
-        )
-
-        assert isinstance(result, Failure)
-        error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "PERSONA_INVALID"
-        assert error["numeric_code"] == 101
-        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_VERSION"
-        # Validation failed, no save called
-        assert registry.save_inputs == []
-        assert normalize_module.inputs == []
-        assert calls == ["validate"]
-
-    @pytest.mark.xfail(reason="update_batch implementation pending")
-    def test_error_propagation_delegated_save_failure_surfaces(
-        self,
-    ) -> None:
-        """Error propagation: delegated save failure surfaces as REGISTRY_WRITE_FAILED."""
-        spec_save_fail = _canonical_spec("save-fail", digest="sha256:save-fail-old")
-        registry = InMemoryRegistryStore(
-            list_result=Success([spec_save_fail]),
-            save_result=Failure(
-                {
-                    "code": "REGISTRY_WRITE_FAILED",
-                    "message": "disk full",
-                    "persona_id": "save-fail",
-                    "path": "/tmp/save-fail.json",
-                }
-            ),
-        )
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta, spec_skip]))
         facade, _, validate_module, normalize_module = _facade(
-            report=_valid_report(),
-            registry=registry,
+            report=_valid_report(), registry=registry
         )
 
+        called_ids: list[str] = []
+
+        def fake_update(
+            persona_id: str,
+            patches: dict[str, object],
+        ) -> Result[PersonaSpec, LarvaError]:
+            called_ids.append(persona_id)
+            return Success(_canonical_spec(persona_id))
+
+        setattr(facade, "update", fake_update)
+
         result = facade.update_batch(
-            where=[{"field": "model", "op": "eq", "value": "gpt-4o-mini"}],
-            patches={"description": "Will fail"},
+            where={"model": "gpt-4o-mini"},
+            patches={"description": "delegated"},
+        )
+
+        assert isinstance(result, Success)
+        payload = result.unwrap()
+        assert called_ids == ["alpha", "beta"]
+        assert payload["matched"] == 2
+        assert payload["updated"] == 2
+        assert payload["items"] == [
+            {"id": "alpha", "updated": True},
+            {"id": "beta", "updated": True},
+        ]
+        assert validate_module.inputs == []
+        assert normalize_module.inputs == []
+
+    def test_update_batch_fails_fast_on_first_delegated_error_no_rollback(self) -> None:
+        spec_first = _canonical_spec("first")
+        spec_second = _canonical_spec("second")
+        spec_third = _canonical_spec("third")
+        registry = InMemoryRegistryStore(list_result=Success([spec_first, spec_second, spec_third]))
+        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
+
+        called_ids: list[str] = []
+
+        def fake_update(
+            persona_id: str,
+            patches: dict[str, object],
+        ) -> Result[PersonaSpec, LarvaError]:
+            called_ids.append(persona_id)
+            if persona_id == "second":
+                return Failure(
+                    {
+                        "code": "REGISTRY_WRITE_FAILED",
+                        "numeric_code": 109,
+                        "message": "disk full on second write",
+                        "details": {
+                            "persona_id": "second",
+                            "path": "/tmp/second.json",
+                        },
+                    }
+                )
+            return Success(_canonical_spec(persona_id))
+
+        setattr(facade, "update", fake_update)
+
+        result = facade.update_batch(
+            where={"model": "gpt-4o-mini"},
+            patches={"description": "delegated"},
         )
 
         assert isinstance(result, Failure)
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "REGISTRY_WRITE_FAILED"
         assert error["numeric_code"] == 109
-        assert error["details"]["persona_id"] == "save-fail"
-        assert error["details"]["path"] == "/tmp/save-fail.json"
-        # Validation/normalization ran but save failed
-        assert len(validate_module.inputs) == 1
-        assert validate_module.inputs[0]["id"] == "save-fail"
-        assert len(normalize_module.inputs) == 1
-        assert normalize_module.inputs[0]["id"] == "save-fail"
+        assert error["details"]["persona_id"] == "second"
+        assert called_ids == ["first", "second"]
 
 
 class TestFacadeSeamProof:

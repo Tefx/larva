@@ -1,14 +1,4 @@
-"""Application facade contracts for larva use-case orchestration.
-
-This module is contract-only for the app layer boundary. It defines:
-- request/response typed surfaces exposed to transport adapters
-- dependency-injection shapes for core and shell collaborators
-- stub-only facade signatures with no business logic
-
-Acceptance note (ARCHITECTURE.md, registry-read-override-revalidation):
-- override application belongs in this facade layer
-- any override path must re-enter validation and normalization
-"""
+"""Application facade contracts and implementation."""
 
 from __future__ import annotations
 
@@ -42,6 +32,9 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
 }
 
 
+_LOOKUP_NOT_FOUND = object()
+
+
 class AssembleRequest(TypedDict, total=False):
     """App-layer request shape for assembling a PersonaSpec."""
 
@@ -70,43 +63,32 @@ class PersonaSummary(TypedDict):
 
 
 class DeletedPersona(TypedDict):
-    """Result shape for a successful delete operation.
-
-    Success payload contract:
-    - `id`: the persona id that was deleted
-    - `deleted`: always `True` on success
-
-    Error envelope contract for delete failures:
-    - Registry `DeleteFailureError` preserves `code`/`message` at app layer
-    - Remaining registry fields (`operation`, `persona_id`, `path`, `failed_spec_paths`)
-      move into `details` envelope
-    - Wrong-confirm for clear operation returns `INVALID_CONFIRMATION_TOKEN` error
-
-    Note: This is a contract-only type. Implementation lives in `shell/registry`.
-    """
+    """Result shape for a successful delete operation."""
 
     id: str
     deleted: bool
 
 
 class ClearedRegistry(TypedDict):
-    """Result shape for a successful clear operation.
-
-    Success payload contract:
-    - `cleared`: always `True` on success
-    - `count`: number of personas that were removed from registry
-
-    Error envelope contract for clear failures:
-    - Wrong `confirm` token returns `LarvaError` with code `INVALID_CONFIRMATION_TOKEN`
-      (from shell/registry) mapped through to app layer
-    - Partial delete failures after index removal surface `REGISTRY_DELETE_FAILED`
-      with `details.failed_spec_paths` containing remaining paths
-
-    Note: This is a contract-only type. Implementation lives in `shell/registry`.
-    """
+    """Result shape for a successful clear operation."""
 
     cleared: bool
     count: int
+
+
+class BatchUpdateItemResult(TypedDict):
+    """Per-persona batch-update item (`id`, `updated`)."""
+
+    id: str
+    updated: bool
+
+
+class BatchUpdateResult(TypedDict):
+    """Aggregate batch-update result (`items`, `matched`, `updated`)."""
+
+    items: list[BatchUpdateItemResult]
+    matched: int
+    updated: int
 
 
 class LarvaError(TypedDict):
@@ -167,119 +149,40 @@ class LarvaFacade(Protocol):
         patches: dict[str, object],
     ) -> Result[PersonaSpec, LarvaError]: ...
 
+    def update_batch(
+        self,
+        where: dict[str, object],
+        patches: dict[str, object],
+        dry_run: bool = False,
+    ) -> Result[BatchUpdateResult, LarvaError]:
+        """Batch-update personas matching all `where` clauses."""
+        ...
+
     def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
 
     def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
-        """Clone a registered persona to a new id.
-
-        Success contract:
-        - Returns `PersonaSpec` with `id` set to `new_id`
-        - All non-id fields preserved from source persona
-        - `spec_digest` recalculated for the new persona
-
-        Error mapping contract (facade-layer):
-        - Registry get failure -> pass-through (PERSONA_NOT_FOUND / INVALID_PERSONA_ID)
-        - Validation failure -> PERSONA_INVALID via `_validation_error(report)`
-        - Registry save failure -> pass-through (REGISTRY_WRITE_FAILED)
-
-        Overwrite semantics:
-        - If `new_id` already exists in registry, overwrite (consistent with `register`)
-        - No existence check before save
-
-        Note: This is a contract-only signature. Implementation lives in
-        `DefaultLarvaFacade` but this step does not implement the body.
-        """
+        """Clone a registered persona to a new id."""
         ...
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
-        """Delete one persona by id from the registry.
-
-        Success contract:
-        - Returns `DeletedPersona` with `{id, deleted: True}`
-
-        Error mapping contract (facade-layer):
-        - Registry `PERSONA_NOT_FOUND` -> facade `PERSONA_NOT_FOUND` (pass-through)
-        - Registry `INVALID_PERSONA_ID` -> facade `INVALID_PERSONA_ID` (pass-through)
-        - Registry `DeleteFailureError` -> facade `REGISTRY_DELETE_FAILED`
-          with `details` containing `operation`, `path`, and `failed_spec_paths`
-
-        Note: This is a contract-only signature. Implementation lives in
-        `DefaultLarvaFacade` but this step does not implement the body.
-        """
+        """Delete one persona by id from the registry."""
         ...
 
     def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
-        """Clear all personas from the registry.
-
-        Success contract:
-        - Returns `ClearedRegistry` with `{cleared: True, count: <int>}`
-          where `count` is the number of personas removed
-
-        Error mapping contract (facade-layer):
-        - Wrong `confirm` token -> facade `INVALID_CONFIRMATION_TOKEN`
-          (shell-level error code preserved via mapping)
-        - Registry `DeleteFailureError` during clear -> facade `REGISTRY_DELETE_FAILED`
-          with `details` containing `operation`, `path`, and `failed_spec_paths`
-
-        Note: This is a contract-only signature. Implementation lives in
-        `DefaultLarvaFacade` but this step does not implement the body.
-        """
+        """Clear all personas from the registry."""
         ...
 
     def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
-        """Export all persona specs from the registry.
-
-        Success contract:
-        - Returns `Result[list[PersonaSpec], LarvaError]` containing all
-          persona specs stored in the registry
-        - Each spec in the list is canonical registry data (already normalized
-          and validated at write time)
-        - The returned specs MUST NOT be re-validated or re-normalized downstream;
-          they are already in canonical form
-
-        Error mapping contract (facade-layer):
-        - Registry `list` failure -> facade `REGISTRY_INDEX_READ_FAILED`
-          with `details` containing `operation` and `error` context
-        - Registry `get` call failure during iteration -> facade `REGISTRY_SPEC_READ_FAILED`
-          with `details` containing `persona_id` and `error` context
-
-        Note: This is a contract-only signature. Implementation lives in
-        `DefaultLarvaFacade` but this step does not implement the body.
-        """
+        """Export all persona specs from the registry."""
         ...
 
     def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
-        """Export specific persona specs by id from the registry.
-
-        Success contract:
-        - Returns `Result[list[PersonaSpec], LarvaError]` containing the
-          requested persona specs in the same order as input `ids`
-        - Empty `ids` input returns `Success([])` immediately (no registry calls)
-        - Each spec in the list is canonical registry data (already normalized
-          and validated at write time)
-        - The returned specs MUST NOT be re-validated or re-normalized downstream;
-          they are already in canonical form
-
-        Error mapping contract (facade-layer):
-        - Any `PERSONA_NOT_FOUND` error -> fail-fast on first error, return
-          `Failure(LarvaError)` with code `PERSONA_NOT_FOUND` and `details.id`
-          containing the missing persona id
-        - Registry `get` call failure -> facade `REGISTRY_SPEC_READ_FAILED`
-          with `details` containing `persona_id` and `error` context
-
-        Note: This is a contract-only signature. Implementation lives in
-        `DefaultLarvaFacade` but this step does not implement the body.
-        """
+        """Export specific persona specs by id from the registry."""
         ...
 
 
 class DefaultLarvaFacade(LarvaFacade):
-    """Constructor-level DI contract for the concrete facade.
-
-    Acceptance note:
-    - overrides are applied in facade flow (not in shell adapters)
-    - every override path must run revalidation and renormalization
-    """
+    """Concrete facade implementation."""
 
     def __init__(
         self,
@@ -430,6 +333,17 @@ class DefaultLarvaFacade(LarvaFacade):
             }
         )
 
+    def _dotted_lookup_or_not_found(self, source: dict[str, object], dotted_key: str) -> object:
+        current: object = source
+        for part in dotted_key.split("."):
+            if not isinstance(current, dict):
+                return _LOOKUP_NOT_FOUND
+            next_value = current.get(part, _LOOKUP_NOT_FOUND)
+            if next_value is _LOOKUP_NOT_FOUND:
+                return _LOOKUP_NOT_FOUND
+            current = next_value
+        return current
+
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
         report = self.validate(spec)
         if not report["valid"]:
@@ -517,6 +431,88 @@ class DefaultLarvaFacade(LarvaFacade):
             )
 
         return Success(normalized)
+
+    def update_batch(
+        self,
+        where: dict[str, object],
+        patches: dict[str, object],
+        dry_run: bool = False,
+    ) -> Result[BatchUpdateResult, LarvaError]:
+        list_result = self._registry.list()
+        if isinstance(list_result, Failure):
+            error = list_result.failure()
+            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+            return Failure(
+                self._error(
+                    code=error["code"],
+                    message=error["message"],
+                    details=cast("dict[str, object]", details),
+                )
+            )
+
+        matched_specs: list[PersonaSpec] = []
+        for spec in list_result.unwrap():
+            where_matches = True
+            for dotted_key, expected_value in where.items():
+                actual_value = self._dotted_lookup_or_not_found(
+                    cast("dict[str, object]", spec),
+                    dotted_key,
+                )
+                if actual_value is _LOOKUP_NOT_FOUND or actual_value != expected_value:
+                    where_matches = False
+                    break
+            if where_matches:
+                matched_specs.append(spec)
+
+        if dry_run:
+            dry_run_items: list[BatchUpdateItemResult] = []
+            for spec in matched_specs:
+                persona_id = spec.get("id")
+                if not isinstance(persona_id, str):
+                    return Failure(
+                        self._error(
+                            code="PERSONA_INVALID",
+                            message="registry record is malformed: expected string id",
+                            details={"record": dict(spec)},
+                        )
+                    )
+                dry_run_items.append(
+                    {
+                        "id": persona_id,
+                        "updated": False,
+                    }
+                )
+            return Success(
+                {
+                    "items": dry_run_items,
+                    "matched": len(matched_specs),
+                    "updated": 0,
+                }
+            )
+
+        updated_items: list[BatchUpdateItemResult] = []
+        for spec in matched_specs:
+            persona_id = spec.get("id")
+            if not isinstance(persona_id, str):
+                return Failure(
+                    self._error(
+                        code="PERSONA_INVALID",
+                        message="registry record is malformed: expected string id",
+                        details={"record": dict(spec)},
+                    )
+                )
+            update_result = self.update(persona_id, patches)
+            if isinstance(update_result, Failure):
+                return Failure(update_result.failure())
+            updated_items.append({"id": persona_id, "updated": True})
+
+        return Success(
+            {
+                "items": updated_items,
+                "matched": len(matched_specs),
+                "updated": len(updated_items),
+            }
+        )
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
         list_result = self._registry.list()
@@ -607,17 +603,7 @@ class DefaultLarvaFacade(LarvaFacade):
         return Success({"cleared": True, "count": clear_result.unwrap()})
 
     def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
-        """Export all persona specs from the registry.
-
-        Implementation follows `list()` method pattern:
-        - Call `self._registry.list()` to get all persona specs
-        - Pass-through registry errors
-        - Return full `list[PersonaSpec]` directly (no conversion to summaries)
-        - Empty registry -> Success([])
-
-        Note: Returned specs are canonical registry data. No revalidation or
-        renormalization is performed.
-        """
+        """Export all persona specs from the registry."""
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
             error = list_result.failure()
@@ -632,15 +618,7 @@ class DefaultLarvaFacade(LarvaFacade):
         return Success(list_result.unwrap())
 
     def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
-        """Export specific persona specs by id from the registry.
-
-        Implementation follows `resolve()` error mapping pattern:
-        - Empty `ids` -> return Success([]) immediately (no registry calls)
-        - For each id in ids, call `self._registry.get(id)`
-        - Fail-fast on first error (PERSONA_NOT_FOUND or registry failure)
-        - Return list of canonical PersonaSpec in same order as input ids
-        - No revalidation/renormalization on returned specs
-        """
+        """Export specific persona specs by id from the registry."""
         if not ids:
             return Success([])
 
