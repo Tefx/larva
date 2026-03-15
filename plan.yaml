@@ -23515,3 +23515,113 @@ phases:
       - Focused facade test selection is runnable and clearly identifies the expected
       green path for the subsequent implementation step'
     agent: python-executor
+  - id: feature_update_batch.facade-update-batch-verify
+    name: facade-update-batch-verify
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      facade batch-update behavior from a fresh perspective before shell and web adapters
+      build on it.
+
+
+      step_type: verification
+
+      independence_level: L2
+
+      agent_source: default
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Scope:
+
+      - src/larva/app/facade.py
+
+      - tests/app/test_facade.py
+
+
+      Test for:
+
+      - Happy path: matched personas update in registry order and counts are exact.
+
+      - Edge cases: AND matching with multiple `where` clauses; dotted-path lookup;
+      missing dotted keys produce non-match.
+
+      - Error scenarios: registry.list failure pass-through; delegated update/save/validation
+      failure propagation.
+
+      - State-risk path: `dry_run=True` performs no writes; fail-fast returns on first
+      error without rollback of already-written earlier matches.
+
+
+      Evidence requirements:
+
+      - Record the exact focused facade test command used.
+
+      - Include the concrete test names or output proving the main path and the highest-risk
+      failure path both ran.
+
+      - Call out whether any regression indicates unintended writes during dry-run
+      or unintended continuation after first failure.'
+    verification: '- `uv run pytest tests/app/test_facade.py -k update_batch -v` is
+      executed by an independent agent
+
+      - Evidence includes both the main-path result and the highest-risk failure-path
+      result (`dry_run` no-write and fail-fast partial update)
+
+      - Any issues found are reported explicitly; absence of issues must still justify
+      coverage achieved'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: facade batch update
+
+      **Independence Level**: L2
+
+
+      ### Test Execution
+
+      - Command:
+
+      ```
+
+      uv run pytest tests/app/test_facade.py -k update_batch -v
+
+      ```
+
+      - Main-path evidence:
+
+      ```
+
+      <paste relevant test output>
+
+      ```
+
+      - Highest-risk failure-path evidence:
+
+      ```
+
+      <paste dry-run / fail-fast output>
+
+      ```
+
+
+      ### Findings
+
+      - Dry-run no-write guarantee: PASS|ISSUE
+
+      - Fail-fast partial-update semantics: PASS|ISSUE
+
+      - Dot-path missing-key non-match behavior: PASS|ISSUE
+
+      - Error propagation from registry/list/update: PASS|ISSUE
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - feature_update_batch.facade-update-batch
+    agent: integration-verifier
