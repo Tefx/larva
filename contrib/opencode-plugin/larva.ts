@@ -147,6 +147,116 @@ function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Tool policy: runtime deny/allow rules from tool-policy.yaml
+// ---------------------------------------------------------------------------
+
+/**
+ * Tool policy file (optional). Searched in order:
+ *   1. .opencode/tool-policy.yaml  (project-level)
+ *   2. ~/.config/opencode/tool-policy.yaml  (global)
+ *
+ * Format:
+ *   agents:
+ *     python-senior:
+ *       deny: [vectl_vectl_claim, vectl_vectl_mutate]
+ *     vectl-orchestrator:
+ *       deny: [serena_*, playwright_*, invar_*]
+ *       allow: [vectl_*, task]
+ *     wiring-auditor:
+ *       deny: [write, edit]
+ */
+interface ToolPolicyEntry {
+  deny?: string[]
+  allow?: string[]
+}
+
+type ToolPolicy = Record<string, ToolPolicyEntry>
+
+let _toolPolicy: ToolPolicy = {}
+
+async function loadToolPolicy($: any, directory: string): Promise<void> {
+  const candidates = [
+    `${directory}/.opencode/tool-policy.yaml`,
+    `${process.env.HOME}/.config/opencode/tool-policy.yaml`,
+  ]
+  for (const path of candidates) {
+    try {
+      const r = await $`cat ${path}`.quiet()
+      const text = r.stdout.toString()
+      // Simple YAML parser for our flat structure
+      _toolPolicy = parseToolPolicyYaml(text)
+      return
+    } catch { /* file not found, try next */ }
+  }
+}
+
+function parseToolPolicyYaml(text: string): ToolPolicy {
+  const policy: ToolPolicy = {}
+  let currentAgent: string | null = null
+
+  for (const line of text.split("\n")) {
+    const trimmed = line.trimEnd()
+    if (!trimmed || trimmed.startsWith("#")) continue
+
+    // Top-level "agents:" header
+    if (trimmed === "agents:") continue
+
+    // Agent name (2-space indent)
+    const agentMatch = trimmed.match(/^  ([a-z0-9-]+):$/)
+    if (agentMatch) {
+      currentAgent = agentMatch[1]
+      policy[currentAgent] = {}
+      continue
+    }
+
+    // deny/allow list (4-space indent)
+    if (currentAgent) {
+      const listMatch = trimmed.match(/^    (deny|allow):\s*\[(.+)\]$/)
+      if (listMatch) {
+        const key = listMatch[1] as "deny" | "allow"
+        const items = listMatch[2].split(",").map(s => s.trim())
+        policy[currentAgent][key] = items
+        continue
+      }
+      // Multi-line list format
+      const keyMatch = trimmed.match(/^    (deny|allow):$/)
+      if (keyMatch) {
+        const key = keyMatch[1] as "deny" | "allow"
+        policy[currentAgent][key] = []
+        continue
+      }
+      const itemMatch = trimmed.match(/^      - (.+)$/)
+      if (itemMatch && currentAgent) {
+        const entry = policy[currentAgent]
+        // Find the last defined list
+        if (entry.allow && !entry.deny) {
+          entry.allow.push(itemMatch[1].trim())
+        } else if (entry.deny) {
+          entry.deny.push(itemMatch[1].trim())
+        }
+      }
+    }
+  }
+  return policy
+}
+
+function applyToolPolicy(
+  agentId: string,
+  perms: Record<string, string>,
+): Record<string, string> {
+  const entry = _toolPolicy[agentId]
+  if (!entry) return perms
+
+  for (const tool of entry.deny ?? []) {
+    perms[tool] = "deny"
+  }
+  for (const tool of entry.allow ?? []) {
+    perms[tool] = "allow"
+  }
+  return perms
+}
+
+// ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
 
@@ -171,6 +281,9 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
     // Startup: export all personas, register as opencode agents
     // ----------------------------------------------------------------
     config: async (config: any) => {
+      // Load tool policy (optional file)
+      await loadToolPolicy($, directory)
+
       const specs = await larvaExportAll($)
       if (!specs || !specs.length) return
       config.agent ??= {}
@@ -178,8 +291,10 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       for (const spec of specs) {
         managed.add(spec.id)
 
-        // Register agent with mapped permissions and model
-        // debug: console.log(`[larva-plugin] Registered agent: ${spec.id}`)
+        // Build permissions: larva policy + tool-policy.yaml overrides
+        const perms = toPermissions(spec) ?? {}
+        const finalPerms = applyToolPolicy(spec.id, perms)
+
         config.agent[spec.id] = {
           description: spec.description
             ? `[larva] ${spec.description}`
@@ -187,7 +302,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
           mode: "all" as const,
           prompt: placeholder(spec.id),
           ...(spec.model ? { model: spec.model } : {}),
-          ...(toPermissions(spec) ? { permission: toPermissions(spec) } : {}),
+          ...(Object.keys(finalPerms).length ? { permission: finalPerms } : {}),
         }
 
         // Pre-cache prompt for first message
