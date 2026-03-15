@@ -23427,7 +23427,7 @@ phases:
       schema'
   - id: feature_update_batch.web-backend
     name: web-backend
-    status: claimed
+    status: done
     description: "Add `POST /api/personas/batch-update` endpoint to the web server.\n\
       \nFile: contrib/web/server.py\n\nAdd import of `update_batch` from `larva.shell.python_api`.\n\
       \nAdd endpoint:\n```python\n@app.post(\"/api/personas/batch-update\")\nasync\
@@ -23451,6 +23451,35 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T17:20:35.904354+00:00'
+    done_at: '2026-03-15T17:33:43.118957+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: b2a710e
+
+      - Main merge commit hash: 30f4556
+
+
+      Verification:
+
+      - Run: `uv run python -c "import ast; ast.parse(open(''contrib/web/server.py'').read())"`
+      -> Import/syntax OK
+
+      - Run: `uv run invar guard` -> passed (via pre-commit hook)
+
+
+      Files changed:
+
+      - contrib/web/server.py
+
+
+      Spec link:
+
+      - feature_update_batch.web-backend
+
+
+      Gaps/Notes:
+
+      - Added POST /api/personas/batch-update endpoint delegating to python_api.update_batch'
   - id: feature_update_batch.web-frontend
     name: web-frontend
     status: pending
