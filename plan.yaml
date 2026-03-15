@@ -23134,7 +23134,7 @@ phases:
       - None'
   - id: feature_update_batch.cli-update-batch
     name: cli-update-batch
-    status: claimed
+    status: done
     description: 'Add `larva update-batch --where key=value [--where ...] --set key=value
       [--set ...] [--dry-run] [--json]` CLI subcommand.
 
@@ -23221,6 +23221,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T16:56:45.147511+00:00'
+    done_at: '2026-03-15T17:14:20.528333+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hashes: b36b3c2, ab1f96c
+
+      - Main merge commit hash: 224f766
+
+
+      Verification:
+
+      - Run: `uv run invar guard` -> passed (0 errors)
+
+      - Run: `uv run python -c "from larva.shell.cli import update_batch_command"`
+      -> import successful
+
+      - Run: `uv run larva update-batch --help` -> usage includes --where, --set,
+      --dry-run, --json
+
+      - Run: `uv run pytest tests/shell/ -v` -> 408 passed
+
+
+      Files changed:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_helpers.py
+
+      - src/larva/shell/cli_commands.py
+
+
+      Spec link:
+
+      - feature_update_batch.cli-update-batch
+
+
+      Gaps/Notes:
+
+      - Initial merge attempt hit invar blockers (cli.py file size + _get_version
+      shell_result); remediated in same step before final merge'
   - id: feature_update_batch.python-api-update-batch
     name: python-api-update-batch
     status: claimed
