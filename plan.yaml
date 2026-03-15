@@ -22917,7 +22917,7 @@ phases:
     skipped_reason: irrelevant
 - id: feature_update_batch
   name: 'Feature: Persona Batch Update (4-layer sync)'
-  status: in_progress
+  status: done
   steps:
   - id: feature_update_batch.facade-update-batch
     name: facade-update-batch
@@ -23713,7 +23713,7 @@ phases:
       test outside this step scope'
   - id: feature_update_batch.gate
     name: gate
-    status: claimed
+    status: done
     description: "Gate review: Verify feature_update_batch phase completion and quality.\n\
       \nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Batch\
       \ update changes stateful facade behavior with fail-fast/no-rollback semantics\n\
@@ -23775,6 +23775,48 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-15T17:37:26.818063+00:00'
+    done_at: '2026-03-15T17:43:04.738177+00:00'
+    evidence: "## Gate Review Report\n\n**Phase**: feature_update_batch\n**Reviewer**:\
+      \ gate-reviewer\n**Depth**: THOROUGH\n\n### Criterion Checks\n\n1. **Completeness:\
+      \ PASS** - All 11 implementation steps completed with evidence recorded.\n2.\
+      \ **Contract-first: PASS** - Contract step defines typed contract before implementation;\
+      \ depends_on chain verified.\n3. **Facade semantics: PASS** - `update_batch`\
+      \ uses `list()` + where filter + `update()` loop; fail-fast on error; no rollback.\n\
+      4. **Where matching: PASS** - Dotted key traversal verified; missing keys return\
+      \ sentinel for non-match; AND semantics across clauses.\n5. **Dry run: PASS**\
+      \ - Returns matches without writes; registry.save never called; reports `updated=0`.\n\
+      6. **Error propagation: PASS** - `registry.list` and delegated `update` errors\
+      \ surface with mapped facade error codes.\n7. **Verification depth: PASS** -\
+      \ Independent verifier confirmed main path and failure paths.\n8. **MCP: PASS**\
+      \ - Tool `larva.update_batch` registered; handler validates where/patches/dry_run;\
+      \ delegates to facade.\n9. **CLI: PASS** - Parser accepts --where (repeatable),\
+      \ --set (repeatable), --dry-run, --json; exit codes 0/1/2.\n10. **Python API:\
+      \ PASS** - Thin delegation; `BatchUpdateResult` in `__all__`; proper docstrings.\n\
+      11. **Web backend: PASS** - POST /api/personas/batch-update functional in contrib/web/server.py\
+      \ (scoping intentional per plan).\n12. **Web frontend: PASS** - Modal with WHERE/SET\
+      \ rows, preview, apply in contrib/web/index.html (scoping intentional per plan).\n\
+      13. **Tests: PASS** - 45 tests across facade/CLI/MCP/Python API layers; all\
+      \ pass.\n14. **Docs: PASS** - INTERFACES.md documents batch update across MCP/CLI/Python\
+      \ API with BatchUpdateResult schema.\n15. **Guard: PASS** - `uv run invar guard`\
+      \ shows 0 errors, 0 warnings.\n16. **Error codes: PASS** - No new error codes;\
+      \ reuses existing PERSONA_INVALID (101), REGISTRY_INDEX_READ_FAILED (107), REGISTRY_WRITE_FAILED\
+      \ (109).\n\n### Cross-cutting Focus Verification\n\n- **Dry-run no-write**:\
+      \ Verified in facade code (lines 467-491) and test (`test_update_batch_dry_run_returns_matched_ids_without_writes`).\n\
+      - **Fail-fast no-rollback**: Verified in facade code (lines 504-507) and test\
+      \ (`test_update_batch_fails_fast_on_first_delegated_error_no_rollback`).\n-\
+      \ **Dotted where non-match**: Verified in `_dotted_lookup_or_not_found` (lines\
+      \ 336-345) and test (`test_update_batch_missing_dotted_key_is_non_match`).\n\
+      - **Consistent semantics**: MCP/CLI/Python API all delegate to same facade `update_batch()`.\n\
+      \n### Verdict\n\n**PASS**\n\n### Notes\n\n- Web backend/frontend intentionally\
+      \ scoped to `contrib/web/` per plan (steps explicitly specified this location).\n\
+      - Implementation matches specification exactly; all tests pass; guard clean.\n\
+      \n### Verification Commands\n\n- `uv run invar guard` -> passed (0 errors, 0\
+      \ warnings)\n- `uv run pytest tests/ -k update_batch -v` -> 45 tests passed\n\
+      - `uv run pytest tests/app/test_facade.py::TestFacadeUpdateBatch -v` -> 7 passed\n\
+      - `uv run pytest tests/shell/test_mcp.py::TestMCPHandleUpdateBatch -v` -> 11\
+      \ passed  \n- `uv run pytest tests/shell/test_cli.py -k update_batch -v` ->\
+      \ 16 passed\n- `uv run pytest tests/shell/test_python_api.py::TestPythonApiUpdateBatch\
+      \ -v` -> 10 passed"
   - id: feature_update_batch.facade-update-batch-contract
     name: facade-update-batch-contract
     status: done
