@@ -274,11 +274,15 @@ def run_cli(
     from larva.shell.cli_helpers import CliExitCode
 
     parser = _build_parser()
+    argv_list = list(argv)
+    if not argv_list:
+        parser.print_help(stdout)
+        return EXIT_OK
     active_component_store = (
         component_store if component_store is not None else FilesystemComponentStore()
     )
     try:
-        args = parser.parse_args(list(argv))
+        args = parser.parse_args(argv_list)
     except _CliParseError as error:
         parse_failure: CliFailure = {
             "exit_code": EXIT_CRITICAL,
