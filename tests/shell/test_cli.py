@@ -3212,3 +3212,460 @@ class TestRunLoopUpdateTypeInference:
         assert payload["data"]["description"] == "Updated"
         assert payload["data"]["can_spawn"] is True
         assert payload["data"]["model_params"]["temperature"] == 0.5
+
+
+# ============================================================================
+# Update Batch Command Tests
+# ============================================================================
+
+
+class TestUpdateBatchCommand:
+    """Tests for the update_batch command handler."""
+
+    def test_update_batch_success_text_mode_returns_exit_ok(self) -> None:
+        """Update batch with matching personas returns exit code 0 in text mode."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o-mini"},
+            set_clauses={"description": "Updated"},
+            dry_run=False,
+            as_json=False,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "Matched: 2" in cli_result["stdout"]
+        assert "Updated: 2" in cli_result["stdout"]
+        assert "alpha: True" in cli_result["stdout"]
+        assert "beta: True" in cli_result["stdout"]
+
+    def test_update_batch_success_json_mode_returns_json_payload(self) -> None:
+        """Update batch returns JSON payload in JSON mode."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o-mini"},
+            set_clauses={"description": "Updated"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        data = cli_result["json"]["data"]
+        assert data["matched"] == 2
+        assert data["updated"] == 2
+        assert len(data["items"]) == 2
+
+    def test_update_batch_dry_run_returns_preview_without_writes(self) -> None:
+        """Update batch dry_run returns matched without saving."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o-mini"},
+            set_clauses={"description": "Should not persist"},
+            dry_run=True,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        data = cli_result["json"]["data"]
+        assert data["matched"] == 2
+        assert data["updated"] == 0
+        # Verify no saves occurred
+        assert registry.save_inputs == []
+
+    def test_update_batch_no_matches_returns_zero_counts(self) -> None:
+        """Update batch with no matching personas returns zero counts."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_alpha["model"] = "gpt-4"
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "nonexistent-model"},
+            set_clauses={"description": "Updated"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        data = cli_result["json"]["data"]
+        assert data["matched"] == 0
+        assert data["updated"] == 0
+        assert data["items"] == []
+
+    def test_update_batch_failure_returns_exit_error(self) -> None:
+        """Registry failure returns exit code 1."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "cannot read registry index",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o-mini"},
+            set_clauses={"description": "Test"},
+            dry_run=False,
+            as_json=False,
+            facade=facade,
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+
+    def test_update_batch_failure_json_mode_returns_error_envelope(self) -> None:
+        """Registry failure returns JSON error envelope in JSON mode."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "cannot read registry index",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o-mini"},
+            set_clauses={"description": "Test"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert "error" in failure
+        error = failure["error"]
+        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert error["numeric_code"] == 107
+
+    def test_update_batch_dotted_where_matches_nested_fields(self) -> None:
+        """Update batch where clause with dot notation matches nested fields."""
+        spec_match = _canonical_spec("match")
+        spec_match["model_params"] = {"temperature": 0.7}
+        spec_no_match = _canonical_spec("no-match")
+        spec_no_match["model_params"] = {"temperature": 0.3}
+
+        registry = InMemoryRegistryStore(list_result=Success([spec_match, spec_no_match]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model_params.temperature": 0.7},
+            set_clauses={"description": "Matched"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        data = cli_result["json"]["data"]
+        assert data["matched"] == 1
+        assert data["updated"] == 1
+        assert data["items"][0]["id"] == "match"
+
+    def test_update_batch_multiple_where_clauses_use_and_semantics(self) -> None:
+        """Update batch with multiple where clauses uses AND semantics."""
+        spec_match = _canonical_spec("match")
+        spec_match["model"] = "gpt-4o"
+        spec_match["model_params"] = {"temperature": 0.7}
+
+        spec_wrong_model = _canonical_spec("wrong-model")
+        spec_wrong_temp = _canonical_spec("wrong-temp")
+        spec_wrong_temp["model"] = "gpt-4o"
+
+        registry = InMemoryRegistryStore(
+            list_result=Success([spec_match, spec_wrong_model, spec_wrong_temp])
+        )
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={"model": "gpt-4o", "model_params.temperature": 0.7},
+            set_clauses={"description": "Matched"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        data = cli_result["json"]["data"]
+        assert data["matched"] == 1
+        assert data["updated"] == 1
+
+
+class TestRunLoopBatchUpdate:
+    """Tests for CLI update-batch dispatch through run_cli."""
+
+    def test_update_batch_success_json(self) -> None:
+        """Update batch success returns JSON with matched/updated counts."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model=gpt-4o-mini",
+                "--set",
+                "description=Updated",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["matched"] == 2
+        assert payload["data"]["updated"] == 2
+        assert len(payload["data"]["items"]) == 2
+        assert stderr.getvalue() == ""
+
+    def test_update_batch_success_text(self) -> None:
+        """Update batch success formats text output with Matched/Updated counts."""
+        spec_alpha = _canonical_spec("alpha")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model=gpt-4o-mini",
+                "--set",
+                "description=Updated",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        output = stdout.getvalue()
+        assert "Matched: 1" in output
+        assert "Updated: 1" in output
+        assert "alpha: True" in output
+
+    def test_update_batch_dry_run_json(self) -> None:
+        """Update batch --dry-run returns preview without writes."""
+        spec_alpha = _canonical_spec("alpha")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model=gpt-4o-mini",
+                "--set",
+                "description=Preview",
+                "--dry-run",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["matched"] == 1
+        assert payload["data"]["updated"] == 0
+        assert payload["data"]["items"][0]["updated"] is False
+        # Verify no saves
+        assert registry.save_inputs == []
+
+    def test_update_batch_no_where_returns_critical(self) -> None:
+        """Update batch without --where returns critical error."""
+        facade = _make_facade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update-batch", "--set", "description=Test", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
+        # argparse reports "the following arguments are required: --where"
+        assert "--where" in payload["error"]["details"]["message"]
+
+    def test_update_batch_no_set_returns_critical(self) -> None:
+        """Update batch without --set returns critical error."""
+        facade = _make_facade()
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["update-batch", "--where", "model=gpt-4o-mini", "--json"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "INTERNAL"
+        # argparse reports "the following arguments are required: --set"
+        assert "--set" in payload["error"]["details"]["message"]
+
+    def test_update_batch_failure_json_returns_error_envelope(self) -> None:
+        """Update batch failure returns JSON error envelope."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index unreadable",
+                    "path": "/tmp/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model=gpt-4o-mini",
+                "--set",
+                "description=Test",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_ERROR
+        payload = json.loads(stdout.getvalue())
+        assert payload["error"]["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert payload["error"]["numeric_code"] == 107
+
+    def test_update_batch_nested_where_json(self) -> None:
+        """Update batch with nested --where key matches nested specs."""
+        spec_match = _canonical_spec("match")
+        spec_match["model_params"] = {"temperature": "0.9"}  # String to match CLI parsing
+        spec_no_match = _canonical_spec("no-match")
+        spec_no_match["model_params"] = {"temperature": "0.1"}
+
+        registry = InMemoryRegistryStore(list_result=Success([spec_match, spec_no_match]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model_params.temperature=0.9",
+                "--set",
+                "description=Hot",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["matched"] == 1
+        assert payload["data"]["items"][0]["id"] == "match"
+
+    def test_update_batch_multiple_where_json(self) -> None:
+        """Update batch with multiple --where clauses uses AND semantics."""
+        spec_match = _canonical_spec("match")
+        spec_match["model"] = "gpt-4o"
+        spec_match["model_params"] = {"temperature": "0.7"}  # String to match CLI parsing
+
+        registry = InMemoryRegistryStore(list_result=Success([spec_match]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            [
+                "update-batch",
+                "--where",
+                "model=gpt-4o",
+                "--where",
+                "model_params.temperature=0.7",
+                "--set",
+                "description=Matched",
+                "--json",
+            ],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_OK
+        payload = json.loads(stdout.getvalue())
+        assert payload["data"]["matched"] == 1
+        assert payload["data"]["updated"] == 1

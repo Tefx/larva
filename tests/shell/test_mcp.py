@@ -1757,6 +1757,213 @@ class TestMCPHandleClone:
         )
 
 
+class TestMCPHandleUpdateBatch:
+    """Test MCPHandlers.handle_update_batch parameter validation and delegation."""
+
+    def test_handle_update_batch_success(self) -> None:
+        """Test handle_update_batch returns BatchUpdateResult on success."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": {"model": "gpt-4o-mini"}, "patches": {"description": "Updated"}}
+        )
+
+        assert isinstance(result, dict)
+        assert result["matched"] == 2
+        assert result["updated"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["id"] == "alpha"
+        assert result["items"][0]["updated"] is True
+        assert result["items"][1]["id"] == "beta"
+        assert result["items"][1]["updated"] is True
+
+    def test_handle_update_batch_dry_run_returns_matched_without_writes(self) -> None:
+        """Test handle_update_batch with dry_run=True returns matches without updating."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {
+                "where": {"model": "gpt-4o-mini"},
+                "patches": {"description": "Should not persist"},
+                "dry_run": True,
+            }
+        )
+
+        assert isinstance(result, dict)
+        assert result["matched"] == 2
+        assert result["updated"] == 0
+        assert len(result["items"]) == 2
+        assert result["items"][0]["id"] == "alpha"
+        assert result["items"][0]["updated"] is False
+        assert result["items"][1]["id"] == "beta"
+        assert result["items"][1]["updated"] is False
+        # No saves should have occurred
+        assert registry.save_inputs == []
+
+    def test_handle_update_batch_missing_where_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch returns malformed-params envelope for missing where."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch({"patches": {"description": "Test"}})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="missing required parameter 'where'",
+        )
+
+    def test_handle_update_batch_missing_patches_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch returns malformed-params envelope for missing patches."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch({"where": {"model": "gpt-4o-mini"}})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="missing required parameter 'patches'",
+        )
+
+    def test_handle_update_batch_unknown_params_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch rejects unknown params."""
+        spec_alpha = _canonical_spec("alpha")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {
+                "where": {"model": "gpt-4o-mini"},
+                "patches": {"description": "Test"},
+                "extra": "unknown_param",
+            }
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="unknown parameter(s)",
+        )
+        assert result["details"]["unknown"] == ["extra"]
+
+    def test_handle_update_batch_non_object_where_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch rejects non-object where."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": "not-an-object", "patches": {"description": "Test"}}
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="parameter 'where' must be object",
+        )
+
+    def test_handle_update_batch_non_object_patches_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch rejects non-object patches."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": {"model": "gpt-4o-mini"}, "patches": ["not", "an", "object"]}
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="parameter 'patches' must be object",
+        )
+
+    def test_handle_update_batch_non_boolean_dry_run_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch rejects non-boolean dry_run."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {
+                "where": {"model": "gpt-4o-mini"},
+                "patches": {"description": "Test"},
+                "dry_run": "true",  # String instead of boolean
+            }
+        )
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="parameter 'dry_run' must be boolean",
+        )
+
+    def test_handle_update_batch_non_object_params_returns_malformed_envelope(self) -> None:
+        """Test handle_update_batch rejects non-object params."""
+        facade = _make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch("not-an-object")
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva.update_batch",
+            reason="params must be an object",
+        )
+
+    def test_handle_update_batch_failure_returns_error_envelope(self) -> None:
+        """Test handle_update_batch returns error envelope on facade failure."""
+        registry = InMemoryRegistryStore(
+            list_result=Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "cannot read registry index",
+                    "path": "/tmp/registry/index.json",
+                }
+            )
+        )
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": {"model": "gpt-4o-mini"}, "patches": {"description": "Test"}}
+        )
+
+        assert isinstance(result, dict)
+        assert result["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert result["numeric_code"] == 107
+
+    def test_handle_update_batch_with_empty_where_matches_all(self) -> None:
+        """Test handle_update_batch with empty where clause matches all personas."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": {}, "patches": {"description": "All updated"}}
+        )
+
+        assert isinstance(result, dict)
+        assert result["matched"] == 2
+        assert result["updated"] == 2
+
+
 class TestMCPHandleClear:
     """Test MCPHandlers.handle_clear parameter validation and delegation."""
 

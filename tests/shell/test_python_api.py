@@ -1337,3 +1337,222 @@ class TestPythonApiExportIds:
 
         assert exc_info.value.error["code"] == "REGISTRY_SPEC_READ_FAILED"
         assert exc_info.value.error["numeric_code"] == 108
+
+    def test_update_batch_in_all(self) -> None:
+        """update_batch must be in __all__."""
+        assert "update_batch" in python_api.__all__
+
+
+class TestPythonApiUpdateBatch:
+    """Verify update_batch() is thin delegation over facade.update_batch."""
+
+    def test_update_batch_delegates_to_facade_update_batch(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() must forward to facade.update_batch() and return BatchUpdateResult."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
+
+        result = python_api.update_batch(
+            where={"model": "gpt-4o-mini"},
+            patches={"description": "Updated"},
+        )
+
+        assert result["matched"] == 2
+        assert result["updated"] == 2
+        assert len(result["items"]) == 2
+        assert result["items"][0]["id"] == "alpha"
+        assert result["items"][0]["updated"] is True
+        assert result["items"][1]["id"] == "beta"
+        assert result["items"][1]["updated"] is True
+
+    def test_update_batch_returns_matched_and_updated_counts(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() returns BatchUpdateResult with matched, updated, items."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
+
+        result = python_api.update_batch(
+            where={"model": "gpt-4o-mini"},
+            patches={"description": "Updated"},
+        )
+
+        assert "matched" in result
+        assert "updated" in result
+        assert "items" in result
+        assert isinstance(result["matched"], int)
+        assert isinstance(result["updated"], int)
+        assert isinstance(result["items"], list)
+
+    def test_update_batch_dry_run_returns_preview_without_writes(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() with dry_run=True returns preview without updating."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
+
+        result = python_api.update_batch(
+            where={"model": "gpt-4o-mini"},
+            patches={"description": "Should not persist"},
+            dry_run=True,
+        )
+
+        assert result["matched"] == 2
+        assert result["updated"] == 0
+        assert result["items"][0]["updated"] is False
+        assert result["items"][1]["updated"] is False
+        # No saves should have occurred
+        assert facade_fixture.registry.save_inputs == []
+
+    def test_update_batch_where_uses_and_semantics(self, facade_fixture: FacadeFixture) -> None:
+        """update_batch() multiple where clauses use AND semantics."""
+        spec_match = _canonical_spec("match")
+        spec_match["model"] = "gpt-4o"
+        spec_match["model_params"] = {"temperature": 0.7}
+
+        spec_wrong_model = _canonical_spec("wrong-model")
+        spec_wrong_temp = _canonical_spec("wrong-temp")
+        spec_wrong_temp["model"] = "gpt-4o"
+
+        facade_fixture.registry.list_result = Success(
+            [spec_match, spec_wrong_model, spec_wrong_temp]
+        )
+
+        result = python_api.update_batch(
+            where={"model": "gpt-4o", "model_params.temperature": 0.7},
+            patches={"description": "Matched"},
+        )
+
+        assert result["matched"] == 1
+        assert result["updated"] == 1
+        assert result["items"][0]["id"] == "match"
+
+    def test_update_batch_no_matches_returns_zero_counts(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() with no matches returns matched=0, updated=0, items=[]."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_alpha["model"] = "gpt-4"  # Different model
+        facade_fixture.registry.list_result = Success([spec_alpha])
+
+        result = python_api.update_batch(
+            where={"model": "nonexistent-model"},
+            patches={"description": "Test"},
+        )
+
+        assert result["matched"] == 0
+        assert result["updated"] == 0
+        assert result["items"] == []
+
+    def test_update_batch_empty_where_matches_all(self, facade_fixture: FacadeFixture) -> None:
+        """update_batch() with empty where clause matches all personas."""
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
+        facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
+
+        result = python_api.update_batch(
+            where={},
+            patches={"description": "All updated"},
+        )
+
+        assert result["matched"] == 2
+        assert result["updated"] == 2
+
+    def test_update_batch_failure_raises_larva_api_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """Facade update_batch failures must raise LarvaApiError."""
+        facade_fixture.registry.list_result = Failure(
+            {
+                "code": "REGISTRY_INDEX_READ_FAILED",
+                "message": "cannot read registry index",
+                "path": "/tmp/registry/index.json",
+            }
+        )
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update_batch(
+                where={"model": "gpt-4o-mini"},
+                patches={"description": "Test"},
+            )
+
+        assert exc_info.value.error["code"] == "REGISTRY_INDEX_READ_FAILED"
+        assert exc_info.value.error["numeric_code"] == 107
+
+    def test_update_batch_validation_failure_propagates(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() validation failures must propagate."""
+        spec_alpha = _canonical_spec("alpha")
+        facade_fixture.registry.list_result = Success([spec_alpha])
+        facade_fixture.validate_module.report = _invalid_report("PERSONA_INVALID")
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update_batch(
+                where={"model": "gpt-4o-mini"},
+                patches={"description": "Updated"},
+            )
+
+        assert exc_info.value.error["code"] == "PERSONA_INVALID"
+        assert exc_info.value.error["numeric_code"] == 101
+
+    def test_update_batch_stops_on_first_error(self, facade_fixture: FacadeFixture) -> None:
+        """update_batch() stops processing on first update failure."""
+        spec_first = _canonical_spec("first")
+        spec_second = _canonical_spec("second")
+        spec_third = _canonical_spec("third")
+        facade_fixture.registry.list_result = Success([spec_first, spec_second, spec_third])
+        # First update succeeds, second fails
+        save_count = 0
+
+        original_save = facade_fixture.registry.save
+
+        def save_with_failure(spec: PersonaSpec) -> Result[None, RegistryError]:
+            nonlocal save_count
+            save_count += 1
+            if save_count == 2:
+                return Failure(
+                    {
+                        "code": "REGISTRY_WRITE_FAILED",
+                        "message": "disk full",
+                        "persona_id": "second",
+                        "path": "/tmp/second.json",
+                    }
+                )
+            return original_save(spec)
+
+        facade_fixture.registry.save = save_with_failure  # type: ignore[method-assign]
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update_batch(
+                where={"model": "gpt-4o-mini"},
+                patches={"description": "Updated"},
+            )
+
+        assert exc_info.value.error["code"] == "REGISTRY_WRITE_FAILED"
+        assert save_count == 2  # First succeeded, second failed
+
+    def test_update_batch_dotted_where_matches_nested_fields(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update_batch() dotted where clause matches nested fields."""
+        spec_nested = _canonical_spec("nested-match")
+        spec_nested["model_params"] = {"temperature": 0.7, "nested": {"deep": "value"}}
+
+        spec_missing = _canonical_spec("missing-path")
+        spec_missing["model_params"] = {"temperature": 0.7}
+
+        facade_fixture.registry.list_result = Success([spec_nested, spec_missing])
+
+        result = python_api.update_batch(
+            where={"model_params.nested.deep": "value"},
+            patches={"description": "Nested updated"},
+        )
+
+        assert result["matched"] == 1
+        assert result["updated"] == 1
+        assert result["items"][0]["id"] == "nested-match"
