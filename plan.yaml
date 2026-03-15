@@ -23396,7 +23396,7 @@ phases:
     claimed_at: '2026-03-15T17:20:19.650027+00:00'
   - id: feature_update_batch.web-backend
     name: web-backend
-    status: pending
+    status: claimed
     description: "Add `POST /api/personas/batch-update` endpoint to the web server.\n\
       \nFile: contrib/web/server.py\n\nAdd import of `update_batch` from `larva.shell.python_api`.\n\
       \nAdd endpoint:\n```python\n@app.post(\"/api/personas/batch-update\")\nasync\
@@ -23418,6 +23418,8 @@ phases:
     depends_on:
     - feature_update_batch.python-api-update-batch
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T17:20:35.904354+00:00'
   - id: feature_update_batch.web-frontend
     name: web-frontend
     status: pending
