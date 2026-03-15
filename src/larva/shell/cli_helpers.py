@@ -348,88 +348,240 @@ def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnve
 # @invar:allow shell_result: argparse wiring defines shell command boundary
 # @shell_orchestration: argparse wiring defines shell command boundary
 def _build_parser() -> _CliParser:
-    parser = _CliParser(prog="larva", add_help=True)
+    parser = _CliParser(
+        prog="larva",
+        description="PersonaSpec toolkit — manage, validate, and assemble LLM agent personas.",
+        add_help=True,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "-V",
         "--version",
         action="version",
         version=f"%(prog)s {_get_version()}",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True,
+        title="commands",
+        metavar="COMMAND",
+    )
 
-    validate_parser = subparsers.add_parser("validate")
-    validate_parser.add_argument("spec")
-    validate_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- validate ---
+    validate_parser = subparsers.add_parser(
+        "validate",
+        help="Validate a persona spec file",
+        description="Parse and validate a PersonaSpec YAML/JSON file, reporting errors and warnings.",
+    )
+    validate_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
+    validate_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON"
+    )
 
-    assemble_parser = subparsers.add_parser("assemble")
-    assemble_parser.add_argument("--id", required=True)
-    assemble_parser.add_argument("--prompt", dest="prompts", action="append", default=[])
-    assemble_parser.add_argument("--toolset", dest="toolsets", action="append", default=[])
-    assemble_parser.add_argument("--constraints", dest="constraints", action="append", default=[])
-    assemble_parser.add_argument("--model")
-    assemble_parser.add_argument("--override", dest="overrides", action="append", default=[])
-    assemble_parser.add_argument("--var", dest="variables", action="append", default=[])
-    assemble_parser.add_argument("-o", "--output")
-    assemble_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- assemble ---
+    assemble_parser = subparsers.add_parser(
+        "assemble",
+        help="Assemble a persona from components",
+        description="Build a complete persona by composing prompts, toolsets, constraints, and model settings.",
+    )
+    assemble_parser.add_argument("--id", required=True, help="persona identifier")
+    assemble_parser.add_argument(
+        "--prompt", dest="prompts", action="append", default=[], metavar="NAME",
+        help="include a prompt component (repeatable)",
+    )
+    assemble_parser.add_argument(
+        "--toolset", dest="toolsets", action="append", default=[], metavar="NAME",
+        help="include a toolset component (repeatable)",
+    )
+    assemble_parser.add_argument(
+        "--constraints", dest="constraints", action="append", default=[], metavar="NAME",
+        help="include a constraint component (repeatable)",
+    )
+    assemble_parser.add_argument("--model", help="model configuration name")
+    assemble_parser.add_argument(
+        "--override", dest="overrides", action="append", default=[], metavar="KEY=VALUE",
+        help="override a field in the assembled persona (repeatable)",
+    )
+    assemble_parser.add_argument(
+        "--var", dest="variables", action="append", default=[], metavar="KEY=VALUE",
+        help="set a template variable (repeatable)",
+    )
+    assemble_parser.add_argument(
+        "-o", "--output", metavar="FILE", help="write assembled persona to FILE instead of stdout",
+    )
+    assemble_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    register_parser = subparsers.add_parser("register")
-    register_parser.add_argument("spec")
-    register_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- register ---
+    register_parser = subparsers.add_parser(
+        "register",
+        help="Register a persona spec in the registry",
+        description="Parse a PersonaSpec file and add it to the local registry for later resolution.",
+    )
+    register_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
+    register_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    resolve_parser = subparsers.add_parser("resolve")
-    resolve_parser.add_argument("id")
-    resolve_parser.add_argument("--override", dest="overrides", action="append", default=[])
-    resolve_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- resolve ---
+    resolve_parser = subparsers.add_parser(
+        "resolve",
+        help="Resolve a registered persona by ID",
+        description="Look up a persona from the registry by its ID and return the full spec.",
+    )
+    resolve_parser.add_argument("id", metavar="ID", help="persona identifier to resolve")
+    resolve_parser.add_argument(
+        "--override", dest="overrides", action="append", default=[], metavar="KEY=VALUE",
+        help="override a field in the resolved spec (repeatable)",
+    )
+    resolve_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    list_parser = subparsers.add_parser("list")
-    list_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- list ---
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List all registered personas",
+        description="Show all personas currently registered in the local registry.",
+    )
+    list_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    component_parser = subparsers.add_parser("component")
-    component_subparsers = component_parser.add_subparsers(dest="component_command", required=True)
+    # --- component ---
+    component_parser = subparsers.add_parser(
+        "component",
+        help="Inspect available components",
+        description="Browse and inspect reusable persona components (prompts, toolsets, constraints, models).",
+    )
+    component_subparsers = component_parser.add_subparsers(
+        dest="component_command", required=True, title="subcommands", metavar="SUBCOMMAND",
+    )
 
-    component_list_parser = component_subparsers.add_parser("list")
-    component_list_parser.add_argument("--json", action="store_true", dest="as_json")
+    component_list_parser = component_subparsers.add_parser(
+        "list", help="List all available components",
+    )
+    component_list_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    component_show_parser = component_subparsers.add_parser("show")
-    component_show_parser.add_argument("ref")
-    component_show_parser.add_argument("--json", action="store_true", dest="as_json")
+    component_show_parser = component_subparsers.add_parser(
+        "show", help="Show details of a specific component",
+    )
+    component_show_parser.add_argument(
+        "ref", metavar="TYPE/NAME", help="component reference (e.g. prompts/base, toolsets/web)",
+    )
+    component_show_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    delete_parser = subparsers.add_parser("delete")
-    delete_parser.add_argument("id")
-    delete_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- delete ---
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="Delete a persona from the registry",
+        description="Remove a single persona from the local registry by its ID.",
+    )
+    delete_parser.add_argument("id", metavar="ID", help="persona identifier to delete")
+    delete_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    clear_parser = subparsers.add_parser("clear")
-    clear_parser.add_argument("--confirm", required=True)
-    clear_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- clear ---
+    clear_parser = subparsers.add_parser(
+        "clear",
+        help="Clear all personas from the registry",
+        description=(
+            "Remove ALL personas from the local registry. "
+            "Requires --confirm 'CLEAR REGISTRY' as a safety guard."
+        ),
+    )
+    clear_parser.add_argument(
+        "--confirm", required=True, metavar="TOKEN",
+        help="safety token — must be 'CLEAR REGISTRY'",
+    )
+    clear_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    clone_parser = subparsers.add_parser("clone")
-    clone_parser.add_argument("source_id")
-    clone_parser.add_argument("new_id")
-    clone_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- clone ---
+    clone_parser = subparsers.add_parser(
+        "clone",
+        help="Clone a persona to a new ID",
+        description="Copy an existing registered persona to a new ID in the registry.",
+    )
+    clone_parser.add_argument("source_id", metavar="SOURCE_ID", help="ID of the persona to clone")
+    clone_parser.add_argument("new_id", metavar="NEW_ID", help="ID for the cloned persona")
+    clone_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    export_parser = subparsers.add_parser("export")
-    export_parser.add_argument("ids", nargs="*", default=[])
-    export_parser.add_argument("--all", action="store_true", dest="export_all")
-    export_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- export ---
+    export_parser = subparsers.add_parser(
+        "export",
+        help="Export personas as spec files",
+        description="Export one or more registered personas as PersonaSpec JSON. Use --all to export everything.",
+    )
+    export_parser.add_argument(
+        "ids", nargs="*", default=[], metavar="ID", help="persona IDs to export",
+    )
+    export_parser.add_argument(
+        "--all", action="store_true", dest="export_all", help="export all registered personas",
+    )
+    export_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    update_parser = subparsers.add_parser("update")
-    update_parser.add_argument("id")
-    update_parser.add_argument("--set", dest="set_values", action="append", default=[])
-    update_parser.add_argument("--json", action="store_true", dest="as_json")
+    # --- update ---
+    update_parser = subparsers.add_parser(
+        "update",
+        help="Update fields on a registered persona",
+        description="Patch one or more fields on a registered persona.",
+    )
+    update_parser.add_argument("id", metavar="ID", help="persona identifier to update")
+    update_parser.add_argument(
+        "--set", dest="set_values", action="append", default=[], metavar="KEY=VALUE",
+        help="field to set (repeatable, e.g. --set model=gpt-4)",
+    )
+    update_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    update_batch_parser = subparsers.add_parser("update-batch")
-    update_batch_parser.add_argument(
-        "--where", dest="where_clauses", action="append", default=[], required=True
+    # --- update-batch ---
+    update_batch_parser = subparsers.add_parser(
+        "update-batch",
+        help="Batch-update personas matching a filter",
+        description="Update multiple personas at once. Use --where to filter and --set to apply changes.",
     )
     update_batch_parser.add_argument(
-        "--set", dest="set_values", action="append", default=[], required=True
+        "--where", dest="where_clauses", action="append", default=[], required=True,
+        metavar="KEY=VALUE", help="filter condition (repeatable, e.g. --where model=gpt-3.5)",
     )
-    update_batch_parser.add_argument("--dry-run", action="store_true", dest="dry_run")
-    update_batch_parser.add_argument("--json", action="store_true", dest="as_json")
+    update_batch_parser.add_argument(
+        "--set", dest="set_values", action="append", default=[], required=True,
+        metavar="KEY=VALUE", help="field to set on matched personas (repeatable)",
+    )
+    update_batch_parser.add_argument(
+        "--dry-run", action="store_true", dest="dry_run",
+        help="preview which personas would be updated without applying changes",
+    )
+    update_batch_parser.add_argument(
+        "--json", action="store_true", dest="as_json", help="output result as JSON",
+    )
 
-    serve_parser = subparsers.add_parser("serve", help="Start web UI server")
-    serve_parser.add_argument("--port", type=int, default=7400)
-    serve_parser.add_argument("--no-open", action="store_true", dest="no_open")
+    # --- serve ---
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Start the web UI server",
+        description="Launch a local web interface for browsing and managing personas.",
+    )
+    serve_parser.add_argument(
+        "--port", type=int, default=7400, help="port to listen on (default: 7400)",
+    )
+    serve_parser.add_argument(
+        "--no-open", action="store_true", dest="no_open",
+        help="don't auto-open the browser",
+    )
 
     return parser
 

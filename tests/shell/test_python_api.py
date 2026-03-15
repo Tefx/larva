@@ -22,6 +22,7 @@ import pytest
 from returns.result import Failure, Result, Success
 
 from larva.shell import python_api
+from larva.shell import python_api_components
 from larva.app.facade import DefaultLarvaFacade, LarvaError
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
@@ -628,7 +629,7 @@ class TestPythonApiComponentList:
                 )
 
         mock_store = MockComponentStore()
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: mock_store)
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: mock_store)
 
         result = python_api.component_list()
 
@@ -652,7 +653,7 @@ class TestPythonApiComponentList:
                     }
                 )
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
         result = python_api.component_list()
         assert result == {"prompts": [], "toolsets": [], "constraints": [], "models": []}
 
@@ -671,7 +672,7 @@ class TestPythonApiComponentList:
                     )
                 )
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_list()
@@ -705,7 +706,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
         result = python_api.component_show("prompt", "test-prompt")
 
         assert call_record == ["load_prompt:test-prompt"]
@@ -731,7 +732,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
         result = python_api.component_show("toolset", "default")
         assert result == {"tools": {"shell": "read_write"}}
 
@@ -755,7 +756,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
         result = python_api.component_show("constraint", "strict")
         assert result == {"side_effect_policy": "read_only"}
 
@@ -779,7 +780,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({"model": "gpt-4o-mini"})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
         result = python_api.component_show("model", "gpt-4")
         assert result == {"model": "gpt-4o-mini"}
 
@@ -803,7 +804,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_show("invalid_type", "some-name")
@@ -838,7 +839,7 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_show("prompt", "missing-prompt")
