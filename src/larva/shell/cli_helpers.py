@@ -19,13 +19,16 @@ from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import FileSystemRegistryStore
 
 
+# @invar:allow shell_result: reads package metadata for CLI --version output
 def _get_version() -> str:
     """Read version from package metadata."""
     try:
         from importlib.metadata import version
+
         return version("larva")
     except Exception:
         return "unknown"
+
 
 CliExitCode = Literal[0, 1, 2]
 
@@ -44,6 +47,7 @@ CommandName = Literal[
     "list",
     "export",
     "update",
+    "update-batch",
     "component list",
     "component show",
 ]
@@ -346,7 +350,9 @@ def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnve
 def _build_parser() -> _CliParser:
     parser = _CliParser(prog="larva", add_help=True)
     parser.add_argument(
-        "-V", "--version", action="version",
+        "-V",
+        "--version",
+        action="version",
         version=f"%(prog)s {_get_version()}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -410,6 +416,16 @@ def _build_parser() -> _CliParser:
     update_parser.add_argument("id")
     update_parser.add_argument("--set", dest="set_values", action="append", default=[])
     update_parser.add_argument("--json", action="store_true", dest="as_json")
+
+    update_batch_parser = subparsers.add_parser("update-batch")
+    update_batch_parser.add_argument(
+        "--where", dest="where_clauses", action="append", default=[], required=True
+    )
+    update_batch_parser.add_argument(
+        "--set", dest="set_values", action="append", default=[], required=True
+    )
+    update_batch_parser.add_argument("--dry-run", action="store_true", dest="dry_run")
+    update_batch_parser.add_argument("--json", action="store_true", dest="as_json")
 
     serve_parser = subparsers.add_parser("serve", help="Start web UI server")
     serve_parser.add_argument("--port", type=int, default=7400)

@@ -3,45 +3,44 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from typing import IO, Callable, Sequence, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import (
-    AssembleRequest,
-    ClearedRegistry,
-    DeletedPersona,
-    LarvaFacade,
-)
-from larva.core.spec import PersonaSpec
-from larva.core.validate import ValidationReport
+from larva.app.facade import LarvaFacade
 from larva.shell.components import ComponentStore, FilesystemComponentStore
-from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
     EXIT_OK,
     CliCommandResult,
-    CliExitCode,
     CliFailure,
     JsonErrorEnvelope,  # noqa: F401  # re-exported from this module for callers/tests
     _CliParseError,
     _build_parser,
-    _component_show_invalid_target,
     _critical_error,
     _emit_result,
-    _map_component_error,
-    _map_facade_error,
     _operation_failure,
     _parse_key_value_pairs,
     _parse_set_values,
     _read_spec_json,
-    _render_payload_for_text,
-    _render_validation_report,
-    _write_output_json,
     build_default_facade,
+)
+from larva.shell.cli_commands import (
+    assemble_command,
+    clear_command,
+    clone_command,
+    component_list_command,
+    component_show_command,
+    delete_command,
+    export_command,
+    list_command,
+    register_command,
+    resolve_command,
+    update_batch_command,
+    update_command,
+    validate_command,
 )
 
 PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
@@ -88,7 +87,9 @@ def _dispatch_validate(
 
 def _build_assemble_request(
     args: argparse.Namespace,
-) -> Result[AssembleRequest, JsonErrorEnvelope]:
+) -> "Result[AssembleRequest, JsonErrorEnvelope]":
+    from larva.app.facade import AssembleRequest
+
     overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
     if isinstance(overrides, Failure):
         return Failure(overrides.failure())
@@ -173,6 +174,47 @@ def _dispatch_update(
     )
 
 
+# @shell_complexity: validation + envelope mapping requires explicit branches
+def _dispatch_update_batch(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    where_clauses = cast("list[str]", args.where_clauses)
+    set_values = cast("list[str]", args.set_values)
+
+    # Validate non-empty where clauses
+    if not where_clauses:
+        error_envelope = _critical_error("update-batch requires at least one --where clause", {})
+        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope})
+
+    # Validate non-empty set values
+    if not set_values:
+        error_envelope = _critical_error("update-batch requires at least one --set clause", {})
+        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope})
+
+    # Parse where clauses
+    where_result = _parse_key_value_pairs(where_clauses, flag="--where")
+    if isinstance(where_result, Failure):
+        return Failure(_operation_failure("Update-batch", where_result.failure(), as_json=as_json))
+
+    # Parse set values with type inference
+    patches_result = _parse_set_values(set_values, flag="--set")
+    if isinstance(patches_result, Failure):
+        return Failure(
+            _operation_failure("Update-batch", patches_result.failure(), as_json=as_json)
+        )
+
+    return update_batch_command(
+        where_clauses=where_result.unwrap(),
+        set_clauses=patches_result.unwrap(),
+        dry_run=cast("bool", getattr(args, "dry_run", False)),
+        as_json=as_json,
+        facade=facade,
+    )
+
+
 def _dispatch(
     args: argparse.Namespace,
     *,
@@ -202,6 +244,7 @@ def _dispatch(
             confirm=cast("str", args.confirm), as_json=as_json, facade=facade
         ),
         "update": lambda: _dispatch_update(args, as_json=as_json, facade=facade),
+        "update-batch": lambda: _dispatch_update_batch(args, as_json=as_json, facade=facade),
         "component": lambda: _dispatch_component(
             args, as_json=as_json, component_store=component_store
         ),
@@ -227,7 +270,9 @@ def run_cli(
     stdout: IO[str],
     stderr: IO[str],
     component_store: ComponentStore | None = None,
-) -> CliExitCode:
+) -> "CliExitCode":
+    from larva.shell.cli_helpers import CliExitCode
+
     parser = _build_parser()
     active_component_store = (
         component_store if component_store is not None else FilesystemComponentStore()
@@ -253,9 +298,9 @@ def run_cli(
             from larva.shell.web import main as web_main
         except ImportError:
             stderr.write("Web dependencies not installed. Run: pip install larva[web]\n")
-            return EXIT_CRITICAL
+            return EXIT_ERROR
         web_main(port=args.port, no_open=args.no_open)
-        return EXIT_OK
+        return 0  # type: ignore[return-value]
 
     return _emit_result(
         _dispatch(args, facade=facade, component_store=active_component_store),
@@ -278,426 +323,3 @@ def main(argv: Sequence[str] | None = None) -> int:
             component_store=FilesystemComponentStore(),
         )
     )
-
-
-def validate_command(
-    spec: PersonaSpec,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    report = facade.validate(spec)
-    if report["valid"]:
-        return _validation_success_result(report, as_json=as_json)
-    return _validation_failure_result(report, as_json=as_json)
-
-
-def _validation_success_result(
-    report: ValidationReport, *, as_json: bool
-) -> Result[CliCommandResult, CliFailure]:
-    result: CliCommandResult = {
-        "exit_code": EXIT_OK,
-        "stdout": _render_validation_report(report),
-    }
-    if as_json:
-        result["json"] = {
-            "data": {
-                "valid": True,
-                "errors": [],
-                "warnings": cast("list[str]", report.get("warnings", [])),
-            }
-        }
-    return Success(result)
-
-
-def _validation_failure_result(
-    report: ValidationReport, *, as_json: bool
-) -> Result[CliCommandResult, CliFailure]:
-    errors = cast("list[dict[str, object]]", report.get("errors", []))
-    message = "validation failed"
-    if errors:
-        message = cast("str", errors[0].get("message", message))
-    error_envelope = _map_facade_error(
-        {
-            "code": "PERSONA_INVALID",
-            "numeric_code": 101,
-            "message": message,
-            "details": {"report": report},
-        }
-    )
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Validation failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def assemble_command(
-    request: AssembleRequest,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-    output_path: str | None = None,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.assemble(request)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        return _assemble_success_result(
-            payload,
-            as_json=as_json,
-            output_path=output_path,
-        )
-
-    error_envelope = _map_facade_error(result.failure())
-    return _assemble_failure_result(error_envelope, exit_code=EXIT_ERROR, as_json=as_json)
-
-
-def _assemble_success_result(
-    payload: dict[str, object],
-    *,
-    as_json: bool,
-    output_path: str | None,
-) -> Result[CliCommandResult, CliFailure]:
-    if output_path is not None:
-        write_result = _write_output_json(output_path, payload)
-        if isinstance(write_result, Failure):
-            return _assemble_failure_result(
-                write_result.failure(),
-                exit_code=EXIT_CRITICAL,
-                as_json=as_json,
-            )
-
-    cli_result: CliCommandResult = {
-        "exit_code": EXIT_OK,
-        "stdout": "" if output_path is not None else _render_payload_for_text("assemble", payload),
-    }
-    if as_json:
-        cli_result["json"] = {"data": payload}
-    return Success(cli_result)
-
-
-def _assemble_failure_result(
-    error_envelope: JsonErrorEnvelope,
-    *,
-    exit_code: CliExitCode,
-    as_json: bool,
-) -> Result[CliCommandResult, CliFailure]:
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def register_command(
-    spec: PersonaSpec,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.register(spec)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("register", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Registration failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def resolve_command(
-    persona_id: str,
-    *,
-    overrides: dict[str, object] | None = None,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.resolve(persona_id, overrides=overrides)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("resolve", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Resolve failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResult, CliFailure]:
-    result = facade.list()
-    if isinstance(result, Success):
-        payload = list(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("list", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"List failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def clone_command(
-    source_id: str,
-    new_id: str,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.clone(source_id, new_id)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("clone", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Clone failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: text output renders specs as pretty JSON separated by ---
-def export_command(
-    ids: list[str],
-    *,
-    export_all: bool,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    # Validate mutual exclusion: --all xor ids
-    if export_all and ids:
-        error_envelope: JsonErrorEnvelope = {
-            "code": "ARGUMENT_CONFLICT",
-            "numeric_code": 113,
-            "message": "Cannot specify both --all and persona ids",
-            "details": {},
-        }
-        failure: CliFailure = {"exit_code": EXIT_CRITICAL, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    result = facade.export_all() if export_all else facade.export_ids(ids)
-    if isinstance(result, Success):
-        specs = list(result.unwrap())
-
-        # Text mode: pretty JSON for each spec, separated by ---
-        text_output = ""
-        if specs:
-            text_parts = [
-                json.dumps(spec, indent=2, sort_keys=True, ensure_ascii=True) for spec in specs
-            ]
-            text_output = "\n---\n".join(text_parts) + "\n"
-
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": text_output,
-        }
-        if as_json:
-            cli_result["json"] = {"data": specs}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: command-level envelope mapping requires explicit text/json branches
-def delete_command(
-    persona_id: str,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.delete(persona_id)
-    if isinstance(result, Success):
-        payload: DeletedPersona = result.unwrap()
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("delete", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Delete failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: confirmation validation + envelope mapping requires explicit branches
-def clear_command(
-    confirm: str,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    if confirm != CLEAR_CONFIRMATION_TOKEN:
-        error_envelope: JsonErrorEnvelope = {
-            "code": "INVALID_CONFIRMATION_TOKEN",
-            "numeric_code": 112,  # INVALID_CONFIRMATION_TOKEN numeric code
-            "message": "clear requires exact confirmation token 'CLEAR REGISTRY'",
-            "details": {},
-        }
-        failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    result = facade.clear(confirm)
-    if isinstance(result, Success):
-        payload: ClearedRegistry = result.unwrap()
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("clear", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: command-level envelope mapping requires explicit text/json branches
-def update_command(
-    persona_id: str,
-    *,
-    patches: dict[str, object],
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    result = facade.update(persona_id, patches=patches)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("update", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope = _map_facade_error(result.failure())
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Update failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: command-level envelope mapping requires explicit text/json branches
-def component_list_command(
-    *, as_json: bool, component_store: ComponentStore
-) -> Result[CliCommandResult, CliFailure]:
-    try:
-        result = component_store.list_components()
-    except Exception as error:
-        error_envelope, exit_code = _map_component_error(error)
-        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component list", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope, exit_code = _map_component_error(result.failure())
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-# @shell_complexity: target parsing + loader routing requires explicit branches
-def component_show_command(
-    component_ref: str,
-    *,
-    as_json: bool,
-    component_store: ComponentStore,
-) -> Result[CliCommandResult, CliFailure]:
-    component_type, separator, component_name = component_ref.partition("/")
-    if separator == "" or component_type == "" or component_name == "":
-        failure = _component_show_invalid_target(component_ref)
-        if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error"))
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    loaders: dict[str, Callable[[str], Result[object, object]]] = {
-        "prompts": cast("Callable[[str], Result[object, object]]", component_store.load_prompt),
-        "toolsets": cast("Callable[[str], Result[object, object]]", component_store.load_toolset),
-        "constraints": cast(
-            "Callable[[str], Result[object, object]]", component_store.load_constraint
-        ),
-        "models": cast("Callable[[str], Result[object, object]]", component_store.load_model),
-    }
-    loader = loaders.get(component_type)
-    if loader is None:
-        failure = _component_show_invalid_target(component_ref, component_type=component_type)
-        if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error"))
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    try:
-        load_result = loader(component_name)
-    except Exception as error:
-        error_envelope, exit_code = _map_component_error(error)
-        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    if isinstance(load_result, Success):
-        payload = cast("dict[str, object]", dict(cast("dict[str, object]", load_result.unwrap())))
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component show", payload),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope, exit_code = _map_component_error(load_result.failure())
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-    return Failure(failure)
