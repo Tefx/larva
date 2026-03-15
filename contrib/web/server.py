@@ -21,6 +21,7 @@ from larva.shell.python_api import (
     list as list_personas,
     register,
     resolve,
+    update_batch,
     validate,
 )
 from larva.shell.components import FilesystemComponentStore
@@ -31,8 +32,7 @@ try:
     import uvicorn
 except ImportError:
     raise SystemExit(
-        "FastAPI and uvicorn are required.\n"
-        "Install with: uv pip install fastapi uvicorn"
+        "FastAPI and uvicorn are required.\nInstall with: uv pip install fastapi uvicorn"
     )
 
 app = FastAPI(title="larva", docs_url=None, redoc_url=None)
@@ -45,6 +45,7 @@ _component_store = FilesystemComponentStore()
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 # @invar:allow shell_result: FastAPI helper returns JSONResponse, not Result
 def _api_error_response(e: LarvaApiError) -> JSONResponse:
     return JSONResponse(
@@ -56,6 +57,7 @@ def _api_error_response(e: LarvaApiError) -> JSONResponse:
 # ---------------------------------------------------------------------------
 # Persona endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/personas")
 def api_list_personas():
@@ -171,9 +173,23 @@ async def api_assemble_persona(request: Request):
         return _api_error_response(e)
 
 
+@app.post("/api/personas/batch-update")
+async def api_batch_update_personas(request: Request):
+    body = await request.json()
+    where = body.get("where", {})
+    patches = body.get("patches", {})
+    dry_run = body.get("dry_run", False)
+    try:
+        result = update_batch(where=where, patches=patches, dry_run=dry_run)
+        return {"data": result}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
 # ---------------------------------------------------------------------------
 # Component endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/components")
 def api_list_components():
@@ -204,6 +220,7 @@ def api_get_component(component_type: str, name: str):
 # Static files
 # ---------------------------------------------------------------------------
 
+
 @app.get("/")
 def serve_index():
     return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
@@ -213,6 +230,7 @@ def serve_index():
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="larva web UI")
     parser.add_argument("--port", type=int, default=7400)
@@ -221,6 +239,7 @@ def main():
 
     if not args.no_open:
         import threading
+
         threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{args.port}")).start()
 
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
