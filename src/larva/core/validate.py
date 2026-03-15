@@ -28,6 +28,24 @@ from deal import post, pre
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _PROMPT_VARIABLE_PATTERN = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
 
+_JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
+
+
+@post(lambda result: isinstance(result, bool))
+def _is_json_safe_dict(d: object) -> bool:
+    """Check that a dict contains only JSON-serializable value types.
+
+    >>> _is_json_safe_dict({"a": 1, "b": "c"})
+    True
+    >>> _is_json_safe_dict({"a": [1, 2]})
+    True
+    >>> _is_json_safe_dict("not a dict")
+    False
+    """
+    if not isinstance(d, dict):
+        return False
+    return all(isinstance(v, _JSON_SAFE_TYPES) for v in d.values())
+
 
 class ValidationIssue(TypedDict):
     """Single structured validation issue for a PersonaSpec candidate.
@@ -65,7 +83,7 @@ def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIss
     return {"code": code, "message": message, "details": details}
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, list))
 def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     errors: list[ValidationIssue] = []
@@ -107,7 +125,7 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     return errors
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, dict) and "errors" in result and "warnings" in result)
 def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
     errors: list[ValidationIssue] = []
@@ -159,7 +177,7 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
     return {"errors": errors, "warnings": warnings}
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
 def validate_spec(spec: dict[str, object]) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
@@ -183,7 +201,7 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
         - Deterministic, pure validation (no I/O side effects)
 
     Acceptance:
-        @pre(lambda spec: isinstance(spec, dict))
+        @pre(lambda spec: _is_json_safe_dict(spec))
         @post(
             lambda result: (
                 isinstance(result, dict)
