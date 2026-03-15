@@ -23465,7 +23465,7 @@ phases:
     agent: gate-reviewer
   - id: feature_update_batch.facade-update-batch-contract
     name: facade-update-batch-contract
-    status: pending
+    status: claimed
     description: "Define the batch-update facade contract before implementation.\n\
       \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - signatures\n\
       \  - type_defs\n  - interfaces\n  - stubs\n  - behavioral_notes\nagent_source:\
@@ -23494,6 +23494,8 @@ phases:
       - Review confirms this step adds signatures/types/stubs only and does not ship
       runnable batch-update logic'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-15T16:26:52.133743+00:00'
   - id: feature_update_batch.facade-update-batch-tests
     name: facade-update-batch-tests
     status: pending
