@@ -21,7 +21,7 @@
  */
 
 import type { Plugin } from "@opencode-ai/plugin"
-import YAML from "yaml"
+// no external dependencies needed — tool-policy uses JSON
 
 // ---------------------------------------------------------------------------
 // Config
@@ -148,13 +148,13 @@ function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Tool policy: runtime deny/allow rules from tool-policy.yaml
+// Tool policy: runtime deny/allow rules from tool-policy.json
 // ---------------------------------------------------------------------------
 
 /**
  * Tool policy file (optional). Searched in order:
- *   1. .opencode/tool-policy.yaml  (project-level)
- *   2. ~/.config/opencode/tool-policy.yaml  (global)
+ *   1. .opencode/tool-policy.json  (project-level)
+ *   2. ~/.config/opencode/tool-policy.json  (global)
  *
  * Format:
  *   agents:
@@ -177,22 +177,22 @@ let _toolPolicy: ToolPolicy = {}
 
 async function loadToolPolicy($: any, directory: string): Promise<void> {
   const candidates = [
-    `${directory}/.opencode/tool-policy.yaml`,
-    `${process.env.HOME}/.config/opencode/tool-policy.yaml`,
+    `${directory}/.opencode/tool-policy.json`,
+    `${process.env.HOME}/.config/opencode/tool-policy.json`,
   ]
   for (const path of candidates) {
     try {
       const r = await $`cat ${path}`.quiet()
       const text = r.stdout.toString()
       // Simple YAML parser for our flat structure
-      _toolPolicy = parseToolPolicyYaml(text)
+      _toolPolicy = parseToolPolicy(text)
       return
     } catch { /* file not found, try next */ }
   }
 }
 
-function parseToolPolicyYaml(text: string): ToolPolicy {
-  const doc = YAML.parse(text) as { agents?: Record<string, { deny?: string[]; allow?: string[] }> } | null
+function parseToolPolicy(text: string): ToolPolicy {
+  const doc = JSON.parse(text) as { agents?: Record<string, { deny?: string[]; allow?: string[] }> } | null
   if (!doc?.agents) return {}
 
   const policy: ToolPolicy = {}
@@ -271,7 +271,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       for (const spec of specs) {
         managed.add(spec.id)
 
-        // Build permissions: larva policy + tool-policy.yaml overrides
+        // Build permissions: larva policy + tool-policy.json overrides
         const perms = toPermissions(spec) ?? {}
         const finalPerms = applyToolPolicy(spec.id, perms)
 
@@ -362,7 +362,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       if (!active) return
       if (isToolDenied(active, input.tool)) {
         throw new Error(
-          `[larva] Tool "${input.tool}" is denied for agent "${active}" by tool-policy.yaml`
+          `[larva] Tool "${input.tool}" is denied for agent "${active}" by tool-policy.json`
         )
       }
     },

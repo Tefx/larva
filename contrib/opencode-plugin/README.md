@@ -6,7 +6,7 @@ Bridges larva's PersonaSpec registry to opencode's agent system.
 
 ```
 Startup (config hook):
-  1. Load tool-policy.yaml (optional deny/allow rules)
+  1. Load tool-policy.json (optional deny/allow rules)
   2. larva export --all --json → get all persona specs in one call
   3. Register as opencode agents with permissions mapped
   4. Pre-cache prompts
@@ -42,25 +42,29 @@ larva CLI resolution (zero config):
 | `side_effect_policy: allow` | no restrictions | |
 | `can_spawn: false` | `task: deny` | |
 
-### From tool-policy.yaml (runtime)
+### From tool-policy.json (runtime)
 
 Per-agent deny/allow rules for specific opencode tools. This is **not** part of the persona definition — it's runtime enforcement (tela's job in the full opifex system, approximated here for opencode).
 
 **Search order:**
-1. `.opencode/tool-policy.yaml` (project-level)
-2. `~/.config/opencode/tool-policy.yaml` (global)
+1. `.opencode/tool-policy.json` (project-level)
+2. `~/.config/opencode/tool-policy.json` (global)
 
 **Format:**
-```yaml
-agents:
-  python-senior:
-    deny: [vectl_vectl_claim, vectl_vectl_mutate, vectl_vectl_lifecycle]
-
-  wiring-auditor:
-    deny: [write, edit]
-
-  vectl-orchestrator:
-    deny: [serena_*, read, edit, write, glob, grep]
+```json
+{
+  "agents": {
+    "python-senior": {
+      "deny": ["vectl_vectl_claim", "vectl_vectl_mutate"]
+    },
+    "wiring-auditor": {
+      "deny": ["write", "edit"]
+    },
+    "vectl-orchestrator": {
+      "deny": ["serena_*", "read", "edit", "write", "glob", "grep"]
+    }
+  }
+}
 ```
 
 If the file doesn't exist, no tool restrictions are applied beyond what larva's `side_effect_policy` / `can_spawn` provide.
