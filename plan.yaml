@@ -23174,27 +23174,44 @@ phases:
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
     status: pending
-    description: 'Update INTERFACES.md to document the update-batch operation across
-      all three surfaces.
+    description: 'Update INTERFACES.md to document the verified update-batch operation
+      across all three surfaces.
 
 
-      File: INTERFACES.md
+      step_type: review
+
+      agent_source: default
+
+
+      File:
+
+      - INTERFACES.md
 
 
       Add update-batch entries in:
 
-      - **Section A (MCP)**: `larva.update_batch` tool with input schema `{where,
-      patches, dry_run?}`, returns `BatchUpdateResult`
+      - Section A (MCP): `larva.update_batch` tool with input schema `{where, patches,
+      dry_run?}`, returns `BatchUpdateResult`
 
-      - **Section B (CLI)**: `larva update-batch --where key=value [--where ...] --set
-      key=value [--set ...] [--dry-run] [--json]` with exit codes 0/1/2. Document
-      --where AND semantics, --set type inference, dry-run behavior.
+      - Section B (CLI): `larva update-batch --where key=value [--where ...] --set
+      key=value [--set ...] [--dry-run] [--json]` with exit codes 0/1/2
 
-      - **Section H (Python API)**: `update_batch(where, patches, dry_run=False) ->
-      BatchUpdateResult`
+      - Section H (Python API): `update_batch(where, patches, dry_run=False) -> BatchUpdateResult`
 
 
-      Document the BatchUpdateResult shape:
+      Document the semantic contract explicitly:
+
+      - `where` clauses use AND semantics
+
+      - dotted `where` keys traverse nested dicts; missing keys produce no match
+
+      - `dry_run` previews matches without writes and returns `updated=0`
+
+      - non-dry-run execution is fail-fast with no rollback of earlier successful
+      updates
+
+
+      Document the `BatchUpdateResult` shape:
 
       ```json
 
@@ -23211,11 +23228,14 @@ phases:
 
       - INTERFACES.md contains `update_batch` in Python API section
 
-      - BatchUpdateResult shape documented'
+      - BatchUpdateResult shape and the AND / dotted-key / dry-run / fail-fast semantics
+      are documented'
     refs:
     - INTERFACES.md
     depends_on:
-    - feature_update_batch.facade-update-batch
+    - feature_update_batch.mcp-update-batch
+    - feature_update_batch.cli-update-batch
+    - feature_update_batch.python-api-update-batch
     agent: python-executor
   - id: feature_update_batch.web-backend
     name: web-backend
