@@ -23259,7 +23259,7 @@ phases:
     refs:
     - contrib/web/server.py
     depends_on:
-    - feature_update_batch.facade-update-batch
+    - feature_update_batch.python-api-update-batch
     agent: python-executor
   - id: feature_update_batch.web-frontend
     name: web-frontend
