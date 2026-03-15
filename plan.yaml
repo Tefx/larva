@@ -23662,7 +23662,7 @@ phases:
       - Scope limited to facade tests only (no MCP/CLI/Python API tests)'
   - id: feature_update_batch.facade-update-batch-verify
     name: facade-update-batch-verify
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       facade batch-update behavior from a fresh perspective before shell and web adapters
       build on it.
@@ -23770,3 +23770,5 @@ phases:
     depends_on:
     - feature_update_batch.facade-update-batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-15T16:51:06.905823+00:00'
