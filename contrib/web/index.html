@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LARVA - PersonaSpec Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-primary: #0F172A;
+    --bg-surface: #1E293B;
+    --bg-elevated: #334155;
+    --bg-hover: #475569;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --text-muted: #64748B;
+    --accent: #38BDF8;
+    --accent-hover: #0EA5E9;
+    --success: #4ADE80;
+    --success-hover: #22C55E;
+    --warning: #FBBF24;
+    --danger: #F87171;
+    --danger-hover: #DC2626;
+    --border: #334155;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+  }
+  /* Code/content inputs stay monospace */
+  .prompt-display, .prompt-editor, .modal-textarea, .comp-content,
+  .inline-input, .kv-row input, .tag-input, .sidebar-item-digest {
+    font-family: 'Maple Mono NF CN', monospace;
+  }
+  .app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* Header */
+  .header {
+    height: 48px; min-height: 48px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--bg-surface);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px;
+  }
+  .header-title { color: var(--text-primary); letter-spacing: 2px; font-size: 13px; font-weight: 500; }
+  .header-actions { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    height: 32px; padding: 0 12px;
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 4px; cursor: pointer;
+    font-family: inherit; font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: var(--bg-hover); }
+  .btn-accent { background: var(--accent); color: var(--bg-primary); }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn-save { background: var(--success); color: var(--bg-primary); }
+  .btn-save:hover { background: var(--success-hover); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: var(--bg-primary); }
+  .btn-sm { height: 28px; font-size: 12px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Layout */
+  .main { flex: 1; display: flex; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px; min-width: 280px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .sidebar-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-search input {
+    width: 100%; height: 32px;
+    padding: 0 8px 0 32px;
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 4px; outline: none;
+    font-family: inherit; font-size: 13px;
+  }
+  .sidebar-search input::placeholder { color: var(--text-muted); }
+  .sidebar-search input:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .sidebar-list { flex: 1; overflow-y: auto; }
+  .sidebar-item {
+    width: 100%; padding: 8px 12px;
+    text-align: left; cursor: pointer;
+    border: none; background: none;
+    border-left: 2px solid transparent;
+    transition: background 0.15s;
+    display: block;
+  }
+  .sidebar-item:hover { background: var(--bg-elevated); }
+  .sidebar-item.active { border-left-color: var(--accent); background: var(--bg-elevated); }
+  .sidebar-item-id { color: var(--text-primary); font-size: 13px; margin-bottom: 2px; }
+  .sidebar-item-meta { color: var(--text-secondary); font-size: 11px; margin-bottom: 2px; }
+  .sidebar-item-digest { color: var(--text-muted); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Detail Pane */
+  .detail { flex: 1; overflow-y: auto; padding: 24px; }
+  .detail-inner { padding-bottom: 80px; }
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
+  .detail-title { font-size: 20px; color: var(--text-primary); }
+
+  /* Metadata Strip */
+  .meta-strip { display: flex; gap: 8px; margin-bottom: 24px; }
+  .meta-chip {
+    flex: 1; background: var(--bg-surface); padding: 12px;
+    border-radius: 4px; border-left: 2px solid transparent;
+  }
+  .meta-chip.staged { border-left-color: var(--warning); }
+  .meta-chip.readonly { opacity: 0.7; }
+  .meta-label { color: var(--text-muted); font-size: 10px; text-transform: uppercase; margin-bottom: 4px; }
+  .meta-value { color: var(--text-primary); font-size: 13px; }
+  .meta-auto { color: var(--text-muted); font-size: 10px; margin-left: 4px; }
+
+  /* Section */
+  .section { margin-bottom: 24px; }
+  .section-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; margin-bottom: 8px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+  /* Pills */
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    background: var(--bg-surface); padding: 8px 12px;
+    border-radius: 4px; font-size: 13px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .pill-key { color: var(--text-primary); }
+  .pill-sep { color: var(--text-muted); }
+  .pill-val { color: var(--accent); }
+  .pill-remove {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; padding: 0 0 0 6px; font-size: 14px;
+  }
+  .pill-remove:hover { color: var(--danger); }
+
+  /* Editable tools/params row */
+  .kv-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
+  }
+  .kv-row input, .kv-row select {
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 4px; padding: 6px 8px;
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .kv-row input:focus, .kv-row select:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .kv-row select { cursor: pointer; }
+
+  /* Inline edit input */
+  .inline-input {
+    width: 100%; background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 4px; padding: 6px 8px;
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .inline-input:focus { box-shadow: 0 0 0 1px var(--accent); }
+
+  /* Select */
+  .inline-select {
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 2px; padding: 4px 8px;
+    font-family: inherit; font-size: 13px; outline: none; cursor: pointer;
+  }
+  .inline-select:focus { box-shadow: 0 0 0 1px var(--accent); }
+
+  /* Toggle */
+  .toggle {
+    width: 48px; height: 24px; border-radius: 12px;
+    background: var(--bg-elevated); border: none; cursor: pointer;
+    position: relative; transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle-knob {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: white; position: absolute; top: 2px;
+    transition: left 0.2s;
+  }
+
+  /* Description clickable */
+  .desc-display {
+    background: var(--bg-surface); padding: 8px 12px;
+    border-radius: 4px; cursor: pointer; border-left: 2px solid transparent;
+    transition: background 0.15s;
+  }
+  .desc-display:hover { background: var(--bg-elevated); }
+  .desc-display.staged { border-left-color: var(--warning); }
+
+  /* Prompt */
+  .prompt-display {
+    background: var(--bg-surface); padding: 16px;
+    border-radius: 4px;
+    font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
+    line-height: 1.45;
+    border-left: 2px solid transparent; min-height: 200px;
+  }
+  .prompt-display.staged { border-left-color: var(--warning); }
+  .prompt-editor {
+    width: 100%; min-height: 400px;
+    background: var(--bg-surface); color: var(--text-primary);
+    padding: 16px; border: none; border-radius: 4px;
+    font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
+    line-height: 1.45;
+    resize: none; outline: none;
+    border-left: 2px solid transparent;
+  }
+  .prompt-editor.staged { border-left-color: var(--warning); }
+
+  /* Compaction prompt */
+  .collapsible-header {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    color: var(--text-secondary); font-size: 11px; text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .collapsible-header:hover { color: var(--text-primary); }
+
+  /* Digest footer */
+  .digest-footer { color: var(--text-muted); font-size: 11px; margin-top: 24px; display: flex; align-items: center; gap: 4px; }
+
+  /* Save bar */
+  .save-bar {
+    position: fixed; bottom: 0; left: 280px; right: 0;
+    background: var(--bg-surface); border-top: 2px solid var(--warning);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 50;
+  }
+  .save-bar-text { color: var(--warning); font-size: 13px; }
+  .save-bar-actions { display: flex; gap: 8px; }
+
+  /* Delete confirm */
+  .delete-confirm { display: flex; align-items: center; gap: 8px; }
+  .delete-confirm input {
+    width: 250px; height: 32px; padding: 0 12px;
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: 1px solid var(--danger); border-radius: 4px;
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .delete-confirm input::placeholder { color: var(--text-muted); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal {
+    background: var(--bg-surface); width: 800px; max-height: 90vh;
+    border-radius: 4px; display: flex; flex-direction: column;
+  }
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 16px; color: var(--text-primary); }
+  .modal-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 18px; }
+  .modal-close:hover { color: var(--text-primary); }
+  .modal-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .modal-footer {
+    padding: 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 8px;
+  }
+
+  /* Textarea for modals */
+  .modal-textarea {
+    width: 100%; height: 350px;
+    background: var(--bg-primary); color: var(--text-primary);
+    padding: 16px; border: 1px solid var(--border); border-radius: 4px;
+    font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
+    resize: none; outline: none;
+  }
+  .modal-textarea:focus { border-color: var(--accent); }
+
+  /* Validation badge */
+  .valid-badge { color: var(--success); display: flex; align-items: center; gap: 6px; font-size: 13px; margin-top: 12px; }
+  .error-badge { color: var(--danger); font-size: 13px; margin-top: 12px; }
+  .error-list { margin: 8px 0 0 16px; font-size: 12px; color: var(--danger); }
+  .error-list li { margin-bottom: 4px; }
+
+  /* Checkbox/Radio lists in assemble */
+  .option-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; background: var(--bg-elevated);
+    border-radius: 4px; margin-bottom: 6px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .option-item:hover { background: var(--bg-hover); }
+  .option-item input { accent-color: var(--accent); }
+
+  /* Component browser */
+  .comp-section {
+    background: var(--bg-surface); border-radius: 4px; margin-bottom: 12px;
+  }
+  .comp-section-header {
+    width: 100%; padding: 16px; text-align: left;
+    background: none; border: none; color: var(--text-secondary);
+    font-family: inherit; font-size: 11px; text-transform: uppercase;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.15s;
+  }
+  .comp-section-header:hover { background: var(--bg-elevated); }
+  .comp-item {
+    width: 100%; padding: 12px 16px; text-align: left;
+    background: none; border: none; border-top: 1px solid var(--border);
+    color: var(--text-primary); font-family: inherit; font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.15s;
+  }
+  .comp-item:hover { background: var(--bg-elevated); }
+  .comp-content {
+    padding: 0 16px 12px;
+    background: var(--bg-primary); margin: 0 12px 12px;
+    border-radius: 4px; font-size: 12px;
+    white-space: pre-wrap; padding: 16px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--text-muted); gap: 12px;
+  }
+  .empty-state h2 { font-size: 16px; color: var(--text-secondary); }
+  .empty-state p { font-size: 13px; }
+  .empty-state-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+  /* Tags for can_spawn array */
+  .tag-list { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .tag {
+    background: var(--bg-elevated); padding: 2px 8px;
+    border-radius: 4px; font-size: 12px; display: flex; align-items: center; gap: 4px;
+  }
+  .tag-remove {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 12px; padding: 0;
+  }
+  .tag-remove:hover { color: var(--danger); }
+  .tag-input {
+    background: none; border: none; color: var(--text-primary);
+    font-family: inherit; font-size: 12px; outline: none; width: 120px;
+  }
+  .tag-input::placeholder { color: var(--text-muted); }
+
+  /* Markdown in prompt — tight developer-density spacing */
+  .prompt-md { line-height: 1.45; }
+  .prompt-md > *:first-child { margin-top: 0; }
+  .prompt-md > *:last-child { margin-bottom: 0; }
+  .prompt-md h1, .prompt-md h2, .prompt-md h3, .prompt-md h4 { color: var(--accent); font-weight: 500; }
+  .prompt-md h1 { font-size: 16px; margin: 20px 0 6px; }
+  .prompt-md h2 { font-size: 14px; margin: 16px 0 4px; }
+  .prompt-md h3 { font-size: 13px; margin: 12px 0 2px; }
+  .prompt-md h4 { font-size: 13px; margin: 8px 0 2px; color: var(--text-secondary); }
+  .prompt-md p { margin: 4px 0; }
+  .prompt-md p + p { margin-top: 6px; }
+  .prompt-md ul, .prompt-md ol { margin: 4px 0; padding-left: 18px; }
+  .prompt-md li { margin: 1px 0; }
+  .prompt-md li > p { margin: 0; }
+  .prompt-md li > ul, .prompt-md li > ol { margin: 0; }
+  .prompt-md code { background: var(--bg-elevated); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .prompt-md pre { background: var(--bg-primary); padding: 10px 12px; border-radius: 4px; margin: 6px 0; overflow-x: auto; line-height: 1.35; }
+  .prompt-md pre code { background: none; padding: 0; font-size: 12px; }
+  .prompt-md strong { color: var(--text-primary); font-weight: 500; }
+  .prompt-md em { color: var(--text-secondary); font-style: italic; }
+  .prompt-md table { border-collapse: collapse; margin: 6px 0; width: 100%; }
+  .prompt-md th, .prompt-md td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; font-size: 12px; }
+  .prompt-md th { background: var(--bg-elevated); color: var(--text-secondary); font-weight: 500; }
+  .prompt-md blockquote { border-left: 2px solid var(--accent); padding-left: 10px; margin: 6px 0; color: var(--text-secondary); }
+  .prompt-md hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--success); color: var(--bg-primary);
+    padding: 10px 20px; border-radius: 4px;
+    font-size: 13px; font-weight: 500; z-index: 200;
+    transition: opacity 0.3s;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--bg-hover); }
+</style>
+</head>
+<body>
+
+<div class="app" x-data="larvaApp()">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-title">LARVA</div>
+    <div class="header-actions">
+      <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Components</button>
+      <button class="btn" @click="modals.import = true">Import</button>
+      <button class="btn btn-accent" @click="modals.assemble = true" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-search">
+        <input type="text" placeholder="Search personas..." x-model="search" @keydown.slash.window.prevent="$el.focus()">
+      </div>
+      <div class="sidebar-list">
+        <template x-for="p in filteredPersonas" :key="p.id">
+          <div class="sidebar-item" :class="{ active: selected === p.id }" @click="selectPersona(p.id)">
+            <div class="sidebar-item-id" x-text="p.id"></div>
+            <div class="sidebar-item-meta">
+              <span x-text="p.model"></span> &middot; <span x-text="p.side_effect_policy || ''"></span>
+            </div>
+            <div class="sidebar-item-digest" x-text="(p.spec_digest || '').slice(0, 24) + '...'"></div>
+          </div>
+        </template>
+        <div x-show="filteredPersonas.length === 0" style="padding:16px;text-align:center;color:var(--text-muted);">
+          No personas found
+        </div>
+      </div>
+    </aside>
+
+    <!-- DETAIL PANE -->
+    <div class="detail" x-show="view === 'detail' && selectedPersona" style="display:none;">
+      <div class="detail-inner">
+        <!-- Header -->
+        <div class="detail-header">
+          <h1 class="detail-title" x-text="selectedPersona?.id"></h1>
+          <template x-if="!deleteConfirm">
+            <button class="btn btn-danger" @click="deleteConfirm = true">Delete</button>
+          </template>
+          <template x-if="deleteConfirm">
+            <div class="delete-confirm">
+              <input type="text" :placeholder="'Type &quot;' + selectedPersona.id + '&quot; to confirm'" x-model="deleteText" x-ref="deleteInput"
+                @keydown.enter="deleteText === selectedPersona.id && doDelete()" @keydown.escape="deleteConfirm = false; deleteText = ''">
+              <button class="btn" style="background:var(--danger);color:var(--bg-primary);" :disabled="deleteText !== selectedPersona.id" @click="doDelete()">Confirm</button>
+              <button class="btn" @click="deleteConfirm = false; deleteText = ''">Cancel</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Metadata Strip -->
+        <div class="meta-strip">
+          <!-- Model -->
+          <div class="meta-chip" :class="{ staged: staged.model !== undefined }">
+            <div class="meta-label">model</div>
+            <template x-if="editing !== 'model'">
+              <div class="meta-value" style="cursor:pointer" @click="startEdit('model', getVal('model'))" x-text="getVal('model')"></div>
+            </template>
+            <template x-if="editing === 'model'">
+              <input class="inline-input" x-model="editValue" @blur="commitEdit('model')" @keydown.enter="commitEdit('model')" @keydown.escape="editing = null" x-ref="editInput">
+            </template>
+          </div>
+          <!-- side_effect_policy -->
+          <div class="meta-chip" :class="{ staged: staged.side_effect_policy !== undefined }">
+            <div class="meta-label">side_effect_policy</div>
+            <select class="inline-select" :value="getVal('side_effect_policy')" @change="stageChange('side_effect_policy', $event.target.value)">
+              <option value="allow">allow</option>
+              <option value="approval_required">approval_required</option>
+              <option value="read_only">read_only</option>
+            </select>
+          </div>
+          <!-- can_spawn -->
+          <div class="meta-chip" :class="{ staged: staged.can_spawn !== undefined }">
+            <div class="meta-label">can_spawn</div>
+            <template x-if="!isSpawnArray()">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="toggle" :class="{ on: getVal('can_spawn') === true }" @click="stageChange('can_spawn', !getVal('can_spawn'))">
+                  <div class="toggle-knob" :style="{ left: getVal('can_spawn') === true ? '26px' : '2px' }"></div>
+                </button>
+                <span class="meta-value" x-text="getVal('can_spawn')"></span>
+              </div>
+            </template>
+            <template x-if="isSpawnArray()">
+              <div>
+                <div class="tag-list">
+                  <template x-for="(tag, i) in getVal('can_spawn')" :key="i">
+                    <span class="tag">
+                      <span x-text="tag"></span>
+                      <button class="tag-remove" @click="removeSpawnTag(i)">&times;</button>
+                    </span>
+                  </template>
+                  <input class="tag-input" placeholder="add id..." @keydown.enter.prevent="addSpawnTag($event.target); $event.target.value = ''">
+                </div>
+                <div style="margin-top:4px;">
+                  <a href="#" style="color:var(--text-muted);font-size:10px;" @click.prevent="stageChange('can_spawn', true)">Set to true</a>
+                </div>
+              </div>
+            </template>
+          </div>
+          <!-- spec_version -->
+          <div class="meta-chip readonly">
+            <div class="meta-label">spec_version</div>
+            <div class="meta-value">
+              <span x-text="selectedPersona?.spec_version"></span>
+              <span class="meta-auto">[auto]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tools -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-label">TOOLS</div>
+            <button class="btn btn-sm" @click="toggleToolsEdit()" x-text="editingTools ? 'Done' : 'Edit'"></button>
+          </div>
+          <template x-if="!editingTools">
+            <div class="pills" :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+              <template x-for="[k, v] in Object.entries(getVal('tools') || {})" :key="k">
+                <div class="pill">
+                  <span class="pill-key" x-text="k"></span>
+                  <span class="pill-sep">:</span>
+                  <span class="pill-val" x-text="v"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+          <template x-if="editingTools">
+            <div :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+              <template x-for="(entry, i) in toolEntries" :key="i">
+                <div class="kv-row">
+                  <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncTools()" style="width:180px;" placeholder="tool name">
+                  <select :value="entry.val" @change="entry.val = $event.target.value; syncTools()">
+                    <option value="read_only">read_only</option>
+                    <option value="read_write">read_write</option>
+                    <option value="enabled">enabled</option>
+                    <option value="disabled">disabled</option>
+                  </select>
+                  <button class="pill-remove" @click="toolEntries.splice(i, 1); syncTools()">&times;</button>
+                </div>
+              </template>
+              <button class="btn btn-sm" style="margin-top:4px;" @click="toolEntries.push({key:'',val:'read_only'})">+ Add Tool</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Model Params -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-label">MODEL PARAMETERS</div>
+            <button class="btn btn-sm" @click="toggleParamsEdit()" x-text="editingParams ? 'Done' : 'Edit'"></button>
+          </div>
+          <template x-if="!editingParams">
+            <div class="pills" :style="staged.model_params !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+              <template x-for="[k, v] in Object.entries(getVal('model_params') || {})" :key="k">
+                <div class="pill">
+                  <span class="pill-key" x-text="k"></span>
+                  <span class="pill-sep">:</span>
+                  <span class="pill-val" x-text="v"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+          <template x-if="editingParams">
+            <div :style="staged.model_params !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+              <template x-for="(entry, i) in paramEntries" :key="i">
+                <div class="kv-row">
+                  <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncParams()" style="width:180px;" placeholder="param name">
+                  <input type="text" :value="entry.val" @input="entry.val = $event.target.value; syncParams()" style="width:120px;" placeholder="value">
+                  <button class="pill-remove" @click="paramEntries.splice(i, 1); syncParams()">&times;</button>
+                </div>
+              </template>
+              <button class="btn btn-sm" style="margin-top:4px;" @click="paramEntries.push({key:'',val:''})">+ Add Param</button>
+            </div>
+          </template>
+        </div>
+
+        <!-- Description -->
+        <div class="section">
+          <div class="section-label">DESCRIPTION</div>
+          <template x-if="editing !== 'description'">
+            <div class="desc-display" :class="{ staged: staged.description !== undefined }"
+              @click="startEdit('description', getVal('description'))" x-text="getVal('description')"></div>
+          </template>
+          <template x-if="editing === 'description'">
+            <input class="inline-input" x-model="editValue" @blur="commitEdit('description')" @keydown.enter="commitEdit('description')" @keydown.escape="editing = null">
+          </template>
+        </div>
+
+        <!-- Prompt -->
+        <div class="section">
+          <div class="section-header">
+            <div class="section-label">PROMPT</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" @click="togglePromptEdit()" x-text="editingPrompt ? 'Done' : 'Edit'"></button>
+              <button class="btn btn-sm" @click="showRawJson = !showRawJson" x-text="showRawJson ? 'Detail' : 'Raw JSON'"></button>
+            </div>
+          </div>
+          <template x-if="!showRawJson">
+            <div>
+              <template x-if="!editingPrompt">
+                <div class="prompt-display prompt-md" :class="{ staged: staged.prompt !== undefined }" x-html="renderMarkdown(getVal('prompt'))"></div>
+              </template>
+              <template x-if="editingPrompt">
+                <textarea class="prompt-editor" :class="{ staged: promptValue !== selectedPersona.prompt }"
+                  x-model="promptValue"
+                  x-effect="if(editingPrompt) { $el.style.height = 'auto'; $el.style.height = Math.max(400, $el.scrollHeight) + 'px'; }"></textarea>
+              </template>
+            </div>
+          </template>
+          <template x-if="showRawJson">
+            <pre class="prompt-display" x-text="JSON.stringify(selectedPersona, null, 2)" style="font-size:12px;"></pre>
+          </template>
+        </div>
+
+        <!-- Compaction Prompt -->
+        <div class="section">
+          <div class="collapsible-header" @click="showCompaction = !showCompaction">
+            <span x-text="showCompaction ? '&#9660;' : '&#9654;'"></span>
+            <span>COMPACTION PROMPT (optional)</span>
+          </div>
+          <template x-if="showCompaction">
+            <div>
+              <template x-if="editing !== 'compaction_prompt'">
+                <div class="desc-display" :class="{ staged: staged.compaction_prompt !== undefined }"
+                  @click="startEdit('compaction_prompt', getVal('compaction_prompt') || '')"
+                  x-text="getVal('compaction_prompt') || 'Not set'" :style="!getVal('compaction_prompt') ? 'color:var(--text-muted);font-style:italic' : ''"></div>
+              </template>
+              <template x-if="editing === 'compaction_prompt'">
+                <textarea class="prompt-editor" style="min-height:150px;" x-model="editValue"
+                  @blur="commitEdit('compaction_prompt')" @keydown.escape="editing = null"></textarea>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Digest -->
+        <div class="digest-footer">
+          DIGEST <span class="meta-auto">[auto]</span> <span x-text="selectedPersona?.spec_digest"></span>
+        </div>
+      </div>
+
+      <!-- Save Bar -->
+      <div class="save-bar" x-show="stagedCount > 0" x-cloak>
+        <div class="save-bar-text" x-text="stagedCount + ' unsaved change' + (stagedCount > 1 ? 's' : '')"></div>
+        <div class="save-bar-actions">
+          <button class="btn" @click="discardChanges()">Discard</button>
+          <button class="btn btn-save" @click="saveChanges()">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPTY STATE: no persona selected -->
+    <div class="empty-state" x-show="view === 'detail' && !selectedPersona && personas.length > 0" style="display:none;">
+      <h2>Select a persona from the sidebar</h2>
+    </div>
+
+    <!-- EMPTY STATE: no personas -->
+    <div class="empty-state" x-show="view === 'detail' && personas.length === 0" style="display:none;">
+      <h2>No personas registered</h2>
+      <p>Register your first persona to get started</p>
+      <div class="empty-state-actions">
+        <button class="btn" @click="modals.import = true">Import JSON</button>
+        <button class="btn btn-accent" @click="modals.assemble = true">Assemble New</button>
+      </div>
+    </div>
+
+    <!-- COMPONENT BROWSER -->
+    <div class="detail" x-show="view === 'components'" style="display:none;">
+      <div class="detail-inner">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <button class="btn" @click="view = 'detail'">&#8592; Back</button>
+          <h1 class="detail-title">Component Library</h1>
+        </div>
+        <template x-if="components">
+          <div>
+            <template x-for="type in ['prompts', 'toolsets', 'constraints', 'models']" :key="type">
+              <div class="comp-section">
+                <button class="comp-section-header" @click="compExpanded[type] = !compExpanded[type]">
+                  <span x-text="type.toUpperCase()"></span>
+                  <span x-text="compExpanded[type] ? '&#9660;' : '&#9654;'"></span>
+                </button>
+                <template x-if="compExpanded[type]">
+                  <div>
+                    <template x-for="name in (components[type] || [])" :key="name">
+                      <div>
+                        <button class="comp-item" @click="toggleCompItem(type, name)">
+                          <span x-text="name"></span>
+                          <span x-text="compItemExpanded[type+'/'+name] ? '&#9660;' : '&#9654;'" style="color:var(--text-muted);"></span>
+                        </button>
+                        <template x-if="compItemExpanded[type+'/'+name]">
+                          <div class="comp-content" x-text="compItemContent[type+'/'+name] || 'Loading...'"></div>
+                        </template>
+                      </div>
+                    </template>
+                    <div x-show="(components[type] || []).length === 0" style="padding:12px 16px;color:var(--text-muted);border-top:1px solid var(--border);">
+                      No components found
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- IMPORT MODAL -->
+  <div class="modal-overlay" x-show="modals.import" @click.self="modals.import = false" @keydown.escape.window="modals.import = false" x-cloak>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Import PersonaSpec</div>
+        <button class="modal-close" @click="modals.import = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="section-label">Paste PersonaSpec JSON</div>
+        <textarea class="modal-textarea" x-model="importJson" placeholder='{"id": "my-persona", "spec_version": "0.1.0", ...}'></textarea>
+        <template x-if="importValidation">
+          <div>
+            <template x-if="importValidation.valid">
+              <div class="valid-badge">&#10003; Valid PersonaSpec</div>
+            </template>
+            <template x-if="!importValidation.valid">
+              <div>
+                <div class="error-badge">Validation Errors:</div>
+                <ul class="error-list">
+                  <template x-for="err in importValidation.errors" :key="err.message || err">
+                    <li x-text="err.message || err"></li>
+                  </template>
+                </ul>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" @click="modals.import = false; importJson = ''; importValidation = null">Cancel</button>
+        <button class="btn btn-accent" :disabled="!importValidation?.valid" @click="doImport()">Register</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" x-show="toastVisible" x-text="toastMessage" x-cloak
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:leave="transition ease-in duration-150"></div>
+
+  <!-- ASSEMBLE MODAL -->
+  <div class="modal-overlay" x-show="modals.assemble" @click.self="modals.assemble = false" @keydown.escape.window="modals.assemble = false" x-cloak>
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Assemble Persona</div>
+        <button class="modal-close" @click="modals.assemble = false">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- ID -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">Persona ID</div>
+          <input class="inline-input" x-model="assembleForm.id" placeholder="e.g., my-custom-agent"
+            :style="assembleForm.id && !isValidId(assembleForm.id) ? 'box-shadow:0 0 0 1px var(--danger)' : ''">
+          <div x-show="assembleForm.id && !isValidId(assembleForm.id)" style="color:var(--danger);font-size:11px;margin-top:4px;">
+            ID must be lowercase kebab-case (e.g. my-agent-name)
+          </div>
+        </div>
+
+        <!-- Prompts -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">Prompts</div>
+          <template x-for="name in (components?.prompts || [])" :key="name">
+            <label class="option-item">
+              <input type="checkbox" :value="name" x-model="assembleForm.prompts">
+              <span x-text="name"></span>
+            </label>
+          </template>
+          <div x-show="!components?.prompts?.length" style="color:var(--text-muted);font-size:12px;">No prompt components found. Add .md files to ~/.larva/components/prompts/</div>
+        </div>
+
+        <!-- Toolsets -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">Toolsets</div>
+          <template x-for="name in (components?.toolsets || [])" :key="name">
+            <label class="option-item">
+              <input type="checkbox" :value="name" x-model="assembleForm.toolsets">
+              <span x-text="name"></span>
+            </label>
+          </template>
+          <div x-show="!components?.toolsets?.length" style="color:var(--text-muted);font-size:12px;">No toolset components found</div>
+        </div>
+
+        <!-- Constraints -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">Constraints</div>
+          <template x-for="name in (components?.constraints || [])" :key="name">
+            <label class="option-item">
+              <input type="checkbox" :value="name" x-model="assembleForm.constraints">
+              <span x-text="name"></span>
+            </label>
+          </template>
+          <div x-show="!components?.constraints?.length" style="color:var(--text-muted);font-size:12px;">No constraint components found</div>
+        </div>
+
+        <!-- Models -->
+        <div class="section" style="margin-bottom:16px;">
+          <div class="section-label">Model</div>
+          <template x-for="name in (components?.models || [])" :key="name">
+            <label class="option-item">
+              <input type="radio" name="asm-model" :value="name" x-model="assembleForm.model">
+              <span x-text="name"></span>
+            </label>
+          </template>
+          <div x-show="!components?.models?.length" style="color:var(--text-muted);font-size:12px;">No model components found</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" @click="modals.assemble = false">Cancel</button>
+        <button class="btn btn-accent" :disabled="!assembleForm.id || !isValidId(assembleForm.id)" @click="doAssemble()">Assemble</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function larvaApp() {
+  return {
+    // State
+    personas: [],
+    selected: null,
+    search: '',
+    view: 'detail',
+    staged: {},
+    editing: null,
+    editValue: '',
+    editingPrompt: false,
+    promptValue: '',
+    editingTools: false,
+    editingParams: false,
+    toolEntries: [],
+    paramEntries: [],
+    deleteConfirm: false,
+    deleteText: '',
+    showRawJson: false,
+    showCompaction: false,
+    components: null,
+    compExpanded: {},
+    compItemExpanded: {},
+    compItemContent: {},
+    modals: { import: false, assemble: false },
+    importJson: '',
+    importValidation: null,
+    assembleForm: { id: '', prompts: [], toolsets: [], constraints: [], model: '' },
+
+    get selectedPersona() {
+      return this.personas.find(p => p.id === this.selected) || null;
+    },
+    get filteredPersonas() {
+      if (!this.search) return this.personas;
+      const q = this.search.toLowerCase();
+      return this.personas.filter(p =>
+        p.id.toLowerCase().includes(q) ||
+        (p.model || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q)
+      );
+    },
+    get stagedCount() {
+      return Object.keys(this.staged).length;
+    },
+
+    async init() {
+      await this.loadPersonas();
+      await this.loadComponents();
+
+      // Watch importJson for validation
+      this.$watch('importJson', async (val) => {
+        if (!val.trim()) { this.importValidation = null; return; }
+        try {
+          const parsed = JSON.parse(val);
+          const resp = await fetch('/api/personas/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: val,
+          });
+          const data = await resp.json();
+          this.importValidation = data.data || { valid: false, errors: [{ message: 'Server error' }] };
+        } catch {
+          this.importValidation = { valid: false, errors: [{ message: 'Invalid JSON syntax' }] };
+        }
+      });
+    },
+
+    async loadPersonas() {
+      const resp = await fetch('/api/personas');
+      const data = await resp.json();
+      const summaries = data.data || [];
+      // Load full specs
+      const full = await Promise.all(summaries.map(async s => {
+        const r = await fetch(`/api/personas/${s.id}`);
+        const d = await r.json();
+        return d.data;
+      }));
+      this.personas = full.filter(Boolean);
+      if (!this.selected && this.personas.length) {
+        this.selected = this.personas[0].id;
+      }
+    },
+
+    async loadComponents() {
+      try {
+        const resp = await fetch('/api/components');
+        const data = await resp.json();
+        this.components = data.data;
+      } catch { this.components = { prompts: [], toolsets: [], constraints: [], models: [] }; }
+    },
+
+    selectPersona(id) {
+      this.selected = id;
+      this.view = 'detail';
+      this.discardChanges();
+      this.deleteConfirm = false;
+      this.deleteText = '';
+      this.editingPrompt = false;
+      this.editingTools = false;
+      this.editingParams = false;
+      this.showRawJson = false;
+    },
+
+    getVal(field) {
+      if (this.staged[field] !== undefined) return this.staged[field];
+      return this.selectedPersona?.[field];
+    },
+
+    stageChange(field, value) {
+      this.staged = { ...this.staged, [field]: value };
+    },
+
+    startEdit(field, value) {
+      this.editing = field;
+      this.editValue = value || '';
+      this.$nextTick(() => {
+        const input = document.querySelector('[x-ref="editInput"]') || document.querySelector('.inline-input:focus');
+        if (input) input.focus();
+      });
+    },
+
+    commitEdit(field) {
+      if (this.editValue !== (this.selectedPersona?.[field] || '')) {
+        this.stageChange(field, this.editValue);
+      }
+      this.editing = null;
+    },
+
+    togglePromptEdit() {
+      if (this.editingPrompt) {
+        // Done editing - stage if changed
+        if (this.promptValue !== this.selectedPersona?.prompt) {
+          this.stageChange('prompt', this.promptValue);
+        }
+        this.editingPrompt = false;
+      } else {
+        this.promptValue = this.getVal('prompt') || '';
+        this.editingPrompt = true;
+      }
+    },
+
+    // Tools editing
+    toggleToolsEdit() {
+      if (this.editingTools) {
+        this.syncTools();
+        this.editingTools = false;
+      } else {
+        const tools = this.getVal('tools') || {};
+        this.toolEntries = Object.entries(tools).map(([key, val]) => ({ key, val }));
+        this.editingTools = true;
+      }
+    },
+
+    syncTools() {
+      const obj = {};
+      for (const e of this.toolEntries) {
+        if (e.key.trim()) obj[e.key.trim()] = e.val;
+      }
+      this.stageChange('tools', obj);
+    },
+
+    // Params editing
+    toggleParamsEdit() {
+      if (this.editingParams) {
+        this.syncParams();
+        this.editingParams = false;
+      } else {
+        const params = this.getVal('model_params') || {};
+        this.paramEntries = Object.entries(params).map(([key, val]) => ({ key, val: String(val) }));
+        this.editingParams = true;
+      }
+    },
+
+    syncParams() {
+      const obj = {};
+      for (const e of this.paramEntries) {
+        if (e.key.trim()) {
+          const num = Number(e.val);
+          obj[e.key.trim()] = isNaN(num) ? e.val : num;
+        }
+      }
+      this.stageChange('model_params', obj);
+    },
+
+    // Markdown rendering
+    renderMarkdown(text) {
+      if (!text) return '';
+      if (typeof marked !== 'undefined') {
+        marked.setOptions({ breaks: false, gfm: true });
+        return marked.parse(text);
+      }
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>');
+    },
+
+    // can_spawn helpers
+    isSpawnArray() {
+      const val = this.getVal('can_spawn');
+      return Array.isArray(val);
+    },
+
+    removeSpawnTag(i) {
+      const arr = [...this.getVal('can_spawn')];
+      arr.splice(i, 1);
+      this.stageChange('can_spawn', arr.length ? arr : false);
+    },
+
+    addSpawnTag(input) {
+      const val = input.value.trim();
+      if (!val) return;
+      const arr = [...(this.getVal('can_spawn') || []), val];
+      this.stageChange('can_spawn', arr);
+    },
+
+    // Save / Discard
+    async saveChanges() {
+      if (!this.selected || !this.stagedCount) return;
+      const savedId = this.selected;
+      const patchBody = JSON.stringify(this.staged);
+      console.log('[larva] Saving patches for', savedId, ':', patchBody);
+      try {
+        const resp = await fetch(`/api/personas/${savedId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: patchBody,
+        });
+        const data = await resp.json();
+        console.log('[larva] Save response:', data);
+        if (data.error) {
+          alert('Save failed: ' + (data.error.message || JSON.stringify(data.error)));
+          return;
+        }
+        this.staged = {};
+        this.editingTools = false;
+        this.editingParams = false;
+        this.editingPrompt = false;
+        this.editing = null;
+        await this.loadPersonas();
+        this.selected = savedId;
+        this.showToast('Saved successfully');
+      } catch (e) {
+        alert('Save failed: ' + e.message);
+      }
+    },
+
+    // Toast
+    toastMessage: '',
+    toastVisible: false,
+    showToast(msg) {
+      this.toastMessage = msg;
+      this.toastVisible = true;
+      setTimeout(() => { this.toastVisible = false; }, 2000);
+    },
+
+    discardChanges() {
+      this.staged = {};
+      this.editing = null;
+      this.editingPrompt = false;
+    },
+
+    // Delete
+    async doDelete() {
+      if (this.deleteText !== this.selectedPersona?.id) return;
+      try {
+        await fetch(`/api/personas/${this.selected}`, { method: 'DELETE' });
+        this.selected = null;
+        this.deleteConfirm = false;
+        this.deleteText = '';
+        await this.loadPersonas();
+      } catch (e) {
+        alert('Delete failed: ' + e.message);
+      }
+    },
+
+    // Import
+    async doImport() {
+      if (!this.importValidation?.valid) return;
+      try {
+        const resp = await fetch('/api/personas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spec: JSON.parse(this.importJson) }),
+        });
+        const data = await resp.json();
+        if (data.error) {
+          alert('Import failed: ' + (data.error.message || JSON.stringify(data.error)));
+          return;
+        }
+        this.modals.import = false;
+        this.importJson = '';
+        this.importValidation = null;
+        await this.loadPersonas();
+        const parsed = JSON.parse(this.importJson || '{}');
+        if (parsed.id) this.selected = parsed.id;
+      } catch (e) {
+        alert('Import failed: ' + e.message);
+      }
+    },
+
+    // Assemble
+    async doAssemble() {
+      try {
+        const resp = await fetch('/api/personas/assemble', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.assembleForm),
+        });
+        const data = await resp.json();
+        if (data.error) {
+          alert('Assemble failed: ' + (data.error.message || JSON.stringify(data.error)));
+          return;
+        }
+        // Register the assembled spec
+        const regResp = await fetch('/api/personas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spec: data.data }),
+        });
+        const regData = await regResp.json();
+        if (regData.error) {
+          alert('Register failed: ' + (regData.error.message || JSON.stringify(regData.error)));
+          return;
+        }
+        this.modals.assemble = false;
+        this.assembleForm = { id: '', prompts: [], toolsets: [], constraints: [], model: '' };
+        await this.loadPersonas();
+        this.selected = data.data.id;
+      } catch (e) {
+        alert('Assemble failed: ' + e.message);
+      }
+    },
+
+    // Component browser
+    async toggleCompItem(type, name) {
+      const key = type + '/' + name;
+      if (this.compItemExpanded[key]) {
+        this.compItemExpanded = { ...this.compItemExpanded, [key]: false };
+        return;
+      }
+      this.compItemExpanded = { ...this.compItemExpanded, [key]: true };
+      if (!this.compItemContent[key]) {
+        try {
+          const resp = await fetch(`/api/components/${type}/${name}`);
+          const data = await resp.json();
+          const content = data.data;
+          this.compItemContent = {
+            ...this.compItemContent,
+            [key]: typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content),
+          };
+        } catch {
+          this.compItemContent = { ...this.compItemContent, [key]: 'Failed to load' };
+        }
+      }
+    },
+
+    isValidId(id) {
+      return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
+    },
+  };
+}
+</script>
+
+</body>
+</html>

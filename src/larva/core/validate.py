@@ -123,11 +123,13 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
             )
         )
         return {"errors": errors, "warnings": warnings}
-    found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt_obj))
-
-    provided_vars_obj = spec.get("variables", {})
-    provided_vars: dict[str, str] = {}
-    if isinstance(provided_vars_obj, dict):
+    # Variable checking: only run when `variables` is explicitly provided.
+    # Prompts commonly contain literal {braces} (code examples, templates)
+    # that are NOT variable placeholders. Without explicit `variables`,
+    # these should not be flagged as errors.
+    provided_vars_obj = spec.get("variables")
+    if provided_vars_obj is not None and isinstance(provided_vars_obj, dict):
+        provided_vars: dict[str, str] = {}
         try:
             for key, value in provided_vars_obj.items():
                 if isinstance(key, str) and isinstance(value, str):
@@ -135,21 +137,23 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
         except KeyError:
             provided_vars = {}
 
-    unresolved = found_vars - set(provided_vars.keys())
-    if unresolved:
-        errors.append(
-            _issue(
-                "VARIABLE_UNRESOLVED",
-                f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}",
-                {"field": "prompt", "unresolved_variables": sorted(unresolved)},
-            )
-        )
+        found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt_obj))
 
-    unused_vars = set(provided_vars.keys()) - found_vars
-    if unused_vars:
-        warnings.append(
-            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
-            + ", ".join(sorted(unused_vars))
+        unresolved = found_vars - set(provided_vars.keys())
+        if unresolved:
+            errors.append(
+                _issue(
+                    "VARIABLE_UNRESOLVED",
+                    f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}",
+                    {"field": "prompt", "unresolved_variables": sorted(unresolved)},
+                )
+            )
+
+        unused_vars = set(provided_vars.keys()) - found_vars
+        if unused_vars:
+            warnings.append(
+                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
+                + ", ".join(sorted(unused_vars))
         )
 
     return {"errors": errors, "warnings": warnings}
