@@ -26,7 +26,12 @@ import type { Plugin } from "@opencode-ai/plugin"
 // Config
 // ---------------------------------------------------------------------------
 
-const LARVA_PROJECT = process.env.LARVA_PROJECT ?? "/Users/tefx/Projects/larva"
+/**
+ * How to invoke larva CLI. Resolution order:
+ *   1. Auto-detect: if cwd contains pyproject.toml with name = "larva",
+ *      use `uv run --project <cwd> larva`
+ *   2. Fallback: try bare `larva` in PATH (pip install larva)
+ */
 const CACHE_TTL_MS = 5 * 60_000
 
 // Set as agent.prompt during config so opencode uses it instead of falling
@@ -60,10 +65,28 @@ interface CacheEntry {
 // larva CLI helpers
 // ---------------------------------------------------------------------------
 
+// Set at plugin init if cwd is a larva project
+let _projectDir: string | undefined
+
+async function larvaExec($: any, args: string[]): Promise<string> {
+  if (_projectDir) {
+    const r = await $`uv run --project ${_projectDir} larva ${args}`.quiet()
+    return r.stdout.toString()
+  }
+  // Try larva in PATH, fallback to uvx
+  try {
+    const r = await $`larva ${args}`.quiet()
+    return r.stdout.toString()
+  } catch {
+    const r = await $`uvx larva ${args}`.quiet()
+    return r.stdout.toString()
+  }
+}
+
 async function larvaExportAll($: any): Promise<PersonaSpec[] | null> {
   try {
-    const r = await $`uv run --project ${LARVA_PROJECT} larva export --all --json`.quiet()
-    const parsed = JSON.parse(r.stdout.toString())
+    const r = await larvaExec($, ["export", "--all", "--json"])
+    const parsed = JSON.parse(r)
     console.log(`[larva-plugin] export --all: ${parsed.data?.length ?? 0} personas`)
     return parsed.data ?? null
   } catch (e: any) {
@@ -126,9 +149,17 @@ function toPermissions(spec: PersonaSpec) {
 /** Set of agent names managed by this plugin. */
 const managed = new Set<string>()
 
-const larvaPlugin: Plugin = async ({ $ }) => {
+const larvaPlugin: Plugin = async ({ $, directory }) => {
+  // Auto-detect: if running inside a larva project, use uv run
+  try {
+    const pyproject = await $`cat ${directory}/pyproject.toml`.quiet()
+    if (pyproject.stdout.toString().includes('name = "larva"')) {
+      _projectDir = directory
+      console.log(`[larva-plugin] Auto-detected larva project at ${directory}`)
+    }
+  } catch { /* not a larva project — will use bare `larva` from PATH */ }
+
   // Which larva agent is active in the current API call.
-  // Set by chat.params (knows agent name), read by system.transform.
   let active: string | null = null
 
   return {
