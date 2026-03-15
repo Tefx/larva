@@ -21,6 +21,7 @@
  */
 
 import type { Plugin } from "@opencode-ai/plugin"
+import YAML from "yaml"
 
 // ---------------------------------------------------------------------------
 // Config
@@ -191,56 +192,14 @@ async function loadToolPolicy($: any, directory: string): Promise<void> {
 }
 
 function parseToolPolicyYaml(text: string): ToolPolicy {
-  // Pre-process: collapse multi-line flow sequences [...] into single lines
-  const collapsed = text.replace(/(\[)\s*\n([\s\S]*?)\]/g, (_, open, body) => {
-    const items = body.split(",").map((s: string) => s.trim()).filter((s: string) => s && !s.startsWith("#"))
-    // Remove trailing empty from last comma
-    if (items.length && items[items.length - 1] === "") items.pop()
-    return `[${items.join(", ")}]`
-  })
+  const doc = YAML.parse(text) as { agents?: Record<string, { deny?: string[]; allow?: string[] }> } | null
+  if (!doc?.agents) return {}
 
   const policy: ToolPolicy = {}
-  let currentAgent: string | null = null
-  let currentKey: "deny" | "allow" | null = null
-
-  for (const line of collapsed.split("\n")) {
-    const trimmed = line.trimEnd()
-    if (!trimmed || trimmed.startsWith("#")) continue
-
-    // Top-level "agents:" header
-    if (trimmed === "agents:") continue
-
-    // Agent name (2-space indent)
-    const agentMatch = trimmed.match(/^  ([a-z0-9-]+):$/)
-    if (agentMatch) {
-      currentAgent = agentMatch[1]
-      policy[currentAgent] = {}
-      currentKey = null
-      continue
-    }
-
-    if (currentAgent) {
-      // Inline list: deny: [a, b, c]
-      const listMatch = trimmed.match(/^    (deny|allow):\s*\[(.+)\]$/)
-      if (listMatch) {
-        const key = listMatch[1] as "deny" | "allow"
-        const items = listMatch[2].split(",").map(s => s.trim()).filter(s => s)
-        policy[currentAgent][key] = items
-        currentKey = null
-        continue
-      }
-      // Block list header: deny:
-      const keyMatch = trimmed.match(/^    (deny|allow):$/)
-      if (keyMatch) {
-        currentKey = keyMatch[1] as "deny" | "allow"
-        policy[currentAgent][currentKey] = []
-        continue
-      }
-      // Block list item: - value
-      const itemMatch = trimmed.match(/^      - (.+)$/)
-      if (itemMatch && currentKey) {
-        policy[currentAgent][currentKey]!.push(itemMatch[1].trim())
-      }
+  for (const [agent, entry] of Object.entries(doc.agents)) {
+    policy[agent] = {
+      ...(entry.deny ? { deny: entry.deny } : {}),
+      ...(entry.allow ? { allow: entry.allow } : {}),
     }
   }
   return policy
