@@ -23713,7 +23713,7 @@ phases:
       test outside this step scope'
   - id: feature_update_batch.gate
     name: gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify feature_update_batch phase completion and quality.\n\
       \nstep_type: gate\nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Batch\
       \ update changes stateful facade behavior with fail-fast/no-rollback semantics\n\
@@ -23773,6 +23773,8 @@ phases:
     - feature_update_batch.web-frontend
     - feature_update_batch.tests-update-batch
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-15T17:37:26.818063+00:00'
   - id: feature_update_batch.facade-update-batch-contract
     name: facade-update-batch-contract
     status: done
