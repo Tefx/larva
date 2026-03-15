@@ -395,6 +395,72 @@ Export persona specs from the registry.
 - `ids` contains non-string elements → `code: "INTERNAL"`, `numeric_code: 10`
 - Unknown parameters provided → `code: "INTERNAL"`, `numeric_code: 10`
 
+### larva.update_batch(where, patches, dry_run?)
+
+Update multiple registered personas matching a where clause by applying JSON merge patches.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+| ---- | ---- | -------- | ----------- |
+| `where` | object | yes | Filter criteria: `{"key": "value"}` or `{"key": {"op": "value"}}` |
+| `patches` | object | yes | JSON merge patches to apply to matched personas |
+| `dry_run` | boolean | no | If true, preview matches without applying changes; default `false` |
+
+**Returns:** `BatchUpdateResult` object.
+
+**Where Semantics:**
+- Simple equality: `{"model": "claude-opus-4"}` matches personas where `model` equals `"claude-opus-4"`
+- Nested fields use dot notation: `{"model_params.temperature": 0.3}`
+- Multiple conditions are AND-ed: all must match
+
+**Dry-Run Behavior:**
+- `dry_run: true` returns matched personas and would-be results without modifying registry
+- `dry_run: false` (default) applies patches to all matched personas
+
+**Patches:** Same semantics as `larva.update`:
+- Scalar overwrite for simple fields
+- Deep merge for `model_params` and `tools`
+- Dot notation support for nested values
+- Protected fields (`spec_digest`, `spec_version`) are ignored
+
+**Revalidation and Normalization:**
+- Each patched persona is validated and normalized independently
+- If any patch fails validation, entire operation fails (atomic rollback)
+- `spec_digest` is recomputed for each successfully patched persona
+
+**Returns:**
+
+```json
+{
+  "matched": 3,
+  "updated": 3,
+  "dry_run": false,
+  "results": [
+    {"id": "persona-1", "updated": true},
+    {"id": "persona-2", "updated": true},
+    {"id": "persona-3", "updated": true}
+  ]
+}
+```
+
+**Dry-run response:**
+
+```json
+{
+  "matched": 2,
+  "updated": 0,
+  "dry_run": true,
+  "results": [
+    {"id": "persona-1", "updated": false},
+    {"id": "persona-2", "updated": false}
+  ]
+}
+```
+
+**Error:** `PERSONA_NOT_FOUND` (100) if no personas match the where clause.
+`PERSONA_INVALID` (101) if any patched persona fails validation.
+
 ### App-Facade Seam-Proof Evidence Requirement
 
 When `larva.app.facade` orchestration changes (assemble/register/list/resolve), seam proof must be reproducible:
@@ -512,6 +578,68 @@ larva update my-persona --set model_params.temperature=0.5
 
 # Multiple patches
 larva update my-persona --set can_spawn=true --set side_effect_policy=read_only
+```
+
+### `larva update-batch --where key=value [--where ...] --set key=value [--set ...] [--dry-run] [--json]`
+
+Update multiple registered personas matching a where clause by applying patches.
+
+| Flag | Type | Description |
+| ---- | ---- | ----------- |
+| `--where` | str (repeatable) | Filter condition: `key=value`. Equality match. Dot notation for nested fields. Can be repeated for AND logic. |
+| `--set` | str (repeatable) | Field patch: `key=value`. Can be repeated. |
+| `--dry-run` | flag | Preview matches without applying changes |
+| `--json` | flag | Output JSON on stdout |
+
+**Where Semantics:**
+- `--where model=claude-opus-4` matches personas where `model` equals `"claude-opus-4"`
+- `--where model_params.temperature=0.3` uses dot notation for nested fields
+- Multiple `--where` flags are AND-ed: all conditions must match
+
+**Type Inference for --set values:**
+- `true` / `false` → boolean
+- `null` → null
+- Integer-parseable → int
+- Float-parseable → float
+- Otherwise → string
+
+**Dot Notation:**
+- `--set model_params.temperature=0.7` sets nested values
+- Creates intermediate dicts as needed
+
+**Protected Fields:**
+- `spec_digest` and `spec_version` are ignored; cannot be modified via update
+
+**Dry-Run Behavior:**
+- `--dry-run` returns matched personas and would-be results without modifying registry
+- Reports `matched` count and list of matching ids in `results`
+- `updated` count is `0`, each result has `"updated": false`
+
+**Revalidation:**
+- Patches are applied to each matched persona
+- Each result is re-validated
+- Invalid patches return `PERSONA_INVALID` error
+
+**Deep Merge:**
+- `model_params` and `tools` fields are deep-merged
+- Other fields are overwritten
+
+**Routing:** Via facade to `RegistryStore.list_ids()` → filter by where → for each match: `RegistryStore.get()` → `core.patch.apply_patches()` → `validate` → `normalize` → `RegistryStore.save()`.
+
+Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, PERSONA_INVALID), 2 input/critical failure.
+
+```bash
+# Update all personas using claude-opus-4 to use claude-sonnet-4
+larva update-batch --where model=claude-opus-4 --set model=claude-sonnet-4
+
+# Dry-run preview
+larva update-batch --where model_params.temperature=0.3 --set model_params.temperature=0.7 --dry-run --json
+
+# Multiple where conditions (AND logic)
+larva update-batch --where model=claude-opus-4 --where can_spawn=false --set side_effect_policy=read_only
+
+# Multiple patches
+larva update-batch --where model=claude-opus-4 --set model=claude-sonnet-4 --set model_params.temperature=0.5
 ```
 
 ### `larva component list [--json]`
@@ -906,6 +1034,60 @@ spec = update("my-persona", {"model_params": {"temperature": 0.7}})
 
 # Dot notation for nested updates
 spec = update("my-persona", {"model_params.temperature": 0.5})
+```
+
+### update_batch(where, patches, dry_run=False)
+
+Update multiple registered personas matching a where clause by applying patches.
+
+**Parameters:**
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `where` | dict[str, Any] | Filter criteria: `{"key": "value"}` for equality or `{"key": {"op": "value"}}` |
+| `patches` | dict[str, Any] | Dictionary of patches to apply (supports JSON merge semantics) |
+| `dry_run` | bool | If `True`, preview matches without applying changes; default `False` |
+
+**Returns:** `BatchUpdateResult` — `{"matched": int, "updated": int, "dry_run": bool, "results": [{"id": str, "updated": bool}]}`
+
+**Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if no personas match the where clause, `PERSONA_INVALID` (101) if validation fails after patching any persona.
+
+**Where Semantics:**
+- Equality match: `{"model": "claude-opus-4"}` matches personas with that exact value
+- Nested fields: `{"model_params.temperature": 0.3}` matches nested values
+- Multiple keys are AND-ed: all conditions must match
+
+**Patch Semantics:**
+- **Scalar overwrite**: Non-dict values replace existing values
+- **Deep merge**: `model_params` and `tools` fields are deep-merged recursively
+- **Dot notation**: Keys like `"model_params.temperature"` are expanded to nested dicts
+- **Protected fields**: `spec_digest` and `spec_version` are stripped from patches
+
+**Dry-Run Behavior:**
+- When `dry_run=True`, returns matched personas without modifying registry
+- `"updated"` count is `0`
+- Each result in `"results"` has `"updated": false`
+
+**Revalidation:** After patches are applied, each persona is validated. If any fails, the entire batch is rejected (atomic rollback).
+
+```python
+from larva.shell.python_api import update_batch
+
+# Update all personas using a specific model
+result = update_batch({"model": "claude-opus-4"}, {"model": "claude-sonnet-4"})
+print(f"Matched {result['matched']}, updated {result['updated']}")
+
+# Dry-run preview
+result = update_batch({"model": "claude-opus-4"}, {"model": "claude-sonnet-4"}, dry_run=True)
+assert result["dry_run"] is True
+assert result["updated"] == 0
+
+# Nested where with dot notation
+result = update_batch({"model_params.temperature": 0.3}, {"model_params.temperature": 0.7})
+
+# Deep merge for model_params
+result = update_batch({"can_spawn": false}, {"model_params": {"max_tokens": 8192}})
+# Other model_params fields preserved
 ```
 
 ### clone(source_id, new_id)
