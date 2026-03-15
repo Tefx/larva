@@ -22921,7 +22921,7 @@ phases:
   steps:
   - id: feature_update_batch.facade-update-batch
     name: facade-update-batch
-    status: claimed
+    status: pending
     description: 'Implement the facade batch-update flow after the contract and focused
       tests are in place.
 
@@ -23019,8 +23019,6 @@ phases:
     - feature_update_batch.facade-update-batch-contract
     - feature_update_batch.facade-update-batch-tests
     agent: python-senior
-    claimed_by: agent
-    claimed_at: '2026-03-15T14:41:26.905161+00:00'
   - id: feature_update_batch.mcp-update-batch
     name: mcp-update-batch
     status: pending
