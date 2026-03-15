@@ -23498,7 +23498,7 @@ phases:
     claimed_at: '2026-03-15T16:26:52.133743+00:00'
   - id: feature_update_batch.facade-update-batch-tests
     name: facade-update-batch-tests
-    status: pending
+    status: claimed
     description: 'Add focused facade acceptance tests before implementation.
 
 
@@ -23554,6 +23554,8 @@ phases:
       - Focused facade test selection is runnable and clearly identifies the expected
       green path for the subsequent implementation step'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T16:27:29.786350+00:00'
   - id: feature_update_batch.facade-update-batch-verify
     name: facade-update-batch-verify
     status: pending
