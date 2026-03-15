@@ -23456,7 +23456,7 @@ phases:
     agent: python-executor
   - id: feature_update_batch.tests-update-batch
     name: tests-update-batch
-    status: pending
+    status: claimed
     description: 'Add tests for update-batch across facade, MCP, CLI, and Python API
       layers.
 
@@ -23558,6 +23558,8 @@ phases:
     - feature_update_batch.cli-update-batch
     - feature_update_batch.python-api-update-batch
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T17:20:27.650681+00:00'
   - id: feature_update_batch.gate
     name: gate
     status: pending
