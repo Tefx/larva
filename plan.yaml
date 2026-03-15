@@ -23061,7 +23061,7 @@ phases:
       - Scope kept to facade implementation + facade tests'
   - id: feature_update_batch.mcp-update-batch
     name: mcp-update-batch
-    status: claimed
+    status: done
     description: "Add `larva.update_batch` MCP tool definition and handler.\n\n##\
       \ Tool Definition (src/larva/shell/mcp_contract.py)\nAppend to `LARVA_MCP_TOOLS`\
       \ list:\n```python\n{\n    \"name\": \"larva.update_batch\",\n    \"description\"\
@@ -23097,6 +23097,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T16:56:18.407948+00:00'
+    done_at: '2026-03-15T17:05:00.586832+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: a534e0c
+
+      - Main merge commit hash: 1131638
+
+
+      Verification:
+
+      - Run: `uv run invar guard` -> passed (0 errors, 1 warning file-size approaching
+      limit, 1 info complexity)
+
+      - Run: `uv run python -c "from larva.shell.mcp import MCPHandlers; from larva.shell.mcp_contract
+      import LARVA_MCP_TOOLS; assert any(t[''name''] == ''larva.update_batch'' for
+      t in LARVA_MCP_TOOLS)"` -> passed
+
+
+      Files changed:
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_update_batch.py
+
+
+      Spec link:
+
+      - feature_update_batch.mcp-update-batch
+
+
+      Gaps/Notes:
+
+      - None'
   - id: feature_update_batch.cli-update-batch
     name: cli-update-batch
     status: claimed
