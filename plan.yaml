@@ -23482,7 +23482,7 @@ phases:
       - Added POST /api/personas/batch-update endpoint delegating to python_api.update_batch'
   - id: feature_update_batch.web-frontend
     name: web-frontend
-    status: pending
+    status: claimed
     description: "Add batch update modal to the web UI.\n\nFile: contrib/web/index.html\n\
       \nAdd a \"Batch Update\" button in the header actions area (`.header-actions`),\
       \ next to existing buttons.\n\nAdd a modal component (Alpine.js) with:\n1. **WHERE\
@@ -23516,6 +23516,8 @@ phases:
     depends_on:
     - feature_update_batch.web-backend
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T17:34:24.961826+00:00'
   - id: feature_update_batch.tests-update-batch
     name: tests-update-batch
     status: done
