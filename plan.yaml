@@ -23394,3 +23394,61 @@ phases:
       - Review confirms this step adds signatures/types/stubs only and does not ship
       runnable batch-update logic'
     agent: python-senior
+  - id: feature_update_batch.facade-update-batch-tests
+    name: facade-update-batch-tests
+    status: pending
+    description: 'Add focused facade acceptance tests before implementation.
+
+
+      step_type: test
+
+      agent_source: default
+
+
+      Files:
+
+      - tests/app/test_facade.py
+
+
+      Add or update pinned tests for `DefaultLarvaFacade.update_batch()` covering
+      both the main path and the highest-risk failure paths.
+
+
+      Required cases:
+
+      1. main path: two matched personas updated successfully; `matched` and `updated`
+      counts are exact; result order matches registry order.
+
+      2. where semantics: multiple `where` clauses use AND matching.
+
+      3. dot-path filter semantics: `where={"model_params.temperature": 0.3}` matches
+      nested values; missing dotted paths produce a non-match without raising.
+
+      4. dry-run guarantee: `dry_run=True` returns the matched ids with `updated=False`,
+      leaves registry state unchanged, and performs no save/write calls.
+
+      5. fail-fast partial update: when the second matched persona fails during delegated
+      `update()`, the first successful update remains persisted, no rollback happens,
+      and the error is returned immediately.
+
+      6. error propagation: registry `list()` failure passes through; delegated `update()`
+      / validation / save failures surface unchanged enough to preserve the failing
+      condition.
+
+
+      Execution note:
+
+      - These tests are contract-defining for `feature_update_batch.facade-update-batch`
+      and should be authored so the intended behavior is explicit before product logic
+      is implemented.
+
+      - Keep scope to facade tests only; MCP/CLI/Python API tests stay in `feature_update_batch.tests-update-batch`.'
+    verification: '- `tests/app/test_facade.py` contains explicit update-batch tests
+      for all six required cases
+
+      - Test names and assertions make the dry-run no-write guarantee and fail-fast
+      partial-update semantics unambiguous
+
+      - Focused facade test selection is runnable and clearly identifies the expected
+      green path for the subsequent implementation step'
+    agent: python-executor
