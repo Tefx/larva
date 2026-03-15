@@ -23489,7 +23489,7 @@ phases:
     agent: python-executor
   - id: feature_update_batch.tests-update-batch
     name: tests-update-batch
-    status: claimed
+    status: done
     description: 'Add tests for update-batch across facade, MCP, CLI, and Python API
       layers.
 
@@ -23593,6 +23593,58 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-15T17:20:27.650681+00:00'
+    done_at: '2026-03-15T17:32:48.451578+00:00'
+    evidence: 'Artifact:
+
+      - Worktree commit hash: acf45d8
+
+      - Main merge commit hash: 46e94b5
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/app/test_facade.py::TestFacadeUpdateBatch -xvs`
+      -> 7 passed
+
+      - Run: `uv run pytest tests/shell/test_mcp.py::TestMCPHandleUpdateBatch -xvs`
+      -> 11 passed
+
+      - Run: `uv run pytest tests/shell/test_cli.py::TestUpdateBatchCommand -xvs`
+      -> 8 passed
+
+      - Run: `uv run pytest tests/shell/test_cli.py::TestRunLoopBatchUpdate -xvs`
+      -> 8 passed
+
+      - Run: `uv run pytest tests/shell/test_python_api.py::TestPythonApiUpdateBatch
+      -xvs` -> 10 passed
+
+      - Run: `uv run pytest tests/shell/test_python_api.py::TestPythonApiExportIds::test_update_batch_in_all
+      -v` -> 1 passed
+
+      - Run: `uv run invar guard` -> passed (0 errors, 0 warnings)
+
+
+      Files changed:
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_python_api.py
+
+
+      Spec link:
+
+      - feature_update_batch.tests-update-batch
+
+
+      Gaps/Notes:
+
+      - `tests/app/test_facade.py` already had batch-update tests and was validated
+      rather than modified
+
+      - Subagent noted one unrelated pre-existing failure in another python_api component-list
+      test outside this step scope'
   - id: feature_update_batch.gate
     name: gate
     status: pending
