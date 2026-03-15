@@ -23188,7 +23188,7 @@ phases:
     claimed_at: '2026-03-15T16:56:45.147511+00:00'
   - id: feature_update_batch.python-api-update-batch
     name: python-api-update-batch
-    status: pending
+    status: claimed
     description: "Add `update_batch(where, patches, dry_run)` to the Python API module.\n\
       \nFile: src/larva/shell/python_api.py\n\nAdd function:\n```python\ndef update_batch(\n\
       \    where: dict[str, object],\n    patches: dict[str, object],\n    dry_run:\
@@ -23213,6 +23213,8 @@ phases:
     depends_on:
     - feature_update_batch.facade-update-batch-verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-15T16:56:51.108181+00:00'
   - id: feature_update_batch.docs-interfaces
     name: docs-interfaces
     status: pending
