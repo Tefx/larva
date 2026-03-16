@@ -24496,7 +24496,7 @@ phases:
   steps:
   - id: mcp_runtime_test.unit-tests
     name: unit-tests
-    status: claimed
+    status: done
     description: 'Write unit tests for the MCP server module.
 
 
@@ -24562,6 +24562,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-16T19:18:32.327826+00:00'
+    done_at: '2026-03-16T19:19:45.994557+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: 98be44f
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_mcp_server.py -v -> 19 passed in 1.30s
+
+      - Run: invar guard -> passed
+
+
+      Files changed:
+
+      - tests/shell/test_mcp_server.py (NEW - 211 lines, 19 test cases)
+
+
+      Test coverage:
+
+      - TestToolNameMapping (4 tests): helper mapping
+
+      - TestErrorEnvelope (4 tests): error detection predicate
+
+      - TestCreateMcpServer (4 tests): factory, registration, custom handlers
+
+      - TestToolDelegation (6 tests): delegation, success/error serialization
+
+      - TestImportGuard (1 test): FastMCP=None raises ImportError
+
+
+      Gaps/Notes:
+
+      - Does not duplicate MCPHandlers tests from test_mcp.py
+
+      - Does not test stdio transport (covered by integration-proof step)'
   - id: mcp_runtime_test.integration-proof
     name: integration-proof
     status: pending
