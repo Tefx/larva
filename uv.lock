@@ -612,11 +612,12 @@ wheels = [
 
 [[package]]
 name = "larva"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "deal" },
+    { name = "mcp" },
     { name = "pydantic" },
     { name = "returns" },
     { name = "rich" },
@@ -624,9 +625,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-mcp = [
-    { name = "mcp" },
-]
 web = [
     { name = "fastapi" },
     { name = "uvicorn" },
@@ -643,14 +641,14 @@ requires-dist = [
     { name = "click", specifier = ">=8.0" },
     { name = "deal", specifier = ">=4.24" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.100" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.20" },
+    { name = "mcp", specifier = ">=1.20" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "returns", specifier = ">=0.24" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruamel-yaml", specifier = ">=0.18" },
     { name = "uvicorn", marker = "extra == 'web'", specifier = ">=0.20" },
 ]
-provides-extras = ["web", "mcp"]
+provides-extras = ["web"]
 
 [package.metadata.requires-dev]
 dev = [

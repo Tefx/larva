@@ -19,15 +19,10 @@ Boundary citations:
 
 from __future__ import annotations
 
-import inspect
 import json
-import sys
 from typing import Any
 
-try:
-    from mcp.server.fastmcp import FastMCP
-except ImportError:
-    FastMCP = None  # type: ignore[assignment, misc]
+from mcp.server.fastmcp import FastMCP
 
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS, MCPToolDefinition
 
@@ -80,11 +75,6 @@ def create_mcp_server(
     Raises:
         ImportError: If ``mcp`` package is not installed.
     """
-    if FastMCP is None:
-        raise ImportError(
-            "MCP dependencies not installed. Run: pip install larva[mcp]"
-        )
-
     if handlers is None:
         from larva.shell.cli_helpers import build_default_facade
         from larva.shell.components import FilesystemComponentStore

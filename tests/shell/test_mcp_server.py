@@ -195,17 +195,3 @@ class TestToolDelegation:
 # ---------------------------------------------------------------------------
 
 
-class TestImportGuard:
-    """Tests for the optional mcp dependency guard."""
-
-    def test_import_guard_raises_when_mcp_missing(self) -> None:
-        """Verify create_mcp_server raises ImportError when FastMCP is None."""
-        import larva.shell.mcp_server as mod
-
-        original = mod.FastMCP
-        try:
-            mod.FastMCP = None  # type: ignore[assignment]
-            with pytest.raises(ImportError, match="MCP dependencies not installed"):
-                mod.create_mcp_server()
-        finally:
-            mod.FastMCP = original
