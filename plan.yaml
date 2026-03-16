@@ -24399,3 +24399,106 @@ phases:
 
       - invar guard passes'
     agent: python-executor
+  - id: mcp_runtime_test.integration-proof
+    name: integration-proof
+    status: pending
+    description: "As an INDEPENDENT TESTER (integration-verifier), provide seam-level\
+      \ integration proof that the MCP stdio server works end-to-end.\n\nYOUR GOAL\
+      \ IS TO FIND PROBLEMS, not to confirm it works.\n\nIndependence Level: L2 (semi-blind\
+      \ -- repository code, not implementation process)\n\ntags: [\"integration\"\
+      ]\n\nTest the full path: CLI entrypoint -> FastMCP server -> stdio transport\
+      \ -> tool call -> MCPHandlers -> facade -> response\n\nRequired evidence:\n\n\
+      1. **Server startup proof**:\n   - Launch `uv run larva mcp` as a subprocess\n\
+      \   - Verify it starts without errors and accepts stdio input\n   - Verify it\
+      \ responds to MCP initialization handshake\n\n2. **Tool call proof** (at least\
+      \ 2 tools):\n   - Send a `tools/list` request via stdin, verify all 13 tools\
+      \ listed\n   - Send a `tools/call` request for `larva.validate` with a minimal\
+      \ valid spec\n   - Send a `tools/call` request for `larva.list` (no params)\n\
+      \   - Verify responses are valid MCP JSON-RPC\n\n3. **Error path proof**:\n\
+      \   - Send a `tools/call` for `larva.validate` with invalid params (missing\
+      \ spec)\n   - Verify error response is properly formatted\n\n4. **Shutdown proof**:\n\
+      \   - Verify server exits cleanly when stdin is closed"
+    verification: '- Server starts via `uv run larva mcp` (stdio)
+
+      - tools/list returns all 13 tools
+
+      - At least 2 tool calls succeed end-to-end
+
+      - Error path returns proper MCP error
+
+      - Server shuts down cleanly
+
+      - All evidence is actual output, not summaries'
+    evidence_template: '## Integration Evidence
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact command that launches the MCP server and sends tool calls>
+
+      ```
+
+
+      **Server startup output**:
+
+      ```
+
+      <proof server started on stdio>
+
+      ```
+
+
+      **tools/list response** (paste actual output):
+
+      ```
+
+      <JSON-RPC response listing all tools>
+
+      ```
+
+
+      **tools/call response for larva.validate** (paste actual output):
+
+      ```
+
+      <JSON-RPC response>
+
+      ```
+
+
+      **tools/call response for larva.list** (paste actual output):
+
+      ```
+
+      <JSON-RPC response>
+
+      ```
+
+
+      **Error path response** (paste actual output):
+
+      ```
+
+      <JSON-RPC error response>
+
+      ```
+
+
+      **Shutdown behavior**:
+
+      ```
+
+      <proof server exits cleanly>
+
+      ```
+
+
+      **Path exercised**: cli.py -> mcp_server.py -> FastMCP -> stdio -> MCPHandlers
+      -> facade
+
+      '
+    depends_on:
+    - mcp_runtime_test.unit-tests
+    agent: integration-verifier
