@@ -24265,3 +24265,35 @@ phases:
 
       - No handler logic duplicated -- all tools delegate to MCPHandlers'
     agent: python-senior
+  - id: mcp_runtime_impl.cli-subcommand
+    name: cli-subcommand
+    status: pending
+    description: "Add `larva mcp` CLI subcommand to start the MCP stdio server.\n\n\
+      File: src/larva/shell/cli_helpers.py\n- Add an `mcp` subparser to `_build_parser()`,\
+      \ following the `serve` pattern:\n  ```python\n  mcp_parser = subparsers.add_parser(\n\
+      \      \"mcp\",\n      help=\"Start the MCP server (stdio transport)\",\n  \
+      \    description=\"Launch larva as an MCP server communicating over stdio.\"\
+      ,\n  )\n  ```\n- No additional arguments needed for stdio mode (it reads stdin,\
+      \ writes stdout)\n\nFile: src/larva/shell/cli.py\n- Add handling for `command\
+      \ == \"mcp\"` in `run_cli()`, following the `serve` pattern:\n  ```python\n\
+      \  if getattr(args, \"command\", None) == \"mcp\":\n      try:\n          from\
+      \ larva.shell.mcp_server import run_mcp_stdio\n      except ImportError:\n \
+      \         stderr.write(\"MCP dependencies not installed. Run: pip install larva[mcp]\\\
+      n\")\n          return EXIT_ERROR\n      run_mcp_stdio()\n      return 0\n \
+      \ ```\n- Place this BEFORE the `_dispatch()` call, alongside the existing `serve`\
+      \ handler\n\nPattern: Follow the exact `serve` subcommand pattern in cli.py\
+      \ lines 299-307 and cli_helpers.py lines 572-584.\n\nTests to update: None in\
+      \ this step (test_cli.py tests will be in the test phase).\n\nNon-goals:\n-\
+      \ Do NOT add SSE transport support in this step\n- Do NOT modify _dispatch()\
+      \ or add mcp to the command_dispatchers dict (mcp is a long-running server like\
+      \ serve, not a one-shot command)"
+    verification: '- `uv run larva mcp --help` shows the mcp subcommand help text
+
+      - `uv run larva --help` lists `mcp` in the subcommands
+
+      - invar guard passes
+
+      - No changes to existing serve or dispatch logic'
+    depends_on:
+    - mcp_runtime_impl.server-module
+    agent: python-executor
