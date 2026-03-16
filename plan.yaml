@@ -24356,7 +24356,7 @@ phases:
       - Optional mcp import guarded with try/except ImportError'
   - id: mcp_runtime_impl.cli-subcommand
     name: cli-subcommand
-    status: pending
+    status: claimed
     description: "Add `larva mcp` CLI subcommand to start the MCP stdio server.\n\n\
       File: src/larva/shell/cli_helpers.py\n- Add an `mcp` subparser to `_build_parser()`,\
       \ following the `serve` pattern:\n  ```python\n  mcp_parser = subparsers.add_parser(\n\
@@ -24386,6 +24386,8 @@ phases:
     depends_on:
     - mcp_runtime_impl.server-module
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-16T19:15:57.787338+00:00'
   - id: mcp_runtime_impl.mcp-runtime-impl-gate
     name: mcp_runtime_impl.gate
     status: pending
