@@ -24219,3 +24219,6 @@ phases:
     depends_on:
     - mcp_runtime_deps.add-mcp-dependency
     agent: gate-reviewer
+- id: mcp_runtime_impl
+  name: MCP Server Implementation and CLI Wiring
+  status: pending
