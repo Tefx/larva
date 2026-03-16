@@ -24297,3 +24297,35 @@ phases:
     depends_on:
     - mcp_runtime_impl.server-module
     agent: python-executor
+  - id: mcp_runtime_impl.mcp-runtime-impl-gate
+    name: mcp_runtime_impl.gate
+    status: pending
+    description: "Gate review: Verify MCP server implementation and CLI wiring are\
+      \ complete and the server is runnable.\n\nreview_depth: THOROUGH\nreview_depth_rationale:\
+      \ |\n  - Phase introduces a new runtime surface (MCP stdio server)\n  - Novel\
+      \ pattern in codebase (first FastMCP usage)\n  - Integration-tagged: MCPHandlers\
+      \ -> FastMCP -> stdio\n\nGate MUST verify runnable-surface evidence:\n1. Identified\
+      \ entrypoint: `larva mcp` CLI subcommand\n2. Exact launch command: `uv run larva\
+      \ mcp`\n3. Proof that stdio transport actually starts (process launches, accepts\
+      \ MCP init)\n4. Proof that at least one tool call reaches the handler end-to-end\n\
+      \ncross_cutting_focus:\n  - \"All 13 tools registered (count matches LARVA_MCP_TOOLS)\"\
+      \n  - \"Optional dependency guard works (ImportError path tested)\"\n  - \"\
+      No handler logic duplicated in mcp_server.py\""
+    verification: '- src/larva/shell/mcp_server.py exists with create_mcp_server()
+      and run_mcp_stdio()
+
+      - `larva mcp` subcommand registered in CLI
+
+      - All 13 LARVA_MCP_TOOLS registered on FastMCP instance
+
+      - Server starts via `uv run larva mcp` (stdio mode)
+
+      - ImportError guard works for missing mcp dependency
+
+      - invar guard passes
+
+      - No handler logic duplicated'
+    depends_on:
+    - mcp_runtime_impl.server-module
+    - mcp_runtime_impl.cli-subcommand
+    agent: gate-reviewer
