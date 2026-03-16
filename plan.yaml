@@ -24332,3 +24332,70 @@ phases:
 - id: mcp_runtime_test
   name: MCP Server Testing and Verification
   status: pending
+  steps:
+  - id: mcp_runtime_test.unit-tests
+    name: unit-tests
+    status: pending
+    description: 'Write unit tests for the MCP server module.
+
+
+      File: tests/shell/test_mcp_server.py (NEW)
+
+
+      Tests to write:
+
+      1. `test_create_mcp_server_returns_fastmcp_instance` -- verify create_mcp_server()
+      returns a FastMCP
+
+      2. `test_all_tools_registered` -- verify all 13 LARVA_MCP_TOOLS are registered
+      on the server
+
+      3. `test_tool_names_match_contract` -- verify registered tool names match LARVA_MCP_TOOLS
+      names exactly
+
+      4. `test_validate_tool_delegates_to_handlers` -- verify the validate tool calls
+      MCPHandlers.handle_validate
+
+      5. `test_list_tool_delegates_to_handlers` -- verify the list tool calls MCPHandlers.handle_list
+
+      6. `test_tool_success_returns_content` -- verify Success result is properly
+      unwrapped
+
+      7. `test_tool_failure_returns_error_envelope` -- verify Failure result is properly
+      mapped
+
+      8. `test_import_guard_missing_mcp` -- verify ImportError is raised gracefully
+      when mcp not installed (mock the import)
+
+
+      Pattern: Follow tests/shell/test_mcp.py for facade doubles and test structure.
+
+      Use the existing MockFacade pattern from test_mcp.py for testing tool delegation.
+
+
+      For tool registration tests, use:
+
+      ```python
+
+      server = create_mcp_server()
+
+      # Check server._tool_manager or equivalent FastMCP internal for registered tool
+      count
+
+      ```
+
+
+      Non-goals:
+
+      - Do NOT test the actual stdio transport (that is integration-proof step)
+
+      - Do NOT duplicate MCPHandlers tests from test_mcp.py'
+    verification: '- `uv run pytest tests/shell/test_mcp_server.py -v` passes all
+      tests
+
+      - At least 8 test cases covering registration, delegation, and error mapping
+
+      - No test duplicates test_mcp.py handler behavior
+
+      - invar guard passes'
+    agent: python-executor
