@@ -24222,3 +24222,46 @@ phases:
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
   status: pending
+  steps:
+  - id: mcp_runtime_impl.server-module
+    name: server-module
+    status: pending
+    description: "Design and implement the MCP server runtime module using FastMCP.\n\
+      \nFile: src/larva/shell/mcp_server.py (NEW)\n\nRequirements:\n1. Create a `create_mcp_server()`\
+      \ factory function that:\n   - Instantiates FastMCP with name=\"larva\" and\
+      \ appropriate metadata\n   - Registers ALL tools from LARVA_MCP_TOOLS as FastMCP\
+      \ tools\n   - Each tool delegates to the corresponding MCPHandlers method\n\
+      \   - MCPHandlers is instantiated with a default LarvaFacade and FilesystemComponentStore\n\
+      2. Create a `run_mcp_stdio()` entry function that:\n   - Calls `create_mcp_server()`\
+      \ \n   - Calls `server.run(transport=\"stdio\")`\n3. Error handling: MCPHandlers\
+      \ returns Result[dict, LarvaError]. Map:\n   - Success -> return the dict content\
+      \ (FastMCP serializes it)\n   - Failure -> raise an appropriate MCP error or\
+      \ return error envelope\n\nDesign decisions needed:\n- How to bridge MCPHandlers\
+      \ (sync, returns Result) to FastMCP tools (can be sync or async)\n- Whether\
+      \ to use `@server.tool()` decorator or `server.add_tool()` programmatic registration\n\
+      - How to handle the facade/component_store lifecycle (create once at startup)\n\
+      \nConstraints:\n- This is Shell zone code: returns Result[T, E] for internal\
+      \ helpers, but the FastMCP tool functions are the MCP boundary\n- Must import\
+      \ MCPHandlers from larva.shell.mcp, not duplicate handler logic\n- Must import\
+      \ build_default_facade from larva.shell.cli_helpers\n- Must import FilesystemComponentStore\
+      \ from larva.shell.components\n- The `mcp` import must be guarded (optional\
+      \ dependency) similar to how web.py guards fastapi\n\nIntegration points:\n\
+      - src/larva/shell/mcp.py (MCPHandlers class)\n- src/larva/shell/mcp_contract.py\
+      \ (LARVA_MCP_TOOLS, MCPServerConfig)\n- src/larva/shell/cli_helpers.py (build_default_facade)\n\
+      - src/larva/shell/components.py (FilesystemComponentStore)\n\nDeliverables:\n\
+      - src/larva/shell/mcp_server.py with create_mcp_server() and run_mcp_stdio()\n\
+      - All 13 tools registered (validate, assemble, resolve, register, list, component_list,\
+      \ component_show, delete, clear, clone, export, update, update_batch)\n- Optional:\
+      \ add to pyproject.toml exclude_paths for invar guard if needed (mcp_server.py\
+      \ is Shell but uses async/framework patterns)"
+    verification: '- src/larva/shell/mcp_server.py exists and is importable
+
+      - `uv run python -c "from larva.shell.mcp_server import create_mcp_server, run_mcp_stdio;
+      print(''OK'')"` succeeds
+
+      - All 13 LARVA_MCP_TOOLS are registered on the FastMCP instance
+
+      - invar guard passes (or mcp_server.py is excluded if framework patterns conflict)
+
+      - No handler logic duplicated -- all tools delegate to MCPHandlers'
+    agent: python-senior
