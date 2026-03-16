@@ -24272,7 +24272,7 @@ phases:
       Verdict: PASS — phase mcp_runtime_deps complete'
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
-  status: in_progress
+  status: done
   depends_on:
   - mcp_runtime_deps
   steps:
@@ -24425,7 +24425,7 @@ phases:
       - No changes to existing serve or dispatch logic'
   - id: mcp_runtime_impl.mcp-runtime-impl-gate
     name: mcp_runtime_impl.gate
-    status: claimed
+    status: done
     description: "Gate review: Verify MCP server implementation and CLI wiring are\
       \ complete and the server is runnable.\n\nreview_depth: THOROUGH\nreview_depth_rationale:\
       \ |\n  - Phase introduces a new runtime surface (MCP stdio server)\n  - Novel\
@@ -24457,9 +24457,40 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-16T19:17:31.455725+00:00'
+    done_at: '2026-03-16T19:18:20.706706+00:00'
+    evidence: 'Gate Review: mcp_runtime_impl — PASS
+
+
+      Posture: Independent adversarial review, fresh context, THOROUGH depth.
+
+
+      Verification:
+
+      1. Tool registration: 13/13 tools registered, exact match with LARVA_MCP_TOOLS
+      (no missing, no extra): CONFIRMED
+
+      2. CLI registration: `larva mcp --help` shows correct help, `larva --help` lists
+      mcp subcommand: CONFIRMED
+
+      3. Stdio transport starts: `timeout 3 uv run larva mcp < /dev/null` runs and
+      exits cleanly on stdin close: CONFIRMED
+
+      4. ImportError guard: Structurally correct (FastMCP=None when mcp not installed,
+      create_mcp_server raises ImportError; CLI has separate try/except ImportError):
+      CONFIRMED
+
+      5. No handler logic duplicated: mcp_server.py only creates MCPHandlers and delegates
+      via _register_tool closures: CONFIRMED
+
+      6. invar guard: status=passed: CONFIRMED
+
+
+      Issues found: none
+
+      Verdict: PASS — phase mcp_runtime_impl complete'
 - id: mcp_runtime_test
   name: MCP Server Testing and Verification
-  status: locked
+  status: pending
   depends_on:
   - mcp_runtime_impl
   steps:
