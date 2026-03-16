@@ -24356,7 +24356,7 @@ phases:
       - Optional mcp import guarded with try/except ImportError'
   - id: mcp_runtime_impl.cli-subcommand
     name: cli-subcommand
-    status: claimed
+    status: done
     description: "Add `larva mcp` CLI subcommand to start the MCP stdio server.\n\n\
       File: src/larva/shell/cli_helpers.py\n- Add an `mcp` subparser to `_build_parser()`,\
       \ following the `serve` pattern:\n  ```python\n  mcp_parser = subparsers.add_parser(\n\
@@ -24388,6 +24388,41 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-16T19:15:57.787338+00:00'
+    done_at: '2026-03-16T19:17:20.818030+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: ecaa357
+
+
+      Verification:
+
+      - Run: uv run larva mcp --help -> shows "Launch larva as an MCP server communicating
+      over stdio."
+
+      - Run: uv run larva --help -> lists "mcp  Start the MCP server (stdio transport)"
+
+      - Run: uv run invar guard -> status: passed
+
+
+      Files changed:
+
+      - src/larva/shell/cli_helpers.py (added mcp subparser)
+
+      - src/larva/shell/cli.py (added mcp command handler with import guard)
+
+
+      Spec link:
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+
+      Gaps/Notes:
+
+      - Follows exact ''larva serve'' pattern
+
+      - No SSE transport support (non-goal for this step)
+
+      - No changes to existing serve or dispatch logic'
   - id: mcp_runtime_impl.mcp-runtime-impl-gate
     name: mcp_runtime_impl.gate
     status: pending
