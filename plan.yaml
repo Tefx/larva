@@ -24329,3 +24329,6 @@ phases:
     - mcp_runtime_impl.server-module
     - mcp_runtime_impl.cli-subcommand
     agent: gate-reviewer
+- id: mcp_runtime_test
+  name: MCP Server Testing and Verification
+  status: pending
