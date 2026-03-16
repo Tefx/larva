@@ -24490,7 +24490,7 @@ phases:
       Verdict: PASS — phase mcp_runtime_impl complete'
 - id: mcp_runtime_test
   name: MCP Server Testing and Verification
-  status: in_progress
+  status: done
   depends_on:
   - mcp_runtime_impl
   steps:
@@ -24735,7 +24735,7 @@ phases:
       \ tests continue to pass."
   - id: mcp_runtime_test.mcp-runtime-test-gate
     name: mcp_runtime_test.gate
-    status: claimed
+    status: done
     description: "Gate review: Verify MCP server testing phase is complete with sufficient\
       \ evidence.\n\nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Phase\
       \ covers a new runtime surface (MCP stdio server)\n  - Integration evidence\
@@ -24764,3 +24764,19 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-16T19:25:09.693411+00:00'
+    done_at: '2026-03-16T19:25:49.927621+00:00'
+    evidence: "Gate Review: mcp_runtime_test — PASS\n\nPosture: Independent adversarial\
+      \ review, fresh context, THOROUGH depth.\n\nVerification:\n1. Unit tests: 19/19\
+      \ passed (test_mcp_server.py) - covers registration, delegation, error mapping,\
+      \ import guard: CONFIRMED\n2. Integration proof: 7 tests verified actual tool\
+      \ call round-trips through FastMCP ToolManager: CONFIRMED\n   - larva.list ->\
+      \ 33 personas returned\n   - larva.validate -> valid spec returns {valid: true}\n\
+      \   - larva.validate -> invalid id returns validation errors\n   - larva.resolve\
+      \ -> nonexistent persona returns PERSONA_NOT_FOUND error envelope as JSON string\n\
+      \   - larva.component_list -> returns 4 component types\n3. All 13 tools registered\
+      \ and tool names match LARVA_MCP_TOOLS: CONFIRMED\n4. Error path: error envelopes\
+      \ serialized to JSON strings (not transport errors): CONFIRMED\n5. Full test\
+      \ suite: 592 passed, 0 failed, 4 xfailed, 45 xpassed: CONFIRMED\n6. Invar guard:\
+      \ status=passed: CONFIRMED\n7. Bug found and fixed during integration (FastMCP\
+      \ pydantic signature issue): CONFIRMED fixed in 768906a\n\nIssues found: none\n\
+      Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
