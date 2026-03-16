@@ -24161,7 +24161,7 @@ phases:
       - PASS'
 - id: mcp_runtime_deps
   name: MCP Runtime Dependencies
-  status: in_progress
+  status: done
   steps:
   - id: mcp_runtime_deps.add-mcp-dependency
     name: add-mcp-dependency
@@ -24230,7 +24230,7 @@ phases:
       - None'
   - id: mcp_runtime_deps.mcp-runtime-deps-gate
     name: mcp_runtime_deps.gate
-    status: claimed
+    status: done
     description: "Gate review: Verify MCP dependency is correctly added and resolves.\n\
       \nreview_depth: QUICK\nreview_depth_rationale: |\n  - Single trivial config\
       \ step, no code changes\n  - No rework patterns applicable"
@@ -24247,9 +24247,32 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-16T19:12:15.279678+00:00'
+    done_at: '2026-03-16T19:12:36.929163+00:00'
+    evidence: 'Gate Review: mcp_runtime_deps — PASS
+
+
+      Posture: Independent adversarial review, fresh context.
+
+
+      Verification:
+
+      - pyproject.toml has `mcp = ["mcp>=1.20"]` under [project.optional-dependencies]:
+      CONFIRMED
+
+      - `uv run python -c "from mcp.server.fastmcp import FastMCP; print(''OK'')"`
+      -> OK: CONFIRMED
+
+      - No unrelated changes: CONFIRMED (only pyproject.toml in commit c21f799)
+
+      - invar guard passes: CONFIRMED
+
+
+      Issues found: none
+
+      Verdict: PASS — phase mcp_runtime_deps complete'
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
-  status: locked
+  status: pending
   depends_on:
   - mcp_runtime_deps
   steps:
