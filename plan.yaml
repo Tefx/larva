@@ -24600,7 +24600,7 @@ phases:
       - Does not test stdio transport (covered by integration-proof step)'
   - id: mcp_runtime_test.integration-proof
     name: integration-proof
-    status: pending
+    status: claimed
     description: "As an INDEPENDENT TESTER (integration-verifier), provide seam-level\
       \ integration proof that the MCP stdio server works end-to-end.\n\nYOUR GOAL\
       \ IS TO FIND PROBLEMS, not to confirm it works.\n\nIndependence Level: L2 (semi-blind\
@@ -24701,6 +24701,8 @@ phases:
     depends_on:
     - mcp_runtime_test.unit-tests
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-16T19:19:56.914801+00:00'
   - id: mcp_runtime_test.mcp-runtime-test-gate
     name: mcp_runtime_test.gate
     status: pending
