@@ -24278,7 +24278,7 @@ phases:
   steps:
   - id: mcp_runtime_impl.server-module
     name: server-module
-    status: claimed
+    status: done
     description: "Design and implement the MCP server runtime module using FastMCP.\n\
       \nFile: src/larva/shell/mcp_server.py (NEW)\n\nRequirements:\n1. Create a `create_mcp_server()`\
       \ factory function that:\n   - Instantiates FastMCP with name=\"larva\" and\
@@ -24320,6 +24320,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-16T19:12:47.344236+00:00'
+    done_at: '2026-03-16T19:15:47.890782+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: d980a0a
+
+
+      Verification:
+
+      - Run: uv run python -c "from larva.shell.mcp_server import create_mcp_server,
+      run_mcp_stdio; print(''OK'')" -> OK
+
+      - Run: create_mcp_server() + inspect _tool_manager._tools -> 13 tools registered
+      (all LARVA_MCP_TOOLS)
+
+      - Run: uv run invar guard -> status: passed (static: passed, doctest: passed)
+
+
+      Files changed:
+
+      - src/larva/shell/mcp_server.py (NEW - 168 lines)
+
+
+      Spec link:
+
+      - INTERFACES.md :: A. MCP Server Interface
+
+
+      Gaps/Notes:
+
+      - All 13 tools delegate to MCPHandlers (no handler logic duplicated)
+
+      - LarvaError envelopes returned as JSON strings (not transport exceptions)
+
+      - Optional mcp import guarded with try/except ImportError'
   - id: mcp_runtime_impl.cli-subcommand
     name: cli-subcommand
     status: pending
