@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "larva"
-version = "0.4.2"
+version = "0.4.3"
 description = "PersonaSpec toolkit for LLM agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -28,10 +28,11 @@ dependencies = [
     "rich>=13.0",
     "returns>=0.24",
     "mcp>=1.20",
+    "fastapi>=0.100",
+    "uvicorn>=0.20",
 ]
 
 [project.optional-dependencies]
-web = ["fastapi>=0.100", "uvicorn>=0.20"]
 
 [project.scripts]
 larva = "larva.shell.cli:main"

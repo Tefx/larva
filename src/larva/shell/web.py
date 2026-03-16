@@ -25,15 +25,9 @@ from larva.shell.python_api import (
 )
 from larva.shell.components import FilesystemComponentStore
 
-try:
-    from fastapi import FastAPI, HTTPException, Request
-    from fastapi.responses import FileResponse, JSONResponse
-    import uvicorn
-except ImportError:
-    raise SystemExit(
-        "FastAPI and uvicorn are required.\n"
-        "Install with: uv pip install fastapi uvicorn"
-    )
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+import uvicorn
 
 app = FastAPI(title="larva", docs_url=None, redoc_url=None)
 
