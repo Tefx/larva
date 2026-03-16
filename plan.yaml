@@ -24221,7 +24221,9 @@ phases:
     agent: gate-reviewer
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
-  status: pending
+  status: locked
+  depends_on:
+  - mcp_runtime_deps
   steps:
   - id: mcp_runtime_impl.server-module
     name: server-module
