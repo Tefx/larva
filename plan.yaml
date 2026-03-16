@@ -24230,7 +24230,7 @@ phases:
       - None'
   - id: mcp_runtime_deps.mcp-runtime-deps-gate
     name: mcp_runtime_deps.gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify MCP dependency is correctly added and resolves.\n\
       \nreview_depth: QUICK\nreview_depth_rationale: |\n  - Single trivial config\
       \ step, no code changes\n  - No rework patterns applicable"
@@ -24245,6 +24245,8 @@ phases:
     depends_on:
     - mcp_runtime_deps.add-mcp-dependency
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-16T19:12:15.279678+00:00'
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
   status: locked
