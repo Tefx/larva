@@ -306,6 +306,16 @@ def run_cli(
         web_main(port=args.port, no_open=args.no_open)
         return 0  # type: ignore[return-value]
 
+
+    # mcp is a special case — starts a long-running server, not a one-shot command
+    if getattr(args, "command", None) == "mcp":
+        try:
+            from larva.shell.mcp_server import run_mcp_stdio
+        except ImportError:
+            stderr.write("MCP dependencies not installed. Run: pip install larva[mcp]\n")
+            return EXIT_ERROR
+        run_mcp_stdio()
+        return 0  # type: ignore[return-value]
     return _emit_result(
         _dispatch(args, facade=facade, component_store=active_component_store),
         as_json=cast("bool", getattr(args, "as_json", False)),

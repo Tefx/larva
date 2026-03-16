@@ -583,6 +583,13 @@ def _build_parser() -> _CliParser:
         help="don't auto-open the browser",
     )
 
+
+    # --- mcp ---
+    subparsers.add_parser(
+        "mcp",
+        help="Start the MCP server (stdio transport)",
+        description="Launch larva as an MCP server communicating over stdio.",
+    )
     return parser
 
 
