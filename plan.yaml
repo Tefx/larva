@@ -24162,3 +24162,43 @@ phases:
 - id: mcp_runtime_deps
   name: MCP Runtime Dependencies
   status: pending
+  steps:
+  - id: mcp_runtime_deps.add-mcp-dependency
+    name: add-mcp-dependency
+    status: pending
+    description: 'Add the `mcp` package to pyproject.toml [project.optional-dependencies]
+      as a new `mcp` extra group.
+
+
+      File: pyproject.toml
+
+
+      Tasks:
+
+      1. Add `mcp = ["mcp>=1.20"]` under `[project.optional-dependencies]` (alongside
+      existing `web` extra)
+
+      2. Run `uv sync --extra mcp` to verify the dependency resolves
+
+      3. Verify `uv run python -c "from mcp.server.fastmcp import FastMCP; print(''OK'')"`
+      succeeds
+
+
+      Pattern: Follow the existing `web = ["fastapi>=0.100", "uvicorn>=0.20"]` optional-dependency
+      pattern.
+
+
+      Non-goals:
+
+      - Do NOT add mcp to core dependencies (it is optional)
+
+      - Do NOT modify any Python source files in this step'
+    verification: '- `uv sync --extra mcp` succeeds without errors
+
+      - `uv run python -c "from mcp.server.fastmcp import FastMCP; print(''OK'')"`
+      prints OK
+
+      - pyproject.toml has mcp extra group
+
+      - invar guard still passes'
+    agent: python-executor
