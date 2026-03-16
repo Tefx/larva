@@ -31,13 +31,13 @@ from larva.shell.mcp_contract import LARVA_MCP_TOOLS, MCPToolDefinition
 def _tool_name_to_handler_attr(tool_name: str) -> str:
     """Map MCP tool name to MCPHandlers method name.
 
-    >>> _tool_name_to_handler_attr("larva.validate")
+    >>> _tool_name_to_handler_attr("larva_validate")
     'handle_validate'
-    >>> _tool_name_to_handler_attr("larva.component_list")
+    >>> _tool_name_to_handler_attr("larva_component_list")
     'handle_component_list'
     """
-    # Strip 'larva.' prefix and prepend 'handle_'
-    suffix = tool_name.removeprefix("larva.")
+    # Strip 'larva_' prefix and prepend 'handle_'
+    suffix = tool_name.removeprefix("larva_")
     return f"handle_{suffix}"
 
 

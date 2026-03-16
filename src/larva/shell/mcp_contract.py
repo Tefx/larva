@@ -41,7 +41,7 @@ class MCPToolDefinition(TypedDict):
 
 LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
-        "name": "larva.validate",
+        "name": "larva_validate",
         "description": "Validate a PersonaSpec JSON object against the canonical schema and semantic rules.",
         "input_schema": {
             "type": "object",
@@ -55,7 +55,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.assemble",
+        "name": "larva_assemble",
         "description": "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model).",
         "input_schema": {
             "type": "object",
@@ -90,7 +90,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.resolve",
+        "name": "larva_resolve",
         "description": "Resolve a pre-registered persona by id, optionally with runtime overrides.",
         "input_schema": {
             "type": "object",
@@ -105,7 +105,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.register",
+        "name": "larva_register",
         "description": "Register a PersonaSpec in the global registry.",
         "input_schema": {
             "type": "object",
@@ -119,7 +119,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.list",
+        "name": "larva_list",
         "description": "List all registered personas.",
         "input_schema": {
             "type": "object",
@@ -127,7 +127,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.component_list",
+        "name": "larva_component_list",
         "description": "List all available components by type (prompts, toolsets, constraints, models).",
         "input_schema": {
             "type": "object",
@@ -135,7 +135,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.component_show",
+        "name": "larva_component_show",
         "description": "Show content for a specific component by type and name.",
         "input_schema": {
             "type": "object",
@@ -153,7 +153,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.delete",
+        "name": "larva_delete",
         "description": "Delete a registered persona by id.",
         "input_schema": {
             "type": "object",
@@ -164,7 +164,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.clear",
+        "name": "larva_clear",
         "description": "Delete all registered personas. Requires confirm='DELETE ALL PERSONAS'.",
         "input_schema": {
             "type": "object",
@@ -178,7 +178,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.clone",
+        "name": "larva_clone",
         "description": "Clone a registered persona to a new id.",
         "input_schema": {
             "type": "object",
@@ -196,7 +196,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.export",
+        "name": "larva_export",
         "description": "Export persona specs from the registry. Either 'all' or 'ids' must be provided, but not both.",
         "input_schema": {
             "type": "object",
@@ -214,7 +214,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.update",
+        "name": "larva_update",
         "description": "Update a registered persona by applying JSON merge patches to selected fields.",
         "input_schema": {
             "type": "object",
@@ -232,7 +232,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva.update_batch",
+        "name": "larva_update_batch",
         "description": "Batch-update all personas matching 'where' clauses by applying JSON merge patches.",
         "input_schema": {
             "type": "object",

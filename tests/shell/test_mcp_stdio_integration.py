@@ -44,9 +44,9 @@ class TestMCPStdioIntegration:
                     result = await session.list_tools()
                     tool_names = {t.name for t in result.tools}
                     assert len(tool_names) == 13
-                    assert "larva.validate" in tool_names
-                    assert "larva.assemble" in tool_names
-                    assert "larva.list" in tool_names
+                    assert "larva_validate" in tool_names
+                    assert "larva_assemble" in tool_names
+                    assert "larva_list" in tool_names
 
         anyio.run(_run)
 
@@ -58,7 +58,7 @@ class TestMCPStdioIntegration:
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     result = await session.call_tool(
-                        "larva.validate",
+                        "larva_validate",
                         arguments={
                             "spec": {
                                 "id": "test-persona",
@@ -82,7 +82,7 @@ class TestMCPStdioIntegration:
             async with stdio_client(LARVA_MCP_CMD) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    result = await session.call_tool("larva.list", arguments={})
+                    result = await session.call_tool("larva_list", arguments={})
                     assert len(result.content) > 0
 
         anyio.run(_run)
@@ -95,7 +95,7 @@ class TestMCPStdioIntegration:
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     result = await session.call_tool(
-                        "larva.component_list", arguments={}
+                        "larva_component_list", arguments={}
                     )
                     assert len(result.content) > 0
 
@@ -109,7 +109,7 @@ class TestMCPStdioIntegration:
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     result = await session.call_tool(
-                        "larva.resolve", arguments={}
+                        "larva_resolve", arguments={}
                     )
                     assert len(result.content) > 0
                     text = result.content[0].text

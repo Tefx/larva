@@ -76,11 +76,11 @@ def _handle_export_impl(
     handlers: ExportHandlerDeps,
     params: object,
 ) -> "Result[list[PersonaSpec], LarvaError]":
-    validated_params = handlers._require_params_object("larva.export", params)
+    validated_params = handlers._require_params_object("larva_export", params)
     if isinstance(validated_params, Failure):
         return Failure(validated_params.failure())
     checked_params = validated_params.unwrap()
-    if error := handlers._reject_unknown_params("larva.export", checked_params, {"all", "ids"}):
+    if error := handlers._reject_unknown_params("larva_export", checked_params, {"all", "ids"}):
         return Failure(error)
 
     export_target = _validate_export_target(handlers, checked_params)
@@ -104,7 +104,7 @@ def _validate_export_target(
     if has_all and has_ids:
         return Failure(
             handlers._malformed_params_error(
-                "larva.export",
+                "larva_export",
                 "cannot specify both 'all' and 'ids'",
                 {"field": "params", "conflict": ["all", "ids"]},
             )
@@ -112,17 +112,17 @@ def _validate_export_target(
     if not has_all and not has_ids:
         return Failure(
             handlers._malformed_params_error(
-                "larva.export",
+                "larva_export",
                 "must specify either 'all' or 'ids'",
                 {"field": "params", "missing": ["all", "ids"]},
             )
         )
 
     if has_all:
-        if error := handlers._require_type("larva.export", checked_params, "all", bool, "boolean"):
+        if error := handlers._require_type("larva_export", checked_params, "all", bool, "boolean"):
             return Failure(error)
         return Success((True, []))
 
-    if error := handlers._require_list_of_strings("larva.export", checked_params, "ids"):
+    if error := handlers._require_list_of_strings("larva_export", checked_params, "ids"):
         return Failure(error)
     return Success((False, cast("list[str]", checked_params["ids"])))

@@ -71,29 +71,29 @@ def _handle_update_batch_impl(
     handlers: UpdateBatchHandlerDeps,
     params: object,
 ) -> "Result[BatchUpdateResult, LarvaError]":
-    validated_params = handlers._require_params_object("larva.update_batch", params)
+    validated_params = handlers._require_params_object("larva_update_batch", params)
     if isinstance(validated_params, Failure):
         return Failure(validated_params.failure())
     checked_params = validated_params.unwrap()
     if error := handlers._reject_unknown_params(
-        "larva.update_batch", checked_params, {"where", "patches", "dry_run"}
+        "larva_update_batch", checked_params, {"where", "patches", "dry_run"}
     ):
         return Failure(error)
-    if error := handlers._require_param("larva.update_batch", checked_params, "where"):
+    if error := handlers._require_param("larva_update_batch", checked_params, "where"):
         return Failure(error)
-    if error := handlers._require_param("larva.update_batch", checked_params, "patches"):
+    if error := handlers._require_param("larva_update_batch", checked_params, "patches"):
         return Failure(error)
     if error := handlers._require_type(
-        "larva.update_batch", checked_params, "where", dict, "object"
+        "larva_update_batch", checked_params, "where", dict, "object"
     ):
         return Failure(error)
     if error := handlers._require_type(
-        "larva.update_batch", checked_params, "patches", dict, "object"
+        "larva_update_batch", checked_params, "patches", dict, "object"
     ):
         return Failure(error)
     if "dry_run" in checked_params and (
         error := handlers._require_type(
-            "larva.update_batch", checked_params, "dry_run", bool, "boolean"
+            "larva_update_batch", checked_params, "dry_run", bool, "boolean"
         )
     ):
         return Failure(error)

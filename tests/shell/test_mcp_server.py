@@ -37,16 +37,16 @@ class TestToolNameMapping:
     """Tests for _tool_name_to_handler_attr helper."""
 
     def test_validate(self) -> None:
-        assert _tool_name_to_handler_attr("larva.validate") == "handle_validate"
+        assert _tool_name_to_handler_attr("larva_validate") == "handle_validate"
 
     def test_component_list(self) -> None:
-        assert _tool_name_to_handler_attr("larva.component_list") == "handle_component_list"
+        assert _tool_name_to_handler_attr("larva_component_list") == "handle_component_list"
 
     def test_component_show(self) -> None:
-        assert _tool_name_to_handler_attr("larva.component_show") == "handle_component_show"
+        assert _tool_name_to_handler_attr("larva_component_show") == "handle_component_show"
 
     def test_update_batch(self) -> None:
-        assert _tool_name_to_handler_attr("larva.update_batch") == "handle_update_batch"
+        assert _tool_name_to_handler_attr("larva_update_batch") == "handle_update_batch"
 
 
 # ---------------------------------------------------------------------------
@@ -145,22 +145,22 @@ class TestToolDelegation:
         return tool.fn(**kwargs)
 
     def test_validate_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
-        result = self._call_tool(server, "larva.validate", spec={"id": "test"})
+        result = self._call_tool(server, "larva_validate", spec={"id": "test"})
         mock_handlers.handle_validate.assert_called_once_with({"spec": {"id": "test"}})
         assert result == {"result": "ok"}
 
     def test_list_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
-        result = self._call_tool(server, "larva.list")
+        result = self._call_tool(server, "larva_list")
         mock_handlers.handle_list.assert_called_once_with({})
         assert result == {"result": "ok"}
 
     def test_delete_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
-        result = self._call_tool(server, "larva.delete", id="my-persona")
+        result = self._call_tool(server, "larva_delete", id="my-persona")
         mock_handlers.handle_delete.assert_called_once_with({"id": "my-persona"})
 
     def test_clone_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
         result = self._call_tool(
-            server, "larva.clone", source_id="src", new_id="dst"
+            server, "larva_clone", source_id="src", new_id="dst"
         )
         mock_handlers.handle_clone.assert_called_once_with(
             {"source_id": "src", "new_id": "dst"}
@@ -169,7 +169,7 @@ class TestToolDelegation:
     def test_success_returns_content_directly(self, server: Any, mock_handlers: MagicMock) -> None:
         """Verify successful results are returned directly (not JSON-encoded)."""
         mock_handlers.handle_list.return_value = [{"id": "p1"}, {"id": "p2"}]
-        result = self._call_tool(server, "larva.list")
+        result = self._call_tool(server, "larva_list")
         assert result == [{"id": "p1"}, {"id": "p2"}]
 
     def test_error_envelope_returned_as_json_string(
@@ -183,7 +183,7 @@ class TestToolDelegation:
             "details": {"id": "missing"},
         }
         mock_handlers.handle_resolve.return_value = error
-        result = self._call_tool(server, "larva.resolve", id="missing")
+        result = self._call_tool(server, "larva_resolve", id="missing")
         assert isinstance(result, str)
         parsed = json.loads(result)
         assert parsed["code"] == "NOT_FOUND"

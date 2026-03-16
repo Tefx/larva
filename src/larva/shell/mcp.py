@@ -120,17 +120,17 @@ class MCPHandlers(MCPParamValidationMixin):
         Malformed requests return the documented MCP error envelope (INTERNAL, 10).
         Component store failures return COMPONENT_NOT_FOUND (105).
         """
-        validated_params = self._require_params_object("larva.component_list", params)
+        validated_params = self._require_params_object("larva_component_list", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.component_list", checked_params, set()):
+        if error := self._reject_unknown_params("larva_component_list", checked_params, set()):
             return error
 
         # Require components store to be provided
         if self._components is None:
             return self._component_store_error(
-                "larva.component_list",
+                "larva_component_list",
                 "Component store not available",
                 {},
             )
@@ -140,7 +140,7 @@ class MCPHandlers(MCPParamValidationMixin):
         if isinstance(result, Failure):
             error = result.failure()
             return self._component_store_error(
-                "larva.component_list",
+                "larva_component_list",
                 str(error),
                 {
                     "component_type": error.component_type,
@@ -167,24 +167,24 @@ class MCPHandlers(MCPParamValidationMixin):
             - malformed/unknown/type-invalid component_type => INTERNAL / 10
             - unsupported component type or component lookup failure => COMPONENT_NOT_FOUND / 105
         """
-        validated_params = self._require_params_object("larva.component_show", params)
+        validated_params = self._require_params_object("larva_component_show", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
         if error := self._reject_unknown_params(
-            "larva.component_show", checked_params, {"component_type", "name"}
+            "larva_component_show", checked_params, {"component_type", "name"}
         ):
             return error
-        if error := self._require_param("larva.component_show", checked_params, "component_type"):
+        if error := self._require_param("larva_component_show", checked_params, "component_type"):
             return error
-        if error := self._require_param("larva.component_show", checked_params, "name"):
+        if error := self._require_param("larva_component_show", checked_params, "name"):
             return error
         if error := self._require_type(
-            "larva.component_show", checked_params, "component_type", str, "string"
+            "larva_component_show", checked_params, "component_type", str, "string"
         ):
             return error
         if error := self._require_type(
-            "larva.component_show", checked_params, "name", str, "string"
+            "larva_component_show", checked_params, "name", str, "string"
         ):
             return error
 
@@ -195,7 +195,7 @@ class MCPHandlers(MCPParamValidationMixin):
         valid_types = {"prompts", "toolsets", "constraints", "models"}
         if component_type not in valid_types:
             return self._component_store_error(
-                "larva.component_show",
+                "larva_component_show",
                 f"Unsupported component type: {component_type}",
                 {"component_type": component_type, "valid_types": sorted(valid_types)},
             )
@@ -203,7 +203,7 @@ class MCPHandlers(MCPParamValidationMixin):
         # Require components store to be provided
         if self._components is None:
             return self._component_store_error(
-                "larva.component_show",
+                "larva_component_show",
                 "Component store not available",
                 {},
             )
@@ -221,7 +221,7 @@ class MCPHandlers(MCPParamValidationMixin):
         if isinstance(result, Failure):
             error = result.failure()
             return self._component_store_error(
-                "larva.component_show",
+                "larva_component_show",
                 str(error),
                 {
                     "component_type": component_type,
@@ -246,15 +246,15 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.validate", params)
+        validated_params = self._require_params_object("larva_validate", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.validate", checked_params, {"spec"}):
+        if error := self._reject_unknown_params("larva_validate", checked_params, {"spec"}):
             return error
-        if error := self._require_param("larva.validate", checked_params, "spec"):
+        if error := self._require_param("larva_validate", checked_params, "spec"):
             return error
-        if error := self._require_type("larva.validate", checked_params, "spec", dict, "object"):
+        if error := self._require_type("larva_validate", checked_params, "spec", dict, "object"):
             return error
         spec = checked_params["spec"]
 
@@ -281,39 +281,39 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.assemble", params)
+        validated_params = self._require_params_object("larva_assemble", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
         if error := self._reject_unknown_params(
-            "larva.assemble",
+            "larva_assemble",
             checked_params,
             {"id", "prompts", "toolsets", "constraints", "model", "overrides", "variables"},
         ):
             return error
-        if error := self._require_param("larva.assemble", checked_params, "id"):
+        if error := self._require_param("larva_assemble", checked_params, "id"):
             return error
-        if error := self._require_type("larva.assemble", checked_params, "id", str, "string"):
+        if error := self._require_type("larva_assemble", checked_params, "id", str, "string"):
             return error
-        if error := self._require_list_of_strings("larva.assemble", checked_params, "prompts"):
+        if error := self._require_list_of_strings("larva_assemble", checked_params, "prompts"):
             return error
-        if error := self._require_list_of_strings("larva.assemble", checked_params, "toolsets"):
+        if error := self._require_list_of_strings("larva_assemble", checked_params, "toolsets"):
             return error
-        if error := self._require_list_of_strings("larva.assemble", checked_params, "constraints"):
+        if error := self._require_list_of_strings("larva_assemble", checked_params, "constraints"):
             return error
         if "model" in checked_params and (
-            error := self._require_type("larva.assemble", checked_params, "model", str, "string")
+            error := self._require_type("larva_assemble", checked_params, "model", str, "string")
         ):
             return error
         if "overrides" in checked_params and (
             error := self._require_type(
-                "larva.assemble", checked_params, "overrides", dict, "object"
+                "larva_assemble", checked_params, "overrides", dict, "object"
             )
         ):
             return error
         if "variables" in checked_params and (
             error := self._require_type(
-                "larva.assemble", checked_params, "variables", dict, "object"
+                "larva_assemble", checked_params, "variables", dict, "object"
             )
         ):
             return error
@@ -355,21 +355,21 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.resolve", params)
+        validated_params = self._require_params_object("larva_resolve", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
         if error := self._reject_unknown_params(
-            "larva.resolve", checked_params, {"id", "overrides"}
+            "larva_resolve", checked_params, {"id", "overrides"}
         ):
             return error
-        if error := self._require_param("larva.resolve", checked_params, "id"):
+        if error := self._require_param("larva_resolve", checked_params, "id"):
             return error
-        if error := self._require_type("larva.resolve", checked_params, "id", str, "string"):
+        if error := self._require_type("larva_resolve", checked_params, "id", str, "string"):
             return error
         if "overrides" in checked_params and (
             error := self._require_type(
-                "larva.resolve", checked_params, "overrides", dict, "object"
+                "larva_resolve", checked_params, "overrides", dict, "object"
             )
         ):
             return error
@@ -402,15 +402,15 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.register", params)
+        validated_params = self._require_params_object("larva_register", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.register", checked_params, {"spec"}):
+        if error := self._reject_unknown_params("larva_register", checked_params, {"spec"}):
             return error
-        if error := self._require_param("larva.register", checked_params, "spec"):
+        if error := self._require_param("larva_register", checked_params, "spec"):
             return error
-        if error := self._require_type("larva.register", checked_params, "spec", dict, "object"):
+        if error := self._require_type("larva_register", checked_params, "spec", dict, "object"):
             return error
         spec = checked_params["spec"]
 
@@ -438,11 +438,11 @@ class MCPHandlers(MCPParamValidationMixin):
             [{"id": str, "spec_digest": str, "model": str}, ...]
             Or error envelope on failure.
         """
-        validated_params = self._require_params_object("larva.list", params)
+        validated_params = self._require_params_object("larva_list", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.list", checked_params, set()):
+        if error := self._reject_unknown_params("larva_list", checked_params, set()):
             return error
 
         # Delegate to facade
@@ -470,15 +470,15 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.delete", params)
+        validated_params = self._require_params_object("larva_delete", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.delete", checked_params, {"id"}):
+        if error := self._reject_unknown_params("larva_delete", checked_params, {"id"}):
             return error
-        if error := self._require_param("larva.delete", checked_params, "id"):
+        if error := self._require_param("larva_delete", checked_params, "id"):
             return error
-        if error := self._require_type("larva.delete", checked_params, "id", str, "string"):
+        if error := self._require_type("larva_delete", checked_params, "id", str, "string"):
             return error
 
         persona_id = checked_params["id"]
@@ -509,15 +509,15 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.clear", params)
+        validated_params = self._require_params_object("larva_clear", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.clear", checked_params, {"confirm"}):
+        if error := self._reject_unknown_params("larva_clear", checked_params, {"confirm"}):
             return error
-        if error := self._require_param("larva.clear", checked_params, "confirm"):
+        if error := self._require_param("larva_clear", checked_params, "confirm"):
             return error
-        if error := self._require_type("larva.clear", checked_params, "confirm", str, "string"):
+        if error := self._require_type("larva_clear", checked_params, "confirm", str, "string"):
             return error
 
         confirm = checked_params["confirm"]
@@ -548,21 +548,21 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.clone", params)
+        validated_params = self._require_params_object("larva_clone", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
         if error := self._reject_unknown_params(
-            "larva.clone", checked_params, {"source_id", "new_id"}
+            "larva_clone", checked_params, {"source_id", "new_id"}
         ):
             return error
-        if error := self._require_param("larva.clone", checked_params, "source_id"):
+        if error := self._require_param("larva_clone", checked_params, "source_id"):
             return error
-        if error := self._require_param("larva.clone", checked_params, "new_id"):
+        if error := self._require_param("larva_clone", checked_params, "new_id"):
             return error
-        if error := self._require_type("larva.clone", checked_params, "source_id", str, "string"):
+        if error := self._require_type("larva_clone", checked_params, "source_id", str, "string"):
             return error
-        if error := self._require_type("larva.clone", checked_params, "new_id", str, "string"):
+        if error := self._require_type("larva_clone", checked_params, "new_id", str, "string"):
             return error
 
         source_id = checked_params["source_id"]
@@ -594,19 +594,19 @@ class MCPHandlers(MCPParamValidationMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva.update", params)
+        validated_params = self._require_params_object("larva_update", params)
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva.update", checked_params, {"id", "patches"}):
+        if error := self._reject_unknown_params("larva_update", checked_params, {"id", "patches"}):
             return error
-        if error := self._require_param("larva.update", checked_params, "id"):
+        if error := self._require_param("larva_update", checked_params, "id"):
             return error
-        if error := self._require_param("larva.update", checked_params, "patches"):
+        if error := self._require_param("larva_update", checked_params, "patches"):
             return error
-        if error := self._require_type("larva.update", checked_params, "id", str, "string"):
+        if error := self._require_type("larva_update", checked_params, "id", str, "string"):
             return error
-        if error := self._require_type("larva.update", checked_params, "patches", dict, "object"):
+        if error := self._require_type("larva_update", checked_params, "patches", dict, "object"):
             return error
 
         persona_id = checked_params["id"]

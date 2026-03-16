@@ -260,17 +260,17 @@ class TestMCPToolDefinitions:
 
     def test_validate_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.validate" in tool_names
+        assert "larva_validate" in tool_names
 
-        validate_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.validate")
+        validate_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_validate")
         assert "spec" in validate_tool["input_schema"]["properties"]
         assert "spec" in validate_tool["input_schema"]["required"]
 
     def test_assemble_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.assemble" in tool_names
+        assert "larva_assemble" in tool_names
 
-        assemble_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.assemble")
+        assemble_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
         props = assemble_tool["input_schema"]["properties"]
         assert "id" in props
         assert "prompts" in props
@@ -283,9 +283,9 @@ class TestMCPToolDefinitions:
 
     def test_resolve_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.resolve" in tool_names
+        assert "larva_resolve" in tool_names
 
-        resolve_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.resolve")
+        resolve_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_resolve")
         props = resolve_tool["input_schema"]["properties"]
         assert "id" in props
         assert "overrides" in props
@@ -293,17 +293,17 @@ class TestMCPToolDefinitions:
 
     def test_register_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.register" in tool_names
+        assert "larva_register" in tool_names
 
-        register_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.register")
+        register_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_register")
         assert "spec" in register_tool["input_schema"]["properties"]
         assert "spec" in register_tool["input_schema"]["required"]
 
     def test_list_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.list" in tool_names
+        assert "larva_list" in tool_names
 
-        list_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.list")
+        list_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_list")
         assert list_tool["input_schema"]["properties"] == {}
         assert (
             "required" not in list_tool["input_schema"]
@@ -313,10 +313,10 @@ class TestMCPToolDefinitions:
     def test_component_list_tool_is_defined(self) -> None:
         """Verify larva.component_list is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.component_list" in tool_names
+        assert "larva_component_list" in tool_names
 
         component_list_tool = next(
-            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.component_list"
+            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_component_list"
         )
         # component_list takes no required params
         assert component_list_tool["input_schema"]["properties"] == {}
@@ -328,10 +328,10 @@ class TestMCPToolDefinitions:
     def test_component_show_tool_is_defined(self) -> None:
         """Verify larva.component_show is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.component_show" in tool_names
+        assert "larva_component_show" in tool_names
 
         component_show_tool = next(
-            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.component_show"
+            t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_component_show"
         )
         props = component_show_tool["input_schema"]["properties"]
         assert "component_type" in props
@@ -342,9 +342,9 @@ class TestMCPToolDefinitions:
     def test_delete_tool_is_defined(self) -> None:
         """Verify larva.delete is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.delete" in tool_names
+        assert "larva_delete" in tool_names
 
-        delete_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.delete")
+        delete_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_delete")
         props = delete_tool["input_schema"]["properties"]
         assert "id" in props
         assert "id" in delete_tool["input_schema"]["required"]
@@ -352,9 +352,9 @@ class TestMCPToolDefinitions:
     def test_clear_tool_is_defined(self) -> None:
         """Verify larva.clear is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.clear" in tool_names
+        assert "larva_clear" in tool_names
 
-        clear_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.clear")
+        clear_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_clear")
         props = clear_tool["input_schema"]["properties"]
         assert "confirm" in props
         assert "confirm" in clear_tool["input_schema"]["required"]
@@ -766,19 +766,19 @@ class TestMCPMalformedParamsRejected:
     @pytest.mark.parametrize(
         ("tool", "payload", "reason"),
         [
-            ("larva.validate", {"spec": []}, "parameter 'spec' must be object"),
+            ("larva_validate", {"spec": []}, "parameter 'spec' must be object"),
             (
-                "larva.assemble",
+                "larva_assemble",
                 {"id": "ok", "prompts": ["ok", 2]},
                 "parameter 'prompts' must be list[string]",
             ),
             (
-                "larva.resolve",
+                "larva_resolve",
                 {"id": "ok", "overrides": []},
                 "parameter 'overrides' must be object",
             ),
-            ("larva.register", {"spec": "not-an-object"}, "parameter 'spec' must be object"),
-            ("larva.list", {"unknown": True}, "unknown parameter(s)"),
+            ("larva_register", {"spec": "not-an-object"}, "parameter 'spec' must be object"),
+            ("larva_list", {"unknown": True}, "unknown parameter(s)"),
         ],
     )
     def test_all_tools_reject_malformed_payloads(
@@ -789,11 +789,11 @@ class TestMCPMalformedParamsRejected:
     ) -> None:
         handlers = mcp_module.MCPHandlers(_make_facade(validate_report=_valid_report()))
         dispatch = {
-            "larva.validate": handlers.handle_validate,
-            "larva.assemble": handlers.handle_assemble,
-            "larva.resolve": handlers.handle_resolve,
-            "larva.register": handlers.handle_register,
-            "larva.list": handlers.handle_list,
+            "larva_validate": handlers.handle_validate,
+            "larva_assemble": handlers.handle_assemble,
+            "larva_resolve": handlers.handle_resolve,
+            "larva_register": handlers.handle_register,
+            "larva_list": handlers.handle_list,
         }
 
         result = dispatch[tool](payload)
@@ -803,16 +803,16 @@ class TestMCPMalformedParamsRejected:
 
     @pytest.mark.parametrize(
         "tool",
-        ["larva.validate", "larva.assemble", "larva.resolve", "larva.register", "larva.list"],
+        ["larva_validate", "larva_assemble", "larva_resolve", "larva_register", "larva_list"],
     )
     def test_all_tools_reject_non_object_params(self, tool: str) -> None:
         handlers = mcp_module.MCPHandlers(_make_facade(validate_report=_valid_report()))
         dispatch = {
-            "larva.validate": handlers.handle_validate,
-            "larva.assemble": handlers.handle_assemble,
-            "larva.resolve": handlers.handle_resolve,
-            "larva.register": handlers.handle_register,
-            "larva.list": handlers.handle_list,
+            "larva_validate": handlers.handle_validate,
+            "larva_assemble": handlers.handle_assemble,
+            "larva_resolve": handlers.handle_resolve,
+            "larva_register": handlers.handle_register,
+            "larva_list": handlers.handle_list,
         }
 
         result = dispatch[tool]([])
@@ -1005,7 +1005,7 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.validate",
+            tool="larva_validate",
             reason="missing required parameter 'spec'",
         )
 
@@ -1060,7 +1060,7 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.assemble",
+            tool="larva_assemble",
             reason="missing required parameter 'id'",
         )
 
@@ -1142,7 +1142,7 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.resolve",
+            tool="larva_resolve",
             reason="missing required parameter 'id'",
         )
 
@@ -1211,7 +1211,7 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.register",
+            tool="larva_register",
             reason="missing required parameter 'spec'",
         )
 
@@ -1274,7 +1274,7 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.list",
+            tool="larva_list",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["limit"]
@@ -1314,7 +1314,7 @@ class TestMCPComponentListAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_list",
+            tool="larva_component_list",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["unexpected"]
@@ -1330,7 +1330,7 @@ class TestMCPComponentListAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_list",
+            tool="larva_component_list",
             reason="params must be an object",
         )
 
@@ -1351,7 +1351,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -1367,7 +1367,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="parameter 'component_type' must be string",
         )
 
@@ -1382,7 +1382,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="parameter 'name' must be string",
         )
 
@@ -1397,7 +1397,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="missing required parameter 'component_type'",
         )
 
@@ -1412,7 +1412,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="missing required parameter 'name'",
         )
 
@@ -1427,7 +1427,7 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.component_show",
+            tool="larva_component_show",
             reason="params must be an object",
         )
 
@@ -1576,7 +1576,7 @@ class TestMCPHandleDelete:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.delete",
+            tool="larva_delete",
             reason="missing required parameter 'id'",
         )
 
@@ -1590,7 +1590,7 @@ class TestMCPHandleDelete:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.delete",
+            tool="larva_delete",
             reason="parameter 'id' must be string",
         )
 
@@ -1605,7 +1605,7 @@ class TestMCPHandleDelete:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.delete",
+            tool="larva_delete",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -1620,7 +1620,7 @@ class TestMCPHandleDelete:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.delete",
+            tool="larva_delete",
             reason="params must be an object",
         )
 
@@ -1673,7 +1673,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="missing required parameter 'source_id'",
         )
 
@@ -1687,7 +1687,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="missing required parameter 'new_id'",
         )
 
@@ -1709,7 +1709,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -1724,7 +1724,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="parameter 'source_id' must be string",
         )
 
@@ -1738,7 +1738,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="parameter 'new_id' must be string",
         )
 
@@ -1752,7 +1752,7 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clone",
+            tool="larva_clone",
             reason="params must be an object",
         )
 
@@ -1818,7 +1818,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="missing required parameter 'where'",
         )
 
@@ -1832,7 +1832,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="missing required parameter 'patches'",
         )
 
@@ -1854,7 +1854,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -1871,7 +1871,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="parameter 'where' must be object",
         )
 
@@ -1887,7 +1887,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="parameter 'patches' must be object",
         )
 
@@ -1907,7 +1907,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="parameter 'dry_run' must be boolean",
         )
 
@@ -1921,7 +1921,7 @@ class TestMCPHandleUpdateBatch:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update_batch",
+            tool="larva_update_batch",
             reason="params must be an object",
         )
 
@@ -2031,7 +2031,7 @@ class TestMCPHandleClear:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clear",
+            tool="larva_clear",
             reason="missing required parameter 'confirm'",
         )
 
@@ -2045,7 +2045,7 @@ class TestMCPHandleClear:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clear",
+            tool="larva_clear",
             reason="parameter 'confirm' must be string",
         )
 
@@ -2060,7 +2060,7 @@ class TestMCPHandleClear:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clear",
+            tool="larva_clear",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -2075,7 +2075,7 @@ class TestMCPHandleClear:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.clear",
+            tool="larva_clear",
             reason="params must be an object",
         )
 
@@ -2149,7 +2149,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="missing required parameter 'id'",
         )
 
@@ -2163,7 +2163,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="missing required parameter 'patches'",
         )
 
@@ -2177,7 +2177,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="parameter 'id' must be string",
         )
 
@@ -2191,7 +2191,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="parameter 'patches' must be object",
         )
 
@@ -2209,7 +2209,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -2224,7 +2224,7 @@ class TestMCPHandleUpdate:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.update",
+            tool="larva_update",
             reason="params must be an object",
         )
 
@@ -2378,7 +2378,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="cannot specify both 'all' and 'ids'",
         )
 
@@ -2392,7 +2392,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="must specify either 'all' or 'ids'",
         )
 
@@ -2406,7 +2406,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="parameter 'all' must be boolean",
         )
 
@@ -2420,7 +2420,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="parameter 'ids' must be list[string]",
         )
 
@@ -2434,7 +2434,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="parameter 'ids' must be list[string]",
         )
 
@@ -2449,7 +2449,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="unknown parameter(s)",
         )
         assert result["details"]["unknown"] == ["extra"]
@@ -2464,7 +2464,7 @@ class TestMCPHandleExport:
         assert isinstance(result, dict)
         _assert_malformed_params_error(
             cast("LarvaError", result),
-            tool="larva.export",
+            tool="larva_export",
             reason="params must be an object",
         )
 
@@ -2475,9 +2475,9 @@ class TestMCPUpdateToolDefinition:
     def test_update_tool_is_defined(self) -> None:
         """Verify larva.update is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva.update" in tool_names
+        assert "larva_update" in tool_names
 
-        update_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva.update")
+        update_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_update")
         props = update_tool["input_schema"]["properties"]
         assert "id" in props
         assert "patches" in props
