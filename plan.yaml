@@ -24202,3 +24202,20 @@ phases:
 
       - invar guard still passes'
     agent: python-executor
+  - id: mcp_runtime_deps.mcp-runtime-deps-gate
+    name: mcp_runtime_deps.gate
+    status: pending
+    description: "Gate review: Verify MCP dependency is correctly added and resolves.\n\
+      \nreview_depth: QUICK\nreview_depth_rationale: |\n  - Single trivial config\
+      \ step, no code changes\n  - No rework patterns applicable"
+    verification: '- pyproject.toml has `mcp` optional-dependency group
+
+      - mcp package importable via `uv run python -c "from mcp.server.fastmcp import
+      FastMCP"`
+
+      - No unrelated changes in pyproject.toml
+
+      - invar guard passes'
+    depends_on:
+    - mcp_runtime_deps.add-mcp-dependency
+    agent: gate-reviewer
