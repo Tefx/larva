@@ -24502,3 +24502,32 @@ phases:
     depends_on:
     - mcp_runtime_test.unit-tests
     agent: integration-verifier
+  - id: mcp_runtime_test.mcp-runtime-test-gate
+    name: mcp_runtime_test.gate
+    status: pending
+    description: "Gate review: Verify MCP server testing phase is complete with sufficient\
+      \ evidence.\n\nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Phase\
+      \ covers a new runtime surface (MCP stdio server)\n  - Integration evidence\
+      \ must prove end-to-end tool calls work\n  - First MCP server in the project\
+      \ -- sets precedent\n\nGate MUST verify:\n1. Unit tests cover registration,\
+      \ delegation, error mapping\n2. Integration proof shows actual stdio tool call\
+      \ round-trips\n3. All 13 tools exercised or accounted for\n4. Error path evidence\
+      \ present (not just happy path)\n\ncross_cutting_focus:\n  - \"Integration evidence\
+      \ shows actual command/output, not summaries\"\n  - \"Unit tests do not duplicate\
+      \ test_mcp.py scope\""
+    verification: '- All unit tests pass: uv run pytest tests/shell/test_mcp_server.py
+      -v
+
+      - Integration proof evidence is complete and shows actual output
+
+      - All 13 tools verified (registered + at least 2 called end-to-end)
+
+      - Error path covered
+
+      - No regressions: uv run pytest tests/ -v passes
+
+      - invar guard passes'
+    depends_on:
+    - mcp_runtime_test.unit-tests
+    - mcp_runtime_test.integration-proof
+    agent: gate-reviewer
