@@ -24272,13 +24272,13 @@ phases:
       Verdict: PASS — phase mcp_runtime_deps complete'
 - id: mcp_runtime_impl
   name: MCP Server Implementation and CLI Wiring
-  status: pending
+  status: in_progress
   depends_on:
   - mcp_runtime_deps
   steps:
   - id: mcp_runtime_impl.server-module
     name: server-module
-    status: pending
+    status: claimed
     description: "Design and implement the MCP server runtime module using FastMCP.\n\
       \nFile: src/larva/shell/mcp_server.py (NEW)\n\nRequirements:\n1. Create a `create_mcp_server()`\
       \ factory function that:\n   - Instantiates FastMCP with name=\"larva\" and\
@@ -24318,6 +24318,8 @@ phases:
 
       - No handler logic duplicated -- all tools delegate to MCPHandlers'
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-16T19:12:47.344236+00:00'
   - id: mcp_runtime_impl.cli-subcommand
     name: cli-subcommand
     status: pending
