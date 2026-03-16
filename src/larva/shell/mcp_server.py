@@ -19,6 +19,7 @@ Boundary citations:
 
 from __future__ import annotations
 
+import inspect
 import json
 import sys
 from typing import Any
@@ -102,6 +103,60 @@ def create_mcp_server(
     return server
 
 
+# @invar:allow shell_result: helper builds dynamic function for MCP registration
+# @shell_orchestration: MCP framework registration wiring, not pure logic
+def _build_tool_fn(method: Any, tool_def: MCPToolDefinition) -> Any:
+    """Build a tool function with proper signature for FastMCP.
+
+    FastMCP introspects function signatures via pydantic. Each tool function
+    must have explicit keyword parameters matching the tool's input schema
+    so FastMCP can validate arguments correctly.
+    """
+    tool_name = tool_def["name"]
+    description = tool_def["description"]
+    schema = tool_def["input_schema"]
+    param_names = list(schema.get("properties", {}).keys())
+    required = set(schema.get("required", []))
+
+    # Build function source with correct signature
+    # Parameters with defaults use None as sentinel (not required by schema)
+    params = []
+    for name in param_names:
+        if name in required:
+            params.append(name)
+        else:
+            params.append(f"{name}=None")
+
+    param_str = ", ".join(params)
+    fn_name = tool_name.replace(".", "_")
+
+    # Build source code for the tool function
+    source = f"def {fn_name}({param_str}):\n"
+    source += f"    kwargs = {{}}\n"
+    for name in param_names:
+        if name in required:
+            source += f"    kwargs['{name}'] = {name}\n"
+        else:
+            source += f"    if {name} is not None:\n"
+            source += f"        kwargs['{name}'] = {name}\n"
+    source += "    result = _method(kwargs)\n"
+    source += "    if _is_err(result):\n"
+    source += "        return _json_dumps(result)\n"
+    source += "    return result\n"
+
+    # Execute in a namespace that captures the handler method
+    namespace: dict[str, Any] = {
+        "_method": method,
+        "_is_err": _is_error_envelope,
+        "_json_dumps": json.dumps,
+    }
+    exec(source, namespace)  # noqa: S102
+
+    fn = namespace[fn_name]
+    fn.__doc__ = description
+    return fn
+
+
 # @shell_orchestration: MCP framework registration wiring, not pure logic
 def _register_tool(
     server: FastMCP,
@@ -110,43 +165,20 @@ def _register_tool(
 ) -> None:
     """Register a single tool on the FastMCP server.
 
-    Creates a closure that delegates to the corresponding MCPHandlers
-    method, converting LarvaError envelopes to JSON string responses
-    (MCP tools return content, not exceptions, for domain errors).
+    Creates a function with the correct signature for FastMCP's pydantic
+    argument validation, delegating to the corresponding MCPHandlers method.
     """
     tool_name = tool_def["name"]
     handler_attr = _tool_name_to_handler_attr(tool_name)
     handler_method = getattr(handlers, handler_attr)
-    description = tool_def["description"]
 
-    # Use server.tool() decorator pattern via add_tool for programmatic registration
-    def make_tool_fn(method: Any) -> Any:
-        """Create a tool function closure capturing the handler method."""
-
-        def tool_fn(**kwargs: Any) -> Any:
-            # FastMCP passes parameters as kwargs; MCPHandlers expect a single dict
-            result = method(kwargs)
-
-            # LarvaError envelopes are returned as JSON strings so MCP clients
-            # see structured error content rather than transport-level exceptions
-            if _is_error_envelope(result):
-                return json.dumps(result)
-
-            # Success results: return directly (FastMCP serializes to JSON)
-            return result
-
-        # Preserve the tool name for FastMCP registration
-        tool_fn.__name__ = tool_name.replace(".", "_")
-        tool_fn.__doc__ = description
-        return tool_fn
-
-    fn = make_tool_fn(handler_method)
+    fn = _build_tool_fn(handler_method, tool_def)
 
     # Programmatic registration with explicit name and description
     server.add_tool(
         fn,
         name=tool_name,
-        description=description,
+        description=tool_def["description"],
     )
 
 
