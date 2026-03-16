@@ -24333,7 +24333,9 @@ phases:
     agent: gate-reviewer
 - id: mcp_runtime_test
   name: MCP Server Testing and Verification
-  status: pending
+  status: locked
+  depends_on:
+  - mcp_runtime_impl
   steps:
   - id: mcp_runtime_test.unit-tests
     name: unit-tests
