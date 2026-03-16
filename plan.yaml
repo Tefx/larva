@@ -24165,7 +24165,7 @@ phases:
   steps:
   - id: mcp_runtime_deps.add-mcp-dependency
     name: add-mcp-dependency
-    status: claimed
+    status: done
     description: 'Add the `mcp` package to pyproject.toml [project.optional-dependencies]
       as a new `mcp` extra group.
 
@@ -24204,6 +24204,30 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-16T19:09:55.764505+00:00'
+    done_at: '2026-03-16T19:12:02.010348+00:00'
+    evidence: 'Artifact:
+
+      - Commit hash: c21f799
+
+
+      Verification:
+
+      - Run: uv sync --extra mcp -> succeeded, resolved all dependencies
+
+      - Run: uv run python -c "from mcp.server.fastmcp import FastMCP; print(''OK'')"
+      -> printed OK
+
+      - Run: uv run invar guard -> passed (property_tests skipped: no changed files)
+
+
+      Files changed:
+
+      - pyproject.toml (added `mcp = ["mcp>=1.20"]` under [project.optional-dependencies])
+
+
+      Gaps/Notes:
+
+      - None'
   - id: mcp_runtime_deps.mcp-runtime-deps-gate
     name: mcp_runtime_deps.gate
     status: pending
