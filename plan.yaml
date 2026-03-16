@@ -24159,3 +24159,6 @@ phases:
       ### Verdict
 
       - PASS'
+- id: mcp_runtime_deps
+  name: MCP Runtime Dependencies
+  status: pending
