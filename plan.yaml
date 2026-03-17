@@ -25947,6 +25947,83 @@ phases:
 
       - Markdown renders correctly'
     agent: doc-reviewer
+  - id: doc_sync.update-other-docs
+    name: update-other-docs
+    status: pending
+    description: 'Update USAGE.md, USER_GUIDE.md, README.md, and ARCHITECTURE.md.
+
+
+      step_type: implementation
+
+
+      ## Files
+
+
+      ### README.md
+
+      - Line 50: Update example spec from `tools`/`side_effect_policy` to `capabilities`
+
+      - Line 89: Update full example spec
+
+
+      ### USAGE.md
+
+      - Line 76: Update example spec
+
+      - Line 86: Remove or deprecate side_effect_policy from field list
+
+      - Line 280: Update Constraint description
+
+      - Line 298: Update Component Types table
+
+      - Line 318: Update constraint YAML example
+
+      - Line 334: Update Assembly Rules
+
+      - Line 381-383: Update error example
+
+      - Line 421: Update directory structure
+
+
+      ### USER_GUIDE.md
+
+      - Line 88: Update example spec
+
+      - Line 106: Deprecate side_effect_policy validation note
+
+      - Line 123: Update example
+
+      - Line 286: Update component description
+
+      - Lines 334-345: Update examples
+
+
+      ### ARCHITECTURE.md
+
+      - Line 186: Update PersonaSpec fields
+
+      - Line 200: Update ConstraintComponent fields
+
+
+      ## Acceptance Criteria
+
+      - All docs use `capabilities` as primary field name
+
+      - side_effect_policy marked as deprecated in all docs
+
+      - No broken markdown formatting
+
+      - Consistent terminology across all documents'
+    verification: '- All docs updated consistently
+
+      - capabilities is primary field name
+
+      - side_effect_policy deprecated in all docs
+
+      - No formatting issues'
+    depends_on:
+    - doc_sync.update-interfaces-md
+    agent: doc-reviewer
 - id: deep_review
   name: Deep Review (Independent Multi-Agent Audit)
   status: locked
