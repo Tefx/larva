@@ -25050,6 +25050,68 @@ phases:
 
       ```'
     agent: python-executor
+  - id: core_logic.validate-deprecation-warnings
+    name: validate-deprecation-warnings
+    status: pending
+    description: "Add deprecation warnings for side_effect_policy and tools in core/validate.py.\n\
+      \nstep_type: implementation\n\n## File: src/larva/core/validate.py\n\n### Changes\
+      \ Required\n\n1. **Add deprecation warning for side_effect_policy** in `_validate_identity_fields`\
+      \ (lines 114-123):\n   - When `side_effect_policy` is present in spec, add a\
+      \ WARNING (not error) to the report:\n     `DEPRECATED_SIDE_EFFECT_POLICY: side_effect_policy\
+      \ is deprecated and will be removed. Runtime policy belongs in anima runtime\
+      \ controls.`\n   - Keep the existing validation logic for valid values (allow,\
+      \ approval_required, read_only) -- invalid values are still errors\n   - The\
+      \ deprecation warning goes into `warnings` list, not `errors`\n\n2. **Add deprecation\
+      \ warning for tools field** in validate_spec:\n   - When `tools` is present\
+      \ (but `capabilities` is not), add WARNING:\n     `DEPRECATED_TOOLS_FIELD: 'tools'\
+      \ field is deprecated, use 'capabilities' instead.`\n   - When both `tools`\
+      \ and `capabilities` are present, add WARNING:\n     `DEPRECATED_TOOLS_FIELD:\
+      \ both 'tools' and 'capabilities' present; 'capabilities' will be used.`\n\n\
+      3. **Add capabilities validation**:\n   - Validate `capabilities` field the\
+      \ same way `tools` is validated (dict[str, ToolPosture])\n   - Reuse existing\
+      \ validation patterns\n\n4. **Update contracts and doctests** to reflect new\
+      \ warning behavior\n\n### Pattern Reference\nFollow existing warning pattern\
+      \ from _validate_prompt_variables (line 170-175)\n\n## Acceptance Criteria\n\
+      - validate_spec with side_effect_policy produces deprecation warning in warnings\
+      \ list\n- validate_spec with tools (no capabilities) produces deprecation warning\n\
+      - validate_spec with invalid side_effect_policy still produces error (not just\
+      \ warning)\n- validate_spec with capabilities (no tools) produces no deprecation\
+      \ warning\n- `uv run invar guard --all` passes"
+    verification: '- Deprecation warnings appear in warnings list for side_effect_policy
+
+      - Deprecation warnings appear for tools field usage
+
+      - Invalid side_effect_policy values still produce errors
+
+      - capabilities field validated correctly
+
+      - Existing doctests still pass
+
+      - `uv run invar guard --all` passes'
+    evidence_template: '## Implementation Evidence
+
+
+      **Deprecation warning test**:
+
+      ```python
+
+      from larva.core.validate import validate_spec
+
+      result = validate_spec({''id'': ''test'', ''side_effect_policy'': ''read_only''})
+
+      print(result[''warnings''])  # Should include DEPRECATED_SIDE_EFFECT_POLICY
+
+      ```
+
+
+      **invar guard**:
+
+      ```
+
+      <paste output>
+
+      ```'
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
