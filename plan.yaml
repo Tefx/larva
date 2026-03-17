@@ -26138,3 +26138,76 @@ phases:
 
       **Verdict**: PASS / ISSUES_FOUND'
     agent: integration-verifier
+  - id: deep_review.spec-conformance
+    name: spec-conformance
+    status: pending
+    description: 'Full spec conformance audit: compare ALL implemented behavior against
+      ADR-002 and MIGRATION-002.
+
+
+      For EACH requirement in ADR-002 and MIGRATION-002, verify the implementation
+      matches.
+
+
+      ## ADR-002 Requirements to Verify
+
+
+      1. capabilities is the only tool-access declaration surface -> check PersonaSpec
+
+      2. Capability keys are tool families, not concrete provider tool names -> check
+      schema
+
+      3. Runtime concerns (approval) not in persona identity -> check side_effect_policy
+      deprecation
+
+      4. can_spawn remains as independent concept -> verify unchanged
+
+
+      ## MIGRATION-002 Requirements to Verify
+
+
+      1. tools renamed to capabilities in PersonaSpec -> check spec.py
+
+      2. side_effect_policy removed from constraint components -> check (deprecated,
+      not removed yet per rollout plan)
+
+      3. Accept both tools and capabilities during transition -> check normalize.py
+
+      4. Normalize to capabilities in emitted artifacts -> check normalize output
+
+      5. Warn on side_effect_policy in persona or constraint inputs -> check validate.py
+
+      6. ToolsetComponent uses capabilities -> check spec.py and components.py
+
+
+      For EACH requirement, cite the spec section and the implementation location.'
+    verification: '- Every ADR-002 requirement has implementation evidence
+
+      - Every MIGRATION-002 requirement has implementation evidence
+
+      - No spec-code drift detected'
+    evidence_template: '## Spec Conformance Report
+
+
+      **Spec sources**: ADR-002, MIGRATION-002
+
+
+      | Requirement | Spec Section | Implementation File:Line | Match? | Notes |
+
+      |------------|-------------|-------------------------|--------|-------|
+
+      | capabilities is primary field | ADR-002 Rule 1 | src/larva/core/spec.py:XX
+      | | |
+
+      | tools accepted during transition | MIGRATION-002 Rollout 1 | src/larva/core/normalize.py:XX
+      | | |
+
+      | ... | ... | ... | | |
+
+
+      **Non-conformances found**: <count>
+
+      **Verdict**: PASS / ISSUES_FOUND'
+    depends_on:
+    - deep_review.wiring-audit-full
+    agent: doc-reviewer
