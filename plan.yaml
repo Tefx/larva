@@ -24983,6 +24983,73 @@ phases:
   status: locked
   depends_on:
   - core_types
+  steps:
+  - id: core_logic.normalize-capabilities
+    name: normalize-capabilities
+    status: pending
+    description: "Implement tools->capabilities normalization in core/normalize.py.\n\
+      \nstep_type: implementation\n\n## File: src/larva/core/normalize.py\n\n### Changes\
+      \ Required\n\n1. **Add tools->capabilities normalization** in `normalize_spec`:\n\
+      \   - If input spec has `tools` but not `capabilities`, copy `tools` value to\
+      \ `capabilities`\n   - If input spec has both `tools` and `capabilities`, prefer\
+      \ `capabilities` (new field wins)\n   - If input spec has only `capabilities`,\
+      \ use it as-is\n   - After normalization, the output MUST have `capabilities`\
+      \ (if tool-access was declared)\n   - During transition: output retains BOTH\
+      \ `tools` and `capabilities` with identical values for backward compat\n\n2.\
+      \ **Add side_effect_policy deprecation handling**:\n   - If input spec has `side_effect_policy`,\
+      \ preserve it in output but it does NOT block normalization\n   - No stripping\
+      \ yet (transition period per MIGRATION-002 rollout step 3-4)\n\n3. **Update\
+      \ contracts**:\n   - @pre and @post contracts must account for the new field\n\
+      \   - Add doctest showing tools->capabilities normalization\n\n### Pattern Reference\n\
+      Follow existing normalize_spec pattern (lines 56-96): pure transformation, no\
+      \ I/O.\n\n## Acceptance Criteria\n- normalize_spec({'id': 'test', 'tools': {'fs':\
+      \ 'read_write'}}) produces output with both 'capabilities' and 'tools'\n- normalize_spec({'id':\
+      \ 'test', 'capabilities': {'fs': 'read_write'}}) produces output with both fields\n\
+      - Existing normalize_spec doctests still pass\n- `uv run invar guard --all`\
+      \ passes"
+    verification: '- normalize_spec with `tools` input produces `capabilities` in
+      output
+
+      - normalize_spec with `capabilities` input works correctly
+
+      - Both fields present in output during transition
+
+      - Existing doctests pass
+
+      - `uv run invar guard --all` passes'
+    evidence_template: '## Implementation Evidence
+
+
+      **Doctest output**:
+
+      ```
+
+      <paste uv run python -m doctest output or pytest --doctest-modules>
+
+      ```
+
+
+      **Manual verification**:
+
+      ```python
+
+      from larva.core.normalize import normalize_spec
+
+      result = normalize_spec({''id'': ''test'', ''tools'': {''fs'': ''read_write''}})
+
+      # Show capabilities and tools both present
+
+      ```
+
+
+      **invar guard**:
+
+      ```
+
+      <paste output>
+
+      ```'
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
