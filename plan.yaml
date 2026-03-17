@@ -25279,6 +25279,7 @@ phases:
       - No backward compatibility regressions'
     depends_on:
     - core_logic.core-logic-tests
+    - core_logic.integration-verify
     agent: gate-reviewer
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
