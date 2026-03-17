@@ -8,9 +8,11 @@
 # =============================================================
 version: 1
 project: larva
-context: 'Meta-plan for larva planning and review work only: identify authoritative
-  module boundaries, prepare planning rubric, create per-module implementation-planning
-  tasks, review each module plan, then run a final cross-module review.'
+strategy_ref: 'Contract-first, balanced style. Migration proceeds bottom-up: core
+  types first, then core logic, then shell/app adapters, then docs, then deep review.'
+context: 'ADR-002 Capability Intent Migration: Rename tools->capabilities, deprecate
+  side_effect_policy, update all layers (core/shell/app/docs/tests). See ADR-002-capability-intent-without-runtime-policy.md
+  and MIGRATION-002-capability-intent.md for full specification.'
 clipboard:
   author: vectl-orchestrator
   summary: User autonomy directive
