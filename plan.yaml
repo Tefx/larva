@@ -24906,25 +24906,17 @@ phases:
       - New tests cover capabilities field and backward compat
 
       - No test uses only the old field name without also testing the new one'
-    evidence_template: '## Test Evidence
+    evidence_template: '## Type Definition Tests Evidence
 
+      **New tests added**: <list test names>
 
-      **pytest output**:
+      **pytest output**: pass/fail (paste summary)
 
-      ```
-
-      <paste full pytest -v output>
-
-      ```
-
-
-      **New test names**:
-
-      ```
-
-      <list test names added>
-
-      ```'
+      **Coverage**: capabilities field / tools backward compat / side_effect_policy
+      transition'
+    refs:
+    - tests/core/test_spec.py
+    - src/larva/core/spec.py
     depends_on:
     - core_types.contract-capabilities-field
     agent: python-executor
