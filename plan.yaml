@@ -24785,6 +24785,88 @@ phases:
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
   status: pending
+  steps:
+  - id: core_types.contract-capabilities-field
+    name: contract-capabilities-field
+    status: pending
+    description: "Contract step: Define the capabilities field and transition types\
+      \ in core/spec.py.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n\n## Changes Required\n\n### File: src/larva/core/spec.py\n\
+      \n1. **Add `capabilities` field to PersonaSpec** (line 69 area):\n   - Add:\
+      \ `capabilities: dict[str, ToolPosture]`\n   - Keep `tools: dict[str, ToolPosture]`\
+      \ as deprecated alias (transition period)\n   - Update docstring to document\
+      \ both fields and deprecation intent\n\n2. **Update ToolsetComponent** (line\
+      \ 84-87):\n   - Add: `capabilities: dict[str, ToolPosture]`\n   - Keep `tools:\
+      \ dict[str, ToolPosture]` as deprecated\n   - Update docstring\n\n3. **Deprecate\
+      \ SideEffectPolicy** (line 29-35):\n   - Add deprecation comment to the type\
+      \ alias\n   - Keep the type for backward compatibility during transition\n\n\
+      4. **Update ConstraintComponent** (line 90-95):\n   - Keep `side_effect_policy`\
+      \ field but add deprecation comment\n   - Update docstring to note deprecation\n\
+      \n5. **Update __all__** to include any new exports\n\n6. **Update PersonaSpec\
+      \ docstring** to reflect ADR-002\n\n### File: contracts/persona_spec.schema.json\n\
+      \n1. Add `capabilities` property (same shape as `tools` -- object with additionalProperties\
+      \ enum of none/read_only/read_write/destructive)\n2. Mark `tools` as deprecated\
+      \ in its description\n3. Mark `side_effect_policy` as deprecated in its description\n\
+      4. Update `required` array: replace `tools` with `capabilities`\n\n## Non-Goals\n\
+      - Do NOT implement normalization logic (tools->capabilities conversion)\n- Do\
+      \ NOT implement validation logic changes\n- Do NOT change assembly logic\n\n\
+      ## Acceptance Criteria\n- PersonaSpec TypedDict has both `tools` and `capabilities`\
+      \ fields\n- ToolsetComponent has both `tools` and `capabilities` fields\n- SideEffectPolicy\
+      \ type alias has deprecation documentation\n- JSON schema accepts both `tools`\
+      \ and `capabilities`\n- `invar sig src/larva/core/spec.py` shows updated signatures\n\
+      - No implementation logic changes, only type definitions"
+    verification: '- PersonaSpec TypedDict has `capabilities: dict[str, ToolPosture]`
+      field
+
+      - PersonaSpec TypedDict retains `tools` field with deprecation note
+
+      - ToolsetComponent has `capabilities` field alongside deprecated `tools`
+
+      - ConstraintComponent has deprecation note on side_effect_policy
+
+      - JSON schema has capabilities property with correct shape
+
+      - JSON schema required array includes capabilities
+
+      - `uv run invar guard --all` passes'
+    evidence_template: '## Contract Evidence
+
+
+      **invar sig output for spec.py**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      **PersonaSpec TypedDict fields** (from code):
+
+      ```python
+
+      <paste PersonaSpec class>
+
+      ```
+
+
+      **JSON schema diff** (before/after):
+
+      ```
+
+      <paste key changes>
+
+      ```
+
+
+      **invar guard result**:
+
+      ```
+
+      <paste output>
+
+      ```'
+    agent: python-senior
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
