@@ -26531,3 +26531,42 @@ phases:
     - doc_contract.update-usage-and-userguide
     - doc_contract.update-readme
     agent: gate-reviewer
+  - id: doc_contract.accept-adr-002
+    name: accept-adr-002
+    status: pending
+    description: 'Transition ADR-002 status from "Proposed" to "Accepted".
+
+
+      step_type: implementation
+
+
+      ## File: ADR-002-capability-intent-without-runtime-policy.md
+
+
+      ### Changes Required
+
+
+      1. Change the Status field from "Proposed" to "Accepted"
+
+      2. Add acceptance date (current date)
+
+      3. No other content changes — the ADR substance is already finalized
+
+
+      This is a governance step ensuring the ADR is formally accepted before implementation
+      proceeds.
+
+
+      ## Acceptance Criteria
+
+      - ADR-002 status reads "Accepted"
+
+      - Acceptance date is recorded
+
+      - No substantive content changes to the ADR'
+    verification: '- ADR-002 status field reads "Accepted"
+
+      - Date of acceptance recorded
+
+      - No other content changes'
+    agent: doc-reviewer
