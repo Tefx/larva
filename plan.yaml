@@ -25694,6 +25694,8 @@ phases:
       <list>
 
       ```'
+    refs:
+    - tests/app/test_facade.py
     agent: python-executor
   - id: test_migration.update-shell-tests
     name: update-shell-tests
