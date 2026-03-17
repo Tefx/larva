@@ -24867,6 +24867,79 @@ phases:
 
       ```'
     agent: python-senior
+  - id: core_types.test-type-definitions
+    name: test-type-definitions
+    status: pending
+    description: 'Test step: Add tests for the new capabilities field type definitions
+      and backward compatibility.
+
+
+      step_type: test
+
+
+      ## File: tests/core/test_spec.py
+
+
+      ### Tests to Add
+
+
+      1. **test_capabilities_field_accepts_tool_postures**: PersonaSpec with `capabilities:
+      {''filesystem'': ''read_write''}` is valid TypedDict usage
+
+      2. **test_capabilities_field_coexists_with_tools**: PersonaSpec can have both
+      `tools` and `capabilities` during transition
+
+      3. **test_toolset_component_has_capabilities**: ToolsetComponent accepts `capabilities`
+      key
+
+      4. **test_toolset_component_backward_compat_tools**: ToolsetComponent still
+      accepts `tools` key
+
+      5. **test_constraint_component_still_accepts_side_effect_policy**: ConstraintComponent
+      still works with side_effect_policy (backward compat during transition)
+
+
+      ### Tests to Update
+
+
+      Existing tests in test_spec.py that reference `tools` should be supplemented
+      with `capabilities` variants where appropriate.
+
+
+      ## Acceptance Criteria
+
+      - All new tests are written and importable
+
+      - Tests cover both new `capabilities` field and backward-compat `tools` field
+
+      - Tests run: `uv run pytest tests/core/test_spec.py -v`'
+    verification: '- `uv run pytest tests/core/test_spec.py -v` passes
+
+      - New tests cover capabilities field and backward compat
+
+      - No test uses only the old field name without also testing the new one'
+    evidence_template: '## Test Evidence
+
+
+      **pytest output**:
+
+      ```
+
+      <paste full pytest -v output>
+
+      ```
+
+
+      **New test names**:
+
+      ```
+
+      <list test names added>
+
+      ```'
+    depends_on:
+    - core_types.contract-capabilities-field
+    agent: python-executor
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
