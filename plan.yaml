@@ -26562,6 +26562,7 @@ phases:
     - doc_contract.update-architecture-md
     - doc_contract.update-usage-and-userguide
     - doc_contract.update-readme
+    - doc_contract.accept-adr-002
     agent: gate-reviewer
   - id: doc_contract.accept-adr-002
     name: accept-adr-002
