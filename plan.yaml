@@ -25468,6 +25468,61 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+  - id: shell_adapters.cli-capabilities
+    name: cli-capabilities
+    status: pending
+    description: 'Update CLI layer to use capabilities field.
+
+
+      step_type: implementation
+
+
+      ## Files
+
+
+      ### src/larva/shell/cli.py
+
+      - Update any argument parsing that references `tools` field
+
+      - Update help text for assemble/update commands if they mention `tools`
+
+
+      ### src/larva/shell/cli_commands.py
+
+      - Update command implementations if they reference `tools` directly
+
+      - Most commands delegate to facade so changes should be minimal
+
+
+      ### src/larva/shell/cli_helpers.py
+
+      - Update `_render_payload_for_text` (line 144) if it renders `tools` field in
+      text output -- should now render `capabilities`
+
+      - Update any key-value parsing that special-cases `tools` field
+
+      - Check `_parse_set_values` and `_parse_key_value_pairs` for `tools` references
+
+
+      ## Acceptance Criteria
+
+      - CLI output shows `capabilities` instead of `tools`
+
+      - CLI commands accept `capabilities` in --set and --override
+
+      - Text rendering uses `capabilities` label
+
+      - `uv run invar guard --all` passes'
+    verification: '- CLI renders capabilities in output
+
+      - CLI accepts capabilities in inputs
+
+      - Text mode output correct
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - shell_adapters.facade-capabilities
+    agent: python-executor
 - id: test_migration
   name: Test Suite Migration
   status: locked
