@@ -25338,6 +25338,8 @@ phases:
 
 
       **invar guard**: <paste output>'
+    refs:
+    - src/larva/shell/components.py
     agent: python-executor
   - id: shell_adapters.facade-capabilities
     name: facade-capabilities
