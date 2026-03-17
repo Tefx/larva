@@ -25136,13 +25136,17 @@ phases:
       - Existing doctests pass
 
       - `uv run invar guard --all` passes'
-    evidence_template: "## Implementation Evidence\n\n**DEEP_MERGE_KEYS value**:\n\
-      ```python\nfrom larva.core.patch import DEEP_MERGE_KEYS\nprint(DEEP_MERGE_KEYS)\
-      \  # Should include 'capabilities'\n```\n\n**Deep merge test**:\n```python\n\
-      from larva.core.patch import apply_patches\nresult = apply_patches(\n    {'capabilities':\
-      \ {'fs': 'read_write', 'git': 'read_only'}},\n    {'capabilities': {'fs': 'destructive'}}\n\
-      )\nprint(result)  # {'capabilities': {'fs': 'destructive', 'git': 'read_only'}}\n\
-      ```\n\n**invar guard**: <paste output>"
+    evidence_template: '## Patch Capabilities Evidence
+
+      **DEEP_MERGE_KEYS contains capabilities**: yes/no
+
+      **capabilities deep merge works**: yes/no (paste doctest)
+
+      **tools deep merge still works**: yes/no
+
+      **invar guard**: pass/fail'
+    refs:
+    - src/larva/core/patch.py
     agent: python-executor
   - id: core_logic.core-logic-tests
     name: core-logic-tests
