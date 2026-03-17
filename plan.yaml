@@ -26439,23 +26439,49 @@ phases:
   - id: doc_contract.update-usage-and-userguide
     name: update-usage-and-userguide
     status: pending
-    description: "Update USAGE.md and USER_GUIDE.md to use capabilities field and\
-      \ note deprecation.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
-      \  - usage_documentation\n\n## Files: USAGE.md, USER_GUIDE.md\n\n### USAGE.md\
-      \ Changes\n- Section 2 PersonaSpec example: tools -> capabilities\n- Section\
-      \ 3.9 component_show Constraint example: note side_effect_policy deprecated\n\
-      - Section 4 Component Library: toolset example uses capabilities key\n- Section\
-      \ 4 Constraint component: note side_effect_policy deprecation\n- Section 9 Critical\
-      \ Constraints: update side_effect_policy constraint description\n\n### USER_GUIDE.md\
-      \ Changes\n- Section 4 PersonaSpec basics: example uses capabilities\n- Section\
-      \ 5 first persona example: tools -> capabilities\n- Section 6 lifecycle example:\
-      \ update --set commands\n- Section 11 Working with components: constraint description\
-      \ notes deprecation\n- Section 12 Python API: example uses capabilities\n- Section\
-      \ 16 Design notes: update side_effect_policy note\n\n## Non-Goals\n- Do NOT\
-      \ change Python code\n\n## Acceptance Criteria\n- All PersonaSpec examples in\
-      \ USAGE.md use capabilities\n- All PersonaSpec examples in USER_GUIDE.md use\
-      \ capabilities\n- side_effect_policy noted as deprecated where mentioned\n-\
-      \ Component examples updated"
+    description: 'Update USAGE.md and USER_GUIDE.md to use `capabilities` and deprecate
+      `side_effect_policy`.
+
+
+      NOTE: ARCHITECTURE.md and INTERFACES.md were already migrated (commit 837e26e),
+      but USAGE.md and USER_GUIDE.md still have old field names.
+
+
+      ### USAGE.md changes needed:
+
+      - Line 76: `side_effect_policy` in example → remove or replace with `capabilities`
+
+      - Line 86: `side_effect_policy` description → note deprecation
+
+      - Line 280: Constraint example → update
+
+      - Line 298: Component table → remove `side_effect_policy` from constraints,
+      add `capabilities` to toolsets
+
+      - Line 318: `side_effect_policy` in assembly example → update
+
+      - Line 334: Scalar conflict description → remove `side_effect_policy`
+
+      - Lines 381-383: Conflict example → update
+
+      - Line 421: Directory listing → update constraints description
+
+      - All `tools` field references → rename to `capabilities`
+
+
+      ### USER_GUIDE.md changes needed:
+
+      - Line 88: `side_effect_policy` in example → remove/update
+
+      - Line 106: `side_effect_policy` validation rule → deprecation note
+
+      - Line 123: Constraint example → update
+
+      - Line 286: Component directory description → update
+
+      - Lines 334, 345: Assembly output example → use `capabilities`
+
+      - All `tools` field references → rename to `capabilities`'
     verification: '- USAGE.md examples use capabilities
 
       - USER_GUIDE.md examples use capabilities
