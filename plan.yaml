@@ -26024,6 +26024,37 @@ phases:
     depends_on:
     - doc_sync.update-interfaces-md
     agent: doc-reviewer
+  - id: doc_sync.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify documentation sync is complete.
+
+
+      review_depth: STANDARD
+
+
+      Review criteria:
+
+      1. All docs consistently use capabilities as primary field
+
+      2. side_effect_policy deprecation documented everywhere
+
+      3. Transition/backward-compat behavior documented
+
+      4. No broken markdown
+
+      5. Examples match actual code behavior'
+    verification: '- Documentation consistent with code changes
+
+      - All docs use capabilities
+
+      - Deprecation documented
+
+      - No formatting issues'
+    depends_on:
+    - doc_sync.update-interfaces-md
+    - doc_sync.update-other-docs
+    agent: gate-reviewer
 - id: deep_review
   name: Deep Review (Independent Multi-Agent Audit)
   status: locked
