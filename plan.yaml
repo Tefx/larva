@@ -26007,6 +26007,11 @@ phases:
       - side_effect_policy deprecated in all docs
 
       - No formatting issues'
+    refs:
+    - ARCHITECTURE.md
+    - USAGE.md
+    - USER_GUIDE.md
+    - README.md
     depends_on:
     - doc_sync.update-interfaces-md
     agent: doc-reviewer
