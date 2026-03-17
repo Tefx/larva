@@ -214,6 +214,14 @@ class AssemblyInput(TypedDict, total=False):
     variables: dict[str, str]
 ```
 
+### Rationale
+
+- `spec_version` is schema compatibility metadata, not persona release metadata.
+- In v1, `spec_version` is pinned to `"0.1.0"` so all validators, normalizers,
+  and consumers share one canonical contract.
+- Persona content changes are reflected by `spec_digest`; clone, update, and
+  resolve do not auto-bump `spec_version`.
+
 ---
 
 ## Module: `larva.core.validate`

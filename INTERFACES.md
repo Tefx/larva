@@ -336,9 +336,10 @@ Clone a registered persona to a new id.
 }
 ```
 
-All fields from the source persona are preserved except `id` and `spec_digest`:
+All source content fields are preserved except `id` and `spec_digest`:
 - `id` is replaced with `new_id`
 - `spec_digest` is recomputed for the cloned persona
+- `spec_version` remains the canonical schema version (`"0.1.0"` in v1); it is not a persona revision counter
 
 **Error:** `PERSONA_NOT_FOUND` (100) if source_id not in registry.
 `PERSONA_INVALID` (101) if new_id violates validation rules.
@@ -687,9 +688,10 @@ Clone a registered persona to a new id.
 **Routing:** Via facade to `RegistryStore.get()` → copy with new id → validate → normalize → `RegistryStore.save()`.
 
 **Semantics:**
-- All fields from source persona are preserved except `id` and `spec_digest`
+- All source content fields are preserved except `id` and `spec_digest`
 - `id` is replaced with `new_id`
 - `spec_digest` is recomputed for the cloned persona
+- `spec_version` remains the canonical schema version (`"0.1.0"` in v1); clone does not bump or reinterpret it
 - If `new_id` already exists in registry, overwrites (consistent with register)
 
 Exit codes: 0 success, 1 domain error (PERSONA_NOT_FOUND, PERSONA_INVALID, REGISTRY_WRITE_FAILED), 2 input/critical failure.
@@ -1106,9 +1108,10 @@ Clone a registered persona to a new id.
 **Raises:** `LarvaApiError` with code `PERSONA_NOT_FOUND` (100) if source persona does not exist, `PERSONA_INVALID` (101) if new_id violates validation rules, `REGISTRY_WRITE_FAILED` (109) on save failure.
 
 **Semantics:**
-- All fields from source persona are preserved except `id` and `spec_digest`
+- All source content fields are preserved except `id` and `spec_digest`
 - `id` is replaced with `new_id`
 - `spec_digest` is recomputed for the cloned persona
+- `spec_version` remains the canonical schema version (`"0.1.0"` in v1); it is not used for persona-level versioning
 - If `new_id` already exists in registry, overwrites (consistent with register)
 
 ```python

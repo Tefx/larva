@@ -483,6 +483,7 @@ All errors use a single envelope shape:
 - **No inheritance.** There is no `base:` field. Composition is explicit.
 - **Error-on-conflict.** Conflicting scalar fields from multiple components always error. Use `overrides` to resolve.
 - **Ids are global and flat.** No namespacing in v1. Ids must be kebab-case: `^[a-z0-9]+(-[a-z0-9]+)*$`.
+- **spec_version is schema identity, not persona revisioning.** In v1 it is pinned to `"0.1.0"`, defaults when absent, and is not auto-bumped by clone/update.
 - **spec_digest is always recomputed.** Do not pass stale digest values; larva overwrites them.
 - **Override revalidation is mandatory.** When overrides are applied via `resolve`, the result is revalidated and renormalized. Invalid overrides produce `PERSONA_INVALID`.
 - **No cross-run persona memory.** Persona changes require explicit `register`. There is no hidden mutable state.

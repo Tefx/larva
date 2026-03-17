@@ -946,7 +946,7 @@ class TestFacadeClone:
             "side_effect_policy": "full_access",
             "can_spawn": True,
             "compaction_prompt": "Custom compaction",
-            "spec_version": "0.2.0",
+            "spec_version": "0.1.0",
             "spec_digest": "sha256:stale",
             "custom_field": "custom_value",
         }
@@ -965,7 +965,7 @@ class TestFacadeClone:
         assert cloned["side_effect_policy"] == "full_access"
         assert cloned["can_spawn"] is True
         assert cloned["compaction_prompt"] == "Custom compaction"
-        assert cloned["spec_version"] == "0.2.0"
+        assert cloned["spec_version"] == "0.1.0"
         assert cloned["custom_field"] == "custom_value"
         assert cloned["id"] == "clone-target"
         assert cloned["spec_digest"] == _digest_for(cloned)

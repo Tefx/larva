@@ -990,7 +990,7 @@ class TestCloneCommand:
             "side_effect_policy": "full_access",
             "can_spawn": True,
             "compaction_prompt": "Custom compaction",
-            "spec_version": "0.2.0",
+            "spec_version": "0.1.0",
             "spec_digest": "sha256:stale",
             "custom_field": "custom_value",
         }
@@ -1013,7 +1013,7 @@ class TestCloneCommand:
         assert cloned["side_effect_policy"] == "full_access"
         assert cloned["can_spawn"] is True
         assert cloned["compaction_prompt"] == "Custom compaction"
-        assert cloned["spec_version"] == "0.2.0"
+        assert cloned["spec_version"] == "0.1.0"
         assert cloned["custom_field"] == "custom_value"
         # Digest must be recomputed
         assert cloned["spec_digest"] != "sha256:stale"

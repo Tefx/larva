@@ -653,7 +653,9 @@ class TestPythonApiComponentList:
                     }
                 )
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
         result = python_api.component_list()
         assert result == {"prompts": [], "toolsets": [], "constraints": [], "models": []}
 
@@ -672,7 +674,9 @@ class TestPythonApiComponentList:
                     )
                 )
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_list()
@@ -706,7 +710,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
         result = python_api.component_show("prompt", "test-prompt")
 
         assert call_record == ["load_prompt:test-prompt"]
@@ -732,7 +738,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
         result = python_api.component_show("toolset", "default")
         assert result == {"tools": {"shell": "read_write"}}
 
@@ -756,7 +764,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
         result = python_api.component_show("constraint", "strict")
         assert result == {"side_effect_policy": "read_only"}
 
@@ -780,7 +790,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({"model": "gpt-4o-mini"})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
         result = python_api.component_show("model", "gpt-4")
         assert result == {"model": "gpt-4o-mini"}
 
@@ -804,7 +816,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_show("invalid_type", "some-name")
@@ -839,7 +853,9 @@ class TestPythonApiComponentShow:
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
-        monkeypatch.setattr(python_api_components, "_get_component_store", lambda: MockComponentStore())
+        monkeypatch.setattr(
+            python_api_components, "_get_component_store", lambda: MockComponentStore()
+        )
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_show("prompt", "missing-prompt")
@@ -891,7 +907,7 @@ class TestPythonApiClone:
             "side_effect_policy": "full_access",
             "can_spawn": True,
             "compaction_prompt": "Summarize everything.",
-            "spec_version": "0.2.0",
+            "spec_version": "0.1.0",
             "spec_digest": "sha256:source-digest",
             "custom_field": "custom_value",
         }
@@ -907,7 +923,7 @@ class TestPythonApiClone:
         assert result["side_effect_policy"] == "full_access"
         assert result["can_spawn"] is True
         assert result["compaction_prompt"] == "Summarize everything."
-        assert result["spec_version"] == "0.2.0"
+        assert result["spec_version"] == "0.1.0"
         assert result["custom_field"] == "custom_value"
         assert result["id"] == "target-preserves"
         # spec_digest is recomputed, not copied from source
