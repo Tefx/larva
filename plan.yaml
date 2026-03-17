@@ -25816,6 +25816,66 @@ phases:
     depends_on:
     - test_migration.update-facade-tests
     agent: python-executor
+  - id: test_migration.full-test-suite-verification
+    name: full-test-suite-verification
+    status: pending
+    description: 'Run the complete test suite and invar guard to verify no regressions.
+
+
+      step_type: verification
+
+
+      Independence Level: L1
+
+
+      ## Required Commands
+
+
+      1. `uv run pytest tests/ -v` -- full test suite
+
+      2. `uv run invar guard --all` -- contract verification
+
+      3. `uv run pytest tests/ --doctest-modules` -- doctest verification (if supported)
+
+
+      ## Expected Outcomes
+
+      - All tests pass (0 failures)
+
+      - invar guard passes
+
+      - No deprecation-related regressions'
+    verification: '- `uv run pytest tests/ -v` passes with 0 failures
+
+      - `uv run invar guard --all` passes
+
+      - Total test count reported'
+    evidence_template: '## Full Suite Verification
+
+
+      **pytest output summary**:
+
+      ```
+
+      <paste summary line: X passed, Y failed>
+
+      ```
+
+
+      **invar guard output**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      **Verdict**: PASS / FAIL'
+    depends_on:
+    - test_migration.update-facade-tests
+    - test_migration.update-shell-tests
+    agent: integration-verifier
 - id: doc_sync
   name: Documentation Sync
   status: locked
