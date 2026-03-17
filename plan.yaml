@@ -25523,6 +25523,27 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+  - id: shell_adapters.python-api-capabilities
+    name: python-api-capabilities
+    status: pending
+    description: "Update Python API layer to use capabilities field.\n\nstep_type:\
+      \ implementation\n\n## File: src/larva/shell/python_api.py\n\n### Changes Required\n\
+      \n1. **Update docstrings** on all public functions that mention `tools`:\n \
+      \  - assemble, validate, register, resolve, update, update_batch, list, clone,\
+      \ delete\n   - Update examples to use `capabilities` instead of `tools`\n\n\
+      2. **Update python_api_components.py** if it references `tools`\n\n3. **Most\
+      \ logic changes flow through facade** -- the Python API is thin delegation\n\
+      \   - Verify that return types now include `capabilities` via the facade pipeline\n\
+      \n## Acceptance Criteria\n- Python API docstrings use `capabilities`\n- Python\
+      \ API returns include `capabilities` field\n- `uv run invar guard --all` passes"
+    verification: '- Python API docstrings reference capabilities
+
+      - Return values include capabilities
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - shell_adapters.facade-capabilities
+    agent: python-executor
 - id: test_migration
   name: Test Suite Migration
   status: locked
