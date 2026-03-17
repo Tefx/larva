@@ -1,13 +1,13 @@
 # larva
 
-larva is a PersonaSpec toolkit for LLM agent systems. It validates, assembles,
-normalizes, registers, resolves, clones, updates, and exports canonical persona
-definitions.
+larva is a PersonaSpec toolkit for LLM agent systems. It gives you one place to
+validate, assemble, normalize, register, resolve, clone, update, and export
+canonical persona definitions.
 
 ## What larva is for
 
-Use larva when you want a stable authority for agent persona definitions rather
-than ad hoc prompt files.
+Use larva when you want a stable authority for agent persona definitions instead
+of ad hoc prompt files scattered across tools and repos.
 
 - Validate PersonaSpec JSON before it reaches runtime
 - Assemble personas from reusable components
@@ -33,6 +33,9 @@ uvx larva --help
 
 ## Quick start
 
+The example below creates a minimal persona, validates it, stores it in the
+local registry, and resolves the canonical output back out.
+
 Create a minimal persona:
 
 ```bash
@@ -57,7 +60,7 @@ larva register code-reviewer.json
 larva resolve code-reviewer
 ```
 
-Clone and modify it:
+Clone and modify it for experimentation:
 
 ```bash
 larva clone code-reviewer code-reviewer-exp
@@ -88,7 +91,7 @@ The main larva artifact is a flat JSON object called `PersonaSpec`.
 }
 ```
 
-Important rules:
+Key rules:
 
 - `id` is required and must be flat kebab-case
 - `spec_version` is schema identity, not persona revisioning
@@ -98,7 +101,8 @@ Important rules:
 
 ### Components
 
-larva can assemble personas from reusable components stored in `~/.larva/components/`:
+larva can also assemble personas from reusable components stored in
+`~/.larva/components/`:
 
 ```text
 ~/.larva/
@@ -110,7 +114,7 @@ larva can assemble personas from reusable components stored in `~/.larva/compone
   registry/
 ```
 
-Example:
+Example assembly command:
 
 ```bash
 larva assemble --id code-reviewer \
@@ -204,6 +208,9 @@ from larva.shell.python_api import (
 )
 ```
 
+The Python API mirrors the main CLI and MCP operations and returns the same
+canonical PersonaSpec shapes.
+
 ## Other surfaces
 
 ### Web UI
@@ -217,7 +224,7 @@ python contrib/web/server.py
 
 ### OpenCode plugin
 
-larva also ships an OpenCode plugin that registers larva personas as agents.
+larva also ships an OpenCode plugin that exposes larva personas as agents.
 See `contrib/opencode-plugin/README.md`.
 
 ## Architecture
@@ -231,6 +238,8 @@ larva uses a strict layered structure enforced by Invar.
 | Shell | `src/larva/shell/` | CLI, MCP, filesystem, web adapters |
 
 ## Read next
+
+If you are just getting started, read `README.md` then `USER_GUIDE.md`.
 
 - `USER_GUIDE.md` - detailed human-oriented usage guide
 - `USAGE.md` - agent-oriented operational guide

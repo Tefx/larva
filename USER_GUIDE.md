@@ -42,6 +42,12 @@ Confirm the CLI is available:
 larva --help
 ```
 
+If you prefer ephemeral execution, you can also run larva with `uvx`:
+
+```bash
+uvx larva --help
+```
+
 ## 3. Directory layout
 
 larva stores state under `~/.larva/`.
@@ -366,6 +372,15 @@ larva.component_show(type, name)
 ```
 
 If you need exact parameter and return contracts, read `INTERFACES.md`.
+
+Typical local startup commands:
+
+```bash
+larva mcp
+larva serve
+uvx larva mcp
+uvx larva serve
+```
 
 ## 14. Web UI and plugin
 
