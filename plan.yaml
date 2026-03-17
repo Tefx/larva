@@ -24790,3 +24790,8 @@ phases:
   status: locked
   depends_on:
   - core_types
+- id: shell_adapters
+  name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
+  status: locked
+  depends_on:
+  - core_logic
