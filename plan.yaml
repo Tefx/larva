@@ -25977,72 +25977,26 @@ phases:
     - INTERFACES.md
     agent: doc-reviewer
   - id: doc_sync.update-other-docs
-    name: update-other-docs
+    name: Reconcile other docs + update MIGRATION-002 progress
     status: pending
-    description: 'Update USAGE.md, USER_GUIDE.md, README.md, and ARCHITECTURE.md.
+    description: 'RECONCILIATION pass for ARCHITECTURE.md, USAGE.md, USER_GUIDE.md,
+      README.md — fix any drift from doc_contract where code implementation diverged
+      from initial docs.
 
 
-      step_type: implementation
+      Additionally:
+
+      1. Update MIGRATION-002-capability-intent.md with rollout progress — mark completed
+      rollout steps (1-3) and note implementation commit references.
+
+      2. Verify MCP tool descriptions and CLI --help output do not reference deprecated
+      field names without deprecation context.
+
+      3. Check that ADR-002 status was changed to Accepted (done in doc_contract.accept-adr-002).
 
 
-      ## Files
-
-
-      ### README.md
-
-      - Line 50: Update example spec from `tools`/`side_effect_policy` to `capabilities`
-
-      - Line 89: Update full example spec
-
-
-      ### USAGE.md
-
-      - Line 76: Update example spec
-
-      - Line 86: Remove or deprecate side_effect_policy from field list
-
-      - Line 280: Update Constraint description
-
-      - Line 298: Update Component Types table
-
-      - Line 318: Update constraint YAML example
-
-      - Line 334: Update Assembly Rules
-
-      - Line 381-383: Update error example
-
-      - Line 421: Update directory structure
-
-
-      ### USER_GUIDE.md
-
-      - Line 88: Update example spec
-
-      - Line 106: Deprecate side_effect_policy validation note
-
-      - Line 123: Update example
-
-      - Line 286: Update component description
-
-      - Lines 334-345: Update examples
-
-
-      ### ARCHITECTURE.md
-
-      - Line 186: Update PersonaSpec fields
-
-      - Line 200: Update ConstraintComponent fields
-
-
-      ## Acceptance Criteria
-
-      - All docs use `capabilities` as primary field name
-
-      - side_effect_policy marked as deprecated in all docs
-
-      - No broken markdown formatting
-
-      - Consistent terminology across all documents'
+      Do NOT redo doc_contract work — only patch where implementation revealed the
+      initial doc assumptions were wrong.'
     verification: '- All docs updated consistently
 
       - capabilities is primary field name
