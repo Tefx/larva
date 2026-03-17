@@ -25293,6 +25293,34 @@ phases:
     - core_logic.assemble-capabilities
     - core_logic.patch-capabilities
     agent: python-executor
+  - id: core_logic.gate
+    name: gate
+    status: pending
+    description: "Gate review: Verify core logic migration is complete and correct.\n\
+      \nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Phase touches normalization,\
+      \ validation, assembly, and patch logic\n  - Cross-cutting change affecting\
+      \ multiple core modules\n  - Backward compatibility must be verified\n\ncross_cutting_focus:\n\
+      \  - tools->capabilities normalization in all core paths\n  - side_effect_policy\
+      \ deprecation warnings consistent\n  - backward compatibility for old field\
+      \ names preserved"
+    verification: '- All core logic steps completed
+
+      - Normalization converts tools->capabilities correctly
+
+      - Deprecation warnings emitted for side_effect_policy and tools
+
+      - Assembly handles both field names
+
+      - Patch deep-merges capabilities
+
+      - All tests pass: `uv run pytest tests/core/ -v`
+
+      - `uv run invar guard --all` passes
+
+      - No backward compatibility regressions'
+    depends_on:
+    - core_logic.core-logic-tests
+    agent: gate-reviewer
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
