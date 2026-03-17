@@ -26316,3 +26316,203 @@ phases:
 - id: doc_contract
   name: Documentation and Schema Contracts
   status: pending
+  steps:
+  - id: doc_contract.update-json-schema
+    name: update-json-schema
+    status: pending
+    description: "Update contracts/persona_spec.schema.json to add capabilities and\
+      \ deprecate tools/side_effect_policy.\n\nstep_type: contract\ncontract_purity:\
+      \ ENFORCED\ncontract_outputs:\n  - schema_definition\n\n## File: contracts/persona_spec.schema.json\n\
+      \n### Changes Required\n\n1. Add `capabilities` property (same shape as `tools`):\n\
+      \   - type: object\n   - additionalProperties: { type: string, enum: [none,\
+      \ read_only, read_write, destructive] }\n   - description: Map of tool_family\
+      \ -> posture. The canonical tool-access declaration surface per ADR-002.\n\n\
+      2. Update `tools` property description to note deprecation:\n   - Add: 'DEPRECATED:\
+      \ Use capabilities instead. Accepted during transition, normalized to capabilities\
+      \ in output.'\n\n3. Update `side_effect_policy` property description to note\
+      \ deprecation:\n   - Add: 'DEPRECATED per ADR-002: Runtime policy moves to anima.\
+      \ Accepted during transition with deprecation warning.'\n\n4. Update `required`\
+      \ array:\n   - Change from [id, description, prompt, model, tools, spec_version]\
+      \ to [id, description, prompt, model, spec_version]\n   - Neither tools nor\
+      \ capabilities is required at schema level (backward compat: old specs have\
+      \ tools, new specs have capabilities)\n\n5. Set additionalProperties to false\
+      \ (unchanged, just verify).\n\n## Non-Goals\n- Do NOT change any Python code\n\
+      - Do NOT change any documentation files (those are separate steps)\n\n## Acceptance\
+      \ Criteria\n- JSON schema has capabilities property with correct type definition\n\
+      - JSON schema tools property has deprecation note in description\n- JSON schema\
+      \ side_effect_policy has deprecation note\n- required array no longer mandates\
+      \ tools (transition: accept both)\n- Schema is valid JSON Schema draft 2020-12"
+    verification: '- JSON schema has capabilities property with enum [none, read_only,
+      read_write, destructive]
+
+      - tools description includes DEPRECATED note
+
+      - side_effect_policy description includes DEPRECATED note
+
+      - required array is [id, description, prompt, model, spec_version]
+
+      - Schema validates as valid JSON Schema'
+    refs:
+    - contracts/persona_spec.schema.json
+    - ADR-002-capability-intent-without-runtime-policy.md
+    agent: python-executor
+  - id: doc_contract.update-interfaces-md
+    name: update-interfaces-md
+    status: pending
+    description: "Update INTERFACES.md to reflect the new capability intent model\
+      \ per ADR-002.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interface_documentation\n\n## File: INTERFACES.md\n\n### Changes Required\n\
+      \n1. **Section A (MCP Server Interface)**:\n   - Update larva.validate example\
+      \ to use `capabilities` instead of `tools`\n   - Update INVALID_SIDE_EFFECT_POLICY\
+      \ example to note deprecation\n   - Update larva.clone example to use `capabilities`\n\
+      \   - Update larva.update examples: `tools` deep-merge note also applies to\
+      \ `capabilities`\n\n2. **Section C (Component Library)**:\n   - Constraint Component:\
+      \ note that side_effect_policy is deprecated\n   - Toolset Component: show capabilities\
+      \ key alongside tools\n   - Assembly Rules: update scalar conflict list (remove\
+      \ side_effect_policy), update tools merge note to mention capabilities\n\n3.\
+      \ **Section E (PersonaSpec Output Format)**:\n   - Update example JSON: tools\
+      \ -> capabilities\n   - Note that output uses capabilities (tools retained during\
+      \ transition)\n\n4. **Section G (Error Codes)**:\n   - Update INVALID_SIDE_EFFECT_POLICY\
+      \ description to note deprecation\n\n5. **Section H (Python API)**:\n   - Update\
+      \ example specs to use capabilities\n\n## Non-Goals\n- Do NOT change Python\
+      \ code\n- Do NOT change JSON schema (separate step)\n\n## Acceptance Criteria\n\
+      - INTERFACES.md uses capabilities as primary field name\n- tools mentioned only\
+      \ in deprecation/backward-compat context\n- side_effect_policy marked as deprecated\
+      \ throughout\n- All example JSON uses capabilities"
+    verification: '- INTERFACES.md examples use capabilities field
+
+      - tools referenced only for backward compat/deprecation
+
+      - side_effect_policy marked deprecated
+
+      - All JSON examples updated'
+    refs:
+    - INTERFACES.md
+    - ADR-002-capability-intent-without-runtime-policy.md
+    - MIGRATION-002-capability-intent.md
+    agent: doc-reviewer
+  - id: doc_contract.update-architecture-md
+    name: update-architecture-md
+    status: pending
+    description: "Update ARCHITECTURE.md to reflect capabilities field and deprecation\
+      \ of side_effect_policy.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
+      contract_outputs:\n  - architecture_documentation\n\n## File: ARCHITECTURE.md\n\
+      \n### Changes Required\n\n1. **Section 6, Module: larva.core.spec**:\n   - Update\
+      \ PersonaSpec Public Interface: add `capabilities: dict[str, ToolPosture]`,\
+      \ mark `tools` deprecated\n   - Update ToolsetComponent: add `capabilities`\
+      \ field\n   - Update ConstraintComponent: mark side_effect_policy as deprecated\n\
+      \   - Update SideEffectPolicy type alias: add deprecation note\n\n2. **Section\
+      \ 6, Module: larva.core.validate**:\n   - Note that side_effect_policy validation\
+      \ emits deprecation warning\n\n3. **Section 6, Module: larva.core.assemble**:\n\
+      \   - Update assembly rules: scalar_fields no longer includes side_effect_policy\n\
+      \   - Update tools merge description to mention capabilities\n\n## Non-Goals\n\
+      - Do NOT change Python code\n\n## Acceptance Criteria\n- ARCHITECTURE.md Public\
+      \ Interface shows capabilities field\n- tools marked as deprecated in type definitions\n\
+      - side_effect_policy marked as deprecated\n- Assembly rules updated"
+    verification: '- PersonaSpec interface shows capabilities field
+
+      - tools field has deprecation note
+
+      - SideEffectPolicy has deprecation note
+
+      - ConstraintComponent side_effect_policy has deprecation note
+
+      - Assembly scalar_fields does not list side_effect_policy as conflict source'
+    refs:
+    - ARCHITECTURE.md
+    - ADR-002-capability-intent-without-runtime-policy.md
+    agent: doc-reviewer
+  - id: doc_contract.update-usage-and-userguide
+    name: update-usage-and-userguide
+    status: pending
+    description: "Update USAGE.md and USER_GUIDE.md to use capabilities field and\
+      \ note deprecation.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - usage_documentation\n\n## Files: USAGE.md, USER_GUIDE.md\n\n### USAGE.md\
+      \ Changes\n- Section 2 PersonaSpec example: tools -> capabilities\n- Section\
+      \ 3.9 component_show Constraint example: note side_effect_policy deprecated\n\
+      - Section 4 Component Library: toolset example uses capabilities key\n- Section\
+      \ 4 Constraint component: note side_effect_policy deprecation\n- Section 9 Critical\
+      \ Constraints: update side_effect_policy constraint description\n\n### USER_GUIDE.md\
+      \ Changes\n- Section 4 PersonaSpec basics: example uses capabilities\n- Section\
+      \ 5 first persona example: tools -> capabilities\n- Section 6 lifecycle example:\
+      \ update --set commands\n- Section 11 Working with components: constraint description\
+      \ notes deprecation\n- Section 12 Python API: example uses capabilities\n- Section\
+      \ 16 Design notes: update side_effect_policy note\n\n## Non-Goals\n- Do NOT\
+      \ change Python code\n\n## Acceptance Criteria\n- All PersonaSpec examples in\
+      \ USAGE.md use capabilities\n- All PersonaSpec examples in USER_GUIDE.md use\
+      \ capabilities\n- side_effect_policy noted as deprecated where mentioned\n-\
+      \ Component examples updated"
+    verification: '- USAGE.md examples use capabilities
+
+      - USER_GUIDE.md examples use capabilities
+
+      - side_effect_policy marked deprecated in both files
+
+      - grep for ''tools'' in JSON examples returns 0 (except backward-compat notes)'
+    refs:
+    - USAGE.md
+    - USER_GUIDE.md
+    - ADR-002-capability-intent-without-runtime-policy.md
+    agent: doc-reviewer
+  - id: doc_contract.update-readme
+    name: update-readme
+    status: pending
+    description: "Update README.md to use capabilities field in all PersonaSpec examples.\n\
+      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - readme_documentation\n\
+      \n## File: README.md\n\n### Changes Required\n- Update PersonaSpec JSON example\
+      \ (around line 78): tools -> capabilities\n- Update any CLI example output that\
+      \ shows tools field\n- Ensure no stale references to side_effect_policy remain\
+      \ in examples\n- Add brief note about ADR-002 in the Read Next section\n\n##\
+      \ Acceptance Criteria\n- README.md PersonaSpec example uses capabilities\n-\
+      \ No stale side_effect_policy in examples\n- ADR-002 referenced in Read Next"
+    verification: '- README.md JSON examples use capabilities field
+
+      - No tools field in JSON examples (except backward-compat notes)
+
+      - ADR-002 referenced'
+    refs:
+    - README.md
+    - ADR-002-capability-intent-without-runtime-policy.md
+    agent: doc-reviewer
+  - id: doc_contract.doc-contract-gate
+    name: doc-contract-gate
+    status: pending
+    description: "Gate review: Verify all documentation and schema contracts reflect\
+      \ the new capability intent model before any code changes begin.\n\nreview_depth:\
+      \ THOROUGH\nreview_depth_rationale: |\n  - This gate guards the contract-first\
+      \ boundary\n  - All subsequent code phases depend on these docs being correct\n\
+      \  - Any error here propagates to all downstream phases\n\nYOU ARE THE QUALITY\
+      \ GATE. Your job is to BLOCK progress if:\n- Any JSON example still uses 'tools'\
+      \ as primary field (instead of 'capabilities')\n- side_effect_policy is not\
+      \ marked deprecated in all relevant docs\n- JSON schema does not have capabilities\
+      \ property\n- INTERFACES.md does not reflect the new model\n\nReview criteria:\n\
+      1. contracts/persona_spec.schema.json: capabilities property exists, tools deprecated\n\
+      2. INTERFACES.md: all sections updated\n3. ARCHITECTURE.md: type definitions\
+      \ updated\n4. USAGE.md: all examples updated\n5. USER_GUIDE.md: all examples\
+      \ updated\n6. README.md: example updated\n7. Cross-consistency: all docs agree\
+      \ on the new model"
+    verification: '- All 6 files updated and consistent
+
+      - capabilities is the primary field name in all examples
+
+      - tools referenced only for deprecation/backward-compat
+
+      - side_effect_policy marked deprecated everywhere
+
+      - JSON schema valid
+
+      - No cross-document inconsistencies'
+    refs:
+    - contracts/persona_spec.schema.json
+    - INTERFACES.md
+    - ARCHITECTURE.md
+    - USAGE.md
+    - USER_GUIDE.md
+    - README.md
+    depends_on:
+    - doc_contract.update-json-schema
+    - doc_contract.update-interfaces-md
+    - doc_contract.update-architecture-md
+    - doc_contract.update-usage-and-userguide
+    - doc_contract.update-readme
+    agent: gate-reviewer
