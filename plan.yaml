@@ -25370,6 +25370,8 @@ phases:
       - Facade update/clone handle capabilities
 
       - `uv run invar guard --all` passes'
+    refs:
+    - src/larva/app/facade.py
     depends_on:
     - shell_adapters.components-toolset-migration
     agent: python-executor
