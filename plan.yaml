@@ -25326,6 +25326,58 @@ phases:
   status: locked
   depends_on:
   - core_logic
+  steps:
+  - id: shell_adapters.components-toolset-migration
+    name: components-toolset-migration
+    status: pending
+    description: "Update shell/components.py to handle capabilities in toolset and\
+      \ constraint components.\n\nstep_type: implementation\n\n## File: src/larva/shell/components.py\n\
+      \n### Changes Required\n\n1. **Update load_toolset** (line 307-327):\n   - When\
+      \ loading a toolset YAML file, check for `capabilities` key first, then fall\
+      \ back to `tools`\n   - Return ToolsetComponent with `capabilities` key populated\n\
+      \   - During transition: also populate `tools` key for backward compat\n   -\
+      \ If YAML has `tools` key (old format), produce deprecation log/note\n\n2. **Update\
+      \ load_constraint** (line 329-350):\n   - When loading constraint YAML, if `side_effect_policy`\
+      \ is present, it should still load\n   - Add a note/comment that side_effect_policy\
+      \ is deprecated per ADR-002\n   - No functional change to constraint loading\
+      \ during transition\n\n3. **Update ComponentStore protocol docstrings** (line\
+      \ 54-65):\n   - Update the directory structure documentation:\n     `toolsets/<name>.yaml\
+      \ -> ToolsetComponent with capability posture mappings`\n   - Note that constraints\
+      \ no longer own side_effect_policy (deprecated)\n\n4. **Update list_components**:\
+      \ No changes needed (directory names stay the same)\n\n## Acceptance Criteria\n\
+      - load_toolset reads `capabilities` key from YAML when present\n- load_toolset\
+      \ falls back to `tools` key for old YAML files\n- load_constraint still loads\
+      \ side_effect_policy (backward compat)\n- `uv run invar guard --all` passes"
+    verification: '- load_toolset handles both capabilities and tools keys from YAML
+
+      - load_constraint unchanged functionally
+
+      - Docstrings updated
+
+      - `uv run invar guard --all` passes'
+    evidence_template: '## Implementation Evidence
+
+
+      **load_toolset with capabilities YAML**:
+
+      ```
+
+      <show test or manual verification>
+
+      ```
+
+
+      **load_toolset with old tools YAML**:
+
+      ```
+
+      <show backward compat>
+
+      ```
+
+
+      **invar guard**: <paste output>'
+    agent: python-executor
 - id: test_migration
   name: Test Suite Migration
   status: locked
