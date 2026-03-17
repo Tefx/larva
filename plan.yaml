@@ -24785,7 +24785,9 @@ phases:
       Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
-  status: pending
+  status: locked
+  depends_on:
+  - doc_contract
   steps:
   - id: core_types.contract-capabilities-field
     name: contract-capabilities-field
