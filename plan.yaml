@@ -25720,6 +25720,102 @@ phases:
 
       ```'
     agent: python-executor
+  - id: test_migration.update-shell-tests
+    name: update-shell-tests
+    status: pending
+    description: 'Update all shell test files to use capabilities and test deprecation.
+
+
+      step_type: implementation
+
+
+      ## Files to Update
+
+
+      ### tests/shell/test_cli.py
+
+      - Line 111: Update spec fixture from `tools`/`side_effect_policy` to `capabilities`
+
+      - Line 195: Update constraint fixture
+
+      - Line 990, 1013: Update clone test fixtures
+
+      - Keep backward compat tests
+
+
+      ### tests/shell/test_components.py
+
+      - Line 48: Update constraint YAML fixture to note deprecation
+
+      - Line 102: Update assertion for constraint loading
+
+      - Add test for toolset loading with `capabilities` key in YAML
+
+
+      ### tests/shell/test_mcp.py
+
+      - Line 186: Update spec fixture to use capabilities
+
+      - Line 473: Update field reference
+
+      - Lines 731-735: Update conflict test for side_effect_policy
+
+      - Line 1498-1509: Update constraint fixture
+
+      - Add capabilities-specific MCP tests
+
+
+      ### tests/shell/test_mcp_server.py
+
+      - Update any fixtures referencing tools/side_effect_policy
+
+
+      ### tests/shell/test_python_api.py
+
+      - Line 48: Update spec fixture to use capabilities
+
+      - Line 126: Update constraint fixture
+
+      - Lines 762-771: Update component show test
+
+      - Lines 907-923: Update clone test fixtures
+
+
+      ### tests/shell/test_registry.py
+
+      - Line 47: Update spec fixture to use capabilities
+
+
+      ## Acceptance Criteria
+
+      - `uv run pytest tests/shell/ -v` passes
+
+      - All fixtures updated to use capabilities (primary) with backward compat tests
+
+      - Deprecation scenarios tested'
+    verification: '- `uv run pytest tests/shell/ -v` passes
+
+      - All fixtures updated
+
+      - Backward compat and deprecation tests present'
+    evidence_template: '## Test Migration Evidence
+
+
+      **pytest output**:
+
+      ```
+
+      <paste uv run pytest tests/shell/ -v>
+
+      ```
+
+
+      **Files updated**: <list>
+
+      **New tests added**: <list>'
+    depends_on:
+    - test_migration.update-facade-tests
+    agent: python-executor
 - id: doc_sync
   name: Documentation Sync
   status: locked
