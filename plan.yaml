@@ -25491,6 +25491,10 @@ phases:
       - Text mode output correct
 
       - `uv run invar guard --all` passes'
+    refs:
+    - src/larva/shell/cli.py
+    - src/larva/shell/cli_commands.py
+    - src/larva/shell/cli_helpers.py
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
