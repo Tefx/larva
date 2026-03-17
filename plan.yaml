@@ -24795,3 +24795,8 @@ phases:
   status: locked
   depends_on:
   - core_logic
+- id: test_migration
+  name: Test Suite Migration
+  status: locked
+  depends_on:
+  - shell_adapters
