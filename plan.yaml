@@ -26497,14 +26497,21 @@ phases:
   - id: doc_contract.update-readme
     name: update-readme
     status: pending
-    description: "Update README.md to use capabilities field in all PersonaSpec examples.\n\
-      \nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n  - readme_documentation\n\
-      \n## File: README.md\n\n### Changes Required\n- Update PersonaSpec JSON example\
-      \ (around line 78): tools -> capabilities\n- Update any CLI example output that\
-      \ shows tools field\n- Ensure no stale references to side_effect_policy remain\
-      \ in examples\n- Add brief note about ADR-002 in the Read Next section\n\n##\
-      \ Acceptance Criteria\n- README.md PersonaSpec example uses capabilities\n-\
-      \ No stale side_effect_policy in examples\n- ADR-002 referenced in Read Next"
+    description: 'Update README.md to use `capabilities` and deprecate `side_effect_policy`.
+
+
+      NOTE: ARCHITECTURE.md and INTERFACES.md were already migrated (commit 837e26e),
+      but README.md still has old fields.
+
+
+      ### README.md changes needed:
+
+      - Line 50: `side_effect_policy` in example → remove or update to capabilities
+      model
+
+      - Line 89: `side_effect_policy` reference → remove or add deprecation note
+
+      - Add link to ADR-002 in the Read Next section (if not already there)'
     verification: '- README.md JSON examples use capabilities field
 
       - No tools field in JSON examples (except backward-compat notes)
