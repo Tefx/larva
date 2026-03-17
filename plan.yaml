@@ -24782,3 +24782,6 @@ phases:
       \ status=passed: CONFIRMED\n7. Bug found and fixed during integration (FastMCP\
       \ pydantic signature issue): CONFIRMED fixed in 768906a\n\nIssues found: none\n\
       Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
+- id: core_types
+  name: Core Type Definitions (spec.py + schema)
+  status: pending
