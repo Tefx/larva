@@ -25638,6 +25638,30 @@ phases:
     - shell_adapters.python-api-capabilities
     - shell_adapters.web-ui-capabilities
     agent: integration-verifier
+  - id: shell_adapters.gate
+    name: gate
+    status: pending
+    description: "Gate review: Verify shell adapter migration is complete.\n\nreview_depth:\
+      \ THOROUGH\nreview_depth_rationale: |\n  - Cross-cutting change across all shell\
+      \ adapters\n  - Multiple transport surfaces (CLI, MCP, Python API, Web)\n  -\
+      \ Backward compatibility critical\n\ncross_cutting_focus:\n  - capabilities\
+      \ field flows correctly through all pipelines\n  - side_effect_policy deprecation\
+      \ consistent across surfaces\n  - No surface still uses only 'tools' without\
+      \ 'capabilities'"
+    verification: '- All shell adapter steps completed
+
+      - Wiring audit passed
+
+      - capabilities flows through CLI, MCP, Python API, and web UI
+
+      - side_effect_policy deprecation consistent
+
+      - `uv run pytest tests/ -v` passes (full suite)
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - shell_adapters.wiring-audit
+    agent: gate-reviewer
 - id: test_migration
   name: Test Suite Migration
   status: locked
