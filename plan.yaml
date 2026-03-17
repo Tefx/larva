@@ -25430,6 +25430,12 @@ phases:
       - Handlers pass through capabilities correctly
 
       - `uv run invar guard --all` passes'
+    refs:
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/mcp.py
+    - src/larva/shell/mcp_params.py
+    - src/larva/shell/mcp_export.py
+    - src/larva/shell/mcp_update_batch.py
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
