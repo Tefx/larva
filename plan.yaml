@@ -24832,43 +24832,28 @@ phases:
       - JSON schema required array includes capabilities
 
       - `uv run invar guard --all` passes'
-    evidence_template: '## Contract Evidence
+    evidence_template: '## Core Types Contract Evidence
 
+      **PersonaSpec capabilities field**: present/absent (paste TypedDict snippet)
 
-      **invar sig output for spec.py**:
+      **PersonaSpec tools field**: deprecated-note/unchanged
 
-      ```
+      **ToolsetComponent capabilities field**: present/absent
 
-      <paste output>
+      **SideEffectPolicy deprecation**: documented/not
 
-      ```
+      **ConstraintComponent side_effect_policy**: deprecated-note/unchanged
 
+      **JSON schema capabilities property**: present/absent (paste property)
 
-      **PersonaSpec TypedDict fields** (from code):
+      **JSON schema required array**: <paste value>
 
-      ```python
-
-      <paste PersonaSpec class>
-
-      ```
-
-
-      **JSON schema diff** (before/after):
-
-      ```
-
-      <paste key changes>
-
-      ```
-
-
-      **invar guard result**:
-
-      ```
-
-      <paste output>
-
-      ```'
+      **invar guard**: pass/fail (paste output summary)'
+    refs:
+    - src/larva/core/spec.py
+    - contracts/persona_spec.schema.json
+    - ADR-002-capability-intent-without-runtime-policy.md
+    - MIGRATION-002-capability-intent.md
     agent: python-senior
   - id: core_types.test-type-definitions
     name: test-type-definitions
