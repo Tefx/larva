@@ -25790,6 +25790,13 @@ phases:
       **Files updated**: <list>
 
       **New tests added**: <list>'
+    refs:
+    - tests/shell/test_cli.py
+    - tests/shell/test_mcp.py
+    - tests/shell/test_mcp_server.py
+    - tests/shell/test_python_api.py
+    - tests/shell/test_components.py
+    - tests/shell/test_registry.py
     depends_on:
     - test_migration.update-facade-tests
     agent: python-executor
