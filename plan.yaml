@@ -25280,6 +25280,46 @@ phases:
     depends_on:
     - core_logic.core-logic-tests
     agent: gate-reviewer
+  - id: core_logic.integration-verify
+    name: Integration verify core pipeline
+    status: pending
+    description: 'Verify the normalize→validate→assemble pipeline end-to-end with
+      both old (`tools`) and new (`capabilities`) field names. Test that:
+
+      1. A spec with only `tools` passes through normalize→validate→assemble and produces
+      output with `capabilities`
+
+      2. A spec with only `capabilities` works correctly
+
+      3. A spec with BOTH fields works (capabilities takes precedence)
+
+      4. `side_effect_policy` in input produces deprecation warning but does not error
+
+      5. The full pipeline round-trip preserves all data
+
+
+      This is an INDEPENDENT verification step — the verifier should NOT have implemented
+      any of the pipeline changes.'
+    verification: '- Pipeline works end-to-end with tools-only, capabilities-only,
+      and both-fields specs
+
+      - Deprecation warning emitted for tools and side_effect_policy
+
+      - Output always contains capabilities key
+
+      - No data loss in round-trip'
+    evidence_template: '- tools-only spec pipeline result: <output>
+
+      - capabilities-only spec pipeline result: <output>
+
+      - both-fields spec pipeline result: <output>
+
+      - deprecation warnings observed: <yes/no + content>
+
+      - round-trip data integrity: <pass/fail>'
+    depends_on:
+    - core_logic.core-logic-tests
+    agent: integration-verifier
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
