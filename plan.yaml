@@ -26211,3 +26211,80 @@ phases:
     depends_on:
     - deep_review.wiring-audit-full
     agent: doc-reviewer
+  - id: deep_review.black-box-verification
+    name: black-box-verification
+    status: pending
+    description: 'Black-box spec verification: Using ONLY the ADR-002, MIGRATION-002,
+      and INTERFACES.md (no implementation source), verify behavior.
+
+
+      Independence Level: L2 (semi-blind)
+
+
+      ## Tests to Run
+
+
+      1. **CLI validate with capabilities**: Create a spec JSON with `capabilities`
+      field, validate via CLI
+
+      2. **CLI validate with tools (backward compat)**: Create a spec JSON with `tools`
+      field, validate via CLI, check for deprecation warning
+
+      3. **CLI validate with side_effect_policy**: Validate spec with side_effect_policy,
+      check for deprecation warning
+
+      4. **CLI assemble with capabilities toolset**: Create a toolset component with
+      `capabilities`, assemble
+
+      5. **Python API validate**: Call larva.shell.python_api.validate with capabilities
+      spec
+
+      6. **JSON schema validation**: Validate a spec against the JSON schema with
+      capabilities field'
+    verification: '- All black-box tests produce expected behavior
+
+      - capabilities accepted in all surfaces
+
+      - tools produces deprecation warning
+
+      - side_effect_policy produces deprecation warning'
+    evidence_template: '## Black-Box Verification Report
+
+
+      **Test 1 - CLI validate with capabilities**:
+
+      ```
+
+      <exact command>
+
+      <actual output>
+
+      ```
+
+
+      **Test 2 - CLI validate with tools (backward compat)**:
+
+      ```
+
+      <exact command>
+
+      <actual output showing deprecation warning>
+
+      ```
+
+
+      **Test 3 - side_effect_policy deprecation**:
+
+      ```
+
+      <exact command>
+
+      <actual output showing deprecation warning>
+
+      ```
+
+
+      **Verdict**: PASS / FAIL'
+    depends_on:
+    - deep_review.spec-conformance
+    agent: blind-tester
