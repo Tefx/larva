@@ -26288,3 +26288,27 @@ phases:
     depends_on:
     - deep_review.spec-conformance
     agent: blind-tester
+  - id: deep_review.gate
+    name: gate
+    status: pending
+    description: "Final deep review gate: confirm migration is complete and correct.\n\
+      \nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Final gate for the\
+      \ entire migration\n  - Must verify cross-cutting consistency across all layers\n\
+      \  - Must confirm ADR-002 and MIGRATION-002 requirements met\n\nReview criteria:\n\
+      1. All deep review steps passed\n2. Wiring audit found no orphans\n3. Spec conformance\
+      \ found no drift\n4. Black-box tests passed\n5. Full test suite passes\n6. invar\
+      \ guard passes\n7. No blocking issues remaining"
+    verification: '- All deep review steps completed successfully
+
+      - No blocking issues
+
+      - Migration is complete per ADR-002 and MIGRATION-002
+
+      - `uv run pytest tests/ -v` passes
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - deep_review.wiring-audit-full
+    - deep_review.spec-conformance
+    - deep_review.black-box-verification
+    agent: gate-reviewer
