@@ -24967,26 +24967,56 @@ phases:
   - id: core_logic.normalize-capabilities
     name: normalize-capabilities
     status: pending
-    description: "Implement tools->capabilities normalization in core/normalize.py.\n\
-      \nstep_type: implementation\n\n## File: src/larva/core/normalize.py\n\n### Changes\
-      \ Required\n\n1. **Add tools->capabilities normalization** in `normalize_spec`:\n\
-      \   - If input spec has `tools` but not `capabilities`, copy `tools` value to\
-      \ `capabilities`\n   - If input spec has both `tools` and `capabilities`, prefer\
-      \ `capabilities` (new field wins)\n   - If input spec has only `capabilities`,\
-      \ use it as-is\n   - After normalization, the output MUST have `capabilities`\
-      \ (if tool-access was declared)\n   - During transition: output retains BOTH\
-      \ `tools` and `capabilities` with identical values for backward compat\n\n2.\
-      \ **Add side_effect_policy deprecation handling**:\n   - If input spec has `side_effect_policy`,\
-      \ preserve it in output but it does NOT block normalization\n   - No stripping\
-      \ yet (transition period per MIGRATION-002 rollout step 3-4)\n\n3. **Update\
-      \ contracts**:\n   - @pre and @post contracts must account for the new field\n\
-      \   - Add doctest showing tools->capabilities normalization\n\n### Pattern Reference\n\
-      Follow existing normalize_spec pattern (lines 56-96): pure transformation, no\
-      \ I/O.\n\n## Acceptance Criteria\n- normalize_spec({'id': 'test', 'tools': {'fs':\
-      \ 'read_write'}}) produces output with both 'capabilities' and 'tools'\n- normalize_spec({'id':\
-      \ 'test', 'capabilities': {'fs': 'read_write'}}) produces output with both fields\n\
-      - Existing normalize_spec doctests still pass\n- `uv run invar guard --all`\
-      \ passes"
+    description: 'Update normalization logic to convert `tools` → `capabilities` and
+      handle both fields.
+
+
+      ## File: src/larva/core/normalize.py
+
+
+      ### Changes Required
+
+      1. When normalizing a spec: if `tools` is present and `capabilities` is not,
+      copy `tools` to `capabilities`
+
+      2. If both `tools` and `capabilities` are present, `capabilities` takes precedence
+
+      3. Output MUST always contain `capabilities`; during transition, also output
+      `tools` (mirror of capabilities) for backward compat
+
+      4. Update `@pre`/`@post` contracts and doctests BEFORE implementation (per CLAUDE.md
+      invar rules)
+
+
+      ### spec_digest behavior (EXPLICIT DECISION REQUIRED)
+
+      Adding `capabilities` to normalized output changes the canonical JSON representation.
+      This affects `spec_digest`:
+
+      - Existing registered specs in `~/.larva/registry/*.json` have digests computed
+      WITHOUT `capabilities`
+
+      - Re-normalizing them will add `capabilities` → different digest
+
+      - **Decision**: Accept that digests will change for re-normalized specs. This
+      is an acceptable migration cost. Document this in the docstring: "Note: Adding
+      capabilities field changes spec_digest for previously registered specs."
+
+      - Alternatively: if digest stability is critical, normalize should strip `capabilities`
+      from digest computation during transition. Document whichever approach is chosen.
+
+
+      ### Acceptance Criteria
+
+      - `tools`-only specs get `capabilities` added via normalization
+
+      - `capabilities`-only specs work correctly
+
+      - Both-fields specs use `capabilities` (tools mirrored for backward compat)
+
+      - spec_digest behavior is explicitly documented
+
+      - `uv run invar guard --all` passes'
     verification: '- normalize_spec with `tools` input produces `capabilities` in
       output
 
