@@ -25930,6 +25930,8 @@ phases:
       - Transition behavior documented
 
       - Markdown renders correctly'
+    refs:
+    - INTERFACES.md
     agent: doc-reviewer
   - id: doc_sync.update-other-docs
     name: update-other-docs
