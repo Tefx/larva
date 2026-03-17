@@ -25876,6 +25876,36 @@ phases:
     - test_migration.update-facade-tests
     - test_migration.update-shell-tests
     agent: integration-verifier
+  - id: test_migration.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify test migration is complete and full suite passes.
+
+
+      review_depth: STANDARD
+
+
+      Review criteria:
+
+      1. All test files updated to use capabilities
+
+      2. Backward compat tests present for tools field
+
+      3. Deprecation warning tests present for side_effect_policy
+
+      4. Full test suite passes
+
+      5. invar guard passes'
+    verification: '- All test migration steps completed
+
+      - Full suite passes
+
+      - invar guard passes
+
+      - Coverage adequate for migration'
+    depends_on:
+    - test_migration.full-test-suite-verification
+    agent: gate-reviewer
 - id: doc_sync
   name: Documentation Sync
   status: locked
