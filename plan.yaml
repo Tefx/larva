@@ -25572,6 +25572,72 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+  - id: shell_adapters.wiring-audit
+    name: wiring-audit
+    status: pending
+    description: 'Wiring completeness audit: verify every new/renamed public symbol
+      is reachable at runtime.
+
+
+      REQUIRED CHECKS:
+
+      1. Export reachability: `capabilities` field used by at least one consumer outside
+      core/spec.py
+
+      2. ToolsetComponent.capabilities consumed by components.py and assemble.py
+
+      3. Deprecation warnings for `tools` reachable from validate path
+
+      4. Deprecation warnings for `side_effect_policy` reachable from validate path
+
+      5. No orphan imports of old-only field names
+
+
+      Use grep/import-trace output as evidence, not assertions.'
+    verification: '- Every new symbol has at least one runtime caller
+
+      - No orphan exports
+
+      - Deprecation warning paths reachable'
+    evidence_template: '## Wiring Audit Report
+
+
+      **Orphan exports** (symbols exported but never imported outside own package):
+
+      ```
+
+      <grep output or ''none found''>
+
+      ```
+
+
+      **capabilities field consumers** (files that read/write capabilities):
+
+      ```
+
+      <grep output>
+
+      ```
+
+
+      **Deprecation warning reachability**:
+
+      ```
+
+      <grep output showing warning strings are reachable from public entry points>
+
+      ```
+
+
+      **Verdict**: PASS / ISSUES_FOUND'
+    depends_on:
+    - shell_adapters.components-toolset-migration
+    - shell_adapters.facade-capabilities
+    - shell_adapters.mcp-contract-capabilities
+    - shell_adapters.cli-capabilities
+    - shell_adapters.python-api-capabilities
+    - shell_adapters.web-ui-capabilities
+    agent: integration-verifier
 - id: test_migration
   name: Test Suite Migration
   status: locked
