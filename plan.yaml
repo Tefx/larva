@@ -25378,6 +25378,38 @@ phases:
 
       **invar guard**: <paste output>'
     agent: python-executor
+  - id: shell_adapters.facade-capabilities
+    name: facade-capabilities
+    status: pending
+    description: "Update app/facade.py to use capabilities throughout the assembly/resolve\
+      \ pipeline.\n\nstep_type: implementation\n\n## File: src/larva/app/facade.py\n\
+      \n### Changes Required\n\n1. **Update assemble method** (line 207-267):\n  \
+      \ - The assembly pipeline already delegates to core.assemble which now returns\
+      \ `capabilities`\n   - No direct changes needed if core modules handle the transition\n\
+      \   - Verify that the facade correctly passes through capabilities from assembled\
+      \ output\n\n2. **Update error messages** if any reference `tools` specifically\
+      \ (check line 114 area for side_effect_policy conflict messages)\n\n3. **Verify\
+      \ resolve/update/clone pipelines** pass through capabilities correctly:\n  \
+      \ - resolve (line 368): reads from registry, applies overrides, validates, normalizes\
+      \ -- should work via core modules\n   - update (line 396): patches -> validate\
+      \ -> normalize -- should work\n   - clone (line 538): copy spec with new id\
+      \ -- should preserve capabilities\n\n4. **No changes to error codes** -- error\
+      \ codes remain unchanged\n\n### Key Principle\nThe facade is thin orchestration.\
+      \ Most changes flow through core modules. This step verifies the facade correctly\
+      \ passes capabilities through all pipelines.\n\n## Acceptance Criteria\n- assemble\
+      \ pipeline produces output with capabilities field\n- resolve pipeline preserves\
+      \ capabilities\n- update pipeline works with capabilities patches\n- clone preserves\
+      \ capabilities from source\n- No error code changes"
+    verification: '- Facade assembly outputs capabilities
+
+      - Facade resolve preserves capabilities
+
+      - Facade update/clone handle capabilities
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - shell_adapters.components-toolset-migration
+    agent: python-executor
 - id: test_migration
   name: Test Suite Migration
   status: locked
