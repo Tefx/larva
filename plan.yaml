@@ -26060,3 +26060,81 @@ phases:
   status: locked
   depends_on:
   - doc_sync
+  steps:
+  - id: deep_review.wiring-audit-full
+    name: wiring-audit-full
+    status: pending
+    description: 'Full wiring audit: verify every public symbol related to the migration
+      is reachable at runtime.
+
+
+      REQUIRED CHECKS:
+
+      1. Export reachability: `capabilities` field exported and consumed across all
+      layers
+
+      2. CLI registration: all commands work with capabilities
+
+      3. MCP tool registration: all MCP tools accept capabilities
+
+      4. No orphan `tools`-only code paths (all `tools` paths also handle `capabilities`)
+
+      5. No NotImplementedError stubs remain
+
+      6. No write-only fields (fields set but never read)
+
+      7. Deprecation warnings for `side_effect_policy` reachable from all entry points
+      (CLI, MCP, Python API)
+
+      8. Deprecation warnings for `tools` field reachable from validate path
+
+
+      Use grep/import-trace output as evidence.'
+    verification: '- Every capabilities-related symbol has runtime callers
+
+      - Every deprecation warning is reachable
+
+      - No orphan exports
+
+      - No tools-only code paths remain'
+    evidence_template: '## Full Wiring Audit Report
+
+
+      **capabilities field consumers across layers**:
+
+      ```
+
+      <grep output showing capabilities used in core, shell, app, tests>
+
+      ```
+
+
+      **Orphan tools-only paths** (tools referenced without capabilities handling):
+
+      ```
+
+      <grep output or ''none found''>
+
+      ```
+
+
+      **Deprecation warning reachability**:
+
+      ```
+
+      <grep for DEPRECATED_ strings and their call paths>
+
+      ```
+
+
+      **Write-only fields**:
+
+      ```
+
+      <analysis or ''none found''>
+
+      ```
+
+
+      **Verdict**: PASS / ISSUES_FOUND'
+    agent: integration-verifier
