@@ -26313,3 +26313,6 @@ phases:
     - deep_review.spec-conformance
     - deep_review.black-box-verification
     agent: gate-reviewer
+- id: doc_contract
+  name: Documentation and Schema Contracts
+  status: pending
