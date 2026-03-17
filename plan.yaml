@@ -25098,13 +25098,19 @@ phases:
       - Existing doctests pass
 
       - `uv run invar guard --all` passes'
-    evidence_template: "## Implementation Evidence\n\n**Assembly test with capabilities**:\n\
-      ```python\nfrom larva.core.assemble import assemble_candidate\nresult = assemble_candidate({\n\
-      \    'id': 'test',\n    'toolsets': [{'capabilities': {'filesystem': 'read_write'}}]\n\
-      })\nprint(result)  # Should have capabilities key\n```\n\n**Backward compat\
-      \ test**:\n```python\nresult = assemble_candidate({\n    'id': 'test',\n   \
-      \ 'toolsets': [{'tools': {'filesystem': 'read_write'}}]\n})\nprint(result) \
-      \ # Should still work\n```\n\n**invar guard**:\n```\n<paste output>\n```"
+    evidence_template: '## Assemble Capabilities Evidence
+
+      **capabilities input works**: yes/no
+
+      **tools input backward compat**: yes/no
+
+      **output has capabilities**: yes/no
+
+      **scalar conflict detection**: preserved
+
+      **invar guard**: pass/fail'
+    refs:
+    - src/larva/core/assemble.py
     depends_on:
     - core_logic.normalize-capabilities
     agent: python-executor
