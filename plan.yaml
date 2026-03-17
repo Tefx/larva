@@ -26315,29 +26315,41 @@ phases:
       \   - type: object\n   - additionalProperties: { type: string, enum: [none,\
       \ read_only, read_write, destructive] }\n   - description: Map of tool_family\
       \ -> posture. The canonical tool-access declaration surface per ADR-002.\n\n\
-      2. Update `tools` property description to note deprecation:\n   - Add: 'DEPRECATED:\
-      \ Use capabilities instead. Accepted during transition, normalized to capabilities\
-      \ in output.'\n\n3. Update `side_effect_policy` property description to note\
-      \ deprecation:\n   - Add: 'DEPRECATED per ADR-002: Runtime policy moves to anima.\
-      \ Accepted during transition with deprecation warning.'\n\n4. Update `required`\
-      \ array:\n   - Change from [id, description, prompt, model, tools, spec_version]\
-      \ to [id, description, prompt, model, spec_version]\n   - Neither tools nor\
-      \ capabilities is required at schema level (backward compat: old specs have\
-      \ tools, new specs have capabilities)\n\n5. Set additionalProperties to false\
-      \ (unchanged, just verify).\n\n## Non-Goals\n- Do NOT change any Python code\n\
-      - Do NOT change any documentation files (those are separate steps)\n\n## Acceptance\
-      \ Criteria\n- JSON schema has capabilities property with correct type definition\n\
-      - JSON schema tools property has deprecation note in description\n- JSON schema\
-      \ side_effect_policy has deprecation note\n- required array no longer mandates\
-      \ tools (transition: accept both)\n- Schema is valid JSON Schema draft 2020-12"
+      2. Keep `tools` as a property (do NOT remove it). Only update its description\
+      \ to add deprecation note:\n   - Add: 'DEPRECATED: Use capabilities instead.\
+      \ Accepted during transition, normalized to capabilities in output.'\n   - Both\
+      \ `tools` and `capabilities` MUST remain valid schema properties during the\
+      \ transition period.\n\n3. Update `side_effect_policy` property description\
+      \ to note deprecation:\n   - Add: 'DEPRECATED per ADR-002: Runtime policy moves\
+      \ to anima. Accepted during transition with deprecation warning.'\n\n4. Update\
+      \ `required` array:\n   - Change from [id, description, prompt, model, tools,\
+      \ spec_version] to [id, description, prompt, model, spec_version]\n   - Neither\
+      \ tools nor capabilities is individually required at schema level\n\n5. Add\
+      \ an `anyOf` constraint requiring at least one of `tools` or `capabilities`:\n\
+      \   - Add: \"anyOf\": [{\"required\": [\"tools\"]}, {\"required\": [\"capabilities\"\
+      ]}]\n   - This prevents a spec with NEITHER tools NOR capabilities from passing\
+      \ schema validation.\n\n6. Set additionalProperties to false (unchanged, just\
+      \ verify).\n\n## Non-Goals\n- Do NOT change any Python code\n- Do NOT change\
+      \ any documentation files (those are separate steps)\n\n## Acceptance Criteria\n\
+      - JSON schema has capabilities property with correct type definition\n- JSON\
+      \ schema tools property remains as a property with deprecation note in description\n\
+      - JSON schema side_effect_policy has deprecation note\n- required array no longer\
+      \ mandates tools (transition: accept both)\n- anyOf constraint ensures at least\
+      \ one of tools/capabilities is present\n- Schema is valid JSON Schema draft\
+      \ 2020-12"
     verification: '- JSON schema has capabilities property with enum [none, read_only,
       read_write, destructive]
 
-      - tools description includes DEPRECATED note
+      - tools property REMAINS in schema with DEPRECATED note in description (NOT
+      removed)
 
       - side_effect_policy description includes DEPRECATED note
 
       - required array is [id, description, prompt, model, spec_version]
+
+      - anyOf constraint present: [{"required": ["tools"]}, {"required": ["capabilities"]}]
+
+      - A spec with neither tools nor capabilities FAILS schema validation
 
       - Schema validates as valid JSON Schema'
     refs:
