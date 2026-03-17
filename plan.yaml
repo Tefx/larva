@@ -25112,6 +25112,51 @@ phases:
 
       ```'
     agent: python-executor
+  - id: core_logic.assemble-capabilities
+    name: assemble-capabilities
+    status: pending
+    description: "Update assembly logic to use capabilities field alongside tools.\n\
+      \nstep_type: implementation\n\n## File: src/larva/core/assemble.py\n\n### Changes\
+      \ Required\n\n1. **Update _merge_tools to handle both fields** (lines 162-191):\n\
+      \   - Rename to `_merge_capabilities` (or keep name but handle both keys)\n\
+      \   - When merging toolsets: look for `capabilities` first, fall back to `tools`\n\
+      \   - Each ToolsetComponent may have either `tools` or `capabilities` key\n\
+      \   - Merged result should be stored under `capabilities` key in the output\n\
+      \n2. **Update scalar_fields list** (line 118, 342):\n   - Remove `side_effect_policy`\
+      \ from scalar_fields list during assembly\n   - Actually: keep it in the list\
+      \ during transition, but document deprecation\n   - The scalar conflict check\
+      \ still applies if multiple constraints provide it\n\n3. **Update assemble_candidate\
+      \ output** (line 300+):\n   - Store merged tool postures under `capabilities`\
+      \ key instead of `tools`\n   - During transition: store under BOTH `capabilities`\
+      \ and `tools` for backward compat\n   - Update the docstring and examples\n\n\
+      4. **Update _has_scalar_conflicts** (line 102):\n   - Keep side_effect_policy\
+      \ in scalar_fields for conflict detection during transition\n\n5. **Update contracts\
+      \ and doctests**\n\n### Pattern Reference\nFollow existing _merge_tools pattern.\
+      \ Key change is reading from capabilities/tools and writing to capabilities.\n\
+      \n## Acceptance Criteria\n- assemble_candidate with ToolsetComponents using\
+      \ `capabilities` key works\n- assemble_candidate with ToolsetComponents using\
+      \ `tools` key still works (backward compat)\n- Output has `capabilities` key\
+      \ (and `tools` for backward compat during transition)\n- Scalar conflict detection\
+      \ still works for side_effect_policy\n- `uv run invar guard --all` passes"
+    verification: '- Assembly with `capabilities` input produces `capabilities` output
+
+      - Assembly with `tools` input still works (backward compat)
+
+      - Scalar conflict detection for side_effect_policy preserved
+
+      - Existing doctests pass
+
+      - `uv run invar guard --all` passes'
+    evidence_template: "## Implementation Evidence\n\n**Assembly test with capabilities**:\n\
+      ```python\nfrom larva.core.assemble import assemble_candidate\nresult = assemble_candidate({\n\
+      \    'id': 'test',\n    'toolsets': [{'capabilities': {'filesystem': 'read_write'}}]\n\
+      })\nprint(result)  # Should have capabilities key\n```\n\n**Backward compat\
+      \ test**:\n```python\nresult = assemble_candidate({\n    'id': 'test',\n   \
+      \ 'toolsets': [{'tools': {'filesystem': 'read_write'}}]\n})\nprint(result) \
+      \ # Should still work\n```\n\n**invar guard**:\n```\n<paste output>\n```"
+    depends_on:
+    - core_logic.normalize-capabilities
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
