@@ -24785,3 +24785,8 @@ phases:
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
   status: pending
+- id: core_logic
+  name: Core Logic Migration (validate, assemble, normalize, patch)
+  status: locked
+  depends_on:
+  - core_types
