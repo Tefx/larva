@@ -26416,21 +26416,13 @@ phases:
   - id: doc_contract.update-architecture-md
     name: update-architecture-md
     status: pending
-    description: "Update ARCHITECTURE.md to reflect capabilities field and deprecation\
-      \ of side_effect_policy.\n\nstep_type: contract\ncontract_purity: ENFORCED\n\
-      contract_outputs:\n  - architecture_documentation\n\n## File: ARCHITECTURE.md\n\
-      \n### Changes Required\n\n1. **Section 6, Module: larva.core.spec**:\n   - Update\
-      \ PersonaSpec Public Interface: add `capabilities: dict[str, ToolPosture]`,\
-      \ mark `tools` deprecated\n   - Update ToolsetComponent: add `capabilities`\
-      \ field\n   - Update ConstraintComponent: mark side_effect_policy as deprecated\n\
-      \   - Update SideEffectPolicy type alias: add deprecation note\n\n2. **Section\
-      \ 6, Module: larva.core.validate**:\n   - Note that side_effect_policy validation\
-      \ emits deprecation warning\n\n3. **Section 6, Module: larva.core.assemble**:\n\
-      \   - Update assembly rules: scalar_fields no longer includes side_effect_policy\n\
-      \   - Update tools merge description to mention capabilities\n\n## Non-Goals\n\
-      - Do NOT change Python code\n\n## Acceptance Criteria\n- ARCHITECTURE.md Public\
-      \ Interface shows capabilities field\n- tools marked as deprecated in type definitions\n\
-      - side_effect_policy marked as deprecated\n- Assembly rules updated"
+    description: 'ALREADY DONE by user commit 837e26e. ARCHITECTURE.md has been rewritten
+      to use `capabilities` as the canonical field. No `tools` or `side_effect_policy`
+      references remain. This step should be verified and marked done.
+
+
+      Verification: confirm ARCHITECTURE.md uses `capabilities` throughout, no deprecated
+      field references remain.'
     verification: '- PersonaSpec interface shows capabilities field
 
       - tools field has deprecation note
