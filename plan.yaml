@@ -25951,32 +25951,21 @@ phases:
   - test_migration
   steps:
   - id: doc_sync.update-interfaces-md
-    name: update-interfaces-md
+    name: Reconcile INTERFACES.md with implementation
     status: pending
-    description: "Update INTERFACES.md to reflect capabilities field and side_effect_policy\
-      \ deprecation.\n\nstep_type: implementation\n\n## File: INTERFACES.md\n\n###\
-      \ Changes Required\n\n1. **Section A (MCP Server Interface)**:\n   - Update\
-      \ larva.validate examples (line 98-99): change side_effect_policy references\
-      \ to note deprecation\n   - Update larva.clone example (line 334): use `capabilities`\
-      \ instead of `tools`\n\n2. **Section B (CLI Interface)**:\n   - Update `larva\
-      \ update` example (line 581): remove side_effect_policy example or mark deprecated\n\
-      \   - Update `larva update-batch` example (line 640): same\n\n3. **Section C\
-      \ (Component Library)**:\n   - Update Component Types table (line 746): Constraint\
-      \ contributes `can_spawn, compaction_prompt` (remove side_effect_policy or mark\
-      \ deprecated)\n   - Update Toolset Component example (line 768-772): use `capabilities`\
-      \ instead of `tools`\n   - Update Constraint Component example (line 776-780):\
-      \ remove or deprecate side_effect_policy\n   - Update Assembly Rules (line 795):\
-      \ use `capabilities` instead of `tools` in scalar/merge descriptions\n\n4. **Section\
-      \ E (PersonaSpec Output Format)**:\n   - Update example output (line 828-849):\
-      \ use `capabilities` instead of `tools`, mark side_effect_policy as deprecated\n\
-      \n5. **Section G (Error Codes)**:\n   - Update error examples (line 933-950):\
-      \ adjust field references\n\n6. **Section H (Python API)**:\n   - Update update/update_batch\
-      \ examples\n\n### Key Principle\nDocument the transition: `capabilities` is\
-      \ the primary field, `tools` is accepted for backward compat, `side_effect_policy`\
-      \ is deprecated.\n\n## Acceptance Criteria\n- All INTERFACES.md examples use\
-      \ `capabilities` as primary\n- side_effect_policy marked as deprecated where\
-      \ it appears\n- Transition/backward-compat behavior documented\n- No broken\
-      \ markdown"
+    description: 'RECONCILIATION pass — do NOT redo doc_contract work. Compare INTERFACES.md
+      (updated in doc_contract phase) against actual implemented behavior. Fix any
+      drift where:
+
+      1. Code implementation diverged from the initial doc contract (e.g., different
+      warning messages, different error codes, different field precedence)
+
+      2. New behavior was discovered during implementation that docs don''t cover
+
+      3. Examples that no longer match actual output
+
+
+      Also verify that all doc_contract changes are still accurate after implementation.'
     verification: '- INTERFACES.md uses capabilities as primary field
 
       - side_effect_policy documented as deprecated
