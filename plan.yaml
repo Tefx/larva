@@ -26381,20 +26381,28 @@ phases:
       \ to use `capabilities` instead of `tools`\n   - Update INVALID_SIDE_EFFECT_POLICY\
       \ example to note deprecation\n   - Update larva.clone example to use `capabilities`\n\
       \   - Update larva.update examples: `tools` deep-merge note also applies to\
-      \ `capabilities`\n\n2. **Section C (Component Library)**:\n   - Constraint Component:\
-      \ note that side_effect_policy is deprecated\n   - Toolset Component: show capabilities\
-      \ key alongside tools\n   - Assembly Rules: update scalar conflict list (remove\
-      \ side_effect_policy), update tools merge note to mention capabilities\n\n3.\
-      \ **Section E (PersonaSpec Output Format)**:\n   - Update example JSON: tools\
-      \ -> capabilities\n   - Note that output uses capabilities (tools retained during\
-      \ transition)\n\n4. **Section G (Error Codes)**:\n   - Update INVALID_SIDE_EFFECT_POLICY\
-      \ description to note deprecation\n\n5. **Section H (Python API)**:\n   - Update\
-      \ example specs to use capabilities\n\n## Non-Goals\n- Do NOT change Python\
-      \ code\n- Do NOT change JSON schema (separate step)\n\n## Acceptance Criteria\n\
-      - INTERFACES.md uses capabilities as primary field name\n- tools mentioned only\
-      \ in deprecation/backward-compat context\n- side_effect_policy marked as deprecated\
-      \ throughout\n- All example JSON uses capabilities"
+      \ `capabilities`\n\n2. **Section B (CLI Interface)** — MUST be included:\n \
+      \  - Update `--set side_effect_policy` references to note deprecation\n   -\
+      \ Update `larva update-batch` examples to use `capabilities`\n   - Update Component\
+      \ Types table to reflect capabilities\n   - Update Assembly Rules to mention\
+      \ capabilities merge behavior\n\n3. **Section C (Component Library)**:\n   -\
+      \ Constraint Component: note that side_effect_policy is deprecated\n   - Toolset\
+      \ Component: show capabilities key alongside tools\n   - Assembly Rules: update\
+      \ scalar conflict list (remove side_effect_policy), update tools merge note\
+      \ to mention capabilities\n\n4. **Section E (PersonaSpec Output Format)**:\n\
+      \   - Update example JSON: tools -> capabilities\n   - Note that output uses\
+      \ capabilities (tools retained during transition)\n\n5. **Section G (Error Codes)**:\n\
+      \   - Update INVALID_SIDE_EFFECT_POLICY description to note deprecation\n\n\
+      6. **Section H (Python API)**:\n   - Update example specs to use capabilities\n\
+      \n## Non-Goals\n- Do NOT change Python code\n- Do NOT change JSON schema (separate\
+      \ step)\n\n## Acceptance Criteria\n- INTERFACES.md uses capabilities as primary\
+      \ field name\n- Section B (CLI Interface) is updated for capabilities migration\n\
+      - tools mentioned only in deprecation/backward-compat context\n- side_effect_policy\
+      \ marked as deprecated throughout\n- All example JSON uses capabilities"
     verification: '- INTERFACES.md examples use capabilities field
+
+      - Section B (CLI Interface) updated for capabilities and side_effect_policy
+      deprecation
 
       - tools referenced only for backward compat/deprecation
 
