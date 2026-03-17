@@ -25157,6 +25157,36 @@ phases:
     depends_on:
     - core_logic.normalize-capabilities
     agent: python-executor
+  - id: core_logic.patch-capabilities
+    name: patch-capabilities
+    status: pending
+    description: "Update patch module to handle capabilities field.\n\nstep_type:\
+      \ implementation\n\n## File: src/larva/core/patch.py\n\n### Changes Required\n\
+      \n1. **Update DEEP_MERGE_KEYS** (line 29):\n   - Add `capabilities` to the frozenset:\
+      \ `frozenset({'model_params', 'tools', 'capabilities'})`\n   - This ensures\
+      \ `capabilities` gets deep-merged like `tools` does\n\n2. **Update doctests**\
+      \ to include capabilities examples:\n   - Add example: `apply_patches({'capabilities':\
+      \ {'fs': 'read_write'}}, {'capabilities': {'git': 'read_only'}})` -> merged\
+      \ result\n\n3. **No other changes needed** -- the patch logic is generic and\
+      \ will work with any field name once DEEP_MERGE_KEYS is updated\n\n## Acceptance\
+      \ Criteria\n- `capabilities` is in DEEP_MERGE_KEYS\n- Patching capabilities\
+      \ field uses deep merge semantics\n- Existing tools deep merge still works\n\
+      - `uv run invar guard --all` passes"
+    verification: '- DEEP_MERGE_KEYS contains ''capabilities''
+
+      - apply_patches deep-merges capabilities correctly
+
+      - Existing doctests pass
+
+      - `uv run invar guard --all` passes'
+    evidence_template: "## Implementation Evidence\n\n**DEEP_MERGE_KEYS value**:\n\
+      ```python\nfrom larva.core.patch import DEEP_MERGE_KEYS\nprint(DEEP_MERGE_KEYS)\
+      \  # Should include 'capabilities'\n```\n\n**Deep merge test**:\n```python\n\
+      from larva.core.patch import apply_patches\nresult = apply_patches(\n    {'capabilities':\
+      \ {'fs': 'read_write', 'git': 'read_only'}},\n    {'capabilities': {'fs': 'destructive'}}\n\
+      )\nprint(result)  # {'capabilities': {'fs': 'destructive', 'git': 'read_only'}}\n\
+      ```\n\n**invar guard**: <paste output>"
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
