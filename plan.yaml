@@ -24940,6 +24940,44 @@ phases:
     depends_on:
     - core_types.contract-capabilities-field
     agent: python-executor
+  - id: core_types.gate
+    name: gate
+    status: pending
+    description: 'Gate review: Verify core type definitions are correct and complete
+      per ADR-002.
+
+
+      review_depth: STANDARD
+
+
+      Review criteria:
+
+      1. PersonaSpec TypedDict has both `capabilities` and `tools` (transition)
+
+      2. ToolsetComponent has both `capabilities` and `tools` (transition)
+
+      3. SideEffectPolicy has deprecation documentation
+
+      4. ConstraintComponent side_effect_policy has deprecation note
+
+      5. JSON schema updated correctly with capabilities property
+
+      6. All tests pass
+
+      7. invar guard passes'
+    verification: '- All phase steps completed
+
+      - Type definitions are correct per ADR-002
+
+      - Backward compatibility maintained for transition period
+
+      - Tests pass: `uv run pytest tests/core/test_spec.py -v`
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - core_types.contract-capabilities-field
+    - core_types.test-type-definitions
+    agent: gate-reviewer
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
