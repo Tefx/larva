@@ -25576,21 +25576,24 @@ phases:
   - id: shell_adapters.web-ui-capabilities
     name: web-ui-capabilities
     status: pending
-    description: "Update web UI to use capabilities field and deprecate side_effect_policy\
-      \ display.\n\nstep_type: implementation\n\n## Files\n\n### src/larva/shell/web_ui.html\
-      \ (if exists) OR contrib/web/index.html\n- Line 424 area: Update display from\
-      \ `side_effect_policy` to capabilities or remove\n- Lines 466-470: Update the\
-      \ side_effect_policy editor section\n  - Either remove it or mark as deprecated\
-      \ in the UI\n  - Add capabilities display/editor section\n\n### contrib/opencode-plugin/larva.ts\n\
-      - Line 56: Update PersonaSpec interface to include `capabilities`\n- Line 121-131:\
-      \ Update permission mapping from `side_effect_policy` to use capabilities\n\
-      \  - This is a consumer-side change. Per ADR-002 non-goals, larva does not implement\
-      \ runtime approval flows\n  - But the type definition should reflect the new\
-      \ field name\n\n### contrib/opencode-plugin/README.md\n- Update the side_effect_policy\
-      \ mapping table to note deprecation\n- Add capabilities field documentation\n\
-      \n## Acceptance Criteria\n- Web UI shows capabilities instead of (or alongside)\
-      \ tools\n- side_effect_policy UI section marked as deprecated or removed\n-\
-      \ contrib plugin type definition includes capabilities\n- contrib README updated"
+    description: "Update web UI and contrib plugins to use capabilities field.\n\n\
+      ## Files\n\n### src/larva/shell/web_ui.html (if exists) OR contrib/web/index.html\n\
+      - Update display from `side_effect_policy` to capabilities or remove\n- Update\
+      \ the side_effect_policy editor section — mark as deprecated or remove\n- Add\
+      \ capabilities display/editor section\n\n### contrib/opencode-plugin/larva.ts\n\
+      1. Add `capabilities` to the `PersonaSpec` TypeScript interface (alongside deprecated\
+      \ `tools`)\n2. **toPermissions() migration**: Per ADR-002, `side_effect_policy`\
+      \ moves to anima runtime. The plugin must:\n   - Derive permissions from `capabilities`\
+      \ postures (e.g., all `read_only` → read-only permission)\n   - OR mark toPermissions()\
+      \ as needing separate runtime policy input and add a TODO\n   - Document the\
+      \ chosen approach in code comments\n3. Update `setCache()` if it caches tool-related\
+      \ info to use capabilities\n\n### contrib/opencode-plugin/README.md\n- Update\
+      \ side_effect_policy mapping table to note deprecation\n- Document the new capabilities\
+      \ → permissions mapping (or its absence)\n\n## Acceptance Criteria\n- Web UI\
+      \ shows capabilities instead of (or alongside) tools\n- side_effect_policy UI\
+      \ section marked deprecated or removed\n- contrib plugin PersonaSpec TypeScript\
+      \ interface includes `capabilities`\n- toPermissions() migration path is explicitly\
+      \ addressed (not silently ignored)\n- contrib README updated"
     verification: '- Web UI references capabilities field
 
       - side_effect_policy UI deprecated or noted
