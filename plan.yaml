@@ -25667,6 +25667,59 @@ phases:
   status: locked
   depends_on:
   - shell_adapters
+  steps:
+  - id: test_migration.update-facade-tests
+    name: update-facade-tests
+    status: pending
+    description: "Update tests/app/test_facade.py to use capabilities and test deprecation.\n\
+      \nstep_type: implementation\n\n## File: tests/app/test_facade.py\n\n### Changes\
+      \ Required\n\n1. **Update all test fixtures** that use `tools` field:\n   -\
+      \ Line 43 area: base spec fixture should use `capabilities` instead of `tools`\n\
+      \   - Keep at least 2 tests using old `tools` field to verify backward compat\
+      \ normalization\n\n2. **Update side_effect_policy test fixtures**:\n   - Lines\
+      \ 43, 114-115, 137, 272, 319: Update to use capabilities, add deprecation warning\
+      \ assertions\n   - Keep backward compat tests for side_effect_policy\n\n3. **Add\
+      \ new tests**:\n   - test_assemble_produces_capabilities: verify assemble output\
+      \ has `capabilities`\n   - test_assemble_backward_compat_tools: old toolsets\
+      \ with `tools` key still work\n   - test_resolve_returns_capabilities: resolved\
+      \ persona has `capabilities`\n   - test_clone_preserves_capabilities: cloned\
+      \ persona has `capabilities`\n   - test_side_effect_policy_deprecation_warning:\
+      \ validate with side_effect_policy produces warning\n\n4. **Update constraint\
+      \ test fixtures** (line 272, 925, 946):\n   - Fixtures using `side_effect_policy`\
+      \ in constraints should note deprecation context\n\n## Spec-Fixture Conformance\
+      \ (MANDATORY)\nAt least one test fixture MUST use the NEW capabilities format\
+      \ without any legacy fields.\nAt least one test fixture MUST use the OLD tools\
+      \ format to verify backward compat.\n\n## Acceptance Criteria\n- `uv run pytest\
+      \ tests/app/test_facade.py -v` passes\n- Tests cover capabilities in assemble/resolve/clone/update\
+      \ pipelines\n- At least 2 backward compat tests for old field names\n- Deprecation\
+      \ warning assertions present"
+    verification: '- `uv run pytest tests/app/test_facade.py -v` passes
+
+      - New capabilities tests present
+
+      - Backward compat tests present
+
+      - No regressions'
+    evidence_template: '## Test Migration Evidence
+
+
+      **pytest output**:
+
+      ```
+
+      <paste uv run pytest tests/app/test_facade.py -v>
+
+      ```
+
+
+      **New/updated test names**:
+
+      ```
+
+      <list>
+
+      ```'
+    agent: python-executor
 - id: doc_sync
   name: Documentation Sync
   status: locked
