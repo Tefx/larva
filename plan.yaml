@@ -25376,7 +25376,7 @@ phases:
   - id: shell_adapters.mcp-contract-capabilities
     name: mcp-contract-capabilities
     status: pending
-    description: 'Update MCP contract and handler to use capabilities field.
+    description: 'Update MCP tool descriptions and handlers to use capabilities field.
 
 
       step_type: implementation
@@ -25387,9 +25387,14 @@ phases:
 
       ### src/larva/shell/mcp_contract.py
 
-      - Update MCP tool input schemas that reference `tools` to also accept `capabilities`
+      - Update MCP tool **descriptions** in `LARVA_MCP_TOOLS` to reference `capabilities`
+      instead of `tools`.
 
-      - Update any response schemas that include `tools` to include `capabilities`
+      - Ensure `larva_validate`, `larva_assemble`, and `larva_update` descriptions
+      mention that `spec` objects now prefer `capabilities` over `tools`.
+
+      - The MCP input schemas are opaque `"type": "object"` and do NOT need schema
+      changes.
 
 
       ### src/larva/shell/mcp.py
@@ -25414,16 +25419,26 @@ phases:
       - Check if batch update handlers reference `tools` field
 
 
+      ## Key Clarification
+
+      MCP schemas in LARVA_MCP_TOOLS are opaque objects (`"type": "object"`). The
+      actual migration surface is the tool **descriptions** (human-readable strings),
+      NOT the input schemas. Update descriptions to guide users toward `capabilities`
+      field.
+
+
       ## Acceptance Criteria
 
-      - MCP tool schemas accept `capabilities` field
+      - MCP tool descriptions reference `capabilities` as the preferred field
 
-      - MCP responses include `capabilities` field
+      - MCP tool descriptions note that `tools` is accepted for backward compat
 
-      - Backward compat: MCP still accepts `tools` in input
+      - Handlers pass through capabilities correctly via facade
 
       - `uv run invar guard --all` passes'
-    verification: '- MCP schemas updated for capabilities
+    verification: '- MCP tool descriptions in LARVA_MCP_TOOLS updated for capabilities
+
+      - Input schemas remain opaque (no schema changes needed)
 
       - Handlers pass through capabilities correctly
 
