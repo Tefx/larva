@@ -24997,38 +24997,18 @@ phases:
       - Existing doctests pass
 
       - `uv run invar guard --all` passes'
-    evidence_template: '## Implementation Evidence
+    evidence_template: '## Normalize Capabilities Evidence
 
+      **tools->capabilities normalization**: works (paste test output)
 
-      **Doctest output**:
+      **capabilities passthrough**: works
 
-      ```
+      **both fields in output**: yes/no
 
-      <paste uv run python -m doctest output or pytest --doctest-modules>
-
-      ```
-
-
-      **Manual verification**:
-
-      ```python
-
-      from larva.core.normalize import normalize_spec
-
-      result = normalize_spec({''id'': ''test'', ''tools'': {''fs'': ''read_write''}})
-
-      # Show capabilities and tools both present
-
-      ```
-
-
-      **invar guard**:
-
-      ```
-
-      <paste output>
-
-      ```'
+      **invar guard**: pass/fail'
+    refs:
+    - src/larva/core/normalize.py
+    - INTERFACES.md
     agent: python-executor
   - id: core_logic.validate-deprecation-warnings
     name: validate-deprecation-warnings
