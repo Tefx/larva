@@ -25410,6 +25410,64 @@ phases:
     depends_on:
     - shell_adapters.components-toolset-migration
     agent: python-executor
+  - id: shell_adapters.mcp-contract-capabilities
+    name: mcp-contract-capabilities
+    status: pending
+    description: 'Update MCP contract and handler to use capabilities field.
+
+
+      step_type: implementation
+
+
+      ## Files
+
+
+      ### src/larva/shell/mcp_contract.py
+
+      - Update MCP tool input schemas that reference `tools` to also accept `capabilities`
+
+      - Update any response schemas that include `tools` to include `capabilities`
+
+
+      ### src/larva/shell/mcp.py
+
+      - Update MCPHandlers if they reference `tools` field directly
+
+      - The handlers mostly delegate to facade, so changes should be minimal
+
+
+      ### src/larva/shell/mcp_params.py
+
+      - Check if any parameter validation references `tools` field
+
+
+      ### src/larva/shell/mcp_export.py
+
+      - Check if export handlers reference `tools` field
+
+
+      ### src/larva/shell/mcp_update_batch.py
+
+      - Check if batch update handlers reference `tools` field
+
+
+      ## Acceptance Criteria
+
+      - MCP tool schemas accept `capabilities` field
+
+      - MCP responses include `capabilities` field
+
+      - Backward compat: MCP still accepts `tools` in input
+
+      - `uv run invar guard --all` passes'
+    verification: '- MCP schemas updated for capabilities
+
+      - Handlers pass through capabilities correctly
+
+      - `uv run invar guard --all` passes'
+    depends_on:
+    - shell_adapters.facade-capabilities
+    agent: python-executor
 - id: test_migration
   name: Test Suite Migration
   status: locked
