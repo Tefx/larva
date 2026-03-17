@@ -25187,6 +25187,112 @@ phases:
       )\nprint(result)  # {'capabilities': {'fs': 'destructive', 'git': 'read_only'}}\n\
       ```\n\n**invar guard**: <paste output>"
     agent: python-executor
+  - id: core_logic.core-logic-tests
+    name: core-logic-tests
+    status: pending
+    description: 'Add and update tests for all core logic changes.
+
+
+      step_type: test
+
+
+      ## Files to Update
+
+
+      ### tests/core/test_normalize.py
+
+      - test_normalize_tools_to_capabilities: input with `tools` produces output with
+      `capabilities`
+
+      - test_normalize_capabilities_passthrough: input with `capabilities` works correctly
+
+      - test_normalize_both_tools_and_capabilities: when both present, `capabilities`
+      wins
+
+      - test_normalize_side_effect_policy_preserved: side_effect_policy passes through
+      during transition
+
+
+      ### tests/core/test_validate.py
+
+      - test_deprecated_side_effect_policy_warning: validate_spec with side_effect_policy
+      produces deprecation warning
+
+      - test_deprecated_tools_field_warning: validate_spec with tools (no capabilities)
+      produces deprecation warning
+
+      - test_capabilities_field_validated: validate_spec validates capabilities field
+      correctly
+
+      - test_both_fields_warning: validate_spec with both tools and capabilities produces
+      warning
+
+      - Update existing test_invalid_side_effect_policy_produces_structured_error:
+      still produces error for invalid values
+
+
+      ### tests/core/test_assemble.py
+
+      - test_assemble_with_capabilities_toolsets: assembly using `capabilities` key
+      in toolset components
+
+      - test_assemble_with_tools_backward_compat: assembly using `tools` key still
+      works
+
+      - test_assemble_output_has_capabilities: output uses capabilities field
+
+      - Update existing constraint tests to note side_effect_policy transition behavior
+
+
+      ### tests/core/test_patch.py
+
+      - test_capabilities_deep_merge: capabilities field is deep-merged
+
+      - test_tools_deep_merge_still_works: tools field still deep-merges
+
+
+      ## Acceptance Criteria
+
+      - All new tests pass: `uv run pytest tests/core/ -v`
+
+      - No existing tests broken
+
+      - Coverage for both old (tools) and new (capabilities) code paths'
+    verification: '- `uv run pytest tests/core/ -v` passes with all new and existing
+      tests
+
+      - Coverage for capabilities normalization, deprecation warnings, assembly, and
+      patching
+
+      - No regressions in existing test suite'
+    evidence_template: '## Test Evidence
+
+
+      **pytest output**:
+
+      ```
+
+      <paste uv run pytest tests/core/ -v output>
+
+      ```
+
+
+      **New test names added**:
+
+      ```
+
+      <list all new test names>
+
+      ```
+
+
+      **Test counts**: X passed, 0 failed'
+    depends_on:
+    - core_logic.normalize-capabilities
+    - core_logic.validate-deprecation-warnings
+    - core_logic.assemble-capabilities
+    - core_logic.patch-capabilities
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
