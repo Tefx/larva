@@ -25048,29 +25048,20 @@ phases:
       - Existing doctests still pass
 
       - `uv run invar guard --all` passes'
-    evidence_template: '## Implementation Evidence
+    evidence_template: '## Validate Deprecation Warnings Evidence
 
+      **side_effect_policy deprecation warning**: emitted (paste warning text)
 
-      **Deprecation warning test**:
+      **tools deprecation warning**: emitted (paste warning text)
 
-      ```python
+      **invalid side_effect_policy still errors**: yes/no
 
-      from larva.core.validate import validate_spec
+      **capabilities validation works**: yes/no
 
-      result = validate_spec({''id'': ''test'', ''side_effect_policy'': ''read_only''})
-
-      print(result[''warnings''])  # Should include DEPRECATED_SIDE_EFFECT_POLICY
-
-      ```
-
-
-      **invar guard**:
-
-      ```
-
-      <paste output>
-
-      ```'
+      **invar guard**: pass/fail'
+    refs:
+    - src/larva/core/validate.py
+    - INTERFACES.md
     agent: python-executor
   - id: core_logic.assemble-capabilities
     name: assemble-capabilities
