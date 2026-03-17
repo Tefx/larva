@@ -24800,3 +24800,8 @@ phases:
   status: locked
   depends_on:
   - shell_adapters
+- id: doc_sync
+  name: Documentation Sync
+  status: locked
+  depends_on:
+  - test_migration
