@@ -26109,7 +26109,7 @@ phases:
       \ wiring"
   - id: shell_adapters.mcp-contract-capabilities
     name: mcp-contract-capabilities
-    status: claimed
+    status: done
     description: 'Update MCP tool descriptions and handlers to use capabilities field.
 
 
@@ -26188,6 +26188,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T19:54:36.651889+00:00'
+    done_at: '2026-03-18T20:09:45.238479+00:00'
+    evidence: "## Context Read\n- Read: src/larva/shell/mcp_contract.py (280 lines)\
+      \ — MCP tool definitions with LARVA_MCP_TOOLS\n- Read: src/larva/shell/mcp.py\
+      \ (672 lines) — MCPHandlers that delegate to facade\n- Read: src/larva/shell/mcp_params.py\
+      \ (136 lines) — parameter validation mixins\n- Read: src/larva/shell/mcp_export.py\
+      \ (130 lines) — export handler\n- Read: src/larva/shell/mcp_update_batch.py\
+      \ (106 lines) — batch update handler\n- ADR-002.md — establishes capabilities\
+      \ as canonical, tools deprecated\n\n## Sibling Search\n- Searched for \"description.*tools\"\
+      \ and \"MCP tool\" references via grep\n- Found remaining references are CLI\
+      \ command descriptions (toolsets) and handler method docstrings (MCP tool call)\n\
+      - These are out of scope for this step (MCP tool descriptions only)\n- All in-scope\
+      \ descriptions updated correctly\n\n## Verification Results\n- Run: uv run pytest\
+      \ tests/shell/test_mcp*.py -v -> 159 passed in 8.55s\n- Run: uv run invar guard\
+      \ --all -> status: passed (0 errors, 7 warnings, 13 infos)\n- Commit: 5bc505d\n\
+      \n## Changes Made\n- Updated 11 MCP tool descriptions in LARVA_MCP_TOOLS to:\n\
+      \  1. Reference `capabilities` as the preferred field\n  2. Note that `tools`\
+      \ is deprecated but accepted for backward compatibility\n- Input schemas remain\
+      \ opaque (no schema changes)\n- Handlers unchanged (pass-through to facade)"
   - id: shell_adapters.cli-capabilities
     name: cli-capabilities
     status: done
