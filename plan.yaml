@@ -25866,7 +25866,7 @@ phases:
       - INTERFACES.md (`id` is stable identity)'
   - id: core_logic.retest-patch-identity-protection
     name: Retest patch identity protection
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the affected
       patch tests and `invar guard` after the identity-protection fix.
 
@@ -25913,6 +25913,8 @@ phases:
     depends_on:
     - core_logic.fix-patch-identity-protection
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-18T19:19:05.599672+00:00'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
