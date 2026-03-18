@@ -26515,7 +26515,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.update-usage-and-userguide
     name: update-usage-and-userguide
-    status: claimed
+    status: done
     description: 'Update USAGE.md and USER_GUIDE.md to use `capabilities` and deprecate
       `side_effect_policy`.
 
@@ -26573,6 +26573,31 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-18T17:02:26.696547+00:00'
+    done_at: '2026-03-18T17:04:38.888234+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 27d3c4c
+
+
+      Verification:
+
+      - Run: grep -n ''"tools"'' USAGE.md USER_GUIDE.md -> no tools field in JSON
+      examples
+
+      - Run: grep -n ''side_effect_policy'' USAGE.md USER_GUIDE.md -> only deprecation-note
+      mentions
+
+      - Run: grep -n ''"capabilities"'' USAGE.md USER_GUIDE.md -> capabilities present
+      in examples
+
+      - Run: git diff HEAD~1 --stat -> USAGE.md and USER_GUIDE.md updated for migration
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md
+
+      - MIGRATION-002-capability-intent.md'
   - id: doc_contract.update-readme
     name: update-readme
     status: done
