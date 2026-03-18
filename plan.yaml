@@ -24791,7 +24791,7 @@ phases:
   steps:
   - id: core_types.contract-capabilities-field
     name: contract-capabilities-field
-    status: claimed
+    status: done
     description: "Contract step: Define the capabilities field and transition types\
       \ in core/spec.py.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n\n## Changes Required\n\n### File: src/larva/core/spec.py\n\
@@ -24857,6 +24857,61 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-18T17:09:43.281795+00:00'
+    done_at: '2026-03-18T17:40:13.596011+00:00'
+    evidence: '## Core Types Contract Evidence
+
+      **PersonaSpec capabilities field**: present (`src/larva/core/spec.py`) with
+      `capabilities: dict[str, ToolPosture]` in `PersonaSpec`.
+
+      **PersonaSpec tools field**: deprecated-note present (`tools` retained as deprecated
+      alias for transition compatibility).
+
+      **ToolsetComponent capabilities field**: present (`src/larva/core/spec.py`)
+      alongside deprecated `tools` alias.
+
+      **SideEffectPolicy deprecation**: documented in `src/larva/core/spec.py` and
+      schema descriptions.
+
+      **ConstraintComponent side_effect_policy**: deprecated-note present in docstring/field
+      comments.
+
+      **JSON schema capabilities property**: present in `contracts/persona_spec.schema.json`
+      as object with enum values `none|read_only|read_write|destructive`.
+
+      **JSON schema required array**: `["id", "description", "prompt", "model", "capabilities",
+      "spec_version"]`
+
+      **invar sig**: confirms `PersonaSpec`, `ToolsetComponent`, and `ConstraintComponent`
+      docstrings/signatures reflect ADR-002 transition.
+
+      **guard unblockers**: added `@shell_complexity` explanations at `src/larva/shell/cli_commands.py`,
+      `src/larva/shell/python_api_components.py`, `src/larva/shell/mcp_update_batch.py`,
+      `src/larva/shell/cli.py`, and `src/larva/shell/mcp_export.py`; hardened `src/larva/core/validate.py::_is_json_safe_dict`
+      with doctest coverage for hostile dict subclasses.
+
+
+      Verification:
+
+      - Run: `uv run invar guard --all` -> PASSED
+
+      - Run: `invar sig src/larva/core/spec.py` -> shows updated PersonaSpec/ToolsetComponent/ConstraintComponent
+      contract surfaces
+
+      - Run: `git status --short` -> clean worktree
+
+
+      Artifacts:
+
+      - Commit: `8fd5fe8` (`feat(core): add capabilities contract transition types`)
+
+      - Commit: `aff0996` (`fix(guard): explain shell complexity blockers`)
+
+
+      Spec link:
+
+      - `ADR-002-capability-intent-without-runtime-policy.md`
+
+      - `MIGRATION-002-capability-intent.md`'
   - id: core_types.test-type-definitions
     name: test-type-definitions
     status: pending
