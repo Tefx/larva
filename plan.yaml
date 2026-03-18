@@ -25033,7 +25033,7 @@ phases:
     agent: gate-reviewer
   - id: core_types.fix-toolsetcomponent-transition-compat
     name: fix-toolsetcomponent-transition-compat
-    status: pending
+    status: claimed
     description: 'Remediate core_types gate finding: ToolsetComponent should support
       ADR-002 transition compatibility by allowing either canonical `capabilities`
       or deprecated `tools` at type level. Update `src/larva/core/spec.py` accordingly
@@ -25067,6 +25067,8 @@ phases:
     depends_on:
     - core_types.contract-capabilities-field
     - core_types.test-type-definitions
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T18:02:12.084659+00:00'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
