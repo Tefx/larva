@@ -25544,7 +25544,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.core-logic-tests
     name: core-logic-tests
-    status: claimed
+    status: done
     description: 'Add and update tests for all core logic changes.
 
 
@@ -25650,6 +25650,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:51:18.377199+00:00'
+    done_at: '2026-03-18T18:55:53.545069+00:00'
+    evidence: '## Test Evidence
+
+      **pytest output**: `uv run pytest tests/core/ -v` -> 173 passed, 0 failed
+
+      **invar guard**: passed
+
+
+      **New test names added**:
+
+      - TestDeepMergeCapabilities::test_deep_merge_adds_capabilities
+
+      - TestDeepMergeCapabilities::test_deep_merge_overwrites_capabilities
+
+      - TestDeepMergeCapabilities::test_deep_merge_empty_capabilities_base
+
+      - TestProtectedFieldsStripped::test_id_is_not_protected
+
+
+      **Updated tests**:
+
+      - Removed legacy xfail marker in `tests/core/test_patch.py`
+
+      - Updated protected-field assertions to match implementation
+
+      - Added ADR-002 capabilities deep-merge coverage
+
+
+      Artifact:
+
+      - Branch commit contains updates in `tests/core/test_patch.py`'
   - id: core_logic.gate
     name: gate
     status: pending
