@@ -25967,7 +25967,7 @@ phases:
   steps:
   - id: shell_adapters.components-toolset-migration
     name: components-toolset-migration
-    status: claimed
+    status: done
     description: "Update shell/components.py to handle capabilities in toolset and\
       \ constraint components.\n\nstep_type: implementation\n\n## File: src/larva/shell/components.py\n\
       \n### Changes Required\n\n1. **Update load_toolset** (line 307-327):\n   - When\
@@ -26020,6 +26020,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T19:33:27.255487+00:00'
+    done_at: '2026-03-18T19:37:57.966505+00:00'
+    evidence: 'Artifact:
+
+      - Commit: dc4971249093a6379ced1ef09c074730ab04a1fb
+
+      - Files changed: src/larva/shell/components.py
+
+
+      Verification:
+
+      - Run: capabilities YAML load check via `FilesystemComponentStore.load_toolset`
+      -> returns both `capabilities` and mirrored `tools`
+
+      - Run: legacy tools YAML fallback check via `FilesystemComponentStore.load_toolset`
+      -> returns canonical `capabilities` plus mirrored `tools`
+
+      - Run: `uv run invar guard --all` -> passed (0 errors, 0 warnings for changed
+      scope)'
   - id: shell_adapters.facade-capabilities
     name: facade-capabilities
     status: pending
