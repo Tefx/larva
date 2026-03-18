@@ -24914,7 +24914,7 @@ phases:
       - `MIGRATION-002-capability-intent.md`'
   - id: core_types.test-type-definitions
     name: test-type-definitions
-    status: claimed
+    status: done
     description: 'Test step: Add tests for the new capabilities field type definitions
       and backward compatibility.
 
@@ -24979,6 +24979,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T17:41:29.750465+00:00'
+    done_at: '2026-03-18T17:43:56.643737+00:00'
+    evidence: '## Type Definition Tests Evidence
+
+      **New tests added**: 11 tests covering PersonaSpec capabilities, coexistence
+      with deprecated tools, ToolsetComponent capabilities/backward compatibility,
+      ConstraintComponent side_effect_policy compatibility, and all ToolPosture enum
+      values.
+
+      **pytest output**: `uv run pytest tests/core/test_spec.py -v` -> PASSED (`36
+      passed in 0.27s`)
+
+      **Coverage**: capabilities field / tools backward compat / side_effect_policy
+      transition'
   - id: core_types.gate
     name: gate
     status: pending
