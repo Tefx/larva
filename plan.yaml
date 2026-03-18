@@ -26391,7 +26391,7 @@ phases:
       - Verified thin facade delegation preserves capabilities behavior'
   - id: shell_adapters.web-ui-capabilities
     name: web-ui-capabilities
-    status: claimed
+    status: done
     description: "Update web UI and contrib plugins to use capabilities field.\n\n\
       ## Files\n\n### src/larva/shell/web_ui.html (if exists) OR contrib/web/index.html\n\
       - Update display from `side_effect_policy` to capabilities or remove\n- Update\
@@ -26422,6 +26422,32 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T19:55:13.577842+00:00'
+    done_at: '2026-03-18T20:11:00.643493+00:00'
+    evidence: 'Artifact:
+
+      - Commit: abc61abbefa631b9cb1ba9d2296568196c0b28db
+
+
+      Verification:
+
+      - Run: web/plugin checks on updated files -> capabilities sections present in
+      web UIs, deprecated side_effect_policy/tools clearly marked
+
+      - Run: plugin type/docs check -> PersonaSpec includes `capabilities`, README
+      documents capabilities->permissions migration path
+
+      - Run: `uv run invar guard --all` -> passed
+
+
+      Files:
+
+      - src/larva/shell/web_ui.html
+
+      - contrib/web/index.html
+
+      - contrib/opencode-plugin/larva.ts
+
+      - contrib/opencode-plugin/README.md'
   - id: shell_adapters.wiring-audit
     name: wiring-audit
     status: pending
