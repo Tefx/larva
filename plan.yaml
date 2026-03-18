@@ -26649,7 +26649,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.doc-contract-gate
     name: doc-contract-gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify all documentation and schema contracts reflect\
       \ the new capability intent model before any code changes begin.\n\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale: |\n  - This gate guards the contract-first\
@@ -26690,6 +26690,8 @@ phases:
     - doc_contract.update-readme
     - doc_contract.accept-adr-002
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-18T17:05:12.474303+00:00'
   - id: doc_contract.accept-adr-002
     name: accept-adr-002
     status: done
