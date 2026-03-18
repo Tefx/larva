@@ -26335,7 +26335,7 @@ phases:
     agent: gate-reviewer
 - id: doc_contract
   name: Documentation and Schema Contracts
-  status: pending
+  status: in_progress
   steps:
   - id: doc_contract.update-json-schema
     name: update-json-schema
@@ -26566,7 +26566,7 @@ phases:
     agent: gate-reviewer
   - id: doc_contract.accept-adr-002
     name: accept-adr-002
-    status: pending
+    status: claimed
     description: 'Transition ADR-002 status from "Proposed" to "Accepted".
 
 
@@ -26603,3 +26603,5 @@ phases:
 
       - No other content changes'
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-18T16:46:18.298553+00:00'
