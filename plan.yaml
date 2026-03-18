@@ -25712,7 +25712,7 @@ phases:
     agent: gate-reviewer
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
-    status: pending
+    status: claimed
     description: 'Verify the normalize→validate→assemble pipeline end-to-end with
       both old (`tools`) and new (`capabilities`) field names. Test that:
 
@@ -25750,6 +25750,8 @@ phases:
     depends_on:
     - core_logic.core-logic-tests
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-18T18:56:32.690639+00:00'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
