@@ -26415,7 +26415,7 @@ phases:
     agent: doc-reviewer
   - id: doc_contract.update-architecture-md
     name: update-architecture-md
-    status: pending
+    status: claimed
     description: 'ALREADY DONE by user commit 837e26e. ARCHITECTURE.md has been rewritten
       to use `capabilities` as the canonical field. No `tools` or `side_effect_policy`
       references remain. This step should be verified and marked done.
@@ -26436,6 +26436,8 @@ phases:
     - ARCHITECTURE.md
     - ADR-002-capability-intent-without-runtime-policy.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-18T16:48:25.830763+00:00'
   - id: doc_contract.update-usage-and-userguide
     name: update-usage-and-userguide
     status: pending
