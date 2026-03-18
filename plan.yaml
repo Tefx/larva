@@ -26553,7 +26553,7 @@ phases:
       - PASS (minor note: web module dedicated tests remain sparse)'
   - id: shell_adapters.gate
     name: gate
-    status: pending
+    status: claimed
     description: "Gate review: Verify shell adapter migration is complete.\n\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale: |\n  - Cross-cutting change across all shell\
       \ adapters\n  - Multiple transport surfaces (CLI, MCP, Python API, Web)\n  -\
@@ -26575,6 +26575,8 @@ phases:
     depends_on:
     - shell_adapters.wiring-audit
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-18T20:16:59.584805+00:00'
 - id: test_migration
   name: Test Suite Migration
   status: locked
