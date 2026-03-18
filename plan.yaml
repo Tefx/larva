@@ -26390,7 +26390,7 @@ phases:
     agent: python-executor
   - id: doc_contract.update-interfaces-md
     name: update-interfaces-md
-    status: pending
+    status: claimed
     description: 'ALREADY DONE by user commit 837e26e. INTERFACES.md has been rewritten
       to use `capabilities` as the canonical field. No `tools` or `side_effect_policy`
       references remain. This step should be verified and marked done.
@@ -26413,6 +26413,8 @@ phases:
     - ADR-002-capability-intent-without-runtime-policy.md
     - MIGRATION-002-capability-intent.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-18T16:50:12.219155+00:00'
   - id: doc_contract.update-architecture-md
     name: update-architecture-md
     status: claimed
