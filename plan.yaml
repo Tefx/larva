@@ -26251,7 +26251,7 @@ phases:
     claimed_at: '2026-03-18T19:54:03.207437+00:00'
   - id: shell_adapters.python-api-capabilities
     name: python-api-capabilities
-    status: pending
+    status: claimed
     description: "Update Python API layer to use capabilities field.\n\nstep_type:\
       \ implementation\n\n## File: src/larva/shell/python_api.py\n\n### Changes Required\n\
       \n1. **Update docstrings** on all public functions that mention `tools`:\n \
@@ -26270,6 +26270,8 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T19:55:06.736042+00:00'
   - id: shell_adapters.web-ui-capabilities
     name: web-ui-capabilities
     status: pending
