@@ -25452,7 +25452,7 @@ phases:
       - tests/core/test_assemble.py'
   - id: core_logic.patch-capabilities
     name: patch-capabilities
-    status: claimed
+    status: done
     description: "Update patch module to handle capabilities field.\n\nstep_type:\
       \ implementation\n\n## File: src/larva/core/patch.py\n\n### Changes Required\n\
       \n1. **Update DEEP_MERGE_KEYS** (line 29):\n   - Add `capabilities` to the frozenset:\
@@ -25486,6 +25486,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:19:25.967840+00:00'
+    done_at: '2026-03-18T18:50:34.350796+00:00'
+    evidence: '## Patch Capabilities Evidence
+
+      **DEEP_MERGE_KEYS contains capabilities**: yes
+
+      **capabilities deep merge works**: yes
+
+      **tools deep merge still works**: yes
+
+      **invar guard**: pass
+
+
+      Artifact:
+
+      - Commit: 5018e0c
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/core/test_patch.py -v` -> pass
+
+      - Run: `uv run invar guard --all` -> passed
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.core-logic-tests
     name: core-logic-tests
     status: pending
