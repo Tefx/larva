@@ -163,30 +163,49 @@ def _collect_scalar(
     lambda toolsets: isinstance(toolsets, list) and all(isinstance(item, dict) for item in toolsets)
 )
 @raises(AssemblyError)
-def _merge_tools(toolsets: list[dict[str, object]]) -> dict[str, str]:
-    """Merge tools from multiple toolset components."""
+def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
+    """Merge capabilities from multiple toolset components.
+
+    Per ADR-002 transition:
+    - Reads 'capabilities' field first (canonical)
+    - Falls back to 'tools' field (deprecated)
+    - Returns merged capability mapping
+
+    >>> _merge_capabilities([{"capabilities": {"read": "read_only"}}])
+    {'read': 'read_only'}
+    >>> _merge_capabilities([{"tools": {"write": "read_write"}}])
+    {'write': 'read_write'}
+    >>> _merge_capabilities([{"capabilities": {"read": "read_only"}}, {"tools": {"write": "read_write"}}])
+    {'read': 'read_only', 'write': 'read_write'}
+    """
     merged: dict[str, str] = {}
 
     for toolset in toolsets:
-        if "tools" not in toolset:
+        # Prefer 'capabilities' (canonical), fall back to 'tools' (deprecated)
+        caps_obj = toolset.get("capabilities")
+        tools_obj = toolset.get("tools")
+
+        # Use capabilities if present, otherwise use tools
+        source_obj = caps_obj if caps_obj is not None else tools_obj
+        if source_obj is None:
             continue
-        tools_obj = toolset["tools"]
-        if not isinstance(tools_obj, dict):
+        if not isinstance(source_obj, dict):
             continue
-        tools = cast("Mapping[object, object]", tools_obj)
-        for tool_name, posture in _safe_items(tools):
-            if not isinstance(tool_name, str) or not isinstance(posture, str):
+
+        source = cast("Mapping[object, object]", source_obj)
+        for cap_name, posture in _safe_items(source):
+            if not isinstance(cap_name, str) or not isinstance(posture, str):
                 continue
-            if tool_name in merged and merged[tool_name] != posture:
+            if cap_name in merged and merged[cap_name] != posture:
                 raise _assembly_error(
                     code="COMPONENT_CONFLICT",
                     message=(
-                        f"Contradictory posture for tool '{tool_name}': "
-                        f"'{merged[tool_name]}' vs '{posture}'"
+                        f"Contradictory posture for capability '{cap_name}': "
+                        f"'{merged[cap_name]}' vs '{posture}'"
                     ),
-                    details={"tool": tool_name, "postures": [merged[tool_name], posture]},
+                    details={"capability": cap_name, "postures": [merged[cap_name], posture]},
                 )
-            merged[tool_name] = posture
+            merged[cap_name] = posture
 
     return merged
 
@@ -208,7 +227,6 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
 @pre(
     lambda prompt, variables: (
         isinstance(prompt, str)
-        and _is_format_template(prompt)
         and isinstance(variables, dict)
         and all(
             isinstance(key, str) and isinstance(value, str) for key, value in _safe_items(variables)
@@ -226,6 +244,12 @@ def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
             code="VARIABLE_UNRESOLVED",
             message=f"Missing required variable(s): {missing}",
             details={"missing_variables": missing},
+        ) from error
+    except ValueError as error:
+        raise _assembly_error(
+            code="INVALID_PROMPT_TEMPLATE",
+            message=f"Prompt template is malformed: {error}",
+            details={"prompt": prompt},
         ) from error
 
 
@@ -304,8 +328,14 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     - Prompts concatenate in declared order with "\\n\\n" separator
     - Scalars (model, can_spawn, side_effect_policy):
       Multiple sources for same field -> error (COMPONENT_CONFLICT)
-    - Tools: Merged only if no contradictory posture values for same tool family
+    - Capabilities (canonical): Merged from 'capabilities' field in toolsets
+    - Tools (deprecated): Also read for backward compatibility, merged with capabilities
     - model_params: Deep-merged from model component, overrides can patch keys
+
+    Per ADR-002 transition:
+    - 'capabilities' is the canonical field (preferred going forward)
+    - 'tools' is deprecated (retained for backward compatibility)
+    - Both are read at input, both are written to output during transition
 
     Args:
         data: Mapping containing in-memory component values and overrides.
@@ -328,6 +358,22 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         'p'
         >>> result["prompt"]
         'You are assistant'
+        >>> # Capabilities input (canonical)
+        >>> result = assemble_candidate(
+        ...     {"id": "p", "toolsets": [{"capabilities": {"read": "read_only"}}]}
+        ... )
+        >>> result["capabilities"]
+        {'read': 'read_only'}
+        >>> result["tools"]  # mirrored for transition compat
+        {'read': 'read_only'}
+        >>> # Tools input (deprecated, still works)
+        >>> result = assemble_candidate(
+        ...     {"id": "p", "toolsets": [{"tools": {"write": "read_write"}}]}
+        ... )
+        >>> result["capabilities"]
+        {'write': 'read_write'}
+        >>> result["tools"]
+        {'write': 'read_write'}
     """
     persona_id = cast("str", data.get("id"))
     result: PersonaSpec = {"id": persona_id}
@@ -352,7 +398,10 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         else []
     )
     if toolsets:
-        result["tools"] = cast("dict[str, ToolPosture]", _merge_tools(toolsets))
+        merged_caps = cast("dict[str, ToolPosture]", _merge_capabilities(toolsets))
+        # Set capabilities (canonical) and mirror to tools (deprecated, transition compat)
+        result["capabilities"] = merged_caps
+        result["tools"] = merged_caps
 
     model_component: ModelComponent | None = None
     if isinstance(model, dict):

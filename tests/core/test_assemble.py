@@ -96,6 +96,86 @@ class TestAssembleCandidateBehavior:
         assert exc_info.value.code == "COMPONENT_CONFLICT"
         assert "Contradictory posture" in exc_info.value.message
 
+    def test_capabilities_input_canonical(self):
+        """Capabilities field should be canonical input for toolsets."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [{"capabilities": {"read": "read_only", "write": "read_write"}}],
+            }
+        )
+        assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
+        assert result["tools"] == {"read": "read_only", "write": "read_write"}  # mirrored
+
+    def test_tools_input_backward_compat(self):
+        """Tools field (deprecated) should still work for backward compat."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [{"tools": {"read": "read_only", "write": "read_write"}}],
+            }
+        )
+        assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
+        assert result["tools"] == {"read": "read_only", "write": "read_write"}
+
+    def test_capabilities_preferred_over_tools(self):
+        """Capabilities should be preferred over tools when both present."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [
+                    {"capabilities": {"read": "read_only"}, "tools": {"read": "read_write"}},
+                ],
+            }
+        )
+        # capabilities takes precedence
+        assert result["capabilities"] == {"read": "read_only"}
+        assert result["tools"] == {"read": "read_only"}
+
+    def test_capabilities_merges_with_tools_across_toolsets(self):
+        """Capabilities from one toolset should merge with tools from another."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [
+                    {"capabilities": {"read": "read_only"}},
+                    {"tools": {"write": "read_write"}},
+                ],
+            }
+        )
+        assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
+        assert result["tools"] == {"read": "read_only", "write": "read_write"}
+
+    def test_raises_component_conflict_for_contradictory_capability_posture(self):
+        """Conflicting capability postures should raise AssemblyError."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"capabilities": {"read": "read_only"}},
+                        {"capabilities": {"read": "read_write"}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "COMPONENT_CONFLICT"
+        assert "Contradictory posture" in exc_info.value.message
+
+    def test_raises_component_conflict_for_mixed_capability_tools_conflict(self):
+        """Conflicting capabilities vs tools postures should raise AssemblyError."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"capabilities": {"read": "read_only"}},
+                        {"tools": {"read": "read_write"}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "COMPONENT_CONFLICT"
+        assert "Contradictory posture" in exc_info.value.message
+
 
 class TestTypedDictShapes:
     """Test that TypedDict shapes match expected contracts from spec.py."""
