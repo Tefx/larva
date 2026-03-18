@@ -67,6 +67,7 @@ def handle_update_batch(
     return _handle_update_batch_impl(handlers, params)
 
 
+# @shell_complexity: MCP handler performs schema-shaped parameter validation before facade delegation.
 def _handle_update_batch_impl(
     handlers: UpdateBatchHandlerDeps,
     params: object,

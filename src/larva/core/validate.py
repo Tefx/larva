@@ -41,10 +41,19 @@ def _is_json_safe_dict(d: object) -> bool:
     True
     >>> _is_json_safe_dict("not a dict")
     False
+    >>> class AttrDict(dict):
+    ...     def values(self):
+    ...         raise KeyError("__ch_pytype__")
+    >>> _is_json_safe_dict(AttrDict(a=1))
+    False
     """
     if not isinstance(d, dict):
         return False
-    return all(isinstance(v, _JSON_SAFE_TYPES) for v in d.values())
+    try:
+        values = d.values()
+    except Exception:
+        return False
+    return all(isinstance(v, _JSON_SAFE_TYPES) for v in values)
 
 
 class ValidationIssue(TypedDict):
@@ -172,7 +181,7 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
             warnings.append(
                 "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
                 + ", ".join(sorted(unused_vars))
-        )
+            )
 
     return {"errors": errors, "warnings": warnings}
 

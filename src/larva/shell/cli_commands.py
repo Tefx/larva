@@ -105,6 +105,7 @@ def validate_command(
     return _validation_failure_result(report, as_json=as_json)
 
 
+# @shell_complexity: shell boundary coordinates optional file output and dual text/json projections.
 def _assemble_success_result(
     payload: dict[str, object],
     *,

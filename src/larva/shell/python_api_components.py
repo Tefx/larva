@@ -77,6 +77,7 @@ def component_list() -> dict[str, list[str]]:
 
 # @invar:allow shell_result: Python API unwraps Result via exception passthrough
 # @shell_orchestration: thin delegation to component store filesystem I/O
+# @shell_complexity: dispatch branches mirror the fixed component type surface and preserve explicit error payloads.
 def component_show(type: str, name: str) -> dict[str, object]:
     """Show details of a specific component."""
     store = _get_component_store()

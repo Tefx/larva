@@ -263,6 +263,7 @@ def _dispatch(
 
 
 # @invar:allow shell_result: CLI entry handler returns process exit code
+# @shell_complexity: CLI entrypoint handles parse failures and long-running server subcommands before normal dispatch.
 def run_cli(
     argv: Sequence[str],
     *,
@@ -299,13 +300,14 @@ def run_cli(
     # serve is a special case — starts a long-running server, not a one-shot command
     if getattr(args, "command", None) == "serve":
         from larva.shell.web import main as web_main
+
         web_main(port=args.port, no_open=args.no_open)
         return 0  # type: ignore[return-value]
-
 
     # mcp is a special case — starts a long-running server, not a one-shot command
     if getattr(args, "command", None) == "mcp":
         from larva.shell.mcp_server import run_mcp_stdio
+
         run_mcp_stdio()
         return 0  # type: ignore[return-value]
     return _emit_result(

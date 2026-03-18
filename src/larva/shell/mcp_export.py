@@ -72,6 +72,7 @@ def handle_export(
     return _handle_export_impl(handlers, params)
 
 
+# @shell_complexity: MCP export handler enforces mutually exclusive selector validation before facade delegation.
 def _handle_export_impl(
     handlers: ExportHandlerDeps,
     params: object,
@@ -92,6 +93,7 @@ def _handle_export_impl(
     return handlers._facade.export_ids(ids)
 
 
+# @shell_complexity: export selection keeps explicit all/ids conflict handling at the transport boundary.
 def _validate_export_target(
     handlers: ExportHandlerDeps,
     checked_params: dict[str, Any],
