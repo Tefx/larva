@@ -25313,7 +25313,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.validate-deprecation-warnings
     name: validate-deprecation-warnings
-    status: claimed
+    status: done
     description: "Add deprecation warnings for side_effect_policy and tools in core/validate.py.\n\
       \nstep_type: implementation\n\n## File: src/larva/core/validate.py\n\n### Changes\
       \ Required\n\n1. **Add deprecation warning for side_effect_policy** in `_validate_identity_fields`\
@@ -25366,6 +25366,35 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:19:30.868414+00:00'
+    done_at: '2026-03-18T18:50:44.384806+00:00'
+    evidence: '## Validate Deprecation Warnings Evidence
+
+      **side_effect_policy deprecation warning**: emitted
+
+      **tools deprecation warning**: emitted
+
+      **invalid side_effect_policy still errors**: yes
+
+      **capabilities validation works**: yes
+
+      **invar guard**: pass
+
+
+      Artifact:
+
+      - Commit: 71ed727
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/core/test_validate.py -v` -> pass
+
+      - Run: `uv run invar guard --all` -> passed
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.assemble-capabilities
     name: assemble-capabilities
     status: done
