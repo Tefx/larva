@@ -51,8 +51,12 @@ interface PersonaSpec {
   prompt?: string
   model?: string
   model_params?: Record<string, number>
+  /** Canonical capability intent. Preferred over deprecated `tools`. */
+  capabilities?: Record<string, string>
+  /** @deprecated Use `capabilities` instead. Retained for transition compatibility. */
   tools?: Record<string, string>
   can_spawn?: boolean | string[]
+  /** @deprecated Runtime policy (approval gating) moved out of PersonaSpec per ADR-002. */
   side_effect_policy?: string
 }
 
@@ -118,26 +122,57 @@ function setCache(id: string, spec: PersonaSpec) {
 }
 
 // ---------------------------------------------------------------------------
-// Permission mapping: larva side_effect_policy + can_spawn → opencode rules
+// Permission mapping: larva capabilities/side_effect_policy + can_spawn → opencode rules
 // ---------------------------------------------------------------------------
 
 /**
- * Map larva side_effect_policy + can_spawn to opencode permission object.
+ * Derive opencode permissions from larva capabilities (ADR-002).
+ *
+ * ADR-002 Migration:
+ * - `side_effect_policy` is DEPRECATED; runtime policy should come from separate source.
+ * - `capabilities` is canonical and expresses capability intent via postures:
+ *   - "none" / "read_only" → read-only operations
+ *   - "read_write" / "destructive" → potentially mutating operations
+ *
+ * Permission derivation strategy:
+ * - If ALL capabilities are "none" or "read_only" → read-only (edit: deny, bash: deny)
+ * - If ANY capability is "read_write" or "destructive" → no additional restrictions
+ *   (runtime policy for approval gating should be injected externally)
+ * - If `capabilities` absent → fall back to deprecated `side_effect_policy` for compat
+ *
+ * TODO: Runtime approval policy (ask/allow) should be provided by external source,
+ * not derived from persona. This function provides minimal deny-only derivation.
+ *
  * opencode expects { [permission_name]: "allow" | "deny" | "ask" }
  */
 function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
   const perms: Record<string, string> = {}
 
-  switch (spec.side_effect_policy) {
-    case "read_only":
+  // ADR-002: Prefer capabilities over deprecated side_effect_policy
+  if (spec.capabilities && Object.keys(spec.capabilities).length > 0) {
+    const postures = Object.values(spec.capabilities)
+    const allReadOnly = postures.every(p => p === "none" || p === "read_only")
+
+    if (allReadOnly) {
+      // All capabilities are read-only → restrict write operations
       perms.edit = "deny"
       perms.bash = "deny"
-      break
-    case "approval_required":
-      perms.edit = "ask"
-      perms.bash = "ask"
-      break
-    // "allow" → no restrictions
+    }
+    // If any capability allows mutation, no permission restrictions from capabilities.
+    // Runtime approval policy (ask/allow) should come from external source.
+  } else if (spec.side_effect_policy) {
+    // Fall back to deprecated side_effect_policy for backward compatibility
+    switch (spec.side_effect_policy) {
+      case "read_only":
+        perms.edit = "deny"
+        perms.bash = "deny"
+        break
+      case "approval_required":
+        perms.edit = "ask"
+        perms.bash = "ask"
+        break
+      // "allow" → no restrictions
+    }
   }
 
   if (spec.can_spawn === false) {

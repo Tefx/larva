@@ -37,10 +37,15 @@ larva CLI resolution (zero config):
 
 | PersonaSpec | opencode permission | Notes |
 |-------------|---------------------|-------|
-| `side_effect_policy: read_only` | `edit: deny, bash: deny` | |
-| `side_effect_policy: approval_required` | `edit: ask, bash: ask` | |
-| `side_effect_policy: allow` | no restrictions | |
+| `capabilities: {fs: "read_only", git: "read_only"}` | `edit: deny, bash: deny` | If ALL capabilities are none/read_only |
+| `capabilities: {fs: "read_write"}` | no restrictions | ANY read_write/destructive = no restriction |
+| ~~`side_effect_policy: read_only`~~ | `edit: deny, bash: deny` | **DEPRECATED** – use capabilities |
+| ~~`side_effect_policy: approval_required`~~ | `edit: ask, bash: ask` | **DEPRECATED** – use capabilities |
+| ~~`side_effect_policy: allow`~~ | no restrictions | **DEPRECATED** |
 | `can_spawn: false` | `task: deny` | |
+
+**ADR-002 Note:** `side_effect_policy` is deprecated per ADR-002. The plugin prefers
+`capabilities` for permission derivation. See ADR-002 for migration details.
 
 ### From tool-policy.json (runtime)
 
@@ -67,7 +72,7 @@ Per-agent deny/allow rules for specific opencode tools. This is **not** part of 
 }
 ```
 
-If the file doesn't exist, no tool restrictions are applied beyond what larva's `side_effect_policy` / `can_spawn` provide.
+If the file doesn't exist, no tool restrictions are applied beyond what larva's `capabilities` / `side_effect_policy` / `can_spawn` provide.
 
 ## Other mappings
 
@@ -83,7 +88,8 @@ If the file doesn't exist, no tool restrictions are applied beyond what larva's 
 
 | PersonaSpec | Reason |
 |-------------|--------|
-| `tools` | larva tool families don't map 1:1 to opencode permissions |
+| `tools` | **DEPRECATED** – use `capabilities` instead |
+| `capabilities` | Used for permission derivation (see above) |
 | `model_params.max_tokens` | opencode manages per-provider |
 | `compaction_prompt` | opencode has its own compaction system |
 
@@ -98,5 +104,5 @@ Every larva-loaded prompt includes:
 ## Limitations
 
 - Agent list is fixed at startup. New `larva register` requires opencode restart.
-- `tools` field (larva tool families) is not mapped to opencode permissions.
+- `capabilities` field is used for permission derivation but does not map 1:1 to opencode tool names.
 - Temperature is only applied if larva persona explicitly sets it.
