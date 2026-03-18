@@ -25286,7 +25286,7 @@ phases:
     claimed_at: '2026-03-18T18:19:20.315046+00:00'
   - id: core_logic.validate-deprecation-warnings
     name: validate-deprecation-warnings
-    status: pending
+    status: claimed
     description: "Add deprecation warnings for side_effect_policy and tools in core/validate.py.\n\
       \nstep_type: implementation\n\n## File: src/larva/core/validate.py\n\n### Changes\
       \ Required\n\n1. **Add deprecation warning for side_effect_policy** in `_validate_identity_fields`\
@@ -25337,6 +25337,8 @@ phases:
     - src/larva/core/validate.py
     - INTERFACES.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T18:19:30.868414+00:00'
   - id: core_logic.assemble-capabilities
     name: assemble-capabilities
     status: claimed
