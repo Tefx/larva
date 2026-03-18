@@ -101,7 +101,7 @@ class TestPersonaSpecStructure:
         assert len(PersonaSpec.__required_keys__) == 0
 
     def test_persona_spec_exposes_all_documented_fields(self) -> None:
-        """Assert PersonaSpec exposes exactly the documented 10 fields."""
+        """Assert PersonaSpec exposes exactly the documented 12 fields."""
         from larva.core.spec import PersonaSpec
 
         expected_fields = {
@@ -109,6 +109,7 @@ class TestPersonaSpecStructure:
             "description",
             "prompt",
             "model",
+            "capabilities",
             "tools",
             "model_params",
             "side_effect_policy",
@@ -122,11 +123,11 @@ class TestPersonaSpecStructure:
         assert actual_fields == expected_fields
 
     def test_persona_spec_field_count(self) -> None:
-        """Assert PersonaSpec has exactly 11 fields."""
+        """Assert PersonaSpec has exactly 12 fields."""
         from larva.core.spec import PersonaSpec
 
         field_count = len(PersonaSpec.__annotations__)
-        assert field_count == 11
+        assert field_count == 12
 
 
 class TestSpecVersion:
@@ -217,7 +218,7 @@ class TestImportConsumability:
         assert spec["prompt"] == "You are a helpful assistant"
 
     def test_persona_spec_instantiation_with_all_fields(self) -> None:
-        """Assert PersonaSpec accepts full field specification."""
+        """Assert PersonaSpec accepts full field specification with capabilities."""
         from larva.core.spec import PersonaSpec
 
         spec: PersonaSpec = {
@@ -225,6 +226,7 @@ class TestImportConsumability:
             "description": "A test persona",
             "prompt": "You are helpful",
             "model": "gpt-4",
+            "capabilities": {"web_search": "read_only", "file_write": "destructive"},
             "tools": {"web_search": "read_only", "file_write": "destructive"},
             "model_params": {"temperature": 0.7},
             "side_effect_policy": "approval_required",
@@ -234,6 +236,7 @@ class TestImportConsumability:
             "spec_digest": "abc123",
         }
         assert spec["id"] == "test-persona"
+        assert spec["capabilities"]["web_search"] == "read_only"
         assert spec["tools"]["web_search"] == "read_only"
         assert spec["side_effect_policy"] == "approval_required"
 
@@ -256,3 +259,112 @@ class TestImportConsumability:
         policy: SideEffectPolicy = "approval_required"
         spec: PersonaSpec = {"side_effect_policy": policy}
         assert spec["side_effect_policy"] == "approval_required"
+
+
+class TestCapabilitiesField:
+    """Tests for the new capabilities field in PersonaSpec and related types."""
+
+    def test_capabilities_field_accepts_tool_postures(self) -> None:
+        """Assert PersonaSpec with capabilities: {'filesystem': 'read_write'} is valid TypedDict usage."""
+        from larva.core.spec import PersonaSpec, ToolPosture
+
+        capabilities: dict[str, ToolPosture] = {"filesystem": "read_write"}
+        spec: PersonaSpec = {"id": "test", "capabilities": capabilities}
+        assert spec["capabilities"]["filesystem"] == "read_write"
+
+    def test_capabilities_field_coexists_with_tools(self) -> None:
+        """Assert PersonaSpec can have both tools and capabilities during transition."""
+        from larva.core.spec import PersonaSpec
+
+        spec: PersonaSpec = {
+            "id": "test-persona",
+            "prompt": "You are helpful",
+            "capabilities": {"web_search": "read_only", "filesystem": "read_write"},
+            "tools": {"web_search": "read_only", "filesystem": "read_write"},
+        }
+        assert spec["capabilities"]["web_search"] == "read_only"
+        assert spec["tools"]["web_search"] == "read_only"
+        # Both fields should be independent
+        assert "capabilities" in spec
+        assert "tools" in spec
+
+
+class TestToolsetComponentCapabilities:
+    """Tests for ToolsetComponent capabilities field and backward compat."""
+
+    def test_toolset_component_has_capabilities(self) -> None:
+        """Assert ToolsetComponent accepts capabilities key."""
+        from larva.core.spec import ToolsetComponent, ToolPosture
+
+        capabilities: dict[str, ToolPosture] = {"search": "read_only", "fs": "read_write"}
+        toolset: ToolsetComponent = {"capabilities": capabilities}
+        assert toolset["capabilities"]["search"] == "read_only"
+
+    def test_toolset_component_backward_compat_tools(self) -> None:
+        """Assert ToolsetComponent still accepts tools key."""
+        from larva.core.spec import ToolsetComponent, ToolPosture
+
+        tools: dict[str, ToolPosture] = {"search": "read_only", "fs": "read_write"}
+        toolset: ToolsetComponent = {"tools": tools}
+        assert toolset["tools"]["search"] == "read_only"
+
+
+class TestConstraintComponentBackwardCompat:
+    """Tests for ConstraintComponent backward compatibility during transition."""
+
+    def test_constraint_component_still_accepts_side_effect_policy(self) -> None:
+        """Assert ConstraintComponent still works with side_effect_policy (backward compat during transition)."""
+        from larva.core.spec import ConstraintComponent, SideEffectPolicy
+
+        policy: SideEffectPolicy = "allow"
+        constraint: ConstraintComponent = {"side_effect_policy": policy}
+        assert constraint["side_effect_policy"] == "allow"
+
+    def test_constraint_component_accepts_can_spawn(self) -> None:
+        """Assert ConstraintComponent accepts can_spawn field."""
+        from larva.core.spec import ConstraintComponent
+
+        constraint: ConstraintComponent = {"can_spawn": True}
+        assert constraint["can_spawn"] is True
+
+        constraint_list: ConstraintComponent = {"can_spawn": ["child-a", "child-b"]}
+        assert constraint_list["can_spawn"] == ["child-a", "child-b"]
+
+    def test_constraint_component_accepts_compaction_prompt(self) -> None:
+        """Assert ConstraintComponent accepts compaction_prompt field."""
+        from larva.core.spec import ConstraintComponent
+
+        constraint: ConstraintComponent = {"compaction_prompt": "Summarize the state"}
+        assert constraint["compaction_prompt"] == "Summarize the state"
+
+
+class TestCapabilitiesWithAllToolPostures:
+    """Tests verifying capabilities field works with all ToolPosture values."""
+
+    def test_capabilities_accepts_none(self) -> None:
+        """Assert capabilities dict accepts 'none' posture."""
+        from larva.core.spec import PersonaSpec
+
+        spec: PersonaSpec = {"id": "test", "capabilities": {"tool_a": "none"}}
+        assert spec["capabilities"]["tool_a"] == "none"
+
+    def test_capabilities_accepts_read_only(self) -> None:
+        """Assert capabilities dict accepts 'read_only' posture."""
+        from larva.core.spec import PersonaSpec
+
+        spec: PersonaSpec = {"id": "test", "capabilities": {"tool_b": "read_only"}}
+        assert spec["capabilities"]["tool_b"] == "read_only"
+
+    def test_capabilities_accepts_read_write(self) -> None:
+        """Assert capabilities dict accepts 'read_write' posture."""
+        from larva.core.spec import PersonaSpec
+
+        spec: PersonaSpec = {"id": "test", "capabilities": {"tool_c": "read_write"}}
+        assert spec["capabilities"]["tool_c"] == "read_write"
+
+    def test_capabilities_accepts_destructive(self) -> None:
+        """Assert capabilities dict accepts 'destructive' posture."""
+        from larva.core.spec import PersonaSpec
+
+        spec: PersonaSpec = {"id": "test", "capabilities": {"tool_d": "destructive"}}
+        assert spec["capabilities"]["tool_d"] == "destructive"
