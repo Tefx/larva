@@ -38,7 +38,8 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
         "model": "gpt-4o-mini",
-        "tools": {"shell": "read_only"},
+        "capabilities": {"shell": "read_only"},  # ADR-002: canonical capability field
+        "tools": {"shell": "read_only"},  # ADR-002: mirrored during transition
         "model_params": {"temperature": 0.1},
         "side_effect_policy": "read_only",
         "can_spawn": False,
@@ -155,7 +156,9 @@ class InMemoryComponentStore:
         return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        return Success({"tools": self.toolsets_by_name.get(name, self.toolset)})
+        # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
+        capabilities = self.toolsets_by_name.get(name, self.toolset)
+        return Success({"capabilities": capabilities, "tools": capabilities})
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
         return Success(self.constraints_by_name.get(name, self.constraint))
@@ -268,7 +271,9 @@ class TestFacadeAssemble:
         assemble_input = assemble_module.inputs[0]
         assert assemble_input["id"] == "persona-a"
         assert assemble_input["prompts"] == [{"text": "Prompt body"}]
-        assert assemble_input["toolsets"] == [{"tools": {"shell": "read_only"}}]
+        assert assemble_input["toolsets"] == [
+            {"capabilities": {"shell": "read_only"}, "tools": {"shell": "read_only"}}
+        ]
         assert assemble_input["constraints"] == [{"side_effect_policy": "read_only"}]
         assert assemble_input["model"] == {"model": "gpt-4o-mini"}
         assert assemble_input["variables"] == {"role": "analyst"}
@@ -920,6 +925,8 @@ class TestFacadeClone:
         assert cloned["description"] == "Persona source-persona"
         assert cloned["prompt"] == "You are careful."
         assert cloned["model"] == "gpt-4o-mini"
+        # ADR-002: both capabilities (canonical) and tools (mirrored) present after normalize
+        assert cloned["capabilities"] == {"shell": "read_only"}
         assert cloned["tools"] == {"shell": "read_only"}
         assert cloned["model_params"] == {"temperature": 0.1}
         assert cloned["side_effect_policy"] == "read_only"
@@ -960,6 +967,8 @@ class TestFacadeClone:
         assert cloned["description"] == "Original persona description"
         assert cloned["prompt"] == "Original prompt"
         assert cloned["model"] == "gpt-4"
+        # ADR-002: tools input gets copied to capabilities during normalize
+        assert cloned["capabilities"] == {"shell": "full_access"}
         assert cloned["tools"] == {"shell": "full_access"}
         assert cloned["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
         assert cloned["side_effect_policy"] == "full_access"
@@ -1151,6 +1160,8 @@ class TestFacadeExportAll:
             assert "description" in spec
             assert "prompt" in spec
             assert "model" in spec
+            # ADR-002: both capabilities (canonical) and tools (mirrored) present
+            assert "capabilities" in spec
             assert "tools" in spec
             assert "model_params" in spec
             assert "side_effect_policy" in spec
