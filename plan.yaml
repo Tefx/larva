@@ -25390,7 +25390,7 @@ phases:
     claimed_at: '2026-03-18T18:19:15.696448+00:00'
   - id: core_logic.patch-capabilities
     name: patch-capabilities
-    status: pending
+    status: claimed
     description: "Update patch module to handle capabilities field.\n\nstep_type:\
       \ implementation\n\n## File: src/larva/core/patch.py\n\n### Changes Required\n\
       \n1. **Update DEEP_MERGE_KEYS** (line 29):\n   - Add `capabilities` to the frozenset:\
@@ -25422,6 +25422,8 @@ phases:
     refs:
     - src/larva/core/patch.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T18:19:25.967840+00:00'
   - id: core_logic.core-logic-tests
     name: core-logic-tests
     status: pending
