@@ -26339,7 +26339,7 @@ phases:
   steps:
   - id: doc_contract.update-json-schema
     name: update-json-schema
-    status: claimed
+    status: done
     description: "Update contracts/persona_spec.schema.json to add capabilities and\
       \ deprecate tools/side_effect_policy.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - schema_definition\n\n## File: contracts/persona_spec.schema.json\n\
@@ -26390,6 +26390,35 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T16:51:52.277581+00:00'
+    done_at: '2026-03-18T17:01:37.510161+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 988068e
+
+
+      Verification:
+
+      - Run: python3 schema validation -> schema parses and is valid JSON
+
+      - Run: python3 Draft202012Validator.check_schema -> valid JSON Schema draft
+      2020-12
+
+      - Run: python3 structure check -> required == [id, description, prompt, model,
+      spec_version]
+
+      - Run: python3 structure check -> anyOf == [{required:[tools]}, {required:[capabilities]}]
+
+      - Run: python3 structure check -> capabilities enum == [none, read_only, read_write,
+      destructive]
+
+      - Run: python3 instance validation -> neither tools nor capabilities fails
+
+      - Run: python3 instance validation -> tools-only/capabilities-only/both pass
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.update-interfaces-md
     name: update-interfaces-md
     status: done
