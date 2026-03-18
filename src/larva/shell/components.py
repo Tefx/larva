@@ -59,9 +59,13 @@ class ComponentStore(Protocol):
     with the documented directory structure:
 
     - prompts/<name>.md     -> PromptComponent with raw markdown text
-    - toolsets/<name>.yaml  -> ToolsetComponent with posture mappings
+    - toolsets/<name>.yaml  -> ToolsetComponent with capability posture mappings
     - constraints/<name>.yaml -> ConstraintComponent with policy values
     - models/<name>.yaml   -> ModelComponent with model config
+
+    ADR-002 Transition:
+        - Toolsets: `capabilities` is canonical, `tools` retained for backward compatibility
+        - Constraints: `side_effect_policy` deprecated, retained for transition compatibility
     """
 
     def load_prompt(self, name: str) -> Result[PromptComponent, ComponentStoreError]:
@@ -79,17 +83,27 @@ class ComponentStore(Protocol):
     def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
         """Load a toolset component by name.
 
+        Per ADR-002 transition, reads capability posture mappings:
+        - Prefers canonical `capabilities` field
+        - Falls back to deprecated `tools` field for backward compatibility
+        - Returns component with both `capabilities` (canonical) and `tools` (mirrored)
+
         Args:
             name: Component name (without .yaml extension).
 
         Returns:
-            Ok(ToolsetComponent) with posture mappings.
+            Ok(ToolsetComponent) with capability posture mappings.
             Err(ComponentStoreError) if not found or parse error.
         """
         ...
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
+
+        Note:
+            `side_effect_policy` is deprecated per ADR-002 and retained for
+            transition compatibility only. Runtime policy ownership has moved
+            out of PersonaSpec.
 
         Args:
             name: Component name (without .yaml extension).
@@ -136,9 +150,13 @@ class FilesystemComponentStore:
 
     Loads components from the documented `~/.larva/components/` layout:
     - prompts/<name>.md     -> PromptComponent with raw markdown text
-    - toolsets/<name>.yaml  -> ToolsetComponent with posture mappings
+    - toolsets/<name>.yaml  -> ToolsetComponent with capability posture mappings
     - constraints/<name>.yaml -> ConstraintComponent with policy values
     - models/<name>.yaml   -> ModelComponent with model config
+
+    ADR-002 Transition:
+        - Toolsets: `capabilities` is canonical, `tools` retained for backward compatibility
+        - Constraints: `side_effect_policy` deprecated, retained for transition compatibility
     """
 
     def __init__(self, components_dir: Path | None = None) -> None:
@@ -307,6 +325,11 @@ class FilesystemComponentStore:
     def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
         """Load a toolset component by name.
 
+        Per ADR-002 transition:
+        - Reads `capabilities` first (canonical)
+        - Falls back to `tools` for backward compatibility
+        - Returns component with canonical `capabilities` and mirrored `tools`
+
         Args:
             name: Component name (without .yaml extension).
 
@@ -323,11 +346,28 @@ class FilesystemComponentStore:
             return yaml_result
 
         data = yaml_result.unwrap()
-        tools = data.get("tools", {}) if isinstance(data, dict) else {}
-        return Success(ToolsetComponent(tools=tools))
+        if not isinstance(data, dict):
+            data = {}
+
+        # Prefer canonical 'capabilities', fall back to deprecated 'tools'
+        capabilities = data.get("capabilities")
+        if capabilities is None:
+            capabilities = data.get("tools", {})
+
+        return Success(
+            ToolsetComponent(
+                capabilities=capabilities,
+                tools=capabilities,  # Mirror for transition compatibility
+            )
+        )
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
+
+        Note:
+            `side_effect_policy` is deprecated per ADR-002 and retained for
+            transition compatibility only. Runtime policy ownership has moved
+            out of PersonaSpec.
 
         Args:
             name: Component name (without .yaml extension).
