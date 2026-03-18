@@ -24785,7 +24785,7 @@ phases:
       Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
-  status: in_progress
+  status: done
   depends_on:
   - doc_contract
   steps:
@@ -24994,7 +24994,7 @@ phases:
       transition'
   - id: core_types.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify core type definitions are correct and complete
       per ADR-002.
 
@@ -25034,6 +25034,37 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-18T18:17:30.329817+00:00'
+    done_at: '2026-03-18T18:18:43.074777+00:00'
+    evidence: 'Gate verdict: PASS
+
+
+      Verified:
+
+      - PersonaSpec has canonical `capabilities` and deprecated `tools`
+
+      - ToolsetComponent uses transition-compatible typing (`total=False`) so capabilities-only
+      / tools-only / both are accepted
+
+      - SideEffectPolicy and ConstraintComponent side_effect_policy deprecations documented
+
+      - JSON schema allows tools-only, capabilities-only, and both-field specs; rejects
+      neither-field specs
+
+      - `uv run pytest tests/core/test_spec.py tests/core/test_schema_validation.py
+      -v` passes
+
+      - `invar guard --changed` passes in gate review
+
+
+      Artifacts reviewed:
+
+      - src/larva/core/spec.py
+
+      - contracts/persona_spec.schema.json
+
+      - tests/core/test_spec.py
+
+      - tests/core/test_schema_validation.py'
   - id: core_types.fix-toolsetcomponent-transition-compat
     name: fix-toolsetcomponent-transition-compat
     status: done
@@ -25171,7 +25202,7 @@ phases:
       and neither-field cases'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
-  status: locked
+  status: pending
   depends_on:
   - core_types
   steps:
