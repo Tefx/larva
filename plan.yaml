@@ -25100,7 +25100,7 @@ phases:
       and empty-dict acceptance'
   - id: core_types.fix-schema-transition-compat
     name: fix-schema-transition-compat
-    status: pending
+    status: claimed
     description: 'Remediate core_types gate blocker: align `contracts/persona_spec.schema.json`
       with ADR-002 transition compatibility so tools-only, capabilities-only, and
       both-field specs validate during the transition window. Update schema required/anyOf
@@ -25138,6 +25138,8 @@ phases:
     - core_types.contract-capabilities-field
     - core_types.test-type-definitions
     - core_types.fix-toolsetcomponent-transition-compat
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T18:13:48.964958+00:00'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
