@@ -25772,7 +25772,7 @@ phases:
       tests/core/test_assemble.py -v` -> pass'
   - id: core_logic.fix-patch-identity-protection
     name: Fix patch identity protection
-    status: claimed
+    status: done
     description: 'Fix the core patch identity protection blocker in `src/larva/core/patch.py`
       and align the focused tests with the stable identity invariant from `INTERFACES.md`.
 
@@ -25845,6 +25845,25 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T19:07:07.254569+00:00'
+    done_at: '2026-03-18T19:17:33.357627+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 27b8fc42ac008383f60fde00ff495ada549d1034
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_patch.py -v -> 32 xpassed
+
+      - Run: uv run invar guard --static -> passed (0 errors, 0 warnings)
+
+      - Run: grep -n ''PROTECTED_KEYS\|"id"'' src/larva/core/patch.py tests/core/test_patch.py
+      -> confirms PROTECTED_KEYS includes id
+
+
+      Spec link:
+
+      - INTERFACES.md (`id` is stable identity)'
   - id: core_logic.retest-patch-identity-protection
     name: Retest patch identity protection
     status: pending
