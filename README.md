@@ -45,9 +45,7 @@ cat <<'EOF' > code-reviewer.json
   "description": "Reviews code for correctness and style",
   "prompt": "You are a senior code reviewer.",
   "model": "openai/gpt-5.4",
-  "tools": {"shell": "read_only"},
-  "can_spawn": false,
-  "side_effect_policy": "read_only"
+  "capabilities": {"shell": "read_only"}
 }
 EOF
 ```
@@ -81,12 +79,10 @@ The main larva artifact is a flat JSON object called `PersonaSpec`.
   "description": "Reviews code changes with read-focused tooling.",
   "prompt": "You are a senior code reviewer...",
   "model": "openai/gpt-5.4",
-  "tools": {
+  "capabilities": {
     "shell": "read_only",
     "filesystem": "read_write"
   },
-  "can_spawn": false,
-  "side_effect_policy": "approval_required",
   "spec_digest": "sha256:..."
 }
 ```
@@ -246,6 +242,7 @@ If you are just getting started, read `README.md` then `USER_GUIDE.md`.
 - `INTERFACES.md` - public interface specification
 - `ARCHITECTURE.md` - module boundaries and dependency design
 - `ADR-001-spec-version-boundary.md` - `spec_version` design decision
+- `ADR-002-capability-intent-without-runtime-policy.md` - capability intent model
 
 ## License
 
