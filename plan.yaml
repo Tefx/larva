@@ -26573,7 +26573,7 @@ phases:
     agent: doc-reviewer
   - id: doc_contract.update-readme
     name: update-readme
-    status: claimed
+    status: done
     description: 'Update README.md to use `capabilities` and deprecate `side_effect_policy`.
 
 
@@ -26600,6 +26600,26 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-18T16:53:39.151246+00:00'
+    done_at: '2026-03-18T17:01:59.940909+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 63cae60
+
+
+      Verification:
+
+      - Run: grep -n "capabilities" README.md -> capabilities present in JSON examples
+
+      - Run: grep -n "side_effect_policy" README.md -> no matches
+
+      - Run: grep -n "\"tools\"" README.md -> no tools field in JSON examples
+
+      - Run: grep -n "ADR-002" README.md -> ADR-002 linked in Read Next
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.doc-contract-gate
     name: doc-contract-gate
     status: pending
