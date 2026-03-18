@@ -26040,7 +26040,7 @@ phases:
       scope)'
   - id: shell_adapters.facade-capabilities
     name: facade-capabilities
-    status: pending
+    status: claimed
     description: "Update app/facade.py to use capabilities throughout the assembly/resolve\
       \ pipeline.\n\nstep_type: implementation\n\n## File: src/larva/app/facade.py\n\
       \n### Changes Required\n\n1. **Update assemble method** (line 207-267):\n  \
@@ -26072,6 +26072,8 @@ phases:
     depends_on:
     - shell_adapters.components-toolset-migration
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T19:38:35.576494+00:00'
   - id: shell_adapters.mcp-contract-capabilities
     name: mcp-contract-capabilities
     status: pending
