@@ -25709,6 +25709,7 @@ phases:
     depends_on:
     - core_logic.core-logic-tests
     - core_logic.integration-verify
+    - core_logic.retest-patch-identity-protection
     agent: gate-reviewer
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
