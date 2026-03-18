@@ -25866,7 +25866,7 @@ phases:
       - INTERFACES.md (`id` is stable identity)'
   - id: core_logic.retest-patch-identity-protection
     name: Retest patch identity protection
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the affected
       patch tests and `invar guard` after the identity-protection fix.
 
@@ -25915,6 +25915,26 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-18T19:19:05.599672+00:00'
+    done_at: '2026-03-18T19:27:14.766046+00:00'
+    evidence: 'Artifact:
+
+      - Commit: N/A (verification step)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_patch.py -v -> 32 xpassed
+
+      - Run: uv run invar guard --all -> passed (0 errors)
+
+
+      Findings:
+
+      - id/spec_version/spec_digest protection tests all pass
+
+      - identity-protection regression resolved
+
+      - guard remains clean for this fix family'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
