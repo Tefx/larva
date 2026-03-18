@@ -24994,7 +24994,7 @@ phases:
       transition'
   - id: core_types.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify core type definitions are correct and complete
       per ADR-002.
 
@@ -25030,6 +25030,8 @@ phases:
     - core_types.contract-capabilities-field
     - core_types.test-type-definitions
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-18T17:52:01.488720+00:00'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
