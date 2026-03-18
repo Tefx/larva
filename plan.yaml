@@ -24914,7 +24914,7 @@ phases:
       - `MIGRATION-002-capability-intent.md`'
   - id: core_types.test-type-definitions
     name: test-type-definitions
-    status: pending
+    status: claimed
     description: 'Test step: Add tests for the new capabilities field type definitions
       and backward compatibility.
 
@@ -24977,6 +24977,8 @@ phases:
     depends_on:
     - core_types.contract-capabilities-field
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T17:41:29.750465+00:00'
   - id: core_types.gate
     name: gate
     status: pending
