@@ -26715,7 +26715,7 @@ phases:
   steps:
   - id: test_migration.update-facade-tests
     name: update-facade-tests
-    status: claimed
+    status: done
     description: "Update tests/app/test_facade.py to use capabilities and test deprecation.\n\
       \nstep_type: implementation\n\n## File: tests/app/test_facade.py\n\n### Changes\
       \ Required\n\n1. **Update all test fixtures** that use `tools` field:\n   -\
@@ -26769,6 +26769,27 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T20:22:46.880694+00:00'
+    done_at: '2026-03-18T20:28:53.954318+00:00'
+    evidence: '## Test Migration Evidence
+
+      **pytest output**: `pytest tests/app/test_facade.py` -> 54 passed (no xfails)
+
+
+      Updated tests:
+
+      - Migrated facade clone/export test expectations to capabilities canonical +
+      tools mirrored behavior
+
+      - Removed stale xfail markers for implemented clone/export paths
+
+      - Updated SpyNormalizeModule to reflect ADR-002 transition normalization
+
+
+      Verification:
+
+      - facade tests pass and align with current runtime behavior
+
+      - invar guard static checks pass for changed scope'
   - id: test_migration.update-shell-tests
     name: update-shell-tests
     status: pending
