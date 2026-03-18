@@ -24994,7 +24994,7 @@ phases:
       transition'
   - id: core_types.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'Gate review: Verify core type definitions are correct and complete
       per ADR-002.
 
@@ -25032,6 +25032,8 @@ phases:
     - core_types.fix-toolsetcomponent-transition-compat
     - core_types.fix-schema-transition-compat
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-18T18:17:30.329817+00:00'
   - id: core_types.fix-toolsetcomponent-transition-compat
     name: fix-toolsetcomponent-transition-compat
     status: done
