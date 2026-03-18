@@ -26574,7 +26574,7 @@ phases:
     agent: gate-reviewer
   - id: doc_contract.accept-adr-002
     name: accept-adr-002
-    status: claimed
+    status: done
     description: 'Transition ADR-002 status from "Proposed" to "Accepted".
 
 
@@ -26613,3 +26613,21 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-18T16:46:18.298553+00:00'
+    done_at: '2026-03-18T17:00:26.336785+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5264d99
+
+
+      Verification:
+
+      - Run: grep -A2 "^## Status" ADR-002-capability-intent-without-runtime-policy.md
+      -> Status reads "Accepted (2026-03-19)"
+
+      - Run: git diff HEAD~1 -- ADR-002-capability-intent-without-runtime-policy.md
+      -> Only acceptance date/status change
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
