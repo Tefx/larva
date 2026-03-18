@@ -26450,7 +26450,7 @@ phases:
       - contrib/opencode-plugin/README.md'
   - id: shell_adapters.wiring-audit
     name: wiring-audit
-    status: claimed
+    status: done
     description: 'Wiring completeness audit: verify every new/renamed public symbol
       is reachable at runtime.
 
@@ -26516,6 +26516,41 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-18T20:12:48.743508+00:00'
+    done_at: '2026-03-18T20:16:34.921026+00:00'
+    evidence: '## Wiring Audit Report
+
+
+      Orphan exports:
+
+      - PASS: reviewed shell adapter exports are consumed by runtime callers/tests;
+      dead_export escape hatches are justified.
+
+
+      Capabilities field consumers:
+
+      - PASS: read/write paths verified across components/assemble/normalize/validate/python
+      API adapter surfaces.
+
+
+      Deprecation warning reachability:
+
+      - PASS: warnings from core validate surface through CLI, Python API, and MCP
+      outputs.
+
+
+      Verification commands:
+
+      - `grep "larva.shell.cli:main" pyproject.toml` -> CLI entrypoint wired
+
+      - `grep -rn ''"warnings"'' src/larva/shell/cli_commands.py` -> warning pass-through
+      confirmed
+
+      - shell adapter wiring scans for capabilities/tools/deprecation routes -> consistent
+
+
+      Verdict:
+
+      - PASS (minor note: web module dedicated tests remain sparse)'
   - id: shell_adapters.gate
     name: gate
     status: pending
