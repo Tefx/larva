@@ -26419,7 +26419,7 @@ phases:
     claimed_at: '2026-03-18T16:50:12.219155+00:00'
   - id: doc_contract.update-architecture-md
     name: update-architecture-md
-    status: claimed
+    status: done
     description: 'ALREADY DONE by user commit 837e26e. ARCHITECTURE.md has been rewritten
       to use `capabilities` as the canonical field. No `tools` or `side_effect_policy`
       references remain. This step should be verified and marked done.
@@ -26442,6 +26442,27 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-18T16:48:25.830763+00:00'
+    done_at: '2026-03-18T17:01:09.630312+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 837e26ee9c3476d3bddc2468f20374e535288ae4
+
+
+      Verification:
+
+      - Run: git show 837e26e:ARCHITECTURE.md -> confirms capabilities-centric rewrite
+
+      - Run: grep "capabilities" ARCHITECTURE.md -> matches in PersonaSpec example
+      and invariants
+
+      - Run: grep -i "tools" ARCHITECTURE.md -> no deprecated PersonaSpec field references
+
+      - Run: grep -i "side_effect_policy" ARCHITECTURE.md -> no deprecated field references
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.update-usage-and-userguide
     name: update-usage-and-userguide
     status: pending
