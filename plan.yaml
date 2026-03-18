@@ -24785,13 +24785,13 @@ phases:
       Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
-  status: pending
+  status: in_progress
   depends_on:
   - doc_contract
   steps:
   - id: core_types.contract-capabilities-field
     name: contract-capabilities-field
-    status: pending
+    status: claimed
     description: "Contract step: Define the capabilities field and transition types\
       \ in core/spec.py.\n\nstep_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n\n## Changes Required\n\n### File: src/larva/core/spec.py\n\
@@ -24855,6 +24855,8 @@ phases:
     - ADR-002-capability-intent-without-runtime-policy.md
     - MIGRATION-002-capability-intent.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-18T17:09:43.281795+00:00'
   - id: core_types.test-type-definitions
     name: test-type-definitions
     status: pending
