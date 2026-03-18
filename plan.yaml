@@ -25961,7 +25961,7 @@ phases:
       - guard remains clean for this fix family'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
-  status: in_progress
+  status: done
   depends_on:
   - core_logic
   steps:
@@ -26553,7 +26553,7 @@ phases:
       - PASS (minor note: web module dedicated tests remain sparse)'
   - id: shell_adapters.gate
     name: gate
-    status: claimed
+    status: done
     description: "Gate review: Verify shell adapter migration is complete.\n\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale: |\n  - Cross-cutting change across all shell\
       \ adapters\n  - Multiple transport surfaces (CLI, MCP, Python API, Web)\n  -\
@@ -26577,9 +26577,139 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-18T20:16:59.584805+00:00'
+    done_at: '2026-03-18T20:21:38.647076+00:00'
+    evidence: "## Gate Review: shell_adapters.gate\n\n### Verdict: CONDITIONAL PASS\n\
+      \n### Summary\n- **Blocking issues**: 0\n- **Should-fix issues**: 3\n- **Suggestions**:\
+      \ 8\n- **Confidence**: HIGH (automated gates passed, 388 tests verified, wiring\
+      \ audit passed)\n\n---\n\n### Automated Gate Results\n\n| Gate | Result | Details\
+      \ |\n|------|--------|---------|\n| invar guard --all | PASSED | 0 errors, 8\
+      \ warnings (file size, contract redundancy), 13 infos |\n| pytest tests/ | PASSED\
+      \ | 644 passed, 1 xfailed, 48 xpassed |\n| ruff check src/ | PASSED | Format/lint\
+      \ warnings only (TC001, I001, E501, UP007, A002, F401) |\n| mypy | WARN | 83\
+      \ type annotation issues (no runtime impact) |\n| wiring audit | PASSED | All\
+      \ public exports have runtime callers |\n| contract strength | PASSED | No identity\
+      \ lambdas, all contracts reference parameters |\n\n---\n\n### Cross-Cutting\
+      \ Scan Results\n\n**Escape Hatch Audit** (38 total):\n- `shell_result` (36):\
+      \ All documented with legitimate shell-orchestration reasons\n- `entry_point_too_thick`\
+      \ (1): `contrib/web/server.py` inline patch logic documented\n- `dead_export`\
+      \ (1): `cli.py:322` console script entrypoint (legitimate framework call)\n\n\
+      No concentration anomalies detected (max per-file: 17 in `python_api.py` — expected\
+      \ for exception-passthrough adapter).\n\n**Pattern Scans**:\n- `pass` stubs:\
+      \ None in production code (only in Protocol signatures)\n- Mock in tests: Appropriate\
+      \ unit-test isolation in `test_python_api.py`\n- `NotImplementedError`: 1 in\
+      \ `mcp_contract.py:331` — intentional Protocol default method\n- TODO/FIXME/HACK:\
+      \ None found in shell adapters\n\n---\n\n### Risk Tiering\n\n**CRITICAL** (100%\
+      \ coverage):\n- `src/larva/shell/mcp.py` (673 lines) — MCP server runtime, 13\
+      \ tool handlers\n- `src/larva/shell/cli_helpers.py` (655 lines) — CLI transport\
+      \ layer, output formatting\n\n**STANDARD** (public API + 30% internal sampling):\n\
+      - `src/larva/shell/components.py` (464 lines) — Filesystem component store\n\
+      - `src/larva/app/facade.py` (640 lines) — Application facade\n- `src/larva/shell/cli_commands.py`\
+      \ — CLI command implementations\n- `src/larva/shell/cli.py` — CLI entry point\n\
+      - `src/larva/shell/mcp_contract.py` — MCP tool definitions\n- `src/larva/shell/python_api.py`\
+      \ (561 lines) — Python API\n- `src/larva/shell/python_api_components.py` — Component\
+      \ show wrappers\n- `src/larva/shell/mcp_export.py`, `mcp_update_batch.py` —\
+      \ Export/batch handlers\n\n**LOW** (spot-check):\n- `src/larva/shell/web_ui.html`,\
+      \ `contrib/web/index.html`, `contrib/opencode-plugin/*` — Static files, no code\
+      \ paths\n\n---\n\n### Expert Findings\n\n#### E1: Spec Alignment ✅\n- `capabilities`\
+      \ field flows through all adapter surfaces (CLI, MCP, Python API)\n- ADR-002\
+      \ transition documented in every surface (components, mcp_contract, python_api)\n\
+      - `side_effect_policy` deprecated but retained with clear docstrings\n- MCP\
+      \ tool descriptions correctly warn users about `tools` deprecation\n- Spec error\
+      \ codes match INTERFACES.md definitions\n- Facade returns canonical `PersonaSpec`\
+      \ with `capabilities` populated\n\n**Evidence samples**:\n- `components.py:353-361`:\
+      \ Prefers `capabilities`, falls back to `tools`, mirrors both\n- `normalize_spec:102-108`:\
+      \ Transition normalization verified in core\n- `mcp_contract.py:45-67,161-172,215-218,261,285,299`:\
+      \ All MCP tool descriptions document deprecation\n\n#### E2: Architecture ✅\
+      \ (Spawned subagent)\n- Package boundaries respected (core → shell → app)\n\
+      - No circular dependencies detected\n- Protocol contracts correctly separate\
+      \ interface from implementation\n- FilesystemComponentStore implements ComponentStore\
+      \ Protocol\n\n#### E3: Developer Experience ⚠️\n**SHOULD_FIX**:\n1. **file_size_warning**:\
+      \ `src/larva/shell/cli_helpers.py` at 93% of 700-line limit (655 lines)\n  \
+      \ - Remediation: Extract `_build_parser` (244 lines) into `cli_parser.py`\n\
+      \   \n2. **file_size_warning**: `src/larva/shell/mcp.py` at 96% of 700-line\
+      \ limit (673 lines)\n   - Remediation: Extract `MCPHandlers` export/batch methods\
+      \ to separate modules\n\n3. **function_size_warning**: `_build_parser` at 244\
+      \ lines (max: 100 for shell)\n   - Same as #1 above\n\n**Suggestions** (INFO\
+      \ only):\n- Ruff I001 (import sorting): Cosmetic, not blocking\n- Ruff TC001\
+      \ (type-checking blocks): Performance hint, not correctness\n- Ruff E501 (line\
+      \ length): 12 lines > 100 chars — cosmetic\n\n#### E4: SE Quality ✅\n**Testing**:\n\
+      - ✅ 388 shell-related tests (128 MCP + 169 CLI + 91 Python API)\n- ✅ Happy path\
+      \ coverage (all commands tested)\n- ✅ Error path coverage (all error code paths\
+      \ tested)\n- ✅ No assertion-free tests\n- ✅ No `pass` body stubs\n- ✅ No Mock\
+      \ in integration tests (MockComponentStore is appropriate for unit layer)\n\n\
+      **Contracts**:\n- ✅ No identity-lambda contracts\n- ✅ All `@pre` lambdas use\
+      \ real conditions\n- ✅ Doctests cover failure cases in core/normalize\n\n**Security**:\n\
+      - ✅ Path traversal prevention in `components.py:203-251` (strict path resolution)\n\
+      - ✅ No hardcoded secrets\n- ✅ `side_effect_policy` documentation does not leak\
+      \ implementation details\n\n#### E4.1: Migration/Persistence ✅\n- ✅ `normalize_spec`\
+      \ computes digest AFTER tools→capabilities normalization\n- ✅ `FilesystemComponentStore._resolve_component_path`\
+      \ validates paths against traversal\n- ✅ Registry save/load uses canonical `PersonaSpec`\
+      \ shape\n\n---\n\n### Confidence Calibration\n\n| Aspect | Confidence | Basis\
+      \ |\n|--------|------------|-------|\n| Wire completeness | HIGH | All public\
+      \ functions have callers verified |\n| Spec conformance | HIGH | ADR-002 language\
+      \ present in every adapter |\n| Backward compat | HIGH | normalize_spec fallback\
+      \ + mirroring verified |\n| Test coverage | HIGH | 388 tests passing |\n| Type\
+      \ safety | MEDIUM | 83 mypy errors (annotations incomplete) |\n| File size |\
+      \ MEDIUM | 2 files approaching limits |\n\n---\n\n### Non-Goals\n\n- Runtime\
+      \ performance benchmarking (no CI regression)\n- Security penetration testing\
+      \ (no auth/privilege boundaries)\n- Full code path audit (sampling-based review)\n\
+      - Dependency vulnerability scan (not requested)\n- Web UI functionality (static\
+      \ HTML, not code review scope)\n\n---\n\n### Required Actions\n\n**BLOCKING**:\
+      \ None\n\n**SHOULD_FIX** (track as tech debt):\n```yaml\nfindings:\n  blockers:\
+      \ []\n  should_fix:\n    - id: S1\n      root_cause: \"cli_helpers.py approaching\
+      \ size limit (93%)\"\n      locations:\n        - file: \"src/larva/shell/cli_helpers.py\"\
+      \n          line: 1\n          detail: \"File has 655 lines (93% of 700 limit)\"\
+      \n      remediation: \"Extract _build_parser (244 lines) into cli_parser.py\"\
+      \n      grep_hint: \"wc -l src/larva/shell/cli_helpers.py\"\n      sibling_count:\
+      \ 1\n    - id: S2\n      root_cause: \"mcp.py approaching size limit (96%)\"\
+      \n      locations:\n        - file: \"src/larva/shell/mcp.py\"\n          line:\
+      \ 1\n          detail: \"File has 673 lines (96% of 700 limit)\"\n      remediation:\
+      \ \"Extract large handler methods to mcp_handlers/ module\"\n      grep_hint:\
+      \ \"wc -l src/larva/shell/mcp.py\"\n      sibling_count: 1\n    - id: S3\n \
+      \     root_cause: \"_build_parser function exceeds line limit (244 > 100)\"\n\
+      \      locations:\n        - file: \"src/larva/shell/cli_helpers.py\"\n    \
+      \      line: 348\n          detail: \"Function has 244 code lines\"\n      remediation:\
+      \ \"Extract sub-parser builders into helper functions\"\n      grep_hint: \"\
+      grep -n 'def _build_parser' src/larva/shell/cli_helpers.py\"\n      sibling_count:\
+      \ 1\n```\n\n---\n\n### Prevention Rules\n\n```yaml\nprevention_rules:\n  - pattern:\
+      \ \"Files approaching size limit\"\n    grep_hint: \"find src -name '*.py' -exec\
+      \ wc -l {} \\\\; | sort -rn | head -20\"\n    inject_into: \"steps touching\
+      \ shell/cli or shell/mcp with large handler additions\"\n  - pattern: \"Function\
+      \ exceeding 100 lines\"\n    grep_hint: \"awk '/^def / {fn=\\$2; start=NR} /^$|^class\
+      \ / && fn {print fn, NR-start}' src/larva/shell/*.py | sort -k2 -rn\"\n    inject_into:\
+      \ \"steps adding CLI commands or MCP tool handlers\"\n  - pattern: \"Capabilities\
+      \ field missing from toolset description\"\n    grep_hint: \"grep -n 'toolset'\
+      \ src/larva/shell/mcp_contract.py | head -20\"\n    inject_into: \"steps adding\
+      \ new shell adapters or updating MCP tool definitions\"\n  - pattern: \"Escape\
+      \ hatch concentration >= 10 per file\"\n    grep_hint: \"grep -c '@invar:allow'\
+      \ src/larva/shell/*.py\"\n    inject_into: \"steps adding exception-passthrough\
+      \ adapters\"\n```\n\n---\n\n### Integration Evidence\n\n**CLI Entry Point Verified**:\n\
+      ```bash\n$ uv run larva validate --help\nusage: larva validate [-h] [--json]\
+      \ SPEC\nParse and validate a PersonaSpec YAML/JSON file...\n```\n\n**Python\
+      \ API Imports Verified**:\n```python\n>>> from larva.shell.python_api import\
+      \ assemble, register, resolve, list\nPython API imports OK\n```\n\n**MCP Handlers\
+      \ Import Verified**:\n```python\n>>> from larva.shell.mcp import MCPHandlers\n\
+      MCP handlers import OK\n```\n\n**Test Suite Verification**:\n```bash\n$ uv run\
+      \ pytest tests/ -v --tb=no -q\n================== 644 passed, 1 xfailed, 48\
+      \ xpassed in 4.17s ==================\n```\n\n---\n\n### Wiring Audit Summary\
+      \ (W1-W8)\n\n| Check | Status | Evidence |\n|-------|--------|----------|\n\
+      | W1: Public exports have callers | PASS | All 12 API functions called by CLI/MCP\
+      \ |\n| W2: CLI commands registered | PASS | All 12 commands in argparse |\n\
+      | W3: Config fields consumed | PASS | No unused config fields |\n| W4: No stub\
+      \ NotImplementedError | PASS | Protocol default only |\n| W5: No write-only\
+      \ fields | PASS | All set fields are read |\n| W6: Orphan code check | PASS\
+      \ | No orphan functions |\n| W7: Deprecation clear | PASS | ADR-002 documented\
+      \ everywhere |\n| W8: Capabilities flows | PASS | Verified normalize + components\
+      \ |\n\n---\n\n### Conclusion\n\nThe shell adapter migration is **structurally\
+      \ complete** with strong test coverage and correct backward-compatibility handling.\
+      \ The ADR-002 capabilities transition is properly implemented across all surfaces.\
+      \ Three SHOULD_FIX items related to file/function size are cosmetic and can\
+      \ be tracked as tech debt.\n\n**Gate Status**: CONDITIONAL PASS\n**Recommendation**:\
+      \ Proceed to test_migration phase\n**Follow-up**: Track file size refactoring\
+      \ in tech debt backlog"
 - id: test_migration
   name: Test Suite Migration
-  status: locked
+  status: pending
   depends_on:
   - shell_adapters
   steps:
