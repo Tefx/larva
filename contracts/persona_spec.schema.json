@@ -3,7 +3,7 @@
   "title": "PersonaSpec",
   "description": "Canonical persona definition artifact. Validated, assembled, and registered by larva. Consumed by anima (runtime) and nervus (dispatch).",
   "type": "object",
-  "required": ["id", "description", "prompt", "model", "capabilities", "spec_version"],
+  "required": ["id", "description", "prompt", "model", "spec_version"],
   "anyOf": [
     { "required": ["tools"] },
     { "required": ["capabilities"] }
