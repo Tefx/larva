@@ -26109,7 +26109,7 @@ phases:
       \ wiring"
   - id: shell_adapters.mcp-contract-capabilities
     name: mcp-contract-capabilities
-    status: pending
+    status: claimed
     description: 'Update MCP tool descriptions and handlers to use capabilities field.
 
 
@@ -26186,6 +26186,8 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T19:54:36.651889+00:00'
   - id: shell_adapters.cli-capabilities
     name: cli-capabilities
     status: claimed
