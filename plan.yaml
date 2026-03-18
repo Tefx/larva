@@ -26190,7 +26190,7 @@ phases:
     claimed_at: '2026-03-18T19:54:36.651889+00:00'
   - id: shell_adapters.cli-capabilities
     name: cli-capabilities
-    status: claimed
+    status: done
     description: 'Update CLI layer to use capabilities field.
 
 
@@ -26249,6 +26249,86 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T19:54:03.207437+00:00'
+    done_at: '2026-03-18T20:08:58.586636+00:00'
+    evidence: '## Context Read
+
+      - Read: src/larva/shell/cli.py (333 lines) — dispatches to facade, no direct
+      tools/capabilities references
+
+      - Read: src/larva/shell/cli_commands.py (529 lines) — command implementations
+      use `_render_payload_for_text` for JSON output
+
+      - Read: src/larva/shell/cli_helpers.py (654 lines) — `_render_payload_for_text`
+      uses `json.dumps` with `sort_keys=True`, passes all fields through generically
+
+      - Sibling: tests/shell/test_cli.py — test fixtures needed capabilities field
+      updates
+
+
+      ## Changes Made
+
+      Updated tests/shell/test_cli.py test fixtures to align with ADR-002 capabilities
+      transition:
+
+
+      1. **`_canonical_spec` helper** (line 103): Added `capabilities` canonical field,
+      kept `tools` as mirrored (deprecated)
+
+
+      2. **`InMemoryComponentStore.toolset_result`** (line 191): Returns both `capabilities`
+      (canonical) and `tools` (mirrored) matching production FilesystemComponentStore
+      behavior
+
+
+      3. **Test assertions** (lines 1011, 2216): Assert `capabilities` field presence
+      (canonical) in addition to `tools` (mirrored for transition)
+
+
+      ## Analysis
+
+      The CLI code itself (cli.py, cli_commands.py, cli_helpers.py) correctly handles
+      capabilities/tools via JSON serialization:
+
+      - `_render_payload_for_text` uses `json.dumps(payload, ...)` which preserves
+      all dict fields
+
+      - No direct field manipulation — just pass-through serialization
+
+      - The core modules (normalize, assemble, validate) handle capabilities/tools
+      field semantics
+
+
+      ## Verification
+
+      - Run: uv run pytest tests/shell/test_cli.py -x → 169 passed
+
+      - Run: uv run pytest tests/shell/ -x → 469 passed
+
+      - Run: uv run pytest tests/ -x → 644 passed, 1 xfailed, 48 xpassed
+
+      - Run: uv run invar guard → passed (0 errors, 0 warnings)
+
+
+      ## Sibling Search
+
+      - Searched for `"tools"` in tests/shell/*.py — found tests aligned with capabilities
+      migration
+
+      - Searched for `"capabilities"` in tests/shell/*.py — found capabilities assertions
+      in test_cli.py
+
+      - No production code changes needed — CLI layer already handles dict passthrough
+      correctly
+
+
+      ## NOT Done (Gaps/Notes)
+
+      - None: All acceptance criteria met
+
+
+      ## Out-of-Scope Siblings
+
+      - tests/core/*.py, tests/app/*.py have their own vectl steps'
   - id: shell_adapters.python-api-capabilities
     name: python-api-capabilities
     status: claimed
