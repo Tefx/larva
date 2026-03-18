@@ -24785,7 +24785,7 @@ phases:
       Verdict: PASS — phase mcp_runtime_test complete, all 3 phases done"
 - id: core_types
   name: Core Type Definitions (spec.py + schema)
-  status: locked
+  status: pending
   depends_on:
   - doc_contract
   steps:
@@ -26335,7 +26335,7 @@ phases:
     agent: gate-reviewer
 - id: doc_contract
   name: Documentation and Schema Contracts
-  status: in_progress
+  status: done
   steps:
   - id: doc_contract.update-json-schema
     name: update-json-schema
@@ -26649,7 +26649,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.doc-contract-gate
     name: doc-contract-gate
-    status: claimed
+    status: done
     description: "Gate review: Verify all documentation and schema contracts reflect\
       \ the new capability intent model before any code changes begin.\n\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale: |\n  - This gate guards the contract-first\
@@ -26692,6 +26692,64 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-18T17:05:12.474303+00:00'
+    done_at: '2026-03-18T17:09:17.163588+00:00'
+    evidence: 'Gate verdict: PASS (SUCCESS)
+
+
+      Coverage reviewed:
+
+      - contracts/persona_spec.schema.json
+
+      - INTERFACES.md
+
+      - ARCHITECTURE.md
+
+      - USAGE.md
+
+      - USER_GUIDE.md
+
+      - README.md
+
+
+      Findings:
+
+      - capabilities is primary field across doc examples
+
+      - tools retained only as deprecated compatibility field in schema
+
+      - side_effect_policy marked deprecated in relevant docs/schema
+
+      - no cross-document inconsistencies found
+
+
+      Wiring audit:
+
+      - W1-W8 equivalent classified N/A for docs/schema-only gate (no runtime exports/CLI
+      wiring/config consumers in reviewed artifacts)
+
+
+      Escape hatch audit:
+
+      - @invar:allow occurrences in reviewed files: 0
+
+      - TODO/FIXME/HACK/stub patterns in reviewed files: none material
+
+
+      Verification commands executed:
+
+      - grep -n ''"capabilities"'' INTERFACES.md USAGE.md USER_GUIDE.md README.md
+      ARCHITECTURE.md
+
+      - grep -n ''"tools"'' INTERFACES.md USAGE.md USER_GUIDE.md README.md ARCHITECTURE.md
+
+      - grep -n ''DEPRECATED'' contracts/persona_spec.schema.json USAGE.md USER_GUIDE.md
+
+      - python3 -c "import json; json.load(open(''contracts/persona_spec.schema.json''))"
+
+
+      Result:
+
+      - All gate criteria pass; no blocker/should_fix issues.'
   - id: doc_contract.accept-adr-002
     name: accept-adr-002
     status: done
