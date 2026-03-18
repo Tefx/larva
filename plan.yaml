@@ -25712,7 +25712,7 @@ phases:
     agent: gate-reviewer
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
-    status: claimed
+    status: done
     description: 'Verify the normalize→validate→assemble pipeline end-to-end with
       both old (`tools`) and new (`capabilities`) field names. Test that:
 
@@ -25752,6 +25752,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-18T18:56:32.690639+00:00'
+    done_at: '2026-03-18T18:58:08.152244+00:00'
+    evidence: '- tools-only spec pipeline result: normalize adds capabilities from
+      tools, validate passes with tools deprecation warning
+
+      - capabilities-only spec pipeline result: normalize preserves capabilities,
+      validate passes
+
+      - both-fields spec pipeline result: capabilities takes precedence, tools mirrored
+      to capabilities
+
+      - deprecation warnings observed: yes (`DEPRECATED_FIELD: side_effect_policy...`,
+      `DEPRECATED_FIELD: tools...`, migration note when both present)
+
+      - round-trip data integrity: pass (capabilities preserved normalize->validate->assemble)
+
+      - verification command: `uv run pytest tests/core/test_normalize.py tests/core/test_validate.py
+      tests/core/test_assemble.py -v` -> pass'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
