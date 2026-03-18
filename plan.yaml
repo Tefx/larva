@@ -26274,7 +26274,7 @@ phases:
     claimed_at: '2026-03-18T19:55:06.736042+00:00'
   - id: shell_adapters.web-ui-capabilities
     name: web-ui-capabilities
-    status: pending
+    status: claimed
     description: "Update web UI and contrib plugins to use capabilities field.\n\n\
       ## Files\n\n### src/larva/shell/web_ui.html (if exists) OR contrib/web/index.html\n\
       - Update display from `side_effect_policy` to capabilities or remove\n- Update\
@@ -26303,6 +26303,8 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T19:55:13.577842+00:00'
   - id: shell_adapters.wiring-audit
     name: wiring-audit
     status: pending
