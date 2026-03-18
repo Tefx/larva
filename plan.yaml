@@ -26450,7 +26450,7 @@ phases:
       - contrib/opencode-plugin/README.md'
   - id: shell_adapters.wiring-audit
     name: wiring-audit
-    status: pending
+    status: claimed
     description: 'Wiring completeness audit: verify every new/renamed public symbol
       is reachable at runtime.
 
@@ -26514,6 +26514,8 @@ phases:
     - shell_adapters.python-api-capabilities
     - shell_adapters.web-ui-capabilities
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-18T20:12:48.743508+00:00'
   - id: shell_adapters.gate
     name: gate
     status: pending
