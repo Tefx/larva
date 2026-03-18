@@ -24,10 +24,16 @@ Contract (from ARCHITECTURE.md, Decision 3):
 - A thicker implementation is only justified if Python surface later needs
   behavior not shared with CLI and MCP
 
+ADR-002 Transition:
+    - PersonaSpec uses `capabilities` as canonical field for tool capability intent
+    - `tools` field is deprecated but retained for transition compatibility
+    - `side_effect_policy` is deprecated and retained for transition compatibility
+
 See:
 - ARCHITECTURE.md :: Module: larva.shell.python_api
 - ARCHITECTURE.md :: Decision 3: Python API is a thin facade export
 - README.md :: Python Library interface
+- ADR-002-capability-intent-without-runtime-policy.md
 """
 
 from __future__ import annotations
@@ -180,7 +186,10 @@ def assemble(
         id: Unique identifier for the assembled persona.
         prompts: List of prompt component names to combine.
         toolsets: List of toolset component names to combine.
+            Per ADR-002: toolsets provide capability posture mappings via `capabilities`
+            field (canonical), with `tools` field mirrored for backward compatibility.
         constraints: List of constraint component names to combine.
+            Per ADR-002: `side_effect_policy` is deprecated but retained for transition.
         model: Model component name or model identifier.
         overrides: Runtime overrides for persona fields.
         variables: Variable values for prompt template substitution.
@@ -193,11 +202,12 @@ def assemble(
         - Loads components via shell.components
         - Assembles via core.assemble
         - Validates via core.validate
-        - Normalizes via core.normalize
+        - Normalizes via core.normalize (mirrors capabilities to tools per ADR-002)
 
     Example:
         spec = assemble("code-reviewer", prompts=["code-reviewer"])
         assert spec["spec_version"] == "0.1.0"
+        assert "capabilities" in spec  # ADR-002: canonical capability field
     """
     request = _build_assemble_request(
         id=id,
@@ -451,10 +461,12 @@ def clone(source_id: str, new_id: str) -> PersonaSpec:
         - Validates via core.validate
         - Saves to registry via shell.registry
         - If new_id already exists, overwrites (consistent with register)
+        - Per ADR-002: preserves both capabilities (canonical) and tools (mirrored)
 
     Example:
         new_spec = clone("code-reviewer", "code-reviewer-v2")
         assert new_spec["id"] == "code-reviewer-v2"
+        assert "capabilities" in new_spec  # ADR-002: canonical capability field
     """
     return cast("PersonaSpec", _unwrap_result(_get_facade().clone(source_id, new_id)))
 

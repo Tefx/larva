@@ -43,7 +43,8 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
         "model": "gpt-4o-mini",
-        "tools": {"shell": "read_only"},
+        "capabilities": {"shell": "read_only"},  # ADR-002: canonical capability field
+        "tools": {"shell": "read_only"},  # ADR-002: mirrored during transition
         "model_params": {"temperature": 0.1},
         "side_effect_policy": "read_only",
         "can_spawn": False,
@@ -144,7 +145,9 @@ class InMemoryComponentStore:
         return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        return Success({"tools": self.toolsets_by_name.get(name, self.toolset)})
+        # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
+        capabilities = self.toolsets_by_name.get(name, self.toolset)
+        return Success({"capabilities": capabilities, "tools": capabilities})
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
         return Success(self.constraints_by_name.get(name, self.constraint))
@@ -730,7 +733,10 @@ class TestPythonApiComponentShow:
             def load_toolset(
                 self, name: str
             ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-                return Success({"tools": {"shell": "read_write"}})
+                # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
+                return Success(
+                    {"capabilities": {"shell": "read_write"}, "tools": {"shell": "read_write"}}
+                )
 
             def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
@@ -742,7 +748,8 @@ class TestPythonApiComponentShow:
             python_api_components, "_get_component_store", lambda: MockComponentStore()
         )
         result = python_api.component_show("toolset", "default")
-        assert result == {"tools": {"shell": "read_write"}}
+        # Per ADR-002: both capabilities (canonical) and tools (mirrored) are present
+        assert result == {"capabilities": {"shell": "read_write"}, "tools": {"shell": "read_write"}}
 
     def test_component_show_constraint_delegates_to_load_constraint(
         self, monkeypatch: pytest.MonkeyPatch
@@ -902,7 +909,8 @@ class TestPythonApiClone:
             "description": "Original description",
             "prompt": "You are careful.",
             "model": "gpt-4",
-            "tools": {"shell": "full_access"},
+            "capabilities": {"shell": "full_access"},  # ADR-002: canonical capability field
+            "tools": {"shell": "full_access"},  # ADR-002: mirrored during transition
             "model_params": {"temperature": 0.5, "max_tokens": 2000},
             "side_effect_policy": "full_access",
             "can_spawn": True,
@@ -918,6 +926,8 @@ class TestPythonApiClone:
         assert result["description"] == "Original description"
         assert result["prompt"] == "You are careful."
         assert result["model"] == "gpt-4"
+        # ADR-002: both capabilities (canonical) and tools (mirrored) are preserved
+        assert result["capabilities"] == {"shell": "full_access"}
         assert result["tools"] == {"shell": "full_access"}
         assert result["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
         assert result["side_effect_policy"] == "full_access"

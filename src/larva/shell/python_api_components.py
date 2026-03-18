@@ -1,4 +1,9 @@
-"""Component operations and API exceptions for larva Python API."""
+"""Component operations and API exceptions for larva Python API.
+
+Per ADR-002, this module provides thin delegation to component loading:
+- Toolsets return both `capabilities` (canonical) and `tools` (deprecated/mirrored)
+- Constraints may contain deprecated `side_effect_policy` retained for transition
+"""
 
 from __future__ import annotations
 
