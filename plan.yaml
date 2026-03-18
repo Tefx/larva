@@ -26339,7 +26339,7 @@ phases:
   steps:
   - id: doc_contract.update-json-schema
     name: update-json-schema
-    status: pending
+    status: claimed
     description: "Update contracts/persona_spec.schema.json to add capabilities and\
       \ deprecate tools/side_effect_policy.\n\nstep_type: contract\ncontract_purity:\
       \ ENFORCED\ncontract_outputs:\n  - schema_definition\n\n## File: contracts/persona_spec.schema.json\n\
@@ -26388,6 +26388,8 @@ phases:
     - contracts/persona_spec.schema.json
     - ADR-002-capability-intent-without-runtime-policy.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T16:51:52.277581+00:00'
   - id: doc_contract.update-interfaces-md
     name: update-interfaces-md
     status: claimed
