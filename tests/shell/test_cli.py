@@ -106,7 +106,8 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
         "model": "gpt-4o-mini",
-        "tools": {"shell": "read_only"},
+        "capabilities": {"shell": "read_only"},
+        "tools": {"shell": "read_only"},  # DEPRECATED: mirrored from capabilities (ADR-002)
         "model_params": {"temperature": 0.1},
         "side_effect_policy": "read_only",
         "can_spawn": False,
@@ -189,7 +190,12 @@ class InMemoryComponentStore:
         default_factory=lambda: Success({"text": "Prompt body"})
     )
     toolset_result: Result[dict[str, dict[str, str]], Exception] = field(
-        default_factory=lambda: Success({"tools": {"shell": "read_only"}})
+        default_factory=lambda: Success(
+            {
+                "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
+                "tools": {"shell": "read_only"},  # DEPRECATED: mirrored
+            }
+        )
     )
     constraint_result: Result[dict[str, object], Exception] = field(
         default_factory=lambda: Success({"side_effect_policy": "read_only"})
@@ -985,7 +991,8 @@ class TestCloneCommand:
             "description": "Original description",
             "prompt": "Original prompt text",
             "model": "gpt-4",
-            "tools": {"shell": "full_access"},
+            "capabilities": {"shell": "full_access"},  # canonical (ADR-002)
+            "tools": {"shell": "full_access"},  # DEPRECATED: mirrored
             "model_params": {"temperature": 0.7, "max_tokens": 4000},
             "side_effect_policy": "full_access",
             "can_spawn": True,
@@ -1008,7 +1015,8 @@ class TestCloneCommand:
         assert cloned["description"] == "Original description"
         assert cloned["prompt"] == "Original prompt text"
         assert cloned["model"] == "gpt-4"
-        assert cloned["tools"] == {"shell": "full_access"}
+        assert cloned["capabilities"] == {"shell": "full_access"}  # canonical (ADR-002)
+        assert cloned["tools"] == {"shell": "full_access"}  # DEPRECATED: mirrored
         assert cloned["model_params"] == {"temperature": 0.7, "max_tokens": 4000}
         assert cloned["side_effect_policy"] == "full_access"
         assert cloned["can_spawn"] is True
@@ -2213,6 +2221,9 @@ class TestComponentShowCommand:
         assert cli_result["exit_code"] == EXIT_OK
         assert "json" in cli_result
         assert "data" in cli_result["json"]
+        # ADR-002: capabilities is canonical
+        assert "capabilities" in cli_result["json"]["data"]
+        # DEPRECATED: tools is mirrored for transition compatibility
         assert "tools" in cli_result["json"]["data"]
 
     def test_component_show_constraint_success_text_mode_returns_exit_ok(self) -> None:
