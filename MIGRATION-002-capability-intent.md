@@ -4,7 +4,7 @@
 
 Remove runtime policy from larva persona specs and constraint components.
 
-## Old Model
+## Legacy Model
 
 ```yaml
 tools:
@@ -12,47 +12,47 @@ tools:
 side_effect_policy: approval_required
 ```
 
-## New Model
+## Target Model
 
 ```yaml
 capabilities:
   filesystem: read_write
 ```
 
-Runtime policy moves out of larva and into anima job/runtime controls.
+Runtime policy belongs to anima runtime controls, not larva persona artifacts.
 
-## Mapping
+## Field Replacement
 
-| Old field | New home |
-|-----------|----------|
+| Legacy field | Target field / owner |
+|--------------|----------------------|
 | `tools` | `capabilities` |
 | `side_effect_policy` | anima runtime controls |
 
-If an old persona declared `side_effect_policy: read_only`, migration should
-also review its capability intent. A persona that declares destructive or
-read_write capabilities while simultaneously demanding read-only runtime policy
-is a mixed-concern artifact and should be split into:
+## Constraint Cleanup
 
-- capability intent in larva
-- runtime controls in anima
+Legacy constraint components that carried `side_effect_policy` must be removed
+or rewritten.
 
-## Component Library Impact
+Target component split:
 
-Old component split:
+- capability bundles declare `capabilities`
+- constraint bundles may declare fields such as `can_spawn` and
+  `compaction_prompt`
 
-- `toolsets/`: family posture maps
-- `constraints/`: `can_spawn`, `side_effect_policy`, `compaction_prompt`
+`side_effect_policy` is not part of the target larva model.
 
-Target split:
+## Mixed-Concern Inputs
 
-- `toolsets/`: `capabilities`
-- `constraints/`: `can_spawn`, `compaction_prompt`
+If a legacy persona combined high capability posture with a read-only runtime
+policy, that input represented two different concerns in one artifact.
 
-`side_effect_policy` should not survive in constraint components.
+The target split is:
 
-## Rollout Recommendation
+- capability intent stays in larva
+- runtime restriction moves to anima
 
-1. Accept both `tools` and `capabilities` during transition.
-2. Normalize to `capabilities` in emitted/flattened persona artifacts.
-3. Warn on `side_effect_policy` in persona or constraint inputs.
-4. Remove `side_effect_policy` from schema once anima runtime controls are in place.
+## Final State
+
+The target larva contract is capability-only.
+Legacy `tools` and `side_effect_policy` are historical input shapes, not active
+architecture.
