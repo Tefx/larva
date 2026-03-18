@@ -26188,7 +26188,7 @@ phases:
     agent: python-executor
   - id: shell_adapters.cli-capabilities
     name: cli-capabilities
-    status: pending
+    status: claimed
     description: 'Update CLI layer to use capabilities field.
 
 
@@ -26245,6 +26245,8 @@ phases:
     depends_on:
     - shell_adapters.facade-capabilities
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T19:54:03.207437+00:00'
   - id: shell_adapters.python-api-capabilities
     name: python-api-capabilities
     status: pending
