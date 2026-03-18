@@ -25033,7 +25033,7 @@ phases:
     agent: gate-reviewer
   - id: core_types.fix-toolsetcomponent-transition-compat
     name: fix-toolsetcomponent-transition-compat
-    status: claimed
+    status: done
     description: 'Remediate core_types gate finding: ToolsetComponent should support
       ADR-002 transition compatibility by allowing either canonical `capabilities`
       or deprecated `tools` at type level. Update `src/larva/core/spec.py` accordingly
@@ -25069,6 +25069,34 @@ phases:
     - core_types.test-type-definitions
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:02:12.084659+00:00'
+    done_at: '2026-03-18T18:08:07.385046+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 521edc099900c772858d580e33a763a418a765c6
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_spec.py -v -> 41 passed
+
+      - Run: uv run invar guard --all -> passed (status: passed, errors: 0, warnings:
+      6, infos: 12)
+
+      - Run: uv run mypy src/larva/core/spec.py --strict -> Success: no issues found
+      in 1 source file
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md
+
+
+      Summary:
+
+      - ToolsetComponent now uses total=False for ADR-002 transition compatibility
+
+      - Added tests for capabilities-only, tools-only, both-fields, total=False behavior,
+      and empty-dict acceptance'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
