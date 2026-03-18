@@ -9,12 +9,26 @@ Examples:
     >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
     {'spec_version': '0.1.0', 'x': 1}
 
-    Deep merge:
+    Deep merge (model_params):
     >>> apply_patches(
     ...     {"model_params": {"temperature": 0.2, "top_p": 0.9}},
     ...     {"model_params": {"temperature": 0.7}},
     ... )
     {'model_params': {'temperature': 0.7, 'top_p': 0.9}}
+
+    Deep merge (tools):
+    >>> apply_patches(
+    ...     {"tools": {"read": {"allowed": True}}},
+    ...     {"tools": {"write": {"allowed": False}}},
+    ... )
+    {'tools': {'read': {'allowed': True}, 'write': {'allowed': False}}}
+
+    Deep merge (capabilities):
+    >>> apply_patches(
+    ...     {"capabilities": {"code_edit": {"allowed": True}}},
+    ...     {"capabilities": {"bash_tool": {"allowed": False}}},
+    ... )
+    {'capabilities': {'code_edit': {'allowed': True}, 'bash_tool': {'allowed': False}}}
 
     Dot-notation expansion:
     >>> apply_patches({"model_params": {"top_p": 0.95}}, {"model_params.temperature": 0.4})
@@ -26,7 +40,7 @@ from typing import TypeGuard
 from deal import post, pre
 
 PROTECTED_KEYS = frozenset({"spec_digest", "spec_version"})
-DEEP_MERGE_KEYS = frozenset({"model_params", "tools"})
+DEEP_MERGE_KEYS = frozenset({"model_params", "tools", "capabilities"})
 DOT_KEY_SEPARATOR = "."
 
 

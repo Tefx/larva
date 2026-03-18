@@ -303,7 +303,7 @@ class TestContractConstants:
 
     def test_deep_merge_keys(self) -> None:
         """DEEP_MERGE_KEYS contains fields that use deep merge semantics."""
-        assert DEEP_MERGE_KEYS == frozenset({"model_params", "tools"})
+        assert DEEP_MERGE_KEYS == frozenset({"model_params", "tools", "capabilities"})
 
     def test_dot_key_separator(self) -> None:
         """DOT_KEY_SEPARATOR is a single period."""
