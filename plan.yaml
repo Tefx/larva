@@ -25100,7 +25100,7 @@ phases:
       and empty-dict acceptance'
   - id: core_types.fix-schema-transition-compat
     name: fix-schema-transition-compat
-    status: claimed
+    status: done
     description: 'Remediate core_types gate blocker: align `contracts/persona_spec.schema.json`
       with ADR-002 transition compatibility so tools-only, capabilities-only, and
       both-field specs validate during the transition window. Update schema required/anyOf
@@ -25140,6 +25140,33 @@ phases:
     - core_types.fix-toolsetcomponent-transition-compat
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:13:48.964958+00:00'
+    done_at: '2026-03-18T18:17:01.691010+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 1047de5
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_schema_validation.py -v -> 13 passed
+
+      - Run: uv run pytest tests/core/test_spec.py -v -> 41 passed
+
+      - Run: uv run invar guard --all -> passed (static passed, doctest passed)
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md
+
+
+      Summary:
+
+      - Removed `capabilities` from schema `required` array while keeping `anyOf`
+      transition rule
+
+      - Added schema validation tests for tools-only, capabilities-only, both-fields,
+      and neither-field cases'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
