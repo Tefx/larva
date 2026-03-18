@@ -323,3 +323,122 @@ class TestUnusedVariablesWarning:
         )
         assert report["valid"] is True
         assert report["warnings"] == []
+
+
+class TestDeprecationWarnings:
+    """Test deprecation warnings for side_effect_policy and tools.
+
+    Per INTERFACES.md ADR-002:
+    - side_effect_policy is deprecated
+    - tools is deprecated; use capabilities instead
+    - capabilities is the canonical capability declaration surface
+    """
+
+    def test_side_effect_policy_warning(self):
+        """side_effect_policy should produce deprecation warning."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "side_effect_policy": "allow",
+            }
+        )
+        # Spec should still be valid (warning, not error)
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any("DEPRECATED_FIELD: side_effect_policy" in w for w in report["warnings"])
+
+    def test_tools_without_capabilities_warning(self):
+        """tools without capabilities should produce deprecation warning."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "tools": {"git": "read_only"},
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any("DEPRECATED_FIELD: tools" in w for w in report["warnings"])
+
+    def test_both_tools_and_capabilities_warning(self):
+        """Both tools and capabilities should warn that capabilities wins."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "tools": {"git": "read_only"},
+                "capabilities": {"git": "read_write"},
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        warnings_text = " ".join(report["warnings"])
+        assert "DEPRECATED_FIELD: tools" in warnings_text
+        assert "MIGRATION_NOTE: both tools and capabilities present" in warnings_text
+
+    def test_invalid_side_effect_policy_still_errors(self):
+        """Invalid side_effect_policy should still produce error."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "side_effect_policy": "forbidden",
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "INVALID_SIDE_EFFECT_POLICY" for e in report["errors"])
+
+
+class TestCapabilitiesValidation:
+    """Test capabilities field validation.
+
+    Valid ToolPosture values (from spec.py): none, read_only, read_write, destructive
+    """
+
+    def test_valid_capabilities(self):
+        """Valid capabilities should pass validation."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "capabilities": {"git": "read_only", "filesystem": "read_write"},
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+
+    def test_invalid_capability_posture(self):
+        """Invalid posture value should produce error."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "capabilities": {"git": "invalid_posture"},
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "INVALID_CAPABILITY_POSTURE" for e in report["errors"])
+
+    def test_capabilities_not_dict(self):
+        """Non-dict capabilities should produce error."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "capabilities": "not-a-dict",
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "INVALID_CAPABILITIES_TYPE" for e in report["errors"])
+
+    def test_all_valid_postures(self):
+        """All valid ToolPosture values should be accepted."""
+        for posture in ["none", "read_only", "read_write", "destructive"]:
+            report = validate_module.validate_spec(
+                {
+                    "id": "test-persona",
+                    "spec_version": "0.1.0",
+                    "capabilities": {"tool": posture},
+                }
+            )
+            assert report["valid"] is True, f"{posture} should be valid"

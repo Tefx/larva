@@ -30,6 +30,9 @@ _PROMPT_VARIABLE_PATTERN = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
 
 _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 
+# Valid postures for capabilities/tools (from ToolPosture in spec.py)
+_VALID_POSTURES: set[str] = {"none", "read_only", "read_write", "destructive"}
+
 
 @post(lambda result: isinstance(result, bool))
 def _is_json_safe_dict(d: object) -> bool:
@@ -187,6 +190,104 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))
+@post(lambda result: isinstance(result, list))
+def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate capabilities field and emit deprecation warnings for tools.
+
+    Contract (from INTERFACES.md):
+    - capabilities is the canonical capability declaration surface
+    - tools is deprecated but retained for transition compatibility
+    - side_effect_policy is deprecated per ADR-002
+
+    Validation rules:
+    - capabilities must be dict[str, str] if present
+    - capability values must be valid ToolPosture values
+    - warn when side_effect_policy is present (deprecated)
+    - warn when tools is present without capabilities (deprecated)
+    - warn when both tools and capabilities present (capabilities wins)
+
+    Args:
+        spec: A PersonaSpec candidate to validate.
+
+    Returns:
+        List of validation errors (warnings are added to parent warnings list).
+
+    >>> _validate_capabilities({"id": "test"})
+    []
+    >>> _validate_capabilities({"id": "test", "capabilities": {"git": "read_only"}})
+    []
+    >>> _validate_capabilities({"id": "test", "capabilities": {"git": "invalid"}})[0]["code"]
+    'INVALID_CAPABILITY_POSTURE'
+    >>> _validate_capabilities({"id": "test", "capabilities": "not-a-dict"})[0]["code"]
+    'INVALID_CAPABILITIES_TYPE'
+    """
+    errors: list[ValidationIssue] = []
+
+    # Validate capabilities field
+    capabilities = spec.get("capabilities")
+    if capabilities is not None:
+        if not isinstance(capabilities, dict):
+            errors.append(
+                _issue(
+                    "INVALID_CAPABILITIES_TYPE",
+                    "capabilities must be a dict mapping tool names to postures",
+                    {"field": "capabilities", "value": capabilities},
+                )
+            )
+        else:
+            for tool_name, posture in capabilities.items():
+                if not isinstance(posture, str) or posture not in _VALID_POSTURES:
+                    errors.append(
+                        _issue(
+                            "INVALID_CAPABILITY_POSTURE",
+                            f"capability posture must be one of {', '.join(sorted(_VALID_POSTURES))}",
+                            {"field": "capabilities", "tool": tool_name, "value": posture},
+                        )
+                    )
+
+    return errors
+
+
+@pre(lambda spec: isinstance(spec, dict))
+@post(lambda result: isinstance(result, list))
+def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
+    """Collect deprecation warnings for deprecated fields.
+
+    Args:
+        spec: A PersonaSpec candidate to validate.
+
+    Returns:
+        List of deprecation warning strings.
+
+    >>> _collect_deprecation_warnings({"id": "test"})
+    []
+    >>> _collect_deprecation_warnings({"id": "test", "side_effect_policy": "allow"})
+    ['DEPRECATED_FIELD: side_effect_policy is deprecated per ADR-002']
+    >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}})
+    ['DEPRECATED_FIELD: tools is deprecated; use capabilities instead']
+    >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}, "capabilities": {"git": "read_only"}})
+    ['DEPRECATED_FIELD: tools is deprecated; use capabilities instead', 'MIGRATION_NOTE: both tools and capabilities present; capabilities takes precedence']
+    """
+    warnings: list[str] = []
+
+    # Warn on side_effect_policy (deprecated per ADR-002)
+    if "side_effect_policy" in spec:
+        warnings.append("DEPRECATED_FIELD: side_effect_policy is deprecated per ADR-002")
+
+    # Warn on tools presence
+    if "tools" in spec:
+        if "capabilities" in spec:
+            warnings.append("DEPRECATED_FIELD: tools is deprecated; use capabilities instead")
+            warnings.append(
+                "MIGRATION_NOTE: both tools and capabilities present; capabilities takes precedence"
+            )
+        else:
+            warnings.append("DEPRECATED_FIELD: tools is deprecated; use capabilities instead")
+
+    return warnings
+
+
+@pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
 def validate_spec(spec: dict[str, object]) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
@@ -230,6 +331,13 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     variable_result = _validate_prompt_variables(spec)
     errors.extend(cast("list[ValidationIssue]", variable_result["errors"]))
     warnings = cast("list[str]", variable_result["warnings"])
+
+    # Validate capabilities field
+    capabilities_errors = _validate_capabilities(spec)
+    errors.extend(capabilities_errors)
+
+    # Collect deprecation warnings
+    warnings.extend(_collect_deprecation_warnings(spec))
 
     return {
         "valid": len(errors) == 0,
