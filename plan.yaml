@@ -26392,7 +26392,7 @@ phases:
     claimed_at: '2026-03-18T16:51:52.277581+00:00'
   - id: doc_contract.update-interfaces-md
     name: update-interfaces-md
-    status: claimed
+    status: done
     description: 'ALREADY DONE by user commit 837e26e. INTERFACES.md has been rewritten
       to use `capabilities` as the canonical field. No `tools` or `side_effect_policy`
       references remain. This step should be verified and marked done.
@@ -26417,6 +26417,27 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-18T16:50:12.219155+00:00'
+    done_at: '2026-03-18T17:01:24.148224+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 837e26ee9c3476d3bddc2468f20374e535288ae4
+
+
+      Verification:
+
+      - Run: git show 837e26e --stat -> INTERFACES.md rewritten
+
+      - Run: grep -c "capabilities" INTERFACES.md -> capabilities present in examples/rules
+
+      - Run: grep "tools\|side_effect_policy\|tool_policy" INTERFACES.md -> no deprecated
+      PersonaSpec field usage (only MCP tools heading context)
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md
+
+      - MIGRATION-002-capability-intent.md'
   - id: doc_contract.update-architecture-md
     name: update-architecture-md
     status: done
