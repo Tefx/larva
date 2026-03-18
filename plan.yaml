@@ -25202,7 +25202,7 @@ phases:
       and neither-field cases'
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
-  status: in_progress
+  status: done
   depends_on:
   - core_types
   steps:
@@ -25683,7 +25683,7 @@ phases:
       - Branch commit contains updates in `tests/core/test_patch.py`'
   - id: core_logic.gate
     name: gate
-    status: claimed
+    status: done
     description: "Gate review: Verify core logic migration is complete and correct.\n\
       \nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Phase touches normalization,\
       \ validation, assembly, and patch logic\n  - Cross-cutting change affecting\
@@ -25713,6 +25713,28 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-18T19:27:35.800533+00:00'
+    done_at: '2026-03-18T19:31:41.740282+00:00'
+    evidence: "## Gate Review Summary\n\n**Verdict: PASS**\n\n### Automated Gates\n\
+      - `uv run invar guard --all`: PASSED (0 errors, property tests verified)\n-\
+      \ pytest: 84 passed, 32 xpassed (implementation complete)\n\n### Required Checks\
+      \ (All Verified)\n1. ✅ **tools->capabilities behavior**: Consistent across assemble\
+      \ and normalize\n   - capabilities is canonical, tools is deprecated\n   - Both\
+      \ mirrored during transition\n   - Test coverage: 7 test cases passing\n\n2.\
+      \ ✅ **Deprecation warnings**: Correct behavior verified\n   - side_effect_policy\
+      \ deprecated\n   - tools without capabilities warned\n   - Both fields present:\
+      \ migration note\n   - Test coverage: 4 test cases passing\n\n3. ✅ **Patch identity\
+      \ protection**: 'id' in PROTECTED_KEYS\n   - `PROTECTED_KEYS = frozenset({\"\
+      id\", \"spec_digest\", \"spec_version\"})`\n   - Test `test_id_stripped_from_patches`\
+      \ passes\n   - Test `test_all_protected_keys_defined` verifies constant\n\n\
+      4. ✅ **Tests pass**: 84 passed, 32 xpassed (0 failures)\n\n5. ✅ **invar guard\
+      \ passes**: 0 errors\n\n6. ✅ **No blockers remain**: All previous issues fixed\n\
+      \n### Wiring Audit (W1-W8)\n- Public exports have callers: PASS\n- No NotImplementedError\
+      \ stubs: PASS\n- Contract strength: PASS (real conditions)\n- Test fixture provenance:\
+      \ PASS\n- Spec conformance: PASS\n\n### Escape Hatch Audit\n- Found: 0 (no escape\
+      \ hatches in core)\n\n### Confidence\nHIGH for all verified concerns.\n\n###\
+      \ Prevention Rules\n- Protected keys must include 'id'\n- ADR-002 transition\
+      \ requires capabilities with tools mirroring\n- Deprecation warnings must match\
+      \ canonical format"
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
     status: done
@@ -25939,7 +25961,7 @@ phases:
       - guard remains clean for this fix family'
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
-  status: locked
+  status: pending
   depends_on:
   - core_logic
   steps:
