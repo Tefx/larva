@@ -92,11 +92,18 @@ class PromptComponent(TypedDict):
     text: str
 
 
-class ToolsetComponent(TypedDict):
+class ToolsetComponent(TypedDict, total=False):
     """In-memory capability posture mapping for core assembly.
 
-    ``capabilities`` is canonical. ``tools`` is a deprecated alias retained for
-    transition compatibility.
+    Per ADR-002 transition:
+    - ``capabilities`` is canonical (preferred going forward)
+    - ``tools`` is deprecated (retained for backward compatibility)
+    - Either field is accepted at type level during transition
+
+    Note:
+        This TypedDict uses ``total=False`` to allow capabilities-only or
+        tools-only shapes during the ADR-002 transition. Callers should
+        prefer ``capabilities`` and treat ``tools`` as deprecated.
     """
 
     capabilities: dict[str, ToolPosture]

@@ -308,6 +308,56 @@ class TestToolsetComponentCapabilities:
         toolset: ToolsetComponent = {"tools": tools}
         assert toolset["tools"]["search"] == "read_only"
 
+    def test_toolset_component_capabilities_only_shape(self) -> None:
+        """Assert ToolsetComponent accepts capabilities-only shape (ADR-002 canonical)."""
+        from larva.core.spec import ToolsetComponent, ToolPosture
+
+        # Per ADR-002: capabilities is the canonical field
+        # ToolsetComponent should accept capabilities-only without requiring tools
+        capabilities: dict[str, ToolPosture] = {"filesystem": "read_write", "git": "read_only"}
+        toolset: ToolsetComponent = {"capabilities": capabilities}
+        assert "capabilities" in toolset
+        assert "tools" not in toolset  # tools field should be absent, not present with empty
+
+    def test_toolset_component_tools_only_shape(self) -> None:
+        """Assert ToolsetComponent accepts tools-only shape (backward compat)."""
+        from larva.core.spec import ToolsetComponent, ToolPosture
+
+        # During transition, tools-only is acceptable for backward compatibility
+        tools: dict[str, ToolPosture] = {"web_search": "read_only", "file_ops": "destructive"}
+        toolset: ToolsetComponent = {"tools": tools}
+        assert "tools" in toolset
+        assert "capabilities" not in toolset  # capabilities field should be absent
+
+    def test_toolset_component_both_fields_shape(self) -> None:
+        """Assert ToolsetComponent accepts both capabilities and tools together."""
+        from larva.core.spec import ToolsetComponent, ToolPosture
+
+        # During transition, both fields may coexist
+        capabilities: dict[str, ToolPosture] = {"filesystem": "read_write"}
+        tools: dict[str, ToolPosture] = {"filesystem": "read_write"}
+        toolset: ToolsetComponent = {"capabilities": capabilities, "tools": tools}
+        assert "capabilities" in toolset
+        assert "tools" in toolset
+
+    def test_toolset_component_is_total_false(self) -> None:
+        """Assert ToolsetComponent has total=False (all keys optional for transition)."""
+        from larva.core.spec import ToolsetComponent
+
+        # Per ADR-002: both fields are optional during transition
+        # This enables capabilities-only or tools-only shapes
+        assert ToolsetComponent.__required_keys__ == set()
+        assert len(ToolsetComponent.__required_keys__) == 0
+
+    def test_toolset_component_empty_dict_valid(self) -> None:
+        """Assert ToolsetComponent accepts empty dict (all fields optional per total=False)."""
+        from larva.core.spec import ToolsetComponent
+
+        # With total=False, empty dict is technically valid
+        # (Runtime validation elsewhere should enforce at least one field)
+        toolset: ToolsetComponent = {}
+        assert toolset == {}
+
 
 class TestConstraintComponentBackwardCompat:
     """Tests for ConstraintComponent backward compatibility during transition."""
