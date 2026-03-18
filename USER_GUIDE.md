@@ -76,7 +76,7 @@ The canonical larva artifact is `PersonaSpec`.
   "description": "Reviews code changes with read-focused tooling.",
   "prompt": "You are a senior code reviewer.",
   "model": "openai/gpt-5.4",
-  "tools": {
+  "capabilities": {
     "shell": "read_only",
     "filesystem": "read_write"
   },
@@ -85,7 +85,6 @@ The canonical larva artifact is `PersonaSpec`.
     "max_tokens": 4096
   },
   "can_spawn": false,
-  "side_effect_policy": "approval_required",
   "compaction_prompt": "Summarize working context into concise carry-forward notes.",
   "spec_digest": "sha256:..."
 }
@@ -103,7 +102,7 @@ The canonical larva artifact is `PersonaSpec`.
 ### Important field rules
 
 - `id` must match `^[a-z0-9]+(-[a-z0-9]+)*$`
-- `side_effect_policy` must be one of `allow`, `approval_required`, `read_only`
+- `side_effect_policy` is **DEPRECATED** — runtime approval policy now belongs to anima runtime controls, not larva persona artifacts
 - `can_spawn` is either `false`, `true`, or a list of persona ids
 - `spec_digest` is computed by larva and should not be authored manually
 
@@ -118,9 +117,8 @@ cat <<'EOF' > code-reviewer.json
   "description": "Reviews code for correctness and style",
   "prompt": "You are a senior code reviewer.",
   "model": "openai/gpt-5.4",
-  "tools": {"shell": "read_only"},
-  "can_spawn": false,
-  "side_effect_policy": "read_only"
+  "capabilities": {"shell": "read_only"},
+  "can_spawn": false
 }
 EOF
 ```
@@ -283,7 +281,7 @@ Component categories:
 
 - `prompts/` for prompt text fragments
 - `toolsets/` for tool posture maps
-- `constraints/` for policy fields such as `can_spawn` and `side_effect_policy`
+- `constraints/` for policy fields such as `can_spawn` and `compaction_prompt`
 - `models/` for model name and inference parameter bundles
 
 List available components:
@@ -329,9 +327,8 @@ report = validate({
     "description": "Reviews code for correctness and style",
     "prompt": "You are a senior code reviewer.",
     "model": "openai/gpt-5.4",
-    "tools": {"shell": "read_only"},
+    "capabilities": {"shell": "read_only"},
     "can_spawn": False,
-    "side_effect_policy": "read_only",
 })
 
 if report["valid"]:
@@ -340,9 +337,8 @@ if report["valid"]:
         "description": "Reviews code for correctness and style",
         "prompt": "You are a senior code reviewer.",
         "model": "openai/gpt-5.4",
-        "tools": {"shell": "read_only"},
+        "capabilities": {"shell": "read_only"},
         "can_spawn": False,
-        "side_effect_policy": "read_only",
     })
 
 spec = resolve("code-reviewer")

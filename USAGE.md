@@ -67,13 +67,12 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
     "temperature": 0.3,
     "max_tokens": 4096
   },
-  "tools": {
+  "capabilities": {
     "filesystem": "read_write",
     "shell": "read_only",
     "git": "read_only"
   },
   "can_spawn": false,
-  "side_effect_policy": "approval_required",
   "compaction_prompt": "Summarize working context into concise carry-forward notes.",
   "spec_digest": "sha256:e3b0c442..."
 }
@@ -83,7 +82,7 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
 - `id`: required, must match `^[a-z0-9]+(-[a-z0-9]+)*$` (flat kebab-case, no namespaces)
 - `spec_version`: must be `"0.1.0"` if present; larva sets it automatically if absent
 - `spec_digest`: computed by larva during normalization (SHA-256 of canonical JSON, sorted keys, no whitespace, excluding spec_digest itself). Do not set manually.
-- `side_effect_policy`: one of `allow`, `approval_required`, `read_only`
+- `side_effect_policy`: **DEPRECATED** — runtime approval policy now belongs to anima runtime controls, not larva persona artifacts
 - `can_spawn`: boolean or list of persona ids the persona may spawn
 
 **No assembly metadata in output.** No `base:`, no component references. Output is always flat.
@@ -276,8 +275,8 @@ Inspect a specific component's content.
 
 **Returns:** Component content dict. Shape varies by type:
 - Prompt: `{"text": "You are a senior code reviewer..."}`
-- Toolset: `{"tools": {"filesystem": "read_write", ...}}`
-- Constraint: `{"can_spawn": false, "side_effect_policy": "approval_required", ...}`
+- Toolset: `{"capabilities": {"filesystem": "read_write", ...}}`
+- Constraint: `{"can_spawn": false, "compaction_prompt": "...", ...}`
 - Model: `{"model": "claude-opus-4-20250514", "model_params": {...}}`
 
 **Error triggers:**
@@ -294,8 +293,8 @@ Components live in `~/.larva/components/` organized by type. Component names are
 | Type | Directory | File format | Contributes to |
 |------|-----------|-------------|----------------|
 | Prompt | `prompts/` | `.md` (plain text) | `prompt` |
-| Toolset | `toolsets/` | `.yaml` | `tools` |
-| Constraint | `constraints/` | `.yaml` | `can_spawn`, `side_effect_policy`, `compaction_prompt` |
+| Toolset | `toolsets/` | `.yaml` | `capabilities` |
+| Constraint | `constraints/` | `.yaml` | `can_spawn`, `compaction_prompt` |
 | Model | `models/` | `.yaml` | `model`, `model_params` |
 
 ### Prompt Component (`prompts/code-reviewer.md`)
@@ -306,7 +305,7 @@ Always cite specific line numbers when pointing out issues.
 
 ### Toolset Component (`toolsets/code-tools.yaml`)
 ```yaml
-tools:
+capabilities:
   filesystem: read_write
   shell: read_only
   git: read_only
@@ -315,7 +314,6 @@ tools:
 ### Constraint Component (`constraints/strict.yaml`)
 ```yaml
 can_spawn: false
-side_effect_policy: approval_required
 compaction_prompt: |
   Summarize the working context into concise carry-forward notes.
 ```
@@ -331,8 +329,8 @@ model_params:
 ### Assembly Rules
 
 - **Prompts**: Concatenated in declared order, `\n\n` separator → single `prompt` string.
-- **Scalars** (`model`, `can_spawn`, `side_effect_policy`): Multiple component sources for same field → `COMPONENT_CONFLICT`. Resolve with `overrides`.
-- **tools**: Multiple toolsets may merge only if no contradictory posture for same tool family. Contradiction → `COMPONENT_CONFLICT`.
+- **Scalars** (`model`, `can_spawn`): Multiple component sources for same field → `COMPONENT_CONFLICT`. Resolve with `overrides`.
+- **capabilities**: Multiple toolsets may merge only if no contradictory posture for same tool family. Contradiction → `COMPONENT_CONFLICT`.
 - **model_params**: Deep-merged from model component. `overrides` can patch individual keys.
 
 ### Browsing Components via CLI
@@ -378,9 +376,9 @@ All errors use a single envelope shape:
 {
   "code": "COMPONENT_CONFLICT",
   "numeric_code": 106,
-  "message": "Field 'side_effect_policy' set by both 'constraints/strict' and 'constraints/autonomous'",
+  "message": "Field 'can_spawn' set by both 'constraints/strict' and 'constraints/autonomous'",
   "details": {
-    "field": "side_effect_policy",
+    "field": "can_spawn",
     "sources": ["constraints/strict", "constraints/autonomous"]
   }
 }
@@ -418,7 +416,7 @@ All errors use a single envelope shape:
   components/
     prompts/<name>.md          # prompt fragments
     toolsets/<name>.yaml       # tool posture maps
-    constraints/<name>.yaml    # can_spawn + side_effect_policy + compaction_prompt
+    constraints/<name>.yaml    # can_spawn + compaction_prompt
     models/<name>.yaml         # model + model_params
   registry/
     <id>.json                  # one file per registered persona
