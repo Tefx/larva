@@ -25769,6 +25769,79 @@ phases:
 
       - verification command: `uv run pytest tests/core/test_normalize.py tests/core/test_validate.py
       tests/core/test_assemble.py -v` -> pass'
+  - id: core_logic.fix-patch-identity-protection
+    name: Fix patch identity protection
+    status: pending
+    description: 'Fix the core patch identity protection blocker in `src/larva/core/patch.py`
+      and align the focused tests with the stable identity invariant from `INTERFACES.md`.
+
+
+      step_type: implementation
+
+      priority: HIGH
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Stable identity key is not protected during patch application
+
+      Locations: `src/larva/core/patch.py`, `tests/core/test_patch.py`, `INTERFACES.md`
+
+      Remediation:
+
+      - Add `id` to `PROTECTED_KEYS` in `src/larva/core/patch.py`
+
+      - Preserve the stable identity invariant so patch application cannot overwrite
+      `id`
+
+      - Align focused tests in `tests/core/test_patch.py` to assert the protected-key
+      behavior and any directly related expectations only
+
+      Grep hint: `rg -n "PROTECTED_KEYS|\bid\b" src/larva/core/patch.py tests/core/test_patch.py
+      INTERFACES.md`
+
+      IMPORTANT: Search for sibling identity-protection assertions in the same focused
+      patch tests before claiming completion.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: patch protection omits the stable identity field required by the
+      interface contract
+
+      - Symptom: patch operations can overwrite `id`, violating the invariant already
+      expected by tests
+
+      - Why this fix is not surface-level: it restores the contract at the protection
+      boundary and confirms the focused regression coverage matches the contract
+
+
+      ## Completion Criteria
+
+      - `id` is included in `PROTECTED_KEYS`
+
+      - Focused patch tests assert `id` remains protected
+
+      - No related focused patch identity expectation remains inconsistent with `INTERFACES.md`
+
+      - Scope is limited to patch identity protection and directly related focused
+      test alignment'
+    verification: '- Main path: focused regression in `tests/core/test_patch.py` covers
+      protected `id` behavior during patch application
+
+      - Failure path: regression proves attempted overwrite of `id` is ignored or
+      rejected per current patch semantics
+
+      - Proof: `rg -n "PROTECTED_KEYS|\bid\b" src/larva/core/patch.py tests/core/test_patch.py
+      INTERFACES.md` shows the protected-key contract is wired through code and focused
+      tests'
+    depends_on:
+    - core_logic.normalize-capabilities
+    - core_logic.validate-deprecation-warnings
+    - core_logic.assemble-capabilities
+    - core_logic.patch-capabilities
+    agent: python-executor
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
