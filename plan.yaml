@@ -25208,7 +25208,7 @@ phases:
   steps:
   - id: core_logic.normalize-capabilities
     name: normalize-capabilities
-    status: claimed
+    status: done
     description: 'Update normalization logic to convert `tools` → `capabilities` and
       handle both fields.
 
@@ -25284,6 +25284,33 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T18:19:20.315046+00:00'
+    done_at: '2026-03-18T18:50:26.339013+00:00'
+    evidence: '## Normalize Capabilities Evidence
+
+      **tools->capabilities normalization**: works
+
+      **capabilities passthrough**: works
+
+      **both fields in output**: yes (capabilities canonical, tools mirrored)
+
+      **invar guard**: pass
+
+
+      Artifact:
+
+      - Commit: 842d382
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/core/test_normalize.py -v` -> pass
+
+      - Run: `uv run invar guard --all` -> passed
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.validate-deprecation-warnings
     name: validate-deprecation-warnings
     status: claimed
