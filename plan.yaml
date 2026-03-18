@@ -26709,13 +26709,13 @@ phases:
       \ in tech debt backlog"
 - id: test_migration
   name: Test Suite Migration
-  status: pending
+  status: in_progress
   depends_on:
   - shell_adapters
   steps:
   - id: test_migration.update-facade-tests
     name: update-facade-tests
-    status: pending
+    status: claimed
     description: "Update tests/app/test_facade.py to use capabilities and test deprecation.\n\
       \nstep_type: implementation\n\n## File: tests/app/test_facade.py\n\n### Changes\
       \ Required\n\n1. **Update all test fixtures** that use `tools` field:\n   -\
@@ -26767,6 +26767,8 @@ phases:
     refs:
     - tests/app/test_facade.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T20:22:46.880694+00:00'
   - id: test_migration.update-shell-tests
     name: update-shell-tests
     status: pending
