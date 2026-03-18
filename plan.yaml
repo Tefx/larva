@@ -25030,6 +25030,42 @@ phases:
     - core_types.contract-capabilities-field
     - core_types.test-type-definitions
     agent: gate-reviewer
+  - id: core_types.fix-toolsetcomponent-transition-compat
+    name: fix-toolsetcomponent-transition-compat
+    status: pending
+    description: 'Remediate core_types gate finding: ToolsetComponent should support
+      ADR-002 transition compatibility by allowing either canonical `capabilities`
+      or deprecated `tools` at type level. Update `src/larva/core/spec.py` accordingly
+      and extend/adjust `tests/core/test_spec.py` so the transition contract is enforced.
+      Re-run targeted tests and full `uv run invar guard --all`.'
+    verification: '- ToolsetComponent transition typing accepts capabilities-only
+      and tools-only shapes
+
+      - `uv run pytest tests/core/test_spec.py -v` passes
+
+      - `uv run invar guard --all` passes
+
+      - mypy/type-level evidence no longer requires both fields simultaneously'
+    evidence_template: 'Artifact:
+
+      - Commit: <hash>
+
+
+      Verification:
+
+      - Run: uv run pytest tests/core/test_spec.py -v -> <outcome>
+
+      - Run: uv run invar guard --all -> <outcome>
+
+      - Run: <type-level verification command> -> <outcome>
+
+
+      Spec link:
+
+      - ADR-002-capability-intent-without-runtime-policy.md'
+    depends_on:
+    - core_types.contract-capabilities-field
+    - core_types.test-type-definitions
 - id: core_logic
   name: Core Logic Migration (validate, assemble, normalize, patch)
   status: locked
