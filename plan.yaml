@@ -25842,6 +25842,55 @@ phases:
     - core_logic.assemble-capabilities
     - core_logic.patch-capabilities
     agent: python-executor
+  - id: core_logic.retest-patch-identity-protection
+    name: Retest patch identity protection
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the affected
+      patch tests and `invar guard` after the identity-protection fix.
+
+
+      step_type: verification
+
+      priority: HIGH
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: patch application preserves stable identity when `id` is present
+
+      - Edge cases: attempted `id` overwrite through patch input does not break protected-key
+      behavior
+
+      - Error scenarios: focused regression detects any remaining mismatch between
+      code and `INTERFACES.md`
+
+
+      Document all findings. A test that discovers issues is a success.
+
+
+      Independence Level: L1
+
+
+      ## Exact command family
+
+      - `uv run pytest tests/core/test_patch.py -v`
+
+      - `uv run invar guard --all`
+
+
+      Retest must verify in a fresh/cold environment.'
+    verification: '- Run `uv run pytest tests/core/test_patch.py -v`
+
+      - Run `uv run invar guard --all`
+
+      - Record whether `id` protection passes in focused patch tests and whether guard
+      stays clean'
+    depends_on:
+    - core_logic.fix-patch-identity-protection
+    agent: integration-verifier
 - id: shell_adapters
   name: Shell Adapter Migration (components, facade, CLI, MCP, Python API)
   status: locked
