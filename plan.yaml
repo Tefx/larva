@@ -25683,7 +25683,7 @@ phases:
       - Branch commit contains updates in `tests/core/test_patch.py`'
   - id: core_logic.gate
     name: gate
-    status: claimed
+    status: pending
     description: "Gate review: Verify core logic migration is complete and correct.\n\
       \nreview_depth: THOROUGH\nreview_depth_rationale: |\n  - Phase touches normalization,\
       \ validation, assembly, and patch logic\n  - Cross-cutting change affecting\
@@ -25710,8 +25710,6 @@ phases:
     - core_logic.core-logic-tests
     - core_logic.integration-verify
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-18T18:58:32.962418+00:00'
   - id: core_logic.integration-verify
     name: Integration verify core pipeline
     status: done
