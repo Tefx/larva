@@ -6,6 +6,8 @@ Examples:
     {'model': 'gpt-5'}
 
     Protected stripping:
+    >>> apply_patches({"id": "base-id", "x": 1}, {"id": "patch-id", "x": 2})
+    {'id': 'base-id', 'x': 2}
     >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
     {'spec_version': '0.1.0', 'x': 1}
 
@@ -39,7 +41,7 @@ from typing import TypeGuard
 
 from deal import post, pre
 
-PROTECTED_KEYS = frozenset({"spec_digest", "spec_version"})
+PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
 DEEP_MERGE_KEYS = frozenset({"model_params", "tools", "capabilities"})
 DOT_KEY_SEPARATOR = "."
 
