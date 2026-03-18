@@ -127,5 +127,56 @@ class TestNormalizeSpecBehavior:
         assert left["spec_digest"] == right["spec_digest"]
 
 
+class TestNormalizeSpecCapabilitiesTransition:
+    """Test ADR-002 tools->capabilities normalization behavior."""
+
+    def test_tools_only_normalizes_to_capabilities(self) -> None:
+        """When only tools present, copy to capabilities."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
+        assert result.get("capabilities") == {"filesystem": "read_only"}
+        assert result.get("tools") == {"filesystem": "read_only"}
+
+    def test_capabilities_only_passes_through(self) -> None:
+        """When only capabilities present, use as-is."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
+        assert result.get("capabilities") == {"git": "read_write"}
+        assert result.get("tools") == {"git": "read_write"}
+
+    def test_both_fields_capabilities_wins(self) -> None:
+        """When both tools and capabilities present, capabilities wins."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec(
+            {
+                "id": "test",
+                "tools": {"filesystem": "read_only"},
+                "capabilities": {"git": "read_write"},
+            }
+        )
+        assert result.get("capabilities") == {"git": "read_write"}
+        assert result.get("tools") == {"git": "read_write"}
+
+    def test_neither_field_no_change(self) -> None:
+        """When neither tools nor capabilities present, neither is added."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec({"id": "test", "model": "gpt-4"})
+        assert "capabilities" not in result or result.get("capabilities") is None
+        assert "tools" not in result or result.get("tools") is None
+
+    def test_digest_includes_capabilities_after_normalization(self) -> None:
+        """Digest should reflect normalized capabilities field."""
+        from larva.core.normalize import normalize_spec
+
+        # tools-only input should produce same digest as if it had capabilities from start
+        tools_only = normalize_spec({"id": "test", "tools": {"git": "read_only"}})
+        capabilities_only = normalize_spec({"id": "test", "capabilities": {"git": "read_only"}})
+        assert tools_only["spec_digest"] == capabilities_only["spec_digest"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

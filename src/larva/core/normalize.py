@@ -55,6 +55,9 @@ def _compute_spec_digest(spec: dict[str, object]) -> str:
 
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
 @post(lambda result: "spec_version" in result and "spec_digest" in result)
+@post(lambda result: "capabilities" not in result or isinstance(result.get("capabilities"), dict))
+@post(lambda result: "tools" not in result or isinstance(result.get("tools"), dict))
+@post(lambda result: result.get("capabilities") is not None or result.get("tools") is None)
 def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.
 
@@ -64,17 +67,25 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
       no whitespace, excluding the spec_digest field itself).
     - Preserve flat self-contained output.
 
+    ADR-002 Transition (tools -> capabilities):
+    - If `tools` present and `capabilities` absent: copy tools to capabilities.
+    - If both present: `capabilities` wins (tools ignored).
+    - Output always contains `capabilities` (canonical field).
+    - During transition: output mirrors `capabilities` to `tools` for compatibility.
+
+    spec_digest Behavior:
+    - Digest is computed AFTER `tools` -> `capabilities` normalization.
+    - Input `spec_digest` is always overwritten with fresh computation.
+    - Digest excludes the `spec_digest` field itself from canonical JSON.
+    - Both `capabilities` and `tools` (if present after normalization) are
+      included in digest computation.
+
     Args:
         spec: Input PersonaSpec candidate (possibly incomplete).
 
     Returns:
-        Canonical PersonaSpec with spec_version defaulted and spec_digest computed.
-
-    Note:
-        This implementation handles:
-        - spec_version defaulting to "0.1.0" if missing
-        - spec_digest computation from canonical JSON representation
-        - Deterministic, pure transformation (no I/O side effects)
+        Canonical PersonaSpec with spec_version defaulted, tools normalized
+        to capabilities (transition), and spec_digest computed.
 
     Examples:
         >>> normalize_spec({"id": "test"})["spec_version"]
@@ -88,9 +99,39 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         True
         >>> normalize_spec({"spec_digest": "stale_digest"})["spec_digest"] != "stale_digest"
         True
+        >>> # ADR-002: tools-only spec normalizes to capabilities
+        >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
+        >>> result.get("capabilities") == {"filesystem": "read_only"}
+        True
+        >>> result.get("tools") == {"filesystem": "read_only"}  # mirrored during transition
+        True
+        >>> # ADR-002: capabilities-only spec passes through
+        >>> result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
+        >>> result.get("capabilities") == {"git": "read_write"}
+        True
+        >>> result.get("tools") == {"git": "read_write"}  # mirrored during transition
+        True
+        >>> # ADR-002: both present - capabilities wins
+        >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}, "capabilities": {"git": "read_write"}})
+        >>> result.get("capabilities") == {"git": "read_write"}
+        True
+        >>> result.get("tools") == {"git": "read_write"}  # mirrors capabilities
+        True
     """
+    # Apply defaults
     if "spec_version" not in spec:
         spec = {**spec, "spec_version": "0.1.0"}
+
+    # ADR-002: Normalize tools -> capabilities
+    tools = spec.get("tools")
+    capabilities = spec.get("capabilities")
+
+    if capabilities is not None:
+        # Capabilities present (canonical wins) - mirror to tools during transition
+        spec = {**spec, "tools": capabilities}
+    elif tools is not None:
+        # Only tools present - copy to capabilities
+        spec = {**spec, "capabilities": tools}
 
     digest = _compute_spec_digest(spec)
     return cast("PersonaSpec", {**spec, "spec_digest": digest})
