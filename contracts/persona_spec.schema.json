@@ -3,7 +3,11 @@
   "title": "PersonaSpec",
   "description": "Canonical persona definition artifact. Validated, assembled, and registered by larva. Consumed by anima (runtime) and nervus (dispatch).",
   "type": "object",
-  "required": ["id", "description", "prompt", "model", "tools", "spec_version"],
+  "required": ["id", "description", "prompt", "model", "spec_version"],
+  "anyOf": [
+    { "required": ["tools"] },
+    { "required": ["capabilities"] }
+  ],
   "properties": {
     "id": {
       "type": "string",
@@ -31,7 +35,15 @@
         "type": "string",
         "enum": ["none", "read_only", "read_write", "destructive"]
       },
-      "description": "Map of tool_family -> posture. Each key is a stable, provider-agnostic tool-surface identifier. Each value is the maximum intended posture for that tool family. Empty map is valid but triggers a warning."
+      "description": "DEPRECATED: Use capabilities instead. Accepted during transition, normalized to capabilities in output. Map of tool_family -> posture. Each key is a stable, provider-agnostic tool-surface identifier. Each value is the maximum intended posture for that tool family. Empty map is valid but triggers a warning."
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["none", "read_only", "read_write", "destructive"]
+      },
+      "description": "Map of tool_family -> posture. The canonical tool-access declaration surface per ADR-002."
     },
     "model_params": {
       "type": "object",
@@ -50,7 +62,7 @@
     "side_effect_policy": {
       "type": "string",
       "enum": ["allow", "approval_required", "read_only"],
-      "description": "Global default side-effect posture. 'allow' = no gate, 'approval_required' = human approval for mutations, 'read_only' = no mutations permitted. Runtime enforcement combines this with per-tool postures."
+      "description": "DEPRECATED per ADR-002: Runtime policy moves to anima. Accepted during transition with deprecation warning. Global default side-effect posture. 'allow' = no gate, 'approval_required' = human approval for mutations, 'read_only' = no mutations permitted. Runtime enforcement combines this with per-tool postures."
     },
     "can_spawn": {
       "oneOf": [
