@@ -25544,7 +25544,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: core_logic.core-logic-tests
     name: core-logic-tests
-    status: pending
+    status: claimed
     description: 'Add and update tests for all core logic changes.
 
 
@@ -25648,6 +25648,8 @@ phases:
     - core_logic.assemble-capabilities
     - core_logic.patch-capabilities
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-18T18:51:18.377199+00:00'
   - id: core_logic.gate
     name: gate
     status: pending
