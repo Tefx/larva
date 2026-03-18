@@ -26515,7 +26515,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
   - id: doc_contract.update-usage-and-userguide
     name: update-usage-and-userguide
-    status: pending
+    status: claimed
     description: 'Update USAGE.md and USER_GUIDE.md to use `capabilities` and deprecate
       `side_effect_policy`.
 
@@ -26571,6 +26571,8 @@ phases:
     - USER_GUIDE.md
     - ADR-002-capability-intent-without-runtime-policy.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-18T17:02:26.696547+00:00'
   - id: doc_contract.update-readme
     name: update-readme
     status: done
