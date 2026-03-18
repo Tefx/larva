@@ -25029,6 +25029,7 @@ phases:
     depends_on:
     - core_types.contract-capabilities-field
     - core_types.test-type-definitions
+    - core_types.fix-toolsetcomponent-transition-compat
     agent: gate-reviewer
   - id: core_types.fix-toolsetcomponent-transition-compat
     name: fix-toolsetcomponent-transition-compat
