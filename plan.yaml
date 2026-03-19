@@ -29032,7 +29032,7 @@ phases:
     agent: gate-reviewer
   - id: invar_1203_remediation.apply-owner-approved-dead-export-exemption
     name: Apply scoped dead_export exemption after owner approval
-    status: pending
+    status: claimed
     description: 'Apply the minimal project-scoped exemption for the non-suppressible
       `dead_export` finding at `src/larva/shell/cli.py:322` only after owner approval
       is recorded.
@@ -29074,6 +29074,8 @@ phases:
     depends_on:
     - invar_1203_remediation.request-owner-approved-dead-export-exemption
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-19T10:05:57.318815+00:00'
   - id: invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
     name: Reduce shell_result and weighted escape-hatch budget below 1.20.3 limits
     status: pending
