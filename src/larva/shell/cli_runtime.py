@@ -152,6 +152,7 @@ def _map_component_error(error: object) -> Result[tuple[JsonErrorEnvelope, CliEx
     )
 
 
+# @shell_complexity: CLI --set parsing intentionally preserves explicit bool/null/int/float/string coercion order for user-facing semantics.
 def _infer_value_type(value: str) -> Result[object, object]:
     if value.lower() == "true":
         return Success(True)

@@ -18,22 +18,12 @@ class LarvaApiError(Exception):
         super().__init__(error["message"])
 
 
-_component_store: FilesystemComponentStore | None = None
-
-
-# @invar:allow shell_result: lazy initialization is internal helper returning store instance
-# @shell_orchestration: creating FilesystemComponentStore instance is deferred I/O initialization
-def _get_component_store() -> FilesystemComponentStore:
-    """Lazily initialize and return the default component store instance."""
-    global _component_store
-    if _component_store is None:
-        _component_store = FilesystemComponentStore()
-    return _component_store
+_component_store = FilesystemComponentStore()
 
 
 def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
     """Return component list as Result with LarvaError failures."""
-    result = _get_component_store().list_components()
+    result = _component_store.list_components()
     if isinstance(result, Failure):
         error = result.failure()
         return Failure(
@@ -50,9 +40,10 @@ def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
     return Success(cast("dict[str, list[str]]", result.unwrap()))
 
 
+# @shell_complexity: component loading branches by externally-visible component kind and keeps explicit error mapping at transport boundary.
 def _component_show_result(type: str, name: str) -> Result[dict[str, object], LarvaError]:
     """Return one component as Result with LarvaError failures."""
-    store = _get_component_store()
+    store = _component_store
 
     if type == "prompt":
         result = store.load_prompt(name)

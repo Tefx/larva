@@ -13,6 +13,8 @@ import argparse
 import webbrowser
 from pathlib import Path
 
+from returns.result import Result, Success
+
 from larva.shell.python_api import (
     LarvaApiError,
     assemble,
@@ -46,11 +48,12 @@ _component_store = FilesystemComponentStore()
 # ---------------------------------------------------------------------------
 
 
-# @invar:allow shell_result: FastAPI helper returns JSONResponse, not Result
-def _api_error_response(e: LarvaApiError) -> JSONResponse:
-    return JSONResponse(
-        status_code=400,
-        content={"error": e.error},
+def _api_error_response(e: LarvaApiError) -> Result[JSONResponse, object]:
+    return Success(
+        JSONResponse(
+            status_code=400,
+            content={"error": e.error},
+        )
     )
 
 
@@ -64,7 +67,7 @@ def api_list_personas():
     try:
         return {"data": list_personas()}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.get("/api/personas/{persona_id}")
@@ -72,7 +75,7 @@ def api_get_persona(persona_id: str):
     try:
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.post("/api/personas")
@@ -90,7 +93,7 @@ async def api_register_persona(request: Request):
         result = register(spec)
         return {"data": result}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 # @invar:allow entry_point_too_thick: contrib web endpoint, inline patch logic is clearer
@@ -122,7 +125,7 @@ async def api_update_persona(persona_id: str, request: Request):
         # Return updated spec
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.delete("/api/personas/{persona_id}")
@@ -131,7 +134,7 @@ def api_delete_persona(persona_id: str):
         result = delete(persona_id)
         return {"data": result}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.post("/api/personas/clear")
@@ -142,7 +145,7 @@ async def api_clear_personas(request: Request):
         count = clear(confirm=confirm)
         return {"data": {"cleared": True, "count": count}}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.post("/api/personas/validate")
@@ -152,7 +155,7 @@ async def api_validate_persona(request: Request):
         report = validate(spec)
         return {"data": report}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.post("/api/personas/assemble")
@@ -170,7 +173,7 @@ async def api_assemble_persona(request: Request):
         )
         return {"data": spec}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return _api_error_response(e).unwrap()
 
 
 @app.post("/api/personas/batch-update")

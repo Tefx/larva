@@ -42,6 +42,7 @@ _get_facade = lambda: _facade
 
 # @invar:allow shell_result: shared Python API dispatch unwraps facade Results to exceptions
 # @shell_orchestration: preserves Python API behavior while centralizing non-Result surface
+# @shell_complexity: single dispatch function keeps operation-to-facade mapping and shared Failure-to-exception translation in one shell boundary.
 def _invoke(op: str, *args: object, **kwargs: object) -> object:
     facade = _get_facade()
     if op == "validate":
