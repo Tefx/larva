@@ -28940,7 +28940,7 @@ phases:
       \  <paste>\n  ```\n- Environment: <python/uv/invar-tools versions>\n- No-change\
       \ attestation: <statement>"
     depends_on:
-    - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
+    - invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
     - invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
     - invar_1203_remediation.apply-owner-approved-dead-export-exemption
     agent: gate-reviewer
