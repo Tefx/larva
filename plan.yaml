@@ -27335,7 +27335,7 @@ phases:
   steps:
   - id: doc_sync.update-interfaces-md
     name: Reconcile INTERFACES.md with implementation
-    status: claimed
+    status: done
     description: 'RECONCILIATION pass — do NOT redo doc_contract work. Compare INTERFACES.md
       (updated in doc_contract phase) against actual implemented behavior. Fix any
       drift where:
@@ -27361,6 +27361,29 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-19T06:16:59.941500+00:00'
+    done_at: '2026-03-19T06:19:15.366448+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 484a93b1eefc2cf6168f55ebae49cb323f1546ce
+
+
+      Verification:
+
+      - markdown consistency check passed for INTERFACES.md
+
+      - sanity term checks confirmed ToolPosture values, deprecation warning strings,
+      migration precedence, and updated field coverage
+
+      - diff scope: INTERFACES.md only
+
+
+      Notes:
+
+      - reconciled field table and invariants with current implementation
+
+      - documented exact deprecation warning messages and precedence behavior
+
+      - aligned normative example to include spec_digest'
   - id: doc_sync.update-other-docs
     name: Reconcile other docs + update MIGRATION-002 progress
     status: pending
