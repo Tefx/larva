@@ -28435,7 +28435,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
 - id: invar_1203_remediation
   name: Invar 1.20.3 Remediation
-  status: pending
+  status: in_progress
   depends_on:
   - deep_review
   steps:
@@ -28532,7 +28532,7 @@ phases:
     agent: python-senior
   - id: invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     name: Reduce CLI shell_result debt and parser size
-    status: pending
+    status: claimed
     description: 'Refactor the CLI cluster to reduce 1.20.3 escape-hatch concentration
       and size debt without narrowing CLI runtime behavior.
 
@@ -28581,6 +28581,8 @@ phases:
     - src/larva/shell/cli_helpers.py
     - INVAR.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T08:34:21.485157+00:00'
   - id: invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     name: Reduce Python API escape hatches and shell pure logic
     status: pending
