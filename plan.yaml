@@ -28979,8 +28979,11 @@ phases:
 
       - Full `uv run invar guard --all` output reviewed
 
-      - Dead_export path is either removed or covered by owner-approved exemption
+      - Dead_export path is either removed or covered by owner-approved scoped exemption
       evidence
+
+      - `shell_result`, `escape_hatch_project_limit`, and `escape_hatch_budget` are
+      below invar-tools 1.20.3 limits or explicitly blocked with evidence
 
       - Escape-hatch project limit / budget, shell_pure_logic, size warnings, and
       redundant_type_contract infos are dispositioned explicitly
@@ -29024,6 +29027,8 @@ phases:
       - Residual warnings/infos accepted or deferred: <list>'
     depends_on:
     - invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
+    - invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
+    - invar_1203_remediation.apply-owner-approved-dead-export-exemption
     agent: gate-reviewer
   - id: invar_1203_remediation.apply-owner-approved-dead-export-exemption
     name: Apply scoped dead_export exemption after owner approval
