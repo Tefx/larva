@@ -27329,13 +27329,13 @@ phases:
       Verdict: PASS'
 - id: doc_sync
   name: Documentation Sync
-  status: pending
+  status: in_progress
   depends_on:
   - test_migration
   steps:
   - id: doc_sync.update-interfaces-md
     name: Reconcile INTERFACES.md with implementation
-    status: pending
+    status: claimed
     description: 'RECONCILIATION pass — do NOT redo doc_contract work. Compare INTERFACES.md
       (updated in doc_contract phase) against actual implemented behavior. Fix any
       drift where:
@@ -27359,6 +27359,8 @@ phases:
     refs:
     - INTERFACES.md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-19T06:16:59.941500+00:00'
   - id: doc_sync.update-other-docs
     name: Reconcile other docs + update MIGRATION-002 progress
     status: pending
