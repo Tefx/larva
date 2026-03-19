@@ -27386,7 +27386,7 @@ phases:
       - aligned normative example to include spec_digest'
   - id: doc_sync.update-other-docs
     name: Reconcile other docs + update MIGRATION-002 progress
-    status: pending
+    status: claimed
     description: 'RECONCILIATION pass for ARCHITECTURE.md, USAGE.md, USER_GUIDE.md,
       README.md — fix any drift from doc_contract where code implementation diverged
       from initial docs.
@@ -27420,6 +27420,8 @@ phases:
     depends_on:
     - doc_sync.update-interfaces-md
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-19T06:19:31.548806+00:00'
   - id: doc_sync.gate
     name: gate
     status: pending
