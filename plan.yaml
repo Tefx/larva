@@ -28717,7 +28717,7 @@ phases:
       removed shell_pure_logic finding while preserving behavior'
   - id: invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
     name: Quick gate on early Invar remediation patterns
-    status: claimed
+    status: done
     description: 'Quick gate: verify the early remediation pattern is correct before
       the final size-only shell cleanup proceeds.
 
@@ -28764,6 +28764,30 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-19T09:23:40.300421+00:00'
+    done_at: '2026-03-19T09:29:54.897929+00:00'
+    evidence: 'Mid-gate verdict: OPEN (non-blocking)
+
+
+      Checks:
+
+      - core contract cleanup preserved required contract coverage
+
+      - CLI/Python API hatch reductions were cross-path and behavior-preserving
+
+      - dead_export governance requirement was not bypassed; packet exists and approval
+      remains pending
+
+
+      Verification snapshots:
+
+      - targeted core/CLI/python-api tests pass
+
+      - invar guard in early-remediation context reports no blocking regression
+
+
+      Concerns:
+
+      - commit bodies are concise; raw guard detail primarily captured in step evidence'
   - id: invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
     name: Reduce remaining shell file-size hotspots
     status: pending
