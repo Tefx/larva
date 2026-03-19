@@ -28763,3 +28763,33 @@ phases:
     - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     - invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
     agent: integration-verifier
+  - id: invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
+    name: Freeze snapshot for Invar remediation gate
+    status: pending
+    description: 'Freeze: lock the remediation snapshot before gate review.
+
+
+      Required evidence:
+
+      - `git rev-parse HEAD`
+
+      - `git status --short` is clean
+
+      - environment declaration for the verification run
+
+      - explicit statement that no code changes were made after the full guard verification
+      completed'
+    verification: '- Snapshot SHA recorded
+
+      - Worktree is clean
+
+      - Environment declaration is attached
+
+      - No post-verification code changes are permitted before the subsequent gate
+      completes'
+    evidence_template: "## Freeze Evidence\n- HEAD: `<sha>`\n- Git status:\n  ```\n\
+      \  <paste>\n  ```\n- Environment: <python/uv/invar-tools versions>\n- No-change\
+      \ attestation: <statement>"
+    depends_on:
+    - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
+    agent: gate-reviewer
