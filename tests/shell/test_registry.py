@@ -42,9 +42,10 @@ def _canonical_spec(persona_id: str, digest: str, model: str = "gpt-4o-mini") ->
         "description": f"Persona {persona_id}",
         "prompt": f"You are {persona_id}",
         "model": model,
-        "tools": {"read": "read_only"},
+        "capabilities": {"read": "read_only"},  # canonical (ADR-002)
+        "tools": {"read": "read_only"},  # DEPRECATED: mirrored from capabilities
         "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",
+        "side_effect_policy": "read_only",  # DEPRECATED: runtime concern (ADR-002)
         "can_spawn": False,
         "compaction_prompt": "Summarize key facts.",
         "spec_version": "0.1.0",

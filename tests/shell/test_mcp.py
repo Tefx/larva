@@ -111,7 +111,9 @@ class InMemoryComponentStore:
             return Failure(cast("LarvaError", self.fail_error))
         if name not in self.toolsets_by_name:
             return Failure(self._make_not_found_error("toolset", name))
-        return Success(self.toolsets_by_name[name])
+        # Per ADR-002: toolsets should contain capabilities (canonical) + tools (mirrored)
+        toolset_data = self.toolsets_by_name[name]
+        return Success(toolset_data)
 
     def load_constraint(self, name: str) -> Result[dict[str, object], LarvaError]:
         if self.fail_on == "constraint":
@@ -181,9 +183,10 @@ def _canonical_spec(
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
         "model": model,
-        "tools": {"shell": "read_only"},
+        "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
+        "tools": {"shell": "read_only"},  # DEPRECATED: mirrored from capabilities
         "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",
+        "side_effect_policy": "read_only",  # DEPRECATED: runtime concern (ADR-002)
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
@@ -468,9 +471,10 @@ class TestMCPAssembleSuccessShape:
             "description",
             "prompt",
             "model",
-            "tools",
+            "capabilities",  # canonical (ADR-002)
+            "tools",  # DEPRECATED: mirrored from capabilities
             "model_params",
-            "side_effect_policy",
+            "side_effect_policy",  # DEPRECATED: runtime concern
             "can_spawn",
             "compaction_prompt",
             "spec_version",
@@ -873,10 +877,18 @@ class TestMCPToolsRoundTrip:
         assert result["valid"] is True
 
     def test_assemble_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler extracting assemble params and calling facade."""
+        """Simulate MCP tool handler extracting assemble params and calling facade.
+
+        Per ADR-002: toolsets use capabilities (canonical) with tools mirrored.
+        """
         components = InMemoryComponentStore(
             prompts_by_name={"base-prompt": {"text": "You are helpful."}},
-            toolsets_by_name={"readonly-tools": {"tools": {"shell": "read_only"}}},
+            toolsets_by_name={
+                "readonly-tools": {
+                    "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
+                    "tools": {"shell": "read_only"},  # mirrored backward compat
+                }
+            },
             constraints_by_name={"no-spawn": {"can_spawn": False}},
             models_by_name={"default-model": {"model": "gpt-4o-mini"}},
         )
@@ -1479,9 +1491,18 @@ class TestMCPComponentShowAcceptance:
         assert result["text"] == "You are a helpful assistant."
 
     def test_handle_component_show_success_for_toolset(self) -> None:
-        """Test handle_component_show success path for toolsets."""
+        """Test handle_component_show success path for toolsets.
+
+        Per ADR-002: toolsets should include both capabilities (canonical) and
+        tools (mirrored) for backward compatibility during transition.
+        """
         components = InMemoryComponentStore(
-            toolsets_by_name={"readonly": {"tools": {"shell": "read_only"}}}
+            toolsets_by_name={
+                "readonly": {
+                    "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
+                    "tools": {"shell": "read_only"},  # mirrored for backward compat
+                }
+            }
         )
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1490,10 +1511,17 @@ class TestMCPComponentShowAcceptance:
 
         assert isinstance(result, dict)
         assert "error" not in result
+        # Per ADR-002: canonical field is primary
+        assert "capabilities" in result
+        # Mirrored backward-compat field should also be present
         assert "tools" in result
 
     def test_handle_component_show_success_for_constraint(self) -> None:
-        """Test handle_component_show success path for constraints."""
+        """Test handle_component_show success path for constraints.
+
+        Note: ADR-002 deprecates side_effect_policy in constraints. Tests
+        retain backward-compat coverage until runtime policy is fully removed.
+        """
         components = InMemoryComponentStore(
             constraints_by_name={"safe-default": {"side_effect_policy": "read_only"}}
         )
@@ -1506,6 +1534,7 @@ class TestMCPComponentShowAcceptance:
 
         assert isinstance(result, dict)
         assert "error" not in result
+        # DEPRECATED: side_effect_policy in constraints (ADR-002)
         assert "side_effect_policy" in result
 
     def test_handle_component_show_success_for_model(self) -> None:

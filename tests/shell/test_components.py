@@ -36,7 +36,12 @@ def temp_component_store(tmp_path: Path) -> FilesystemComponentStore:
         encoding="utf-8",
     )
     (toolsets_dir / "test_toolset.yaml").write_text(
-        """tools:
+        """# Per ADR-002: toolsets use capabilities (canonical) with tools mirrored for backward compat
+capabilities:
+  filesystem: read_write
+  shell: read_only
+  http: none
+tools:  # DEPRECATED: mirrored from capabilities (ADR-002)
   filesystem: read_write
   shell: read_only
   http: none
@@ -44,8 +49,10 @@ def temp_component_store(tmp_path: Path) -> FilesystemComponentStore:
         encoding="utf-8",
     )
     (constraints_dir / "test_constraint.yaml").write_text(
-        """can_spawn: true
-side_effect_policy: approval_required
+        """# Note: side_effect_policy is deprecated in constraints (ADR-002)
+# Runtime concerns like approval policy don't belong in persona artifacts
+can_spawn: true
+side_effect_policy: approval_required  # DEPRECATED
 compaction_prompt: Compact the state.
 """,
         encoding="utf-8",
@@ -87,6 +94,11 @@ class TestFilesystemComponentStoreIntegration:
         assert isinstance(result, Result)
         assert isinstance(result, Success)
         toolset = result.unwrap()
+        # Per ADR-002: capabilities is canonical
+        assert toolset["capabilities"]["filesystem"] == "read_write"
+        assert toolset["capabilities"]["shell"] == "read_only"
+        assert toolset["capabilities"]["http"] == "none"
+        # Backward-compat: tools is mirrored from capabilities
         assert toolset["tools"]["filesystem"] == "read_write"
         assert toolset["tools"]["shell"] == "read_only"
         assert toolset["tools"]["http"] == "none"
@@ -99,6 +111,8 @@ class TestFilesystemComponentStoreIntegration:
         assert isinstance(result, Success)
         constraint = result.unwrap()
         assert constraint["can_spawn"] is True
+        # DEPRECATED: side_effect_policy in constraints (ADR-002)
+        # Retained for backward-compat tests until runtime policy removed
         assert constraint["side_effect_policy"] == "approval_required"
         assert constraint["compaction_prompt"] == "Compact the state."
 
