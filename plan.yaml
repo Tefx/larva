@@ -28790,7 +28790,7 @@ phases:
       - commit bodies are concise; raw guard detail primarily captured in step evidence'
   - id: invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
     name: Reduce remaining shell file-size hotspots
-    status: pending
+    status: claimed
     description: 'Refactor the remaining shell hotspot cluster after the early Invar
       pattern check.
 
@@ -28829,6 +28829,8 @@ phases:
     depends_on:
     - invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T09:30:11.017988+00:00'
   - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     name: Run full independent Invar 1.20.3 verification
     status: pending
