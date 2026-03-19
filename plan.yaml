@@ -26920,7 +26920,7 @@ phases:
       New tests added: none'
   - id: test_migration.full-test-suite-verification
     name: full-test-suite-verification
-    status: claimed
+    status: done
     description: 'Run the complete test suite and invar guard to verify no regressions.
 
 
@@ -26980,6 +26980,38 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T05:00:10.362358+00:00'
+    done_at: '2026-03-19T05:06:54.405419+00:00'
+    evidence: '## Full Suite Verification
+
+
+      pytest:
+
+      - 693 collected
+
+      - 644 passed, 1 xfailed, 48 xpassed
+
+      - exit 0
+
+
+      invar guard:
+
+      - status: passed
+
+      - static: 0 errors, 8 warnings, 13 infos
+
+      - doctest: passed
+
+      - crosshair: verified/cached
+
+      - property_tests: passed
+
+
+      doctest-modules:
+
+      - integrated run consistent with pytest summary
+
+
+      Verdict: PASS'
   - id: test_migration.gate
     name: gate
     status: pending
