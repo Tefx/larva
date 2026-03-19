@@ -29221,7 +29221,7 @@ phases:
       - weighted escape-hatch budget reduced from blocking (30/15) to within cap'
   - id: invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
     name: Fix remaining escape-hatch budget and shell_result gates
-    status: claimed
+    status: done
     description: 'Fix ALL remaining gating blockers from `invar_1203_remediation.run-full-independent-invar-1-20-3-verification`
       in one batched remediation step.
 
@@ -29335,6 +29335,36 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T10:29:39.394246+00:00'
+    done_at: '2026-03-19T10:42:37.771047+00:00'
+    evidence: '## Remediation Evidence
+
+      Blockers closed:
+
+      - shell_result project-limit gating moved from blocking state (5/5 error) to
+      non-blocking state (4/5 warning)
+
+      - weighted escape-hatch budget moved from blocking (18/15 error) to compliant
+      (12/15)
+
+
+      Complexity dispositions:
+
+      - added justified @shell_complexity annotations for python_api_components._component_show_result,
+      python_api._invoke, cli_runtime._infer_value_type
+
+      - removed one shell_result hatch via web API error-response boundary refactor
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/shell/test_python_api.py -> 91 passed
+
+      - Run: uv run invar guard --all -> passed (errors=0)
+
+
+      Artifact:
+
+      - Commit: 5835c523b0bea05a7a95e693f0abebbb59c8d9ec'
   - id: invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
     name: Retest full independent Invar 1.20.3 verification after escape-hatch remediation
     status: pending
