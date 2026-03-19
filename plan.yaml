@@ -29574,7 +29574,7 @@ phases:
       No gaps: all mandatory checks executed and evidenced by the full guard run.'
   - id: invar_1203_remediation.fix-gate-should-fix-batch
     name: Fix batched gate findings from Invar 1.20.3 remediation gate
-    status: claimed
+    status: done
     description: 'Fix ALL should-fix findings from the Invar 1.20.3 remediation gate.
 
 
@@ -29615,6 +29615,46 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T11:13:24.229239+00:00'
+    done_at: '2026-03-19T11:18:39.704168+00:00'
+    evidence: 'Worker evidence accepted for batched should-fix remediation S1.
+
+
+      Commit hash: 07ad895
+
+      Files changed: src/larva/shell/mcp_server.py only
+
+
+      Changes made:
+
+      - Removed two stale `@invar:allow dead_export` annotations from excluded MCP
+      server file
+
+      - No broader MCP refactor (no logic/signature/body changes)
+
+
+      Verification:
+
+      - Command: uv run invar guard --all
+
+      - Outcome: passed (errors=0, warnings=1 [escape_hatch_budget 12/15], infos=0)
+
+      - Regressions introduced: none
+
+
+      Config confirmation:
+
+      - pyproject.toml still lists `src/larva/shell/mcp_server.py` in `[tool.invar.guard].exclude_paths`
+
+
+      Scope control:
+
+      - Task limited to stale annotation cleanup only; adjacent shell_result allows
+      unchanged.
+
+
+      Gaps/Notes:
+
+      - No additional cleanup outside scoped stale annotation removal (out of scope).'
   - id: invar_1203_remediation.retest-after-gate-should-fix-batch
     name: Retest after batched gate finding fixes
     status: pending
