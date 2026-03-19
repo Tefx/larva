@@ -59,7 +59,6 @@ def _is_error_envelope(result: object) -> bool:
 
 
 # @invar:allow shell_result: factory returns FastMCP server object, not Result
-# @invar:allow dead_export: factory function used by CLI and tests
 def create_mcp_server(
     handlers: object | None = None,
 ) -> FastMCP:
@@ -173,7 +172,6 @@ def _register_tool(
 
 
 # @invar:allow shell_result: MCP stdio entrypoint runs transport loop
-# @invar:allow dead_export: CLI entry point called by framework
 def run_mcp_stdio() -> None:
     """Start the MCP server with stdio transport.
 
