@@ -248,7 +248,7 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
     return errors
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list))
 def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
     """Collect deprecation warnings for deprecated fields.

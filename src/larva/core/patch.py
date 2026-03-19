@@ -53,7 +53,7 @@ def _is_str_dict(value: object) -> TypeGuard[dict[str, object]]:
 
 
 @post(lambda result: isinstance(result, dict))
-@pre(lambda mapping: isinstance(mapping, dict))
+@pre(lambda mapping: all(isinstance(key, str) for key in mapping))
 def _copy_dict(mapping: dict[str, object]) -> dict[str, object]:
     """Copy dictionary structure recursively.
 
@@ -73,7 +73,7 @@ def _copy_dict(mapping: dict[str, object]) -> dict[str, object]:
 
 
 @post(lambda result: isinstance(result, dict))
-@pre(lambda patches: isinstance(patches, dict))
+@pre(lambda patches: all(isinstance(key, str) for key in patches))
 def _strip_protected_keys(patches: dict[str, object]) -> dict[str, object]:
     """Remove protected keys from incoming patches.
 
@@ -94,7 +94,11 @@ def _strip_protected_keys(patches: dict[str, object]) -> dict[str, object]:
 
 
 @post(lambda result: isinstance(result, dict))
-@pre(lambda base, patch: isinstance(base, dict) and isinstance(patch, dict))
+@pre(
+    lambda base, patch: (
+        all(isinstance(key, str) for key in base) and all(isinstance(key, str) for key in patch)
+    )
+)
 def _deep_merge_dicts(base: dict[str, object], patch: dict[str, object]) -> dict[str, object]:
     """Recursively merge ``patch`` into ``base``.
 
@@ -116,7 +120,7 @@ def _deep_merge_dicts(base: dict[str, object], patch: dict[str, object]) -> dict
 
 
 @post(lambda result: isinstance(result, dict))
-@pre(lambda patches: isinstance(patches, dict))
+@pre(lambda patches: all(isinstance(key, str) for key in patches))
 def _expand_dot_keys(patches: dict[str, object]) -> dict[str, object]:
     """Expand dot-notation patch keys into nested dictionaries.
 
@@ -156,7 +160,11 @@ def _expand_dot_keys(patches: dict[str, object]) -> dict[str, object]:
     return expanded
 
 
-@pre(lambda spec, patches: isinstance(spec, dict) and isinstance(patches, dict))
+@pre(
+    lambda spec, patches: (
+        all(isinstance(key, str) for key in spec) and all(isinstance(key, str) for key in patches)
+    )
+)
 @post(lambda result: isinstance(result, dict))
 def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[str, object]:
     """Apply runtime patches to a spec using plan-defined merge semantics.

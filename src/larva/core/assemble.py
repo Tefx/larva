@@ -1,26 +1,10 @@
-"""Contract-only assembly module for PersonaSpec construction.
+"""Contracted PersonaSpec assembly from in-memory components."""
 
-This module defines the `assemble_candidate` contract over canonical
-in-memory component types from `larva.core.spec`. Implementation follows
-the assembly rules documented in INTERFACES.md Section C.
-
-Behavioral notes (contract-only):
-- Prompts concatenate in declared order with "\\n\\n" separator
-- Scalar conflicts (model, can_spawn, side_effect_policy) require explicit overrides
-- Tool conflicts surface deterministically
-- Output remains a PersonaSpec candidate inside core boundary
-"""
-
-from string import Formatter
 from typing import Any, Mapping, cast
 
 from deal import post, pre, raises
 
-from larva.core.spec import (
-    ModelComponent,
-    PersonaSpec,
-    ToolPosture,
-)
+from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
 
 
 class AssemblyError(Exception):
@@ -62,7 +46,7 @@ def _assembly_error(
     return error
 
 
-@pre(lambda mapping: isinstance(mapping, Mapping))
+@pre(lambda mapping: not isinstance(mapping, dict) or all(key is not None for key in mapping))
 @post(
     lambda result: (
         isinstance(result, list)
@@ -85,19 +69,7 @@ def _safe_items(mapping: Mapping[Any, Any]) -> list[tuple[Any, Any]]:
         return []
 
 
-@pre(lambda prompt: isinstance(prompt, str))
-@post(lambda result: isinstance(result, bool))
-def _is_format_template(prompt: str) -> bool:
-    """Return True when prompt is a valid str.format template."""
-    try:
-        for _ in Formatter().parse(prompt):
-            continue
-        return True
-    except ValueError:
-        return False
-
-
-@pre(lambda data: isinstance(data, dict))
+@pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, bool))
 def _has_scalar_conflicts(data: dict[str, object]) -> bool:
     """Return True when scalar assembly sources contain conflicting values."""
@@ -210,7 +182,11 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
     return merged
 
 
-@pre(lambda base, patch: isinstance(base, dict) and isinstance(patch, dict))
+@pre(
+    lambda base, patch: (
+        all(isinstance(key, str) for key in base) and all(isinstance(key, str) for key in patch)
+    )
+)
 def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     """Deep-merge patch dict into base dict (patch values override base)."""
     result = dict(base)
@@ -253,7 +229,7 @@ def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
         ) from error
 
 
-@pre(lambda data: isinstance(data, dict))
+@pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
 def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompts_obj = data.get("prompts", [])
@@ -282,7 +258,7 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     return prompt_texts
 
 
-@pre(lambda data: isinstance(data, dict))
+@pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, dict) for item in result))
 def _collect_constraint_sources(data: dict[str, object]) -> list[dict[str, Any]]:
     constraints_obj = data.get("constraints", [])

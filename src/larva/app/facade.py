@@ -154,31 +154,19 @@ class LarvaFacade(Protocol):
         where: dict[str, object],
         patches: dict[str, object],
         dry_run: bool = False,
-    ) -> Result[BatchUpdateResult, LarvaError]:
-        """Batch-update personas matching all `where` clauses."""
-        ...
+    ) -> Result[BatchUpdateResult, LarvaError]: ...
 
     def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
 
-    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
-        """Clone a registered persona to a new id."""
-        ...
+    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]: ...
 
-    def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
-        """Delete one persona by id from the registry."""
-        ...
+    def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]: ...
 
-    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
-        """Clear all personas from the registry."""
-        ...
+    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]: ...
 
-    def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
-        """Export all persona specs from the registry."""
-        ...
+    def export_all(self) -> Result[list[PersonaSpec], LarvaError]: ...
 
-    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
-        """Export specific persona specs by id from the registry."""
-        ...
+    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]: ...
 
 
 class DefaultLarvaFacade(LarvaFacade):
@@ -307,6 +295,20 @@ class DefaultLarvaFacade(LarvaFacade):
             "details": details,
         }
 
+    def _registry_failure_error(
+        self,
+        error: dict[str, object],
+        extra_details: dict[str, object] | None = None,
+    ) -> LarvaError:
+        details = {k: v for k, v in error.items() if k not in {"code", "message"}}
+        if extra_details:
+            details.update(extra_details)
+        return self._error(
+            code=cast("str", error["code"]),
+            message=cast("str", error["message"]),
+            details=cast("dict[str, object]", details),
+        )
+
     def _summary_from_spec(self, spec: PersonaSpec) -> Result[PersonaSummary, LarvaError]:
         persona_id = spec.get("id")
         spec_digest = spec.get("spec_digest")
@@ -352,15 +354,7 @@ class DefaultLarvaFacade(LarvaFacade):
         normalized = self._normalize.normalize_spec(spec)
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
-            error = save_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(save_result.failure()))
 
         persona_id = cast("str", normalized.get("id", ""))
         return Success({"id": persona_id, "registered": True})
@@ -372,15 +366,7 @@ class DefaultLarvaFacade(LarvaFacade):
     ) -> Result[PersonaSpec, LarvaError]:
         get_result = self._registry.get(id)
         if isinstance(get_result, Failure):
-            error = get_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(get_result.failure()))
 
         resolved = dict(get_result.unwrap())
         if overrides is not None:
@@ -400,15 +386,7 @@ class DefaultLarvaFacade(LarvaFacade):
     ) -> Result[PersonaSpec, LarvaError]:
         get_result = self._registry.get(persona_id)
         if isinstance(get_result, Failure):
-            error = get_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(get_result.failure()))
 
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
         patched = apply_patches(existing, patches)
@@ -420,15 +398,7 @@ class DefaultLarvaFacade(LarvaFacade):
         normalized = self._normalize.normalize_spec(cast("PersonaSpec", patched))
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
-            error = save_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(save_result.failure()))
 
         return Success(normalized)
 
@@ -440,15 +410,7 @@ class DefaultLarvaFacade(LarvaFacade):
     ) -> Result[BatchUpdateResult, LarvaError]:
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
-            error = list_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(list_result.failure()))
 
         matched_specs: list[PersonaSpec] = []
         for spec in list_result.unwrap():
@@ -517,15 +479,7 @@ class DefaultLarvaFacade(LarvaFacade):
     def list(self) -> Result[list[PersonaSummary], LarvaError]:
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
-            error = list_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(list_result.failure()))
 
         summaries: list[PersonaSummary] = []
         for spec in list_result.unwrap():
@@ -538,15 +492,7 @@ class DefaultLarvaFacade(LarvaFacade):
     def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]:
         get_result = self._registry.get(source_id)
         if isinstance(get_result, Failure):
-            error = get_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(get_result.failure()))
 
         cloned = dict(get_result.unwrap())
         cloned["id"] = new_id
@@ -560,65 +506,31 @@ class DefaultLarvaFacade(LarvaFacade):
         normalized = self._normalize.normalize_spec(cast("PersonaSpec", cloned))
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
-            error = save_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(save_result.failure()))
 
         return Success(normalized)
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
         delete_result = self._registry.delete(persona_id)
         if isinstance(delete_result, Failure):
-            error = delete_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(delete_result.failure()))
 
         return Success({"id": persona_id, "deleted": True})
 
     def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]:
         clear_result = self._registry.clear(confirm)
         if isinstance(clear_result, Failure):
-            error = clear_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(clear_result.failure()))
 
         return Success({"cleared": True, "count": clear_result.unwrap()})
 
     def export_all(self) -> Result[list[PersonaSpec], LarvaError]:
-        """Export all persona specs from the registry."""
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
-            error = list_result.failure()
-            details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-            return Failure(
-                self._error(
-                    code=error["code"],
-                    message=error["message"],
-                    details=cast("dict[str, object]", details),
-                )
-            )
+            return Failure(self._registry_failure_error(list_result.failure()))
         return Success(list_result.unwrap())
 
     def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
-        """Export specific persona specs by id from the registry."""
         if not ids:
             return Success([])
 
@@ -626,14 +538,10 @@ class DefaultLarvaFacade(LarvaFacade):
         for persona_id in ids:
             get_result = self._registry.get(persona_id)
             if isinstance(get_result, Failure):
-                error = get_result.failure()
-                details = {k: v for k, v in error.items() if k not in {"code", "message"}}
-                details["id"] = persona_id
                 return Failure(
-                    self._error(
-                        code=error["code"],
-                        message=error["message"],
-                        details=cast("dict[str, object]", details),
+                    self._registry_failure_error(
+                        get_result.failure(),
+                        extra_details={"id": persona_id},
                     )
                 )
             specs.append(get_result.unwrap())

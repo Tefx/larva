@@ -22,7 +22,7 @@ from larva.core.spec import PersonaSpec
 _SPEC_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
-@pre(lambda spec: isinstance(spec, dict))
+@pre(lambda spec: "spec_digest" not in spec or isinstance(spec.get("spec_digest"), str))
 @post(lambda result: isinstance(result, bool))
 def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
     """Return True when spec can be encoded as canonical JSON."""
