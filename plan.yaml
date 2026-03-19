@@ -29458,3 +29458,29 @@ phases:
       clipboard contains raw markdown after click, (3) checkmark feedback, (4) disabled
       state on empty prompt'
     agent: python-executor
+  - id: web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
+    name: Mirror copy button changes to contrib/web/index.html
+    status: pending
+    description: 'Mirror the exact same copy button changes to contrib/web/index.html.
+
+
+      File: contrib/web/index.html
+
+
+      Requirements:
+
+      - Identical copy button functionality as web_ui.html
+
+      - Same SVG icon, Alpine.js handler, CSS class, and icon-swap feedback
+
+      - Ensure consistency between both files
+
+
+      step_type: implementation'
+    verification: contrib/web/index.html has identical copy button functionality as
+      web_ui.html
+    evidence_template: Diff or side-by-side comparison showing identical copy button
+      implementation in both files
+    depends_on:
+    - web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
+    agent: python-executor
