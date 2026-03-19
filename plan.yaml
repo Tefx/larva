@@ -28856,7 +28856,7 @@ phases:
       - shell file-size hotspot warnings cleared'
   - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     name: Run full independent Invar 1.20.3 verification
-    status: rejected
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       full 1.20.3 remediation from a fresh perspective.
 
@@ -28904,7 +28904,7 @@ phases:
     - invar_1203_remediation.apply-owner-approved-dead-export-exemption
     agent: integration-verifier
     claimed_by: integration-verifier
-    claimed_at: '2026-03-19T09:53:14.464456+00:00'
+    claimed_at: '2026-03-19T10:25:38.725216+00:00'
     done_at: '2026-03-19T09:58:31.689149+00:00'
     rejection_reason: Verification accepted before final invar-tools 1.20.3 pin landed
       in main; rework required against updated baseline.
