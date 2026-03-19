@@ -29005,7 +29005,7 @@ phases:
       - No post-verification code changes: PASS'
   - id: invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
     name: Gate review for Invar 1.20.3 remediation
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
       `invar_1203_remediation` phase meets the quality bar for proceeding.
 
@@ -29092,6 +29092,36 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-19T10:54:17.262129+00:00'
+    done_at: '2026-03-19T11:12:51.686315+00:00'
+    evidence: 'Independent gate review completed with corrected complete evidence
+      package including wiring audit (W1-W8), escape-hatch audit, integration evidence
+      classification, runnable-surface liveness probe, severity classification, and
+      full guard/test dispositions.
+
+
+      Key results:
+
+      - Final verdict: PASS with one SHOULD_FIX issue
+
+      - Blockers: none
+
+      - Should-fix: stale `@invar:allow dead_export` annotations in `src/larva/shell/mcp_server.py`
+      (excluded file)
+
+      - Guard status: passed (errors=0, warnings=1, infos=0; budget 12/15)
+
+      - Owner-approved dead_export exemption verified and scoped
+
+      - CLI liveness probe verified
+
+
+      Per anti-rework protocol, batched remediation plan was created before completion:
+
+      - Added fix step: `invar_1203_remediation.fix-gate-should-fix-batch`
+
+      - Added retest step: `invar_1203_remediation.retest-after-gate-should-fix-batch`
+
+      - Dependency chain: gate-review -> fix-batch -> retest-after-fix'
   - id: invar_1203_remediation.apply-owner-approved-dead-export-exemption
     name: Apply scoped dead_export exemption after owner approval
     status: done
