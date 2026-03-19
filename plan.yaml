@@ -28856,7 +28856,7 @@ phases:
       - shell file-size hotspot warnings cleared'
   - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     name: Run full independent Invar 1.20.3 verification
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       full 1.20.3 remediation from a fresh perspective.
 
@@ -28899,6 +28899,35 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T09:53:14.464456+00:00'
+    done_at: '2026-03-19T09:58:31.689149+00:00'
+    evidence: 'Invar 1.20.3 verification verdict: PASS
+
+
+      Command:
+
+      - uv run invar guard --all
+
+
+      Results:
+
+      - static: errors=0, warnings=0, infos=3 (non-blocking shell_too_complex infos)
+
+      - dead_export non-suppressible: none
+
+      - CLI cluster: reduced documented shell_result hatches, no blocking size/guard
+      violations
+
+      - python_api cluster: shell_pure_logic cleared; reduced shell_result hatches
+
+      - project_limit/budget: no violations
+
+      - registry/mcp size warnings: none
+
+      - redundant_type_contract infos: none
+
+      - doctest: passed
+
+      - crosshair/property tests: passed'
   - id: invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
     name: Freeze snapshot for Invar remediation gate
     status: pending
