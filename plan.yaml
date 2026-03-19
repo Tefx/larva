@@ -27044,7 +27044,7 @@ phases:
     agent: gate-reviewer
   - id: test_migration.fix-gate-findings
     name: Fix gate findings for migration tests
-    status: claimed
+    status: done
     description: 'Fix ALL gate findings from `test_migration.gate` in one batched
       remediation step.
 
@@ -27134,6 +27134,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-19T05:35:05.647907+00:00'
+    done_at: '2026-03-19T05:53:07.306668+00:00'
+    evidence: '## Batched Gate Remediation Evidence
+
+      Artifact:
+
+      - Commit: c69a8ae
+
+
+      Warning assertion tests added:
+
+      - tests/app/test_facade/test_validate_warning.py::TestValidateDeprecationWarnings::test_side_effect_policy_in_spec_produces_warning_in_report
+
+      - tests/app/test_facade/test_validate_warning.py::TestValidateDeprecationWarnings::test_tools_without_capabilities_produces_deprecation_warning
+
+      - tests/app/test_facade/test_validate_warning.py::TestValidateDeprecationWarnings::test_tools_with_capabilities_produces_migration_note
+
+      - tests/app/test_facade/test_validate_warning.py::TestValidateDeprecationWarnings::test_valid_capabilities_no_deprecation_warning
+
+
+      Facade test split:
+
+      - Replaced monolith `tests/app/test_facade.py` with focused module set under
+      `tests/app/test_facade/` plus shared `conftest.py`
+
+
+      Coverage preservation:
+
+      - facade tests preserved and passing after split
+
+      - deprecation coverage expanded at facade level
+
+
+      Verification:
+
+      - Run: uv run pytest tests/app/ -v -> 58 passed, 1 xfailed, 16 xpassed
+
+      - Run: uv run pytest tests/shell/ -v -> 469 passed
+
+      - Run: uv run pytest tests/ -v -> 648 passed, 1 xfailed, 48 xpassed
+
+      - Run: uv run invar guard --all -> passed (0 errors)'
   - id: test_migration.retest-gate-findings
     name: Retest migration gate findings
     status: pending
