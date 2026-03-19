@@ -29574,7 +29574,7 @@ phases:
       No gaps: all mandatory checks executed and evidenced by the full guard run.'
   - id: invar_1203_remediation.fix-gate-should-fix-batch
     name: Fix batched gate findings from Invar 1.20.3 remediation gate
-    status: pending
+    status: claimed
     description: 'Fix ALL should-fix findings from the Invar 1.20.3 remediation gate.
 
 
@@ -29613,6 +29613,8 @@ phases:
     depends_on:
     - invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T11:13:24.229239+00:00'
   - id: invar_1203_remediation.retest-after-gate-should-fix-batch
     name: Retest after batched gate finding fixes
     status: pending
