@@ -27177,7 +27177,7 @@ phases:
       - Run: uv run invar guard --all -> passed (0 errors)'
   - id: test_migration.retest-gate-findings
     name: Retest migration gate findings
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate that
       the batched `test_migration` gate findings are fully closed from a fresh perspective.
 
@@ -27252,6 +27252,8 @@ phases:
     depends_on:
     - test_migration.fix-gate-findings
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-19T05:53:28.788535+00:00'
 - id: doc_sync
   name: Documentation Sync
   status: locked
