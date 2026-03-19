@@ -71,6 +71,16 @@
   .btn-danger:hover { background: var(--danger); color: var(--bg-primary); }
   .btn-sm { height: 28px; font-size: 12px; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-icon {
+    width: 32px; height: 28px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-elevated); color: var(--text-primary);
+    border: none; border-radius: 4px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-icon:hover:not(:disabled) { background: var(--bg-hover); }
+  .btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-icon svg { width: 16px; height: 16px; }
 
   /* Layout */
   .main { flex: 1; display: flex; overflow: hidden; }
@@ -639,6 +649,18 @@
           <div class="section-header">
             <div class="section-label">PROMPT</div>
             <div style="display:flex;gap:8px;">
+              <button class="btn-icon" title="Copy prompt" :disabled="!getVal('prompt')" @click="copyPrompt()">
+                <template x-if="!copySuccess">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612 0 .4-.127.776-.35 1.088a2.25 2.25 0 0 1-1.166.768m-7.332 0c-.055-.194-.084-.4-.084-.612 0-.4.127-.776.35-1.088a2.25 2.25 0 0 1 1.166-.768M7.5 10.5V6m0 0L6 7.5M7.5 6l1.5 1.5M3.75 9h-.75a.75.75 0 0 0-.75.75v9c0 .414.336.75.75.75h9a.75.75 0 0 0 .75-.75v-.75m0-8.25v-.75a.75.75 0 0 0-.75-.75h-9a.75.75 0 0 0-.75.75v.75m9-3h4.5a.75.75 0 0 1 .75.75v9a.75.75 0 0 1-.75.75h-4.5" />
+                  </svg>
+                </template>
+                <template x-if="copySuccess">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="color:var(--success);">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                  </svg>
+                </template>
+              </button>
               <button class="btn btn-sm" @click="togglePromptEdit()" x-text="editingPrompt ? 'Done' : 'Edit'"></button>
               <button class="btn btn-sm" @click="showRawJson = !showRawJson" x-text="showRawJson ? 'Detail' : 'Raw JSON'"></button>
             </div>
@@ -1361,6 +1383,20 @@ function larvaApp() {
 
     isValidId(id) {
       return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
+    },
+
+    // Copy prompt to clipboard
+    copySuccess: false,
+    async copyPrompt() {
+      const prompt = this.getVal('prompt');
+      if (!prompt) return;
+      try {
+        await navigator.clipboard.writeText(prompt);
+        this.copySuccess = true;
+        setTimeout(() => { this.copySuccess = false; }, 1500);
+      } catch (e) {
+        console.error('Failed to copy prompt:', e);
+      }
     },
 
     // Batch Update
