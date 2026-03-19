@@ -27637,7 +27637,7 @@ phases:
       - suggestions: none'
   - id: deep_review.spec-conformance
     name: spec-conformance
-    status: claimed
+    status: done
     description: 'Full spec conformance audit: compare ALL implemented behavior against
       ADR-002 and MIGRATION-002.
 
@@ -27710,6 +27710,27 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-19T06:28:57.801155+00:00'
+    done_at: '2026-03-19T06:30:53.568672+00:00'
+    evidence: '## Spec Conformance Report
+
+      Sources: ADR-002-capability-intent-without-runtime-policy.md, MIGRATION-002-capability-intent.md
+
+
+      Result:
+
+      - requirement-by-requirement mapping performed
+
+      - ADR-002 requirements validated against implementation surfaces in core/shell/app/MCP
+
+      - MIGRATION-002 rollout requirements validated including transition/deprecation
+      behavior
+
+      - no spec-code drift detected
+
+
+      Non-conformances found: 0
+
+      Verdict: PASS'
   - id: deep_review.black-box-verification
     name: black-box-verification
     status: pending
