@@ -26920,7 +26920,7 @@ phases:
       New tests added: none'
   - id: test_migration.full-test-suite-verification
     name: full-test-suite-verification
-    status: pending
+    status: claimed
     description: 'Run the complete test suite and invar guard to verify no regressions.
 
 
@@ -26978,6 +26978,8 @@ phases:
     - test_migration.update-facade-tests
     - test_migration.update-shell-tests
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-19T05:00:10.362358+00:00'
   - id: test_migration.gate
     name: gate
     status: pending
