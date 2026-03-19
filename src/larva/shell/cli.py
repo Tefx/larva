@@ -3,30 +3,31 @@
 from __future__ import annotations
 
 import argparse
-import sys
-from typing import IO, Callable, Sequence, cast
+from typing import IO, TYPE_CHECKING, Callable, Sequence, cast
 
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaFacade
+from larva.cli_facade import build_default_facade
+from larva.cli_entrypoint import main
 from larva.shell.components import ComponentStore, FilesystemComponentStore
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
     EXIT_OK,
+    CliExitCode,
     CliCommandResult,
     CliFailure,
     JsonErrorEnvelope,  # noqa: F401  # re-exported from this module for callers/tests
     _CliParseError,
-    _build_parser,
     _critical_error,
     _emit_result,
     _operation_failure,
     _parse_key_value_pairs,
     _parse_set_values,
     _read_spec_json,
-    build_default_facade,
 )
+from larva.shell.cli_parser import build_cli_parser
 from larva.shell.cli_commands import (
     assemble_command,
     clear_command,
@@ -45,6 +46,9 @@ from larva.shell.cli_commands import (
 
 PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
 COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
+
+if TYPE_CHECKING:
+    from larva.app.facade import AssembleRequest
 
 
 def _dispatch_component(
@@ -68,7 +72,7 @@ def _dispatch_component(
             "stderr": f"Unsupported component command: {component_command}\n",
             "error": _critical_error(
                 "unsupported component command", {"command": component_command}
-            ),
+            ).unwrap(),
         }
     )
 
@@ -81,13 +85,15 @@ def _dispatch_validate(
 ) -> Result[CliCommandResult, CliFailure]:
     loaded_spec = _read_spec_json(cast("str", args.spec))
     if isinstance(loaded_spec, Failure):
-        return Failure(_operation_failure("Validate", loaded_spec.failure(), as_json=as_json))
+        return Failure(
+            _operation_failure("Validate", loaded_spec.failure(), as_json=as_json).unwrap()
+        )
     return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
 
 
 def _build_assemble_request(
     args: argparse.Namespace,
-) -> "Result[AssembleRequest, JsonErrorEnvelope]":
+) -> Result[AssembleRequest, JsonErrorEnvelope]:
     from larva.app.facade import AssembleRequest
 
     overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
@@ -119,7 +125,9 @@ def _dispatch_assemble(
 ) -> Result[CliCommandResult, CliFailure]:
     request_result = _build_assemble_request(args)
     if isinstance(request_result, Failure):
-        return Failure(_operation_failure("Assemble", request_result.failure(), as_json=as_json))
+        return Failure(
+            _operation_failure("Assemble", request_result.failure(), as_json=as_json).unwrap()
+        )
     return assemble_command(
         request_result.unwrap(),
         as_json=as_json,
@@ -136,7 +144,9 @@ def _dispatch_register(
 ) -> Result[CliCommandResult, CliFailure]:
     loaded_spec = _read_spec_json(cast("str", args.spec))
     if isinstance(loaded_spec, Failure):
-        return Failure(_operation_failure("Register", loaded_spec.failure(), as_json=as_json))
+        return Failure(
+            _operation_failure("Register", loaded_spec.failure(), as_json=as_json).unwrap()
+        )
     return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
 
 
@@ -148,7 +158,7 @@ def _dispatch_resolve(
 ) -> Result[CliCommandResult, CliFailure]:
     overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
     if isinstance(overrides, Failure):
-        return Failure(_operation_failure("Resolve", overrides.failure(), as_json=as_json))
+        return Failure(_operation_failure("Resolve", overrides.failure(), as_json=as_json).unwrap())
     return resolve_command(
         cast("str", args.id),
         overrides=overrides.unwrap(),
@@ -165,7 +175,9 @@ def _dispatch_update(
 ) -> Result[CliCommandResult, CliFailure]:
     patches_result = _parse_set_values(cast("list[str]", args.set_values), flag="--set")
     if isinstance(patches_result, Failure):
-        return Failure(_operation_failure("Update", patches_result.failure(), as_json=as_json))
+        return Failure(
+            _operation_failure("Update", patches_result.failure(), as_json=as_json).unwrap()
+        )
     return update_command(
         cast("str", args.id),
         patches=patches_result.unwrap(),
@@ -187,23 +199,25 @@ def _dispatch_update_batch(
     # Validate non-empty where clauses
     if not where_clauses:
         error_envelope = _critical_error("update-batch requires at least one --where clause", {})
-        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope})
+        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope.unwrap()})
 
     # Validate non-empty set values
     if not set_values:
         error_envelope = _critical_error("update-batch requires at least one --set clause", {})
-        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope})
+        return Failure({"exit_code": EXIT_CRITICAL, "error": error_envelope.unwrap()})
 
     # Parse where clauses
     where_result = _parse_key_value_pairs(where_clauses, flag="--where")
     if isinstance(where_result, Failure):
-        return Failure(_operation_failure("Update-batch", where_result.failure(), as_json=as_json))
+        return Failure(
+            _operation_failure("Update-batch", where_result.failure(), as_json=as_json).unwrap()
+        )
 
     # Parse set values with type inference
     patches_result = _parse_set_values(set_values, flag="--set")
     if isinstance(patches_result, Failure):
         return Failure(
-            _operation_failure("Update-batch", patches_result.failure(), as_json=as_json)
+            _operation_failure("Update-batch", patches_result.failure(), as_json=as_json).unwrap()
         )
 
     return update_batch_command(
@@ -257,7 +271,7 @@ def _dispatch(
         {
             "exit_code": EXIT_CRITICAL,
             "stderr": f"Unsupported command: {command}\n",
-            "error": _critical_error("unsupported command", {"command": command}),
+            "error": _critical_error("unsupported command", {"command": command}).unwrap(),
         }
     )
 
@@ -274,7 +288,7 @@ def run_cli(
 ) -> "CliExitCode":
     from larva.shell.cli_helpers import CliExitCode
 
-    parser = _build_parser()
+    parser = build_cli_parser().unwrap()
     argv_list = list(argv)
     if not argv_list:
         parser.print_help(stdout)
@@ -288,7 +302,7 @@ def run_cli(
         parse_failure: CliFailure = {
             "exit_code": EXIT_CRITICAL,
             "stderr": f"Argument parsing failed: {error}\n",
-            "error": _critical_error("argument parsing failed", {"message": str(error)}),
+            "error": _critical_error("argument parsing failed", {"message": str(error)}).unwrap(),
         }
         return _emit_result(
             Failure(parse_failure),
@@ -315,19 +329,4 @@ def run_cli(
         as_json=cast("bool", getattr(args, "as_json", False)),
         stdout=stdout,
         stderr=stderr,
-    )
-
-
-# @invar:allow shell_result: process entrypoint returns int exit code
-# @invar:allow dead_export: console script entrypoint referenced via pyproject script
-def main(argv: Sequence[str] | None = None) -> int:
-    active_argv = list(sys.argv[1:] if argv is None else argv)
-    return int(
-        run_cli(
-            active_argv,
-            facade=build_default_facade(),
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            component_store=FilesystemComponentStore(),
-        )
     )

@@ -10,10 +10,6 @@ from returns.result import Failure, Result, Success
 
 from larva.core.spec import PersonaSpec
 from larva.shell.cli_parser import _CliParseError, _CliParser
-from larva.shell.cli_entry_compat import _build_parser
-from larva.shell.cli_error_compat import _critical_error
-from larva.shell.cli_facade_compat import build_default_facade
-from larva.shell.cli_failure_compat import _operation_failure
 
 CliExitCode = Literal[0, 1, 2]
 
@@ -63,11 +59,13 @@ class CliCommandResult(TypedDict, total=False):
 
 
 from larva.shell.cli_runtime import (  # noqa: E402
+    _critical_error,
     _component_show_invalid_target,
     _emit_result,
     _infer_value_type,
     _map_component_error,
     _map_facade_error,
+    _operation_failure,
     _render_payload_for_text,
 )
 
@@ -79,12 +77,16 @@ def _parse_key_value_pairs(
     for raw in raw_values:
         if "=" not in raw:
             return Failure(
-                _critical_error(f"invalid {flag} value: expected key=value", {"value": raw})
+                _critical_error(
+                    f"invalid {flag} value: expected key=value", {"value": raw}
+                ).unwrap()
             )
         key, value = raw.split("=", 1)
         if key == "":
             return Failure(
-                _critical_error(f"invalid {flag} value: key must be non-empty", {"value": raw})
+                _critical_error(
+                    f"invalid {flag} value: key must be non-empty", {"value": raw}
+                ).unwrap()
             )
         parsed[key] = value
     return Success(parsed)
@@ -142,12 +144,16 @@ def _parse_set_values(
     for raw in raw_values:
         if "=" not in raw:
             return Failure(
-                _critical_error(f"invalid {flag} value: expected key=value", {"value": raw})
+                _critical_error(
+                    f"invalid {flag} value: expected key=value", {"value": raw}
+                ).unwrap()
             )
         key, value = raw.split("=", 1)
         if key == "":
             return Failure(
-                _critical_error(f"invalid {flag} value: key must be non-empty", {"value": raw})
+                _critical_error(
+                    f"invalid {flag} value: key must be non-empty", {"value": raw}
+                ).unwrap()
             )
         # Type inference
         inferred = _infer_value_type(value).unwrap()
@@ -167,7 +173,9 @@ def _read_spec_json(path: str) -> Result[PersonaSpec, JsonErrorEnvelope]:
     loaded = loaded_result.unwrap()
     if not isinstance(loaded, dict):
         return Failure(
-            _critical_error("spec file root must be a JSON object", {"path": str(path_obj)})
+            _critical_error(
+                "spec file root must be a JSON object", {"path": str(path_obj)}
+            ).unwrap()
         )
     return Success(cast("PersonaSpec", loaded))
 
@@ -178,19 +186,19 @@ def _load_json_file(path_obj: Path) -> Result[object, JsonErrorEnvelope]:
             loaded = json.load(spec_file)
         return Success(loaded)
     except FileNotFoundError:
-        return Failure(_critical_error("spec file not found", {"path": str(path_obj)}))
+        return Failure(_critical_error("spec file not found", {"path": str(path_obj)}).unwrap())
     except json.JSONDecodeError as error:
         return Failure(
             _critical_error(
                 "spec file is not valid JSON",
                 {"path": str(path_obj), "line": error.lineno, "column": error.colno},
-            )
+            ).unwrap()
         )
     except OSError as error:
         return Failure(
             _critical_error(
                 "failed to read spec file", {"path": str(path_obj), "error": str(error)}
-            )
+            ).unwrap()
         )
 
 
@@ -204,6 +212,6 @@ def _write_output_json(path: str, payload: object) -> Result[None, JsonErrorEnve
         return Failure(
             _critical_error(
                 "failed to write output file", {"path": str(path_obj), "error": str(error)}
-            )
+            ).unwrap()
         )
     return Success(None)

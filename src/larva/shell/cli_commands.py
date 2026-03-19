@@ -484,7 +484,7 @@ def component_show_command(
     if separator == "" or component_type == "" or component_name == "":
         failure = _component_show_invalid_target(component_ref).unwrap()
         if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error"))
+            error_envelope = failure.get("error", _critical_error("unknown error").unwrap())
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
 
@@ -502,7 +502,7 @@ def component_show_command(
             component_ref, component_type=component_type
         ).unwrap()
         if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error"))
+            error_envelope = failure.get("error", _critical_error("unknown error").unwrap())
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
 
