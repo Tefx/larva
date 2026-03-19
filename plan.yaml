@@ -28484,7 +28484,7 @@ phases:
     claimed_at: '2026-03-19T08:35:01.764062+00:00'
   - id: invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
     name: Reduce core/app size debt and redundant contracts
-    status: claimed
+    status: done
     description: 'Refactor the core/app hotspot cluster to absorb the new 1.20.3 warning
       surface without changing behavior.
 
@@ -28534,6 +28534,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T08:34:33.343879+00:00'
+    done_at: '2026-03-19T08:57:36.745393+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 00bb73a970eb2c878ba12fa300493e3d27570005
+
+
+      Verification:
+
+      - Run: uv run pytest -q tests/core/test_assemble.py tests/core/test_patch.py
+      tests/core/test_normalize.py tests/core/test_validate.py tests/app/test_facade
+      -> 125 passed, 1 xfailed, 48 xpassed
+
+      - Run: uv run invar guard --all -> passed (errors 0)
+
+
+      Notes:
+
+      - removed scoped core/app size warnings and redundant type-only contracts while
+      preserving contract/doctest policy'
   - id: invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     name: Reduce CLI shell_result debt and parser size
     status: claimed
