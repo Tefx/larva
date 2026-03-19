@@ -28632,3 +28632,50 @@ phases:
     - src/larva/core/spec.py
     - INVAR.md
     agent: python-senior
+  - id: invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
+    name: Quick gate on early Invar remediation patterns
+    status: pending
+    description: 'Quick gate: verify the early remediation pattern is correct before
+      the final size-only shell cleanup proceeds.
+
+
+      review_depth: QUICK
+
+      focus:
+
+      - core contract cleanup did not remove required `@pre` / `@post` / doctest coverage
+
+      - CLI and Python API steps reduced escape-hatch concentration across sibling
+      paths, not just one function
+
+      - no step silently bypassed the dead_export governance requirement'
+    verification: '- Early-step evidence is specific and raw guard excerpts are attached
+
+      - No required core contracts were stripped incorrectly
+
+      - Remaining work is narrowed to the final shell hotspot files plus governance
+      resolution'
+    evidence_template: '## Mid-Gate Review
+
+      | Step ID | Evidence quality | Pattern concern |
+
+      |---------|------------------|-----------------|
+
+      | invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts |
+      <rating> | <notes> |
+
+      | invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size | <rating>
+      | <notes> |
+
+      | invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+      | <rating> | <notes> |
+
+
+      - Cross-step concern summary: <notes>
+
+      - Decision: OPEN | BLOCKED'
+    depends_on:
+    - invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
+    - invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
+    - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+    agent: gate-reviewer
