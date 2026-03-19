@@ -27386,7 +27386,7 @@ phases:
       - aligned normative example to include spec_digest'
   - id: doc_sync.update-other-docs
     name: Reconcile other docs + update MIGRATION-002 progress
-    status: claimed
+    status: done
     description: 'RECONCILIATION pass for ARCHITECTURE.md, USAGE.md, USER_GUIDE.md,
       README.md — fix any drift from doc_contract where code implementation diverged
       from initial docs.
@@ -27422,6 +27422,33 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-19T06:19:31.548806+00:00'
+    done_at: '2026-03-19T06:22:04.056941+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 5251bcc
+
+      - Files changed: MIGRATION-002-capability-intent.md
+
+
+      Verification:
+
+      - markdown sanity checks passed
+
+      - consistency checks confirm capabilities canonical messaging aligned across
+      docs
+
+      - side_effect_policy/tools deprecation messaging consistently documented
+
+      - pre-commit hooks passed for doc-only changes
+
+
+      Notes:
+
+      - added completion/progress summary to MIGRATION-002
+
+      - documented residual follow-ups as non-blocking
+
+      - no code changes in this step'
   - id: doc_sync.gate
     name: gate
     status: pending
