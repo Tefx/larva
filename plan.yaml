@@ -28930,7 +28930,7 @@ phases:
       - crosshair/property tests: passed'
   - id: invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
     name: Freeze snapshot for Invar remediation gate
-    status: claimed
+    status: pending
     description: 'Freeze: lock the remediation snapshot before gate review.
 
 
@@ -28958,8 +28958,6 @@ phases:
     depends_on:
     - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-19T09:59:05.166296+00:00'
   - id: invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
     name: Gate review for Invar 1.20.3 remediation
     status: pending
