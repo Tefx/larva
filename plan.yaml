@@ -28482,7 +28482,7 @@ phases:
     agent: software-architect
   - id: invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
     name: Reduce core/app size debt and redundant contracts
-    status: pending
+    status: claimed
     description: 'Refactor the core/app hotspot cluster to absorb the new 1.20.3 warning
       surface without changing behavior.
 
@@ -28530,6 +28530,8 @@ phases:
     - src/larva/core/validate.py
     - INVAR.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T08:34:33.343879+00:00'
   - id: invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     name: Reduce CLI shell_result debt and parser size
     status: claimed
