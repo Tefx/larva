@@ -27014,7 +27014,7 @@ phases:
       Verdict: PASS'
   - id: test_migration.gate
     name: gate
-    status: claimed
+    status: pending
     description: 'Gate review: Verify test migration is complete and full suite passes.
 
 
@@ -27042,8 +27042,6 @@ phases:
     depends_on:
     - test_migration.full-test-suite-verification
     agent: gate-reviewer
-    claimed_by: gate-reviewer
-    claimed_at: '2026-03-19T05:07:11.553448+00:00'
 - id: doc_sync
   name: Documentation Sync
   status: locked
