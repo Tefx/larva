@@ -29813,7 +29813,7 @@ phases:
       - No gaps reported.'
   - id: web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
     name: Mirror copy button changes to contrib/web/index.html
-    status: pending
+    status: claimed
     description: 'Mirror the exact same copy button changes to contrib/web/index.html.
 
 
@@ -29837,6 +29837,8 @@ phases:
     depends_on:
     - web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-19T11:30:53.010678+00:00'
   - id: web_copy_button.gate-review-copy-button-in-both-files
     name: 'Gate review: copy button in both files'
     status: pending
