@@ -28793,3 +28793,84 @@ phases:
     depends_on:
     - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     agent: gate-reviewer
+  - id: invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
+    name: Gate review for Invar 1.20.3 remediation
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the
+      `invar_1203_remediation` phase meets the quality bar for proceeding.
+
+
+      YOU ARE THE QUALITY GATE. Block progress if:
+
+      - any original 1.20.3 error finding remains unresolved without owner-approved
+      exemption
+
+      - full `uv run invar guard --all` evidence is missing or summarized instead
+      of pasted
+
+      - early refactors removed required core contracts/doctests
+
+      - remaining warnings/infos are unexplained or outside the scoped remediation
+      result
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase addresses new guard policy regressions across core, shell, and governance
+      surfaces
+
+      - multiple shell clusters reduce shared escape-hatch debt and budget
+
+      - final pass depends on an owner authorization branch plus cross-file refactors'
+    verification: '- All phase steps completed successfully
+
+      - Full `uv run invar guard --all` output reviewed
+
+      - Dead_export path is either removed or covered by owner-approved exemption
+      evidence
+
+      - Escape-hatch project limit / budget, shell_pure_logic, size warnings, and
+      redundant_type_contract infos are dispositioned explicitly
+
+      - Ready for downstream work only if no blocker remains'
+    evidence_template: '## Gate Review Report
+
+      | Step ID | Status | Evidence quality | Concerns |
+
+      |---------|--------|------------------|----------|
+
+      | invar_1203_remediation.request-owner-approved-dead-export-exemption | <status>
+      | <quality> | <notes> |
+
+      | invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts |
+      <status> | <quality> | <notes> |
+
+      | invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size | <status>
+      | <quality> | <notes> |
+
+      | invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+      | <status> | <quality> | <notes> |
+
+      | invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns | <status>
+      | <quality> | <notes> |
+
+      | invar_1203_remediation.reduce-remaining-shell-file-size-hotspots | <status>
+      | <quality> | <notes> |
+
+      | invar_1203_remediation.run-full-independent-invar-1-20-3-verification | <status>
+      | <quality> | <notes> |
+
+      | invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate | <status>
+      | <quality> | <notes> |
+
+
+      - Gate decision: OPEN | BLOCKED
+
+      - Blocking issues: <list>
+
+      - Residual warnings/infos accepted or deferred: <list>'
+    depends_on:
+    - invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
+    agent: gate-reviewer
