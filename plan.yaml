@@ -29657,7 +29657,7 @@ phases:
       - No additional cleanup outside scoped stale annotation removal (out of scope).'
   - id: invar_1203_remediation.retest-after-gate-should-fix-batch
     name: Retest after batched gate finding fixes
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       batched gate-finding fix from a fresh/cold perspective.
 
@@ -29687,6 +29687,8 @@ phases:
     depends_on:
     - invar_1203_remediation.fix-gate-should-fix-batch
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-19T11:19:39.726631+00:00'
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
