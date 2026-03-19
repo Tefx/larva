@@ -1,5 +1,33 @@
 # Migration: Persona Capability Intent Cleanup
 
+## Status: COMPLETED ✓
+
+**Completed:** 2026-03-19  
+**Migration ADR:** ADR-002-capability-intent-without-runtime-policy.md
+
+### Progress Summary
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Core type migration | ✓ Done | `spec.py` uses `capabilities` as canonical, `tools` deprecated |
+| Validation updates | ✓ Done | `validate.py` emits deprecation warnings for `side_effect_policy` and `tools` |
+| Normalization | ✓ Done | `normalize.py` mirrors `capabilities` to `tools` for backward compatibility |
+| Assembly updates | ✓ Done | `assemble.py` merges capabilities from toolsets |
+| Component loading | ✓ Done | `components.py` prefers `capabilities`, falls back to `tools` |
+| Python API | ✓ Done | All facade operations use canonical `capabilities` field |
+| MCP contract | ✓ Done | Tool descriptions reference `capabilities` as canonical |
+| CLI | ✓ Done | All commands work with `capabilities` |
+| Documentation | ✓ Done | All docs updated to reflect ADR-002 model |
+| Tests | ✓ Done | Comprehensive test coverage for deprecation behavior |
+
+### Residual Follow-ups
+
+- **None blocking** — Migration is functionally complete
+- `tools` and `side_effect_policy` retained for backward compatibility with deprecation warnings
+- Future major version may remove deprecated fields entirely (tracked as future cleanup)
+
+---
+
 ## Goal
 
 Remove runtime policy from larva persona specs and constraint components.
