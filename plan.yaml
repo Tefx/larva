@@ -28433,3 +28433,8 @@ phases:
       Spec link:
 
       - ADR-002-capability-intent-without-runtime-policy.md'
+- id: invar_1203_remediation
+  name: Invar 1.20.3 Remediation
+  status: pending
+  depends_on:
+  - deep_review
