@@ -28575,7 +28575,7 @@ phases:
       preserving contract/doctest policy'
   - id: invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     name: Reduce CLI shell_result debt and parser size
-    status: claimed
+    status: done
     description: 'Refactor the CLI cluster to reduce 1.20.3 escape-hatch concentration
       and size debt without narrowing CLI runtime behavior.
 
@@ -28626,6 +28626,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T08:34:21.485157+00:00'
+    done_at: '2026-03-19T09:23:01.657867+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 725b71c
+
+
+      Verification:
+
+      - Run: uv run pytest -q tests/shell/test_cli.py -> 169 passed
+
+      - Run: uv run invar guard --all -> passed (errors=0)
+
+
+      Notes:
+
+      - recovered failed partial extraction into coherent parser/runtime split
+
+      - removed previous CLI parser-size and concentrated shell_result issue in target
+      cluster while preserving CLI behavior'
   - id: invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     name: Reduce Python API escape hatches and shell pure logic
     status: done
