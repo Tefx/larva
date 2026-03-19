@@ -29423,3 +29423,38 @@ phases:
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: pending
+  steps:
+  - id: web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
+    name: Implement copy-to-clipboard button in web_ui.html
+    status: pending
+    description: 'Add copy button with clipboard SVG icon, Alpine.js handler (copyPrompt()),
+      .btn-icon CSS class, and icon-swap feedback to the Prompt section header in
+      web_ui.html.
+
+
+      File: src/larva/shell/web_ui.html
+
+
+      Requirements:
+
+      - Copy button appears next to the existing Edit button in the Prompt section
+      header
+
+      - Uses a clipboard SVG icon (inline SVG)
+
+      - Alpine.js copyPrompt() handler copies raw markdown to clipboard via navigator.clipboard.writeText()
+
+      - After copy, icon swaps to a green checkmark for 1.5s then reverts
+
+      - Button is disabled when prompt is empty
+
+      - .btn-icon CSS class for consistent icon button styling
+
+
+      step_type: implementation'
+    verification: Copy button appears next to Edit button, copies raw markdown to
+      clipboard, shows green checkmark for 1.5s, disabled when prompt is empty
+    evidence_template: 'Screenshot or manual test showing: (1) button visible, (2)
+      clipboard contains raw markdown after click, (3) checkmark feedback, (4) disabled
+      state on empty prompt'
+    agent: python-executor
