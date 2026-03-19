@@ -29078,7 +29078,7 @@ phases:
     claimed_at: '2026-03-19T10:05:57.318815+00:00'
   - id: invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
     name: Reduce shell_result and weighted escape-hatch budget below 1.20.3 limits
-    status: pending
+    status: claimed
     description: 'Remediate the remaining invar-tools 1.20.3 code blockers by reducing
       `shell_result` usage and the weighted escape-hatch budget below current limits.
 
@@ -29151,3 +29151,5 @@ phases:
     - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     - invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T10:06:04.838111+00:00'
