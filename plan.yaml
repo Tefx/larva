@@ -27132,6 +27132,83 @@ phases:
     - test_migration.update-shell-tests
     - test_migration.full-test-suite-verification
     agent: python-executor
+  - id: test_migration.retest-gate-findings
+    name: Retest migration gate findings
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate that
+      the batched `test_migration` gate findings are fully closed from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: migrated facade and shell tests still pass after the facade suite
+      split
+
+      - Edge cases: deprecation warnings for side_effect_policy/tools are asserted
+      explicitly rather than inferred
+
+      - Error scenarios: moved tests remain discoverable and no migration coverage
+      disappears during the split
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      Independence Level: L1'
+    verification: '- Run the targeted migration/facade warning-related test commands
+      identified by the remediation step
+
+      - Confirm explicit deprecation warning assertions exist and execute for side_effect_policy/tools
+
+      - Confirm the split facade test modules are collected and exercised successfully
+
+      - Report any remaining missing warning coverage or overgrown facade test concentration
+      as findings'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier
+
+      **Scope**: Retest closure of `test_migration.gate` findings
+
+      **Independence Level**: L1
+
+
+      ### Commands executed
+
+      ```
+
+      <paste targeted pytest commands>
+
+      ```
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      |----------|-------------|----------|--------------|
+
+      | blocker/should_fix/suggestion | <issue or none> | <path> | <steps> |
+
+
+      ### Coverage assessment
+
+      - Warning assertions verified: ✅/❌
+
+      - Split test modules collected: ✅/❌
+
+      - Remaining oversized facade concentration: <none or detail>
+
+
+      ### Verdict
+
+      - PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - test_migration.fix-gate-findings
+    agent: integration-verifier
 - id: doc_sync
   name: Documentation Sync
   status: locked
