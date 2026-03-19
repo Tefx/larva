@@ -28438,3 +28438,197 @@ phases:
   status: pending
   depends_on:
   - deep_review
+  steps:
+  - id: invar_1203_remediation.request-owner-approved-dead-export-exemption
+    name: Request owner-approved dead_export exemption
+    status: pending
+    description: 'Governance step for the new non-suppressible `dead_export` finding
+      at `src/larva/shell/cli.py:322` (`escape_hatch_non_suppressible`). Prepare the
+      owner authorization packet for a `pyproject.toml` exemption path instead of
+      attempting an inline suppression.
+
+
+      Required outputs:
+
+      - exact exported symbol / call path that still needs `dead_export`
+
+      - why inline suppression is forbidden in 1.20.3
+
+      - alternatives considered to remove the export without breaking CLI/runtime
+      behavior
+
+      - the minimal `pyproject.toml` exemption scope if approval is granted
+
+      - expiry/removal condition for the exemption
+
+      - owner sign-off artifact or explicit rejection note
+
+
+      This step is the only authorized path for the `dead_export` exemption request.
+      It may run in parallel with code-fixable remediation, but final verification
+      must treat missing approval as an open blocker.'
+    verification: '- Owner approval or rejection is recorded with the exact exemption
+      scope
+
+      - Proposed `pyproject.toml` exemption is limited to the non-suppressible CLI
+      dead_export case only
+
+      - If approval is denied, evidence states that final guard cannot pass until
+      ownership resolves the blocker'
+    refs:
+    - src/larva/shell/cli.py
+    - pyproject.toml
+    - INVAR.md
+    agent: software-architect
+  - id: invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
+    name: Reduce core/app size debt and redundant contracts
+    status: pending
+    description: 'Refactor the core/app hotspot cluster to absorb the new 1.20.3 warning
+      surface without changing behavior.
+
+
+      Scope:
+
+      - `src/larva/core/assemble.py` file size warning
+
+      - `src/larva/app/facade.py` file size warning
+
+      - redundant_type_contract infos in `src/larva/core/patch.py`, `src/larva/core/normalize.py`,
+      `src/larva/core/assemble.py`, and `src/larva/core/validate.py`
+
+
+      Required work:
+
+      - extract helpers where needed to reduce file/function pressure while preserving
+      current contracts
+
+      - remove redundant type-only contracts where static typing already proves the
+      condition
+
+      - preserve required `@pre` / `@post` coverage and doctests for any touched Core
+      functions
+
+      - keep app facade wiring stable; no API surface drift
+
+
+      Out of scope:
+
+      - shell-layer escape hatch policy
+
+      - CLI or MCP runtime changes'
+    verification: '- Targeted core/app tests cover touched helpers and contracts
+
+      - `uv run invar guard --all` no longer reports the listed core/app size warnings
+      or redundant_type_contract infos
+
+      - Touched Core functions still satisfy required `@pre` / `@post` / doctest policy'
+    refs:
+    - src/larva/core/assemble.py
+    - src/larva/app/facade.py
+    - src/larva/core/patch.py
+    - src/larva/core/normalize.py
+    - src/larva/core/validate.py
+    - INVAR.md
+    agent: python-senior
+  - id: invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
+    name: Reduce CLI shell_result debt and parser size
+    status: pending
+    description: 'Refactor the CLI cluster to reduce 1.20.3 escape-hatch concentration
+      and size debt without narrowing CLI runtime behavior.
+
+
+      Scope:
+
+      - `src/larva/shell/cli.py` `shell_result` at file limit 2/2
+
+      - `src/larva/shell/cli_helpers.py` `shell_result` 14/2
+
+      - `src/larva/shell/cli_helpers.py:350` `_build_parser` function size warning
+
+      - contribution from these files to `escape_hatch_project_limit` and `escape_hatch_budget`
+
+
+      Required work:
+
+      - remove or consolidate `shell_result` escape hatches by extracting reusable
+      helpers or narrowing Result-unwrapping surfaces
+
+      - split `_build_parser` into smaller construction units where needed
+
+      - preserve CLI entrypoint / command registration / argument semantics
+
+      - do not silently solve the non-suppressible `dead_export` rule here; that belongs
+      to the governance step unless the export can be removed safely
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Reduced hatch count in only one CLI path while sibling Result-unwrapping
+      helpers remain unchanged
+
+      2. Parser extraction that changes command names, options, or help semantics
+
+      3. Missing raw `uv run invar guard --all` evidence for the CLI cluster'
+    verification: '- Targeted CLI tests prove command/help behavior still matches
+      current runtime surface
+
+      - `uv run invar guard --all` no longer reports the listed CLI/cli_helpers `shell_result`
+      and size findings
+
+      - Evidence identifies any remaining dead_export issue as governance-scoped only'
+    refs:
+    - src/larva/shell/cli.py
+    - src/larva/shell/cli_helpers.py
+    - INVAR.md
+    agent: python-senior
+  - id: invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+    name: Reduce Python API escape hatches and shell pure logic
+    status: pending
+    description: 'Refactor the Python API cluster to lower 1.20.3 escape-hatch counts
+      and eliminate the shell-pure-logic warning.
+
+
+      Scope:
+
+      - `src/larva/shell/python_api.py` `shell_result` 14/2
+
+      - `src/larva/shell/python_api_components.py` `shell_result` 4/2
+
+      - `src/larva/shell/python_api_components.py:45` `shell_pure_logic` on `_component_error_payload`
+
+      - contribution from these files to `escape_hatch_project_limit` and `escape_hatch_budget`
+
+
+      Required work:
+
+      - collapse repeated Result-unwrapping patterns into fewer shell boundaries or
+      shared adapters
+
+      - move pure payload-shaping logic out of Shell when architecture requires it,
+      or reduce it to a pass-through wrapper that no longer trips `shell_pure_logic`
+
+      - preserve Python API exception and return semantics for existing callers
+
+      - document any new helper boundary with exact caller migration scope
+
+
+      Failure-mode checklist:
+
+      - stale helper call sites do not retain old shell_result wrappers
+
+      - payload shaping remains backward compatible for error fields
+
+      - no new dual truth appears between shell adapters and core payload builders'
+    verification: '- Targeted Python API tests cover return/exceptions and error payload
+      behavior
+
+      - `uv run invar guard --all` no longer reports the listed Python API `shell_result`
+      or `shell_pure_logic` findings
+
+      - Evidence shows all migrated call sites use the new boundary consistently'
+    refs:
+    - src/larva/shell/python_api.py
+    - src/larva/shell/python_api_components.py
+    - src/larva/core/spec.py
+    - INVAR.md
+    agent: python-senior
