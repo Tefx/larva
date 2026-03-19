@@ -29583,6 +29583,38 @@ phases:
     depends_on:
     - invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
     agent: python-senior
+  - id: invar_1203_remediation.retest-after-gate-should-fix-batch
+    name: Retest after batched gate finding fixes
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      batched gate-finding fix from a fresh/cold perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - stale dead_export allow annotations removed from excluded `src/larva/shell/mcp_server.py`
+
+      - no blocker regressions introduced by the fix
+
+      - full guard behavior still passes when run cold
+
+
+      Document all findings and include raw command output.
+
+      Independence Level: L1'
+    verification: '- Run exactly `uv run invar guard --all`
+
+      - Include raw output, not a summary
+
+      - Confirm no blocker regressions
+
+      - Confirm the stale dead_export allow annotations were removed'
+    depends_on:
+    - invar_1203_remediation.fix-gate-should-fix-batch
+    agent: integration-verifier
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
