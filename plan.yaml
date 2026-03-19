@@ -28882,7 +28882,11 @@ phases:
 
       - Attach raw guard output with error/warning/info totals
 
-      - Map each original 1.20.3 finding to RESOLVED | APPROVED_EXEMPTION | STILL_OPEN'
+      - Map each original 1.20.3 finding to RESOLVED | APPROVED_EXEMPTION | STILL_OPEN
+
+      - Confirm `shell_result`, `escape_hatch_project_limit`, `escape_hatch_budget`,
+      and `escape_hatch_non_suppressible` are all dispositioned against the updated
+      remediation steps'
     evidence_template: "## Invar 1.20.3 Verification Report\n- Command:\n  ```\n \
       \ uv run invar guard --all\n  ```\n- Raw output:\n  ```\n  <paste>\n  ```\n\
       - Finding map:\n  - dead_export non-suppressible: <status>\n  - cli / cli_helpers\
@@ -28896,6 +28900,8 @@ phases:
     - invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     - invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
+    - invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
+    - invar_1203_remediation.apply-owner-approved-dead-export-exemption
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T09:53:14.464456+00:00'
