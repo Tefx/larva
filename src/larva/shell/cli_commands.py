@@ -39,18 +39,17 @@ if TYPE_CHECKING:
     from larva.shell.cli_helpers import CliExitCode
 
 
-# @invar:allow shell_result: text projection for CLI validate command
 # @shell_orchestration: text projection for CLI validate command
-def _render_validation_report(report: "ValidationReport") -> str:
+def _render_validation_report(report: "ValidationReport") -> Result[str, object]:
     if report["valid"]:
         warnings = report.get("warnings", [])
         if not warnings:
-            return "valid\n"
-        return "valid\n" + "\n".join(f"warning: {warning}" for warning in warnings) + "\n"
+            return Success("valid\n")
+        return Success("valid\n" + "\n".join(f"warning: {warning}" for warning in warnings) + "\n")
     errors = report.get("errors", [])
     if not errors:
-        return "invalid\n"
-    return f"invalid: {errors[0].get('message', 'validation failed')}\n"
+        return Success("invalid\n")
+    return Success(f"invalid: {errors[0].get('message', 'validation failed')}\n")
 
 
 def _validation_success_result(
@@ -58,7 +57,7 @@ def _validation_success_result(
 ) -> Result[CliCommandResult, CliFailure]:
     result: CliCommandResult = {
         "exit_code": EXIT_OK,
-        "stdout": _render_validation_report(report),
+        "stdout": _render_validation_report(report).unwrap(),
     }
     if as_json:
         result["json"] = {
@@ -85,7 +84,7 @@ def _validation_failure_result(
             "message": message,
             "details": {"report": report},
         }
-    )
+    ).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Validation failed: {error_envelope['message']}\n"
@@ -123,7 +122,9 @@ def _assemble_success_result(
 
     cli_result: CliCommandResult = {
         "exit_code": EXIT_OK,
-        "stdout": "" if output_path is not None else _render_payload_for_text("assemble", payload),
+        "stdout": ""
+        if output_path is not None
+        else _render_payload_for_text("assemble", payload).unwrap(),
     }
     if as_json:
         cli_result["json"] = {"data": payload}
@@ -159,7 +160,7 @@ def assemble_command(
             output_path=output_path,
         )
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     return _assemble_failure_result(error_envelope, exit_code=EXIT_ERROR, as_json=as_json)
 
 
@@ -175,13 +176,13 @@ def register_command(
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("register", payload),
+            "stdout": _render_payload_for_text("register", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Registration failed: {error_envelope['message']}\n"
@@ -201,13 +202,13 @@ def resolve_command(
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("resolve", payload),
+            "stdout": _render_payload_for_text("resolve", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Resolve failed: {error_envelope['message']}\n"
@@ -221,13 +222,13 @@ def list_command(*, as_json: bool, facade: LarvaFacade) -> Result[CliCommandResu
         payload = list(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("list", payload),
+            "stdout": _render_payload_for_text("list", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"List failed: {error_envelope['message']}\n"
@@ -247,13 +248,13 @@ def clone_command(
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("clone", payload),
+            "stdout": _render_payload_for_text("clone", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Clone failed: {error_envelope['message']}\n"
@@ -302,7 +303,7 @@ def export_command(
             cli_result["json"] = {"data": specs}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
@@ -322,13 +323,13 @@ def delete_command(
         payload: DeletedPersona = result.unwrap()
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("delete", payload),
+            "stdout": _render_payload_for_text("delete", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Delete failed: {error_envelope['message']}\n"
@@ -360,13 +361,13 @@ def clear_command(
         payload: ClearedRegistry = result.unwrap()
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("clear", payload),
+            "stdout": _render_payload_for_text("clear", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
@@ -387,13 +388,13 @@ def update_command(
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("update", payload),
+            "stdout": _render_payload_for_text("update", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Update failed: {error_envelope['message']}\n"
@@ -429,7 +430,7 @@ def update_batch_command(
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope = _map_facade_error(result.failure())
+    error_envelope = _map_facade_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Update-batch failed: {error_envelope['message']}\n"
@@ -446,7 +447,7 @@ def component_list_command(
     try:
         result = component_store.list_components()
     except Exception as error:
-        error_envelope, exit_code = _map_component_error(error)
+        error_envelope, exit_code = _map_component_error(error).unwrap()
         failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
         if not as_json:
             failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
@@ -456,13 +457,13 @@ def component_list_command(
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component list", payload),
+            "stdout": _render_payload_for_text("component list", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope, exit_code = _map_component_error(result.failure())
+    error_envelope, exit_code = _map_component_error(result.failure()).unwrap()
     failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
@@ -481,7 +482,7 @@ def component_show_command(
 
     component_type, separator, component_name = component_ref.partition("/")
     if separator == "" or component_type == "" or component_name == "":
-        failure = _component_show_invalid_target(component_ref)
+        failure = _component_show_invalid_target(component_ref).unwrap()
         if not as_json:
             error_envelope = failure.get("error", _critical_error("unknown error"))
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
@@ -497,7 +498,9 @@ def component_show_command(
     }
     loader = loaders.get(component_type)
     if loader is None:
-        failure = _component_show_invalid_target(component_ref, component_type=component_type)
+        failure = _component_show_invalid_target(
+            component_ref, component_type=component_type
+        ).unwrap()
         if not as_json:
             error_envelope = failure.get("error", _critical_error("unknown error"))
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
@@ -506,7 +509,7 @@ def component_show_command(
     try:
         load_result = loader(component_name)
     except Exception as error:
-        error_envelope, exit_code = _map_component_error(error)
+        error_envelope, exit_code = _map_component_error(error).unwrap()
         failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
         if not as_json:
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
@@ -516,13 +519,13 @@ def component_show_command(
         payload = cast("dict[str, object]", dict(cast("dict[str, object]", load_result.unwrap())))
         cli_result: CliCommandResult = {
             "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component show", payload),
+            "stdout": _render_payload_for_text("component show", payload).unwrap(),
         }
         if as_json:
             cli_result["json"] = {"data": payload}
         return Success(cli_result)
 
-    error_envelope, exit_code = _map_component_error(load_result.failure())
+    error_envelope, exit_code = _map_component_error(load_result.failure()).unwrap()
     failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
