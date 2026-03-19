@@ -29420,3 +29420,6 @@ phases:
     depends_on:
     - invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
     agent: integration-verifier
+- id: web_copy_button
+  name: Add copy-to-clipboard button for prompt markdown in web UI
+  status: pending
