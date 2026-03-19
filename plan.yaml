@@ -28679,3 +28679,44 @@ phases:
     - invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
     - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     agent: gate-reviewer
+  - id: invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
+    name: Reduce remaining shell file-size hotspots
+    status: pending
+    description: 'Refactor the remaining shell hotspot cluster after the early Invar
+      pattern check.
+
+
+      Scope:
+
+      - `src/larva/shell/registry.py` file size warning
+
+      - `src/larva/shell/mcp.py` file size warning
+
+
+      Required work:
+
+      - extract cohesive helpers or submodules to bring file size pressure down
+
+      - preserve registry and MCP runtime/entrypoint behavior
+
+      - avoid introducing new `shell_result` escape hatches or widening the escape-hatch
+      budget
+
+
+      Out of scope:
+
+      - CLI dead_export governance
+
+      - Python API payload shaping'
+    verification: '- Targeted shell tests prove registry/MCP behavior remains stable
+
+      - `uv run invar guard --all` no longer reports the listed size warnings for
+      these files
+
+      - No new shell_result escape hatches are added in this cluster'
+    evidence_template: "## Shell Hotspot Evidence\n- Files reduced: <file list>\n\
+      - Extracted helpers/modules: <list>\n- Commands:\n  - `<targeted tests>`\n \
+      \ - `uv run invar guard --all`\n- Guard excerpt for registry/mcp: <paste>"
+    depends_on:
+    - invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
+    agent: python-senior
