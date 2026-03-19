@@ -27040,7 +27040,7 @@ phases:
 
       - Coverage adequate for migration'
     depends_on:
-    - test_migration.full-test-suite-verification
+    - test_migration.retest-gate-findings
     agent: gate-reviewer
   - id: test_migration.fix-gate-findings
     name: Fix gate findings for migration tests
