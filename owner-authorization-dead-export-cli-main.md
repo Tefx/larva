@@ -161,5 +161,6 @@ Conditions / expiry notes:
 
 ## Approval State
 
-- Current state: pending owner approval.
-- No exemption has been applied in this branch.
+- Current state: owner-approved and applied via `pyproject.toml`.
+- Applied exemption scope: `[tool.invar.exempt.dead_export] patterns = ["src/larva/shell/cli.py::main"]`
+- Removal condition: delete the exemption as soon as `src/larva/shell/cli.py::main` stops needing packaging-only authorization under the conditions listed in `Expiry / Removal Condition`.

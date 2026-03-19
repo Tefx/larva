@@ -67,6 +67,9 @@ require_doctests = true
 forbidden_imports = ["os", "sys", "socket", "requests", "urllib", "subprocess", "shutil", "io", "pathlib"]
 exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build", "src/larva/shell/web.py", "src/larva/shell/mcp_server.py"]
 
+[tool.invar.exempt.dead_export]
+patterns = ["src/larva/shell/cli.py::main"]
+
 [dependency-groups]
 dev = [
     "invar-tools>=1.20.3",
