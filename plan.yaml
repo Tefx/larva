@@ -28435,7 +28435,7 @@ phases:
       - ADR-002-capability-intent-without-runtime-policy.md'
 - id: invar_1203_remediation
   name: Invar 1.20.3 Remediation
-  status: in_progress
+  status: done
   depends_on:
   - deep_review
   steps:
@@ -29657,7 +29657,7 @@ phases:
       - No additional cleanup outside scoped stale annotation removal (out of scope).'
   - id: invar_1203_remediation.retest-after-gate-should-fix-batch
     name: Retest after batched gate finding fixes
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       batched gate-finding fix from a fresh/cold perspective.
 
@@ -29689,6 +29689,57 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T11:19:39.726631+00:00'
+    done_at: '2026-03-19T11:25:40.597019+00:00'
+    evidence: 'Independent post-fix retest completed by integration-verifier from
+      isolated worktree .vectl/worktrees/invar_1203_remediation.retest-after-gate-should-fix-batch.
+
+
+      Verification command (exact):
+
+      - uv run invar guard --all
+
+
+      Raw result summary:
+
+      - status: passed
+
+      - errors: 0
+
+      - warnings: 1 (escape_hatch_budget 12/15)
+
+      - infos: 0
+
+      - files_checked: 27
+
+
+      Required retest assertions:
+
+      - stale dead_export allow annotations removed: PASS (targeted search in src/larva/shell/mcp_server.py
+      returns none)
+
+      - no blocker regressions introduced: PASS (errors=0, no new blockers)
+
+      - full guard still passes cold: PASS
+
+
+      Additional checks reported:
+
+      - pyproject exclude_paths still contains src/larva/shell/mcp_server.py
+
+      - pytest: 648 passed, 1 xfailed, 48 xpassed
+
+      - crosshair/property sections in guard output passed
+
+
+      Spec link:
+
+      - invar_1203_remediation.gate-review-for-invar-1-20-3-remediation (should-fix
+      S1)
+
+
+      Gaps/Notes:
+
+      - None reported by verifier.'
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
