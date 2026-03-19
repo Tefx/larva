@@ -29094,7 +29094,7 @@ phases:
       - applied exact symbol-scoped exemption: src/larva/shell/cli.py::main'
   - id: invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
     name: Reduce shell_result and weighted escape-hatch budget below 1.20.3 limits
-    status: claimed
+    status: done
     description: 'Remediate the remaining invar-tools 1.20.3 code blockers by reducing
       `shell_result` usage and the weighted escape-hatch budget below current limits.
 
@@ -29169,3 +29169,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T10:06:04.838111+00:00'
+    done_at: '2026-03-19T10:23:53.987215+00:00'
+    evidence: 'Artifact:
+
+      - Commit: e4553ac
+
+
+      Verification:
+
+      - Run: uv run pytest -q tests/shell/test_cli.py tests/shell/test_mcp_stdio_integration.py
+      -> 174 passed
+
+      - Run: uv run invar guard --all -> passed (errors=0, warnings=0)
+
+
+      Notes:
+
+      - shell_result reduced from blocking state (9/5) to compliant state (5/5)
+
+      - weighted escape-hatch budget reduced from blocking (30/15) to within cap'
