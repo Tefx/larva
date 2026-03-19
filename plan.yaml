@@ -29302,3 +29302,88 @@ phases:
     depends_on:
     - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     agent: python-senior
+  - id: invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
+    name: Retest full independent Invar 1.20.3 verification after escape-hatch remediation
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the full
+      Invar verification after the batched remediation step.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Run exactly `uv run invar guard --all` from a fresh/cold environment and paste
+      raw output.
+
+
+      Required checks:
+
+      - `escape_hatch_project_limit shell_result` is no longer a gating error
+
+      - weighted `escape_hatch_budget` is below `15`
+
+      - any remaining `shell_too_complex` infos are explicitly justified by the remediation
+      evidence, not silently ignored
+
+      - no new blocker-class regressions were introduced while reducing budget and
+      shell_result usage
+
+
+      Independence Level: L1
+
+      Command family is locked to `uv run invar guard --all`. Do not substitute narrower
+      commands.'
+    verification: '- Run exactly `uv run invar guard --all` in a fresh/cold environment
+
+      - Attach raw guard output with error/warning/info totals
+
+      - Confirm `escape_hatch_project_limit shell_result` is below the current gating
+      threshold
+
+      - Confirm `escape_hatch_budget` is below `15`
+
+      - Confirm any remaining `shell_too_complex` infos are dispositioned explicitly
+      from the fix evidence'
+    evidence_template: '## Independent Retest Report
+
+
+      **Command executed**:
+
+      ```
+
+      uv run invar guard --all
+
+      ```
+
+
+      **Environment**:
+
+      - fresh/cold run: yes|no
+
+      - python/tooling context: <details>
+
+
+      **Raw output**:
+
+      ```
+
+      <paste full guard output>
+
+      ```
+
+
+      **Disposition**:
+
+      - shell_result project limit: PASS | ISSUES_FOUND
+
+      - escape_hatch_budget < 15: PASS | ISSUES_FOUND
+
+      - residual shell_too_complex infos explained: PASS | ISSUES_FOUND
+
+      - new regressions introduced: none | <list>
+
+
+      **Verdict**: PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
+    agent: integration-verifier
