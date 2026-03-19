@@ -29188,3 +29188,117 @@ phases:
       - shell_result reduced from blocking state (9/5) to compliant state (5/5)
 
       - weighted escape-hatch budget reduced from blocking (30/15) to within cap'
+  - id: invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
+    name: Fix remaining escape-hatch budget and shell_result gates
+    status: pending
+    description: 'Fix ALL remaining gating blockers from `invar_1203_remediation.run-full-independent-invar-1-20-3-verification`
+      in one batched remediation step.
+
+
+      Blockers to close together:
+
+      - `escape_hatch_project_limit shell_result`: reduce from `5/5` to within the
+      allowed limit without relying on an exemption that still leaves the guard in
+      a gating state
+
+      - `escape_hatch_budget`: reduce weighted project budget from `18/15` to below
+      `15`
+
+
+      Complexity findings handling policy (required):
+
+      - review residual infos in `python_api_components._component_show_result`, `python_api._invoke`,
+      and `cli_runtime._infer_value_type`
+
+      - for each residual `shell_too_complex` finding, either extract logic until
+      complexity is no longer reported OR add a narrowly justified `@shell_complexity`
+      annotation that explains why shell placement is still correct and why extraction
+      would not improve the boundary
+
+      - do not leave silent residual complexity debt; each remaining info must have
+      an explicit disposition in evidence
+
+
+      Root-cause-first scope:
+
+      - search sibling `shell_result` and escape-hatch sites beyond the originally
+      reported locations so the fix removes the family, not just the observed instances
+
+      - preserve the owner-approved dead_export path already handled in this phase;
+      this step is only for the remaining shell_result/budget blockers and explicit
+      complexity disposition
+
+      - keep the command family aligned with `uv run invar guard --all`; avoid alternate
+      wrappers or narrower checks as completion evidence
+
+
+      Completion criteria:
+
+      - `shell_result` count is below the project limit enforced by the current invar-tools
+      baseline
+
+      - weighted escape-hatch budget is below `15`
+
+      - residual `shell_too_complex` infos are either removed by extraction or justified
+      with scoped `@shell_complexity` annotations
+
+      - evidence includes what changed, what was intentionally retained, and why the
+      blocker family is closed rather than shifted'
+    verification: '- Main path: remediation evidence shows `shell_result` is within
+      allowed project limits and weighted escape-hatch budget is below `15`
+
+      - Failure path: sibling search confirms no remaining blocker-class `shell_result`
+      or budget overage site was missed
+
+      - Complexity path: each residual `shell_too_complex` info is removed by extraction
+      or justified with a scoped `@shell_complexity` annotation
+
+      - Proof: final retest can use `uv run invar guard --all` without alternate command
+      families or partial scope'
+    evidence_template: '## Remediation Evidence
+
+
+      **Blockers closed**:
+
+      - shell_result project limit: <before> -> <after>
+
+      - weighted escape-hatch budget: <before> -> <after>
+
+
+      **Sibling search performed**:
+
+      ```
+
+      <paste commands / search scope>
+
+      ```
+
+
+      **Complexity findings disposition**:
+
+      - `python_api_components._component_show_result`: extracted | annotated | other
+
+      - `python_api._invoke`: extracted | annotated | other
+
+      - `cli_runtime._infer_value_type`: extracted | annotated | other
+
+
+      **Why residual complexity is acceptable**:
+
+      ```
+
+      <justification for any remaining @shell_complexity annotations>
+
+      ```
+
+
+      **Root cause vs symptom**:
+
+      - root cause: <shared cause>
+
+      - symptom: <reported blocker>
+
+      - why this fix closes the blocker family: <one line>'
+    depends_on:
+    - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
+    agent: python-senior
