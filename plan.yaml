@@ -29017,3 +29017,47 @@ phases:
     depends_on:
     - invar_1203_remediation.freeze-snapshot-for-invar-remediation-gate
     agent: gate-reviewer
+  - id: invar_1203_remediation.apply-owner-approved-dead-export-exemption
+    name: Apply scoped dead_export exemption after owner approval
+    status: pending
+    description: 'Apply the minimal project-scoped exemption for the non-suppressible
+      `dead_export` finding at `src/larva/shell/cli.py:322` only after owner approval
+      is recorded.
+
+
+      Scope:
+
+      - take the approval artifact from `invar_1203_remediation.request-owner-approved-dead-export-exemption`
+
+      - encode the narrowest allowed exemption in project configuration
+
+      - document the exact symbol/path covered and the removal condition
+
+
+      Required work:
+
+      - use only the approved project-scoped exemption path supported by invar-tools
+      1.20.3
+
+      - keep the exemption limited to the approved `dead_export` owner case; no broad
+      wildcard expansion
+
+      - preserve the rest of the guard policy surface unchanged
+
+
+      Failure-mode checklist:
+
+      - approval artifact is present before config change
+
+      - exemption scope matches the approved symbol/path exactly
+
+      - no unrelated escape hatches or guard settings are widened'
+    verification: '- Owner approval artifact is attached and cited
+
+      - Config diff shows the exemption is scoped to the approved `dead_export` case
+      only
+
+      - No broader guard policy limits are relaxed'
+    depends_on:
+    - invar_1203_remediation.request-owner-approved-dead-export-exemption
+    agent: software-architect
