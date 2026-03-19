@@ -28441,7 +28441,7 @@ phases:
   steps:
   - id: invar_1203_remediation.request-owner-approved-dead-export-exemption
     name: Request owner-approved dead_export exemption
-    status: claimed
+    status: done
     description: 'Governance step for the new non-suppressible `dead_export` finding
       at `src/larva/shell/cli.py:322` (`escape_hatch_non_suppressible`). Prepare the
       owner authorization packet for a `pyproject.toml` exemption path instead of
@@ -28482,6 +28482,26 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-19T08:35:01.764062+00:00'
+    done_at: '2026-03-19T08:58:23.357437+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 394c9bb02a89cfc6f25d77a35310872454935d76
+
+      - Packet: owner-authorization-dead-export-cli-main.md
+
+
+      Verification:
+
+      - Run: uv run invar refs src/larva/shell/cli.py::main -> call path evidence
+      captured
+
+      - Run: symbol-scoped exemption pattern dry validation -> proposed scope is minimal
+
+
+      Notes:
+
+      - owner approval remains pending; step produced governance packet without mutating
+      pyproject'
   - id: invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
     name: Reduce core/app size debt and redundant contracts
     status: done
