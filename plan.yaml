@@ -29221,7 +29221,7 @@ phases:
       - weighted escape-hatch budget reduced from blocking (30/15) to within cap'
   - id: invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
     name: Fix remaining escape-hatch budget and shell_result gates
-    status: pending
+    status: claimed
     description: 'Fix ALL remaining gating blockers from `invar_1203_remediation.run-full-independent-invar-1-20-3-verification`
       in one batched remediation step.
 
@@ -29333,6 +29333,8 @@ phases:
     depends_on:
     - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T10:29:39.394246+00:00'
   - id: invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
     name: Retest full independent Invar 1.20.3 verification after escape-hatch remediation
     status: pending
