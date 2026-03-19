@@ -29484,3 +29484,34 @@ phases:
     depends_on:
     - web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
     agent: python-executor
+  - id: web_copy_button.gate-review-copy-button-in-both-files
+    name: 'Gate review: copy button in both files'
+    status: pending
+    description: 'Gate review verifying copy button works correctly in both files.
+
+
+      review_depth: QUICK
+
+      review_depth_rationale: Single small UI feature, two files, no cross-module
+      risk.
+
+
+      Review criteria:
+
+      1. Both files have consistent copy button implementation
+
+      2. No regressions in existing UI functionality
+
+      3. Alpine.js handler is correct and uses navigator.clipboard API
+
+      4. Icon-swap feedback timing is consistent
+
+      5. Disabled state logic is correct
+
+
+      step_type: gate'
+    verification: Both files have consistent copy button implementation, Alpine.js
+      handler correct, no regressions
+    depends_on:
+    - web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
+    agent: gate-reviewer
