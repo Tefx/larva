@@ -28720,3 +28720,46 @@ phases:
     depends_on:
     - invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
     agent: python-senior
+  - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
+    name: Run full independent Invar 1.20.3 verification
+    status: pending
+    description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
+      full 1.20.3 remediation from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - happy path: `uv run invar guard --all` returns clean for the remediated findings
+
+      - edge cases: any remaining warning/info count is intentional and documented
+
+      - error scenarios: owner approval missing, stale shell_result siblings, or preserved
+      shell_pure_logic / size regressions still surface clearly
+
+
+      Independence Level: L1
+
+      Command family is locked to `uv run invar guard --all`. Paste raw output, not
+      a summary.'
+    verification: '- Run exactly `uv run invar guard --all`
+
+      - Attach raw guard output with error/warning/info totals
+
+      - Map each original 1.20.3 finding to RESOLVED | APPROVED_EXEMPTION | STILL_OPEN'
+    evidence_template: "## Invar 1.20.3 Verification Report\n- Command:\n  ```\n \
+      \ uv run invar guard --all\n  ```\n- Raw output:\n  ```\n  <paste>\n  ```\n\
+      - Finding map:\n  - dead_export non-suppressible: <status>\n  - cli / cli_helpers\
+      \ shell_result and size: <status>\n  - python_api / python_api_components shell_result\
+      \ and shell_pure_logic: <status>\n  - project_limit / budget: <status>\n  -\
+      \ registry / mcp size warnings: <status>\n  - redundant_type_contract infos:\
+      \ <status>\n- Residual issues: <list or none>"
+    depends_on:
+    - invar_1203_remediation.request-owner-approved-dead-export-exemption
+    - invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts
+    - invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
+    - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+    - invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
+    agent: integration-verifier
