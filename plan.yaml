@@ -29877,7 +29877,7 @@ phases:
       - None reported.'
   - id: web_copy_button.gate-review-copy-button-in-both-files
     name: 'Gate review: copy button in both files'
-    status: pending
+    status: claimed
     description: 'Gate review verifying copy button works correctly in both files.
 
 
@@ -29906,3 +29906,5 @@ phases:
     depends_on:
     - web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-19T11:35:13.653890+00:00'
