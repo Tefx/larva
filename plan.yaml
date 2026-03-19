@@ -29746,7 +29746,7 @@ phases:
   steps:
   - id: web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
     name: Implement copy-to-clipboard button in web_ui.html
-    status: pending
+    status: claimed
     description: 'Add copy button with clipboard SVG icon, Alpine.js handler (copyPrompt()),
       .btn-icon CSS class, and icon-swap feedback to the Prompt section header in
       web_ui.html.
@@ -29778,6 +29778,8 @@ phases:
       clipboard contains raw markdown after click, (3) checkmark feedback, (4) disabled
       state on empty prompt'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-19T11:27:22.398349+00:00'
   - id: web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
     name: Mirror copy button changes to contrib/web/index.html
     status: pending
