@@ -29742,7 +29742,7 @@ phases:
       - None reported by verifier.'
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
-  status: in_progress
+  status: done
   steps:
   - id: web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
     name: Implement copy-to-clipboard button in web_ui.html
@@ -29877,7 +29877,7 @@ phases:
       - None reported.'
   - id: web_copy_button.gate-review-copy-button-in-both-files
     name: 'Gate review: copy button in both files'
-    status: claimed
+    status: done
     description: 'Gate review verifying copy button works correctly in both files.
 
 
@@ -29908,3 +29908,19 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-19T11:35:13.653890+00:00'
+    done_at: '2026-03-19T11:41:47.237496+00:00'
+    evidence: "Gate evidence accepted with completed reviewer report + independent\
+      \ blind liveness probe.\n\nGate-reviewer findings:\n- Verdict: PASS\n- Cross-file\
+      \ consistency: PASS (copy button CSS/HTML/JS blocks match)\n- Wiring audit:\
+      \ W1-W8 all N/A with explicit UI-only justifications\n- Escape hatch audit:\
+      \ no `@invar:allow` annotations in touched HTML files\n- Integration classification:\
+      \ N/A (UI-only change)\n- Runnable surface: static liveness probes pass\n- Severity:\
+      \ blockers=0, should_fix=0, suggestions=2 low-priority\n\nBlind-tester Mode\
+      \ D liveness evidence:\n- Verified both artifacts contain copy-button controls:\n\
+      \  - src/larva/shell/web_ui.html\n  - contrib/web/index.html\n- Verified clipboard\
+      \ API call present in both (`navigator.clipboard.writeText(prompt)`)\n- Verified\
+      \ 1.5s success feedback logic in both (`setTimeout(..., 1500)`)\n- Verified\
+      \ disabled-empty prompt state in both (`:disabled=\"!getVal('prompt')\"`)\n\
+      - Reported no blocker issues.\n\nConclusion:\n- Gate criteria satisfied for\
+      \ both files; feature behavior is consistent and reviewable as runnable UI surface\
+      \ evidence with independent probe."
