@@ -29746,7 +29746,7 @@ phases:
   steps:
   - id: web_copy_button.implement-copy-to-clipboard-button-in-web-ui-html
     name: Implement copy-to-clipboard button in web_ui.html
-    status: claimed
+    status: done
     description: 'Add copy button with clipboard SVG icon, Alpine.js handler (copyPrompt()),
       .btn-icon CSS class, and icon-swap feedback to the Prompt section header in
       web_ui.html.
@@ -29780,6 +29780,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-19T11:27:22.398349+00:00'
+    done_at: '2026-03-19T11:29:54.997737+00:00'
+    evidence: 'Python-executor implemented copy-to-clipboard button in src/larva/shell/web_ui.html.
+
+
+      Commit: 0ae76941b63920d5c601bc52f6a39a9a148882c2
+
+      Files changed: src/larva/shell/web_ui.html (36 lines added)
+
+
+      Implemented requirements:
+
+      - Added .btn-icon CSS class for icon button styling (32x28, centered SVG, disabled
+      opacity)
+
+      - Added copy button next to existing Edit button in Prompt section header
+
+      - Added inline clipboard SVG icon and success-state green checkmark icon swap
+
+      - Added Alpine handler `copyPrompt()` using `navigator.clipboard.writeText()`
+
+      - Added 1.5s feedback window (`copySuccess=true` then revert)
+
+      - Added disabled binding when prompt is empty (`:disabled="!getVal(''prompt'')"`)
+
+
+      Verification evidence from worker:
+
+      - Button placement, icon, copy handler, 1.5s success checkmark, disabled-empty
+      state all validated.
+
+      - No gaps reported.'
   - id: web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
     name: Mirror copy button changes to contrib/web/index.html
     status: pending
