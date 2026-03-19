@@ -28856,7 +28856,7 @@ phases:
       - shell file-size hotspot warnings cleared'
   - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     name: Run full independent Invar 1.20.3 verification
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate the
       full 1.20.3 remediation from a fresh perspective.
 
@@ -28905,7 +28905,37 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T10:25:38.725216+00:00'
-    done_at: '2026-03-19T09:58:31.689149+00:00'
+    done_at: '2026-03-19T10:29:15.590775+00:00'
+    evidence: 'Full independent verification run identified blocking issues and triggered
+      batched remediation planning.
+
+
+      Command:
+
+      - uv run invar guard --all
+
+
+      Blockers detected:
+
+      - escape_hatch_project_limit: shell_result 5/5 (gating)
+
+      - escape_hatch_budget: 18/15 (gating)
+
+
+      Additional infos:
+
+      - shell_too_complex in python_api_components._component_show_result
+
+      - shell_too_complex in python_api._invoke
+
+      - shell_too_complex in cli_runtime._infer_value_type
+
+
+      Batched remediation created:
+
+      - invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
+
+      - invar_1203_remediation.retest-full-independent-invar-1-20-3-verification'
     rejection_reason: Verification accepted before final invar-tools 1.20.3 pin landed
       in main; rework required against updated baseline.
     rejection_history:
