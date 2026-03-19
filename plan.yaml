@@ -29367,7 +29367,7 @@ phases:
       - Commit: 5835c523b0bea05a7a95e693f0abebbb59c8d9ec'
   - id: invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
     name: Retest full independent Invar 1.20.3 verification after escape-hatch remediation
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the full
       Invar verification after the batched remediation step.
 
@@ -29452,6 +29452,65 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T10:46:29.375377+00:00'
+    done_at: '2026-03-19T10:51:28.563347+00:00'
+    evidence: 'Integration-verifier independent retest completed in isolated worktree
+      .vectl/worktrees/invar_1203_remediation.retest-full-independent-invar-1-20-3-verification.
+
+
+      Command executed exactly as required:
+
+      - uv run invar guard --all
+
+
+      Environment:
+
+      - fresh/cold run: yes (virtualenv created fresh in worktree)
+
+      - python/tooling context: CPython 3.12.12, 78 packages installed
+
+
+      Raw output (key totals):
+
+      - status: passed
+
+      - errors: 0
+
+      - warnings: 1
+
+      - infos: 0
+
+      - files_checked: 27
+
+      - escape_hatch_budget warning: 12/15
+
+      - escape_hatches count: 4 (entry_point_too_thick:1, shell_result:3)
+
+
+      Required check dispositions:
+
+      - escape_hatch_project_limit shell_result: PASS (no gating error present)
+
+      - escape_hatch_budget below 15: PASS (12/15)
+
+      - residual shell_too_complex infos explicitly dispositioned: PASS (none present;
+      infos=0)
+
+      - no new blocker regressions: PASS (errors=0; non_suppressible violations=0)
+
+
+      Additional verification in output:
+
+      - doctest: passed
+
+      - property_tests: passed (5/5 functions, 200 examples, 0 failures)
+
+      - crosshair: verified (cached core functions)
+
+
+      Verdict: PASS
+
+
+      No gaps: all mandatory checks executed and evidenced by the full guard run.'
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
