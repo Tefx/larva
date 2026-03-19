@@ -28790,7 +28790,7 @@ phases:
       - commit bodies are concise; raw guard detail primarily captured in step evidence'
   - id: invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
     name: Reduce remaining shell file-size hotspots
-    status: claimed
+    status: done
     description: 'Refactor the remaining shell hotspot cluster after the early Invar
       pattern check.
 
@@ -28831,6 +28831,29 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-03-19T09:30:11.017988+00:00'
+    done_at: '2026-03-19T09:52:36.708960+00:00'
+    evidence: '## Shell Hotspot Evidence
+
+      Artifact:
+
+      - Commit: 87eb40dcc58335fe37a5d0c5faca70f114b25870
+
+      - Files reduced: src/larva/shell/registry.py, src/larva/shell/mcp.py
+
+      - Extracted modules: src/larva/shell/registry_fs.py, src/larva/shell/mcp_handler_ops.py
+
+
+      Verification:
+
+      - Run: uv run pytest -v tests/shell/test_registry.py tests/shell/test_mcp.py
+      -> 168 passed
+
+      - Run: uv run invar guard --all -> passed (errors=0, warnings=0)
+
+
+      Notes:
+
+      - shell file-size hotspot warnings cleared'
   - id: invar_1203_remediation.run-full-independent-invar-1-20-3-verification
     name: Run full independent Invar 1.20.3 verification
     status: pending
