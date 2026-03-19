@@ -29542,6 +29542,47 @@ phases:
 
 
       No gaps: all mandatory checks executed and evidenced by the full guard run.'
+  - id: invar_1203_remediation.fix-gate-should-fix-batch
+    name: Fix batched gate findings from Invar 1.20.3 remediation gate
+    status: pending
+    description: 'Fix ALL should-fix findings from the Invar 1.20.3 remediation gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+      ### S1: stale dead_export allow annotations in excluded MCP server file
+
+      Locations: `src/larva/shell/mcp_server.py` around lines 62 and 176
+
+      Remediation: remove stale `@invar:allow dead_export` annotations from excluded
+      `src/larva/shell/mcp_server.py`; no broader refactor.
+
+      Grep hint: search for `@invar:allow dead_export` in `src/larva/shell/mcp_server.py`
+
+      IMPORTANT: confirm the file remains covered by exclude-path configuration in
+      `pyproject.toml` and do not widen scope beyond stale annotation cleanup.
+
+
+      ## Completion Criteria:
+
+      - stale dead_export allow annotations removed from the excluded file
+
+      - no broader MCP server refactor performed
+
+      - sibling search completed for the same stale annotation pattern within the
+      targeted file'
+    verification: '- Run exactly `uv run invar guard --all`
+
+      - Confirm no regressions from the stale-annotation cleanup
+
+      - Verify the stale `@invar:allow dead_export` annotations were removed from
+      `src/larva/shell/mcp_server.py`
+
+      - Provide evidence that `pyproject.toml` still excludes the file and that no
+      broader refactor was performed'
+    depends_on:
+    - invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
+    agent: python-senior
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
