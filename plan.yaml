@@ -28587,7 +28587,7 @@ phases:
     claimed_at: '2026-03-19T08:34:21.485157+00:00'
   - id: invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
     name: Reduce Python API escape hatches and shell pure logic
-    status: pending
+    status: claimed
     description: 'Refactor the Python API cluster to lower 1.20.3 escape-hatch counts
       and eliminate the shell-pure-logic warning.
 
@@ -28636,6 +28636,8 @@ phases:
     - src/larva/core/spec.py
     - INVAR.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-03-19T08:34:51.217533+00:00'
   - id: invar_1203_remediation.quick-gate-on-early-invar-remediation-patterns
     name: Quick gate on early Invar remediation patterns
     status: pending
