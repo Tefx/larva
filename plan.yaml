@@ -27733,7 +27733,7 @@ phases:
       Verdict: PASS'
   - id: deep_review.black-box-verification
     name: black-box-verification
-    status: claimed
+    status: done
     description: 'Black-box spec verification: Using ONLY the ADR-002, MIGRATION-002,
       and INTERFACES.md (no implementation source), verify behavior.
 
@@ -27810,6 +27810,34 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-19T06:31:07.191097+00:00'
+    done_at: '2026-03-19T06:33:06.913635+00:00'
+    evidence: '## Black-Box Verification Report
+
+
+      Test 1 (capabilities-only spec via CLI validate): PASS
+
+      - command: uv run larva validate <capabilities-only.json> --json
+
+      - output: valid=true, no warnings
+
+
+      Test 2 (tools-only backward compat via CLI validate): PASS
+
+      - command: uv run larva validate <tools-only.json> --json
+
+      - output: valid=true, warning includes `DEPRECATED_FIELD: tools is deprecated;
+      use capabilities instead`
+
+
+      Test 3 (side_effect_policy deprecation via CLI validate): PASS
+
+      - command: uv run larva validate <side-effect-policy.json> --json
+
+      - output: valid=true, warning includes `DEPRECATED_FIELD: side_effect_policy
+      is deprecated per ADR-002`
+
+
+      Verdict: PASS'
   - id: deep_review.gate
     name: gate
     status: pending
