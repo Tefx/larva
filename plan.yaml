@@ -27177,7 +27177,7 @@ phases:
       - Run: uv run invar guard --all -> passed (0 errors)'
   - id: test_migration.retest-gate-findings
     name: Retest migration gate findings
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), validate that
       the batched `test_migration` gate findings are fully closed from a fresh perspective.
 
@@ -27254,6 +27254,44 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T05:53:28.788535+00:00'
+    done_at: '2026-03-19T05:57:57.641914+00:00'
+    evidence: '## Verification Report
+
+      Tester: integration-verifier
+
+      Scope: retest closure of test_migration.gate findings
+
+
+      Commands:
+
+      - uv run pytest tests/app/test_facade/ -v -> 58 collected, 41 passed, 1 xfailed,
+      16 xpassed
+
+      - uv run pytest tests/ -v --tb=short -> 697 collected, 648 passed, 1 xfailed,
+      48 xpassed
+
+      - uv run invar guard --all -> PASSED
+
+
+      Findings:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: none
+
+
+      Coverage assessment:
+
+      - warning assertion tests present/passing
+
+      - facade tests split into focused modules and collected successfully
+
+      - no oversized facade monolith remains
+
+
+      Verdict: PASS'
 - id: doc_sync
   name: Documentation Sync
   status: locked
