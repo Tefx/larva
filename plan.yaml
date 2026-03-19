@@ -27521,7 +27521,7 @@ phases:
   steps:
   - id: deep_review.wiring-audit-full
     name: wiring-audit-full
-    status: claimed
+    status: done
     description: 'Full wiring audit: verify every public symbol related to the migration
       is reachable at runtime.
 
@@ -27598,6 +27598,43 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-19T06:25:37.884686+00:00'
+    done_at: '2026-03-19T06:28:33.858392+00:00'
+    evidence: '## Full Wiring Audit Report
+
+
+      Verdict: PASS
+
+
+      Checks:
+
+      - capabilities export/consumption traced across core/app/shell/test surfaces
+
+      - CLI and MCP registration verified with runtime caller paths
+
+      - no orphan tools-only paths detected
+
+      - NotImplementedError stub found only in protocol contract context (non-runtime)
+
+      - no write-only migration fields detected
+
+      - deprecation warning reachability verified through CLI/MCP/Python API validate
+      paths
+
+
+      Verification:
+
+      - full test sweep in audit context passed (648 passed, 1 xfailed, 48 xpassed)
+
+      - call-chain evidence documented for CLI, MCP, Python API entrypoints
+
+
+      Classification:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: none'
   - id: deep_review.spec-conformance
     name: spec-conformance
     status: pending
