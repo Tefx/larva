@@ -27515,13 +27515,13 @@ phases:
       - suggestions: none'
 - id: deep_review
   name: Deep Review (Independent Multi-Agent Audit)
-  status: pending
+  status: in_progress
   depends_on:
   - doc_sync
   steps:
   - id: deep_review.wiring-audit-full
     name: wiring-audit-full
-    status: pending
+    status: claimed
     description: 'Full wiring audit: verify every public symbol related to the migration
       is reachable at runtime.
 
@@ -27596,6 +27596,8 @@ phases:
 
       **Verdict**: PASS / ISSUES_FOUND'
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-19T06:25:37.884686+00:00'
   - id: deep_review.spec-conformance
     name: spec-conformance
     status: pending
