@@ -29367,7 +29367,7 @@ phases:
       - Commit: 5835c523b0bea05a7a95e693f0abebbb59c8d9ec'
   - id: invar_1203_remediation.retest-full-independent-invar-1-20-3-verification
     name: Retest full independent Invar 1.20.3 verification after escape-hatch remediation
-    status: claimed
+    status: pending
     description: 'As an INDEPENDENT TESTER (`integration-verifier`), rerun the full
       Invar verification after the batched remediation step.
 
@@ -29450,8 +29450,6 @@ phases:
     depends_on:
     - invar_1203_remediation.fix-remaining-escape-hatch-budget-and-shell-result-gates
     agent: integration-verifier
-    claimed_by: integration-verifier
-    claimed_at: '2026-03-19T10:43:20.448182+00:00'
 - id: web_copy_button
   name: Add copy-to-clipboard button for prompt markdown in web UI
   status: in_progress
