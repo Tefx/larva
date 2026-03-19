@@ -1,36 +1,20 @@
 """Contract surface for shell-side persona registry storage.
 
-This module defines the shell boundary for canonical PersonaSpec persistence in
-the documented global registry location: ``~/.larva/registry/``.
-
-Scope of this contract module:
-- define typed registry errors and storage protocols
-- define contract-only filesystem adapter signatures
-
-Out of scope for this contract step:
-- filesystem I/O implementation
-- JSON serialization/deserialization implementation
-- override application, revalidation, or renormalization flows
-- CLI/MCP/Python transport formatting
-
 Boundary citations:
 - ARCHITECTURE.md :: Module: ``larva.shell.registry``
-- ARCHITECTURE.md :: 7. Cross-Module Interface Contracts
-- ARCHITECTURE.md :: 8. Error Boundary Model
 - INTERFACES.md :: D. Global Registry
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
-import tempfile
-from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast
 
 from returns.result import Failure, Result, Success
+
+from larva.shell.registry_fs import read_spec_payload, rollback_spec_write, write_json_atomic
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -477,50 +461,12 @@ class FileSystemRegistryStore(RegistryStore):
                 )
             )
 
-        try:
-            payload = json.loads(spec_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            return Failure(
-                self._spec_read_failed(persona_id, spec_path, f"failed to read spec json: {exc}")
-            )
-
-        if not isinstance(payload, dict):
-            return Failure(
-                self._spec_read_failed(
-                    persona_id, spec_path, "spec file must contain a JSON object"
-                )
-            )
-
-        actual_digest = self._require_non_empty_digest(payload.get("spec_digest"))
-        if actual_digest is None:
-            return Failure(
-                self._spec_read_failed(
-                    persona_id,
-                    spec_path,
-                    "spec file must include a non-empty spec_digest",
-                )
-            )
-
-        if expected_digest is not None:
-            expected_digest_value = self._require_non_empty_digest(expected_digest)
-            if expected_digest_value is None:
-                return Failure(
-                    self._spec_read_failed(
-                        persona_id,
-                        spec_path,
-                        "index entry for persona must include a non-empty digest",
-                    )
-                )
-            if actual_digest != expected_digest_value:
-                return Failure(
-                    self._spec_read_failed(
-                        persona_id,
-                        spec_path,
-                        "digest mismatch between index.json and spec file",
-                    )
-                )
-
-        return Success(cast("PersonaSpec", payload))
+        payload_result = read_spec_payload(
+            spec_path, expected_digest, self._require_non_empty_digest
+        )
+        if isinstance(payload_result, Failure):
+            return Failure(self._spec_read_failed(persona_id, spec_path, payload_result.failure()))
+        return Success(cast("PersonaSpec", payload_result.unwrap()))
 
     def _require_non_empty_digest(self, digest: object) -> str | None:
         if isinstance(digest, str) and digest.strip():
@@ -534,25 +480,12 @@ class FileSystemRegistryStore(RegistryStore):
         kind: Literal["spec", "index"],
         persona_id: str,
     ) -> Result[None, RegistryError]:
-        try:
-            fd, tmp_path_text = tempfile.mkstemp(
-                dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp"
-            )
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                    json.dump(payload, handle, ensure_ascii=False)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(tmp_path_text, path)
-            except Exception:
-                with suppress(OSError):
-                    os.unlink(tmp_path_text)
-                raise
-        except (OSError, TypeError, ValueError) as exc:
+        result = write_json_atomic(path, payload)
+        if isinstance(result, Failure):
+            exc = result.failure()
             if kind == "spec":
                 return Failure(self._write_failed(persona_id, path, f"failed to write spec: {exc}"))
             return Failure(self._update_failed(persona_id, path, f"failed to update index: {exc}"))
-
         return Success(None)
 
     def _rollback_spec_write(
@@ -562,42 +495,9 @@ class FileSystemRegistryStore(RegistryStore):
         spec_existed: bool,
         persona_id: str,
     ) -> WriteFailureError | None:
-        if not spec_existed:
-            try:
-                if spec_path.exists():
-                    spec_path.unlink()
-                return None
-            except OSError as exc:
-                return self._write_failed(
-                    persona_id, spec_path, f"failed to remove newly-written spec: {exc}"
-                )
-
-        if old_spec_bytes is None:
-            return self._write_failed(
-                persona_id, spec_path, "missing rollback snapshot for existing spec"
-            )
-
-        try:
-            fd, tmp_path_text = tempfile.mkstemp(
-                dir=str(spec_path.parent),
-                prefix=f".{spec_path.name}.",
-                suffix=".rollback.tmp",
-            )
-            try:
-                with os.fdopen(fd, "wb") as handle:
-                    handle.write(old_spec_bytes)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                os.replace(tmp_path_text, spec_path)
-            except Exception:
-                with suppress(OSError):
-                    os.unlink(tmp_path_text)
-                raise
-        except OSError as exc:
-            return self._write_failed(
-                persona_id, spec_path, f"failed to rollback spec write: {exc}"
-            )
-
+        result = rollback_spec_write(spec_path, old_spec_bytes, spec_existed)
+        if isinstance(result, Failure):
+            return self._write_failed(persona_id, spec_path, result.failure())
         return None
 
     def _spec_read_failed(self, persona_id: str, path: Path, message: str) -> SpecReadError:
