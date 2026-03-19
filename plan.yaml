@@ -27637,7 +27637,7 @@ phases:
       - suggestions: none'
   - id: deep_review.spec-conformance
     name: spec-conformance
-    status: pending
+    status: claimed
     description: 'Full spec conformance audit: compare ALL implemented behavior against
       ADR-002 and MIGRATION-002.
 
@@ -27708,6 +27708,8 @@ phases:
     depends_on:
     - deep_review.wiring-audit-full
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-19T06:28:57.801155+00:00'
   - id: deep_review.black-box-verification
     name: black-box-verification
     status: pending
