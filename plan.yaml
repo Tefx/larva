@@ -26792,7 +26792,7 @@ phases:
       - invar guard static checks pass for changed scope'
   - id: test_migration.update-shell-tests
     name: update-shell-tests
-    status: claimed
+    status: done
     description: 'Update all shell test files to use capabilities and test deprecation.
 
 
@@ -26895,6 +26895,29 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-19T04:53:06.359150+00:00'
+    done_at: '2026-03-19T04:59:36.341553+00:00'
+    evidence: 'Artifact:
+
+      - Commit: f705831
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/ -v -> 469 passed
+
+      - Run: uv run invar guard --all -> passed
+
+
+      Files updated:
+
+      - tests/shell/test_components.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_registry.py
+
+
+      New tests added: none'
   - id: test_migration.full-test-suite-verification
     name: full-test-suite-verification
     status: pending
