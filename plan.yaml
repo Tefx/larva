@@ -28934,13 +28934,15 @@ phases:
 
       - Environment declaration is attached
 
-      - No post-verification code changes are permitted before the subsequent gate
-      completes'
+      - No post-verification code changes are permitted after the shell_result/budget
+      fix and scoped exemption application complete'
     evidence_template: "## Freeze Evidence\n- HEAD: `<sha>`\n- Git status:\n  ```\n\
       \  <paste>\n  ```\n- Environment: <python/uv/invar-tools versions>\n- No-change\
       \ attestation: <statement>"
     depends_on:
     - invar_1203_remediation.run-full-independent-invar-1-20-3-verification
+    - invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
+    - invar_1203_remediation.apply-owner-approved-dead-export-exemption
     agent: gate-reviewer
   - id: invar_1203_remediation.gate-review-for-invar-1-20-3-remediation
     name: Gate review for Invar 1.20.3 remediation
