@@ -29061,3 +29061,78 @@ phases:
     depends_on:
     - invar_1203_remediation.request-owner-approved-dead-export-exemption
     agent: software-architect
+  - id: invar_1203_remediation.reduce-shell-result-and-budget-below-1-20-3-limits
+    name: Reduce shell_result and weighted escape-hatch budget below 1.20.3 limits
+    status: pending
+    description: 'Remediate the remaining invar-tools 1.20.3 code blockers by reducing
+      `shell_result` usage and the weighted escape-hatch budget below current limits.
+
+
+      Scope:
+
+      - `src/larva/shell/cli.py:322` adjacent CLI result-unwrapping paths contributing
+      to `shell_result` 2/2
+
+      - any sibling `shell_result` sites in the CLI / shell helper cluster still contributing
+      to `escape_hatch_project_limit` 9/5 and `escape_hatch_budget` 30/15
+
+
+      Required work:
+
+      - remove or consolidate enough `shell_result` escape hatches to move both the
+      file-level CLI count and the project totals below the enforced limits
+
+      - prioritize shared adapter extraction or boundary consolidation over one-off
+      suppressions
+
+      - preserve CLI entrypoint, command registration, exit-code, and `Result` semantics
+
+      - do not use this step to handle the non-suppressible `dead_export`; that remains
+      governed by owner approval + scoped exemption flow
+
+
+      Failure-mode checklist:
+
+      - sibling CLI helpers do not retain stale `shell_result` wrappers that keep
+      project totals above limit
+
+      - weighted budget drops with the final shape, not just raw count in one file
+
+      - no runtime behavior change in command parsing, output, or exit handling while
+      reducing hatch surfaces
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. A local CLI cleanup that leaves project-wide `shell_result` or weighted budget
+      still above 1.20.3 limits
+
+      2. Any inline suppression attempt for `dead_export`
+
+      3. Refactors that change CLI behavior without fresh `uv run invar guard --all`
+      evidence
+
+
+      known_risks:
+
+      - escape-hatch cleanup has to cover sibling paths, not just the reported line
+
+      - weighted budget can remain over limit even if one file drops below its local
+      cap
+
+      - CLI runtime behavior must stay deployable and unchanged while unwrapping surfaces
+      move'
+    verification: '- Command family locked to `uv run invar guard --all`
+
+      - Evidence maps remaining `shell_result`, `escape_hatch_project_limit`, and
+      `escape_hatch_budget` findings to RESOLVED | STILL_OPEN
+
+      - Proof that no inline `dead_export` suppression was introduced
+
+      - CLI runtime semantics explicitly checked for unchanged command parsing and
+      exit behavior'
+    depends_on:
+    - invar_1203_remediation.reduce-cli-shell-result-debt-and-parser-size
+    - invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic
+    - invar_1203_remediation.reduce-remaining-shell-file-size-hotspots
+    agent: python-senior
