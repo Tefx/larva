@@ -29813,7 +29813,7 @@ phases:
       - No gaps reported.'
   - id: web_copy_button.mirror-copy-button-changes-to-contrib-web-index-html
     name: Mirror copy button changes to contrib/web/index.html
-    status: claimed
+    status: done
     description: 'Mirror the exact same copy button changes to contrib/web/index.html.
 
 
@@ -29839,6 +29839,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-19T11:30:53.010678+00:00'
+    done_at: '2026-03-19T11:33:50.201129+00:00'
+    evidence: 'Python-executor mirrored copy-button implementation to contrib/web/index.html.
+
+
+      Commit: 91d8741b970927b4a48de177601a4788f011aa28
+
+      Files changed: contrib/web/index.html (36 lines added)
+
+
+      Mirrored features (identical to web_ui.html):
+
+      - .btn-icon CSS class styling
+
+      - Prompt-header copy button placement next to Edit button
+
+      - Inline clipboard SVG + success checkmark swap
+
+      - Disabled-empty prompt binding (`:disabled="!getVal(''prompt'')"`)
+
+      - copyPrompt() handler using navigator.clipboard.writeText()
+
+      - 1.5s feedback revert logic
+
+
+      Worker-reported side-by-side equivalence checks:
+
+      - CSS class: identical
+
+      - HTML button block: identical
+
+      - copyPrompt() JS handler: identical
+
+
+      Gaps/Notes:
+
+      - None reported.'
   - id: web_copy_button.gate-review-copy-button-in-both-files
     name: 'Gate review: copy button in both files'
     status: pending
