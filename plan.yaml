@@ -27042,6 +27042,96 @@ phases:
     depends_on:
     - test_migration.full-test-suite-verification
     agent: gate-reviewer
+  - id: test_migration.fix-gate-findings
+    name: Fix gate findings for migration tests
+    status: pending
+    description: 'Fix ALL gate findings from `test_migration.gate` in one batched
+      remediation step.
+
+
+      ## Findings to close (ALL of these, not just the first)
+
+      - SHOULD_FIX-1: add explicit deprecation warning assertion coverage for side_effect_policy/tools
+      migration paths.
+
+      - SHOULD_FIX-2: split the oversized `tests/app/test_facade.py` into smaller
+      focused modules while preserving migrated facade coverage.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: migration verification closed functional behavior but left warning-path
+      assertions and test-module maintainability under-specified.
+
+      - Symptom: gate review found missing explicit warning assertions and an oversized
+      facade test file that hides acceptance boundaries.
+
+      - Why this fix is not surface-level: it must add focused warning assertions
+      and reorganize the facade test surface so future migration regressions are isolated
+      and reviewable.
+
+
+      ## Search instructions
+
+      - Review facade-side migration tests touching side effect policy and tool migration
+      warnings.
+
+      - Identify all facade test clusters currently concentrated in `tests/app/test_facade.py`
+      and split them by behavior area without dropping existing migrated scenarios.
+
+
+      ## Completion Criteria
+
+      - Explicit deprecation warning assertion tests exist for side_effect_policy/tools
+      paths.
+
+      - `tests/app/test_facade.py` is reduced by moving coherent test clusters into
+      focused modules.
+
+      - Coverage for migrated facade and shell paths remains represented after the
+      split.
+
+      - Sibling search completed so no remaining migration-warning gap is left in
+      the facade test surface.'
+    verification: '- Main path: targeted migration tests cover facade and shell migration
+      behavior after the test split
+
+      - Failure path: explicit warning assertion tests prove deprecation warnings
+      are emitted for side_effect_policy/tools migration paths
+
+      - Proof: focused test modules replace the oversized facade test file without
+      dropping migrated coverage'
+    evidence_template: '## Batched Gate Remediation Evidence
+
+
+      **Warning assertion tests added**:
+
+      ```
+
+      <paste exact test names covering side_effect_policy/tools deprecation warnings>
+
+      ```
+
+
+      **Facade test split**:
+
+      ```
+
+      <list created/updated test modules and what coverage moved>
+
+      ```
+
+
+      **Coverage preservation note**: <how migrated facade/shell scenarios remain
+      covered>
+
+
+      **Sibling search**: <what additional warning-related test locations were checked>'
+    depends_on:
+    - test_migration.update-facade-tests
+    - test_migration.update-shell-tests
+    - test_migration.full-test-suite-verification
+    agent: python-executor
 - id: doc_sync
   name: Documentation Sync
   status: locked
