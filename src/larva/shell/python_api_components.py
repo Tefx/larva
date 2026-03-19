@@ -1,26 +1,17 @@
-"""Component operations and API exceptions for larva Python API.
-
-Per ADR-002, this module provides thin delegation to component loading:
-- Toolsets return both `capabilities` (canonical) and `tools` (deprecated/mirrored)
-- Constraints may contain deprecated `side_effect_policy` retained for transition
-"""
+"""Component Result adapters and API exceptions for larva Python API."""
 
 from __future__ import annotations
 
 from typing import cast
 
-from returns.result import Failure
+from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaError
 from larva.shell.components import FilesystemComponentStore
 
 
 class LarvaApiError(Exception):
-    """Exception raised when facade operations fail.
-
-    This provides failure passthrough from facade to python_api callers
-    without Python-API-specific mutation.
-    """
+    """Exception raised when facade operations fail."""
 
     def __init__(self, error: LarvaError) -> None:
         self.error = error
@@ -32,7 +23,6 @@ _component_store: FilesystemComponentStore | None = None
 
 # @invar:allow shell_result: lazy initialization is internal helper returning store instance
 # @shell_orchestration: creating FilesystemComponentStore instance is deferred I/O initialization
-# @shell_complexity: simple lazy singleton pattern for deferred filesystem access
 def _get_component_store() -> FilesystemComponentStore:
     """Lazily initialize and return the default component store instance."""
     global _component_store
@@ -41,50 +31,27 @@ def _get_component_store() -> FilesystemComponentStore:
     return _component_store
 
 
-# @invar:allow shell_result: internal helper builds LarvaError payload for passthrough exceptions
-def _component_error_payload(
-    *,
-    message: str,
-    component_type: str,
-    component_name: str,
-) -> LarvaError:
-    """Create a standardized COMPONENT_NOT_FOUND LarvaError payload."""
-    return {
-        "code": "COMPONENT_NOT_FOUND",
-        "numeric_code": 105,
-        "message": message,
-        "details": {
-            "component_type": component_type,
-            "component_name": component_name,
-        },
-    }
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to component store filesystem I/O
-def component_list() -> dict[str, list[str]]:
-    """List all available components by type.
-
-    This is a thin delegation to `FilesystemComponentStore.list_components`.
-    """
+def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
+    """Return component list as Result with LarvaError failures."""
     result = _get_component_store().list_components()
     if isinstance(result, Failure):
         error = result.failure()
-        raise LarvaApiError(
-            _component_error_payload(
-                message=str(error),
-                component_type=str(getattr(error, "component_type", "")),
-                component_name=str(getattr(error, "component_name", "")),
-            )
+        return Failure(
+            {
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": 105,
+                "message": str(error),
+                "details": {
+                    "component_type": str(getattr(error, "component_type", "")),
+                    "component_name": str(getattr(error, "component_name", "")),
+                },
+            }
         )
-    return cast("dict[str, list[str]]", result.unwrap())
+    return Success(cast("dict[str, list[str]]", result.unwrap()))
 
 
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to component store filesystem I/O
-# @shell_complexity: dispatch branches mirror the fixed component type surface and preserve explicit error payloads.
-def component_show(type: str, name: str) -> dict[str, object]:
-    """Show details of a specific component."""
+def _component_show_result(type: str, name: str) -> Result[dict[str, object], LarvaError]:
+    """Return one component as Result with LarvaError failures."""
     store = _get_component_store()
 
     if type == "prompt":
@@ -96,22 +63,30 @@ def component_show(type: str, name: str) -> dict[str, object]:
     elif type == "model":
         result = store.load_model(name)
     else:
-        raise LarvaApiError(
-            _component_error_payload(
-                message=f"Invalid component type: {type}",
-                component_type=type,
-                component_name=name,
-            )
+        return Failure(
+            {
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": 105,
+                "message": f"Invalid component type: {type}",
+                "details": {
+                    "component_type": type,
+                    "component_name": name,
+                },
+            }
         )
 
     if isinstance(result, Failure):
         error = result.failure()
-        raise LarvaApiError(
-            _component_error_payload(
-                message=str(error),
-                component_type=str(getattr(error, "component_type", type)),
-                component_name=str(getattr(error, "component_name", name)),
-            )
+        return Failure(
+            {
+                "code": "COMPONENT_NOT_FOUND",
+                "numeric_code": 105,
+                "message": str(error),
+                "details": {
+                    "component_type": str(getattr(error, "component_type", type)),
+                    "component_name": str(getattr(error, "component_name", name)),
+                },
+            }
         )
 
-    return cast("dict[str, object]", result.unwrap())
+    return Success(cast("dict[str, object]", result.unwrap()))

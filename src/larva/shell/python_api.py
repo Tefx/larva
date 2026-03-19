@@ -1,56 +1,12 @@
-"""Thin delegation Python API module for larva.
-
-This module defines the public Python interface for larva use-cases:
-- validate(spec)
-- assemble(...)
-- register(spec)
-- resolve(id, overrides=None)
-- update(persona_id, patches)
-- clone(source_id, new_id)
-- export_all()
-- export_ids(ids)
-- list()
-
-Responsibility (from ARCHITECTURE.md):
-- Expose a small in-process Python API aligned with public larva use-cases
-- Thin delegation to `larva.app.facade`
-
-Non-Responsibility (from ARCHITECTURE.md):
-- No separate flow logic from facade
-- No transport-specific behavior
-
-Contract (from ARCHITECTURE.md, Decision 3):
-- This module begins as a thin export over `app.facade`
-- A thicker implementation is only justified if Python surface later needs
-  behavior not shared with CLI and MCP
-
-ADR-002 Transition:
-    - PersonaSpec uses `capabilities` as canonical field for tool capability intent
-    - `tools` field is deprecated but retained for transition compatibility
-    - `side_effect_policy` is deprecated and retained for transition compatibility
-
-See:
-- ARCHITECTURE.md :: Module: larva.shell.python_api
-- ARCHITECTURE.md :: Decision 3: Python API is a thin facade export
-- README.md :: Python Library interface
-- ADR-002-capability-intent-without-runtime-policy.md
-"""
+"""Thin Python API exports for larva."""
 
 from __future__ import annotations
 
-from typing import Any, cast
+from functools import partial
+from typing import Any, Callable, cast
 
 from returns.result import Failure, Result
 
-# Import contract types from core modules
-from larva.core import assemble as assemble_module
-from larva.core import normalize as normalize_module
-from larva.core import spec as spec_module
-from larva.core import validate as validate_module
-from larva.core.spec import PersonaSpec
-from larva.core.validate import ValidationReport
-
-# Import app-layer types and facade
 from larva.app.facade import (
     AssembleRequest,
     BatchUpdateResult,
@@ -61,472 +17,152 @@ from larva.app.facade import (
     PersonaSummary,
     RegisteredPersona,
 )
-from larva.shell.python_api_components import (
-    LarvaApiError,
-    component_list,
-    component_show,
-)
-
-# Import shell modules for facade construction
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
+from larva.core.spec import PersonaSpec
+from larva.core.validate import ValidationReport
 from larva.shell.components import FilesystemComponentStore
+from larva.shell.python_api_components import LarvaApiError
+from larva.shell import python_api_components
 from larva.shell.registry import FileSystemRegistryStore
 
 
-# -----------------------------------------------------------------------------
-# Lazy Facade Initialization
-# -----------------------------------------------------------------------------
-# The facade is lazily initialized on first use to avoid circular imports
-# and to defer I/O until the Python API is actually called.
+_facade = DefaultLarvaFacade(
+    spec=spec_module,
+    assemble=assemble_module,
+    validate=validate_module,
+    normalize=normalize_module,
+    components=FilesystemComponentStore(),
+    registry=FileSystemRegistryStore(),
+)
+_get_facade = lambda: _facade
 
 
-_facade: DefaultLarvaFacade | None = None
-
-
-# @invar:allow shell_result: lazy initialization is internal helper returning facade instance
-# @shell_orchestration: facade construction is app-level orchestration, not core logic
-def _get_facade() -> DefaultLarvaFacade:
-    """Lazily initialize and return the default facade instance."""
-    global _facade
-    if _facade is None:
-        _facade = DefaultLarvaFacade(
-            spec=spec_module,
-            assemble=assemble_module,
-            validate=validate_module,
-            normalize=normalize_module,
-            components=FilesystemComponentStore(),
-            registry=FileSystemRegistryStore(),
+# @invar:allow shell_result: shared Python API dispatch unwraps facade Results to exceptions
+# @shell_orchestration: preserves Python API behavior while centralizing non-Result surface
+def _invoke(op: str, *args: object, **kwargs: object) -> object:
+    facade = _get_facade()
+    if op == "validate":
+        return facade.validate(cast("PersonaSpec", args[0]))
+    if op == "assemble":
+        request_dict: dict[str, object] = {"id": cast("str", kwargs["id"])}
+        optional_fields: tuple[tuple[str, object | None], ...] = (
+            ("prompts", cast("list[str] | None", kwargs.get("prompts"))),
+            ("toolsets", cast("list[str] | None", kwargs.get("toolsets"))),
+            ("constraints", cast("list[str] | None", kwargs.get("constraints"))),
+            ("model", cast("str | None", kwargs.get("model"))),
+            ("overrides", cast("dict[str, Any] | None", kwargs.get("overrides"))),
+            ("variables", cast("dict[str, str] | None", kwargs.get("variables"))),
         )
-    return _facade
+        for key, value in optional_fields:
+            if value is not None:
+                request_dict[key] = value
+        request = cast("AssembleRequest", request_dict)
+        result = facade.assemble(request)
+    elif op == "register":
+        result = facade.register(cast("PersonaSpec", args[0]))
+    elif op == "resolve":
+        result = facade.resolve(
+            cast("str", args[0]), cast("dict[str, Any] | None", kwargs.get("overrides"))
+        )
+    elif op == "update":
+        result = facade.update(cast("str", args[0]), cast("dict[str, Any]", kwargs["patches"]))
+    elif op == "update_batch":
+        result = facade.update_batch(
+            cast("dict[str, Any]", kwargs["where"]),
+            cast("dict[str, Any]", kwargs["patches"]),
+            cast("bool", kwargs.get("dry_run", False)),
+        )
+    elif op == "list":
+        result = facade.list()
+    elif op == "delete":
+        result = facade.delete(cast("str", args[0]))
+    elif op == "clear":
+        if args:
+            raise TypeError("clear() takes 0 positional arguments but 1 was given")
+        if "confirm" not in kwargs:
+            raise TypeError("clear() missing required keyword-only argument: 'confirm'")
+        result = facade.clear(confirm=cast("str", kwargs["confirm"]))
+    elif op == "clone":
+        result = facade.clone(cast("str", args[0]), cast("str", args[1]))
+    elif op == "export_all":
+        result = facade.export_all()
+    elif op == "export_ids":
+        result = facade.export_ids(cast("list[str]", args[0]))
+    elif op == "component_list":
+        result = python_api_components._component_list_result()
+    elif op == "component_show":
+        result = python_api_components._component_show_result(
+            cast("str", args[0]), cast("str", args[1])
+        )
+    else:
+        raise LarvaApiError(
+            {
+                "code": "UNKNOWN_OPERATION",
+                "numeric_code": 999,
+                "message": f"Unknown python_api operation: {op}",
+            }
+        )
 
-
-def _unwrap_result(result: Result[object, LarvaError]) -> object:
-    """Unwrap a Result, raising on failure without Python-API-specific mutation."""
     if isinstance(result, Failure):
-        error = result.failure()
-        # Re-raise as a generic exception for failure passthrough
-        # The facade already provides all error details in the LarvaError
-        raise LarvaApiError(error)
-    return result.unwrap()
+        raise LarvaApiError(result.failure())
+
+    unwrapped = cast("Result[object, LarvaError]", result).unwrap()
+    if op == "clear":
+        return cast("ClearedRegistry", unwrapped)["count"]
+    return unwrapped
 
 
-# @invar:allow shell_result: internal request builder for thin facade delegation
-# @shell_orchestration: preserves python_api thin-adapter request shaping only
-def _build_assemble_request(
-    id: str,
-    prompts: list[str] | None,
-    toolsets: list[str] | None,
-    constraints: list[str] | None,
-    model: str | None,
-    overrides: dict[str, Any] | None,
-    variables: dict[str, str] | None,
-) -> AssembleRequest:
-    """Construct AssembleRequest while preserving explicit falsey values."""
-    request: dict[str, object] = {"id": id}
-    optional_fields: tuple[tuple[str, object | None], ...] = (
-        ("prompts", prompts),
-        ("toolsets", toolsets),
-        ("constraints", constraints),
-        ("model", model),
-        ("overrides", overrides),
-        ("variables", variables),
-    )
-    for key, value in optional_fields:
-        if value is not None:
-            request[key] = value
-    return cast("AssembleRequest", request)
-
-
-# -----------------------------------------------------------------------------
-# Thin Delegation Implementation
-# -----------------------------------------------------------------------------
-
-
-# @invar:allow shell_result: facade.validate returns ValidationReport directly (not Result)
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def validate(spec: PersonaSpec) -> ValidationReport:
-    """Validate a PersonaSpec candidate.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.validate`.
-    The facade orchestrates: validation via `core.validate`.
-
-    Args:
-        spec: A PersonaSpec candidate to validate.
-
-    Returns:
-        ValidationReport with valid=True/False, errors, and warnings.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - core.validate applies deterministic validation rules
-
-    Example:
-        result = validate({"id": "test", "spec_version": "0.1.0"})
-        assert result["valid"] is True
-    """
-    return _get_facade().validate(spec)
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def assemble(
-    id: str,
-    prompts: list[str] | None = None,
-    toolsets: list[str] | None = None,
-    constraints: list[str] | None = None,
-    model: str | None = None,
-    overrides: dict[str, Any] | None = None,
-    variables: dict[str, str] | None = None,
-) -> PersonaSpec:
-    """Assemble a PersonaSpec from component references.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.assemble`.
-    The facade orchestrates: component loading → assembly → validation → normalization.
-
-    Args:
-        id: Unique identifier for the assembled persona.
-        prompts: List of prompt component names to combine.
-        toolsets: List of toolset component names to combine.
-            Per ADR-002: toolsets provide capability posture mappings via `capabilities`
-            field (canonical), with `tools` field mirrored for backward compatibility.
-        constraints: List of constraint component names to combine.
-            Per ADR-002: `side_effect_policy` is deprecated but retained for transition.
-        model: Model component name or model identifier.
-        overrides: Runtime overrides for persona fields.
-        variables: Variable values for prompt template substitution.
-
-    Returns:
-        Normalized PersonaSpec from assembly pipeline.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Loads components via shell.components
-        - Assembles via core.assemble
-        - Validates via core.validate
-        - Normalizes via core.normalize (mirrors capabilities to tools per ADR-002)
-
-    Example:
-        spec = assemble("code-reviewer", prompts=["code-reviewer"])
-        assert spec["spec_version"] == "0.1.0"
-        assert "capabilities" in spec  # ADR-002: canonical capability field
-    """
-    request = _build_assemble_request(
-        id=id,
-        prompts=prompts,
-        toolsets=toolsets,
-        constraints=constraints,
-        model=model,
-        overrides=overrides,
-        variables=variables,
-    )
-    return cast("PersonaSpec", _unwrap_result(_get_facade().assemble(request)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def register(spec: PersonaSpec) -> RegisteredPersona:
-    """Register a canonical PersonaSpec in the global registry.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.register`.
-    The facade orchestrates: validation → normalization → registry save.
-
-    Args:
-        spec: A validated, normalized PersonaSpec to register.
-
-    Returns:
-        RegisteredPersona with id and registered status.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Validates spec via core.validate
-        - Normalizes via core.normalize
-        - Saves via shell.registry
-
-    Example:
-        result = register({"id": "code-reviewer", "spec_version": "0.1.0"})
-        assert result["registered"] is True
-    """
-    return cast("RegisteredPersona", _unwrap_result(_get_facade().register(spec)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def resolve(id: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
-    """Resolve a registered persona by id, with optional runtime overrides.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.resolve`.
-    The facade orchestrates: registry lookup → apply overrides → revalidate → renormalize.
-
-    Args:
-        id: Unique identifier of the registered persona.
-        overrides: Optional runtime overrides to apply before returning.
-            Explicit overrides (including null/falsey values) are forwarded intact.
-
-    Returns:
-        Resolved, validated, and normalized PersonaSpec.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Looks up via shell.registry
-        - Applies overrides if provided (preserves null/falsey values)
-        - Revalidates via core.validate (after override)
-        - Renormalizes via core.normalize (after override)
-        - ARCHITECTURE.md: override revalidation is mandatory
-
-    Example:
-        spec = resolve("code-reviewer")
-        assert spec["id"] == "code-reviewer"
-        spec = resolve("code-reviewer", {"model": "claude-opus-4-20250514"})
-    """
-    return cast("PersonaSpec", _unwrap_result(_get_facade().resolve(id, overrides)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def update(persona_id: str, patches: dict[str, Any]) -> PersonaSpec:
-    """Update a registered persona by id with patches.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.update`.
-    The facade orchestrates: registry lookup → apply patches → revalidate → renormalize → save.
-
-    Args:
-        persona_id: Unique identifier of the persona to update.
-        patches: Dictionary of patches to apply to the persona spec.
-            Supports RFC 6902 JSON Patch operations via core.patch.apply_patches.
-
-    Returns:
-        Updated, validated, and normalized PersonaSpec.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Looks up via shell.registry
-        - Applies patches via core.patch.apply_patches
-        - Revalidates via core.validate (after patch)
-        - Renormalizes via core.normalize (after patch)
-        - Saves via shell.registry
-
-    Example:
-        spec = update("my-persona", {"model": "claude-opus-4-20250514"})
-        assert spec["model"] == "claude-opus-4-20250514"
-    """
-    return cast("PersonaSpec", _unwrap_result(_get_facade().update(persona_id, patches)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def update_batch(
-    where: dict[str, Any],
-    patches: dict[str, Any],
-    dry_run: bool = False,
-) -> BatchUpdateResult:
-    """Update multiple personas matching where clauses.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.update_batch`.
-    The facade orchestrates: registry list → filter by where → apply patches → revalidate → save.
-
-    Args:
-        where: Dictionary of dotted-key filter clauses. All clauses must match (AND).
-            Keys like "model" match top-level fields; "prompts.0" matches nested paths.
-        patches: Dictionary of patches to apply to matched personas.
-            Supports RFC 6902 JSON Patch operations via core.patch.apply_patches.
-        dry_run: If True, return matched personas without applying updates.
-
-    Returns:
-        BatchUpdateResult with:
-            - items: list of {id, updated} per matched persona
-            - matched: count of personas matching where clauses
-            - updated: count of successfully updated personas (0 if dry_run)
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Lists via shell.registry
-        - Filters by where clauses (AND semantics)
-        - For each match: applies patches → validates → normalizes → saves (unless dry_run)
-        - Stops on first validation/save error
-
-    Example:
-        result = update_batch(
-            where={"model": "claude-3"},
-            patches={"model": "claude-opus-4-20250514"}
+validate = cast("Callable[[PersonaSpec], ValidationReport]", partial(_invoke, "validate"))
+assemble = cast(
+    "Callable[[str, list[str] | None, list[str] | None, list[str] | None, str | None, dict[str, Any] | None, dict[str, str] | None], PersonaSpec]",
+    lambda id, prompts=None, toolsets=None, constraints=None, model=None, overrides=None, variables=None: (
+        _invoke(
+            "assemble",
+            id=id,
+            prompts=prompts,
+            toolsets=toolsets,
+            constraints=constraints,
+            model=model,
+            overrides=overrides,
+            variables=variables,
         )
-        assert result["matched"] > 0
-
-        # Dry-run to preview without applying
-        preview = update_batch(
-            where={"model": "claude-3"},
-            patches={"model": "claude-opus-4-20250514"},
-            dry_run=True
-        )
-        assert preview["updated"] == 0
-    """
-    return cast(
-        "BatchUpdateResult", _unwrap_result(_get_facade().update_batch(where, patches, dry_run))
-    )
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def list() -> list[PersonaSummary]:
-    """List all registered personas.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.list`.
-    The facade orchestrates: registry list → extract summaries.
-
-    Returns:
-        List of PersonaSummary with id, spec_digest, and model.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Lists via shell.registry
-        - Extracts summary fields (id, spec_digest, model)
-
-    Example:
-        personas = list()
-        assert len(personas) >= 0
-    """
-    return cast("list[PersonaSummary]", _unwrap_result(_get_facade().list()))
+    ),
+)
+register = cast("Callable[[PersonaSpec], RegisteredPersona]", partial(_invoke, "register"))
+resolve = cast(
+    "Callable[[str, dict[str, Any] | None], PersonaSpec]",
+    lambda id, overrides=None: _invoke("resolve", id, overrides=overrides),
+)
+update = cast(
+    "Callable[[str, dict[str, Any]], PersonaSpec]",
+    lambda persona_id, patches: _invoke("update", persona_id, patches=patches),
+)
+update_batch = cast(
+    "Callable[[dict[str, Any], dict[str, Any], bool], BatchUpdateResult]",
+    lambda where, patches, dry_run=False: _invoke(
+        "update_batch",
+        where=where,
+        patches=patches,
+        dry_run=dry_run,
+    ),
+)
+list = cast("Callable[[], list[PersonaSummary]]", partial(_invoke, "list"))
+delete = cast("Callable[[str], DeletedPersona]", partial(_invoke, "delete"))
+clear = cast("Callable[..., int]", partial(_invoke, "clear"))
 
 
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def delete(persona_id: str) -> DeletedPersona:
-    """Delete a registered persona by id.
+clone = cast("Callable[[str, str], PersonaSpec]", partial(_invoke, "clone"))
+export_all = cast("Callable[[], list[PersonaSpec]]", partial(_invoke, "export_all"))
+export_ids = cast("Callable[[list[str]], list[PersonaSpec]]", partial(_invoke, "export_ids"))
+component_list = cast("Callable[[], dict[str, list[str]]]", partial(_invoke, "component_list"))
+component_show = cast(
+    "Callable[[str, str], dict[str, object]]",
+    partial(_invoke, "component_show"),
+)
 
-    This is a thin delegation to `larva.app.facade.LarvaFacade.delete`.
-    The facade orchestrates: registry delete.
-
-    Args:
-        persona_id: Unique identifier of the persona to delete.
-
-    Returns:
-        DeletedPersona with id and deleted status.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Deletes via shell.registry
-
-    Example:
-        result = delete("old-persona")
-        assert result["deleted"] is True
-    """
-    return cast("DeletedPersona", _unwrap_result(_get_facade().delete(persona_id)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def clear(*, confirm: str) -> int:
-    """Clear all registered personas from the registry.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.clear`.
-    The facade orchestrates: registry clear with confirmation.
-
-    Args:
-        confirm: Confirmation token required for safety (must be "CLEAR REGISTRY").
-
-    Returns:
-        Number of personas that were removed.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Clears via shell.registry
-        - Wrong confirm token raises LarvaApiError
-
-    Example:
-        count = clear(confirm="CLEAR REGISTRY")
-        assert count >= 0
-    """
-    result = _get_facade().clear(confirm=confirm)
-    unwrapped = _unwrap_result(result)
-    return cast("ClearedRegistry", unwrapped)["count"]
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def clone(source_id: str, new_id: str) -> PersonaSpec:
-    """Clone a registered persona to a new id.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.clone`.
-    The facade orchestrates: registry lookup → copy with new id → revalidate → save.
-
-    Args:
-        source_id: Unique identifier of the source persona to clone.
-        new_id: Unique identifier for the new cloned persona.
-
-    Returns:
-        Cloned PersonaSpec with id set to new_id and spec_digest recalculated.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Looks up source via shell.registry
-        - Copies all fields except id
-        - Validates via core.validate
-        - Saves to registry via shell.registry
-        - If new_id already exists, overwrites (consistent with register)
-        - Per ADR-002: preserves both capabilities (canonical) and tools (mirrored)
-
-    Example:
-        new_spec = clone("code-reviewer", "code-reviewer-v2")
-        assert new_spec["id"] == "code-reviewer-v2"
-        assert "capabilities" in new_spec  # ADR-002: canonical capability field
-    """
-    return cast("PersonaSpec", _unwrap_result(_get_facade().clone(source_id, new_id)))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def export_all() -> list[PersonaSpec]:
-    """Export all persona specs from the registry.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.export_all`.
-    The facade orchestrates: registry list → iterate → collect specs.
-
-    Returns:
-        List of all PersonaSpec objects stored in the registry.
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Lists via shell.registry
-        - Each spec is canonical registry data (already normalized/validated)
-
-    Example:
-        specs = export_all()
-        assert len(specs) >= 0
-    """
-    return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_all()))
-
-
-# @invar:allow shell_result: Python API unwraps Result via exception passthrough
-# @shell_orchestration: thin delegation to facade which performs I/O via core/registry
-def export_ids(ids: list[str]) -> list[PersonaSpec]:
-    """Export specific persona specs by id from the registry.
-
-    This is a thin delegation to `larva.app.facade.LarvaFacade.export_ids`.
-    The facade orchestrates: iterate ids → registry get → collect specs.
-
-    Args:
-        ids: List of persona ids to export.
-
-    Returns:
-        List of PersonaSpec objects in the same order as input ids.
-
-    Raises:
-        LarvaApiError: If any persona id is not found, with code PERSONA_NOT_FOUND (100).
-
-    Contract:
-        - Delegates to app.facade for orchestration
-        - Gets via shell.registry for each id
-        - Each spec is canonical registry data (already normalized/validated)
-        - Empty ids returns empty list immediately
-
-    Example:
-        specs = export_ids(["persona-1", "persona-2"])
-        assert len(specs) == 2
-    """
-    return cast("list[PersonaSpec]", _unwrap_result(_get_facade().export_ids(ids)))
-
-
-# -----------------------------------------------------------------------------
-# Public API Exports
-# -----------------------------------------------------------------------------
 
 __all__ = [
     "validate",
@@ -536,16 +172,13 @@ __all__ = [
     "update",
     "update_batch",
     "list",
-    # Component operations
     "component_list",
     "component_show",
-    # Registry operations
     "delete",
     "clear",
     "clone",
     "export_all",
     "export_ids",
-    # Re-export types for type checking
     "PersonaSpec",
     "ValidationReport",
     "AssembleRequest",
@@ -555,6 +188,5 @@ __all__ = [
     "DeletedPersona",
     "ClearedRegistry",
     "BatchUpdateResult",
-    # Exception for failure passthrough
     "LarvaApiError",
 ]
