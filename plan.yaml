@@ -26709,7 +26709,7 @@ phases:
       \ in tech debt backlog"
 - id: test_migration
   name: Test Suite Migration
-  status: in_progress
+  status: done
   depends_on:
   - shell_adapters
   steps:
@@ -27014,7 +27014,7 @@ phases:
       Verdict: PASS'
   - id: test_migration.gate
     name: gate
-    status: claimed
+    status: done
     description: 'Gate review: Verify test migration is complete and full suite passes.
 
 
@@ -27044,6 +27044,39 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-19T05:58:28.030196+00:00'
+    done_at: '2026-03-19T06:16:34.210529+00:00'
+    evidence: 'Gate verdict: PASS
+
+
+      Automated verification:
+
+      - full test suite passes
+
+      - invar guard passes
+
+      - deprecation warning tests pass (core + facade-level assertions)
+
+
+      Wiring audit (W1-W8 equivalent for test migration): PASS
+
+      Escape hatch audit: PASS for migration scope
+
+
+      Prior findings closure:
+
+      - deprecation warning assertion gap: resolved
+
+      - oversized facade monolith: resolved via split into focused `tests/app/test_facade/`
+      modules
+
+
+      Classification:
+
+      - blockers: none
+
+      - should_fix: none
+
+      - suggestions: none'
   - id: test_migration.fix-gate-findings
     name: Fix gate findings for migration tests
     status: done
@@ -27296,7 +27329,7 @@ phases:
       Verdict: PASS'
 - id: doc_sync
   name: Documentation Sync
-  status: locked
+  status: pending
   depends_on:
   - test_migration
   steps:
