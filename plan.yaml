@@ -27044,7 +27044,7 @@ phases:
     agent: gate-reviewer
   - id: test_migration.fix-gate-findings
     name: Fix gate findings for migration tests
-    status: pending
+    status: claimed
     description: 'Fix ALL gate findings from `test_migration.gate` in one batched
       remediation step.
 
@@ -27132,6 +27132,8 @@ phases:
     - test_migration.update-shell-tests
     - test_migration.full-test-suite-verification
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-19T05:35:05.647907+00:00'
   - id: test_migration.retest-gate-findings
     name: Retest migration gate findings
     status: pending
