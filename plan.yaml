@@ -29950,7 +29950,7 @@ phases:
   steps:
   - id: boundary_followup.package-root-policy-review
     name: Package-root export policy review
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -30025,6 +30025,65 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-20T21:07:24.956227+00:00'
+    done_at: '2026-03-20T21:16:42.430586+00:00'
+    evidence: 'Artifact:
+
+      - PR: 2ce8844
+
+
+      Verification:
+
+      - Run: `git status --short --branch` -> on isolated branch `vectl/step-boundary_followup.package-root-policy-review`;
+      worktree clean after commit
+
+      - Run: `uv run invar guard --all` -> passed; 0 errors, 1 warning (`escape_hatch_budget`),
+      package-root policy/docs changes do not introduce new guard failures
+
+
+      Spec link:
+
+      - `guard-diagnosis.md` §3 Package-root re-exports
+
+      - `ARCHITECTURE.md` -> `Package-Root Policy`
+
+      - `README.md` -> `Python API`
+
+      - `pyproject.toml` -> `[tool.invar.guard]` package-root policy comment
+
+      - `AGENTS.md` Invar section
+
+
+      Decision:
+
+      - effective_truth_owner: architecture + guard-policy ownership is split across
+      `ARCHITECTURE.md` and `pyproject.toml`; authoritative consumer guidance lives
+      in `README.md`
+
+      - consumer_surfaces: importers (`larva.shell.python_api`), README examples,
+      guard policy scope
+
+      - state_strata: package metadata (`src/larva/__init__.py`) vs public API exports
+      (`src/larva/shell/python_api.py`) vs guard configuration (`tool.invar.guard`)
+
+      - explicit recommendation: keep metadata-only; do not broaden guarded package-root
+      scope now
+
+
+      Affected files:
+
+      - `ARCHITECTURE.md`
+
+      - `README.md`
+
+      - `guard-diagnosis.md`
+
+      - `pyproject.toml`
+
+
+      Related issue observed but not changed:
+
+      - `src/larva/__init__.py` has `__version__ = "0.1.0"` while `pyproject.toml`
+      has `0.4.3` (outside this step scope).'
   - id: boundary_followup.component-home-boundary-review
     name: Home-directory components boundary review
     status: pending
