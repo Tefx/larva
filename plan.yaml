@@ -30582,3 +30582,45 @@ phases:
     - web_surface_followup.web-surface-liveness-probe
     - web_surface_followup.web-wiring-audit
     agent: doc-reviewer
+  - id: web_surface_followup.gate
+    name: Gate web surface follow-up
+    status: pending
+    description: 'step_type: gate
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the documented
+      web surface now has sufficient automated tests, runnable evidence, wiring coverage,
+      and doc/spec alignment.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Runnable `serve`/web surface was documented but under-tested
+
+      - Recent UI/runtime work landed after the prior deep review
+
+      - Must validate both API and served UI artifacts
+
+
+      cross_cutting_focus:
+
+      - documented startup path is unambiguous
+
+      - runtime and direct-script surfaces are not silently divergent
+
+      - batch-update and prompt-copy UI hooks are both tested and reviewable
+
+      - web follow-up does not create undocumented promises'
+    verification: Gate confirms automated tests, runnable proof, wiring audit, and
+      doc/spec conformance are all complete with no unresolved blocker.
+    depends_on:
+    - web_surface_followup.web-runtime-contract
+    - web_surface_followup.web-surface-tests
+    - web_surface_followup.web-doc-sync
+    - web_surface_followup.web-surface-freeze
+    - web_surface_followup.web-surface-liveness-probe
+    - web_surface_followup.web-wiring-audit
+    - web_surface_followup.web-spec-conformance
+    agent: gate-reviewer
