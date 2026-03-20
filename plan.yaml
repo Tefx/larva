@@ -30140,3 +30140,105 @@ phases:
   status: locked
   depends_on:
   - boundary_followup
+  steps:
+  - id: web_surface_followup.web-runtime-contract
+    name: Pin authoritative web runtime contract
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - interfaces
+
+      - stubs
+
+      - behavioral_notes
+
+
+      Pin the authoritative contract for the documented web surface before adding
+      new tests or review artifacts.
+
+
+      spec_refs:
+
+      - `README.md` web UI / serve usage
+
+      - `USER_GUIDE.md` §14 Web UI and plugin
+
+      - `INTERFACES.md` CLI and canonical contract sections
+
+      - `ARCHITECTURE.md`
+
+
+      touch_paths:
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web_ui.html`
+
+      - `contrib/web/index.html`
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+
+      harness_refs:
+
+      - `tests/`
+
+      - CLI entrypoint `larva serve`
+
+      - direct script entrypoint `python contrib/web/server.py`
+
+
+      agent_source: default
+
+      agent: software-architect
+
+
+      runtime_contract:
+
+      - module boundary: `src/larva/shell/web.py` and `contrib/web/server.py`
+
+      - runtime / entrypoint boundary: `larva serve` and direct FastAPI script startup
+
+      - external contract boundary: REST endpoints plus served HTML UI artifacts
+
+
+      consumer_surfaces:
+
+      - CLI `serve`
+
+      - direct `contrib/web/server.py` startup
+
+      - browser users of the single-file HTML UI
+
+
+      Required outputs:
+
+      - authoritative endpoint inventory
+
+      - startup/invocation commands and assumptions
+
+      - which behaviors are normative vs convenience UI behavior
+
+      - copy-button and batch-update surface classification for downstream test scope
+
+
+      Out-of-scope:
+
+      - No product logic changes in this step
+
+      - No new web features'
+    verification: Contract step identifies the runnable web entrypoints, endpoint
+      inventory, and UI behaviors that downstream tests and reviewers must cover.
+    agent: software-architect
