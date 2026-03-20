@@ -30511,3 +30511,74 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-freeze
     agent: wiring-auditor
+  - id: web_surface_followup.web-spec-conformance
+    name: Spec conformance review for web surface
+    status: pending
+    description: 'step_type: verification
+
+
+      Spec conformance verification: compare implemented web behavior against authoritative
+      docs and contract output field by field.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - `web_surface_followup.web-runtime-contract`
+
+
+      touch_paths:
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web_ui.html`
+
+      - `contrib/web/index.html`
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+
+      harness_refs:
+
+      - automated web tests
+
+      - liveness probe evidence
+
+      - wiring audit evidence
+
+
+      agent_source: default
+
+      agent: doc-reviewer
+
+
+      Required checks:
+
+      - startup commands and supported entrypoints match docs
+
+      - endpoint descriptions match actual route behavior
+
+      - documented web/UI scope does not over-claim unsupported behavior
+
+      - copy-button and batch-update descriptions match the tested surface'
+    verification: Spec-conformance report cites docs and implementation locations,
+      with PASS or explicit drift list.
+    depends_on:
+    - web_surface_followup.web-surface-liveness-probe
+    - web_surface_followup.web-wiring-audit
+    agent: doc-reviewer
