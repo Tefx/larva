@@ -30661,7 +30661,7 @@ phases:
       - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-freeze
     name: Freeze web surface snapshot for independent runtime review
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -30701,6 +30701,43 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-03-20T21:43:19.342169+00:00'
+    done_at: '2026-03-20T21:44:38.190467+00:00'
+    evidence: 'Artifact:
+
+      - freeze commit: 5a275e839fbb1d37a06805d588e641ed030f6b6b
+
+
+      Verification:
+
+      - Run: `git rev-parse HEAD` -> 5a275e839fbb1d37a06805d588e641ed030f6b6b
+
+      - Run: `git status --short` -> clean working tree (no uncommitted changes)
+
+      - Run: `python3 --version && uv --version && uname -a` -> Python 3.14.3, uv
+      0.10.12, Darwin 25.3.0 arm64
+
+      - Run: `uv run pytest tests/shell/test_web.py tests/shell/test_contrib_web.py
+      --collect-only` -> 39 tests collected
+
+
+      Spec link:
+
+      - `README.md` Web UI section (startup paths)
+
+      - `USER_GUIDE.md` §14 Web UI and plugin (authoritative entrypoint)
+
+      - `INTERFACES.md` Web Runtime Surface (endpoint inventory)
+
+
+      Freeze snapshot:
+
+      - Startup command set: `larva serve [--port 7400] [--no-open]` and `python contrib/web/server.py
+      [--port 7400] [--no-open]`
+
+      - Runtime modules: `src/larva/shell/web.py`, `src/larva/shell/web_ui.html`,
+      `contrib/web/server.py`, `contrib/web/index.html`
+
+      - No-code-change declaration: verification-only freeze step, no code modified.'
   - id: web_surface_followup.web-surface-liveness-probe
     name: Runnable liveness probe for web surface
     status: pending
