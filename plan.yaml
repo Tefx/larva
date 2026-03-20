@@ -30086,7 +30086,7 @@ phases:
       has `0.4.3` (outside this step scope).'
   - id: boundary_followup.component-home-boundary-review
     name: Home-directory components boundary review
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -30165,6 +30165,66 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-20T21:17:02.921460+00:00'
+    done_at: '2026-03-20T21:23:27.053256+00:00'
+    evidence: 'Artifact:
+
+      - PR: 513c549
+
+
+      Verification:
+
+      - Run: `git status --short --branch` -> on isolated branch `vectl/step-boundary_followup.component-home-boundary-review`;
+      worktree clean after commit
+
+      - Run: `uv run pytest tests/shell/test_components.py` -> passed; 18 tests passed,
+      including traversal rejection and typed component-load failure coverage
+
+      - Run: `uv run invar guard --all` -> passed; 0 errors, 1 warning (`escape_hatch_budget`)
+
+
+      Spec link:
+
+      - `guard-diagnosis.md` §4 `~/.larva/components` concerns
+
+      - `ARCHITECTURE.md` -> `Component Root Boundary`
+
+      - `USER_GUIDE.md` -> `Directory layout` and `Working with components`
+
+      - `README.md` -> `Components`
+
+      - `src/larva/shell/components.py` -> `FilesystemComponentStore` trust-boundary
+      docstring
+
+
+      Decision:
+
+      - effective_truth_owner: `src/larva/shell/components.py` owns shell-side component
+      root contract for `~/.larva/components/`
+
+      - consumer_surfaces: CLI (`larva assemble`, `larva component list`, `larva component
+      show`), Python API (`larva.shell.python_api`), assembly flow, and docs
+
+      - state_strata: filesystem root (`~/.larva/components/`) vs parsed shell payloads
+      vs normalized validated runtime `PersonaSpec`
+
+      - trust-boundary statement: user-home YAML is external/local input and not authoritative
+      until assembly+normalize+validate succeed
+
+      - recommendation: docs-only clarification sufficient now; no new implementation/test
+      phase required
+
+
+      Affected files:
+
+      - `src/larva/shell/components.py`
+
+      - `ARCHITECTURE.md`
+
+      - `USER_GUIDE.md`
+
+      - `README.md`
+
+      - `guard-diagnosis.md`'
   - id: boundary_followup.gate
     name: Gate deferred boundary follow-up
     status: pending
