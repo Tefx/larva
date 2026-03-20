@@ -31618,7 +31618,7 @@ phases:
       - PASS; no late-phase drift remains between docs and implementation.'
   - id: completion_reaudit.black-box-late-surface-verification
     name: Black-box verification of late surfaces
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -31679,6 +31679,37 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-20T22:10:56.073267+00:00'
+    done_at: '2026-03-20T22:15:24.931468+00:00'
+    evidence: 'Artifact:
+
+      - PR: black-box report task `ses_2f2b7cc05ffe07nuUJTE404427`
+
+
+      Verification:
+
+      - Run: docs-driven black-box checks using `README.md`, `USER_GUIDE.md`, `INTERFACES.md`
+      -> supported entrypoints discoverable and usable
+
+      - Run: packaged web runtime checks (`larva serve`) and contrib runtime checks
+      (`python contrib/web/server.py`) -> behavior matches documented scope
+
+      - Run: package-root/component-root behavior checks via public interfaces ->
+      no conflicts with documented clarifications
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+
+      Verdict:
+
+      - PASS; no undocumented late-surface assumptions required for successful use
+      of public interfaces.'
   - id: completion_reaudit.gate
     name: Final gate after late follow-ups
     status: pending
