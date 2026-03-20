@@ -39,12 +39,14 @@ Config tightening appears sound for `.vectl` noise removal, but one follow-up co
 
 Conclusion: `.vectl` scoping is confirmed, but broader source-root policy is still an explicit config decision that should remain visible.
 
-### 3. Package-root re-exports: deferred future-policy follow-up
+### 3. Package-root re-exports: reviewed policy decision
 
-- `src/larva/__init__.py` is currently minimal (`__version__` only), so it is not today’s root cause.
-- It is also outside `core_paths`/`shell_paths`, so future package-root re-export growth would not be guarded automatically.
+- [Proven] `src/larva/__init__.py` is currently minimal (`__version__` only), so it is not today’s root cause.
+- [Proven] Current consumer-facing docs point Python users at `larva.shell.python_api`, not `from larva import ...` imports.
+- [Proven] `tool.invar.guard` scopes review to `src/larva/core` and `src/larva/shell`, so package-root modules are outside guard by deliberate configuration.
+- [Likely] The right policy is to keep `src/larva/__init__.py` metadata-only and treat any future package-root API growth as a same-change architecture and guard-policy review trigger.
 
-Classification: deferred future-policy follow-up, not silent exclusion. If package-root API expands beyond metadata, guard policy should explicitly decide whether to include package-root modules.
+Decision: keep the package root metadata-only for now, not because it is ignored accidentally, but because the authoritative public API already lives in documented shell surfaces. If maintainers later want `from larva import ...` exports, that change should first align architecture docs, README import guidance, and guard policy rather than growing the package root silently.
 
 ### 4. `~/.larva/components` concerns: explicit investigation/cleanup/clarification bucket
 
@@ -60,4 +62,4 @@ Classification: explicit investigation/cleanup/clarification bucket. This is not
 
 ## Net Diagnosis
 
-The full-guard failure is now primarily real codebase debt concentrated in `src/larva/shell/cli.py`, plus one core-size warning in `src/larva/core/validate.py`. The `.vectl` ignore tightening appears effective. What remains is not orchestrator pollution; it is mostly CLI transport layering debt, with package-root policy and `~/.larva/components` kept as explicit follow-up buckets rather than being silently excluded.
+The full-guard failure is now primarily real codebase debt concentrated in `src/larva/shell/cli.py`, plus one core-size warning in `src/larva/core/validate.py`. The `.vectl` ignore tightening appears effective. What remains is not orchestrator pollution; it is mostly CLI transport layering debt, while package-root policy is now an explicit keep-metadata-only decision and `~/.larva/components` remains a separate follow-up bucket.

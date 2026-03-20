@@ -59,6 +59,23 @@ I/O edges:
 - MCP
 - Python API surface
 
+## Package-Root Policy
+
+- [Proven] `src/larva/__init__.py` is metadata-only and currently exports only
+  `__version__`.
+- [Proven] The authoritative Python API surface lives under
+  `src/larva/shell/python_api.py`, which matches README and user-guide import
+  examples.
+- [Likely] Package-root re-exports should remain disallowed for canonical API
+  operations because they would create an unguarded public surface outside the
+  configured `core/` and `shell/` review zones.
+- [Proven] Legacy compatibility modules may exist at package root only when
+  they preserve an already-published import or execution surface without
+  becoming the canonical documentation target.
+- [Likely] If package-root exports grow beyond metadata or compatibility shims,
+  guard policy and docs must be updated in the same change so the new public
+  surface is explicitly reviewed rather than silently bypassing guard scope.
+
 ## Dependency Rules
 
 - `core/*` may not depend on shell or transport

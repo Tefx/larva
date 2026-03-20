@@ -207,6 +207,10 @@ from larva.shell.python_api import (
 The Python API mirrors the main CLI and MCP operations and returns the same
 canonical PersonaSpec shapes.
 
+The package root is not the authoritative Python API surface. Keep imports on
+`larva.shell.python_api`; `larva.__init__` remains metadata-only (`__version__`)
+unless guard policy and architecture docs are updated together.
+
 ## Other surfaces
 
 ### Web UI

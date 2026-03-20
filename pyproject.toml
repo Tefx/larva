@@ -58,6 +58,9 @@ testpaths = ["tests"]
 
 # Invar Configuration
 [tool.invar.guard]
+# Package-root policy: `src/larva/__init__.py` is intentionally metadata-only.
+# If canonical API exports move to package root, review guard scope and docs in
+# the same change instead of letting package-root surfaces grow silently.
 core_paths = ["src/larva/core"]
 shell_paths = ["src/larva/shell"]
 max_file_lines = 500
