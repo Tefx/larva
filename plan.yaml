@@ -31053,7 +31053,7 @@ phases:
       or documented UI-surface scope.'
   - id: web_surface_followup.gate
     name: Gate web surface follow-up
-    status: claimed
+    status: done
     description: 'step_type: gate
 
 
@@ -31095,6 +31095,47 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-20T21:50:40.713152+00:00'
+    done_at: '2026-03-20T21:55:33.931639+00:00'
+    evidence: 'Artifact:
+
+      - Gate review task: `ses_2f2c4eec7ffednlWxXwd31i3l1`
+
+      - Planner remediation task: `ses_2f2c25cf7ffe33ogr64xRQt5FZ`
+
+
+      Verification:
+
+      - Gate verdict: SUCCESS with issue classification blocker=0, should_fix=1 (S1),
+      suggestion=2, tech_debt=0
+
+      - Wiring audit W1-W8: PASS
+
+      - Escape hatch audit: no new escape hatches introduced in touched scope
+
+      - Runnable surface evidence: liveness evidence present, but should_fix requested
+      stronger traceability linkage in test/evidence surfaces
+
+      - Applied Batched Fix Protocol: planner added `web_surface_followup.fix-gate-evidence-traceability`
+      and `web_surface_followup.retest-gate-evidence-traceability`
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - prior phase outputs for runtime contract/tests/liveness/wiring
+
+
+      Gate disposition:
+
+      - Original gate step completed with should_fix findings captured and routed
+      to a single batched remediation step + retest step per protocol.'
   - id: web_surface_followup.fix-gate-evidence-traceability
     name: Fix gate evidence traceability for web surface follow-up
     status: pending
