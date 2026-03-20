@@ -30946,7 +30946,7 @@ phases:
       - overall PASS'
   - id: web_surface_followup.web-spec-conformance
     name: Spec conformance review for web surface
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -31015,6 +31015,8 @@ phases:
     - web_surface_followup.web-surface-liveness-probe
     - web_surface_followup.web-wiring-audit
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-20T21:48:51.944891+00:00'
   - id: web_surface_followup.gate
     name: Gate web surface follow-up
     status: pending
