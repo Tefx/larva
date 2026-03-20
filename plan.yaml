@@ -30023,3 +30023,82 @@ phases:
     verification: Review produces an explicit package-root policy decision, affected-file
       list, and clear keep/defer/implement recommendation.
     agent: software-architect
+  - id: boundary_followup.component-home-boundary-review
+    name: Home-directory components boundary review
+    status: pending
+    description: 'step_type: review
+
+
+      Review the explicit `~/.larva/components` investigation bucket and decide whether
+      the filesystem trust boundary, path assumptions, and runtime ownership are sufficiently
+      specified.
+
+
+      spec_refs:
+
+      - `guard-diagnosis.md` §4 `~/.larva/components` concerns
+
+      - `ARCHITECTURE.md`
+
+      - `USER_GUIDE.md`
+
+      - `README.md`
+
+
+      touch_paths:
+
+      - `src/larva/shell/components.py`
+
+      - `tests/shell/test_components.py`
+
+      - `ARCHITECTURE.md`
+
+      - `USER_GUIDE.md`
+
+      - `README.md`
+
+      - `guard-diagnosis.md`
+
+
+      harness_refs:
+
+      - `tests/shell/test_components.py`
+
+      - `uv run invar guard --all`
+
+
+      agent_source: default
+
+      agent: software-architect
+
+
+      Conflict rationale:
+
+      - Shares shell/components boundary docs and guard follow-up notes with the prior
+      step; serialize.
+
+
+      Required outputs:
+
+      - effective_truth_owner: shell component root ownership
+
+      - consumer_surfaces: CLI, Python API, assembly flow, docs
+
+      - state_strata: filesystem root, parsed component payloads, normalized runtime
+      values
+
+      - trust-boundary statement for user-home YAML input
+
+      - recommendation: docs-only clarification vs new implementation/test phase
+
+
+      Out-of-scope:
+
+      - No filesystem behavior changes in this step
+
+      - No migration of component root path'
+    verification: Review produces an explicit boundary verdict and either closes the
+      bucket or emits an exact follow-up scope.
+    depends_on:
+    - boundary_followup.package-root-policy-review
+    agent: software-architect
