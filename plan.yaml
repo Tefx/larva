@@ -30315,3 +30315,69 @@ phases:
     depends_on:
     - web_surface_followup.web-runtime-contract
     agent: python-executor
+  - id: web_surface_followup.web-doc-sync
+    name: Align web surface docs with actual behavior
+    status: pending
+    description: 'step_type: implementation
+
+
+      authoritative doc-sync for the web surface after contract pinning and before
+      independent review.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - contract output from `web_surface_followup.web-runtime-contract`
+
+
+      touch_paths:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - optionally `ARCHITECTURE.md` if web runtime ownership text is stale
+
+
+      harness_refs:
+
+      - contract output from `web_surface_followup.web-runtime-contract`
+
+      - automated web tests from `web_surface_followup.web-surface-tests`
+
+
+      agent_source: default
+
+      agent: software-architect
+
+
+      Required updates:
+
+      - make the authoritative startup path explicit (`larva serve` vs direct script
+      usage)
+
+      - state whether `contrib/web/server.py` is a supported convenience entrypoint
+      or implementation detail
+
+      - align documented endpoint/UI scope with the tested surface
+
+      - mention copy-button and batch-update behavior only at the fidelity justified
+      by tests
+
+
+      Out-of-scope:
+
+      - No new API promises beyond tested behavior'
+    verification: Docs consistently describe the supported web runtime path and the
+      verified scope of batch-update and prompt-copy behavior.
+    depends_on:
+    - web_surface_followup.web-surface-tests
+    agent: software-architect
