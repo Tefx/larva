@@ -30450,7 +30450,7 @@ phases:
       - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-tests
     name: Add automated web surface tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
 
@@ -30521,6 +30521,8 @@ phases:
     depends_on:
     - web_surface_followup.web-runtime-contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-03-20T21:35:00.543752+00:00'
   - id: web_surface_followup.web-doc-sync
     name: Align web surface docs with actual behavior
     status: pending
