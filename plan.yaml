@@ -29947,3 +29947,79 @@ phases:
   - deep_review
   - web_copy_button
   - invar_1203_remediation
+  steps:
+  - id: boundary_followup.package-root-policy-review
+    name: Package-root export policy review
+    status: pending
+    description: 'step_type: review
+
+
+      Review the deferred package-root policy bucket and decide whether `src/larva/__init__.py`
+      should remain metadata-only and outside guard scope, or whether authoritative
+      docs/guard policy must change.
+
+
+      spec_refs:
+
+      - `guard-diagnosis.md` §3 Package-root re-exports
+
+      - `ARCHITECTURE.md`
+
+      - `README.md`
+
+      - `AGENTS.md` Invar section
+
+
+      touch_paths:
+
+      - `src/larva/__init__.py`
+
+      - `pyproject.toml`
+
+      - `ARCHITECTURE.md`
+
+      - `README.md`
+
+      - `guard-diagnosis.md`
+
+
+      harness_refs:
+
+      - `uv run invar guard --all`
+
+      - existing deep-review evidence for package-root policy
+
+
+      agent_source: default
+
+      agent: software-architect
+
+
+      Conflict rationale:
+
+      - Shares docs and guard-policy surfaces with later boundary steps; serialize
+      this phase.
+
+
+      Required outputs:
+
+      - effective_truth_owner: package-root API policy owner
+
+      - consumer_surfaces: importers, README install/import examples, guard policy
+
+      - state_strata: package metadata vs public API exports vs guard configuration
+
+      - explicit recommendation: keep metadata-only, or broaden guarded package-root
+      scope
+
+      - exact docs/config locations that must be aligned
+
+
+      Out-of-scope:
+
+      - No runtime feature work
+
+      - No silent package-root export growth'
+    verification: Review produces an explicit package-root policy decision, affected-file
+      list, and clear keep/defer/implement recommendation.
+    agent: software-architect
