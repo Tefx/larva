@@ -30312,7 +30312,7 @@ phases:
       docs/config/code; no additional remediation step required.'
 - id: web_surface_followup
   name: Web Surface Test, Wiring, and Runtime Follow-up
-  status: in_progress
+  status: done
   depends_on:
   - boundary_followup
   steps:
@@ -31287,7 +31287,7 @@ phases:
       **Scope check**: no product feature expansion'
   - id: web_surface_followup.retest-gate-evidence-traceability
     name: Re-test gate evidence traceability for web surface follow-up
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -31359,9 +31359,67 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-20T22:03:19.001962+00:00'
+    done_at: '2026-03-20T22:04:45.290984+00:00'
+    evidence: '## Retest Report
+
+
+      **Chain**: `web_surface_followup.gate` -> `web_surface_followup.fix-gate-evidence-traceability`
+      -> `web_surface_followup.retest-gate-evidence-traceability`
+
+
+      **S1 status**: PASS
+
+
+      **Artifacts reviewed**:
+
+      ```
+
+      tests/shell/artifacts/web_runtime_liveness.md
+
+      tests/shell/test_web.py
+
+      tests/shell/test_contrib_web.py
+
+      README.md
+
+      USER_GUIDE.md
+
+      INTERFACES.md
+
+      ```
+
+
+      **Traceability verdict**:
+
+      - [x] Runtime proof is discoverable from test-suite artifacts
+
+      - [x] Reviewer-facing references are consistent
+
+      - [x] Scope stayed narrow (evidence/doc/artifacts only)
+
+
+      **Non-blocking notes**:
+
+      - N1: recorded only
+
+      - N2: recorded only
+
+
+      Verification:
+
+      - Run: `pytest tests/shell/test_web.py tests/shell/test_contrib_web.py` -> 39
+      passed
+
+      - Run: traceability link checks across test/doc surfaces -> consistent references
+      to `tests/shell/artifacts/web_runtime_liveness.md`
+
+
+      Scope check:
+
+      - no product code changes; evidence/doc/artifact-only remediation'
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
-  status: locked
+  status: pending
   depends_on:
   - web_surface_followup
   steps:
