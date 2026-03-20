@@ -30421,3 +30421,27 @@ phases:
     depends_on:
     - web_surface_followup.web-doc-sync
     agent: integration-verifier
+  - id: web_surface_followup.web-surface-liveness-probe
+    name: Runnable liveness probe for web surface
+    status: pending
+    description: "step_type: verification\n\nAs an INDEPENDENT TESTER (`blind-tester`),\
+      \ run the documented web entrypoint(s) and prove the real surface starts and\
+      \ serves at least one operation end-to-end.\n\nspec_refs:\n- `README.md` web\
+      \ UI startup text\n- `USER_GUIDE.md` §14 Web UI and plugin\n- `INTERFACES.md`\n\
+      \ntouch_paths:\n- `src/larva/shell/web.py`\n- `contrib/web/server.py`\n- `src/larva/shell/web_ui.html`\n\
+      - `contrib/web/index.html`\n\nharness_refs:\n- startup commands from `web_surface_followup.web-runtime-contract`\n\
+      - automated web tests from `web_surface_followup.web-surface-tests`\n\nagent_source:\
+      \ default\nagent: blind-tester\nIndependence Level: L2\n\nRunnable verification\
+      \ requirements:\n- identified entrypoint / startup path\n- exact launch command\n\
+      - proof that the declared interface actually starts\n- proof that at least one\
+      \ documented request reaches the live entrypoint path end-to-end\n- proof that\
+      \ the served HTML exposes the tested prompt-copy and batch-update UI surface\n\
+      \nevidence_template: |\n  ## Web Surface Liveness Report\n  **Entry point**:\
+      \ <command>\n  **Actual output**:\n  ```\n  <stdout/stderr>\n  ```\n  **HTTP\
+      \ proof**:\n  ```\n  <request/response>\n  ```\n  **UI proof**: <served HTML\
+      \ marker or browser evidence>\n  **Verdict**: PASS | ISSUES_FOUND | INCOMPLETE"
+    verification: Blind liveness evidence shows the documented web entrypoint starts,
+      serves a request, and exposes the intended UI hooks.
+    depends_on:
+    - web_surface_followup.web-surface-freeze
+    agent: blind-tester
