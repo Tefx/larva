@@ -30766,7 +30766,7 @@ phases:
     claimed_at: '2026-03-20T21:45:00.318618+00:00'
   - id: web_surface_followup.web-wiring-audit
     name: Wiring audit for web runtime and UI surfaces
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -30830,6 +30830,8 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-freeze
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-20T21:45:05.237391+00:00'
   - id: web_surface_followup.web-spec-conformance
     name: Spec conformance review for web surface
     status: pending
