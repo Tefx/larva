@@ -30242,3 +30242,76 @@ phases:
     verification: Contract step identifies the runnable web entrypoints, endpoint
       inventory, and UI behaviors that downstream tests and reviewers must cover.
     agent: software-architect
+  - id: web_surface_followup.web-surface-tests
+    name: Add automated web surface tests
+    status: pending
+    description: 'step_type: test
+
+
+      Add focused automated tests for the documented web surface.
+
+
+      spec_refs:
+
+      - `README.md` serve and web UI startup examples
+
+      - `USER_GUIDE.md` §14 Web UI and plugin
+
+      - contract output from `web_surface_followup.web-runtime-contract`
+
+
+      touch_paths:
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web.py`
+
+      - `tests/` new or updated web-focused test modules
+
+
+      harness_refs:
+
+      - pytest
+
+      - FastAPI/TestClient or equivalent in-repo HTTP harness
+
+      - CLI invocation coverage for `larva serve`
+
+
+      agent_source: default
+
+      agent: python-executor
+
+
+      test_realism_requirement:
+
+      - Add at least one real request/response path through the documented web server
+      routes
+
+      - Add at least one startup-facing test covering `larva serve` or the shared
+      server entrypoint path
+
+      - Include explicit coverage for `/api/personas/batch-update`
+
+      - Include coverage that served HTML contains the prompt copy affordance and
+      batch-update UI hooks the docs claim exist
+
+
+      Spec-Fixture Conformance (MANDATORY)
+
+      - At least one fixture must use the documented minimal external format from
+      authoritative docs
+
+      - Evidence must cite which doc section each fixture came from
+
+
+      Out-of-scope:
+
+      - Do not add unrelated frontend redesign
+
+      - Do not broaden API semantics beyond current documented behavior'
+    verification: Automated tests exercise web startup-facing behavior, batch-update
+      API, and served HTML/UI markers with spec-cited fixtures.
+    depends_on:
+    - web_surface_followup.web-runtime-contract
+    agent: python-executor
