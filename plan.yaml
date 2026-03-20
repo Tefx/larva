@@ -30740,7 +30740,7 @@ phases:
       - No-code-change declaration: verification-only freeze step, no code modified.'
   - id: web_surface_followup.web-surface-liveness-probe
     name: Runnable liveness probe for web surface
-    status: pending
+    status: claimed
     description: "step_type: verification\n\nAs an INDEPENDENT TESTER (`blind-tester`),\
       \ run the documented web entrypoint(s) and prove the real surface starts and\
       \ serves at least one operation end-to-end.\n\nspec_refs:\n- `README.md` web\
@@ -30762,6 +30762,8 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-freeze
     agent: blind-tester
+    claimed_by: blind-tester
+    claimed_at: '2026-03-20T21:45:00.318618+00:00'
   - id: web_surface_followup.web-wiring-audit
     name: Wiring audit for web runtime and UI surfaces
     status: pending
