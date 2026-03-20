@@ -31419,13 +31419,13 @@ phases:
       - no product code changes; evidence/doc/artifact-only remediation'
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
-  status: pending
+  status: in_progress
   depends_on:
   - web_surface_followup
   steps:
   - id: completion_reaudit.wiring-audit-late-phases
     name: Full wiring audit for late phases
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -31488,6 +31488,8 @@ phases:
     verification: Wiring audit reports PASS or enumerates any remaining orphan late-phase
       surface.
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-03-20T22:05:02.082981+00:00'
   - id: completion_reaudit.spec-conformance-late-phases
     name: Spec conformance audit for late phases
     status: pending
