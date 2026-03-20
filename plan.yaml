@@ -30740,7 +30740,7 @@ phases:
       - No-code-change declaration: verification-only freeze step, no code modified.'
   - id: web_surface_followup.web-surface-liveness-probe
     name: Runnable liveness probe for web surface
-    status: claimed
+    status: done
     description: "step_type: verification\n\nAs an INDEPENDENT TESTER (`blind-tester`),\
       \ run the documented web entrypoint(s) and prove the real surface starts and\
       \ serves at least one operation end-to-end.\n\nspec_refs:\n- `README.md` web\
@@ -30764,6 +30764,67 @@ phases:
     agent: blind-tester
     claimed_by: blind-tester
     claimed_at: '2026-03-20T21:45:00.318618+00:00'
+    done_at: '2026-03-20T21:48:21.085062+00:00'
+    evidence: '## Web Surface Liveness Report
+
+      **Entry point**: `uv run larva serve --port 7401 --no-open` and `uv run python
+      contrib/web/server.py --port 7402 --no-open`
+
+      **Actual output**:
+
+      ```
+
+      INFO:     Started server process ...
+
+      INFO:     Application startup complete.
+
+      INFO:     Uvicorn running on http://127.0.0.1:7401 ...
+
+      ...
+
+      INFO:     Uvicorn running on http://127.0.0.1:7402 ...
+
+      ```
+
+      **HTTP proof**:
+
+      ```
+
+      GET / -> 200 OK (HTML returned)
+
+      GET /api/personas -> 200 OK (JSON envelope returned)
+
+      GET /api/components -> 200 OK (JSON envelope returned)
+
+      ```
+
+      **UI proof**: served HTML includes prompt-copy marker (`copyPrompt`/`navigator.clipboard`)
+      and contrib HTML includes batch-update UI hooks (`batchUpdate.show`, `/api/personas/batch-update`
+      fetch).
+
+      **Verdict**: PASS
+
+
+      Artifact:
+
+      - PR: blind-tester evidence from `ses_2f2d83257ffe35iSe0PZVl4S4E`
+
+
+      Verification:
+
+      - Run: startup commands above; both remained alive
+
+      - Run: HTTP requests to `/`, `/api/personas`, `/api/components` -> successful
+      responses
+
+
+      Spec link:
+
+      - `README.md` web UI startup
+
+      - `USER_GUIDE.md` §14 Web UI and plugin
+
+      - `INTERFACES.md` web runtime surface'
   - id: web_surface_followup.web-wiring-audit
     name: Wiring audit for web runtime and UI surfaces
     status: claimed
