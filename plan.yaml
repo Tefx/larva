@@ -29950,7 +29950,7 @@ phases:
   steps:
   - id: boundary_followup.package-root-policy-review
     name: Package-root export policy review
-    status: claimed
+    status: pending
     description: 'step_type: review
 
 
@@ -30023,8 +30023,6 @@ phases:
     verification: Review produces an explicit package-root policy decision, affected-file
       list, and clear keep/defer/implement recommendation.
     agent: software-architect
-    claimed_by: software-architect
-    claimed_at: '2026-03-20T21:05:56.795579+00:00'
   - id: boundary_followup.component-home-boundary-review
     name: Home-directory components boundary review
     status: pending
