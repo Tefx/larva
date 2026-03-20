@@ -30946,7 +30946,7 @@ phases:
       - overall PASS'
   - id: web_surface_followup.web-spec-conformance
     name: Spec conformance review for web surface
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -31017,6 +31017,40 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-20T21:48:51.944891+00:00'
+    done_at: '2026-03-20T21:50:25.235905+00:00'
+    evidence: 'Artifact:
+
+      - PR: doc conformance report from task `ses_2f2c6ae06ffenhcDu6RgiSEqEc`
+
+
+      Verification:
+
+      - Run: field-by-field comparison of docs (`README.md`, `USER_GUIDE.md`, `INTERFACES.md`,
+      `ARCHITECTURE.md`) against implementation (`src/larva/shell/web.py`, `contrib/web/server.py`,
+      `src/larva/shell/web_ui.html`, `contrib/web/index.html`) -> PASS, no drift
+
+      - Run: startup/entrypoint checks -> `larva serve` canonical path aligned; contrib
+      script convenience path aligned
+
+      - Run: endpoint and UI scope checks -> batch-update remains contrib-only; copy-button
+      marked convenience UI behavior
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md` §14
+
+      - `INTERFACES.md` (Web Runtime Surface)
+
+      - `ARCHITECTURE.md`
+
+
+      Conclusion:
+
+      - PASS with no unresolved spec drift on startup behavior, endpoint contracts,
+      or documented UI-surface scope.'
   - id: web_surface_followup.gate
     name: Gate web surface follow-up
     status: pending
