@@ -30808,3 +30808,40 @@ phases:
     depends_on:
     - completion_reaudit.spec-conformance-late-phases
     agent: blind-tester
+  - id: completion_reaudit.gate
+    name: Final gate after late follow-ups
+    status: pending
+    description: 'step_type: gate
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether all previously
+      identified plan, test, wiring, and review gaps are now explicitly closed.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - This is the new final acceptance barrier after adding post-completion follow-up
+      work
+
+      - Must confirm earlier deep review blind spots were closed rather than merely
+      documented
+
+
+      cross_cutting_focus:
+
+      - no stale plan refs remain
+
+      - web surface now has automated + runnable evidence
+
+      - deferred boundary buckets are explicitly resolved
+
+      - final docs and runtime behavior are aligned'
+    verification: Gate confirms the supplemented plan closes the identified implementation/test/wiring/review
+      gaps with no unresolved blocker.
+    depends_on:
+    - completion_reaudit.wiring-audit-late-phases
+    - completion_reaudit.spec-conformance-late-phases
+    - completion_reaudit.black-box-late-surface-verification
+    agent: gate-reviewer
