@@ -31526,7 +31526,7 @@ phases:
       correctly documented and implemented.'
   - id: completion_reaudit.spec-conformance-late-phases
     name: Spec conformance audit for late phases
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -31576,6 +31576,8 @@ phases:
     depends_on:
     - completion_reaudit.wiring-audit-late-phases
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-03-20T22:08:16.879811+00:00'
   - id: completion_reaudit.black-box-late-surface-verification
     name: Black-box verification of late surfaces
     status: pending
