@@ -30312,13 +30312,13 @@ phases:
       docs/config/code; no additional remediation step required.'
 - id: web_surface_followup
   name: Web Surface Test, Wiring, and Runtime Follow-up
-  status: pending
+  status: in_progress
   depends_on:
   - boundary_followup
   steps:
   - id: web_surface_followup.web-runtime-contract
     name: Pin authoritative web runtime contract
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -30417,6 +30417,8 @@ phases:
     verification: Contract step identifies the runnable web entrypoints, endpoint
       inventory, and UI behaviors that downstream tests and reviewers must cover.
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-20T21:29:31.133924+00:00'
   - id: web_surface_followup.web-surface-tests
     name: Add automated web surface tests
     status: pending
