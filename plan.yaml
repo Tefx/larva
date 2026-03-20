@@ -31053,7 +31053,7 @@ phases:
       or documented UI-surface scope.'
   - id: web_surface_followup.gate
     name: Gate web surface follow-up
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
 
@@ -31093,6 +31093,8 @@ phases:
     - web_surface_followup.web-wiring-audit
     - web_surface_followup.web-spec-conformance
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-20T21:50:40.713152+00:00'
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
   status: locked
