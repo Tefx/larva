@@ -65,6 +65,14 @@ larva stores state under `~/.larva/`.
 - `components/` holds reusable building blocks for assembly
 - `registry/` holds registered canonical persona specs
 
+Component boundary note:
+
+- `~/.larva/components/` is user-managed local input, not canonical larva state
+- larva reads prompt markdown and YAML component files from that root but does
+  not treat them as trusted until assembly, normalization, and validation finish
+- larva does not create, migrate, or enforce ownership outside that documented
+  directory layout in this release
+
 ## 4. PersonaSpec basics
 
 The canonical larva artifact is `PersonaSpec`.
@@ -314,6 +322,8 @@ Assembly rules to remember:
 - prompts concatenate in order
 - conflicting scalar fields fail assembly unless you resolve them with `--override`
 - canonical output contains concrete fields, not component references
+- component files are shell-boundary input; the assembled result becomes
+  authoritative only after larva accepts the normalized `PersonaSpec`
 
 ## 12. Python API
 

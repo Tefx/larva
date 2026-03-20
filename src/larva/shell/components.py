@@ -157,6 +157,12 @@ class FilesystemComponentStore:
     ADR-002 Transition:
         - Toolsets: `capabilities` is canonical, `tools` retained for backward compatibility
         - Constraints: `side_effect_policy` deprecated, retained for transition compatibility
+
+    Trust boundary:
+        - `~/.larva/components/` is user-managed shell input, not canonical domain state.
+        - This adapter owns filesystem path resolution, file reads, and YAML parsing.
+        - Parsed payloads only become authoritative after downstream assembly and
+          core normalization/validation accept them.
     """
 
     def __init__(self, components_dir: Path | None = None) -> None:

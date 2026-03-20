@@ -121,6 +121,10 @@ larva assemble --id code-reviewer \
   --model gpt-5
 ```
 
+Components are read from the user-managed shell boundary at
+`~/.larva/components/`. Those files are local input, not canonical larva state;
+only the assembled and validated `PersonaSpec` is authoritative at runtime.
+
 ## Interfaces
 
 ### MCP

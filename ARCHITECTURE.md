@@ -90,6 +90,21 @@ Assembly inputs may include:
 - constraint bundles for fields such as `can_spawn` and `compaction_prompt`
 - model bundles
 
+## Component Root Boundary
+
+- [Proven] `src/larva/shell/components.py` owns the default component root at
+  `~/.larva/components/` and is the shell boundary for filesystem path
+  resolution, file reads, and YAML parsing.
+- [Proven] CLI, MCP, and Python assembly flows consume components through shell
+  adapter operations rather than treating user-home files as core state.
+- [Likely] The correct boundary is: filesystem layout belongs to shell,
+  assembled `PersonaSpec` acceptance belongs to app/core, and user-home YAML is
+  local input that must be treated as untrusted until normalization and
+  validation succeed.
+- [Proven] Current tests already exercise traversal rejection and typed missing
+  component failures, which is enough to document the trust boundary without a
+  new implementation phase in this step.
+
 Capability intent remains family-level. Tool-level authorization and posture
 exceptions belong to the gateway layer, not PersonaSpec.
 

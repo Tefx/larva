@@ -53,7 +53,15 @@ Decision: keep the package root metadata-only for now, not because it is ignored
 - `src/larva/shell/components.py` anchors behavior to `Path.home() / ".larva" / "components"` and performs filesystem reads plus YAML parsing.
 - Current full guard does not flag this file, but the module still owns user-home filesystem assumptions, directory layout assumptions, and external YAML trust boundaries.
 
-Classification: explicit investigation/cleanup/clarification bucket. This is not the current top guard failure source, but it remains a boundary worth reviewing separately.
+Decision: docs-only clarification closes this bucket for now.
+
+- [Proven] Effective truth owner is `src/larva/shell/components.py` for component-root path assumptions and file/YAML ingestion at the shell boundary.
+- [Proven] Consumer surfaces are `assemble`, `component list`, and `component show` across CLI, MCP, Python API, and the user-facing docs that describe `~/.larva/components/`.
+- [Likely] State strata are now sufficiently specified as: filesystem root (`~/.larva/components/`) -> parsed prompt/YAML payloads in shell -> normalized and validated `PersonaSpec` values accepted by app/core.
+- [Likely] Trust-boundary statement: user-home YAML is local external input and must not be treated as canonical authority before assembly, normalization, and validation succeed.
+- [Proven] Existing `tests/shell/test_components.py` already covers traversal rejection and typed component-load failures, so this review does not justify a new implementation or path-migration phase.
+
+Classification: clarified and closed as a documentation boundary decision, not an immediate implementation gap.
 
 ### 5. Sound exclusions to keep
 
