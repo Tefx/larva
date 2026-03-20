@@ -30747,3 +30747,64 @@ phases:
     depends_on:
     - completion_reaudit.wiring-audit-late-phases
     agent: doc-reviewer
+  - id: completion_reaudit.black-box-late-surface-verification
+    name: Black-box verification of late surfaces
+    status: pending
+    description: 'step_type: verification
+
+
+      As an INDEPENDENT TESTER (`blind-tester`), validate the late surfaces using
+      only the public docs, CLI/runtime entrypoints, and visible behavior.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+
+      touch_paths:
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web_ui.html`
+
+      - `contrib/web/index.html`
+
+      - `src/larva/shell/components.py`
+
+      - `src/larva/__init__.py`
+
+
+      harness_refs:
+
+      - startup commands and examples from docs
+
+      - web follow-up runnable evidence
+
+
+      agent_source: default
+
+      agent: blind-tester
+
+      Independence Level: L2
+
+
+      Required checks:
+
+      - a reader using current docs can identify and exercise the supported web entrypoint
+
+      - component-root and package-root clarifications do not conflict with observed
+      behavior
+
+      - no undocumented late-surface assumption is required to use the public interface'
+    verification: Black-box report proves the late-surface behavior is usable from
+      docs alone or identifies any remaining ambiguity.
+    depends_on:
+    - completion_reaudit.spec-conformance-late-phases
+    agent: blind-tester
