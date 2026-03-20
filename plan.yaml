@@ -30661,7 +30661,7 @@ phases:
       - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-freeze
     name: Freeze web surface snapshot for independent runtime review
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -30699,6 +30699,8 @@ phases:
     depends_on:
     - web_surface_followup.web-doc-sync
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-03-20T21:43:19.342169+00:00'
   - id: web_surface_followup.web-surface-liveness-probe
     name: Runnable liveness probe for web surface
     status: pending
