@@ -31425,7 +31425,7 @@ phases:
   steps:
   - id: completion_reaudit.wiring-audit-late-phases
     name: Full wiring audit for late phases
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -31490,6 +31490,40 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-20T22:05:02.082981+00:00'
+    done_at: '2026-03-20T22:07:59.058147+00:00'
+    evidence: 'Artifact:
+
+      - PR: wiring audit report task `ses_2f2b7cc05ffe07nuUJTE404427`
+
+
+      Verification:
+
+      - Run: W1-W10 wiring checks across CLI/web/contrib/components/package-root surfaces
+      -> PASS
+
+      - Run: endpoint/asset/wiring scans on `src/larva/shell/web.py`, `contrib/web/server.py`,
+      `src/larva/shell/web_ui.html`, `contrib/web/index.html` -> no orphan surfaces
+
+      - Run: package-root/component-root policy alignment checks against docs -> aligned
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - late follow-up evidence from `boundary_followup` and `web_surface_followup`
+
+
+      Verdict:
+
+      - PASS with no blocking wiring gaps; packaged-vs-contrib web boundary remains
+      correctly documented and implemented.'
   - id: completion_reaudit.spec-conformance-late-phases
     name: Spec conformance audit for late phases
     status: pending
