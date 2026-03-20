@@ -29937,3 +29937,9 @@ phases:
       - Reported no blocker issues.\n\nConclusion:\n- Gate criteria satisfied for\
       \ both files; feature behavior is consistent and reviewable as runnable UI surface\
       \ evidence with independent probe."
+- id: boundary_followup
+  name: Deferred Boundary and Policy Follow-up
+  status: pending
+  depends_on:
+  - web_copy_button
+  - invar_1203_remediation
