@@ -31095,6 +31095,88 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-03-20T21:50:40.713152+00:00'
+  - id: web_surface_followup.fix-gate-evidence-traceability
+    name: Fix gate evidence traceability for web surface follow-up
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix ALL blocker/should_fix items from `web_surface_followup.gate` that affect
+      runtime-proof traceability, keeping scope narrow to evidence traceability, documentation,
+      and verification artifacts only.
+
+
+      ## Blockers to Fix (ALL of these, not just the first):
+
+
+      ### S1: runtime liveness evidence is not preserved in test-suite artifacts
+
+      Locations: `tests/`, runtime-proof artifacts referenced by `web_surface_followup.web-surface-liveness-probe`,
+      and any phase evidence/docs that point reviewers to runnable proof
+
+      Remediation: preserve explicit runtime proof traceability by updating the verification-artifact
+      path, evidence references, or documentation linkage so the liveness proof is
+      discoverable from test-suite artifacts without expanding product behavior
+
+      Grep hint: search for `web-surface-liveness-probe`, `runtime proof`, `liveness`,
+      and the referenced artifact paths to ensure all reviewer-facing evidence points
+      at the same preserved proof
+
+      IMPORTANT: Search for sibling evidence references beyond the primary gate report
+      so traceability is consistent across the phase
+
+
+      ## Completion Criteria:
+
+      - S1 is closed with explicit artifact traceability from test-suite evidence
+      to runtime proof
+
+      - Evidence/docs point to the preserved runtime proof unambiguously
+
+      - No product feature expansion; scope remains evidence traceability/doc + verification
+      artifacts only'
+    verification: '- Main path: evidence/docs clearly point from test-suite artifacts
+      to preserved runtime liveness proof
+
+      - Failure path: reviewer can identify where runtime proof lives without relying
+      on informal gate notes alone
+
+      - Proof: all reviewer-facing references for the web surface phase are consistent
+      and traceable'
+    evidence_template: '## Batched Fix Evidence
+
+
+      **Step IDs covered**: `web_surface_followup.gate` -> `web_surface_followup.fix-gate-evidence-traceability`
+
+
+      **Issue scope**: S1 runtime liveness proof traceability only
+
+
+      **Updated evidence/doc locations**:
+
+      ```
+
+      <paste paths or artifact references>
+
+      ```
+
+
+      **Traceability proof**:
+
+      ```
+
+      <show how test-suite artifacts now point to runnable proof>
+
+      ```
+
+
+      **Non-blocking notes preserved**: N1/N2 recorded as suggestions only, not blockers
+
+
+      **Scope check**: no product feature expansion'
+    depends_on:
+    - web_surface_followup.gate
+    agent: software-architect
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
   status: locked
