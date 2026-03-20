@@ -23017,7 +23017,7 @@ phases:
       returns `BatchUpdateResult` on success'
     refs:
     - src/larva/app/facade.py
-    - tests/app/test_facade.py
+    - tests/app/test_facade/test_batch.py
     depends_on:
     - feature_update_batch.facade-update-batch-contract
     - feature_update_batch.facade-update-batch-tests
