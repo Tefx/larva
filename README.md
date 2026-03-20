@@ -244,6 +244,7 @@ Scope note:
 - documented REST endpoints are the verified contract surface
 - the prompt copy button is documented only as browser convenience UI behavior
 - batch update is documented only for the contrib runtime, not for `larva serve`
+- preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
 
 ### OpenCode plugin
 

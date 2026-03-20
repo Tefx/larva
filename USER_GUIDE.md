@@ -419,6 +419,7 @@ Verified contract notes for downstream tests and reviews:
 - `python contrib/web/server.py` is supported as a contributor convenience entrypoint, not as the canonical packaged startup path
 - the prompt copy button is convenience UI behavior; docs do not promise more than the browser affordance exists
 - batch update is a contrib-only convenience surface, not part of `larva serve`
+- preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
 
 The repository also includes an OpenCode plugin in `contrib/opencode-plugin/`.
 

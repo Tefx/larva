@@ -4,11 +4,13 @@ Tests prove:
 - Normative REST endpoint inventory matches INTERFACES.md contract
 - Startup contract honors port and no-open flags
 - Served HTML contains documented UI affordances
+- Preserved runnable liveness proof lives in tests/shell/artifacts/web_runtime_liveness.md
 
 Sources:
 - INTERFACES.md :: Web Runtime Surface (lines 82-151)
 - USER_GUIDE.md :: §14 Web UI and plugin (lines 391-422)
 - README.md :: serve and web UI startup examples (lines 221-238)
+- tests/shell/artifacts/web_runtime_liveness.md :: packaged runtime probe and captured startup log
 """
 
 from __future__ import annotations

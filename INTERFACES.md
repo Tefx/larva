@@ -86,6 +86,7 @@ contract:
 
 - `larva serve` -> authoritative packaged runtime and web contract
 - `python contrib/web/server.py` -> supported contributor convenience runtime for local review; not the canonical packaged entrypoint
+- preserved runnable liveness proof for both entrypoints is kept with the test-suite artifacts in `tests/shell/artifacts/web_runtime_liveness.md`
 
 #### Startup contract
 

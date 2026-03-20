@@ -4,10 +4,12 @@ Tests prove:
 - Batch-update endpoint is exposed on contrib server
 - Contrib server mirrors packaged endpoint inventory
 - Contrib server serves its HTML artifact
+- Preserved runnable liveness proof lives in tests/shell/artifacts/web_runtime_liveness.md
 
 Sources:
 - INTERFACES.md :: Contrib-only convenience surface (lines 140-151)
 - USER_GUIDE.md :: contrib script startup (lines 410-413)
+- tests/shell/artifacts/web_runtime_liveness.md :: contrib runtime probe and captured startup log
 """
 
 from __future__ import annotations
