@@ -31287,7 +31287,7 @@ phases:
       **Scope check**: no product feature expansion'
   - id: web_surface_followup.retest-gate-evidence-traceability
     name: Re-test gate evidence traceability for web surface follow-up
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
 
@@ -31357,6 +31357,8 @@ phases:
     depends_on:
     - web_surface_followup.fix-gate-evidence-traceability
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-20T22:03:19.001962+00:00'
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
   status: locked
