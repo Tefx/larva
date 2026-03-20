@@ -23651,10 +23651,10 @@ phases:
 
       - `uv run invar guard` passes'
     refs:
-    - tests/app/test_facade.py
     - tests/shell/test_mcp.py
     - tests/shell/test_cli.py
     - tests/shell/test_python_api.py
+    - tests/app/test_facade/test_batch.py
     depends_on:
     - feature_update_batch.mcp-update-batch
     - feature_update_batch.cli-update-batch
