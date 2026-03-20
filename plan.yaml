@@ -30445,3 +30445,69 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-freeze
     agent: blind-tester
+  - id: web_surface_followup.web-wiring-audit
+    name: Wiring audit for web runtime and UI surfaces
+    status: pending
+    description: 'step_type: verification
+
+
+      Wiring completeness audit: verify every documented web surface is reachable
+      at runtime and no late-added UI/runtime path is orphaned.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - contract output from `web_surface_followup.web-runtime-contract`
+
+
+      touch_paths:
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/cli_parser.py`
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web_ui.html`
+
+      - `contrib/web/index.html`
+
+
+      harness_refs:
+
+      - CLI `serve` registration
+
+      - web route inventory
+
+      - HTML asset references
+
+
+      agent_source: default
+
+      agent: wiring-auditor
+
+
+      Required checks:
+
+      - `serve` command is registered and reaches the intended runtime module
+
+      - documented direct script path and CLI path do not silently diverge
+
+      - `/api/personas/batch-update` is reachable from the served web surface
+
+      - prompt-copy UI hook is present in both HTML artifacts where expected
+
+      - no orphan web route or asset reference remains'
+    verification: Wiring audit reports no orphan route, CLI wiring gap, or mismatched
+      UI asset path for the documented web surface.
+    depends_on:
+    - web_surface_followup.web-surface-freeze
+    agent: wiring-auditor
