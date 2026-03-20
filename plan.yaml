@@ -26765,7 +26765,20 @@ phases:
 
       ```'
     refs:
-    - tests/app/test_facade.py
+    - tests/app/test_facade/conftest.py
+    - tests/app/test_facade/test_validate.py
+    - tests/app/test_facade/test_assemble.py
+    - tests/app/test_facade/test_register.py
+    - tests/app/test_facade/test_resolve.py
+    - tests/app/test_facade/test_list.py
+    - tests/app/test_facade/test_clone.py
+    - tests/app/test_facade/test_delete.py
+    - tests/app/test_facade/test_clear.py
+    - tests/app/test_facade/test_export.py
+    - tests/app/test_facade/test_update.py
+    - tests/app/test_facade/test_batch.py
+    - tests/app/test_facade/test_validate_warning.py
+    - tests/app/test_facade/test_seam_proof.py
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-18T20:22:46.880694+00:00'
