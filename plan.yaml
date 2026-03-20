@@ -31177,6 +31177,78 @@ phases:
     depends_on:
     - web_surface_followup.gate
     agent: software-architect
+  - id: web_surface_followup.retest-gate-evidence-traceability
+    name: Re-test gate evidence traceability for web surface follow-up
+    status: pending
+    description: 'step_type: verification
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), verify that the batched gate follow-up
+      fix closed the traceability gap for runtime liveness evidence without expanding
+      scope.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: test-suite artifacts now point clearly to preserved runtime liveness
+      proof
+
+      - Edge cases: multiple reviewer-facing evidence locations remain consistent
+
+      - Error scenarios: runtime proof is only present in ad hoc gate notes and not
+      traceable from artifacts
+
+
+      Document whether S1 is closed. N1/N2 remain non-blocking notes only.
+
+
+      Independence Level: L1'
+    verification: '- Review the updated evidence/doc artifacts for explicit linkage
+      from test-suite artifacts to runtime liveness proof
+
+      - Confirm S1 is either closed or still reproducible with exact missing reference
+      locations
+
+      - Confirm N1/N2 remain recorded as non-blocking notes only'
+    evidence_template: '## Retest Report
+
+
+      **Chain**: `web_surface_followup.gate` -> `web_surface_followup.fix-gate-evidence-traceability`
+      -> `web_surface_followup.retest-gate-evidence-traceability`
+
+
+      **S1 status**: PASS | ISSUES_FOUND
+
+
+      **Artifacts reviewed**:
+
+      ```
+
+      <paste exact paths/references checked>
+
+      ```
+
+
+      **Traceability verdict**:
+
+      - [ ] Runtime proof is discoverable from test-suite artifacts
+
+      - [ ] Reviewer-facing references are consistent
+
+      - [ ] Scope stayed narrow (evidence/doc/artifacts only)
+
+
+      **Non-blocking notes**:
+
+      - N1: recorded only
+
+      - N2: recorded only'
+    depends_on:
+    - web_surface_followup.fix-gate-evidence-traceability
+    agent: gate-reviewer
 - id: completion_reaudit
   name: Completion Re-audit After Late Follow-ups
   status: locked
