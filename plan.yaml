@@ -30381,3 +30381,43 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-tests
     agent: software-architect
+  - id: web_surface_followup.web-surface-freeze
+    name: Freeze web surface snapshot for independent runtime review
+    status: pending
+    description: 'step_type: verification
+
+
+      Freeze the web-surface snapshot before L2 runnable verification and gate review.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+
+      touch_paths:
+
+      - working tree snapshot for web surface files and tests
+
+
+      harness_refs:
+
+      - `git rev-parse HEAD`
+
+      - `git status --short`
+
+      - declared env + startup command set
+
+
+      agent_source: default
+
+      agent: integration-verifier'
+    verification: Freeze evidence records commit SHA, clean status declaration, env
+      assumptions, and a no-code-change statement before runnable verification.
+    depends_on:
+    - web_surface_followup.web-doc-sync
+    agent: integration-verifier
