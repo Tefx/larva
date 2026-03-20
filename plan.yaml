@@ -31138,7 +31138,7 @@ phases:
       to a single batched remediation step + retest step per protocol.'
   - id: web_surface_followup.fix-gate-evidence-traceability
     name: Fix gate evidence traceability for web surface follow-up
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -31218,6 +31218,8 @@ phases:
     depends_on:
     - web_surface_followup.gate
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-20T21:55:59.264734+00:00'
   - id: web_surface_followup.retest-gate-evidence-traceability
     name: Re-test gate evidence traceability for web surface follow-up
     status: pending
