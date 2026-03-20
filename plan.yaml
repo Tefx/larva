@@ -30564,7 +30564,7 @@ phases:
       - spec fixture conformance against documented minimal PersonaSpec format'
   - id: web_surface_followup.web-doc-sync
     name: Align web surface docs with actual behavior
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -30630,6 +30630,35 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-20T21:41:04.127745+00:00'
+    done_at: '2026-03-20T21:43:07.467349+00:00'
+    evidence: 'Artifact:
+
+      - PR: c73c8a0e2c77f07a0de157bff2a531f26b55efc7
+
+
+      Verification:
+
+      - Run: `git diff -- README.md USER_GUIDE.md INTERFACES.md ARCHITECTURE.md` ->
+      docs consistently state `larva serve` as authoritative packaged startup path
+      and `python contrib/web/server.py` as supported contributor convenience entrypoint
+
+      - Run: `rg -n "canonical packaged|contributor convenience|prompt copy|clipboard
+      API|batch update|batch-update|larva serve" README.md USER_GUIDE.md INTERFACES.md
+      ARCHITECTURE.md` -> wording synced for startup path, copy-button fidelity, and
+      contrib-only batch-update scope
+
+      - Run: `git status --short` -> clean worktree after commit
+
+
+      Spec link:
+
+      - `README.md` Web UI section
+
+      - `USER_GUIDE.md` §14 Web UI and plugin
+
+      - `INTERFACES.md` Web Runtime Surface
+
+      - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-freeze
     name: Freeze web surface snapshot for independent runtime review
     status: pending
