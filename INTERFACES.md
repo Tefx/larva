@@ -79,6 +79,77 @@ Representative CLI operations:
 CLI is an operator interface over the same canonical contract. It does not add
 new persona semantics.
 
+### Web Runtime Surface
+
+The web surface has two runnable entrypoints with one authoritative packaged
+contract:
+
+- `larva serve` -> packaged runtime and authoritative web contract
+- `python contrib/web/server.py` -> contributor-facing direct script runtime
+
+#### Startup contract
+
+`larva serve`:
+
+- binds `127.0.0.1` via uvicorn
+- defaults to port `7400`
+- accepts `--port <int>` and `--no-open`
+- serves `src/larva/shell/web_ui.html` at `/`
+
+`python contrib/web/server.py`:
+
+- requires `fastapi` and `uvicorn` in the active environment
+- defaults to port `7400`
+- accepts `--port <int>` and `--no-open`
+- serves `contrib/web/index.html` at `/`
+
+#### Normative endpoint inventory
+
+These endpoints are the authoritative REST contract for the packaged web
+surface:
+
+| Method | Path | Contract |
+|-------|------|----------|
+| `GET` | `/` | Return the packaged HTML UI artifact |
+| `GET` | `/api/personas` | Return `{data: PersonaSummary[]}` |
+| `GET` | `/api/personas/{persona_id}` | Return `{data: PersonaSpec}` or a 400 error payload |
+| `POST` | `/api/personas` | Accept a PersonaSpec or `{spec: PersonaSpec}`; validate then register |
+| `PATCH` | `/api/personas/{persona_id}` | Accept patch object; ignore protected `spec_version` and `spec_digest`; revalidate before register |
+| `DELETE` | `/api/personas/{persona_id}` | Return `{data: {id, deleted}}` |
+| `POST` | `/api/personas/clear` | Accept `{confirm}` and clear only on valid confirmation |
+| `POST` | `/api/personas/validate` | Accept PersonaSpec candidate and return validation report |
+| `POST` | `/api/personas/assemble` | Accept assembly request body and return assembled PersonaSpec |
+| `GET` | `/api/components` | Return available prompt/toolset/constraint/model names |
+| `GET` | `/api/components/{component_type}/{name}` | Return one component or a typed HTTP error |
+
+Shared response envelope rules:
+
+- success responses return `{"data": ...}`
+- `LarvaApiError` maps to HTTP 400 with `{"error": ...}`
+- component type validation may also raise typed HTTP errors from FastAPI
+
+#### Convenience-only UI behavior
+
+These behaviors are visible in the browser UI but are not separate normative API
+guarantees:
+
+- prompt copy button writes the current prompt with the browser clipboard API
+- success icon feedback after copy is local UI state only
+- browser auto-open on startup is operator convenience only
+
+#### Contrib-only convenience surface
+
+The direct script runtime exposes one extra convenience endpoint that is not part
+of the authoritative packaged contract:
+
+| Method | Path | Status |
+|-------|------|--------|
+| `POST` | `/api/personas/batch-update` | contrib-only convenience surface |
+
+Downstream test scope should treat `/api/personas/batch-update` and its related
+UI workflow as separate contrib coverage rather than normative `larva serve`
+contract coverage.
+
 ## Assembly Contract
 
 Assembly may combine:

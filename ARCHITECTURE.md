@@ -58,6 +58,23 @@ I/O edges:
 - CLI
 - MCP
 - Python API surface
+- packaged web runtime in `src/larva/shell/web.py`
+- contributor web runtime in `contrib/web/server.py`
+
+## Web Runtime Boundary
+
+- [Proven] `src/larva/shell/web.py` is the authoritative packaged web boundary
+  for `larva serve` and owns the normative REST endpoint inventory for browser
+  consumers.
+- [Proven] `contrib/web/server.py` is a repository-local direct script runtime
+  that mirrors the packaged surface for review work and may expose contributor
+  conveniences that are not part of the packaged contract.
+- [Proven] Both runtimes serve single-file HTML artifacts as shell-owned UI
+  adapters; browser interactions such as copy-to-clipboard remain convenience
+  behavior layered above the REST contract.
+- [Likely] Downstream tests should split normative packaged-web coverage from
+  contrib-only convenience coverage so batch-update review helpers do not become
+  accidental public API commitments.
 
 ## Package-Root Policy
 

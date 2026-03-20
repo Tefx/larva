@@ -649,6 +649,7 @@
           <div class="section-header">
             <div class="section-label">PROMPT</div>
             <div style="display:flex;gap:8px;">
+              <!-- Convenience UI control: useful for operators, but not a separate REST contract surface. -->
               <button class="btn-icon" title="Copy prompt" :disabled="!getVal('prompt')" @click="copyPrompt()">
                 <template x-if="!copySuccess">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -1385,7 +1386,8 @@ function larvaApp() {
       return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
     },
 
-    // Copy prompt to clipboard
+    // Convenience UI behavior only; downstream contract tests should not treat
+    // clipboard success feedback as part of the normative REST surface.
     copySuccess: false,
     async copyPrompt() {
       const prompt = this.getVal('prompt');
@@ -1440,6 +1442,8 @@ function larvaApp() {
       }, 500);
     },
 
+    // Contrib-only convenience workflow: useful for local review, but not part
+    // of the authoritative packaged web contract exposed by `larva serve`.
     async runBatchPreview(isAutoUpdate = false) {
       const where = this.buildBatchWhere();
       if (Object.keys(where).length === 0) {

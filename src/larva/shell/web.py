@@ -1,10 +1,28 @@
 """
 larva web UI server.
 
-Wraps larva's Python API as REST endpoints and serves the single-file HTML UI.
+Authoritative runtime boundary for the packaged web surface used by
+``larva serve``. This module wraps larva's Python API as REST endpoints and
+serves the single-file HTML UI from ``src/larva/shell/web_ui.html``.
+
+Normative REST contract for ``larva serve``:
+    GET    /                       -> packaged HTML UI
+    GET    /api/personas           -> list personas
+    GET    /api/personas/{id}      -> resolve persona
+    POST   /api/personas           -> validate + register persona
+    PATCH  /api/personas/{id}      -> patch + revalidate + register persona
+    DELETE /api/personas/{id}      -> delete persona
+    POST   /api/personas/clear     -> clear registry with confirmation
+    POST   /api/personas/validate  -> validate candidate spec
+    POST   /api/personas/assemble  -> assemble candidate spec
+    GET    /api/components         -> list component names
+    GET    /api/components/{t}/{n} -> load one component
+
+Convenience-only UI behavior such as browser auto-open and clipboard copy lives
+above the REST contract and should not be treated as a separate API guarantee.
 
 Usage:
-    larva serve [--port 7400]
+    larva serve [--port 7400] [--no-open]
     pip install larva[web]  # required for web dependencies
 """
 
@@ -39,6 +57,7 @@ _component_store = FilesystemComponentStore()
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 # @invar:allow shell_result: FastAPI helper returns JSONResponse, not Result
 def _api_error_response(e: LarvaApiError) -> JSONResponse:
     return JSONResponse(
@@ -50,6 +69,7 @@ def _api_error_response(e: LarvaApiError) -> JSONResponse:
 # ---------------------------------------------------------------------------
 # Persona endpoints
 # ---------------------------------------------------------------------------
+
 
 @app.get("/api/personas")
 def api_list_personas():
@@ -169,6 +189,7 @@ async def api_assemble_persona(request: Request):
 # Component endpoints
 # ---------------------------------------------------------------------------
 
+
 @app.get("/api/components")
 def api_list_components():
     result = _component_store.list_components()
@@ -198,6 +219,7 @@ def api_get_component(component_type: str, name: str):
 # Static files
 # ---------------------------------------------------------------------------
 
+
 @app.get("/")
 def serve_index():
     return FileResponse(STATIC_DIR / "web_ui.html", media_type="text/html")
@@ -207,6 +229,7 @@ def serve_index():
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main(port: int = 7400, no_open: bool = False) -> None:
     """Start the web UI server.
 
@@ -214,6 +237,7 @@ def main(port: int = 7400, no_open: bool = False) -> None:
     """
     if not no_open:
         import threading
+
         threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
 
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
@@ -221,6 +245,7 @@ def main(port: int = 7400, no_open: bool = False) -> None:
 
 if __name__ == "__main__":
     import argparse as _ap
+
     _parser = _ap.ArgumentParser(description="larva web UI")
     _parser.add_argument("--port", type=int, default=7400)
     _parser.add_argument("--no-open", action="store_true")

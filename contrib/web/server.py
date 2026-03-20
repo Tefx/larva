@@ -1,10 +1,20 @@
 """
 larva web UI server.
 
-Wraps larva's Python API as REST endpoints and serves the single-file HTML UI.
+Direct-script web runtime for repository contributors. It mirrors the packaged
+``larva serve`` surface and serves ``contrib/web/index.html`` for local review.
+
+Contract note:
+- The shared endpoint inventory from ``src/larva/shell/web.py`` remains the
+  authoritative packaged contract.
+- ``POST /api/personas/batch-update`` is a contrib-only convenience surface for
+  local review of bulk edits and is not part of the authoritative ``larva
+  serve`` contract.
+- Clipboard copy feedback in the HTML UI is convenience behavior, not a REST
+  contract guarantee.
 
 Usage:
-    uv run python contrib/web/server.py [--port 7400]
+    uv run python contrib/web/server.py [--port 7400] [--no-open]
 """
 
 from __future__ import annotations
@@ -12,6 +22,7 @@ from __future__ import annotations
 import argparse
 import webbrowser
 from pathlib import Path
+from typing import Any, Callable, cast
 
 from returns.result import Result, Success
 
@@ -28,16 +39,53 @@ from larva.shell.python_api import (
 )
 from larva.shell.components import FilesystemComponentStore
 
+_WEB_IMPORT_ERROR: ImportError | None = None
+
+
+class _MissingFastApiApp:
+    def _decorator(
+        self, *_args: object, **_kwargs: object
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        return lambda func: func
+
+    get = post = patch = delete = _decorator
+
+
 try:
     from fastapi import FastAPI, HTTPException, Request
     from fastapi.responses import FileResponse, JSONResponse
     import uvicorn
-except ImportError:
-    raise SystemExit(
-        "FastAPI and uvicorn are required.\nInstall with: uv pip install fastapi uvicorn"
-    )
+except ImportError as exc:
+    _WEB_IMPORT_ERROR = exc
 
-app = FastAPI(title="larva", docs_url=None, redoc_url=None)
+    class FastAPI(_MissingFastApiApp):  # type: ignore[no-redef]
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+    class HTTPException(Exception):  # type: ignore[no-redef]
+        def __init__(self, status_code: int, detail: str) -> None:
+            self.status_code = status_code
+            self.detail = detail
+
+    class Request:  # type: ignore[no-redef]
+        async def json(self) -> dict[str, object]:
+            return {}
+
+    class FileResponse:  # type: ignore[no-redef]
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+    class JSONResponse:  # type: ignore[no-redef]
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+    uvicorn = cast("Any", None)
+
+app = (
+    FastAPI(title="larva", docs_url=None, redoc_url=None)
+    if _WEB_IMPORT_ERROR is None
+    else _MissingFastApiApp()
+)
 
 STATIC_DIR = Path(__file__).parent
 _component_store = FilesystemComponentStore()
@@ -235,6 +283,11 @@ def serve_index():
 
 
 def main():
+    if _WEB_IMPORT_ERROR is not None:
+        raise SystemExit(
+            "FastAPI and uvicorn are required.\nInstall with: uv pip install fastapi uvicorn"
+        )
+
     parser = argparse.ArgumentParser(description="larva web UI")
     parser.add_argument("--port", type=int, default=7400)
     parser.add_argument("--no-open", action="store_true", help="Don't open browser")
@@ -245,7 +298,7 @@ def main():
 
         threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{args.port}")).start()
 
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    uvicorn.run(cast("Any", app), host="127.0.0.1", port=args.port, log_level="info")
 
 
 if __name__ == "__main__":

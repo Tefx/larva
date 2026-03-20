@@ -226,6 +226,17 @@ pip install fastapi uvicorn
 python contrib/web/server.py
 ```
 
+The packaged runtime entrypoint is `larva serve`, which binds `127.0.0.1:7400`
+by default, auto-opens a browser unless `--no-open` is passed, and serves the
+authoritative web contract documented in `INTERFACES.md`.
+
+Contract boundary note:
+
+- `larva serve` is the authoritative packaged web surface
+- `python contrib/web/server.py` is a contributor-facing direct script entrypoint
+- REST endpoints are normative; clipboard copy feedback is convenience UI behavior
+- contrib-only batch update behavior is not part of the packaged web contract
+
 ### OpenCode plugin
 
 larva also ships an OpenCode plugin that exposes larva personas as agents.

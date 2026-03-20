@@ -390,12 +390,34 @@ uvx larva serve
 
 ## 14. Web UI and plugin
 
-The repository includes a lightweight web UI in `contrib/web/`:
+The packaged web runtime entrypoint is:
+
+```bash
+larva serve
+larva serve --port 7400 --no-open
+```
+
+Runtime assumptions:
+
+- binds `127.0.0.1` by default
+- uses port `7400` unless `--port` is provided
+- auto-opens the browser unless `--no-open` is provided
+- serves the packaged single-file UI from `src/larva/shell/web_ui.html`
+
+The repository also includes a contributor-facing direct script runtime in
+`contrib/web/`:
 
 ```bash
 pip install fastapi uvicorn
 python contrib/web/server.py
 ```
+
+Authoritative contract notes for downstream tests and reviews:
+
+- normative web API coverage belongs to the packaged `larva serve` surface
+- the normative endpoint inventory lives in `INTERFACES.md`
+- the prompt copy button is convenience UI behavior, not a separate API contract
+- batch update is a contrib-only convenience surface, not part of `larva serve`
 
 The repository also includes an OpenCode plugin in `contrib/opencode-plugin/`.
 
