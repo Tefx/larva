@@ -30086,7 +30086,7 @@ phases:
       has `0.4.3` (outside this step scope).'
   - id: boundary_followup.component-home-boundary-review
     name: Home-directory components boundary review
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -30163,6 +30163,8 @@ phases:
     depends_on:
     - boundary_followup.package-root-policy-review
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-20T21:17:02.921460+00:00'
   - id: boundary_followup.gate
     name: Gate deferred boundary follow-up
     status: pending
