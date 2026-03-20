@@ -30564,7 +30564,7 @@ phases:
       - spec fixture conformance against documented minimal PersonaSpec format'
   - id: web_surface_followup.web-doc-sync
     name: Align web surface docs with actual behavior
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -30628,6 +30628,8 @@ phases:
     depends_on:
     - web_surface_followup.web-surface-tests
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-03-20T21:41:04.127745+00:00'
   - id: web_surface_followup.web-surface-freeze
     name: Freeze web surface snapshot for independent runtime review
     status: pending
