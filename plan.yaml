@@ -30318,7 +30318,7 @@ phases:
   steps:
   - id: web_surface_followup.web-runtime-contract
     name: Pin authoritative web runtime contract
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       contract_purity: ENFORCED
@@ -30419,6 +30419,35 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-20T21:29:31.133924+00:00'
+    done_at: '2026-03-20T21:34:36.836559+00:00'
+    evidence: 'Artifact:
+
+      - PR: 385c1ec7c9e66b54d4027108f6a9ab9ea7247dfc
+
+
+      Verification:
+
+      - Run: `python3 -m compileall src/larva/shell/web.py contrib/web/server.py`
+      -> compiled both web runtime modules successfully
+
+      - Run: `rg -n ''^@app\.(get|post|patch|delete)'' src/larva/shell/web.py contrib/web/server.py`
+      -> confirmed authoritative packaged endpoint inventory plus contrib-only `/api/personas/batch-update`
+
+      - Run: `invar guard` (changed files via MCP guard) -> passed; doctest/static
+      checks clean for touched files
+
+      - Run: `git status --short` -> clean worktree after commit
+
+
+      Spec link:
+
+      - `README.md` Web UI / `larva serve` usage
+
+      - `USER_GUIDE.md` §14 Web UI and plugin
+
+      - `INTERFACES.md` Web Runtime Surface
+
+      - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-tests
     name: Add automated web surface tests
     status: pending
