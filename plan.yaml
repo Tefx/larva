@@ -29940,6 +29940,10 @@ phases:
 - id: boundary_followup
   name: Deferred Boundary and Policy Follow-up
   status: pending
+  context: 'Close documented deferred buckets left after deep review and guard remediation.
+    Scope: package-root export policy, home-directory components boundary, and authoritative
+    docs/alignment only; no product feature expansion.'
   depends_on:
+  - deep_review
   - web_copy_button
   - invar_1203_remediation
