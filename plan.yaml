@@ -31526,7 +31526,7 @@ phases:
       correctly documented and implemented.'
   - id: completion_reaudit.spec-conformance-late-phases
     name: Spec conformance audit for late phases
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -31578,6 +31578,44 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-03-20T22:08:16.879811+00:00'
+    done_at: '2026-03-20T22:10:34.879052+00:00'
+    evidence: 'Artifact:
+
+      - PR: late-phase conformance report from task `ses_2f2b7cc05ffe07nuUJTE404427`
+
+
+      Verification:
+
+      - Run: cross-doc/implementation conformance checks across `README.md`, `USER_GUIDE.md`,
+      `INTERFACES.md`, `ARCHITECTURE.md`, `guard-diagnosis.md` vs runtime files ->
+      PASS
+
+      - Run: package-root/component-root policy checks -> PASS (`src/larva/__init__.py`
+      metadata-only, component root under `~/.larva/components`)
+
+      - Run: web startup and surface-scope checks including contrib-only batch-update
+      and convenience-copy behavior -> PASS
+
+      - Run: guard policy alignment verification (`pyproject.toml` + invar context)
+      -> PASS
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - `guard-diagnosis.md`
+
+
+      Verdict:
+
+      - PASS; no late-phase drift remains between docs and implementation.'
   - id: completion_reaudit.black-box-late-surface-verification
     name: Black-box verification of late surfaces
     status: pending
