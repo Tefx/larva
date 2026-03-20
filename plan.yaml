@@ -30695,3 +30695,55 @@ phases:
     verification: Wiring audit reports PASS or enumerates any remaining orphan late-phase
       surface.
     agent: wiring-auditor
+  - id: completion_reaudit.spec-conformance-late-phases
+    name: Spec conformance audit for late phases
+    status: pending
+    description: 'step_type: verification
+
+
+      Re-run spec/doc conformance for surfaces changed or clarified after the earlier
+      deep review.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+      - `guard-diagnosis.md`
+
+
+      touch_paths:
+
+      - all late follow-up doc and runtime surfaces
+
+
+      harness_refs:
+
+      - evidence from `boundary_followup.gate`
+
+      - evidence from `web_surface_followup.gate`
+
+
+      agent_source: default
+
+      agent: doc-reviewer
+
+
+      Required checks:
+
+      - docs match the chosen package-root and component-root policy outcomes
+
+      - web runtime docs match tested startup paths and surface scope
+
+      - no new drift was introduced by closing these gaps'
+    verification: Spec-conformance report cites each checked requirement and confirms
+      no late-phase drift remains.
+    depends_on:
+    - completion_reaudit.wiring-audit-late-phases
+    agent: doc-reviewer
