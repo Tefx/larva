@@ -390,7 +390,7 @@ uvx larva serve
 
 ## 14. Web UI and plugin
 
-The packaged web runtime entrypoint is:
+The authoritative packaged web runtime entrypoint is:
 
 ```bash
 larva serve
@@ -404,19 +404,20 @@ Runtime assumptions:
 - auto-opens the browser unless `--no-open` is provided
 - serves the packaged single-file UI from `src/larva/shell/web_ui.html`
 
-The repository also includes a contributor-facing direct script runtime in
-`contrib/web/`:
+The repository also includes a supported contributor convenience entrypoint in
+`contrib/web/` for local review of the same general UI surface:
 
 ```bash
 pip install fastapi uvicorn
 python contrib/web/server.py
 ```
 
-Authoritative contract notes for downstream tests and reviews:
+Verified contract notes for downstream tests and reviews:
 
 - normative web API coverage belongs to the packaged `larva serve` surface
 - the normative endpoint inventory lives in `INTERFACES.md`
-- the prompt copy button is convenience UI behavior, not a separate API contract
+- `python contrib/web/server.py` is supported as a contributor convenience entrypoint, not as the canonical packaged startup path
+- the prompt copy button is convenience UI behavior; docs do not promise more than the browser affordance exists
 - batch update is a contrib-only convenience surface, not part of `larva serve`
 
 The repository also includes an OpenCode plugin in `contrib/opencode-plugin/`.

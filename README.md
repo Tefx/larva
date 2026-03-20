@@ -158,7 +158,7 @@ Or with `uvx`:
 uvx larva mcp
 ```
 
-If you want an HTTP transport instead of stdio, start the SSE server:
+If you want the packaged local web UI/runtime instead of stdio, start:
 
 ```bash
 larva serve
@@ -219,23 +219,31 @@ unless guard policy and architecture docs are updated together.
 
 ### Web UI
 
-A browser-based persona manager is included in `contrib/web/`.
+The authoritative packaged startup path is:
+
+```bash
+larva serve
+```
+
+`larva serve` binds `127.0.0.1:7400` by default, accepts `--port` and
+`--no-open`, and serves the packaged single-file UI plus the normative REST
+surface documented in `INTERFACES.md`.
+
+The repository also includes a supported contributor convenience entrypoint for
+local review work:
 
 ```bash
 pip install fastapi uvicorn
 python contrib/web/server.py
 ```
 
-The packaged runtime entrypoint is `larva serve`, which binds `127.0.0.1:7400`
-by default, auto-opens a browser unless `--no-open` is passed, and serves the
-authoritative web contract documented in `INTERFACES.md`.
+Scope note:
 
-Contract boundary note:
-
-- `larva serve` is the authoritative packaged web surface
-- `python contrib/web/server.py` is a contributor-facing direct script entrypoint
-- REST endpoints are normative; clipboard copy feedback is convenience UI behavior
-- contrib-only batch update behavior is not part of the packaged web contract
+- `larva serve` is the canonical packaged web runtime users should target
+- `python contrib/web/server.py` is supported for contributor/local-review use, not the canonical packaged entrypoint
+- documented REST endpoints are the verified contract surface
+- the prompt copy button is documented only as browser convenience UI behavior
+- batch update is documented only for the contrib runtime, not for `larva serve`
 
 ### OpenCode plugin
 

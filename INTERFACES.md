@@ -84,8 +84,8 @@ new persona semantics.
 The web surface has two runnable entrypoints with one authoritative packaged
 contract:
 
-- `larva serve` -> packaged runtime and authoritative web contract
-- `python contrib/web/server.py` -> contributor-facing direct script runtime
+- `larva serve` -> authoritative packaged runtime and web contract
+- `python contrib/web/server.py` -> supported contributor convenience runtime for local review; not the canonical packaged entrypoint
 
 #### Startup contract
 
@@ -130,24 +130,24 @@ Shared response envelope rules:
 
 #### Convenience-only UI behavior
 
-These behaviors are visible in the browser UI but are not separate normative API
-guarantees:
+These behaviors are visible in the browser UI and covered only at convenience-UI
+fidelity, not as separate normative API guarantees:
 
-- prompt copy button writes the current prompt with the browser clipboard API
+- prompt copy affordance is present in the served HTML and uses the browser clipboard API
 - success icon feedback after copy is local UI state only
 - browser auto-open on startup is operator convenience only
 
 #### Contrib-only convenience surface
 
-The direct script runtime exposes one extra convenience endpoint that is not part
-of the authoritative packaged contract:
+The supported direct script runtime exposes one extra convenience endpoint that
+is not part of the authoritative packaged contract:
 
 | Method | Path | Status |
 |-------|------|--------|
 | `POST` | `/api/personas/batch-update` | contrib-only convenience surface |
 
 Downstream test scope should treat `/api/personas/batch-update` and its related
-UI workflow as separate contrib coverage rather than normative `larva serve`
+UI hooks as separate contrib coverage rather than normative `larva serve`
 contract coverage.
 
 ## Assembly Contract

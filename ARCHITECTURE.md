@@ -66,9 +66,10 @@ I/O edges:
 - [Proven] `src/larva/shell/web.py` is the authoritative packaged web boundary
   for `larva serve` and owns the normative REST endpoint inventory for browser
   consumers.
-- [Proven] `contrib/web/server.py` is a repository-local direct script runtime
-  that mirrors the packaged surface for review work and may expose contributor
-  conveniences that are not part of the packaged contract.
+- [Proven] `contrib/web/server.py` is a supported contributor convenience
+  runtime for local review work. It mirrors the packaged surface where useful
+  but may expose contributor conveniences that are not part of the packaged
+  contract.
 - [Proven] Both runtimes serve single-file HTML artifacts as shell-owned UI
   adapters; browser interactions such as copy-to-clipboard remain convenience
   behavior layered above the REST contract.
