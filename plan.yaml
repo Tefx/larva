@@ -30827,7 +30827,7 @@ phases:
       - `INTERFACES.md` web runtime surface'
   - id: web_surface_followup.web-wiring-audit
     name: Wiring audit for web runtime and UI surfaces
-    status: claimed
+    status: done
     description: 'step_type: verification
 
 
@@ -30893,6 +30893,57 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-03-20T21:45:05.237391+00:00'
+    done_at: '2026-03-20T21:48:33.855929+00:00'
+    evidence: 'Artifact:
+
+      - PR: wiring audit report from `ses_2f2d83257ffe35iSe0PZVl4S4E`
+
+
+      Verification:
+
+      - Run: `rg -n "serve|add_parser.*serve" src/larva/shell/cli_parser.py` -> `serve`
+      parser registration found
+
+      - Run: `rg -n "args.command == \"serve\"|web_main" src/larva/shell/cli.py` ->
+      CLI dispatch to `larva.shell.web.main`
+
+      - Run: `rg -n "@app\.(get|post|patch|delete)\(" src/larva/shell/web.py` -> packaged
+      route inventory found
+
+      - Run: `rg -n "@app\.(get|post|patch|delete)\(|batch-update" contrib/web/server.py`
+      -> contrib route inventory + batch-update found
+
+      - Run: `rg -n "copyPrompt|navigator\.clipboard|batch|batch-update" src/larva/shell/web_ui.html
+      contrib/web/index.html` -> prompt-copy in both; batch-update only in contrib
+
+      - Run: `rg -n "FileResponse.*web_ui\.html|FileResponse.*index\.html" src/larva/shell/web.py
+      contrib/web/server.py` -> both HTML assets wired
+
+
+      Spec link:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `web_surface_followup.web-runtime-contract` output
+
+
+      Audit verdict:
+
+      - `serve` command wiring PASS
+
+      - runtime/route inventory alignment PASS
+
+      - batch-update contrib-only scoping PASS
+
+      - prompt-copy hook presence PASS
+
+      - orphan route/asset scan PASS
+
+      - overall PASS'
   - id: web_surface_followup.web-spec-conformance
     name: Spec conformance review for web surface
     status: pending
