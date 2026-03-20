@@ -30227,7 +30227,7 @@ phases:
       - `guard-diagnosis.md`'
   - id: boundary_followup.gate
     name: Gate deferred boundary follow-up
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
 
@@ -30258,6 +30258,8 @@ phases:
     - boundary_followup.package-root-policy-review
     - boundary_followup.component-home-boundary-review
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-03-20T21:24:00.135985+00:00'
 - id: web_surface_followup
   name: Web Surface Test, Wiring, and Runtime Follow-up
   status: locked
