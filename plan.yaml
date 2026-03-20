@@ -30102,3 +30102,36 @@ phases:
     depends_on:
     - boundary_followup.package-root-policy-review
     agent: software-architect
+  - id: boundary_followup.gate
+    name: Gate deferred boundary follow-up
+    status: pending
+    description: 'step_type: gate
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer`), assess whether the deferred boundary
+      buckets are now explicitly resolved, intentionally deferred with justification,
+      or require a new implementation plan.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - Cross-cutting architecture/docs policy review
+
+      - Must prevent hidden deferred work from lingering after completion
+
+
+      cross_cutting_focus:
+
+      - package-root API policy remains explicit
+
+      - `~/.larva/components` ownership and trust boundary remain explicit
+
+      - docs and guard-policy expectations do not conflict'
+    verification: Gate confirms both deferred buckets are explicitly closed or converted
+      into concrete planned scope.
+    depends_on:
+    - boundary_followup.package-root-policy-review
+    - boundary_followup.component-home-boundary-review
+    agent: gate-reviewer
