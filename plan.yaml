@@ -30629,3 +30629,69 @@ phases:
   status: locked
   depends_on:
   - web_surface_followup
+  steps:
+  - id: completion_reaudit.wiring-audit-late-phases
+    name: Full wiring audit for late phases
+    status: pending
+    description: 'step_type: verification
+
+
+      Run a full wiring audit focused on phases added or changed after the earlier
+      deep review.
+
+
+      spec_refs:
+
+      - `README.md`
+
+      - `USER_GUIDE.md`
+
+      - `INTERFACES.md`
+
+      - `ARCHITECTURE.md`
+
+
+      touch_paths:
+
+      - `src/larva/shell/cli.py`
+
+      - `src/larva/shell/cli_parser.py`
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py`
+
+      - `src/larva/shell/web_ui.html`
+
+      - `contrib/web/index.html`
+
+      - `src/larva/__init__.py`
+
+      - `src/larva/shell/components.py`
+
+
+      harness_refs:
+
+      - late follow-up evidence from `boundary_followup` and `web_surface_followup`
+
+      - CLI serve registration
+
+      - web route inventory
+
+
+      agent_source: default
+
+      agent: wiring-auditor
+
+
+      Required checks:
+
+      - no orphan runtime/documented surfaces remain after late follow-up phases
+
+      - package-root and component-root decisions are reflected in actual wiring/docs
+
+      - no late-added UI element or web route is disconnected from the documented
+      surface'
+    verification: Wiring audit reports PASS or enumerates any remaining orphan late-phase
+      surface.
+    agent: wiring-auditor
