@@ -30450,7 +30450,7 @@ phases:
       - `ARCHITECTURE.md` Web Runtime Boundary'
   - id: web_surface_followup.web-surface-tests
     name: Add automated web surface tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
 
@@ -30523,6 +30523,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-03-20T21:35:00.543752+00:00'
+    done_at: '2026-03-20T21:40:41.431308+00:00'
+    evidence: 'Artifact:
+
+      - PR: 0c49552
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_web.py tests/shell/test_contrib_web.py
+      -v --tb=short` -> 39 passed in 0.36s
+
+      - Run: `invar guard` (changed files) -> passed
+
+      - Run: `python3 -m compileall src/larva/shell/web.py contrib/web/server.py`
+      -> compiled both modules
+
+
+      Spec link:
+
+      - `INTERFACES.md` Web Runtime Surface (endpoint inventory/startup contract)
+
+      - `INTERFACES.md` Contrib-only convenience surface (batch-update)
+
+      - `INTERFACES.md` PersonaSpec Contract (`_MINIMAL_SPEC` fixture source)
+
+      - `USER_GUIDE.md` §14 Web UI and plugin (startup expectations)
+
+      - `README.md` serve/web startup usage
+
+
+      Coverage delivered:
+
+      - packaged web endpoint inventory + startup contract
+
+      - HTML markers including copy-button and batch-update UI hooks
+
+      - contrib `/api/personas/batch-update` behavior and contrib surface mirror tests
+
+      - spec fixture conformance against documented minimal PersonaSpec format'
   - id: web_surface_followup.web-doc-sync
     name: Align web surface docs with actual behavior
     status: pending
