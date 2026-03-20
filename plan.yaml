@@ -31138,7 +31138,7 @@ phases:
       to a single batched remediation step + retest step per protocol.'
   - id: web_surface_followup.fix-gate-evidence-traceability
     name: Fix gate evidence traceability for web surface follow-up
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -31220,6 +31220,71 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-03-20T21:55:59.264734+00:00'
+    done_at: '2026-03-20T22:02:55.849938+00:00'
+    evidence: '## Batched Fix Evidence
+
+
+      **Step IDs covered**: `web_surface_followup.gate` -> `web_surface_followup.fix-gate-evidence-traceability`
+
+
+      **Issue scope**: S1 runtime liveness proof traceability only
+
+
+      **Updated evidence/doc locations**:
+
+      ```
+
+      tests/shell/artifacts/web_runtime_liveness.md
+
+      tests/shell/test_web.py
+
+      tests/shell/test_contrib_web.py
+
+      INTERFACES.md
+
+      README.md
+
+      USER_GUIDE.md
+
+      commit 076567d
+
+      ```
+
+
+      **Traceability proof**:
+
+      ```
+
+      - Both web test modules now link to tests/shell/artifacts/web_runtime_liveness.md.
+
+      - Artifact preserves runnable commands, startup logs, and GET / proof for both
+      packaged and contrib entrypoints.
+
+      - INTERFACES.md, README.md, and USER_GUIDE.md now reference the same artifact
+      path.
+
+      - Reviewer-facing docs and test artifacts converge on one runtime-proof location.
+
+      ```
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/shell/test_web.py tests/shell/test_contrib_web.py`
+      -> 39 passed
+
+      - Run: `invar guard` on changed files -> passed
+
+
+      Spec link:
+
+      - `web_surface_followup.gate` should_fix S1 remediation
+
+
+      **Non-blocking notes preserved**: N1/N2 recorded as suggestions only, not blockers
+
+
+      **Scope check**: no product feature expansion'
   - id: web_surface_followup.retest-gate-evidence-traceability
     name: Re-test gate evidence traceability for web surface follow-up
     status: pending
