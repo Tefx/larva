@@ -30624,3 +30624,8 @@ phases:
     - web_surface_followup.web-wiring-audit
     - web_surface_followup.web-spec-conformance
     agent: gate-reviewer
+- id: completion_reaudit
+  name: Completion Re-audit After Late Follow-ups
+  status: locked
+  depends_on:
+  - web_surface_followup
