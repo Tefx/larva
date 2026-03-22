@@ -10,7 +10,9 @@
 
 ### Primary: MCP Server
 
-larva runs as an MCP server (stdio or SSE). Prefer MCP for all programmatic access.
+larva runs as an MCP server (stdio, HTTP, or SSE). stdio is the default for CLI
+usage. HTTP is the standard remote transport (MCP spec 2025-03-26+). SSE is legacy.
+Prefer MCP for all programmatic access.
 
 Available tools:
 ```

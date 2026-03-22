@@ -311,7 +311,13 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
 ]
 
 
-MCPTransportMode = Literal["stdio", "sse"]
+MCPTransportMode = Literal["stdio", "http", "sse"]
+"""MCP transport mode.
+
+- ``"stdio"``: Standard I/O transport (default for CLI usage).
+- ``"http"``: MCP Streamable HTTP transport (spec 2025-03-26+, recommended for remote).
+- ``"sse"``: Legacy Server-Sent Events transport (deprecated, retained for compatibility).
+"""
 
 
 class MCPServerConfig(TypedDict, total=False):
