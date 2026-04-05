@@ -32297,7 +32297,7 @@ phases:
     depends_on:
     - canonical_core_admission.core-enforcement-impl
     - canonical_core_admission.facade-admission-impl
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: canonical_core_admission.spec-conformance
     name: Audit core admission against opifex canonical contract
     status: pending
