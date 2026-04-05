@@ -31977,6 +31977,86 @@ phases:
 
       '
     agent: software-architect
+  - id: canonical_core_admission.tests-red
+    name: Expose canonical admission gaps with focused tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Add focused tests that expose current divergence from the pinned canonical contract
+      before remediation.
+
+
+      Test-only scope:
+
+      - `tests/core/test_validate.py`
+
+      - `tests/core/test_schema_validation.py` or replacement upstream-reference fixture
+      coverage
+
+      - `tests/app/test_facade/test_validate.py`
+
+      - `tests/app/test_facade/test_register.py`
+
+      - focused fixture/helpers only if needed
+
+
+      Required exposed gaps:
+
+      - missing canonical required-field enforcement on the production admission path
+
+      - acceptance of `tools`
+
+      - acceptance of `side_effect_policy`
+
+      - acceptance of non-canonical extra fields
+
+      - local schema drift versus opifex canonical material
+
+      - admission success not implying canonical contract conformance
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the exact upstream canonical required-only shape
+      and at least one invalid fixture MUST use a forbidden extra field from the obligation
+      register.'
+    verification: '- Modified files stay in tests/ plus minimal fixtures/helpers
+
+      - Failing expectations clearly expose the canonical gaps without product-code
+      edits
+
+      - Evidence lists which gap each test covers and which downstream implementation
+      step closes it'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Exposed Gaps
+
+      - expected_failures:
+
+      - gap_to_test_mapping:
+
+      - spec_fixture_sections_used:
+
+      - downstream_implementation_steps:
+
+      '
+    depends_on:
+    - canonical_core_admission.contract
+    agent: python-executor
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
