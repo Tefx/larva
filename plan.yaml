@@ -31812,3 +31812,8 @@ phases:
   status: locked
   depends_on:
   - canonical_surface_verify
+- id: canonical_deep_review
+  name: Canonical Remediation Deep Review
+  status: locked
+  depends_on:
+  - canonical_doc_sync
