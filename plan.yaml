@@ -32645,6 +32645,89 @@ phases:
     - canonical_shell_surfaces.contract
     - canonical_shell_surfaces.tests-red
     agent: python-executor
+  - id: canonical_shell_surfaces.surface-contract-impl
+    name: Clean shell transport contract text and handlers to canonical-only semantics
+    status: pending
+    description: "step_type: implementation\ntags:\n- integration\n\nFill in stub\
+      \ bodies in the existing shell transport signatures per the contract from step\
+      \ `canonical_shell_surfaces.contract`.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n- `src/larva/shell/mcp_contract.py` — transport-visible contract\
+      \ text is authoritative for MCP consumers\n- `src/larva/shell/web.py` — packaged\
+      \ web admission handler must not widen the canonical contract\n- `src/larva/shell/python_api.py`\
+      \ and `src/larva/shell/cli.py` — projection surfaces must reflect canonical\
+      \ semantics\n- `tests/shell/test_mcp.py`, `tests/shell/test_web.py`, and `tests/shell/test_python_api.py`\
+      \ — protected expectations\n\nYOUR SCOPE: replace compatibility messaging/behavior\
+      \ with canonical-only projection semantics across MCP, web, CLI, and Python\
+      \ API surfaces. Ensure error text/taxonomy and request handling no longer claim\
+      \ or preserve deprecated field acceptance.\n\n## Gate Preview (what the gate\
+      \ WILL reject)\n1. Any user-facing surface that still says `tools` is accepted\n\
+      2. Any packaged web handler that still copies or preserves non-canonical fields\
+      \ into admitted specs\n3. Any cross-surface mismatch in canonical rejection\
+      \ semantics\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable.\nEach deliverable MUST enforce\
+      \ and communicate the same canonical contract across the touched surfaces.\n\
+      \nupstream_artifacts:\n- path: src/larva/shell/mcp_contract.py\n  from_step:\
+      \ canonical_shell_surfaces.contract\n  tier: contract\n- path: src/larva/shell/web.py\n\
+      \  from_step: canonical_shell_surfaces.contract\n  tier: contract\n- path: tests/shell/test_mcp.py\n\
+      \  from_step: canonical_shell_surfaces.tests-red\n  tier: test\n- path: tests/shell/test_web.py\n\
+      \  from_step: canonical_shell_surfaces.tests-red\n  tier: test\n- path: tests/shell/test_python_api.py\n\
+      \  from_step: canonical_shell_surfaces.tests-red\n  tier: test"
+    verification: '- Main path: CLI/MCP/Python/Web canonical requests succeed with
+      aligned semantics
+
+      - Failure path: all touched surfaces reject forbidden fields consistently
+
+      - Proof: real surface-level execution shows the same resolved fact instead of
+      each surface re-deriving compatibility rules independently'
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact command or test>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <actual output>
+
+      ```
+
+
+      **Path exercised**: transport surface -> facade -> core admission
+
+
+      **Cross-surface consistency checked**:
+
+      - MCP:
+
+      - Web:
+
+      - Python API:
+
+      - CLI:
+
+      '
+    depends_on:
+    - canonical_shell_surfaces.contract
+    - canonical_shell_surfaces.tests-red
+    agent: python-executor
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
