@@ -31926,6 +31926,57 @@ phases:
   status: locked
   depends_on:
   - canonical_authority_basis
+  steps:
+  - id: canonical_core_admission.contract
+    name: Pin canonical core admission contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nwork_type: authority_adjudication\
+      \ -> technical_debt_remediation\n\nDefine the acceptance contract for strict\
+      \ opifex-aligned admission before code changes.\n\nPin:\n- canonical required\
+      \ fields: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`\n\
+      - rejection of `tools`, `side_effect_policy`, and non-canonical extra fields\
+      \ at the canonical admission boundary\n- source-of-truth rule for the repo-local\
+      \ schema artifact: reference-only or removal from authority, never independent\
+      \ contract ownership\n- error taxonomy alignment expectations for validation\
+      \ and facade mapping\n- admission-success invariant: any spec accepted through\
+      \ larva production paths conforms to the opifex canonical PersonaSpec contract\n\
+      \nContract scope only: signatures, error-shape expectations, docstrings, and\
+      \ acceptance notes for existing interfaces in `spec.py`, `validate.py`, `assemble.py`,\
+      \ and `facade.py`. Do not widen the public API."
+    verification: '- Contract identifies the single canonical authority and the exact
+      larva files that must stop widening it
+
+      - Required-field and extra-field rejection obligations are explicit and reviewable
+
+      - No new public helper surface is introduced without authority support'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Output
+
+      - authoritative_required_fields:
+
+      - forbidden_fields_at_boundary:
+
+      - extra_field_rule:
+
+      - local_schema_disposition:
+
+      - error_taxonomy_alignment_notes:
+
+      - pinned_interfaces:
+
+      '
+    agent: software-architect
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
