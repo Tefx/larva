@@ -33663,4 +33663,4 @@ phases:
     - canonical_deep_review.spec-conformance
     - canonical_deep_review.architecture-review
     - canonical_deep_review.black-box
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
