@@ -32458,6 +32458,49 @@ phases:
   status: locked
   depends_on:
   - canonical_core_admission
+  steps:
+  - id: canonical_shell_surfaces.contract
+    name: Pin shell and projection canonical boundary
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - interfaces\n  - docstrings\n  - acceptance_notes\n\nDefine the shell/projection\
+      \ acceptance contract after core remediation is gated.\n\nPin:\n- component\
+      \ ingestion may accept prompt/toolset/constraint/model components, but must\
+      \ not reintroduce non-canonical PersonaSpec fields at the assembled canonical\
+      \ boundary\n- MCP/CLI/Python/Web surface descriptions must stop advertising\
+      \ acceptance of deprecated `tools` or `side_effect_policy`\n- packaged web and\
+      \ MCP surfaces must report admission failures using the aligned canonical taxonomy\
+      \ rather than compatibility messaging\n- shell surfaces project the canonical\
+      \ contract; they do not define or widen it"
+    verification: '- Shell/projection boundary rules are explicit enough to stop transport-specific
+      widening
+
+      - Component-ingestion and public-surface responsibilities are separated cleanly
+
+      - No contract text preserves legacy compatibility merely because it exists today'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Shell Boundary Contract Output
+
+      - component_ingestion_rule:
+
+      - projection_rule:
+
+      - public_surface_error_rule:
+
+      - forbidden_legacy_messages:
+
+      '
+    agent: software-architect
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
