@@ -31990,6 +31990,7 @@ phases:
       '
     depends_on:
     - canonical_authority_basis.lock-opifex-authority
+    - canonical_authority_basis.clarify-removed-field-semantics
     agent: gate-reviewer-tacit
   - id: canonical_authority_basis.clarify-removed-field-semantics
     name: Clarify removed-field admission semantics
