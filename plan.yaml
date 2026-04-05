@@ -33259,6 +33259,75 @@ phases:
   status: locked
   depends_on:
   - canonical_surface_verify
+  steps:
+  - id: canonical_doc_sync.update-docs
+    name: Sync larva documentation to opifex canonical authority
+    status: pending
+    description: 'step_type: review
+
+
+      Update documentation and ADR material so larva no longer presents itself as
+      the canonical PersonaSpec contract owner and no longer documents deprecated
+      compatibility semantics as accepted behavior.
+
+
+      Required sync targets:
+
+      - `ARCHITECTURE.md`
+
+      - `INTERFACES.md`
+
+      - `README.md`
+
+      - `USAGE.md`
+
+      - `USER_GUIDE.md`
+
+      - `ADR-002-capability-intent-without-runtime-policy.md`
+
+      - `MIGRATION-002-capability-intent.md`
+
+
+      Required outcomes:
+
+      - point PersonaSpec authority to opifex
+
+      - document larva as consumer/admission authority/projection handler
+
+      - remove documented acceptance of `tools` and `side_effect_policy`
+
+      - remove or explicitly demote larva-local schema as an independent authority
+
+      - document any justified error-taxonomy mismatch explicitly if one remains'
+    verification: '- Docs consistently identify opifex as contract owner and larva
+      as downstream admission authority
+
+      - No targeted doc still teaches deprecated compatibility semantics as live behavior
+
+      - Any remaining divergence is explicit and justified'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Doc Sync Report
+
+      - files_updated:
+
+      - contract_owner_language_updated:
+
+      - deprecated_acceptance_removed:
+
+      - justified_divergences:
+
+      '
+    agent: doc-reviewer
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
   status: locked
