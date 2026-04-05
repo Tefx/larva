@@ -33117,6 +33117,78 @@ phases:
 
       '
     agent: blind-tester
+  - id: canonical_surface_verify.mcp-liveness-probe
+    name: Run MCP runtime proof for canonical admission
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Runnable liveness probe for the MCP entrypoint.
+
+
+      As an INDEPENDENT TESTER (blind-tester), actually run the MCP stdio server and
+      prove at least one canonical admission-related operation reaches the real MCP
+      handler path end-to-end.
+
+
+      Verification criteria:
+
+      - MCP entrypoint starts
+
+      - server accepts at least one tool call
+
+      - one canonical validate/register/resolve path returns the expected success/failure
+      under the new contract
+
+      - evidence includes exact launch command and actual tool-call output'
+    verification: '- Exact launch command recorded
+
+      - At least one real MCP tool call reaches the runtime entrypoint end-to-end
+
+      - Evidence distinguishes server startup from canonical contract behavior'
+    evidence_template: '## Runnable MCP Proof
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Launch command**:
+
+      ```
+
+      <exact command>
+
+      ```
+
+
+      **Tool call executed**:
+
+      ```
+
+      <tool request / response>
+
+      ```
+
+
+      **Observed runtime behavior**:
+
+      - started:
+
+      - handled_tool_call:
+
+      - canonical_operation_result:
+
+      '
+    agent: blind-tester
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
   status: locked
