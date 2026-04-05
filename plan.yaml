@@ -33373,3 +33373,53 @@ phases:
   status: locked
   depends_on:
   - canonical_doc_sync
+  steps:
+  - id: canonical_deep_review.wiring-audit
+    name: Run full wiring audit for canonical remediation
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      Full wiring audit: verify no public/exported surface involved in PersonaSpec
+      admission still points to deprecated compatibility behavior.
+
+
+      Checks:
+
+      - public shell surfaces still reach the remediated admission path
+
+      - no orphaned schema/compatibility helpers remain wired as active authorities
+
+      - no runtime entrypoint bypasses canonical enforcement'
+    verification: '- Full-system wiring evidence is produced
+
+      - Any stale authority path is surfaced with explicit remediation relevance
+
+      - Verdict is PASS or ISSUES_FOUND with concrete locations'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Authority bypasses / stale wiring**:
+
+      ```
+
+      <grep or trace output>
+
+      ```
+
+      **Verdict**: PASS | ISSUES_FOUND
+
+      '
+    agent: wiring-auditor
