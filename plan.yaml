@@ -32375,6 +32375,84 @@ phases:
     - canonical_core_admission.core-enforcement-impl
     - canonical_core_admission.facade-admission-impl
     agent: doc-reviewer
+  - id: canonical_core_admission.gate
+    name: Gate canonical core admission remediation
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - source-of-truth conflict collapse is the purpose of the phase
+
+      - production admission path semantics are being changed
+
+      - failures here poison every downstream surface
+
+
+      Gate review: verify canonical core admission remediation is complete and quality
+      is sufficient for shell/projection cleanup.
+
+
+      BLOCK if:
+
+      - any admission success path still tolerates `tools`, `side_effect_policy`,
+      or unknown extra fields
+
+      - required-field enforcement is still weaker on the production path than in
+      the upstream canonical contract
+
+      - larva-local schema text still claims independent contract authority'
+    verification: '- All phase steps completed with adequate evidence
+
+      - Behavioral proof register and spec-conformance evidence leave no blocker-class
+      unresolved obligation intersecting downstream shell/API work
+
+      - OPEN/BLOCK recommendation is explicit and evidence-backed'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+
+      ### Gate Decision Basis
+
+      - reviewed_requirement_refs:
+
+      - unresolved_statuses:
+
+      - non_intersection_claims:
+
+      - open_or_block:
+
+      - required_actions_if_blocked:
+
+      '
+    depends_on:
+    - canonical_core_admission.contract
+    - canonical_core_admission.tests-red
+    - canonical_core_admission.core-enforcement-impl
+    - canonical_core_admission.facade-admission-impl
+    - canonical_core_admission.verify
+    - canonical_core_admission.spec-conformance
+    agent: gate-reviewer
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
