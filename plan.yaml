@@ -32809,7 +32809,7 @@ phases:
     depends_on:
     - canonical_shell_surfaces.component-ingestion-impl
     - canonical_shell_surfaces.surface-contract-impl
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: canonical_shell_surfaces.wiring-audit
     name: Audit shell wiring for canonical contract reachability
     status: pending
