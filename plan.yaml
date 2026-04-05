@@ -32144,13 +32144,13 @@ phases:
       \ branch: `92f33c5` (`Clarify removed-field admission authority`)"
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
-  status: pending
+  status: in_progress
   depends_on:
   - canonical_authority_basis
   steps:
   - id: canonical_core_admission.contract
     name: Pin canonical core admission contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nwork_type: authority_adjudication\
       \ -> technical_debt_remediation\n\nDefine the acceptance contract for strict\
@@ -32198,6 +32198,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-05T19:15:39.132347+00:00'
   - id: canonical_core_admission.tests-red
     name: Expose canonical admission gaps with focused tests
     status: pending
