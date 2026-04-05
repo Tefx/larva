@@ -31994,7 +31994,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: canonical_authority_basis.clarify-removed-field-semantics
     name: Clarify removed-field admission semantics
-    status: claimed
+    status: done
     description: 'Authority adjudication for removed-field admission semantics in
       `design/opifex-canonical-authority-basis.md`.
 
@@ -32041,6 +32041,37 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-05T18:56:42.115460+00:00'
+    done_at: '2026-04-05T18:58:28.339018+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - design/opifex-canonical-authority-basis.md — read and updated. Key passage:\
+      \ \"A PersonaSpec presented to any larva admission surface is invalid if the\
+      \ top-level key set contains `tools` or `side_effect_policy`. Larva must reject\
+      \ the spec immediately at admission... The compatibility window for admitting\
+      \ `tools` and `side_effect_policy` is **zero**... Verification must prove rejection\
+      \ when either removed field is present, not mere omission after acceptance.\"\
+      \n\n## Authority Decision Record\n- Removed field: `tools`\n  - normative admission\
+      \ behavior: reject-immediate on presence at any larva admission surface; no\
+      \ accept-with-warning, no accept-and-drop, no round-trip preservation, no remapping\n\
+      \  - compatibility window policy: zero-length compatibility window; no transitional\
+      \ deprecate-and-accept period; non-conforming from the first remediation release\
+      \ claiming conformance to this basis\n  - authoritative wording added: \"`tools`,\
+      \ `side_effect_policy` — reject-immediate on admission, never emit on canonical\
+      \ outputs\" plus the normative rule and downstream verification bullets\n- Removed\
+      \ field: `side_effect_policy`\n  - normative admission behavior: reject-immediate\
+      \ on presence at any larva admission surface; no accept-with-warning, no accept-and-drop,\
+      \ no round-trip preservation, no remapping\n  - compatibility window policy:\
+      \ zero-length compatibility window; no transitional deprecate-and-accept period;\
+      \ non-conforming from the first remediation release claiming conformance to\
+      \ this basis\n  - authoritative wording added: \"`tools`, `side_effect_policy`\
+      \ — reject-immediate on admission, never emit on canonical outputs\" plus the\
+      \ normative rule and downstream verification bullets\n\n## Determinism Check\n\
+      - downstream implementation choice enabled without reinterpretation: yes\n-\
+      \ remaining ambiguity: none\n\n## Proof Closure\n- P3 status after update: CLOSED_BY_AUTHORITY\n\
+      - gate impact statement: The design doc now records an explicit reject-immediate\
+      \ policy, zero-length compatibility window, and verification contract for both\
+      \ removed fields, so downstream implementation and verification no longer need\
+      \ to infer removed-field admission semantics.\n\nCommit created on isolated\
+      \ branch: `92f33c5` (`Clarify removed-field admission authority`)"
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
