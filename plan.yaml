@@ -33367,7 +33367,7 @@ phases:
       '
     depends_on:
     - canonical_doc_sync.update-docs
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
   status: locked
