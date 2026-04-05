@@ -31976,7 +31976,7 @@ phases:
       - pinned_interfaces:
 
       '
-    agent: software-architect
+    agent: software-architect-tacit
   - id: canonical_core_admission.tests-red
     name: Expose canonical admission gaps with focused tests
     status: pending
