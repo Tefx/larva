@@ -33253,7 +33253,7 @@ phases:
     - canonical_surface_verify.cross-surface-conformance
     - canonical_surface_verify.web-liveness-probe
     - canonical_surface_verify.mcp-liveness-probe
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
   status: locked
