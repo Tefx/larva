@@ -32298,6 +32298,83 @@ phases:
     - canonical_core_admission.core-enforcement-impl
     - canonical_core_admission.facade-admission-impl
     agent: integration-verifier
+  - id: canonical_core_admission.spec-conformance
+    name: Audit core admission against opifex canonical contract
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Spec conformance verification via adversarial divergence hunting.
+
+
+      This is NOT "do tests pass" — it is "does larva core/app admission now match
+      what opifex says."
+
+
+      SCOPE: only the spec sections and code paths touched by this phase.
+
+
+      FOCUS AREAS:
+
+      - required-field exactness
+
+      - forbidden field rejection for `tools` and `side_effect_policy`
+
+      - extra-field rejection on the true admission path
+
+      - local schema artifact no longer acting as an independent authority
+
+      - error taxonomy alignment or explicitly justified mismatch'
+    verification: '- Evidence table cites upstream section plus larva implementation
+      file:line for each checked requirement
+
+      - Any behavioral precedence claim lacking runtime proof is marked NEEDS_TEST
+      with a concrete follow-up
+
+      - Divergences are explicit; no implicit compatibility escape hatches remain'
+    evidence_template: '## Spec Conformance Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE
+
+
+      ## Coverage Summary
+
+      - Total requirements:
+
+      - CONFORMS:
+
+      - DIVERGES:
+
+      - NEEDS_TEST:
+
+      '
+    depends_on:
+    - canonical_core_admission.core-enforcement-impl
+    - canonical_core_admission.facade-admission-impl
+    agent: doc-reviewer
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
