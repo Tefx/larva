@@ -33539,3 +33539,68 @@ phases:
 
       '
     agent: software-architect
+  - id: canonical_deep_review.black-box
+    name: Black-box verify canonical admission from public surfaces
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      Using only the opifex canonical materials and larva public interfaces, verify
+      that larva behaves as a canonical admission authority rather than an independent
+      contract definer.
+
+
+      Black-box checks:
+
+      - canonical PersonaSpec succeeds
+
+      - `tools` fails
+
+      - `side_effect_policy` fails
+
+      - representative extra field fails
+
+      - public-surface behavior matches docs without relying on implementation internals'
+    verification: '- Fixtures are spec-derived, minimal, and black-box
+
+      - Evidence includes actual public-surface requests and outputs
+
+      - Any mismatch between docs and behavior is recorded explicitly'
+    evidence_template: '## Black-Box Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fixture Set
+
+      - canonical_success_fixture:
+
+      - forbidden_tools_fixture:
+
+      - forbidden_side_effect_policy_fixture:
+
+      - forbidden_extra_field_fixture:
+
+
+      ## Public-Surface Results
+
+      - cli:
+
+      - python_api:
+
+      - mcp:
+
+      - web:
+
+      '
+    agent: blind-tester
