@@ -33116,7 +33116,7 @@ phases:
       - canonical_operation_result:
 
       '
-    agent: blind-tester
+    agent: blind-tester-tacit
   - id: canonical_surface_verify.mcp-liveness-probe
     name: Run MCP runtime proof for canonical admission
     status: pending
