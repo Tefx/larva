@@ -31789,13 +31789,13 @@ phases:
       - Final acceptance gate cleared; no unresolved blockers remain.'
 - id: canonical_authority_basis
   name: Opifex Canonical Authority Basis
-  status: pending
+  status: in_progress
   depends_on:
   - completion_reaudit
   steps:
   - id: canonical_authority_basis.lock-opifex-authority
     name: Lock opifex canonical authority basis
-    status: pending
+    status: claimed
     description: 'work_type: authority_adjudication
 
       step_type: planning
@@ -31863,6 +31863,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-05T18:45:50.815886+00:00'
   - id: canonical_authority_basis.gate
     name: Gate canonical authority basis
     status: pending
