@@ -33328,6 +33328,46 @@ phases:
 
       '
     agent: doc-reviewer
+  - id: canonical_doc_sync.gate
+    name: Gate canonical documentation sync
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: verify documentation now matches the strict canonical remediation
+      and does not preserve legacy truth claims.'
+    verification: '- Doc sync covers all targeted authority surfaces
+
+      - No blocker-class documentation drift remains for downstream completion claims
+
+      - OPEN/BLOCK decision cites reviewed materials'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - files_reviewed:
+
+      - residual_doc_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - canonical_doc_sync.update-docs
+    agent: gate-reviewer
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
   status: locked
