@@ -32876,6 +32876,72 @@ phases:
     - canonical_shell_surfaces.component-ingestion-impl
     - canonical_shell_surfaces.surface-contract-impl
     agent: wiring-auditor
+  - id: canonical_shell_surfaces.gate
+    name: Gate shell and projection cleanup
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - cross-surface projection consistency is the purpose of the phase
+
+      - shell drift can silently reintroduce deprecated compatibility semantics
+
+      - runtime-facing handlers and contract text are high-rework surfaces
+
+
+      Gate review: verify shell and projection cleanup is complete and ready for independent
+      cross-surface verification.'
+    verification: '- Shell phase evidence shows no surviving transport-level widening
+      of the canonical contract
+
+      - Consumer-boundary conformance issues are either fixed now or explicitly blocked
+      before next phase
+
+      - Gate decision basis records OPEN/BLOCK with reviewed evidence refs'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+
+      ### Gate Decision Basis
+
+      - reviewed_requirement_refs:
+
+      - unresolved_statuses:
+
+      - consumer_boundary_risks:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - canonical_shell_surfaces.contract
+    - canonical_shell_surfaces.tests-red
+    - canonical_shell_surfaces.component-ingestion-impl
+    - canonical_shell_surfaces.surface-contract-impl
+    - canonical_shell_surfaces.verify
+    - canonical_shell_surfaces.wiring-audit
+    agent: gate-reviewer
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
