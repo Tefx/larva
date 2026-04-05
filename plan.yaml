@@ -31920,7 +31920,7 @@ phases:
       '
     depends_on:
     - canonical_authority_basis.lock-opifex-authority
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
