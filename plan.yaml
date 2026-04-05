@@ -33538,7 +33538,7 @@ phases:
       - closure_recommendations:
 
       '
-    agent: software-architect
+    agent: software-architect-tacit
   - id: canonical_deep_review.black-box
     name: Black-box verify canonical admission from public surfaces
     status: pending
