@@ -32150,7 +32150,7 @@ phases:
   steps:
   - id: canonical_core_admission.contract
     name: Pin canonical core admission contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - signatures\n  - type_defs\n  - interfaces\n  - stubs\nwork_type: authority_adjudication\
       \ -> technical_debt_remediation\n\nDefine the acceptance contract for strict\
@@ -32200,6 +32200,43 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-05T19:15:39.132347+00:00'
+    done_at: '2026-04-05T19:22:28.052095+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - src/larva/core/spec.py — read and updated. Key passage now states opifex owns\
+      \ canonical PersonaSpec authority; required canonical fields are id, description,\
+      \ prompt, model, capabilities, spec_version; tools and side_effect_policy are\
+      \ non-canonical and must not be widened back into PersonaSpec.\n- src/larva/core/validate.py\
+      \ — read and updated. Key passage now states canonical larva admission is downstream\
+      \ enforcement of opifex authority; tools, side_effect_policy, and unknown top-level\
+      \ fields belong in rejection errors, not deprecation warnings; admission success\
+      \ must imply opifex-conformant PersonaSpec.\n- src/larva/core/assemble.py —\
+      \ read and updated. Key passage now states assembly is candidate construction\
+      \ only, not PersonaSpec authority; it must not justify re-admitting removed\
+      \ fields; spec.py, validate.py, assemble.py, and facade.py are the exact larva\
+      \ files that must not widen authority.\n- src/larva/app/facade.py — read and\
+      \ updated. Key passage now states facade is the production admission seam and\
+      \ must not widen acceptance for tools, side_effect_policy, or unknown top-level\
+      \ fields; validation failures map to PERSONA_INVALID with validator report preserved\
+      \ in details[\"report\"].\n\nSupporting authority refs reviewed:\n- design/opifex-canonical-authority-basis.md\n\
+      - contracts/persona_spec.schema.json\n- contracts/errors.yaml\n\nVerification:\n\
+      - invar guard passed for changed files.\n- Git commit on isolated branch: 0474b71\
+      \ — design: pin canonical admission contract surfaces\n\n## Contract Output\n\
+      - authoritative_required_fields: id, description, prompt, model, capabilities,\
+      \ spec_version\n- forbidden_fields_at_boundary: tools, side_effect_policy\n\
+      - extra_field_rule: unknown top-level PersonaSpec fields are non-conforming\
+      \ at canonical larva admission and must be rejected\n- local_schema_disposition:\
+      \ contracts/persona_spec.schema.json is reference-only while present (or removable),\
+      \ never independent authority\n- error_taxonomy_alignment_notes:\n  - validator\
+      \ issues remain fine-grained vocabulary\n  - facade invalid-spec mapping remains\
+      \ PERSONA_INVALID\n  - facade preserves validator report at details[\"report\"\
+      ]\n  - assembly errors preserve specific aligned codes\n  - future mismatches\
+      \ must be explicit and justified\n- pinned_interfaces:\n  - src/larva/core/spec.py::PersonaSpec\n\
+      \  - src/larva/core/validate.py::ValidationIssue / ValidationReport / validate_spec\n\
+      \  - src/larva/core/assemble.py::AssemblyError / assemble_candidate\n  - src/larva/app/facade.py::LarvaError\
+      \ / AssembleModule / ValidateModule / LarvaFacade\n\nRelated issue observed\
+      \ but not fixed per scope:\n- runtime validator and local schema behavior still\
+      \ appear broader than this newly pinned contract; this step only defined acceptance\
+      \ contract surface and did not implement full behavioral conformance."
   - id: canonical_core_admission.tests-red
     name: Expose canonical admission gaps with focused tests
     status: pending
