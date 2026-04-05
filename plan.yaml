@@ -33045,6 +33045,78 @@ phases:
 
       '
     agent: integration-verifier
+  - id: canonical_surface_verify.web-liveness-probe
+    name: Run packaged web liveness probe for canonical admission
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Runnable liveness probe for the packaged web entrypoint.
+
+
+      As an INDEPENDENT TESTER (blind-tester), actually run the packaged web entrypoint,
+      keep it alive, and prove one canonical admission-related operation reaches the
+      real handler path end-to-end.
+
+
+      Verification criteria:
+
+      - entrypoint starts
+
+      - runtime stays alive long enough to serve a request
+
+      - one canonical validate/register/resolve path succeeds or fails as expected
+      under the new contract
+
+      - proof includes exact launch command and request/response output'
+    verification: '- Exact launch command recorded
+
+      - At least one documented web API request reaches the packaged runtime end-to-end
+
+      - Evidence distinguishes startup success from contract correctness'
+    evidence_template: '## Runnable Liveness Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Launch command**:
+
+      ```
+
+      <exact command>
+
+      ```
+
+
+      **Operation executed**:
+
+      ```
+
+      <HTTP request / response>
+
+      ```
+
+
+      **Observed runtime behavior**:
+
+      - started:
+
+      - stayed_alive:
+
+      - canonical_operation_result:
+
+      '
+    agent: blind-tester
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
   status: locked
