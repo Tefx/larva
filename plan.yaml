@@ -31792,3 +31792,8 @@ phases:
   status: pending
   depends_on:
   - completion_reaudit
+- id: canonical_core_admission
+  name: Canonical Core Admission Remediation
+  status: locked
+  depends_on:
+  - canonical_authority_basis
