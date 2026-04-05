@@ -31792,6 +31792,77 @@ phases:
   status: pending
   depends_on:
   - completion_reaudit
+  steps:
+  - id: canonical_authority_basis.lock-opifex-authority
+    name: Lock opifex canonical authority basis
+    status: pending
+    description: 'work_type: authority_adjudication
+
+      step_type: planning
+
+
+      Establish the authoritative contract basis for this remediation before any implementation
+      DAG work.
+
+
+      Required outputs:
+
+      - Confirm opifex as PersonaSpec contract owner and larva as consumer/admission
+      authority/projection handler
+
+      - Pin canonical required fields, extra-field rejection rule, and removal of
+      `tools` / `side_effect_policy`
+
+      - Map the real larva admission path (`shell surfaces -> DefaultLarvaFacade ->
+      larva.core.validate.validate_spec`) and record that admission success must imply
+      canonical conformance
+
+      - Record source-of-truth collapse rule: upstream prose/schema own the contract;
+      larva local schema is not independent authority
+
+      - Record error-taxonomy alignment rule: match upstream as completely as practical;
+      any deliberate mismatch must be explicitly justified
+
+
+      This step is the approved architecture/authority basis for downstream remediation
+      planning.'
+    verification: '- Authority basis explicitly identifies upstream owner, larva runtime
+      admission path, and source-of-truth matrix
+
+      - Downstream phases can depend on this basis without re-adjudicating contract
+      ownership
+
+      - Any remaining ambiguity is limited to implementation details, not contract
+      authority'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Authority Basis Output
+
+      - system_layers:
+
+      - source_of_truth_matrix:
+
+      - runtime_contract:
+
+      - transport_boundary_rules:
+
+      - contract_owner_decision:
+
+      - explicit_non_goals:
+
+      - unresolved_items:
+
+      '
+    agent: software-architect
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
