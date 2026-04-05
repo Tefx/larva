@@ -30,8 +30,28 @@ For downstream remediation planning, treat the canonical PersonaSpec input contr
 - **Required fields:** `id`, `prompt`, `model`, `capabilities`, `can_spawn`
 - **Optional fields:** `description`, `model_params`, `compaction_prompt`
 - **Derived/managed fields:** `spec_version`, `spec_digest`
-- **Removed fields:** `tools`, `side_effect_policy`
+- **Removed fields:** `tools`, `side_effect_policy` — reject-immediate on admission, never emit on canonical outputs
 - **Extra-field rule:** reject unknown top-level fields during admission rather than silently accepting or preserving them
+
+### Removed-field admission policy (normative)
+
+The removed fields `tools` and `side_effect_policy` use **reject-immediate** semantics.
+
+Authoritative rule:
+
+> A PersonaSpec presented to any larva admission surface is invalid if the top-level key set contains `tools` or `side_effect_policy`. Larva must reject the spec immediately at admission. Larva must not accept the spec with a warning, silently drop the field, preserve the field for round-trip output, or map the field into another canonical field.
+
+Compatibility-window policy:
+
+> The compatibility window for admitting `tools` and `side_effect_policy` is **zero**. There is no transitional deprecate-and-accept period and no output-only preservation period. The deprecation horizon is already exhausted by this authority basis: downstream implementation must treat any admitted input containing either field as non-conforming from the first remediation release that claims conformance to this basis.
+
+Downstream contract for implementation and verification:
+
+- Admission behavior is deterministic: presence of `tools` **must** fail admission; presence of `side_effect_policy` **must** fail admission.
+- Failure is required on every larva admission surface that accepts PersonaSpec input (CLI, Python API, web, MCP, registry ingestion, and any equivalent programmatic ingress).
+- No output or projection claiming canonical PersonaSpec conformance may emit `tools` or `side_effect_policy`.
+- Verification must prove rejection when either removed field is present, not mere omission after acceptance.
+- Verification must treat any accept-and-drop, accept-with-warning, or output-only handling as non-conforming.
 
 Rationale:
 
@@ -59,6 +79,10 @@ Pinned admission invariant:
 > If any larva surface accepts a PersonaSpec as valid, that success must mean the spec conforms to the canonical opifex contract, including required fields, removed-field policy, and extra-field rejection.
 
 This is the key authority lock. Downstream work must not preserve any alternate path where local larva validation succeeds while opifex-canonical validation would fail.
+
+Normative closure for removed fields:
+
+> For `tools` and `side_effect_policy`, canonical conformance requires rejection on presence. There is no authority to reinterpret these as deprecated-but-admissible inputs.
 
 ## Source-of-Truth Matrix
 
