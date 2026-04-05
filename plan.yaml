@@ -31789,7 +31789,7 @@ phases:
       - Final acceptance gate cleared; no unresolved blockers remain.'
 - id: canonical_authority_basis
   name: Opifex Canonical Authority Basis
-  status: in_progress
+  status: done
   depends_on:
   - completion_reaudit
   steps:
@@ -31935,7 +31935,7 @@ phases:
       \nCommit created:\n- bed5199 — design: lock opifex canonical authority basis"
   - id: canonical_authority_basis.gate
     name: Gate canonical authority basis
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -31994,6 +31994,74 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-05T19:09:57.863543+00:00'
+    done_at: '2026-04-05T19:15:13.412573+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - No refs were provided in the step definition. Proceeded with independent artifact\
+      \ review.\n\nAdditional source review performed:\n- design/opifex-canonical-authority-basis.md\
+      \ — authoritative basis document produced by prerequisite steps; read in full\
+      \ (170 lines)\n- ADR-002-capability-intent-without-runtime-policy.md — confirms\
+      \ runtime policy removal rationale (62 lines); supports removed-field authorization\n\
+      - INTERFACES.md — current docs still state larva is authority (line 5-8); deprecated\
+      \ fields still listed (lines 39-42); identified as drift\n- ARCHITECTURE.md\
+      \ — current docs claim larva is canonical authority (line 5); identified as\
+      \ drift\n- README.md — neutral; does not claim canonical authority\n- USAGE.md\
+      \ — documents current field set, derived spec_version/spec_digest, audience\
+      \ as opifex consumers; consistent with authority basis\n- src/larva/core/spec.py\
+      \ — PersonaSpec TypedDict includes deprecated tools and side_effect_policy fields;\
+      \ TypedDict is typing aid, not authority\n- src/larva/core/validate.py — validates\
+      \ with deprecation warnings (lines 253-287); does not reject on presence — identified\
+      \ as transitional state for downstream remediation\n- contracts/errors.yaml\
+      \ — opifex error taxonomy with larva sub-range; confirms larva sits inside wider\
+      \ opifex ecosystem\n\n## Gate Decision Basis\n\n### requirement_refs_reviewed:\n\
+      - Contract ownership: Authority basis lines 9-11, 18-24, 104-121 establish opifex\
+      \ as single upstream owner\n- Admission path: Authority basis lines 63-76 pin\
+      \ real larva admission path (shell → DefaultLarvaFacade → validate_spec)\n-\
+      \ Removed-field authorization: Authority basis lines 36-55 define reject-immediate\
+      \ semantics, zero compatibility window\n- Source-of-truth collapse: Authority\
+      \ basis lines 104-121 establish upstream > local hierarchy\n- Downstream remediation\
+      \ authorization: Authority basis lines 50-55 + explicit non-re-adjudication\
+      \ rule (lines 148-154)\n\n### admission_path_confirmed:\nshell surfaces (CLI,\
+      \ Python API, web, MCP)\n  ↓ construct/obtain\nDefaultLarvaFacade\n  ↓ validate()\n\
+      larva.core.validate.validate_spec()\n  ↓ only then\nnormalize/register/project\n\
+      \nCovered surfaces explicitly cited:\n- CLI entrypoint: src/larva/cli_entrypoint.py\n\
+      - Python API: src/larva/shell/python_api.py\n- Web REST: src/larva/shell/web.py\n\
+      - MCP stdio/server: src/larva/shell/mcp.py + src/larva/shell/mcp_server.py\n\
+      \nAdmission invariant verified:\n\"If any larva surface accepts a PersonaSpec\
+      \ as valid, that success must mean the spec conforms to the canonical opifex\
+      \ contract\"\n\n### source_of_truth_conflicts_remaining:\nNone unresolved. Current\
+      \ artifact drift is acknowledged in authority basis lines 143-146 and explicitly\
+      \ authorized for downstream remediation in canonical_core_admission, canonical_shell_surfaces,\
+      \ and canonical_doc_sync phases.\n\n### blocker_statuses:\nNone.\n\n### open_or_block:\n\
+      OPEN\n\n### rationale:\n1. Contract ownership is unambiguous and assigned to\
+      \ opifex.\n2. Effective larva admission path is identified and pinned.\n3. Removed-field\
+      \ policy is explicit: reject-immediate, zero compatibility window.\n4. No independent\
+      \ larva-local contract authority remains asserted.\n5. Downstream phases can\
+      \ proceed without re-adjudicating authority.\n\n## behavioral_proof_register:\n\
+      - proof_id: P1\n  requirement_ref: \"Authority basis - contract ownership\"\n\
+      \  claim: \"opifex owns canonical PersonaSpec prose/schema\"\n  proof_type:\
+      \ \"document_review\"\n  evidence_ref: \"design/opifex-canonical-authority-basis.md\
+      \ lines 9-11, 18-24\"\n  status: \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact:\
+      \ \"OPEN_OK\"\n  next_action: \"\"\n\n- proof_id: P2\n  requirement_ref: \"\
+      Authority basis - admission path\"\n  claim: \"Real larva admission path is\
+      \ shell → DefaultLarvaFacade → validate_spec\"\n  proof_type: \"document_review\"\
+      \n  evidence_ref: \"design/opifex-canonical-authority-basis.md lines 63-76\"\
+      \n  status: \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\
+      \n  next_action: \"\"\n\n- proof_id: P3\n  requirement_ref: \"Authority basis\
+      \ - removed-field semantics\"\n  claim: \"tools and side_effect_policy use reject-immediate,\
+      \ zero-window semantics\"\n  proof_type: \"document_review\"\n  evidence_ref:\
+      \ \"design/opifex-canonical-authority-basis.md lines 36-55\"\n  status: \"CLOSED_BY_AUTHORITY\"\
+      \n  uncertainty_source: \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action: \"\"\
+      \n\n- proof_id: P4\n  requirement_ref: \"Authority basis - source-of-truth hierarchy\"\
+      \n  claim: \"Larva local schema/docs are derived mirrors, not independent authority\"\
+      \n  proof_type: \"document_review\"\n  evidence_ref: \"design/opifex-canonical-authority-basis.md\
+      \ lines 104-121\"\n  status: \"PROVEN\"\n  uncertainty_source: \"\"\n  gate_impact:\
+      \ \"OPEN_OK\"\n  next_action: \"\"\n\n- proof_id: P5\n  requirement_ref: \"\
+      Authority basis - downstream authorization\"\n  claim: \"Downstream phases can\
+      \ implement removed-field rejection without re-adjudicating ownership\"\n  proof_type:\
+      \ \"document_review\"\n  evidence_ref: \"design/opifex-canonical-authority-basis.md\
+      \ lines 50-55, 148-170 + phase dependency graph\"\n  status: \"PROVEN\"\n  uncertainty_source:\
+      \ \"\"\n  gate_impact: \"OPEN_OK\"\n  next_action: \"\"\n\n## gate_open_allowed:\
+      \ true\n## blocking_behavioral_proofs: []\n## prevention_rules: []"
   - id: canonical_authority_basis.clarify-removed-field-semantics
     name: Clarify removed-field admission semantics
     status: done
@@ -32076,7 +32144,7 @@ phases:
       \ branch: `92f33c5` (`Clarify removed-field admission authority`)"
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
-  status: locked
+  status: pending
   depends_on:
   - canonical_authority_basis
   steps:
