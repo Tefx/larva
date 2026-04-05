@@ -33485,3 +33485,57 @@ phases:
 
       '
     agent: doc-reviewer
+  - id: canonical_deep_review.architecture-review
+    name: Review source-of-truth and boundary architecture after remediation
+    status: pending
+    description: 'step_type: review
+
+      verification_scope: full-plan-check
+
+
+      Review module boundaries, dependency direction, and source-of-truth ownership
+      after remediation.
+
+
+      Specifically check:
+
+      - opifex contract ownership is reflected in larva architecture docs and module
+      responsibilities
+
+      - core/app/shell boundaries no longer encode dual-truth compatibility semantics
+
+      - local schema artifact, if retained, is clearly non-authoritative
+
+      - transport boundaries do not regain contract-definition authority'
+    verification: '- Review identifies whether the authority basis actually landed
+      in the code/document structure
+
+      - Any remaining dual-truth or ownership ambiguity is classified as blocking
+      or explicitly non-intersecting
+
+      - Output includes recommended closure path for any residual boundary debt'
+    evidence_template: '## Architecture Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Review Output
+
+      - system_layers_confirmed:
+
+      - source_of_truth_matrix_confirmed:
+
+      - residual_dual_truth_paths:
+
+      - closure_recommendations:
+
+      '
+    agent: software-architect
