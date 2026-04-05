@@ -32452,7 +32452,7 @@ phases:
     - canonical_core_admission.facade-admission-impl
     - canonical_core_admission.verify
     - canonical_core_admission.spec-conformance
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
