@@ -32941,7 +32941,7 @@ phases:
     - canonical_shell_surfaces.surface-contract-impl
     - canonical_shell_surfaces.verify
     - canonical_shell_surfaces.wiring-audit
-    agent: gate-reviewer
+    agent: gate-reviewer-tacit
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
