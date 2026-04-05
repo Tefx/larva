@@ -33044,7 +33044,7 @@ phases:
       - gate_decision_basis:
 
       '
-    agent: integration-verifier
+    agent: integration-verifier-tacit
   - id: canonical_surface_verify.web-liveness-probe
     name: Run packaged web liveness probe for canonical admission
     status: pending
