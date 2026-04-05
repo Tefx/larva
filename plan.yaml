@@ -31797,3 +31797,8 @@ phases:
   status: locked
   depends_on:
   - canonical_authority_basis
+- id: canonical_shell_surfaces
+  name: Canonical Shell and Projection Cleanup
+  status: locked
+  depends_on:
+  - canonical_core_admission
