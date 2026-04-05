@@ -33188,7 +33188,7 @@ phases:
       - canonical_operation_result:
 
       '
-    agent: blind-tester
+    agent: blind-tester-tacit
   - id: canonical_surface_verify.gate
     name: Gate canonical cross-surface verification
     status: pending
