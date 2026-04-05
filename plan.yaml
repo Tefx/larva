@@ -31787,3 +31787,8 @@ phases:
       Disposition:
 
       - Final acceptance gate cleared; no unresolved blockers remain.'
+- id: canonical_authority_basis
+  name: Opifex Canonical Authority Basis
+  status: pending
+  depends_on:
+  - completion_reaudit
