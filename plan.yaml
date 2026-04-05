@@ -31935,7 +31935,7 @@ phases:
       \nCommit created:\n- bed5199 — design: lock opifex canonical authority basis"
   - id: canonical_authority_basis.gate
     name: Gate canonical authority basis
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -31992,6 +31992,8 @@ phases:
     - canonical_authority_basis.lock-opifex-authority
     - canonical_authority_basis.clarify-removed-field-semantics
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-05T18:58:42.746112+00:00'
   - id: canonical_authority_basis.clarify-removed-field-semantics
     name: Clarify removed-field admission semantics
     status: done
