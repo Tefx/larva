@@ -32947,6 +32947,104 @@ phases:
   status: locked
   depends_on:
   - canonical_shell_surfaces
+  steps:
+  - id: canonical_surface_verify.cross-surface-conformance
+    name: Verify canonical conformance across all consumer surfaces
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), prove that all consumer surfaces
+      interpret the same canonical admission fact consistently.
+
+
+      Required surfaces:
+
+      - facade
+
+      - Python API
+
+      - CLI
+
+      - MCP
+
+      - packaged web API
+
+
+      This is a control-plane proof obligation, not a unit-test rerun. Show that admission
+      success and admission failure resolve the same way across the listed surfaces
+      and that no surface re-derives compatibility behavior independently.'
+    verification: '- At least one canonical-success case and one forbidden-field failure
+      case are exercised through every listed surface
+
+      - Evidence includes actual commands/output, not summaries only
+
+      - Behavioral proof register records requirement_ref, behavior_claim, evidence_ref,
+      status, closure_path, and gate_decision_basis for each blocker-class obligation'
+    evidence_template: '## Seam-Level Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Changed seam paths**:
+
+      - facade:
+
+      - python_api:
+
+      - cli:
+
+      - mcp:
+
+      - web:
+
+
+      **Exact commands executed**:
+
+      ```
+
+      <paste actual commands>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste actual outputs>
+
+      ```
+
+
+      **Behavioral Proof Register**
+
+      - requirement_ref:
+
+      - behavior_claim:
+
+      - runtime_proof_expected:
+
+      - evidence_ref:
+
+      - status:
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+      '
+    agent: integration-verifier
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
   status: locked
