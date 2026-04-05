@@ -31807,3 +31807,8 @@ phases:
   status: locked
   depends_on:
   - canonical_shell_surfaces
+- id: canonical_doc_sync
+  name: Canonical Documentation Sync
+  status: locked
+  depends_on:
+  - canonical_surface_verify
