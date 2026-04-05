@@ -33484,7 +33484,7 @@ phases:
       - NEEDS_TEST:
 
       '
-    agent: doc-reviewer
+    agent: doc-reviewer-tacit
   - id: canonical_deep_review.architecture-review
     name: Review source-of-truth and boundary architecture after remediation
     status: pending
