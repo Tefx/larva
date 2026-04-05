@@ -32199,6 +32199,105 @@ phases:
     - canonical_core_admission.contract
     - canonical_core_admission.tests-red
     agent: python-executor
+  - id: canonical_core_admission.verify
+    name: Independently verify canonical core admission
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the remediated canonical
+      admission path from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: canonical PersonaSpec with all required fields and only canonical
+      fields succeeds
+
+      - Edge cases: missing each required field, unsupported spec_version, empty capability
+      maps if allowed by upstream, malformed capability posture
+
+      - Error scenarios: `tools`, `side_effect_policy`, and extra fields are rejected
+      on the production path
+
+      - Cross-surface contract anchor: facade admission and core validation agree
+      on the same resolved fact
+
+
+      Independence Level: L2'
+    verification: '- Focused core/facade commands executed independently
+
+      - Issues found are recorded as blocker/should_fix/suggestion/tech_debt rather
+      than hidden
+
+      - Evidence covers both the main canonical-success path and the highest-risk
+      forbidden-field failure path'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: canonical_core_admission
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <actual commands>
+
+      ```
+
+      - Output summary:
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+
+      ### Behavioral Proof Register
+
+      - requirement_ref:
+
+      - behavior_claim:
+
+      - runtime_proof_expected:
+
+      - evidence_ref:
+
+      - status:
+
+      - closure_path:
+
+      - gate_decision_basis:
+
+      '
+    depends_on:
+    - canonical_core_admission.core-enforcement-impl
+    - canonical_core_admission.facade-admission-impl
+    agent: integration-verifier
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
