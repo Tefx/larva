@@ -33603,7 +33603,7 @@ phases:
       - web:
 
       '
-    agent: blind-tester
+    agent: blind-tester-tacit
   - id: canonical_deep_review.gate
     name: Final gate for canonical remediation
     status: pending
