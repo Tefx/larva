@@ -31795,7 +31795,7 @@ phases:
   steps:
   - id: canonical_authority_basis.lock-opifex-authority
     name: Lock opifex canonical authority basis
-    status: claimed
+    status: done
     description: 'work_type: authority_adjudication
 
       step_type: planning
@@ -31865,6 +31865,74 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-05T18:45:50.815886+00:00'
+    done_at: '2026-04-05T18:50:22.202762+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nNo refs for this step.\n\n\
+      Additional source review performed:\n- INTERFACES.md — current docs still state\
+      \ larva is authority; PersonaSpec section still includes deprecated `tools`\
+      \ and `side_effect_policy`\n- ADR-002-capability-intent-without-runtime-policy.md\
+      \ — confirms runtime policy does not belong in PersonaSpec and supports removal\
+      \ of `side_effect_policy`\n- ARCHITECTURE.md — currently says larva is canonical\
+      \ PersonaSpec authority; identified as drift to collapse under upstream opifex\
+      \ ownership\n- README.md — current public docs present larva as canonical persona\
+      \ authority and show local contract examples\n- USAGE.md — documents current\
+      \ field set, derived `spec_version`/`spec_digest`, and audience as opifex consumers\n\
+      - contracts/errors.yaml — shows larva error space nested inside wider opifex\
+      \ error taxonomy\n- src/larva/app/facade.py — confirms `DefaultLarvaFacade.validate()`\
+      \ delegates to `self._validate.validate_spec(spec)`\n- src/larva/core/validate.py\
+      \ — confirms real admission function is `validate_spec`\n- src/larva/core/spec.py\
+      \ — local `TypedDict(total=False)` is present and therefore cannot be treated\
+      \ as independent authority\n- src/larva/cli_entrypoint.py — CLI shell entrypoint\
+      \ builds facade-backed admission path\n- src/larva/shell/cli_runtime.py — default\
+      \ facade wiring points shell surfaces to `DefaultLarvaFacade`\n- src/larva/shell/python_api.py\
+      \ — Python API uses `DefaultLarvaFacade`\n- src/larva/shell/web.py — web surface\
+      \ validates before register\n- src/larva/shell/mcp.py — MCP handlers delegate\
+      \ to facade\n- src/larva/shell/mcp_server.py — MCP runtime constructs facade-backed\
+      \ handlers\n- contrib/opencode-plugin/larva.ts — opencode bridge is a projection/consumer\
+      \ layer, not contract owner\n- contrib/opencode-plugin/README.md — runtime tool\
+      \ policy is outside persona definition\n\n## Authority Basis Output\n- system_layers:\n\
+      \  - upstream_contract: opifex owns canonical PersonaSpec prose/schema and error\
+      \ taxonomy\n  - larva_admission: larva owns ingress enforcement only\n  - larva_projection:\
+      \ larva owns transport/export/projection shaping only\n  - downstream_consumers:\
+      \ opencode and other consumers use admitted canonical specs without redefining\
+      \ contract ownership\n- source_of_truth_matrix:\n  persona_contract:\n    owner:\
+      \ opifex upstream prose/schema\n    larva_role: derived mirror only\n    collapse_rule:\
+      \ upstream wins on any conflict\n  admission_logic:\n    owner: larva\n    limit:\
+      \ admission success must imply upstream-canonical conformance\n  local_schema_types:\n\
+      \    owner: larva.core.spec\n    limit: typing aid only; not independent authority\n\
+      \  local_docs:\n    owner: larva docs\n    limit: explanatory only; must be\
+      \ updated to match upstream\n  projections:\n    owner: larva shell/plugin layers\n\
+      \    limit: may not reintroduce removed fields or alternate semantics\n- runtime_contract:\n\
+      \  - authoritative admission path pinned as: shell surfaces -> DefaultLarvaFacade\
+      \ -> larva.core.validate.validate_spec\n  - covered shell surfaces: CLI (src/larva/cli_entrypoint.py\
+      \ / src/larva/shell/cli_runtime.py), Python API (src/larva/shell/python_api.py),\
+      \ web (src/larva/shell/web.py), MCP (src/larva/shell/mcp.py, src/larva/shell/mcp_server.py)\n\
+      \  - admission invariant: if larva accepts a PersonaSpec as valid on any production\
+      \ path, that success must mean conformance to the canonical opifex contract\n\
+      \  - canonical field pins for downstream remediation:\n    required_fields:\
+      \ [id, prompt, model, capabilities, can_spawn]\n    optional_fields: [description,\
+      \ model_params, compaction_prompt]\n    derived_fields: [spec_version, spec_digest]\n\
+      \    removed_fields: [tools, side_effect_policy]\n    extra_field_rule: reject\
+      \ unknown top-level PersonaSpec fields at admission\n  - error_alignment_rule:\
+      \ larva should match upstream error taxonomy as completely as practical; any\
+      \ deliberate mismatch must be explicit and justified\n- transport_boundary_rules:\n\
+      \  - shell surfaces do not own PersonaSpec semantics\n  - DefaultLarvaFacade\
+      \ is the common admission seam\n  - malformed transport envelopes may be rejected\
+      \ early, but no transport may accept a spec that canonical admission would reject\n\
+      \  - MCP already rejects unknown transport params; PersonaSpec body admission\
+      \ must apply the same closure principle\n  - projections must stop emitting\
+      \ or depending on tools / side_effect_policy as accepted contract fields\n-\
+      \ contract_owner_decision:\n  owner: opifex\n  larva_role:\n    - consumer\n\
+      \    - admission authority\n    - projection handler\n  non_authorities:\n \
+      \   - larva.core.spec\n    - local larva docs\n    - contrib/opencode-plugin\
+      \ projections\n- explicit_non_goals:\n  - no implementation DAG design\n  -\
+      \ no validator algorithm choice\n  - no opencode runtime-policy redesign\n \
+      \ - no re-adjudication of PersonaSpec ownership in downstream phases\n- unresolved_items:\n\
+      \  - implementation-only: where upstream canonical schema/prose will be vendored\
+      \ or referenced in larva\n  - implementation-only: exact sequencing for validator/doc/TypedDict/projection\
+      \ remediation\n  - implementation-only: exact conformance-test layout\n  - no\
+      \ remaining authority ambiguity is allowed on ownership, removed fields, extra-field\
+      \ rejection, or admission meaning\n\nDeliverable created:\n- design/opifex-canonical-authority-basis.md\n\
+      \nCommit created:\n- bed5199 — design: lock opifex canonical authority basis"
   - id: canonical_authority_basis.gate
     name: Gate canonical authority basis
     status: pending
