@@ -31802,3 +31802,8 @@ phases:
   status: locked
   depends_on:
   - canonical_core_admission
+- id: canonical_surface_verify
+  name: Canonical Cross-Surface Verification
+  status: locked
+  depends_on:
+  - canonical_shell_surfaces
