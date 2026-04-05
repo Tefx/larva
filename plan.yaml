@@ -32500,7 +32500,7 @@ phases:
       - forbidden_legacy_messages:
 
       '
-    agent: software-architect
+    agent: software-architect-tacit
   - id: canonical_shell_surfaces.tests-red
     name: Expose shell and fixture compatibility drift
     status: pending
