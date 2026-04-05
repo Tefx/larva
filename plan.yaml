@@ -32810,6 +32810,72 @@ phases:
     - canonical_shell_surfaces.component-ingestion-impl
     - canonical_shell_surfaces.surface-contract-impl
     agent: integration-verifier
+  - id: canonical_shell_surfaces.wiring-audit
+    name: Audit shell wiring for canonical contract reachability
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Wiring completeness audit: verify every changed shell/public symbol is reachable
+      at runtime and no projection surface still points at deprecated compatibility
+      text.
+
+
+      REQUIRED CHECKS:
+
+      1. MCP contract text and registered handlers align
+
+      2. packaged web handlers and response envelopes align with canonical admission
+
+      3. Python API / CLI projections no longer document deprecated acceptance as
+      live behavior
+
+      4. component-ingestion cleanup does not leave orphaned compatibility helpers
+      or exports'
+    verification: '- Grep/import-trace evidence shows no orphaned or stale compatibility
+      surfaces remain among touched shell files
+
+      - All changed public symbols are reachable through their runtime entrypoints
+
+      - Audit result is PASS or explicit ISSUES_FOUND with concrete locations'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Orphan exports / stale compatibility helpers**:
+
+      ```
+
+      <grep output or none>
+
+      ```
+
+      **Unaligned registered handlers**:
+
+      ```
+
+      <grep output or none>
+
+      ```
+
+      **Verdict**: PASS | ISSUES_FOUND
+
+      '
+    depends_on:
+    - canonical_shell_surfaces.component-ingestion-impl
+    - canonical_shell_surfaces.surface-contract-impl
+    agent: wiring-auditor
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
