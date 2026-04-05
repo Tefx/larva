@@ -32728,6 +32728,88 @@ phases:
     - canonical_shell_surfaces.contract
     - canonical_shell_surfaces.tests-red
     agent: python-executor
+  - id: canonical_shell_surfaces.verify
+    name: Independently verify shell and projection cleanup
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier), validate the shell/projection
+      cleanup from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: canonical PersonaSpec requests and component-driven assembly still
+      work where authorized
+
+      - Edge cases: envelope parsing succeeds but canonical boundary still rejects
+      forbidden fields
+
+      - Error scenarios: MCP/web/Python/CLI projections return aligned rejection semantics
+
+      - Consumer-boundary conformance: all listed surfaces interpret the same resolved
+      fact and do not re-derive legacy compatibility independently
+
+
+      Independence Level: L2'
+    verification: '- Surface-level commands/tests executed independently
+
+      - Evidence covers both canonical success and forbidden-field rejection across
+      multiple surfaces
+
+      - Findings are dispositioned explicitly rather than hidden as legacy debt'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <actual commands>
+
+      ```
+
+
+      ### Cross-Surface Fact Consistency
+
+      - CLI:
+
+      - MCP:
+
+      - Python API:
+
+      - Web:
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      '
+    depends_on:
+    - canonical_shell_surfaces.component-ingestion-impl
+    - canonical_shell_surfaces.surface-contract-impl
+    agent: integration-verifier
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
