@@ -32057,6 +32057,68 @@ phases:
     depends_on:
     - canonical_core_admission.contract
     agent: python-executor
+  - id: canonical_core_admission.core-enforcement-impl
+    name: Collapse core contract truth to canonical enforcement
+    status: pending
+    description: "step_type: implementation\n\nFill in stub bodies within the existing\
+      \ core admission signatures so they enforce the contract from step `canonical_core_admission.contract`.\n\
+      \nUPSTREAM ARTIFACTS (from contract/test steps):\n- `src/larva/core/spec.py`\
+      \ — authoritative PersonaSpec/type boundary for larva-owned in-memory shapes\n\
+      - `src/larva/core/validate.py` — canonical required-field and forbidden-field\
+      \ enforcement contract\n- `contracts/persona_spec.schema.json` — local artifact\
+      \ disposition must reflect upstream-only authority\n- `tests/core/test_validate.py`\
+      \ and `tests/core/test_schema_validation.py` — protected canonical expectations\n\
+      \nYOUR SCOPE: replace legacy compatibility behavior with canonical-only logic\
+      \ in the core boundary. Remove acceptance/mirroring semantics for `tools` and\
+      \ `side_effect_policy`, enforce required fields and extra-field rejection, and\
+      \ make the local schema artifact upstream-derived or non-authoritative per the\
+      \ contract.\n\nIf a contract artifact appears insufficient, record a deviation\
+      \ note; do NOT silently reintroduce transitional compatibility.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ inputs according to the canonical contract and rejects non-canonical inputs.\n\
+      \nupstream_artifacts:\n- path: src/larva/core/spec.py\n  from_step: canonical_core_admission.contract\n\
+      \  tier: contract\n- path: src/larva/core/validate.py\n  from_step: canonical_core_admission.contract\n\
+      \  tier: contract\n- path: contracts/persona_spec.schema.json\n  from_step:\
+      \ canonical_core_admission.contract\n  tier: contract\n- path: tests/core/test_validate.py\n\
+      \  from_step: canonical_core_admission.tests-red\n  tier: test\n- path: tests/core/test_schema_validation.py\n\
+      \  from_step: canonical_core_admission.tests-red\n  tier: test"
+    verification: '- Main path: focused core tests for canonical required fields and
+      capabilities-only acceptance pass
+
+      - Failure path: focused regressions prove `tools`, `side_effect_policy`, and
+      extra fields are rejected
+
+      - Proof: no core contract text or schema artifact still claims larva-local transitional
+      authority where migration scope requires removal'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Core Enforcement Evidence
+
+      - files_changed:
+
+      - canonical_required_field_enforcement:
+
+      - forbidden_field_rejection:
+
+      - local_schema_disposition:
+
+      - deviation_records:
+
+      '
+    depends_on:
+    - canonical_core_admission.contract
+    - canonical_core_admission.tests-red
+    agent: python-senior-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
