@@ -31994,7 +31994,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: canonical_authority_basis.clarify-removed-field-semantics
     name: Clarify removed-field admission semantics
-    status: pending
+    status: claimed
     description: 'Authority adjudication for removed-field admission semantics in
       `design/opifex-canonical-authority-basis.md`.
 
@@ -32039,6 +32039,8 @@ phases:
     depends_on:
     - canonical_authority_basis.lock-opifex-authority
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-05T18:56:42.115460+00:00'
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
