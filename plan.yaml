@@ -32374,7 +32374,7 @@ phases:
     depends_on:
     - canonical_core_admission.core-enforcement-impl
     - canonical_core_admission.facade-admission-impl
-    agent: doc-reviewer
+    agent: doc-reviewer-tacit
   - id: canonical_core_admission.gate
     name: Gate canonical core admission remediation
     status: pending
