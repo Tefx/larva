@@ -31991,6 +31991,53 @@ phases:
     depends_on:
     - canonical_authority_basis.lock-opifex-authority
     agent: gate-reviewer-tacit
+  - id: canonical_authority_basis.clarify-removed-field-semantics
+    name: Clarify removed-field admission semantics
+    status: pending
+    description: 'Authority adjudication for removed-field admission semantics in
+      `design/opifex-canonical-authority-basis.md`.
+
+
+      Update the design doc to state explicit normative admission behavior for removed
+      fields `tools` and `side_effect_policy`, including a deterministic decision
+      on whether admission is reject-immediate, transitional-deprecate, or output-only.
+
+
+      The update MUST also define the compatibility window policy, including any deprecation
+      horizon, acceptance/rejection behavior during the window, and the exact downstream
+      contract that implementation and verification steps must follow without reinterpretation.
+
+
+      This step exists to close the gate blocker where behavioral proof P3 remained
+      `UNCERTAIN_BLOCKING`; do not leave the removed-field policy implicit or descriptive-only.
+
+
+      verification_scope: phase-check
+
+      step_type: planning'
+    verification: '- `design/opifex-canonical-authority-basis.md` contains an explicit
+      normative decision for `tools` and `side_effect_policy`
+
+      - The doc states deterministic admission behavior for present removed fields
+      and explicit compatibility-window policy wording
+
+      - The wording is specific enough that downstream implementation can choose one
+      behavior without further authority adjudication
+
+      - Behavioral proof P3 ambiguity is closed by recorded policy, not by inference'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- design/opifex-canonical-authority-basis.md — key passage or \"NOT\
+      \ READ: <reason>\"\n\nIf no refs were provided, state: \"No refs for this step.\"\
+      \n\n## Authority Decision Record\n- Removed field: `tools`\n  - normative admission\
+      \ behavior:\n  - compatibility window policy:\n  - authoritative wording added:\n\
+      - Removed field: `side_effect_policy`\n  - normative admission behavior:\n \
+      \ - compatibility window policy:\n  - authoritative wording added:\n\n## Determinism\
+      \ Check\n- downstream implementation choice enabled without reinterpretation:\
+      \ yes|no\n- remaining ambiguity: none|<describe>\n\n## Proof Closure\n- P3 status\
+      \ after update: PROVEN|CLOSED_BY_AUTHORITY|STILL_UNCERTAIN\n- gate impact statement:\n"
+    depends_on:
+    - canonical_authority_basis.lock-opifex-authority
+    agent: software-architect-tacit
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
