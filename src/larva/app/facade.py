@@ -1,4 +1,18 @@
-"""Application facade contracts and implementation."""
+"""Application facade contracts and implementation.
+
+This module is the larva admission consolidation seam for PersonaSpec-bearing
+production paths. It does not own PersonaSpec semantics; it applies and maps
+the canonical opifex-aligned contract enforced by ``larva.core.validate``.
+
+Acceptance notes:
+- success on larva production paths must imply conformance to the opifex
+  canonical PersonaSpec contract
+- this facade must not widen admission by treating ``tools``,
+  ``side_effect_policy``, or unknown top-level fields as acceptable canonical
+  PersonaSpec input
+- ``contracts/persona_spec.schema.json`` is reference-only while present and
+  must never act as an independent contract owner
+"""
 
 from __future__ import annotations
 
@@ -11,7 +25,7 @@ from larva.core.patch import apply_patches
 from larva.core.spec import AssemblyInput, PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore
-from larva.shell.registry import RegistryStore
+from larva.shell.registry import RegistryError, RegistryStore
 
 
 ERROR_NUMERIC_CODES: dict[str, int] = {
@@ -95,6 +109,12 @@ class LarvaError(TypedDict):
     """Transport-neutral app-level error shape.
 
     Codes align with INTERFACES.md error-code definitions.
+
+    Error-shape expectation:
+        - validation failures map to ``PERSONA_INVALID`` at facade level
+        - detailed validator output is preserved under ``details[\"report\"]``
+        - assembly failures preserve their specific code when aligned with the
+          shared taxonomy
     """
 
     code: str
@@ -113,13 +133,17 @@ class SpecModule(Protocol):
 class AssembleModule(Protocol):
     """DI shape for the ``larva.core.assemble`` module boundary."""
 
-    def assemble_candidate(self, data: AssemblyInput) -> PersonaSpec: ...
+    def assemble_candidate(self, data: AssemblyInput) -> PersonaSpec:
+        """Assemble a candidate without redefining canonical admission."""
+        ...
 
 
 class ValidateModule(Protocol):
     """DI shape for the ``larva.core.validate`` module boundary."""
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport: ...
+    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+        """Return the canonical admission verdict for a PersonaSpec candidate."""
+        ...
 
 
 class NormalizeModule(Protocol):
@@ -131,11 +155,17 @@ class NormalizeModule(Protocol):
 class LarvaFacade(Protocol):
     """App-layer contract consumed by CLI, MCP, and Python adapters."""
 
-    def validate(self, spec: PersonaSpec) -> ValidationReport: ...
+    def validate(self, spec: PersonaSpec) -> ValidationReport:
+        """Validate against the opifex-aligned canonical admission contract."""
+        ...
 
-    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]: ...
+    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
+        """Assemble then validate so success implies canonical conformance."""
+        ...
 
-    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]: ...
+    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
+        """Register only canonically admissible PersonaSpec inputs."""
+        ...
 
     def resolve(
         self,
@@ -209,7 +239,9 @@ class DefaultLarvaFacade(LarvaFacade):
                 return Failure(
                     self._component_error(prompt_result.failure(), prompt_name, "prompt")
                 )
-            cast("list[dict[str, str]]", assemble_input["prompts"]).append(prompt_result.unwrap())
+            cast("list[dict[str, str]]", assemble_input["prompts"]).append(
+                cast("dict[str, str]", prompt_result.unwrap())
+            )
 
         toolset_names = request.get("toolsets", [])
         for toolset_name in toolset_names:
@@ -219,7 +251,7 @@ class DefaultLarvaFacade(LarvaFacade):
                     self._component_error(toolset_result.failure(), toolset_name, "toolset")
                 )
             cast("list[dict[str, dict[str, str]]]", assemble_input["toolsets"]).append(
-                toolset_result.unwrap()
+                cast("dict[str, dict[str, str]]", toolset_result.unwrap())
             )
 
         constraint_names = request.get("constraints", [])
@@ -232,7 +264,7 @@ class DefaultLarvaFacade(LarvaFacade):
                     )
                 )
             cast("list[dict[str, object]]", assemble_input["constraints"]).append(
-                constraint_result.unwrap()
+                cast("dict[str, object]", constraint_result.unwrap())
             )
 
         model_name = request.get("model")
@@ -297,7 +329,7 @@ class DefaultLarvaFacade(LarvaFacade):
 
     def _registry_failure_error(
         self,
-        error: dict[str, object],
+        error: RegistryError,
         extra_details: dict[str, object] | None = None,
     ) -> LarvaError:
         details = {k: v for k, v in error.items() if k not in {"code", "message"}}

@@ -1,8 +1,22 @@
 """Contract-only validate module for PersonaSpec validation.
 
-This module defines the validation contract for PersonaSpec candidates.
-Validation applies deterministic rules and produces a structured validation
-report with errors and warnings.
+This module defines the canonical larva admission contract for PersonaSpec
+candidates as a downstream enforcement layer of the opifex-owned PersonaSpec
+authority. Validation applies deterministic rules and produces a structured
+validation report.
+
+Admission notes:
+- required PersonaSpec fields at the canonical boundary are ``id``,
+  ``description``, ``prompt``, ``model``, ``capabilities``, and
+  ``spec_version``
+- ``tools`` and ``side_effect_policy`` are forbidden at the canonical
+  admission boundary and belong in rejection errors, not deprecation warnings
+- unknown top-level fields are forbidden at the canonical admission boundary
+- ``contracts/persona_spec.schema.json`` is reference-only while present and
+  must not own independent acceptance semantics
+
+Files that must stop widening the contract are ``larva.core.spec``,
+``larva.core.validate``, ``larva.core.assemble``, and ``larva.app.facade``.
 
 Responsibility (from ARCHITECTURE.md):
 - Apply deterministic validation rules to PersonaSpec candidates
@@ -66,6 +80,12 @@ class ValidationIssue(TypedDict):
         code: Machine-readable issue code (e.g., "INVALID_SPEC_VERSION")
         message: Human-readable issue message
         details: Extra context for machine handling and diagnostics
+
+    Error-shape expectation:
+        Validation issues are the fine-grained error vocabulary emitted by the
+        canonical validator. Facade-level surfaces may wrap these into
+        ``PERSONA_INVALID``, but they must preserve the underlying report in
+        error details for reviewable mapping.
     """
 
     code: str
@@ -80,6 +100,11 @@ class ValidationReport(TypedDict):
         valid: True if the spec passes all validation rules
         errors: List of structured validation issues (empty if valid)
         warnings: List of warning messages (always present, may be empty)
+
+    Admission-success invariant:
+        If ``valid`` is ``True`` for a spec accepted through larva production
+        paths, that success must mean the candidate conforms to the opifex
+        canonical PersonaSpec contract rather than a wider local larva shape.
     """
 
     valid: bool
@@ -292,10 +317,14 @@ def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
 def validate_spec(spec: dict[str, object]) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
 
-    Contract (from INTERFACES.md):
-    - Validates field types and allowed values
-    - Produces structured errors with code, message, and details
-    - Produces warnings for non-critical unused variable declarations
+    Contract (from INTERFACES.md, narrowed by the opifex authority basis):
+    - validates field types and allowed values for the canonical PersonaSpec
+      contract
+    - produces structured errors with code, message, and details
+    - facade mapping may collapse report failures to ``PERSONA_INVALID`` but
+      must preserve the report in error details
+    - ``tools``, ``side_effect_policy``, and unknown top-level fields are
+      rejection cases at canonical admission, not admissible deprecated inputs
 
     Args:
         spec: A PersonaSpec candidate to validate.
@@ -309,6 +338,11 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
         - Allowed value validation (e.g., side_effect_policy enum)
         - Field-specific validation rules
         - Deterministic, pure validation (no I/O side effects)
+
+        Canonical authority remains external to this module. While the
+        repo-local schema artifact exists, it is reference-only and may not be
+        treated as an independent owner of requiredness, field removal, or
+        extra-field policy.
 
     Acceptance:
         @pre(lambda spec: _is_json_safe_dict(spec))

@@ -1,4 +1,17 @@
-"""Contracted PersonaSpec assembly from in-memory components."""
+"""Contracted PersonaSpec assembly from in-memory components.
+
+Assembly is an upstream candidate-construction step, not the canonical
+PersonaSpec authority. opifex owns the canonical contract; larva assembly must
+stay subordinate to that authority and must not widen canonical admission.
+
+Acceptance notes for this module boundary:
+- assembly may construct a candidate for later validation
+- assembly must not redefine required PersonaSpec fields
+- assembly must not justify re-admitting ``tools`` or ``side_effect_policy`` at
+  canonical larva admission
+- any repo-local schema artifact remains reference-only and does not override
+  the canonical authority basis
+"""
 
 from typing import Any, Mapping, cast
 
@@ -8,7 +21,13 @@ from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
 
 
 class AssemblyError(Exception):
-    """Base exception for assembly errors."""
+    """Base exception for assembly errors.
+
+    Error-shape expectation:
+        Assembly errors are lower-level contract failures surfaced before or
+        during candidate construction. Facade mapping should preserve the
+        assembly ``code`` when it already aligns with the shared taxonomy.
+    """
 
     code: str
     message: str
@@ -308,10 +327,13 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     - Tools (deprecated): Also read for backward compatibility, merged with capabilities
     - model_params: Deep-merged from model component, overrides can patch keys
 
-    Per ADR-002 transition:
-    - 'capabilities' is the canonical field (preferred going forward)
-    - 'tools' is deprecated (retained for backward compatibility)
-    - Both are read at input, both are written to output during transition
+    Acceptance notes:
+    - This function defines candidate-shape expectations only; canonical
+      admission remains owned by ``validate_spec`` under opifex authority.
+    - The exact larva files that must not widen PersonaSpec authority are
+      ``spec.py``, ``validate.py``, ``assemble.py``, and ``facade.py``.
+    - Any success through larva production admission paths must eventually mean
+      conformance to the opifex canonical PersonaSpec contract.
 
     Args:
         data: Mapping containing in-memory component values and overrides.
@@ -352,7 +374,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         {'write': 'read_write'}
     """
     persona_id = cast("str", data.get("id"))
-    result: PersonaSpec = {"id": persona_id}
+    result: dict[str, object] = {"id": persona_id}
 
     prompt_texts = _collect_prompt_texts(data)
 
@@ -391,6 +413,6 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     overrides_obj = data.get("overrides", {})
     overrides = overrides_obj if isinstance(overrides_obj, dict) else {}
     if overrides:
-        result = cast("PersonaSpec", _apply_overrides(result, cast("dict[str, Any]", overrides)))
+        result = _apply_overrides(result, cast("dict[str, Any]", overrides))
 
-    return result
+    return cast("PersonaSpec", result)
