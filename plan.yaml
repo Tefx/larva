@@ -33423,3 +33423,65 @@ phases:
 
       '
     agent: wiring-auditor
+  - id: canonical_deep_review.spec-conformance
+    name: Run full opifex-vs-larva conformance audit
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      Full-system adversarial conformance audit against the opifex canonical materials.
+
+
+      Focus on cross-phase and emergent properties:
+
+      - larva no longer claims independent PersonaSpec ownership
+
+      - admission success across all surfaces implies canonical conformance
+
+      - no surviving acceptance of `tools`, `side_effect_policy`, or non-canonical
+      extra fields
+
+      - any error-taxonomy mismatch is explicit and justified'
+    verification: '- Full evidence table produced with 7-verdict model
+
+      - Cross-phase drift and residual mismatch are explicit
+
+      - No blocker-class runtime obligation is left unresolved without non-intersection
+      proof'
+    evidence_template: '## Spec Conformance Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+
+      ## Coverage Summary
+
+      - Total requirements:
+
+      - CONFORMS:
+
+      - DIVERGES:
+
+      - NEEDS_TEST:
+
+      '
+    agent: doc-reviewer
