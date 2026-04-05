@@ -33327,7 +33327,7 @@ phases:
       - justified_divergences:
 
       '
-    agent: doc-reviewer
+    agent: doc-reviewer-tacit
   - id: canonical_doc_sync.gate
     name: Gate canonical documentation sync
     status: pending
