@@ -32119,6 +32119,86 @@ phases:
     - canonical_core_admission.contract
     - canonical_core_admission.tests-red
     agent: python-senior-tacit
+  - id: canonical_core_admission.facade-admission-impl
+    name: Complete facade and assembly admission wiring against the canonical core
+    status: pending
+    description: "step_type: implementation\ntags:\n- integration\n\nFill in stub\
+      \ bodies in the existing facade/assembly admission path per the contract from\
+      \ step `canonical_core_admission.contract`.\n\nUPSTREAM ARTIFACTS (from contract/test\
+      \ steps):\n- `src/larva/app/facade.py` — production admission path is authoritative\
+      \ for success/failure semantics\n- `src/larva/core/assemble.py` — assembly must\
+      \ emit only candidates that can satisfy canonical admission\n- `tests/app/test_facade/test_validate.py`\
+      \ and `tests/app/test_facade/test_register.py` — protected production-path expectations\n\
+      \nYOUR SCOPE: complete the production admission flow so `validate()`, `assemble()`,\
+      \ `register()`, `resolve()`, and `update()` stop preserving legacy compatibility\
+      \ and instead fail non-canonical PersonaSpecs consistently with the pinned taxonomy.\n\
+      \nPath exercised: shell/facade callers -> DefaultLarvaFacade -> core admission\n\
+      \n## Gate Preview (what the gate WILL reject)\n1. Any production path that still\
+      \ admits `tools`\n2. Any production path that still admits `side_effect_policy`\n\
+      3. Any admission-success path that bypasses canonical required-field or extra-field\
+      \ enforcement\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable.\nEach deliverable MUST contain\
+      \ substantive logic that routes all admission success through canonical enforcement.\n\
+      \nupstream_artifacts:\n- path: src/larva/app/facade.py\n  from_step: canonical_core_admission.contract\n\
+      \  tier: contract\n- path: src/larva/core/assemble.py\n  from_step: canonical_core_admission.contract\n\
+      \  tier: contract\n- path: tests/app/test_facade/test_validate.py\n  from_step:\
+      \ canonical_core_admission.tests-red\n  tier: test\n- path: tests/app/test_facade/test_register.py\n\
+      \  from_step: canonical_core_admission.tests-red\n  tier: test"
+    verification: '- Main path: facade admission tests pass for canonical PersonaSpec
+      inputs
+
+      - Failure path: focused regressions prove non-canonical specs fail before registry
+      success is reported
+
+      - Integration proof: one real facade-driven path shows candidate assembly/register
+      flow reaches canonical enforcement and returns aligned error taxonomy on failure'
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact facade-focused command or test>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste runner output>
+
+      ```
+
+
+      **Path exercised**: shell/facade caller -> DefaultLarvaFacade -> core admission
+
+
+      **Canonical failure mapping checked**:
+
+      - required fields:
+
+      - forbidden fields:
+
+      - extra fields:
+
+      '
+    depends_on:
+    - canonical_core_admission.contract
+    - canonical_core_admission.tests-red
+    agent: python-executor
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
