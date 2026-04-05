@@ -31863,6 +31863,64 @@ phases:
 
       '
     agent: software-architect
+  - id: canonical_authority_basis.gate
+    name: Gate canonical authority basis
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: confirm the opifex authority basis is specific enough to drive
+      strict remediation without fallback to larva legacy semantics.
+
+
+      Decision basis must confirm:
+
+      - contract ownership is unambiguous
+
+      - the effective larva admission path is identified
+
+      - downstream work is authorized to remove legacy `tools` and `side_effect_policy`
+      acceptance directly
+
+      - no independent larva-local contract authority remains asserted'
+    verification: '- Authority basis reviewed with no unresolved blocker-class ownership
+      conflict
+
+      - Final OPEN/BLOCK recommendation cites requirement refs, reviewed evidence,
+      and any non-intersection claims
+
+      - Downstream canonical_core_admission phase is safe to start only if OPEN'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Decision Basis
+
+      - requirement_refs_reviewed:
+
+      - admission_path_confirmed:
+
+      - source_of_truth_conflicts_remaining:
+
+      - blocker_statuses:
+
+      - open_or_block:
+
+      - rationale:
+
+      '
+    depends_on:
+    - canonical_authority_basis.lock-opifex-authority
+    agent: gate-reviewer
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
   status: locked
