@@ -33189,6 +33189,71 @@ phases:
 
       '
     agent: blind-tester
+  - id: canonical_surface_verify.gate
+    name: Gate canonical cross-surface verification
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check
+
+      review_depth: THOROUGH
+
+
+      Gate review: confirm the remediation now behaves consistently across all consumer
+      surfaces and runnable packaged entrypoints.
+
+
+      BLOCK if:
+
+      - any listed surface still diverges on forbidden-field handling or required-field
+      enforcement
+
+      - runtime liveness exists without contract-correct behavior proof
+
+      - any blocker-class obligation from the upstream verification kit lacks runtime
+      evidence or an explicit justified mismatch note'
+    verification: '- Cross-surface and runnable-entrypoint proofs reviewed together
+
+      - OPEN/BLOCK decision explicitly covers facade, CLI, Python API, MCP, and web
+
+      - Any residual mismatch is either closed here or documented as an explicit justified
+      divergence'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Surface Matrix
+
+      | Surface | Canonical Success Proof | Canonical Failure Proof | Notes |
+
+      | --- | --- | --- | --- |
+
+
+      ### Gate Decision Basis
+
+      - blocker_obligations_reviewed:
+
+      - runtime_proofs_reviewed:
+
+      - residual_mismatches:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - canonical_surface_verify.cross-surface-conformance
+    - canonical_surface_verify.web-liveness-probe
+    - canonical_surface_verify.mcp-liveness-probe
+    agent: gate-reviewer
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
   status: locked
