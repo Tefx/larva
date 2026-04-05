@@ -32573,6 +32573,78 @@ phases:
     depends_on:
     - canonical_shell_surfaces.contract
     agent: python-executor
+  - id: canonical_shell_surfaces.component-ingestion-impl
+    name: Remove legacy widening from component ingestion
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies within the existing component-ingestion signatures per the
+      contract from step `canonical_shell_surfaces.contract`.
+
+
+      UPSTREAM ARTIFACTS (from contract/test steps):
+
+      - `src/larva/shell/components.py` — shell-only component loading boundary
+
+      - `src/larva/core/assemble.py` and `src/larva/core/spec.py` — canonical boundary
+      the shell must feed without widening
+
+      - `tests/shell/test_python_api.py` and related shell fixture coverage — protected
+      canonical expectations
+
+
+      YOUR SCOPE: complete the one-time cleanup that removes compatibility-only field
+      mirroring/fallbacks from toolset/constraint ingestion where they affect the
+      canonical PersonaSpec boundary. Keep component loading as shell work, but do
+      not preserve `tools` or `side_effect_policy` acceptance just because historical
+      component YAML may contain them.
+
+
+      Out-of-scope guardrail: do not add dual-write or shadow-truth compatibility
+      wrappers.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST perform real canonical-boundary cleanup rather than documenting
+      the old transition.'
+    verification: '- Main path: shell component ingestion still loads canonical toolsets/constraints
+      that are allowed by upstream
+
+      - Failure path: legacy-only field shapes no longer sneak through to canonical
+      PersonaSpec admission
+
+      - Proof: no mirrored `tools` or retained `side_effect_policy` semantics remain
+      where this ingestion path used to widen the contract'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Component Ingestion Evidence
+
+      - files_changed:
+
+      - removed_compatibility_paths:
+
+      - canonical_boundary_preserved:
+
+      - out_of_scope_items_left_deferred:
+
+      '
+    depends_on:
+    - canonical_shell_surfaces.contract
+    - canonical_shell_surfaces.tests-red
+    agent: python-executor
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
