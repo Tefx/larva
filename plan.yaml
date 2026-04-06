@@ -36628,3 +36628,34 @@ phases:
     and ready for closure.
   depends_on:
   - daa_doc_sync
+  steps:
+  - id: daa_deep_review.wiring-audit
+    name: Run DAA wiring audit
+    status: pending
+    description: 'Full wiring audit over the appended DAA module: verify every intended
+      public symbol, transport entrypoint, and shared seam is actually wired and reachable.'
+    verification: Evidence enumerates reviewed surfaces and identifies any dead or
+      mismatched DAA path.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Wiring Audit
+
+      - surfaces_reviewed:
+
+      - reachable_paths:
+
+      - dead_or_misaligned_paths:
+
+      - conclusion:
+
+      '
+    agent: wiring-auditor
