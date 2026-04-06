@@ -35774,6 +35774,99 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_web_convergence.impl
+    name: Converge packaged and contrib web endpoints onto the shared router seam
+    status: pending
+    description: 'step_type: implementation
+
+
+      tags: ["integration"]
+
+
+      Implement the shared web API seam from `dup_web_convergence.router-basis`.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - packaged web endpoint behavior in `src/larva/shell/web.py`
+
+      - contrib web endpoint behavior in `contrib/web/server.py`
+
+      - guardrail matrix from `dup_guardrails`
+
+
+      YOUR SCOPE:
+
+      - replace duplicated standard persona endpoint logic with one shared implementation
+      seam
+
+      - preserve contrib-only runtime/HTML concerns outside the shared seam
+
+      - eliminate contrib-side deprecated `tools` PATCH handling drift
+
+      - preserve canonical admission and error-envelope behavior
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The shared seam must carry real endpoint logic used by both runtimes.'
+    verification: '- Main path: packaged and contrib persona endpoints behave identically
+      for canonical success and forbidden-field failure cases
+
+      - Failure path: PATCH/POST reject deprecated fields consistently on both runtimes
+
+      - Focused HTTP or runtime tests prove parity through the shared seam'
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact command or test name>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <runtime or test output>
+
+      ```
+
+
+      **Path exercised**: packaged/contrib web runtime -> shared router -> facade
+      -> core admission
+
+
+      **Parity checks**:
+
+      - packaged:
+
+      - contrib:
+
+      - canonical_success:
+
+      - forbidden_field_failure:
+
+      '
+    depends_on:
+    - dup_web_convergence.router-basis
+    agent: python-senior-tacit
 - id: dup_contract_source
   name: Canonical Contract Source Consolidation
   status: locked
