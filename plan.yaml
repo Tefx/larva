@@ -36888,6 +36888,48 @@ phases:
     depends_on:
     - dup_component_kind.alias-basis
     agent: python-senior-tacit
+  - id: dup_component_kind.verify
+    name: Verify component-kind aliases converge across transports
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Independently verify that single/plural kind aliases now reach the same loader
+      and error semantics.'
+    verification: '- Alias pairs converge to the same internal meaning across transports
+
+      - Invalid kind handling remains aligned'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Alias Matrix
+
+      - python_api:
+
+      - cli:
+
+      - mcp:
+
+      - web:
+
+      - invalid_kind:
+
+      '
+    depends_on:
+    - dup_component_kind.impl
+    agent: blind-tester-tacit
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
