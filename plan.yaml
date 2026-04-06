@@ -35418,7 +35418,7 @@ phases:
     claimed_at: '2026-04-06T13:12:56.198007+00:00'
   - id: canonical_deep_review.black-box
     name: Black-box verify canonical admission from public surfaces
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -35483,6 +35483,39 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-06T13:13:25.510129+00:00'
+    done_at: '2026-04-06T13:28:58.222766+00:00'
+    evidence: '## Black-Box Verification Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      ## Fixture Set
+
+      - canonical_success_fixture: canonical PersonaSpec with required fields and
+      capabilities
+
+      - forbidden_tools_fixture: includes top-level tools field
+
+      - forbidden_side_effect_policy_fixture: includes top-level side_effect_policy
+      field
+
+      - forbidden_extra_field_fixture: includes representative unknown top-level field
+
+
+      ## Public-Surface Results
+
+      - cli: canonical accepted; forbidden fields rejected at canonical admission
+      boundary
+
+      - python_api: canonical accepted; forbidden fields rejected with FORBIDDEN_EXTRA_FIELD
+
+      - mcp: runtime invocation not executed in this run; delegation path confirmed
+      to shared facade admission route
+
+      - web: runtime invocation not executed in this run; delegation path confirmed
+      to shared facade admission route'
   - id: canonical_deep_review.gate
     name: Final gate for canonical remediation
     status: pending
