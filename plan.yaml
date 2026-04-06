@@ -34763,7 +34763,7 @@ phases:
     claimed_at: '2026-04-06T12:24:36.743617+00:00'
   - id: canonical_surface_verify.mcp-liveness-probe
     name: Run MCP runtime proof for canonical admission
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -34835,6 +34835,42 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-06T12:24:32.485577+00:00'
+    done_at: '2026-04-06T12:37:45.004605+00:00'
+    evidence: '## Runnable MCP Proof
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      **Launch command**:
+
+      ```
+
+      uv run larva mcp
+
+      ```
+
+
+      **Tool call executed**:
+
+      ```
+
+      JSON-RPC tools/call name=larva_validate with canonical spec payload
+
+      Response: valid=true, errors=[], warnings=[]
+
+      ```
+
+
+      **Observed runtime behavior**:
+
+      - started: MCP server started with protocol handshake
+
+      - handled_tool_call: real tool routing executed to larva_validate handler
+
+      - canonical_operation_result: canonical validate operation succeeded with expected
+      structure'
   - id: canonical_surface_verify.gate
     name: Gate canonical cross-surface verification
     status: pending
