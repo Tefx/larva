@@ -33316,7 +33316,7 @@ phases:
     agent: integration-verifier-tacit
   - id: canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
     name: Fix residual B1/B5 description-path authority mismatch
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       verification_scope: phase-check
@@ -33391,6 +33391,8 @@ phases:
     depends_on:
     - canonical_core_admission.fix-gate-blockers-b1-b5
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-06T05:15:31.799493+00:00'
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
