@@ -36545,6 +36545,48 @@ phases:
     depends_on:
     - dup_error_abstraction.impl
     agent: integration-verifier-tacit
+  - id: dup_error_abstraction.gate
+    name: Gate component error projection abstraction
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: component error meaning must now be shared while transport wrappers
+      remain intentionally distinct.'
+    verification: '- Shared meaning/invariant fields are centralized
+
+      - No blocker-class transport drift remains'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - shared_error_seam_status:
+
+      - transport_alignment_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_error_abstraction.error-basis
+    - dup_error_abstraction.impl
+    - dup_error_abstraction.verify
+    agent: gate-reviewer-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
