@@ -36389,6 +36389,52 @@ phases:
   depends_on:
   - dup_contract_source
   - dup_fixture_unification
+  steps:
+  - id: dup_error_abstraction.error-basis
+    name: Design shared component error projection seam
+    status: pending
+    description: 'step_type: review
+
+
+      Design the shared error-projection seam for component operations.
+
+
+      Must define:
+
+      - canonical component error factory surface
+
+      - which fields are invariant across transports
+
+      - how CLI/Web/MCP/Python API wrap transport-specific shells around shared component
+      error meaning
+
+      - how invalid kind, not found, and store-unavailable cases map without drift'
+    verification: '- Shared error seam is specified with invariant envelope fields
+      and transport-specific wrappers
+
+      - No unresolved ambiguity remains for numeric_code or details ownership'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Error Basis
+
+      - shared_error_factories:
+
+      - invariant_fields:
+
+      - transport_wrappers:
+
+      - edge_cases:
+
+      '
+    agent: software-architect-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
