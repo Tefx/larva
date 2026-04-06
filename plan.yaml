@@ -33840,7 +33840,7 @@ phases:
       \ and non-widening across referenced artifacts"
   - id: canonical_shell_surfaces.tests-red
     name: Expose shell and fixture compatibility drift
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -33912,6 +33912,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-06T11:29:44.315167+00:00'
+    done_at: '2026-04-06T11:38:16.707909+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red (targeted failures exposed)
+
+      - failure_alignment: failures map to canonical shell/fixture compatibility drift
+      and required downstream implementation ownership
+
+      - product_implementation_files_modified: none
+
+      - refs_read_confirmation: no refs for this step
+
+      - verification: added focused tests exposing MCP description drift, web/tools-side_effect_policy
+      projection drift, and component/spec fixture compatibility assumptions'
   - id: canonical_shell_surfaces.component-ingestion-impl
     name: Remove legacy widening from component ingestion
     status: pending
