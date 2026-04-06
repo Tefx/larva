@@ -35796,6 +35796,57 @@ phases:
     DAA work are pinned before implementation begins.
   depends_on:
   - daa_arch_basis
+  steps:
+  - id: daa_p0_contracts.contract-freeze
+    name: Freeze DAA P0 contracts
+    status: pending
+    description: 'step_type: contract
+
+
+      contract_purity: ENFORCED
+
+      contract_outputs:
+
+      - signatures
+
+      - type_defs
+
+      - interfaces
+
+      - stubs
+
+
+      Freeze the authoritative contract for blocker-class DAA remediation surfaces
+      on the existing public interfaces only. Clarify semantics without expanding
+      public API. If existing interfaces are insufficient, document the deviation
+      and escalate rather than redesigning in-place.'
+    verification: Contract artifacts pin the exact acceptance boundary for P0 work
+      and remain implementation-free.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Outputs
+
+      - pinned_interfaces:
+
+      - signatures:
+
+      - type_defs:
+
+      - stubs:
+
+      - deviation_records:
+
+      '
+    agent: python-executor
 - id: daa_p0_impl
   name: DAA P0 Implementation
   status: locked
