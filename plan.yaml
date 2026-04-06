@@ -34390,7 +34390,7 @@ phases:
       **Verdict**: PASS'
   - id: canonical_shell_surfaces.gate
     name: Gate shell and projection cleanup
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -34454,6 +34454,8 @@ phases:
     - canonical_shell_surfaces.verify
     - canonical_shell_surfaces.wiring-audit
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-06T12:11:07.331656+00:00'
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: locked
