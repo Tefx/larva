@@ -35611,6 +35611,81 @@ phases:
     DAA remediation contracts or implementation planning starts.
   depends_on:
   - canonical_deep_review
+  steps:
+  - id: daa_arch_basis.authority-map
+    name: Map authoritative DAA basis
+    status: pending
+    description: 'Classify this appended module as authority_adjudication first and
+      freeze the DAA architecture basis before any contract or implementation work.
+
+
+      Required outputs:
+
+      - system_layers
+
+      - source_of_truth_matrix
+
+      - service_catalog
+
+      - runtime_contract
+
+      - state_strata
+
+      - transport_boundary_rules
+
+      - cross_cutting_governance
+
+      - shared_abstractions
+
+      - module_split_recommendations
+
+      - open_questions
+
+      - readiness
+
+
+      Record which existing repo docs/specs remain authoritative and which DAA obligations
+      are newly appended follow-up scope only. Preserve completed historical phases
+      unchanged.'
+    verification: Produce an architecture basis artifact in evidence that is sufficient
+      to sequence all downstream DAA phases without unresolved ownership or source-of-truth
+      conflicts.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Architecture Basis
+
+      - system_layers:
+
+      - source_of_truth_matrix:
+
+      - service_catalog:
+
+      - runtime_contract:
+
+      - state_strata:
+
+      - transport_boundary_rules:
+
+      - cross_cutting_governance:
+
+      - shared_abstractions:
+
+      - module_split_recommendations:
+
+      - open_questions:
+
+      - readiness:
+
+      '
+    agent: software-architect
 - id: daa_p0_contracts
   name: DAA P0 Contracts
   status: locked
