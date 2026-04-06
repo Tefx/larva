@@ -36930,6 +36930,48 @@ phases:
     depends_on:
     - dup_component_kind.impl
     agent: blind-tester-tacit
+  - id: dup_component_kind.gate
+    name: Gate component-kind vocabulary normalization
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: component-kind vocabulary must no longer be a same-name/different-parameter
+      false abstraction.'
+    verification: '- Canonical vocabulary and alias handling are explicit and aligned
+
+      - No blocker-class transport drift remains'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - canonical_vocabulary_status:
+
+      - alias_alignment_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_component_kind.alias-basis
+    - dup_component_kind.impl
+    - dup_component_kind.verify
+    agent: gate-reviewer-tacit
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
