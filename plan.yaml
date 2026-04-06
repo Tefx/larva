@@ -36252,6 +36252,53 @@ phases:
     - daa_p1_impl.parallel-seams
     - daa_p1_impl.serial-integration
     agent: integration-verifier-tacit
+  - id: daa_p1_impl.gate
+    name: Gate DAA P1 implementation
+    status: pending
+    description: 'Gate review: verify P1 implementation, integration, and evidence
+      quality before vocabulary cleanup proceeds.
+
+
+      review_depth: STANDARD'
+    verification: '- All P1 steps completed
+
+      - Independent verification evidence is adequate
+
+      - No unresolved blocker intersects daa_p2_vocab or later gates'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_p1_impl.parallel-seams |  |  |  |
+
+      | daa_p1_impl.serial-integration |  |  |  |
+
+      | daa_p1_impl.verify |  |  |  |
+
+
+      ## Gate Decision
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_p1_impl.parallel-seams
+    - daa_p1_impl.serial-integration
+    - daa_p1_impl.verify
+    agent: gate-reviewer-tacit
 - id: daa_p2_vocab
   name: DAA P2 Vocabulary and Drift Cleanup
   status: locked
