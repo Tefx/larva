@@ -36092,6 +36092,53 @@ phases:
     depends_on:
     - dup_contract_source.contract-basis
     agent: python-senior-tacit
+  - id: dup_contract_source.spec-conformance
+    name: Audit derived projections against the canonical contract metadata seam
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Run an adversarial conformance check over the new local metadata seam and every
+      derived projection.'
+    verification: '- Evidence table shows validator, schema, and MCP contract projections
+      still conform to the canonical field/error model
+
+      - Any divergence is explicit and blocker-class if it affects runtime or public
+      contract claims'
+    evidence_template: '## Spec Conformance Audit
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Evidence Table
+
+      - requirement:
+
+      - evidence:
+
+      - verdict:
+
+
+      ## Residuals
+
+      - blocker_class_obligations_unresolved:
+
+      - non_intersection_proofs:
+
+      '
+    depends_on:
+    - dup_contract_source.impl
+    agent: spec-verifier-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
