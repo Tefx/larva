@@ -34533,7 +34533,7 @@ phases:
   steps:
   - id: canonical_surface_verify.cross-surface-conformance
     name: Verify canonical conformance across all consumer surfaces
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -34630,6 +34630,63 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-06T12:24:28.949594+00:00'
+    done_at: '2026-04-06T12:37:31.714614+00:00'
+    evidence: '## Seam-Level Integration Evidence
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - ADR-003, INTERFACES, core validate/spec, facade, python_api, cli_commands,
+      mcp, web examined during independent verification.
+
+
+      **Changed seam paths**:
+
+      - facade: src/larva/app/facade.py
+
+      - python_api: src/larva/shell/python_api.py
+
+      - cli: src/larva/shell/cli_commands.py
+
+      - mcp: src/larva/shell/mcp.py
+
+      - web: src/larva/shell/web.py
+
+
+      **Exact commands executed**:
+
+      ```
+
+      uv run python proof/cross_surface_proof.py
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      Cross-surface verification summary PASS=17 FAIL=0 across facade/python_api/cli/mcp/web
+      with canonical success and forbidden-field rejection cases.
+
+      ```
+
+
+      **Behavioral Proof Register**
+
+      - requirement_ref: ADR-003 canonical admission requirements + forbidden fields
+
+      - behavior_claim: all consumer surfaces resolve canonical success/failure identically
+
+      - runtime_proof_expected: valid canonical spec accepted; tools/side_effect_policy
+      rejected; missing required fields rejected
+
+      - evidence_ref: proof run and per-surface outputs in step evidence
+
+      - status: PASS
+
+      - closure_path: independent integration verifier execution
+
+      - gate_decision_basis: ready for gate check'
   - id: canonical_surface_verify.web-liveness-probe
     name: Run packaged web liveness probe for canonical admission
     status: claimed
