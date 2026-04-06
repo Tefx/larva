@@ -391,6 +391,7 @@ class TestMCPErrorCodes:
             "REGISTRY_UPDATE_FAILED",
             "REGISTRY_DELETE_FAILED",
             "INVALID_CONFIRMATION_TOKEN",
+            "FORBIDDEN_OVERRIDE_FIELD",
         }
         assert set(mcp_module.LARVA_ERROR_CODES.keys()) == required_codes
 

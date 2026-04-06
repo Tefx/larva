@@ -64,7 +64,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_assemble",
         "description": (
             "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model). "
-            "Toolsets define capabilities for canonical PersonaSpec assembly."
+            "Canonical admission requires capabilities; tools is rejected."
         ),
         "input_schema": {
             "type": "object",
@@ -112,7 +112,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_resolve",
         "description": (
             "Resolve a pre-registered persona by id, optionally with runtime overrides. "
-            "The resolved PersonaSpec uses canonical capabilities field."
+            "Canonical admission requires capabilities; tools is rejected."
         ),
         "input_schema": {
             "type": "object",
@@ -132,8 +132,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_register",
         "description": (
-            "Register a PersonaSpec in the global registry. The spec should use capabilities field "
-            "and must not include tools at canonical admission."
+            "Register a PersonaSpec in the global registry. Canonical admission requires "
+            "capabilities and rejected tools is not permitted."
         ),
         "input_schema": {
             "type": "object",
@@ -142,7 +142,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "PersonaSpec JSON (must pass validation). Canonical admission requires "
-                        "capabilities and rejects tools."
+                        "capabilities and rejected tools is not permitted."
                     ),
                 }
             },

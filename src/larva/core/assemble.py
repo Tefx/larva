@@ -294,10 +294,25 @@ def _collect_constraint_sources(data: dict[str, object]) -> list[dict[str, Any]]
     return constraint_sources
 
 
+_FORBIDDEN_OVERRIDE_FIELDS = frozenset({"tools", "side_effect_policy"})
+
+
 @pre(lambda result, overrides: isinstance(result, dict) and isinstance(overrides, dict))
 @post(lambda result: isinstance(result, dict))
 def _apply_overrides(result: Mapping[str, object], overrides: dict[str, Any]) -> dict[str, object]:
     updated = dict(result)
+
+    # Reject forbidden fields at canonical admission boundary
+    for key, _ in _safe_items(overrides):
+        if not isinstance(key, str):
+            continue
+        if key in _FORBIDDEN_OVERRIDE_FIELDS:
+            raise _assembly_error(
+                code="FORBIDDEN_OVERRIDE_FIELD",
+                message=f"Override field '{key}' is not permitted at canonical admission boundary",
+                details={"field": key},
+            )
+
     if "model_params" in updated and isinstance(overrides.get("model_params"), dict):
         updated["model_params"] = _deep_merge(
             cast("dict[str, Any]", updated["model_params"]),

@@ -325,26 +325,23 @@ class TestWebApiCanonicalGaps:
     def test_web_patch_rejects_tools_in_canonical_boundary(self) -> None:
         """Web PATCH endpoint should reject `tools` field at canonical boundary.
 
-        CURRENT GAP: api_update_persona in web.py accepts and preserves `tools`
-        in patches, which is deprecated at canonical admission.
+        FIXED: api_update_persona in web.py no longer handles `tools` field.
+        It falls through to the else clause and gets rejected by revalidation.
         """
-        # This test documents the CURRENT behavior
-        # The web.py module's patch logic:
-        #     elif key == "tools" and isinstance(value, dict):
-        #         spec["tools"] = value
-        #
-        # This means tools is preserved through web API patch
-
-        # Verify the source code shows this behavior
         import inspect
         from larva.shell import web as web_module
 
         source = inspect.getsource(web_module.api_update_persona)
 
-        # CURRENT: tools is explicitly handled and preserved
-        assert 'key == "tools"' in source or '"tools"' in source, (
-            "CURRENT: web.py patch endpoint explicitly handles and preserves `tools`. "
-            "EXPECTED: canonical boundary rejects `tools` as extra field."
+        # FIXED: tools is no longer explicitly handled and preserved
+        # The patch handler now only explicitly handles:
+        # - spec_digest/spec_version (protected, skipped)
+        # - model_params (explicit)
+        # - capabilities (canonical field)
+        # - other fields fall through and get rejected by revalidation
+        assert 'key == "tools"' not in source, (
+            "web.py patch endpoint should NOT explicitly handle `tools` field. "
+            "Canonical boundary: tools is forbidden and rejected by revalidation."
         )
 
 
@@ -452,15 +449,22 @@ class TestCanonicalBoundaryRejection:
             }
         )
 
-        # CURRENT BEHAVIOR: This likely succeeds or strips tools silently
-        # The gap is that there's no explicit rejection at canonical boundary
-        if isinstance(result, dict) and "error" not in result:
+        # Verify: assemble should reject `tools` in overrides with error envelope
+        if isinstance(result, dict) and "code" in result:
+            # Error returned with code - tools was correctly rejected
+            assert result["code"] == "FORBIDDEN_OVERRIDE_FIELD", (
+                f"Expected FORBIDDEN_OVERRIDE_FIELD error, got: {result.get('code')}"
+            )
+            return  # Test passes - tools rejected with correct error
+        elif isinstance(result, dict) and "error" not in result:
             # No error returned - tools was silently accepted or ignored
             pytest.fail(
                 "CURRENT: assemble accepts `tools` in overrides silently. "
                 "EXPECTED: canonical boundary rejects `tools` with error envelope. "
                 "GAP: shell/API tests still encode compatibility expectations."
             )
+        else:
+            pytest.fail(f"Unexpected result type: {type(result)} - {result}")
 
 
 # -----------------------------------------------------------------------------

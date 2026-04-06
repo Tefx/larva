@@ -112,14 +112,14 @@ async def api_update_persona(persona_id: str, request: Request):
     try:
         # Get current spec
         spec = resolve(persona_id)
-        # Apply patches
+        # Apply patches (only canonical fields are accepted)
         for key, value in patches.items():
             if key in ("spec_digest", "spec_version"):
                 continue  # protected fields
             if key == "model_params" and isinstance(value, dict):
                 spec["model_params"] = value  # type: ignore[typeddict-item]
-            elif key == "tools" and isinstance(value, dict):
-                spec["tools"] = value
+            elif key == "capabilities" and isinstance(value, dict):
+                spec["capabilities"] = value  # canonical field
             else:
                 spec[key] = value
         # Revalidate
