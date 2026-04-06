@@ -32548,7 +32548,7 @@ phases:
       \ Focused integration tests pass with canonical success/failure mapping."
   - id: canonical_core_admission.verify
     name: Independently verify canonical core admission
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -32645,6 +32645,8 @@ phases:
     - canonical_core_admission.core-enforcement-impl
     - canonical_core_admission.facade-admission-impl
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-06T02:35:12.620553+00:00'
   - id: canonical_core_admission.spec-conformance
     name: Audit core admission against opifex canonical contract
     status: claimed
