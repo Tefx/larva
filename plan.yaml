@@ -35684,3 +35684,39 @@ phases:
 
       '
     agent: integration-verifier-tacit
+  - id: dup_guardrails.gate
+    name: Gate duplicate-abstraction guardrails
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review for the preservation matrix. BLOCK if any high-risk duplicate-abstraction
+      area lacks an explicit preserved behavior baseline.'
+    verification: '- Preservation matrix is specific enough to protect downstream
+      refactors
+
+      - No P0 finding is left without a baseline behavior lock'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - guarded_findings:
+
+      - uncovered_risks:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_guardrails.behavior-matrix
+    agent: gate-reviewer-tacit
