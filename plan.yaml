@@ -35618,3 +35618,10 @@ phases:
     DAA work are pinned before implementation begins.
   depends_on:
   - daa_arch_basis
+- id: daa_p0_impl
+  name: DAA P0 Implementation
+  status: locked
+  gate: P0 implementation work closes blocker-class remediation items and provides
+    green retest evidence before any downstream DAA expansion.
+  depends_on:
+  - daa_p0_contracts
