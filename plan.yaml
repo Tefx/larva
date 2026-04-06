@@ -35730,6 +35730,65 @@ phases:
     depends_on:
     - daa_arch_basis.authority-map
     agent: software-architect-tacit
+  - id: daa_arch_basis.gate
+    name: Gate DAA architecture basis
+    status: pending
+    description: 'Gate review: verify the appended DAA architecture basis is authoritative
+      enough for downstream contract and implementation planning.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - source-of-truth alignment
+
+      - runtime/deployability obligations
+
+      - remediation ownership completeness'
+    verification: '- All architecture-basis fields are present
+
+      - DAA remediation inventory assigns ownership for blocker-class obligations
+
+      - No unresolved authority conflict remains hidden inside downstream executor
+      work'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_arch_basis.authority-map |  |  |  |
+
+      | daa_arch_basis.remediation-inventory |  |  |  |
+
+
+      ## Gate Decision Basis
+
+      - reviewed_requirements:
+
+      - unresolved_items:
+
+      - block_or_non_intersection_reasoning:
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_arch_basis.authority-map
+    - daa_arch_basis.remediation-inventory
+    agent: gate-reviewer-tacit
 - id: daa_p0_contracts
   name: DAA P0 Contracts
   status: locked
