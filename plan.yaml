@@ -35610,3 +35610,77 @@ phases:
   gate: Freeze behavior-preservation matrix before duplicate-abstraction remediation.
   depends_on:
   - canonical_deep_review
+  steps:
+  - id: dup_guardrails.behavior-matrix
+    name: Capture non-regression behavior matrix for duplicate-abstraction remediation
+    status: pending
+    description: 'step_type: review
+
+      verification_scope: full-plan-check
+
+
+      Produce a preserve-scope matrix for the remediation campaign so later refactors
+      do not silently widen or narrow behavior.
+
+
+      Matrix must lock:
+
+      - canonical admission outcomes for `capabilities`, `tools`, `side_effect_policy`,
+      and unknown fields
+
+      - packaged web and contrib web parity for persona REST endpoints
+
+      - component error envelope invariants (`code`, `numeric_code`, `details`)
+
+      - fixture families that are canonical-only vs legacy-transition-only
+
+      - component kind vocabulary currently accepted on each public surface
+
+
+      Known risks:
+
+      - packaged vs contrib web parity drift
+
+      - test fixtures encoding contradictory canonical/legacy semantics
+
+      - transport-specific error shaping drift
+
+
+      Deliverable: one evidence artifact that downstream implementation steps can
+      cite as the behavior-preservation baseline.'
+    verification: '- Preservation matrix covers canonical admission, web parity, component
+      errors, fixture families, and component kind vocabulary
+
+      - Evidence distinguishes active runtime authority from non-blocking compatibility
+      remnants'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Behavior Preservation Matrix
+
+      - canonical_admission_locked:
+
+      - packaged_vs_contrib_web_locked:
+
+      - component_error_envelopes_locked:
+
+      - fixture_family_partition_locked:
+
+      - component_kind_vocabulary_locked:
+
+
+      ## Non-Intersection Notes
+
+      - active_runtime_authority:
+
+      - deferred_compatibility_paths:
+
+      '
+    agent: integration-verifier-tacit
