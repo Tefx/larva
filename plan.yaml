@@ -33153,6 +33153,126 @@ phases:
     - canonical_core_admission.verify
     - canonical_core_admission.spec-conformance
     agent: python-senior-tacit
+  - id: canonical_core_admission.retest-gate-blockers-b1-b5
+    name: Retest canonical core admission gate blockers B1-B5
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier-tacit), validate that the canonical
+      core admission remediation closes blocker families B1-B5 from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - B1 requiredness semantics: runtime proof that `can_spawn` is required while
+      `description` remains optional on the production path
+
+      - B2 forbidden assembly output: runtime proof that assembled candidates no longer
+      emit `tools` or `side_effect_policy`
+
+      - B3 forbidden normalize output: runtime proof that normalized specs do not
+      preserve `side_effect_policy`
+
+      - B4 schema authority alignment: proof that the larva-local schema no longer
+      contradicts canonical requiredness or act as independent authority
+
+      - B5 production-path contract closure: runtime proof from assembly/normalize
+      through admission behavior, not just static inspection
+
+
+      Behavioral requirements MUST be recorded in a behavioral_proof_register with
+      requirement_ref, behavior_claim, runtime_proof_expected, evidence_ref, status,
+      closure_path, and gate_decision_basis.
+
+
+      Independence Level: L2
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - canonical authority basis refs — key passage or "NOT READ: <reason>"
+
+      - fix-step evidence refs — key passage or "NOT READ: <reason>"
+
+      - schema/contract refs — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."'
+    verification: '- Runtime proof exists for each blocker family B1-B5
+
+      - behavioral_proof_register is complete and explicit about OPEN/BLOCK basis
+
+      - Main path and highest-risk failure path are both evidenced for requiredness
+      and forbidden-field rejection behavior
+
+      - Any unresolved item is classified with explicit closure_path and gate intersection
+      rationale'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier-tacit (independent of implementation)
+
+      **Scope**: Canonical core admission blocker families B1-B5
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Runtime Proof by Blocker Family
+
+      - B1 requiredness proof: <command/test, actual output, accept/reject behavior>
+
+      - B2 assemble forbidden-field proof: <command/test, actual output>
+
+      - B3 normalize forbidden-field proof: <command/test, actual output>
+
+      - B4 schema authority proof: <inspection/runtime proof showing derived alignment>
+
+      - B5 production-path contract proof: <command/test spanning normalize/assemble/admission>
+
+
+      ## behavioral_proof_register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+
+      ## Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+
+      ## Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE'
+    depends_on:
+    - canonical_core_admission.fix-gate-blockers-b1-b5
+    agent: integration-verifier-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
