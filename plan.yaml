@@ -35867,6 +35867,76 @@ phases:
     depends_on:
     - dup_web_convergence.router-basis
     agent: python-senior-tacit
+  - id: dup_web_convergence.verify
+    name: Verify packaged and contrib web parity through the shared seam
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an independent tester, try to find divergence between packaged and contrib
+      web runtimes after convergence.
+
+
+      Test for:
+
+      - canonical-success parity
+
+      - forbidden-field rejection parity (`tools`, `side_effect_policy`, unknown field)
+
+      - PATCH semantics parity
+
+      - unchanged HTML/runtime startup expectations where applicable'
+    verification: '- Independent evidence shows packaged and contrib runtimes now
+      agree on persona endpoint semantics
+
+      - Any residual divergence is classified blocker or explicit non-intersection'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```
+
+      <commands>
+
+      ```
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+
+      ### Coverage Assessment
+
+      - packaged_vs_contrib_parity:
+
+      - canonical_success:
+
+      - forbidden_field_failure:
+
+      - patch_semantics:
+
+      '
+    depends_on:
+    - dup_web_convergence.impl
+    agent: blind-tester-tacit
 - id: dup_contract_source
   name: Canonical Contract Source Consolidation
   status: locked
