@@ -36044,6 +36044,54 @@ phases:
     depends_on:
     - daa_p0_impl.fill-stubs
     agent: integration-verifier-tacit
+  - id: daa_p0_impl.gate
+    name: Gate DAA P0 implementation
+    status: pending
+    description: 'Gate review: verify blocker-class DAA implementation is complete
+      and safe to extend downstream.
+
+
+      review_depth: THOROUGH'
+    verification: '- P0 implementation is complete
+
+      - Green retest evidence is adequate
+
+      - No unresolved blocker intersects downstream DAA phases'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_p0_impl.fill-stubs |  |  |  |
+
+      | daa_p0_impl.retest-green |  |  |  |
+
+
+      ## Gate Decision Basis
+
+      - unresolved_items:
+
+      - downstream_intersection:
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_p0_impl.fill-stubs
+    - daa_p0_impl.retest-green
+    agent: gate-reviewer-tacit
 - id: daa_p1_impl
   name: DAA P1 Implementation
   status: locked
