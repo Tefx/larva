@@ -81,6 +81,11 @@ class TestAssembleCandidateBehavior:
         )
         assert result["prompt"] == "first\n\nsecond"
 
+    def test_passes_through_description_when_provided(self):
+        """Top-level description should be carried into assembled candidate."""
+        result = assemble_candidate({"id": "persona", "description": "persona description"})
+        assert result["description"] == "persona description"
+
     def test_raises_component_conflict_for_contradictory_tool_posture(self):
         """Conflicting tool postures should raise AssemblyError with conflict code."""
         with pytest.raises(AssemblyError) as exc_info:
@@ -229,6 +234,14 @@ class TestTypedDictShapes:
         }
         assert len(data["prompts"]) == 2
         assert data["prompts"][0]["text"] == "prompt1"
+
+    def test_assembly_input_supports_description(self):
+        """AssemblyInput should support top-level description passthrough."""
+        data: AssemblyInput = {
+            "id": "test",
+            "description": "persona description",
+        }
+        assert data["description"] == "persona description"
 
     def test_assembly_input_supports_toolsets(self):
         """AssemblyInput should support 'toolsets' field as list[ToolsetComponent]."""

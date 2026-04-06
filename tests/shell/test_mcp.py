@@ -276,6 +276,7 @@ class TestMCPToolDefinitions:
         assemble_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
         props = assemble_tool["input_schema"]["properties"]
         assert "id" in props
+        assert "description" in props
         assert "prompts" in props
         assert "toolsets" in props
         assert "constraints" in props
@@ -897,6 +898,7 @@ class TestMCPToolsRoundTrip:
         # MCP handler would extract these from params
         request = {
             "id": "assembled-persona",
+            "description": "assembled description",
             "prompts": ["base-prompt"],
             "toolsets": ["readonly-tools"],
             "constraints": ["no-spawn"],

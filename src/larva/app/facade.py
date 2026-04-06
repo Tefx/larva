@@ -53,6 +53,7 @@ class AssembleRequest(TypedDict, total=False):
     """App-layer request shape for assembling a PersonaSpec."""
 
     id: str
+    description: str
     prompts: list[str]
     toolsets: list[str]
     constraints: list[str]
@@ -242,6 +243,9 @@ class DefaultLarvaFacade(LarvaFacade):
             "variables": request.get("variables", {}),
             "overrides": request.get("overrides", {}),
         }
+        description = request.get("description")
+        if isinstance(description, str):
+            assemble_input["description"] = description
 
         prompt_names = request.get("prompts", [])
         for prompt_name in prompt_names:

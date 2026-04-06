@@ -147,6 +147,7 @@ class AssemblyInput(TypedDict, total=False):
     """Canonical in-memory input shape accepted by core assembly."""
 
     id: str
+    description: str
     prompts: list[PromptComponent]
     toolsets: list[ToolsetComponent]
     constraints: list[ConstraintComponent]

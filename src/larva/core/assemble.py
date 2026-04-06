@@ -372,6 +372,10 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     persona_id = cast("str", data.get("id"))
     result: dict[str, object] = {"id": persona_id}
 
+    description = data.get("description")
+    if isinstance(description, str):
+        result["description"] = description
+
     prompt_texts = _collect_prompt_texts(data)
 
     if prompt_texts:

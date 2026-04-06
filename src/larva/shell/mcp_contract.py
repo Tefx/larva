@@ -70,6 +70,10 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "type": "object",
             "properties": {
                 "id": {"type": "string", "description": "Persona id"},
+                "description": {
+                    "type": "string",
+                    "description": "Persona description for canonical required field",
+                },
                 "prompts": {
                     "type": "array",
                     "items": {"type": "string"},

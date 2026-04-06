@@ -50,6 +50,7 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
     if op == "assemble":
         request_dict: dict[str, object] = {"id": cast("str", kwargs["id"])}
         optional_fields: tuple[tuple[str, object | None], ...] = (
+            ("description", cast("str | None", kwargs.get("description"))),
             ("prompts", cast("list[str] | None", kwargs.get("prompts"))),
             ("toolsets", cast("list[str] | None", kwargs.get("toolsets"))),
             ("constraints", cast("list[str] | None", kwargs.get("constraints"))),
@@ -118,11 +119,12 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
 
 validate = cast("Callable[[PersonaSpec], ValidationReport]", partial(_invoke, "validate"))
 assemble = cast(
-    "Callable[[str, list[str] | None, list[str] | None, list[str] | None, str | None, dict[str, Any] | None, dict[str, str] | None], PersonaSpec]",
-    lambda id, prompts=None, toolsets=None, constraints=None, model=None, overrides=None, variables=None: (
+    "Callable[[str, str | None, list[str] | None, list[str] | None, list[str] | None, str | None, dict[str, Any] | None, dict[str, str] | None], PersonaSpec]",
+    lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None, variables=None: (
         _invoke(
             "assemble",
             id=id,
+            description=description,
             prompts=prompts,
             toolsets=toolsets,
             constraints=constraints,

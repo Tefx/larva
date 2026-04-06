@@ -117,12 +117,27 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         if error := self._reject_unknown_params(
             "larva_assemble",
             checked_params,
-            {"id", "prompts", "toolsets", "constraints", "model", "overrides", "variables"},
+            {
+                "id",
+                "description",
+                "prompts",
+                "toolsets",
+                "constraints",
+                "model",
+                "overrides",
+                "variables",
+            },
         ):
             return error
         if error := self._require_param("larva_assemble", checked_params, "id"):
             return error
         if error := self._require_type("larva_assemble", checked_params, "id", str, "string"):
+            return error
+        if "description" in checked_params and (
+            error := self._require_type(
+                "larva_assemble", checked_params, "description", str, "string"
+            )
+        ):
             return error
         if error := self._require_list_of_strings("larva_assemble", checked_params, "prompts"):
             return error
@@ -156,6 +171,8 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
             "overrides": checked_params.get("overrides", {}),
             "variables": checked_params.get("variables", {}),
         }
+        if "description" in checked_params:
+            request["description"] = checked_params["description"]
         facade = cast("Any", self._facade)
         result = cast("Success[object] | Failure[LarvaError]", facade.assemble(request))
         if isinstance(result, Success):

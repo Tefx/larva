@@ -50,6 +50,10 @@ def _add_persona_read_commands(
     )
     assemble_parser.add_argument("--id", required=True, help="persona identifier")
     assemble_parser.add_argument(
+        "--description",
+        help="persona description for canonical required field",
+    )
+    assemble_parser.add_argument(
         "--prompt",
         dest="prompts",
         action="append",

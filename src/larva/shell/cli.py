@@ -111,6 +111,9 @@ def _build_assemble_request(
         "overrides": overrides.unwrap(),
         "variables": cast("dict[str, str]", variables.unwrap()),
     }
+    description = cast("str | None", args.description)
+    if description is not None:
+        request["description"] = description
     model = cast("str | None", args.model)
     if model is not None:
         request["model"] = model
