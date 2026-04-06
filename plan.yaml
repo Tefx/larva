@@ -36701,6 +36701,55 @@ phases:
     depends_on:
     - dup_facade_admission.workflow-basis
     agent: python-senior-tacit
+  - id: dup_facade_admission.verify
+    name: Verify unified facade admission workflow preserves entrypoint behavior
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an independent tester, hunt for entrypoint drift after workflow consolidation.
+
+
+      Check register, resolve, update, and clone success/failure paths.'
+    verification: '- All facade entrypoints preserve canonical success/failure behavior
+
+      - Any change in validation ordering is shown non-observable or explicitly blocker-class'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Entry Point Matrix
+
+      - register:
+
+      - resolve:
+
+      - update:
+
+      - clone:
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      '
+    depends_on:
+    - dup_facade_admission.impl
+    agent: integration-verifier-tacit
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
   status: locked
