@@ -33526,7 +33526,7 @@ phases:
       \  - invar guard passed (warnings only)\n\nRemaining ambiguity:\n- none"
   - id: canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
     name: Resolve requiredness authority contradiction and synchronize artifacts
-    status: pending
+    status: claimed
     description: 'work_type: authority_adjudication
 
       step_type: review
@@ -33614,6 +33614,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-06T07:14:06.048089+00:00'
   - id: canonical_core_admission.retest-gate-blocker-b00-requiredness-authority
     name: Retest authority and runtime requiredness alignment
     status: pending
