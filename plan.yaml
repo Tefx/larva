@@ -36595,6 +36595,52 @@ phases:
   depends_on:
   - dup_contract_source
   - dup_guardrails
+  steps:
+  - id: dup_facade_admission.workflow-basis
+    name: Design unified app-layer admission workflow seam
+    status: pending
+    description: 'step_type: review
+
+
+      Design the unified admission workflow seam for facade operations.
+
+
+      Must cover:
+
+      - shared candidate-admission skeleton for register/resolve/update/clone
+
+      - where normalization happens and why
+
+      - how behavior-preserving double-validation is retained or intentionally removed
+      under proof
+
+      - how persistence and digest behavior remain unchanged'
+    verification: '- Unified workflow basis names a single app-layer admission seam
+
+      - Any proposed change to validation ordering is explicitly justified with behavior-preservation
+      obligations'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Workflow Basis
+
+      - shared_skeleton:
+
+      - normalization_position:
+
+      - validation_ordering_policy:
+
+      - persistence_invariants:
+
+      '
+    agent: software-architect-tacit
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
   status: locked
