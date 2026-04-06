@@ -36188,6 +36188,53 @@ phases:
     remain truthful.
   depends_on:
   - dup_guardrails
+  steps:
+  - id: dup_fixture_unification.fixture-basis
+    name: Define canonical-only and transition-only fixture families
+    status: pending
+    description: 'step_type: review
+
+
+      Define the fixture taxonomy that separates canonical-boundary tests from transition-compatibility
+      tests.
+
+
+      Must identify:
+
+      - canonical-only fixture constructors
+
+      - legacy-transition fixture constructors
+
+      - store doubles that should become shared
+
+      - forbidden implicit defaults (`tools`, `side_effect_policy`) in anything named
+      canonical'
+    verification: '- Fixture taxonomy is explicit enough to prevent mixed canonical/legacy
+      defaults
+
+      - Shared doubles and helper seams are identified'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fixture Basis
+
+      - canonical_only_fixtures:
+
+      - transition_only_fixtures:
+
+      - shared_doubles:
+
+      - forbidden_defaults:
+
+      '
+    agent: software-architect-tacit
 - id: dup_error_abstraction
   name: Component Error Projection Abstraction
   status: locked
