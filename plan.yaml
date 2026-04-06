@@ -35418,7 +35418,7 @@ phases:
     claimed_at: '2026-04-06T13:12:56.198007+00:00'
   - id: canonical_deep_review.black-box
     name: Black-box verify canonical admission from public surfaces
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -35481,6 +35481,8 @@ phases:
 
       '
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-06T13:13:25.510129+00:00'
   - id: canonical_deep_review.gate
     name: Final gate for canonical remediation
     status: pending
