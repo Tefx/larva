@@ -36750,6 +36750,48 @@ phases:
     depends_on:
     - dup_facade_admission.impl
     agent: integration-verifier-tacit
+  - id: dup_facade_admission.gate
+    name: Gate facade admission workflow consolidation
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: app-layer admission duplication must be collapsed without changing
+      observable canonical-boundary behavior.'
+    verification: '- Shared workflow seam is used by real facade operations
+
+      - No blocker-class entrypoint drift remains'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - shared_workflow_status:
+
+      - observable_behavior_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_facade_admission.workflow-basis
+    - dup_facade_admission.impl
+    - dup_facade_admission.verify
+    agent: gate-reviewer-tacit
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
   status: locked
