@@ -35177,7 +35177,7 @@ phases:
     claimed_at: '2026-04-06T12:51:20.549493+00:00'
   - id: canonical_doc_sync.test-alignment
     name: Align canonical-boundary tests with reject-immediate authority
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -35205,6 +35205,8 @@ phases:
     depends_on:
     - canonical_doc_sync.update-docs
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-06T13:02:15.816432+00:00'
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
   status: locked
