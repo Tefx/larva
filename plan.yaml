@@ -36461,6 +36461,48 @@ phases:
 
       '
     agent: integration-verifier-tacit
+  - id: daa_cross_surface_verify.full-plan-check
+    name: Run DAA full-plan check
+    status: pending
+    description: 'verification_scope: full-plan-check
+
+
+      Run the nearest broad verification boundary for the appended DAA module so late
+      gates do not discover already-predictable cross-phase debt. This check protects
+      daa_doc_sync and daa_deep_review.'
+    verification: '- Broad DAA verification command family is identified and rerun
+      here
+
+      - Any failure intersecting downstream gates gets explicit remediation ownership
+
+      - Evidence distinguishes blocker vs non-intersecting debt'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full-Plan Check
+
+      - command_family:
+
+      - command_output:
+
+      - findings:
+
+      - remediation_owners:
+
+      - downstream_gates_protected:
+
+      '
+    depends_on:
+    - daa_cross_surface_verify.consumer-conformance
+    agent: integration-verifier-tacit
 - id: daa_doc_sync
   name: DAA Documentation Sync
   status: locked
