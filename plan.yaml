@@ -36724,3 +36724,63 @@ phases:
     depends_on:
     - daa_deep_review.spec-conformance
     agent: blind-tester-tacit
+  - id: daa_deep_review.gate
+    name: Final DAA deep review gate
+    status: pending
+    description: 'Final deep review gate for the appended DAA remediation module.
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - wiring completeness
+
+      - spec conformance
+
+      - black-box behavior
+
+      - closure-path integrity'
+    verification: '- Deep-review artifacts are complete
+
+      - Any unresolved item has explicit non-intersection or remediation ownership
+
+      - Appended DAA module is ready for closure'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Final Gate Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_deep_review.wiring-audit |  |  |  |
+
+      | daa_deep_review.spec-conformance |  |  |  |
+
+      | daa_deep_review.black-box |  |  |  |
+
+
+      ## Gate Decision Basis
+
+      - unresolved_items:
+
+      - closure_paths:
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_deep_review.wiring-audit
+    - daa_deep_review.spec-conformance
+    - daa_deep_review.black-box
+    agent: gate-reviewer-tacit
