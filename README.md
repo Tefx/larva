@@ -72,6 +72,10 @@ larva list --json
 
 The main larva artifact is a flat JSON object called `PersonaSpec`.
 
+The canonical PersonaSpec schema is defined by `opifex`. larva validates,
+assembles, and normalizes PersonaSpec as a downstream admission and projection
+layer, not the contract authority.
+
 ```json
 {
   "spec_version": "0.1.0",

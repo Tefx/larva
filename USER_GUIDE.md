@@ -110,7 +110,7 @@ The canonical larva artifact is `PersonaSpec`.
 ### Important field rules
 
 - `id` must match `^[a-z0-9]+(-[a-z0-9]+)*$`
-- `side_effect_policy` is **DEPRECATED** — runtime approval policy now belongs to anima runtime controls, not larva persona artifacts
+- `side_effect_policy` is **not a PersonaSpec field** — runtime approval policy belongs to anima runtime controls, not larva
 - `can_spawn` is either `false`, `true`, or a list of persona ids
 - `spec_digest` is computed by larva and should not be authored manually
 

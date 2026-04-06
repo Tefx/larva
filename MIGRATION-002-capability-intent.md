@@ -23,8 +23,9 @@
 ### Residual Follow-ups
 
 - **None blocking** — Migration is functionally complete
-- `tools` and `side_effect_policy` retained for backward compatibility with deprecation warnings
-- Future major version may remove deprecated fields entirely (tracked as future cleanup)
+- `tools` and `side_effect_policy` are rejected at the larva admission boundary
+- These fields are not canonical PersonaSpec fields (owned by opifex, not larva)
+- Future major version may remove any internal compatibility code entirely (tracked as future cleanup)
 
 ---
 
@@ -81,6 +82,9 @@ The target split is:
 
 ## Final State
 
-The target larva contract is capability-only.
+The target larva contract is capability-only, aligned with the opifex canonical
+PersonaSpec schema. `larva` is a downstream admission and projection layer; it
+does not own the PersonaSpec contract.
+
 Legacy `tools` and `side_effect_policy` are historical input shapes, not active
 architecture.

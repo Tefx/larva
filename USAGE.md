@@ -84,7 +84,6 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
 - `id`: required, must match `^[a-z0-9]+(-[a-z0-9]+)*$` (flat kebab-case, no namespaces)
 - `spec_version`: must be `"0.1.0"` if present; larva sets it automatically if absent
 - `spec_digest`: computed by larva during normalization (SHA-256 of canonical JSON, sorted keys, no whitespace, excluding spec_digest itself). Do not set manually.
-- `side_effect_policy`: **DEPRECATED** — runtime approval policy now belongs to anima runtime controls, not larva persona artifacts
 - `can_spawn`: boolean or list of persona ids the persona may spawn
 
 **No assembly metadata in output.** No `base:`, no component references. Output is always flat.

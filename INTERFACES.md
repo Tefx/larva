@@ -5,7 +5,10 @@
 `larva` validates, assembles, normalizes, and registers canonical PersonaSpec
 artifacts.
 
-It is the authority for persona identity and capability intent.
+It is a downstream admission and projection handler, not the contract owner.
+The canonical PersonaSpec schema authority is `opifex`. `larva` implements
+validation, normalization, and registry projection as a consumer of the opifex
+canonical contract.
 
 ## PersonaSpec Contract
 
@@ -36,9 +39,9 @@ Normative shape:
 | `prompt` | string | Required. System prompt defining persona behavior |
 | `model` | string | Required. Model identifier (e.g., "claude-sonnet-4") |
 | `capabilities` | dict[str, ToolPosture] | Required. **Canonical** capability declaration: tool family -> posture |
-| `tools` | dict[str, ToolPosture] | Forbidden at canonical admission boundary |
+| `tools` | dict[str, ToolPosture] | **Rejected** at admission boundary — never accepted as canonical input |
 | `model_params` | dict | Additional model parameters (temperature, top_p, etc.) |
-| `side_effect_policy` | string | *Deprecated per ADR-002.* Policy for side-effectful operations |
+| `side_effect_policy` | string | **Rejected** at admission boundary — not a PersonaSpec field |
 | `can_spawn` | bool \| list[str] | Whether persona can spawn sub-agents, or list of allowed persona IDs |
 | `compaction_prompt` | string | Prompt used for state compaction |
 | `spec_version` | string | Required. Spec format version (must be "0.1.0") |
@@ -53,11 +56,12 @@ Valid capability posture values (from `ToolPosture` in `spec.py`):
 - `"destructive"` — Tools that may cause irreversible side effects
 
 ### Key Rules
-- `capabilities` is `family -> posture` (canonical field)
-- `tools` is forbidden at canonical admission boundary
-- `side_effect_policy` is forbidden at canonical admission boundary
+- `capabilities` is `family -> posture` (canonical field, defined by opifex)
+- `tools` is rejected at admission boundary — not part of canonical PersonaSpec
+- `side_effect_policy` is rejected at admission boundary — belongs to runtime controls
 - runtime controls are not PersonaSpec fields
 - gateway profile semantics are not PersonaSpec fields
+- larva validates against the opifex canonical schema; it does not define the schema
 
 ## MCP Surface
 
@@ -164,20 +168,25 @@ satisfy PersonaSpec validation rules.
 
 ## Canonical Admission Rules
 
-Validation enforces strict canonical admission semantics:
+Validation enforces strict canonical admission semantics against the opifex
+PersonaSpec contract:
 
 - Required fields: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
 - Optional fields: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`, `variables`
-- Forbidden fields: `tools`, `side_effect_policy`
+- Rejected fields: `tools`, `side_effect_policy` — these are not canonical PersonaSpec fields
 - Unknown top-level fields are rejected
+
+Note: larva implements validation as a downstream consumer. The canonical schema
+authority is opifex.
 
 ## Invariants
 
 - `id` is stable identity
 - `persona_ref` is the cross-system reference form
-- `capabilities` is the only capability declaration surface (canonical)
-- `tools` is not admitted in canonical PersonaSpec input
+- `capabilities` is the only capability declaration surface (canonical, per opifex)
+- `tools` is rejected — not a canonical PersonaSpec field
 - approval and runtime gating stay outside larva
 - concrete tool semantics stay outside larva
 - `spec_digest` is computed from canonical JSON representation
 - `spec_digest` excludes itself from canonical JSON representation
+- larva is a downstream admission/projection layer; opifex owns the canonical contract

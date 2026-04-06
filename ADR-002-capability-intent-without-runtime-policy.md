@@ -6,9 +6,10 @@ Accepted (2026-03-19)
 
 ## Context
 
-larva defines persona artifacts. A persona should describe identity, prompt,
-model selection, and required tool capabilities. It should not encode runtime
-workflow behavior such as human approval gating.
+`larva` is a downstream admission and projection handler for PersonaSpec.
+The canonical PersonaSpec schema authority is `opifex`. A persona should describe
+identity, prompt, model selection, and required tool capabilities. It should not
+encode runtime workflow behavior such as human approval gating.
 
 The previous design placed `side_effect_policy` in persona constraints, which
 mixed runtime execution policy into persona declaration.

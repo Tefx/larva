@@ -2,7 +2,11 @@
 
 ## Design Boundary
 
-`larva` is the canonical PersonaSpec authority.
+`larva` is a downstream admission and projection handler for PersonaSpec.
+
+The **canonical PersonaSpec contract authority is `opifex`**. `larva` validates,
+assembles, normalizes, and registers PersonaSpec artifacts as a downstream
+consumer, not the contract owner.
 
 Its scope is limited to:
 - validating PersonaSpec artifacts
@@ -29,12 +33,15 @@ capabilities:
 can_spawn: false
 ```
 
-`larva` owns:
-- persona identity
-- prompt/model/default execution identity
-- capability intent
+`larva` handles:
+- validating PersonaSpec against the canonical opifex contract
+- assembling PersonaSpec from components
+- normalizing PersonaSpec into canonical form
+- registering and resolving canonical personas in its local projection
 
-It does not own runtime controls or gateway profile binding.
+It does not own:
+- the canonical PersonaSpec schema (owned by opifex)
+- runtime controls or gateway profile binding
 
 ## Layer Model
 
