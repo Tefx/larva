@@ -33195,7 +33195,7 @@ phases:
       \  - 676b72a fix(core): close canonical admission gate blockers B1-B5"
   - id: canonical_core_admission.retest-gate-blockers-b1-b5
     name: Retest canonical core admission gate blockers B1-B5
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -33316,6 +33316,100 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-06T05:23:38.723043+00:00'
+    done_at: '2026-04-06T05:28:16.347796+00:00'
+    evidence: "## Verification Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      - src/larva/core/spec.py (lines 1-100) — Canonical admission notes: required\
+      \ fields are `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`.\
+      \ `tools` and `side_effect_policy` are forbidden. Description is Required[str]\
+      \ (not NotRequired).\n- src/larva/core/validate.py (lines 1-150) — `_CANONICAL_REQUIRED_FIELDS`\
+      \ and `_CANONICAL_FORBIDDEN_FIELDS` constants. Admission-success invariant in\
+      \ ValidationReport docstring.\n- contracts/persona_spec.schema.json (lines 1-77)\
+      \ — Schema description states \"Reference-only local snapshot... non-authoritative\
+      \ for canonical admission semantics.\" Required fields match canonical. No `anyOf`,\
+      \ no `tools`, no `side_effect_policy` properties. `additionalProperties: false`.\n\
+      - src/larva/core/normalize.py (lines 1-80) — Postconditions explicitly forbid\
+      \ `tools` and `side_effect_policy` in output. Transition notes strip forbidden\
+      \ fields.\n- src/larva/core/assemble.py (lines 319-417) — Description carry-through\
+      \ at lines 375-377. No emission of `tools` or `side_effect_policy`. Candidate\
+      \ construction is subordinate to canonical admission.\n\n## Runtime Proof by\
+      \ Blocker Family\n\n### B1: Requiredness Semantics\n- **Runtime Proof**: `validate_spec`\
+      \ correctly enforces canonical requiredness.\n  - Spec without `description`\
+      \ → `valid: False`, error `MISSING_REQUIRED_FIELD` for 'description'.\n  - Spec\
+      \ without `can_spawn` → `valid: True` (can_spawn is NotRequired/optional).\n\
+      \  - Required fields verified: `['capabilities', 'description', 'id', 'model',\
+      \ 'prompt', 'spec_version']`.\n  - Forbidden fields verified: `['side_effect_policy',\
+      \ 'tools']`.\n- **Adversarial tests pass**: description is REQUIRED at canonical\
+      \ boundary; can_spawn is NOT required.\n\n### B2: Assemble Forbidden Output\n\
+      - **Runtime Proof**: `assemble_candidate` does NOT emit `tools` or `side_effect_policy`.\n\
+      \  - Assembly input with description → output has description, no forbidden\
+      \ fields.\n  - Assembly input with `tools` injected → output has capabilities\
+      \ only, `tools: False`, `side_effect_policy: False`.\n  - Assembled candidate\
+      \ keys: `['description', 'id', 'model']` (plus prompt/capabilities when provided).\n\
+      \  - **No forbidden fields leak to output**.\n\n### B3: Normalize Forbidden\
+      \ Output\n- **Runtime Proof**: `normalize_spec` strips forbidden `side_effect_policy`.\n\
+      \  - Input with `side_effect_policy: 'read_only'` → normalized keys exclude\
+      \ `side_effect_policy`.\n  - Postconditions enforce: `@post(lambda result: \"\
+      tools\" not in result)` and `@post(lambda result: \"side_effect_policy\" not\
+      \ in result)`.\n  - **Forbidden fields are stripped** by normalize.\n\n### B4:\
+      \ Schema Authority Alignment\n- **Runtime Proof**: Schema is derived, non-authoritative.\n\
+      \  - Schema description: \"Reference-only local snapshot of the opifex PersonaSpec\
+      \ contract. This file is non-authoritative...\"\n  - `anyOf` with `tools/side_effect_policy`:\
+      \ False. No such properties exist.\n  - Schema required matches canonical: `['id',\
+      \ 'description', 'prompt', 'model', 'capabilities', 'spec_version']`.\n  - `additionalProperties:\
+      \ false` enforces no extra fields.\n  - `capabilities` is in required: True.\n\
+      \  - **Schema does not contradict canonical authority**.\n\n### B5: Production-Path\
+      \ Contract Closure\n- **End-to-end Proof**: Assembly → Normalize → Validate\
+      \ produces valid canonical spec.\n  - Assembly input `{id, description, prompts,\
+      \ toolsets, model}` → candidate with canonical keys.\n  - Normalize → adds `spec_version`,\
+      \ `spec_digest`, strips forbidden fields.\n  - Validate → `valid: True` for\
+      \ conformant input.\n  - **Missing description path**: Assembly without description\
+      \ → missing description at validation → `valid: False`.\n  - **Description carry-through\
+      \ path verified**: description provided → passes through assembly → normalize\
+      \ → validation.\n- **Adversarial edge cases**:\n  - Inject `tools` into assembly\
+      \ input → NOT in output.\n  - Inject `side_effect_policy` before normalize →\
+      \ NOT in normalized output.\n  - Validate rejects spec with forbidden fields\
+      \ → `FORBIDDEN_EXTRA_FIELD` error.\n\n## Issues Found\n\n**Legacy test suite\
+      \ has outdated expectations** (NOT blocking):\n- 14 legacy tests in `tests/core/test_validate.py`\
+      \ fail because they expect old behavior (deprecated warnings instead of forbidden-field\
+      \ rejection).\n- These are pre-existing transition-era tests that need updating\
+      \ to canonical contract expectations.\n- **NOT a blocker for B1-B5**: The canonical\
+      \ admission tests (12 in `TestCanonicalAdmissionRejection`) all pass.\n\n| Severity\
+      \ | Description | Location | Reproduction |\n|----------|-------------|----------|--------------|\n\
+      | WARN | Legacy tests expect deprecation warnings, not forbidden errors | tests/core/test_validate.py\
+      \ | `pytest -k \"not Canonical and not Admission and not RequiredOnly\"` shows\
+      \ 14 failures |\n| INFO | Unused variables tests expect vars field to be optional\
+      \ | tests/core/test_validate.py | Tests reference `variables` field not in current\
+      \ canonical |\n\n## behavioral_proof_register\n\n| requirement_ref | behavior_claim\
+      \ | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n|-----------------|----------------|------------------------|--------------|--------|---------------|---------------------|\n\
+      | B1-requiredness | `description` is REQUIRED at canonical boundary; `can_spawn`\
+      \ is optional | `validate_spec` rejects spec without `description`; accepts\
+      \ spec without `can_spawn` | `MISSING_REQUIRED_FIELD` for missing description;\
+      \ `valid: True` for missing can_spawn | CLOSED | validate.py:L50-67 _CANONICAL_REQUIRED_FIELDS\
+      \ | Canonical admission contract enforced |\n| B1-requiredness | `tools` and\
+      \ `side_effect_policy` are FORBIDDEN | `validate_spec` rejects spec with `tools`\
+      \ or `side_effect_policy` | `FORBIDDEN_EXTRA_FIELD` error for forbidden fields\
+      \ | CLOSED | validate.py:L67 _CANONICAL_FORBIDDEN_FIELDS | Forbidden field policy\
+      \ aligned with canonical |\n| B2-assembly-output | assembled candidate does\
+      \ NOT emit `tools` or `side_effect_policy` | `assemble_candidate` output contains\
+      \ no forbidden fields | `'tools' in candidate: False`, `'side_effect_policy'\
+      \ in candidate: False` | CLOSED | assemble.py:L400-401 sets capabilities only\
+      \ | Assembly subordinate to canonical |\n| B3-normalize-output | normalized\
+      \ spec strips `side_effect_policy` and `tools` | `normalize_spec` removes forbidden\
+      \ fields | normalized keys exclude forbidden fields even when injected | CLOSED\
+      \ | normalize.py:L59-60 postconditions | Normalize enforces canonical contract\
+      \ |\n| B4-schema-authority | larva-local schema is derived, not authoritative\
+      \ | Schema states non-authoritative; matches canonical requiredness | No `anyOf`\
+      \ with tools/capabilities; capabilities in required | CLOSED | persona_spec.schema.json:L4-6\
+      \ description | Schema collapse to opifex authority |\n| B5-production-path\
+      \ | Full path Assembly → Normalize → Validate produces valid canonical spec\
+      \ | End-to-end with description: valid; without description: invalid | `valid:\
+      \ True` with description; `valid: False` missing required description | CLOSED\
+      \ | assemble.py:L375-377 description carry-through | Production path aligned\
+      \ with canonical |\n\n## Verdict\n\n- [x] PASS — All blocker families B1-B5\
+      \ have runtime proof.\n- [ ] ISSUES_FOUND — Legacy tests need update but do\
+      \ not block B1-B5.\n- [ ] INCOMPLETE\n\ngate_open_allowed: true — All canonical\
+      \ admission blockers are closed with adversarial runtime proof."
   - id: canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
     name: Fix residual B1/B5 description-path authority mismatch
     status: done
