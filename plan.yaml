@@ -33526,7 +33526,7 @@ phases:
       \  - invar guard passed (warnings only)\n\nRemaining ambiguity:\n- none"
   - id: canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
     name: Resolve requiredness authority contradiction and synchronize artifacts
-    status: claimed
+    status: done
     description: 'work_type: authority_adjudication
 
       step_type: review
@@ -33616,7 +33616,22 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior
     claimed_at: '2026-04-06T07:46:14.655778+00:00'
-    done_at: '2026-04-06T07:38:47.199746+00:00'
+    done_at: '2026-04-06T07:48:33.054344+00:00'
+    evidence: "## Authority Decision Record\n- Chosen path: synchronized canonical\
+      \ basis document and aligned INTERFACES + ADR-003 to runtime/schema requiredness.\n\
+      - Binding authority and justification: runtime validator constants and schema\
+      \ requiredness are authoritative for admission behavior; documentation/ADR aligned\
+      \ to eliminate split truth.\n\n## Synchronized Artifacts\n- files_changed:\n\
+      \  - design/opifex-canonical-authority-basis.md\n  - INTERFACES.md\n  - ADR-003-canonical-requiredness-authority.md\n\
+      - requiredness_excerpt_basis_doc:\n  - Required fields: id, description, prompt,\
+      \ model, capabilities, spec_version\n  - Optional fields: can_spawn, model_params,\
+      \ compaction_prompt, spec_digest, variables\n\n## Verification Artifacts\n-\
+      \ git_rev_parse_head: 232ba8297aceccf851a2e8e2a1fba34234be9897\n- git_show_name_only_head:\n\
+      \  - ADR-003-canonical-requiredness-authority.md\n  - INTERFACES.md\n  - design/opifex-canonical-authority-basis.md\n\
+      - adr_exists:\n  - ADR-003-canonical-requiredness-authority.md\n  - heading:\
+      \ # ADR-003: Canonical Requiredness Authority for PersonaSpec Admission\n\n\
+      ## Residual Contradiction Check\n- Remaining mismatches: none across basis lines,\
+      \ ADR-003, and INTERFACES requiredness surfaces."
     rejection_reason: 'Partial synchronization: authority basis doc still contradicts
       ADR/runtime/schema requiredness.'
     rejection_history:
