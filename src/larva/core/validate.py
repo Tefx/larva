@@ -47,6 +47,23 @@ _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 # Valid postures for capabilities/tools (from ToolPosture in spec.py)
 _VALID_POSTURES: set[str] = {"none", "read_only", "read_write", "destructive"}
 
+_CANONICAL_REQUIRED_FIELDS: set[str] = {
+    "id",
+    "description",
+    "prompt",
+    "model",
+    "capabilities",
+    "spec_version",
+}
+
+_CANONICAL_ALLOWED_FIELDS: set[str] = _CANONICAL_REQUIRED_FIELDS | {
+    "model_params",
+    "can_spawn",
+    "compaction_prompt",
+    "spec_digest",
+    "variables",
+}
+
 
 @post(lambda result: isinstance(result, bool))
 def _is_json_safe_dict(d: object) -> bool:
@@ -124,8 +141,29 @@ def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIss
 @post(lambda result: isinstance(result, list))
 def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     errors: list[ValidationIssue] = []
+
+    for field in sorted(_CANONICAL_REQUIRED_FIELDS):
+        if field not in spec:
+            errors.append(
+                _issue(
+                    "MISSING_REQUIRED_FIELD",
+                    f"{field} is required",
+                    {"field": field},
+                )
+            )
+
+    for field in sorted(spec.keys()):
+        if field not in _CANONICAL_ALLOWED_FIELDS:
+            errors.append(
+                _issue(
+                    "FORBIDDEN_EXTRA_FIELD",
+                    f"{field} is not allowed at canonical admission",
+                    {"field": field},
+                )
+            )
+
     persona_id = spec.get("id")
-    if (
+    if persona_id is not None and (
         not isinstance(persona_id, str)
         or persona_id == ""
         or not _PERSONA_ID_PATTERN.fullmatch(persona_id)
@@ -148,17 +186,6 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
             )
         )
 
-    side_effect_policy = spec.get("side_effect_policy")
-    valid_policies: set[str] = {"allow", "approval_required", "read_only"}
-    if side_effect_policy is not None and side_effect_policy not in valid_policies:
-        errors.append(
-            _issue(
-                "INVALID_SIDE_EFFECT_POLICY",
-                "side_effect_policy must be one of allow, approval_required, read_only",
-                {"field": "side_effect_policy", "value": side_effect_policy},
-            )
-        )
-
     return errors
 
 
@@ -168,7 +195,10 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
     errors: list[ValidationIssue] = []
     warnings: list[str] = []
 
-    prompt_obj = spec.get("prompt", "")
+    prompt_obj = spec.get("prompt")
+    if prompt_obj is None:
+        return {"errors": errors, "warnings": warnings}
+
     if not isinstance(prompt_obj, str):
         errors.append(
             _issue(
@@ -217,19 +247,16 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
 @pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, list))
 def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
-    """Validate capabilities field and emit deprecation warnings for tools.
+    """Validate canonical capabilities field.
 
     Contract (from INTERFACES.md):
     - capabilities is the canonical capability declaration surface
-    - tools is deprecated but retained for transition compatibility
-    - side_effect_policy is deprecated per ADR-002
+    - tools and side_effect_policy are rejected at canonical admission
 
     Validation rules:
-    - capabilities must be dict[str, str] if present
+    - capabilities is required
+    - capabilities must be dict[str, str]
     - capability values must be valid ToolPosture values
-    - warn when side_effect_policy is present (deprecated)
-    - warn when tools is present without capabilities (deprecated)
-    - warn when both tools and capabilities present (capabilities wins)
 
     Args:
         spec: A PersonaSpec candidate to validate.
@@ -250,25 +277,28 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 
     # Validate capabilities field
     capabilities = spec.get("capabilities")
-    if capabilities is not None:
-        if not isinstance(capabilities, dict):
+    if capabilities is None:
+        return errors
+
+    if not isinstance(capabilities, dict):
+        errors.append(
+            _issue(
+                "INVALID_CAPABILITIES_TYPE",
+                "capabilities must be a dict mapping tool names to postures",
+                {"field": "capabilities", "value": capabilities},
+            )
+        )
+        return errors
+
+    for tool_name, posture in capabilities.items():
+        if not isinstance(posture, str) or posture not in _VALID_POSTURES:
             errors.append(
                 _issue(
-                    "INVALID_CAPABILITIES_TYPE",
-                    "capabilities must be a dict mapping tool names to postures",
-                    {"field": "capabilities", "value": capabilities},
+                    "INVALID_CAPABILITY_POSTURE",
+                    f"capability posture must be one of {', '.join(sorted(_VALID_POSTURES))}",
+                    {"field": "capabilities", "tool": tool_name, "value": posture},
                 )
             )
-        else:
-            for tool_name, posture in capabilities.items():
-                if not isinstance(posture, str) or posture not in _VALID_POSTURES:
-                    errors.append(
-                        _issue(
-                            "INVALID_CAPABILITY_POSTURE",
-                            f"capability posture must be one of {', '.join(sorted(_VALID_POSTURES))}",
-                            {"field": "capabilities", "tool": tool_name, "value": posture},
-                        )
-                    )
 
     return errors
 
@@ -276,40 +306,27 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 @pre(lambda spec: all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list))
 def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
-    """Collect deprecation warnings for deprecated fields.
+    """Collect canonical admission warnings.
+
+    At the canonical boundary, deprecated transition fields are rejected as
+    forbidden extra fields instead of being admitted with warnings.
 
     Args:
         spec: A PersonaSpec candidate to validate.
 
     Returns:
-        List of deprecation warning strings.
+        List of warning strings.
 
     >>> _collect_deprecation_warnings({"id": "test"})
     []
     >>> _collect_deprecation_warnings({"id": "test", "side_effect_policy": "allow"})
-    ['DEPRECATED_FIELD: side_effect_policy is deprecated per ADR-002']
+    []
     >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}})
-    ['DEPRECATED_FIELD: tools is deprecated; use capabilities instead']
+    []
     >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}, "capabilities": {"git": "read_only"}})
-    ['DEPRECATED_FIELD: tools is deprecated; use capabilities instead', 'MIGRATION_NOTE: both tools and capabilities present; capabilities takes precedence']
+    []
     """
-    warnings: list[str] = []
-
-    # Warn on side_effect_policy (deprecated per ADR-002)
-    if "side_effect_policy" in spec:
-        warnings.append("DEPRECATED_FIELD: side_effect_policy is deprecated per ADR-002")
-
-    # Warn on tools presence
-    if "tools" in spec:
-        if "capabilities" in spec:
-            warnings.append("DEPRECATED_FIELD: tools is deprecated; use capabilities instead")
-            warnings.append(
-                "MIGRATION_NOTE: both tools and capabilities present; capabilities takes precedence"
-            )
-        else:
-            warnings.append("DEPRECATED_FIELD: tools is deprecated; use capabilities instead")
-
-    return warnings
+    return []
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))
@@ -335,7 +352,7 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     Note:
         This implementation handles:
         - Type validation for all fields
-        - Allowed value validation (e.g., side_effect_policy enum)
+        - Allowed value validation for canonical fields
         - Field-specific validation rules
         - Deterministic, pure validation (no I/O side effects)
 
@@ -356,10 +373,10 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
         )
 
     Examples:
-        >>> validate_spec({"id": "code-reviewer", "spec_version": "0.1.0"})["valid"]
+        >>> validate_spec({"id": "code-reviewer", "description": "d", "prompt": "p", "model": "m", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
         True
         >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
-        'INVALID_PERSONA_ID'
+        'MISSING_REQUIRED_FIELD'
     """
     errors = _validate_identity_fields(spec)
     variable_result = _validate_prompt_variables(spec)
