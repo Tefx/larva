@@ -32355,7 +32355,7 @@ phases:
       - No product code edits performed"
   - id: canonical_core_admission.core-enforcement-impl
     name: Collapse core contract truth to canonical enforcement
-    status: claimed
+    status: done
     description: "step_type: implementation\n\nFill in stub bodies within the existing\
       \ core admission signatures so they enforce the contract from step `canonical_core_admission.contract`.\n\
       \nUPSTREAM ARTIFACTS (from contract/test steps):\n- `src/larva/core/spec.py`\
@@ -32417,6 +32417,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-06T02:21:07.824869+00:00'
+    done_at: '2026-04-06T02:30:27.378057+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/spec.py — canonical\
+      \ boundary notes and required field posture reviewed.\n- src/larva/core/validate.py\
+      \ — canonical enforcement pipeline implemented and validated.\n- contracts/persona_spec.schema.json\
+      \ — local schema disposition updated to reference-only authority posture.\n\
+      - tests/core/test_validate.py — canonical rejection and required-field expectations\
+      \ validated.\n- tests/core/test_schema_validation.py — schema drift and canonical\
+      \ fixture checks validated.\n\n## Core Enforcement Evidence\n- files_changed:\n\
+      \  - src/larva/core/validate.py\n  - contracts/persona_spec.schema.json\n- canonical_required_field_enforcement:\n\
+      \  - Enforced required set: id, description, prompt, model, capabilities, spec_version\n\
+      \  - Missing required fields now emit MISSING_REQUIRED_FIELD\n- forbidden_field_rejection:\n\
+      \  - tools rejected at admission boundary\n  - side_effect_policy rejected at\
+      \ admission boundary\n  - unknown top-level extras rejected via FORBIDDEN_EXTRA_FIELD\n\
+      - local_schema_disposition:\n  - Schema explicitly marked reference-only/non-authoritative\
+      \ for canonical admission semantics\n  - tools/side_effect_policy descriptions\
+      \ updated to reflect canonical rejection policy\n- deviation_records:\n  - none\n\
+      \n## Verification\n- commands:\n  - uv run pytest -q tests/core/test_validate.py::TestCanonicalAdmissionRejection\
+      \ tests/core/test_validate.py::TestCanonicalRequiredOnlyFixture\n  - uv run\
+      \ pytest -q tests/core/test_schema_validation.py::TestSchemaDriftFromCanonical::test_canonical_required_only_shape_passes_schema\n\
+      \  - uv run pytest -q tests/core/test_validate.py::TestCanonicalAdmissionRejection\
+      \ tests/core/test_validate.py::TestCanonicalRequiredOnlyFixture tests/core/test_schema_validation.py::TestSchemaDriftFromCanonical::test_canonical_required_only_shape_passes_schema\n\
+      \  - invar_guard(path=..., changed=true)\n- outputs:\n  - Focused core tests:\
+      \ 12 passed\n  - Focused schema test: 1 passed\n  - Combined focused run: 13\
+      \ passed\n  - invar_guard: passed (warning only)\n- commit:\n  - 4b5a274 fix(core):\
+      \ enforce canonical-only persona admission boundary"
   - id: canonical_core_admission.facade-admission-impl
     name: Complete facade and assembly admission wiring against the canonical core
     status: claimed
