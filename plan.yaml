@@ -35136,7 +35136,7 @@ phases:
       - outputs_summary: single doc-sync commit touching all required target documents'
   - id: canonical_doc_sync.gate
     name: Gate canonical documentation sync
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -35174,6 +35174,8 @@ phases:
     depends_on:
     - canonical_doc_sync.update-docs
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-06T12:51:20.549493+00:00'
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
   status: locked
