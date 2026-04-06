@@ -35023,7 +35023,7 @@ phases:
       - open_or_block: OPEN'
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
-  status: in_progress
+  status: done
   depends_on:
   - canonical_surface_verify
   steps:
@@ -35134,7 +35134,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: canonical_doc_sync.gate
     name: Gate canonical documentation sync
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -35175,6 +35175,28 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T12:51:20.549493+00:00'
+    done_at: '2026-04-06T13:12:28.128041+00:00'
+    evidence: '## Gate Review Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - tests/core/test_validate.py canonical admission rejection cases now aligned
+      and passing
+
+      - src/larva/core/validate.py reject-immediate forbidden-field enforcement confirmed
+
+      - design/opifex-canonical-authority-basis.md and MIGRATION-002/INTERFACES wording
+      aligned to reject-immediate semantics
+
+
+      ### Gate Decision Basis
+
+      - files_reviewed: tests/core/test_validate.py, src/larva/core/validate.py, design/opifex-canonical-authority-basis.md,
+      MIGRATION-002-capability-intent.md, INTERFACES.md
+
+      - residual_doc_drift: none
+
+      - open_or_block: OPEN'
   - id: canonical_doc_sync.test-alignment
     name: Align canonical-boundary tests with reject-immediate authority
     status: done
@@ -35223,7 +35245,7 @@ phases:
       - ADR-003-canonical-requiredness-authority.md (forbidden fields reject-immediate)'
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
-  status: locked
+  status: pending
   depends_on:
   - canonical_doc_sync
   steps:
