@@ -35171,6 +35171,7 @@ phases:
       '
     depends_on:
     - canonical_doc_sync.update-docs
+    - canonical_doc_sync.test-alignment
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T12:51:20.549493+00:00'
