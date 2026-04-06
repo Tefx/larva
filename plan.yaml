@@ -35625,3 +35625,10 @@ phases:
     green retest evidence before any downstream DAA expansion.
   depends_on:
   - daa_p0_contracts
+- id: daa_p1_impl
+  name: DAA P1 Implementation
+  status: locked
+  gate: P1 follow-up implementation is complete, integrated, and independently verified
+    after P0 closure.
+  depends_on:
+  - daa_p0_impl
