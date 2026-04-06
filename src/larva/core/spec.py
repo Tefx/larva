@@ -41,7 +41,8 @@ ToolPosture: TypeAlias = Literal["none", "read_only", "read_write", "destructive
 - "destructive": Tools that may cause irreversible side effects
 """
 
-# DEPRECATED per ADR-002: retained for transition compatibility only.
+# REJECTED per ADR-002 at the PersonaSpec admission boundary; retained only
+# as an internal compatibility type alias outside canonical admission.
 SideEffectPolicy: TypeAlias = Literal["allow", "approval_required", "read_only"]
 """Policy governing side-effectful operations.
 

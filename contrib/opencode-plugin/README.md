@@ -39,13 +39,15 @@ larva CLI resolution (zero config):
 |-------------|---------------------|-------|
 | `capabilities: {fs: "read_only", git: "read_only"}` | `edit: deny, bash: deny` | If ALL capabilities are none/read_only |
 | `capabilities: {fs: "read_write"}` | no restrictions | ANY read_write/destructive = no restriction |
-| ~~`side_effect_policy: read_only`~~ | `edit: deny, bash: deny` | **DEPRECATED** – use capabilities |
-| ~~`side_effect_policy: approval_required`~~ | `edit: ask, bash: ask` | **DEPRECATED** – use capabilities |
-| ~~`side_effect_policy: allow`~~ | no restrictions | **DEPRECATED** |
+| ~~`side_effect_policy: read_only`~~ | `edit: deny, bash: deny` | Historical compatibility input only; prefer `capabilities` |
+| ~~`side_effect_policy: approval_required`~~ | `edit: ask, bash: ask` | Historical compatibility input only; prefer `capabilities` |
+| ~~`side_effect_policy: allow`~~ | no restrictions | Historical compatibility input only |
 | `can_spawn: false` | `task: deny` | |
 
-**ADR-002 Note:** `side_effect_policy` is deprecated per ADR-002. The plugin prefers
-`capabilities` for permission derivation. See ADR-002 for migration details.
+**ADR-002 Note:** `side_effect_policy` is a historical compatibility input for this
+plugin and is rejected at the larva canonical admission boundary. The plugin prefers
+`capabilities` for permission derivation. For larva admission semantics, see
+`INTERFACES.md`; for migration background, see ADR-002.
 
 ### From tool-policy.json (runtime)
 
@@ -72,7 +74,10 @@ Per-agent deny/allow rules for specific opencode tools. This is **not** part of 
 }
 ```
 
-If the file doesn't exist, no tool restrictions are applied beyond what larva's `capabilities` / `side_effect_policy` / `can_spawn` provide.
+If the file doesn't exist, no tool restrictions are applied beyond what larva's
+`capabilities` and `can_spawn` provide. `side_effect_policy` is rejected at the
+larva canonical admission boundary and must not be treated as a live PersonaSpec
+input.
 
 ## Other mappings
 
@@ -88,7 +93,7 @@ If the file doesn't exist, no tool restrictions are applied beyond what larva's 
 
 | PersonaSpec | Reason |
 |-------------|--------|
-| `tools` | **DEPRECATED** – use `capabilities` instead |
+| `tools` | Historical migration field; larva canonical admission rejects it and uses `capabilities` instead |
 | `capabilities` | Used for permission derivation (see above) |
 | `model_params.max_tokens` | opencode manages per-provider |
 | `compaction_prompt` | opencode has its own compaction system |

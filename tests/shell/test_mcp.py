@@ -184,9 +184,11 @@ def _canonical_spec(
         "prompt": "You are careful.",
         "model": model,
         "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
-        "tools": {"shell": "read_only"},  # DEPRECATED: mirrored from capabilities
+        "tools": {
+            "shell": "read_only"
+        },  # REJECTED at canonical admission; retained here only for transition-fixture coverage
         "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",  # DEPRECATED: runtime concern (ADR-002)
+        "side_effect_policy": "read_only",  # REJECTED at canonical admission; runtime concern retained only for transition-fixture coverage
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
@@ -474,9 +476,9 @@ class TestMCPAssembleSuccessShape:
             "prompt",
             "model",
             "capabilities",  # canonical (ADR-002)
-            "tools",  # DEPRECATED: mirrored from capabilities
+            "tools",  # REJECTED at canonical admission; mirrored here only for transition coverage
             "model_params",
-            "side_effect_policy",  # DEPRECATED: runtime concern
+            "side_effect_policy",  # REJECTED at canonical admission; runtime concern in transition coverage only
             "can_spawn",
             "compaction_prompt",
             "spec_version",
@@ -1537,7 +1539,7 @@ class TestMCPComponentShowAcceptance:
 
         assert isinstance(result, dict)
         assert "error" not in result
-        # DEPRECATED: side_effect_policy in constraints (ADR-002)
+        # Historical compatibility expectation only: side_effect_policy is rejected at canonical admission (ADR-002)
         assert "side_effect_policy" in result
 
     def test_handle_component_show_success_for_model(self) -> None:

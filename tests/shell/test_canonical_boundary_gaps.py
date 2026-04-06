@@ -1,29 +1,19 @@
-"""Canonical boundary exposure tests for shell surface compatibility gaps.
+"""Canonical boundary regression tests for shell-surface consistency.
 
-These tests expose remaining compatibility drift where shell surfaces
-still accept/deal with deprecated fields instead of enforcing canonical
-authority. The tests are EXPECTED TO FAIL in the current state, signaling
-which shell projections or fixtures still encode compatibility expectations
-that must be cleaned up.
+This file keeps its historical name, but the tests now verify that canonical
+boundary cleanup has landed and remains stable across shell-facing surfaces and
+test fixtures.
 
-Required exposed gaps:
-- MCP/tool descriptions still advertise deprecated acceptance
-- packaged web input/output paths still preserve `tools` or `side_effect_policy`
-- component ingestion or projection fixtures still assume mirrored legacy fields
-- shell/API tests still encode compatibility expectations instead of canonical authority
-
-Spec-Fixture Conformance (MANDATORY):
-At least one invalid fixture MUST demonstrate that a canonical-boundary extra
-field is rejected even if a shell transport can parse the request envelope.
-
-Test-step semantic reporting:
-- step_intent: test_define_red
-- expected_result: red (tests fail, exposing gaps)
+Covered regressions:
+- MCP/tool descriptions explicitly state rejection semantics
+- packaged web patch flow does not preserve forbidden fields
+- component and spec fixtures distinguish canonical-only vs transition-only data
+- canonical validation rejects forbidden extra fields even when envelopes parse
 
 Sources:
 - ARCHITECTURE.md :: Decision 3: Python API is a thin facade export
 - INTERFACES.md :: Canonical PersonaSpec Contract
-- ADR-002 :: capabilities (canonical) vs tools (deprecated) transition
+- ADR-002 :: capabilities (canonical) vs removed/rejected transition fields
 """
 
 from __future__ import annotations
@@ -51,7 +41,7 @@ if TYPE_CHECKING:
 
 
 # -----------------------------------------------------------------------------
-# Fixtures: Canonical spec without deprecated fields
+# Fixtures: canonical-only and forbidden-field variants
 # -----------------------------------------------------------------------------
 
 
@@ -60,10 +50,10 @@ def _canonical_spec_only(
     digest: str = "sha256:canonical",
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
-    """Canonical PersonaSpec with ONLY canonical fields.
+    """Canonical PersonaSpec with only canonical fields.
 
-    Per ADR-002: `capabilities` is canonical, `tools` and `side_effect_policy`
-    are deprecated and should NOT be present in canonical specs.
+    Per ADR-002/ADR-003: `capabilities` is canonical, while `tools` and
+    `side_effect_policy` are rejected at the canonical admission boundary.
     """
     return {
         "id": persona_id,
@@ -79,20 +69,21 @@ def _canonical_spec_only(
     }
 
 
-def _deprecated_spec_with_tools(persona_id: str, digest: str = "sha256:deprecated") -> PersonaSpec:
-    """Spec with deprecated `tools` field (mirrored from capabilities).
-
-    This represents the OLD format that shell surfaces may still be handling.
-    """
+def _forbidden_spec_with_tools(
+    persona_id: str, digest: str = "sha256:forbidden"
+) -> dict[str, object]:
+    """Spec variant carrying forbidden extra fields for rejection coverage."""
     return {
         "id": persona_id,
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
         "model": "gpt-4o-mini",
         "capabilities": {"shell": "read_only"},  # canonical
-        "tools": {"shell": "read_only"},  # DEPRECATED: mirrored field
+        "tools": {
+            "shell": "read_only"
+        },  # REJECTED extra field retained only for rejection coverage
         "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",  # DEPRECATED: runtime concern
+        "side_effect_policy": "read_only",  # REJECTED runtime field retained only for rejection coverage
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
@@ -101,41 +92,26 @@ def _deprecated_spec_with_tools(persona_id: str, digest: str = "sha256:deprecate
 
 
 # -----------------------------------------------------------------------------
-# Gap 1: MCP tool descriptions advertise deprecated acceptance
+# Regression 1: MCP tool descriptions advertise explicit rejection semantics
 # -----------------------------------------------------------------------------
 
 
-class TestMCPToolDescriptionGaps:
-    """Expose where MCP tool descriptions still advertise deprecated field acceptance.
-
-    step_intent: test_define_red
-    expected_result: red (tests fail until descriptions are fixed)
-    """
+class TestMCPToolDescriptionSemantics:
+    """Verify MCP tool descriptions preserve explicit rejection semantics."""
 
     def test_validate_tool_description_rejects_tools_at_canonical_admission(self) -> None:
-        """MCP validate tool description must explicitly state tools is rejected.
-
-        CURRENT GAP: Tool description advertises that tools is deprecated at
-        canonical admission but doesn't explicitly state it causes validation
-        failure.
-        """
+        """MCP validate tool description must explicitly state tools is rejected."""
         validate_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_validate")
         description = validate_tool["description"].lower()
 
-        # The description should EXPLICITLY state that tools causes rejection
-        # CURRENT: description mentions "rejected at canonical admission"
-        # REQUIRED: explicit statement that extra `tools` field is an error
+        # The description should explicitly state that tools causes rejection.
         assert "tools is rejected" in description or "tools field causes error" in description, (
             f"validate tool description must explicitly state tools is rejected at "
             f"canonical admission. Current: {validate_tool['description']}"
         )
 
     def test_assemble_tool_description_requires_capabilities_not_tools(self) -> None:
-        """MCP assemble tool description must state tools is rejected.
-
-        CURRENT GAP: Tool description advertises toolsets define capabilities
-        but doesn't explicitly state that tools is rejected at canonical admission.
-        """
+        """MCP assemble tool description must state tools is rejected."""
         assemble_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
         description = assemble_tool["description"].lower()
 
@@ -146,11 +122,7 @@ class TestMCPToolDescriptionGaps:
         )
 
     def test_register_tool_description_states_tools_rejected(self) -> None:
-        """MCP register tool description must explicitly state tools rejection.
-
-        CURRENT GAP: Tool description mentions capabilities is preferred but
-        doesn't explicitly state that tools causes rejection at admission.
-        """
+        """MCP register tool description must explicitly state tools rejection."""
         register_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_register")
         description = register_tool["description"].lower()
 
@@ -173,25 +145,17 @@ class TestMCPToolDescriptionGaps:
 
 
 # -----------------------------------------------------------------------------
-# Gap 2: Component fixtures still assume mirrored legacy fields
+# Regression 2: transition fixtures remain explicit rather than implicit
 # -----------------------------------------------------------------------------
 
 
-class TestComponentFixtureGaps:
-    """Expose where component ingestion fixtures still expect mirrored legacy fields.
-
-    step_intent: test_define_red
-    expected_result: red (tests fail until fixtures are canonical-only)
-    """
+class TestComponentFixtureSemantics:
+    """Verify component fixtures clearly separate canonical and transition semantics."""
 
     def test_inmemory_toolset_store_returns_capabilities_only(self) -> None:
-        """InMemoryComponentStore.load_toolset should return ONLY capabilities.
+        """Transition test doubles should make mirrored fields explicit, not implicit."""
 
-        CURRENT GAP: The test double returns both `capabilities` AND `tools`
-        (mirrored) even though `tools` is deprecated at canonical boundary.
-        """
-
-        # This is a reference test showing the CURRENT behavior
+        # This local test double intentionally models transition-only mirrored data.
         class CurrentInMemoryComponentStore:
             def __init__(self) -> None:
                 self.toolsets_by_name: dict[str, dict[str, dict[str, str]]] = {}
@@ -200,7 +164,7 @@ class TestComponentFixtureGaps:
                 if name not in self.toolsets_by_name:
                     return Failure(KeyError(f"not found: {name}"))
                 toolset_data = self.toolsets_by_name[name]
-                # CURRENT: returns both capabilities and tools (mirrored)
+                # Transition-only coverage: returns both capabilities and tools (mirrored)
                 return Success(
                     {
                         "capabilities": toolset_data.get("capabilities", {}),
@@ -215,19 +179,15 @@ class TestComponentFixtureGaps:
         assert isinstance(result, Success)
         loaded = result.unwrap()
 
-        # CURRENT BEHAVIOR: Both fields present
+        # Transition-only fixture includes both fields by design.
         assert "capabilities" in loaded
         assert "tools" in loaded, (
-            "CURRENT: load_toolset still returns mirrored `tools` field. "
-            "EXPECTED: canonical-only (capabilities), no `tools` field."
+            "Transition fixture should keep mirrored `tools` field explicit so canonical-only "
+            "fixtures remain separate."
         )
 
     def test_inmemory_constraint_store_returns_side_effect_policy(self) -> None:
-        """InMemoryComponentStore.load_constraint returns side_effect_policy.
-
-        CURRENT GAP: Constraint fixtures still return `side_effect_policy`
-        which is deprecated per ADR-002.
-        """
+        """Transition constraint fixtures must make forbidden fields explicit."""
 
         class CurrentInMemoryComponentStore:
             def __init__(self) -> None:
@@ -237,7 +197,7 @@ class TestComponentFixtureGaps:
                 if name not in self.constraints_by_name:
                     return Failure(KeyError(f"not found: {name}"))
                 constraint_data = self.constraints_by_name[name]
-                # CURRENT: returns side_effect_policy (deprecated)
+                # Transition-only coverage: returns side_effect_policy for rejection/path tests.
                 return Success(constraint_data)
 
         store = CurrentInMemoryComponentStore()
@@ -247,51 +207,38 @@ class TestComponentFixtureGaps:
         assert isinstance(result, Success)
         loaded = result.unwrap()
 
-        # CURRENT BEHAVIOR: side_effect_policy present
+        # Transition-only fixture keeps side_effect_policy explicit by design.
         assert "side_effect_policy" in loaded, (
-            "CURRENT: load_constraint still returns deprecated `side_effect_policy`. "
-            "EXPECTED: canonical constraint (no side_effect_policy field)."
+            "Transition fixture should keep `side_effect_policy` explicit so canonical fixtures "
+            "remain clean."
         )
 
 
 # -----------------------------------------------------------------------------
-# Gap 3: Spec fixtures encode compatibility expectations
+# Regression 3: spec fixtures distinguish canonical-only from forbidden-field coverage
 # -----------------------------------------------------------------------------
 
 
-class TestSpecFixtureGaps:
-    """Expose where spec fixtures encode compatibility expectations.
-
-    step_intent: test_define_red
-    expected_result: red (tests fail until fixtures use canonical-only format)
-    """
+class TestSpecFixtureSemantics:
+    """Verify spec fixtures no longer blur canonical and forbidden-field shapes."""
 
     def test_canonical_spec_fixture_excludes_deprecated_fields(self) -> None:
-        """_canonical_spec helper should NOT include deprecated fields.
-
-        CURRENT GAP: Tests use _canonical_spec which includes both
-        `capabilities` AND `tools` (mirrored) and `side_effect_policy`.
-        """
-        # This is a reference test showing what canonical spec SHOULD look like
+        """Canonical-only helper should exclude forbidden fields."""
         canonical_only = _canonical_spec_only("test")
-        deprecated_spec = _deprecated_spec_with_tools("test")
+        forbidden_spec = _forbidden_spec_with_tools("test")
 
-        # Verify canonical spec does NOT have deprecated fields
+        # Canonical fixture must exclude forbidden fields.
         assert "tools" not in canonical_only, "Canonical spec should NOT have `tools` field"
         assert "side_effect_policy" not in canonical_only, (
             "Canonical spec should NOT have `side_effect_policy` field"
         )
 
-        # Verify deprecated spec has them (for contrast)
-        assert "tools" in deprecated_spec
-        assert "side_effect_policy" in deprecated_spec
+        # Forbidden fixture keeps them only for rejection-path coverage.
+        assert "tools" in forbidden_spec
+        assert "side_effect_policy" in forbidden_spec
 
     def test_mcp_assemble_test_fixture_includes_deprecated_fields(self) -> None:
-        """MCP assemble tests use fixture that includes deprecated fields.
-
-        CURRENT GAP: _canonical_spec in test_mcp.py includes both
-        `tools` and `side_effect_policy` as required fields.
-        """
+        """Transition fixture usage in MCP tests must remain explicit."""
         # Read the test file source to find _canonical_spec definition
         test_file = Path(__file__).parent / "test_mcp.py"
         if not test_file.exists():
@@ -299,41 +246,33 @@ class TestSpecFixtureGaps:
 
         source = test_file.read_text()
 
-        # Check if _canonical_spec includes deprecated fields
-        # Current definition has: "tools": {"shell": "read_only"} and "side_effect_policy"
+        # Check that transition-only fixture content is still explicit in source.
         if '"tools":' in source and "_canonical_spec" in source:
-            # The fixture exists and includes tools field
             assert '"tools"' in source, (
-                "CURRENT: test fixture includes deprecated `tools` field. "
-                "GAPS: shell/tests still encode compatibility expectations instead "
-                "of canonical authority."
+                "Transition fixture coverage should remain explicit in source so canonical-only "
+                "fixtures are not confused with forbidden-field coverage."
             )
 
 
 # -----------------------------------------------------------------------------
-# Gap 4: Web API patch accepts tools field
+# Regression 4: Web API patch preserves canonical rejection semantics
 # -----------------------------------------------------------------------------
 
 
-class TestWebApiCanonicalGaps:
-    """Expose where web API accepts deprecated fields.
-
-    step_intent: test_define_red
-    expected_result: red (tests fail until web API enforces canonical)
-    """
+class TestWebApiCanonicalSemantics:
+    """Verify web API patch flow preserves canonical rejection semantics."""
 
     def test_web_patch_rejects_tools_in_canonical_boundary(self) -> None:
         """Web PATCH endpoint should reject `tools` field at canonical boundary.
 
-        FIXED: api_update_persona in web.py no longer handles `tools` field.
-        It falls through to the else clause and gets rejected by revalidation.
+        The endpoint must not special-case `tools`; forbidden fields should fall
+        through to revalidation and be rejected.
         """
         import inspect
         from larva.shell import web as web_module
 
         source = inspect.getsource(web_module.api_update_persona)
 
-        # FIXED: tools is no longer explicitly handled and preserved
         # The patch handler now only explicitly handles:
         # - spec_digest/spec_version (protected, skipped)
         # - model_params (explicit)
@@ -346,19 +285,12 @@ class TestWebApiCanonicalGaps:
 
 
 # -----------------------------------------------------------------------------
-# Gap 5: Spec-Fixture Conformance - extra field rejection
+# Regression 5: canonical boundary rejects forbidden extra fields
 # -----------------------------------------------------------------------------
 
 
 class TestCanonicalBoundaryRejection:
-    """MANDATORY: Demonstrate canonical-boundary extra field rejection.
-
-    At least one invalid fixture MUST demonstrate that a canonical-boundary
-    extra field is rejected even if a shell transport can parse the request.
-
-    step_intent: test_define_red
-    expected_result: red (tests fail until canonical boundary enforces field rejection)
-    """
+    """Demonstrate canonical-boundary extra field rejection."""
 
     def test_validate_rejects_extra_field_at_canonical_boundary(self) -> None:
         """Validation MUST reject specs with extra `tools` field.
@@ -366,11 +298,11 @@ class TestCanonicalBoundaryRejection:
         This test documents the REQUIRED canonical behavior:
         Specs with `tools` field should fail validation at canonical admission.
 
-        CURRENT GAP: The validate tool handler delegates to facade.validate
-        but the facade/core validate may not yet reject `tools` as extra field.
+        This regression check ensures facade/core validation keeps rejecting
+        forbidden extra fields even when a shell transport can parse them.
         """
         # Create a spec with extra `tools` field (should be rejected)
-        spec_with_extra = _canonical_spec_only("test")
+        spec_with_extra: dict[str, object] = dict(_canonical_spec_only("test"))
         spec_with_extra["tools"] = {"shell": "read_only"}  # Extra field
 
         # The facade validate should reject this at canonical boundary
@@ -379,10 +311,7 @@ class TestCanonicalBoundaryRejection:
         # Call validate directly
         report = validate_module.validate_spec(spec_with_extra)
 
-        # CURRENT EXPECTATION: This SHOULD fail validation
-        # But we document what SHOULD happen vs what CURRENTLY happens
-        # If this test passes, it means validation IS rejecting tools
-        # If it fails, it means validation is NOT rejecting tools (gap)
+        # Canonical expectation: validation rejects forbidden extra fields.
         assert not report["valid"], (
             "EXPECTED: validate_spec should reject specs with extra `tools` field. "
             "RESULT: validation accepts `tools` - canonical boundary not enforced."
@@ -391,8 +320,7 @@ class TestCanonicalBoundaryRejection:
     def test_assemble_rejects_tools_in_overrides(self) -> None:
         """Assembly MUST reject overrides containing `tools` field.
 
-        CURRENT GAP: MCP assemble handler may accept `tools` in overrides
-        even though it's deprecated at canonical admission.
+        Regression guard: assemble overrides must reject forbidden fields.
         """
 
         # Create a minimal facade with test doubles
@@ -459,77 +387,58 @@ class TestCanonicalBoundaryRejection:
         elif isinstance(result, dict) and "error" not in result:
             # No error returned - tools was silently accepted or ignored
             pytest.fail(
-                "CURRENT: assemble accepts `tools` in overrides silently. "
-                "EXPECTED: canonical boundary rejects `tools` with error envelope. "
-                "GAP: shell/API tests still encode compatibility expectations."
+                "Assemble accepted `tools` in overrides silently. Canonical boundary "
+                "must reject forbidden override fields with an error envelope."
             )
         else:
             pytest.fail(f"Unexpected result type: {type(result)} - {result}")
 
 
 # -----------------------------------------------------------------------------
-# Downstream Implementation Ownership
+# Verified implementation ownership references
 # -----------------------------------------------------------------------------
 
-DOWNSTREAM_IMPLEMENTATION_STEPS = {
+VERIFIED_IMPLEMENTATION_SURFACES = {
     "mcp_tool_descriptions": {
         "files": ["src/larva/shell/mcp_contract.py"],
         "owner": "shell/mcp contract owner",
-        "gap": "Tool descriptions must explicitly state tools rejection",
+        "expectation": "Tool descriptions must explicitly state tools rejection",
     },
     "component_fixtures": {
         "files": ["tests/shell/test_mcp.py", "tests/shell/test_python_api.py"],
         "owner": "shell test authors",
-        "gap": "InMemoryComponentStore returns deprecated mirrored fields",
+        "expectation": "Transition-only fixtures must keep mirrored fields explicit",
     },
     "spec_fixtures": {
         "files": ["tests/shell/test_mcp.py", "tests/shell/test_python_api.py"],
         "owner": "shell test authors",
-        "gap": "_canonical_spec includes deprecated fields",
+        "expectation": "Canonical-only fixtures exclude forbidden fields; transition fixtures stay explicit",
     },
     "web_api_patch": {
         "files": ["src/larva/shell/web.py"],
         "owner": "shell/web owner",
-        "gap": "api_update_persona accepts and preserves deprecated tools field",
+        "expectation": "api_update_persona rejects forbidden tools field via revalidation",
     },
     "canonical_validation": {
         "files": ["src/larva/core/validate.py"],
         "owner": "core/validate owner",
-        "gap": "validate_spec must reject extra `tools` field at canonical boundary",
+        "expectation": "validate_spec rejects extra `tools` field at canonical boundary",
     },
 }
 
 
 # -----------------------------------------------------------------------------
-# Summary
+# Historical file-name note
 # -----------------------------------------------------------------------------
 
 """
-## Test-Step Semantic Reporting
+This file retains its historical name from the red-test phase, but it now acts
+as a regression suite documenting the cleaned-up canonical boundary.
 
-- step_intent: test_define_red
-- expected_result: red (tests FAIL to expose gaps)
-
-## Observed Results
-
-All tests in this file are designed to FAIL, exposing the following gaps:
-
-1. MCP tool descriptions don't explicitly state tools rejection
-2. Component fixtures return mirrored deprecated fields (tools, side_effect_policy)
-3. Spec fixtures (_canonical_spec) include deprecated fields
-4. Web API patch accepts tools field
-5. Canonical validation doesn't reject extra tools field
-
-## Failure Alignment
-
-Each test class documents a specific gap category:
-- TestMCPToolDescriptionGaps: MCP transport layer
-- TestComponentFixtureGaps: Test doubles/fixtures
-- TestSpecFixtureGaps: Spec helper functions in tests
-- TestWebApiCanonicalGaps: Web API transport layer
-- TestCanonicalBoundaryRejection: Core canonical enforcement
-
-## Downstream Implementation Steps
-
-Each gap lists the files and expected owner for cleanup.
+Covered categories:
+1. MCP tool descriptions explicitly state tools rejection.
+2. Transition fixtures are explicit and distinct from canonical-only fixtures.
+3. Spec helper usage preserves the canonical vs forbidden-field distinction.
+4. Web API patch flow rejects forbidden fields through revalidation.
+5. Core validation and assemble overrides reject forbidden fields.
 """

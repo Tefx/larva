@@ -9,7 +9,7 @@
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Core type migration | ✓ Done | `spec.py` uses `capabilities` as canonical, `tools` deprecated |
+| Core type migration | ✓ Done | `spec.py` uses `capabilities` as canonical; `tools` is historical migration terminology only and is now rejected at admission |
 | Validation updates | ✓ Done | `validate.py` rejects `side_effect_policy` and `tools` at admission (forbidden fields) |
 | Normalization | ✓ Done | `normalize.py` maintains internal `capabilities`↔`tools` compatibility (not at admission) |
 | Assembly updates | ✓ Done | `assemble.py` merges capabilities from toolsets |
@@ -86,5 +86,6 @@ The target larva contract is capability-only, aligned with the opifex canonical
 PersonaSpec schema. `larva` is a downstream admission and projection layer; it
 does not own the PersonaSpec contract.
 
-Legacy `tools` and `side_effect_policy` are historical input shapes, not active
-architecture.
+`tools` and `side_effect_policy` are removed fields in larva PersonaSpec
+admission. Presence at the canonical boundary requires rejection rather than
+compatibility interpretation.
