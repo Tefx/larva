@@ -36235,6 +36235,70 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_fixture_unification.impl
+    name: Unify test fixtures and shared doubles around explicit canonical vs transition
+      semantics
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the fixture taxonomy from `dup_fixture_unification.fixture-basis`.
+
+
+      YOUR SCOPE:
+
+      - create or consolidate shared canonical-only fixtures
+
+      - create or consolidate explicit transition-only fixtures where legacy coverage
+      is still needed
+
+      - unify repeated in-memory component-store doubles where practical
+
+      - remove misleading implicit defaults from canonical fixture helpers
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Canonical-boundary tests must no longer rely on helpers that silently include
+      deprecated fields.'
+    verification: '- Main path: canonical-boundary tests use canonical-only fixtures
+
+      - Failure path: transition-only tests must opt in explicitly
+
+      - Shared doubles reduce repeated store/validation helper logic'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fixture Unification Evidence
+
+      - shared_fixture_modules:
+
+      - canonical_only_migrations:
+
+      - transition_only_migrations:
+
+      - repeated_doubles_removed:
+
+
+      ## Verification
+
+      - commands:
+
+      - outputs_summary:
+
+      '
+    depends_on:
+    - dup_fixture_unification.fixture-basis
+    agent: python-senior-tacit
 - id: dup_error_abstraction
   name: Component Error Projection Abstraction
   status: locked
