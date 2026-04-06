@@ -35937,6 +35937,61 @@ phases:
     green retest evidence before any downstream DAA expansion.
   depends_on:
   - daa_p0_contracts
+  steps:
+  - id: daa_p0_impl.fill-stubs
+    name: Fill DAA P0 stub bodies
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fill in stub bodies per the frozen P0 contract.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - contract artifacts from daa_p0_contracts.contract-freeze are AUTHORITATIVE
+
+      - tests from daa_p0_contracts.test-define-red are PROTECTED
+
+
+      YOUR SCOPE: replace stub markers with working logic within existing signatures
+      only.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable must contain substantive logic that processes inputs and produces
+      outputs that vary based on those inputs.'
+    verification: '- Main path: targeted P0 tests can pass after implementation
+
+      - Failure path: highest-risk blocker path has explicit regression coverage
+
+      - No unauthorized public-surface redesign occurs'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Implementation Evidence
+
+      - upstream_artifacts_consulted:
+
+      - files_changed:
+
+      - main_path_closed:
+
+      - failure_path_closed:
+
+      - deviation_records:
+
+      '
+    agent: python-executor
 - id: daa_p1_impl
   name: DAA P1 Implementation
   status: locked
