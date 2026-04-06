@@ -10,15 +10,15 @@
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Core type migration | ✓ Done | `spec.py` uses `capabilities` as canonical, `tools` deprecated |
-| Validation updates | ✓ Done | `validate.py` emits deprecation warnings for `side_effect_policy` and `tools` |
-| Normalization | ✓ Done | `normalize.py` mirrors `capabilities` to `tools` for backward compatibility |
+| Validation updates | ✓ Done | `validate.py` rejects `side_effect_policy` and `tools` at admission (forbidden fields) |
+| Normalization | ✓ Done | `normalize.py` maintains internal `capabilities`↔`tools` compatibility (not at admission) |
 | Assembly updates | ✓ Done | `assemble.py` merges capabilities from toolsets |
 | Component loading | ✓ Done | `components.py` prefers `capabilities`, falls back to `tools` |
 | Python API | ✓ Done | All facade operations use canonical `capabilities` field |
 | MCP contract | ✓ Done | Tool descriptions reference `capabilities` as canonical |
 | CLI | ✓ Done | All commands work with `capabilities` |
 | Documentation | ✓ Done | All docs updated to reflect ADR-002 model |
-| Tests | ✓ Done | Comprehensive test coverage for deprecation behavior |
+| Tests | ✓ Done | Comprehensive test coverage for forbidden-field rejection at admission |
 
 ### Residual Follow-ups
 
