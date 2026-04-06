@@ -35887,6 +35887,49 @@ phases:
     depends_on:
     - daa_p0_contracts.contract-freeze
     agent: python-executor
+  - id: daa_p0_contracts.gate
+    name: Gate DAA P0 contracts
+    status: pending
+    description: 'Gate review: verify P0 contract and expected-red test artifacts
+      are complete, implementation-free, and ready for execution.
+
+
+      review_depth: STANDARD'
+    verification: '- Contract step is implementation-free
+
+      - Expected-red tests expose the intended blocker-class gaps
+
+      - Downstream implementation scope is explicit'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_p0_contracts.contract-freeze |  |  |  |
+
+      | daa_p0_contracts.test-define-red |  |  |  |
+
+
+      ## Gate Decision
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_p0_contracts.contract-freeze
+    - daa_p0_contracts.test-define-red
+    agent: gate-reviewer
 - id: daa_p0_impl
   name: DAA P0 Implementation
   status: locked
