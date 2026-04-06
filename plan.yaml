@@ -35847,6 +35847,53 @@ phases:
 
       '
     agent: python-executor
+  - id: daa_p0_contracts.test-define-red
+    name: Define expected-red DAA P0 tests
+    status: pending
+    description: 'step_type: test
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Define the blocker-exposing DAA P0 tests before implementation. Scope is limited
+      to tests and fixtures only. Expose the current acceptance gap without modifying
+      product code.
+
+
+      ## Spec-Fixture Conformance (MANDATORY)
+
+      At least one fixture MUST use the exact documented external format from the
+      authoritative spec and omit convenience fields not guaranteed by the spec.'
+    verification: Red tests demonstrate the gap clearly, modify only tests/fixtures/helpers,
+      and identify the downstream implementation owner.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Expected-Red Test Evidence
+
+      - modified_test_files:
+
+      - exposed_gaps:
+
+      - expected_failures:
+
+      - downstream_owner: daa_p0_impl.fill-stubs
+
+      '
+    depends_on:
+    - daa_p0_contracts.contract-freeze
+    agent: python-executor
 - id: daa_p0_impl
   name: DAA P0 Implementation
   status: locked
