@@ -33316,7 +33316,7 @@ phases:
     agent: integration-verifier-tacit
   - id: canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
     name: Fix residual B1/B5 description-path authority mismatch
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       verification_scope: phase-check
@@ -33393,6 +33393,39 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-06T05:15:31.799493+00:00'
+    done_at: '2026-04-06T05:23:08.897108+00:00'
+    evidence: "Artifact:\n- commit: 5836f8d9be00cdad700ddad00464f0050a77d084\n- files_changed:\n\
+      \  - src/larva/core/spec.py\n  - src/larva/core/assemble.py\n  - src/larva/app/facade.py\n\
+      \  - src/larva/shell/cli.py\n  - src/larva/shell/cli_parser.py\n  - src/larva/shell/python_api.py\n\
+      \  - src/larva/shell/mcp_contract.py\n  - src/larva/shell/mcp_handler_ops.py\n\
+      \  - tests/core/test_assemble.py\n  - tests/shell/test_mcp.py\n\nAuthority decision:\n\
+      - source:\n  - canonical requiredness in src/larva/core/spec.py\n  - canonical\
+      \ enforcement set in src/larva/core/validate.py\n- requiredness outcome:\n \
+      \ - kept description as required in canonical enforcement\n  - implemented description\
+      \ carry-through on production assembly path\n- rationale:\n  - resolves mismatch\
+      \ without relaxing canonical requiredness\n  - preserves forbidden-field policy\
+      \ while enabling end-to-end valid spec generation\n\nVerification:\n- commands:\n\
+      \  - uv run larva --help\n  - uv run larva validate --help && uv run larva assemble\
+      \ --help && uv run larva register --help && uv run larva resolve --help && uv\
+      \ run larva list --help && uv run larva component --help && uv run larva component\
+      \ list --help && uv run larva component show --help && uv run larva delete --help\
+      \ && uv run larva clear --help && uv run larva clone --help && uv run larva\
+      \ export --help && uv run larva update --help && uv run larva update-batch --help\
+      \ && uv run larva serve --help && uv run larva mcp --help\n  - uv run python\
+      \ -c \"from larva.core.assemble import assemble_candidate; from larva.core.normalize\
+      \ import normalize_spec; from larva.core.validate import validate_spec; candidate\
+      \ = assemble_candidate({'id': 'desc-path', 'description': 'Description path\
+      \ check', 'prompts': [{'text': 'You are helpful'}], 'toolsets': [{'capabilities':\
+      \ {'shell': 'read_only'}}], 'model': 'gpt-4o-mini'}); normalized = normalize_spec(candidate);\
+      \ report = validate_spec(normalized); print(candidate); print(normalized); print(report)\"\
+      \n  - uv run pytest -v tests/core/test_assemble.py::TestAssembleCandidateBehavior::test_passes_through_description_when_provided\
+      \ tests/core/test_assemble.py::TestTypedDictShapes::test_assembly_input_supports_description\
+      \ tests/shell/test_mcp.py::TestMCPToolDefinitions::test_assemble_tool_is_defined\
+      \ tests/shell/test_mcp.py::TestMCPToolsRoundTrip::test_assemble_tool_params_extraction\n\
+      \  - invar_guard(path=<worktree>, changed=true)\n- outputs:\n  - CLI executability\
+      \ matrix checks passed with help exit 0\n  - end-to-end assemble->normalize->validate\
+      \ produced valid=True with description present\n  - targeted pytest: 4 passed\n\
+      \  - invar guard passed (warnings only)\n\nRemaining ambiguity:\n- none"
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
