@@ -36339,6 +36339,48 @@ phases:
     depends_on:
     - dup_fixture_unification.impl
     agent: integration-verifier-tacit
+  - id: dup_fixture_unification.gate
+    name: Gate canonical fixture unification
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: canonical fixture names and semantics must now agree, and transition
+      fixtures must be explicit.'
+    verification: '- Canonical-boundary test helpers are no longer semantically split
+
+      - Remaining transition helpers are explicit and justified'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - canonical_fixture_status:
+
+      - transition_fixture_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_fixture_unification.fixture-basis
+    - dup_fixture_unification.impl
+    - dup_fixture_unification.verify
+    agent: gate-reviewer-tacit
 - id: dup_error_abstraction
   name: Component Error Projection Abstraction
   status: locked
