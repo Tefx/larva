@@ -33313,6 +33313,83 @@ phases:
     depends_on:
     - canonical_core_admission.fix-gate-blockers-b1-b5
     agent: integration-verifier-tacit
+  - id: canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
+    name: Fix residual B1/B5 description-path authority mismatch
+    status: pending
+    description: 'step_type: implementation
+
+      verification_scope: phase-check
+
+
+      Reconcile the canonical requiredness-vs-production-path mismatch that remains
+      after the initial B1-B5 blocker remediation.
+
+
+      Issue to close:
+
+      - production validation currently requires `description`, but the AssemblyInput/assemble
+      production path cannot supply `description`
+
+      - this leaves the production path unable to produce a canonically valid spec
+      and keeps gate_open_allowed=false for blocker families B1 and B5
+
+
+      Required outcome:
+
+      - either enable authoritative `description` carriage on the production path
+      end-to-end
+
+      - OR canonically adjust requiredness per the approved authority basis
+
+      - in either case, record explicit authority-backed rationale and ensure the
+      assembly/normalize/admission path can produce a valid canonical spec without
+      hidden side-channel population
+
+
+      Constraints:
+
+      - do NOT alter completed steps
+
+      - preserve canonical authority semantics; do not introduce a local competing
+      contract
+
+      - if authority requires `description`, the production path must carry it end-to-end
+
+      - if authority makes `description` optional, the rationale must cite the controlling
+      authority and align all enforcement points
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: requiredness authority and production-path carriage are inconsistent
+
+      - Symptom: admission validation rejects specs that the AssemblyInput/assemble
+      path cannot make valid
+
+      - Why this fix is not surface-level: it must close the authority/runtime path
+      mismatch at the canonical source, not bypass validation locally
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+      '
+    verification: '- Authority-backed rationale explicitly states whether `description`
+      is canonically required or optional
+
+      - AssemblyInput -> assemble -> normalize/admission path can produce a canonically
+      valid spec consistent with that authority
+
+      - No enforcement point still requires data that the production path cannot supply
+
+      - Evidence identifies the exact authority source used for the requiredness decision'
+    depends_on:
+    - canonical_core_admission.fix-gate-blockers-b1-b5
+    agent: python-senior-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
