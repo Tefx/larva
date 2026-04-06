@@ -35023,13 +35023,13 @@ phases:
       - open_or_block: OPEN'
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
-  status: pending
+  status: in_progress
   depends_on:
   - canonical_surface_verify
   steps:
   - id: canonical_doc_sync.update-docs
     name: Sync larva documentation to opifex canonical authority
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -35095,6 +35095,8 @@ phases:
 
       '
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-06T12:45:22.737002+00:00'
   - id: canonical_doc_sync.gate
     name: Gate canonical documentation sync
     status: pending
