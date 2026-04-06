@@ -35986,6 +35986,52 @@ phases:
     source.
   depends_on:
   - dup_guardrails
+  steps:
+  - id: dup_contract_source.contract-basis
+    name: Design single-source canonical contract metadata seam
+    status: pending
+    description: 'step_type: review
+
+
+      Design the single-source metadata seam that local projections must consume.
+
+
+      Must define ownership for:
+
+      - required / optional / forbidden field sets
+
+      - validation report and issue shapes
+
+      - reusable canonical error phrases for transport projections
+
+      - schema snapshot and MCP contract projection relationship'
+    verification: '- Single-source metadata basis names which artifacts become derived
+      projections
+
+      - No unresolved ownership conflict remains among validator, schema, and MCP
+      contract text'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Basis
+
+      - metadata_owner:
+
+      - derived_projections:
+
+      - parity_requirements:
+
+      - drift_prevention_strategy:
+
+      '
+    agent: software-architect-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
