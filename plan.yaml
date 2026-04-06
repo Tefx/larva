@@ -35639,3 +35639,10 @@ phases:
     reopening settled interface decisions.
   depends_on:
   - daa_p1_impl
+- id: daa_cross_surface_verify
+  name: DAA Cross-Surface Verification
+  status: locked
+  gate: All DAA-remediated behaviors are proven consistent across consumer surfaces
+    before doc sync and final audit.
+  depends_on:
+  - daa_p2_vocab
