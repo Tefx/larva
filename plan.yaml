@@ -32144,7 +32144,7 @@ phases:
       \ branch: `92f33c5` (`Clarify removed-field admission authority`)"
 - id: canonical_core_admission
   name: Canonical Core Admission Remediation
-  status: in_progress
+  status: done
   depends_on:
   - canonical_authority_basis
   steps:
@@ -32889,7 +32889,7 @@ phases:
       report + facade standardized transport code).'
   - id: canonical_core_admission.gate
     name: Gate canonical core admission remediation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -32971,6 +32971,28 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T07:53:35.811193+00:00'
+    done_at: '2026-04-06T07:56:49.779007+00:00'
+    evidence: "## Gate Review Report\n\n### refs Read Confirmation (MANDATORY)\n-\
+      \ design/opifex-canonical-authority-basis.md — required/optional/forbidden rules\
+      \ reviewed.\n- ADR-003-canonical-requiredness-authority.md — authority synchronization\
+      \ decision reviewed.\n- src/larva/core/validate.py — canonical required/forbidden\
+      \ enforcement reviewed.\n- contracts/persona_spec.schema.json — non-authoritative\
+      \ schema posture + required list reviewed.\n- src/larva/core/spec.py — required/optional\
+      \ typing reviewed.\n- src/larva/core/normalize.py — forbidden-field stripping\
+      \ reviewed.\n- src/larva/core/assemble.py — no forbidden-field emission + description\
+      \ carry-through reviewed.\n- src/larva/app/facade.py — production normalize+validate\
+      \ admission seam reviewed.\n\n### Step-by-Step Review\n- All phase steps reviewed;\
+      \ blocker families B1-B5 and B00 have closure evidence.\n- No blocker-class\
+      \ unresolved obligations remain for downstream shell/API phases.\n\n### Gate\
+      \ Decision Basis\n- reviewed_requirement_refs:\n  - required-field exactness:\
+      \ conforms\n  - forbidden/extra-field rejection: conforms\n  - schema non-authority\
+      \ posture: conforms\n  - error-taxonomy layering: partial but justified\n- unresolved_statuses:\
+      \ none\n- non_intersection_claims: none\n- open_or_block: OPEN\n- required_actions_if_blocked:\
+      \ none\n\n### Behavioral Proof Register\n- B1-requiredness: CLOSED\n- B2-assembly-output:\
+      \ CLOSED\n- B3-normalize-output: CLOSED\n- B4-schema-authority: CLOSED\n- B5-production-path:\
+      \ CLOSED\n- B00-requiredness-authority: CLOSED\n- forbidden-field-rejection:\
+      \ CLOSED\n\nAll with runtime/doc evidence and no uncertainty sources remaining.\n\
+      \ngate_open_allowed: true"
   - id: canonical_core_admission.fix-gate-blockers-b1-b5
     name: Fix canonical core admission gate blockers B1-B5
     status: done
@@ -33747,7 +33769,7 @@ phases:
       \ngate_open_allowed: true"
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
-  status: locked
+  status: pending
   depends_on:
   - canonical_core_admission
   steps:
