@@ -35727,6 +35727,53 @@ phases:
     seam.
   depends_on:
   - dup_guardrails
+  steps:
+  - id: dup_web_convergence.router-basis
+    name: Design shared web router boundary for packaged and contrib runtimes
+    status: pending
+    description: 'step_type: review
+
+
+      Design the shared router / endpoint seam that will eliminate packaged-vs-contrib
+      duplication without changing HTTP behavior.
+
+
+      Must define:
+
+      - which endpoints move into shared implementation
+
+      - where contrib-only behavior stays isolated
+
+      - how PATCH semantics preserve canonical `capabilities` handling and reject
+      deprecated-field reintroduction
+
+      - how HTML/runtime bootstrap remains outside the shared API seam'
+    verification: '- Shared-router basis names all moved endpoints and all retained
+      runtime-only wrappers
+
+      - No unresolved ownership ambiguity remains for PATCH semantics or error projection'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Router Basis
+
+      - shared_endpoints:
+
+      - contrib_only_surfaces:
+
+      - patch_semantics_locked:
+
+      - error_projection_owner:
+
+      '
+    agent: software-architect-tacit
 - id: dup_contract_source
   name: Canonical Contract Source Consolidation
   status: locked
