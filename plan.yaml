@@ -33522,6 +33522,96 @@ phases:
       \ matrix checks passed with help exit 0\n  - end-to-end assemble->normalize->validate\
       \ produced valid=True with description present\n  - targeted pytest: 4 passed\n\
       \  - invar guard passed (warnings only)\n\nRemaining ambiguity:\n- none"
+  - id: canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
+    name: Resolve requiredness authority contradiction and synchronize artifacts
+    status: pending
+    description: 'work_type: authority_adjudication
+
+      step_type: review
+
+      verification_scope: phase-check
+
+
+      Resolve the blocker-class contradiction between the authoritative requiredness
+      contract and current runtime enforcement.
+
+
+      Authority conflict to adjudicate:
+
+      - authority document says required fields include `can_spawn`
+
+      - authority document treats `description` as optional
+
+      - implementation/runtime enforcement currently treats `description` as required
+      and `can_spawn` as optional
+
+
+      Required decision path (MANDATORY):
+
+      1. Decide explicitly whether to align code/runtime enforcement to the authority
+      text OR amend the authority with a justified ADR-level decision.
+
+      2. Record the decision basis, including why the chosen authority is binding
+      for downstream admission surfaces.
+
+      3. Synchronize every touched contract artifact so there is no split truth across
+      code, schema text, docs, stubs, tests, or runtime validators.
+
+      4. If authority is amended instead of code, include the justification, impacted
+      consumer surfaces, and exact artifacts updated.
+
+
+      Synchronized artifacts MUST include all touched requiredness-bearing surfaces,
+      including runtime enforcement and authority/spec text. Do not leave mixed semantics
+      where one artifact still requires `description` while another requires `can_spawn`.
+
+
+      ## Completion Criteria (authority sync required)
+
+      Completion requires an explicit authority decision, synchronized artifact updates,
+      and no remaining contradiction between the chosen authority and runtime enforcement.
+      Silent partial sync is not acceptable.'
+    verification: '- Explicit authority decision is documented: either code aligned
+      to authority or authority amended with justified ADR
+
+      - All touched contract artifacts use the same required/optional semantics for
+      `can_spawn` and `description`
+
+      - Evidence identifies affected consumer surfaces and confirms no residual split
+      truth remains'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Authority Decision Record
+
+      - Chosen path: align code to authority | amend authority with ADR
+
+      - Binding authority and justification:
+
+      - Consumer surfaces affected:
+
+
+      ## Synchronized Artifacts
+
+      - Artifact updated:
+
+      - Requiredness semantics after update:
+
+
+      ## Residual Contradiction Check
+
+      - Remaining mismatches: none | <list>
+
+      '
+    agent: python-senior-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
