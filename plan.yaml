@@ -33312,6 +33312,7 @@ phases:
       - [ ] INCOMPLETE'
     depends_on:
     - canonical_core_admission.fix-gate-blockers-b1-b5
+    - canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
     agent: integration-verifier-tacit
   - id: canonical_core_admission.fix-retest-gate-blockers-b1-b5-description-path
     name: Fix residual B1/B5 description-path authority mismatch
