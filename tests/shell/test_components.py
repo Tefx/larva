@@ -98,10 +98,7 @@ class TestFilesystemComponentStoreIntegration:
         assert toolset["capabilities"]["filesystem"] == "read_write"
         assert toolset["capabilities"]["shell"] == "read_only"
         assert toolset["capabilities"]["http"] == "none"
-        # Backward-compat: tools is mirrored from capabilities
-        assert toolset["tools"]["filesystem"] == "read_write"
-        assert toolset["tools"]["shell"] == "read_only"
-        assert toolset["tools"]["http"] == "none"
+        # Canonical: only capabilities field is present, tools is not mirrored
 
     def test_load_constraint_parses_yaml(
         self, temp_component_store: FilesystemComponentStore
@@ -111,9 +108,8 @@ class TestFilesystemComponentStoreIntegration:
         assert isinstance(result, Success)
         constraint = result.unwrap()
         assert constraint["can_spawn"] is True
-        # DEPRECATED: side_effect_policy in constraints (ADR-002)
-        # Retained for backward-compat tests until runtime policy removed
-        assert constraint["side_effect_policy"] == "approval_required"
+        # Canonical: side_effect_policy is stripped, not returned
+        assert "side_effect_policy" not in constraint
         assert constraint["compaction_prompt"] == "Compact the state."
 
     def test_load_model_parses_yaml(self, temp_component_store: FilesystemComponentStore) -> None:

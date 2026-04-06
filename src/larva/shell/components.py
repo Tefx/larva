@@ -331,11 +331,6 @@ class FilesystemComponentStore:
     def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
         """Load a toolset component by name.
 
-        Per ADR-002 transition:
-        - Reads `capabilities` first (canonical)
-        - Falls back to `tools` for backward compatibility
-        - Returns component with canonical `capabilities` and mirrored `tools`
-
         Args:
             name: Component name (without .yaml extension).
 
@@ -355,25 +350,16 @@ class FilesystemComponentStore:
         if not isinstance(data, dict):
             data = {}
 
-        # Prefer canonical 'capabilities', fall back to deprecated 'tools'
+        # Read capabilities (canonical field). Legacy 'tools' field is not
+        # emitted at canonical boundary; normalize if present in source.
         capabilities = data.get("capabilities")
         if capabilities is None:
             capabilities = data.get("tools", {})
 
-        return Success(
-            ToolsetComponent(
-                capabilities=capabilities,
-                tools=capabilities,  # Mirror for transition compatibility
-            )
-        )
+        return Success(ToolsetComponent(capabilities=capabilities))
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
-
-        Note:
-            `side_effect_policy` is deprecated per ADR-002 and retained for
-            transition compatibility only. Runtime policy ownership has moved
-            out of PersonaSpec.
 
         Args:
             name: Component name (without .yaml extension).
@@ -393,7 +379,15 @@ class FilesystemComponentStore:
         data = yaml_result.unwrap()
         if not isinstance(data, dict):
             data = {}
-        return Success(ConstraintComponent(**data))
+
+        # Build canonical constraint, stripping deprecated side_effect_policy.
+        constraint: ConstraintComponent = {}
+        if "can_spawn" in data:
+            constraint["can_spawn"] = data["can_spawn"]
+        if "compaction_prompt" in data:
+            constraint["compaction_prompt"] = data["compaction_prompt"]
+
+        return Success(constraint)
 
     def load_model(self, name: str) -> Result[ModelComponent, ComponentStoreError]:
         """Load a model component by name.

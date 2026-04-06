@@ -104,35 +104,22 @@ class PromptComponent(TypedDict):
     text: str
 
 
-class ToolsetComponent(TypedDict, total=False):
+class ToolsetComponent(TypedDict):
     """In-memory capability posture mapping for core assembly.
 
-    Per ADR-002 transition:
-    - ``capabilities`` is canonical (preferred going forward)
-    - ``tools`` is deprecated (retained for backward compatibility)
-    - Either field is accepted at type level during transition
-
-    Note:
-        This TypedDict uses ``total=False`` to allow capabilities-only or
-        tools-only shapes during the ADR-002 transition. Callers should
-        prefer ``capabilities`` and treat ``tools`` as deprecated.
+    Canonical form: only ``capabilities`` field is used.
     """
 
     capabilities: dict[str, ToolPosture]
-    # DEPRECATED: Use capabilities. Retained for transition compatibility.
-    tools: dict[str, ToolPosture]
 
 
 class ConstraintComponent(TypedDict, total=False):
     """In-memory constraint values for core assembly.
 
-    ``side_effect_policy`` is deprecated per ADR-002 and retained for
-    transition compatibility.
+    Canonical form: ``can_spawn`` and ``compaction_prompt`` only.
     """
 
     can_spawn: bool | list[str]
-    # DEPRECATED per ADR-002: runtime policy ownership moved out of PersonaSpec.
-    side_effect_policy: SideEffectPolicy
     compaction_prompt: str
 
 
