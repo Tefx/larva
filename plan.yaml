@@ -32969,7 +32969,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: canonical_core_admission.fix-gate-blockers-b1-b5
     name: Fix canonical core admission gate blockers B1-B5
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -33155,6 +33155,8 @@ phases:
     - canonical_core_admission.verify
     - canonical_core_admission.spec-conformance
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-06T03:38:29.113677+00:00'
   - id: canonical_core_admission.retest-gate-blockers-b1-b5
     name: Retest canonical core admission gate blockers B1-B5
     status: pending
