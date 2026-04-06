@@ -35245,7 +35245,7 @@ phases:
       - ADR-003-canonical-requiredness-authority.md (forbidden fields reject-immediate)'
 - id: canonical_deep_review
   name: Canonical Remediation Deep Review
-  status: in_progress
+  status: done
   depends_on:
   - canonical_doc_sync
   steps:
@@ -35537,7 +35537,7 @@ phases:
       to shared facade admission route'
   - id: canonical_deep_review.gate
     name: Final gate for canonical remediation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -35597,3 +35597,10 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T13:31:16.431445+00:00'
+    done_at: '2026-04-06T13:37:52.074988+00:00'
+    evidence: 'Final canonical remediation gate reviewed deep-review evidence set
+      (architecture-review, black-box, spec-conformance, wiring-audit). Source-of-truth
+      ownership remains opifex; larva surfaces converge through facade/core canonical
+      validation; forbidden-field rejection and required-field enforcement confirmed.
+      Residual compatibility paths classified non-intersecting with active runtime
+      authority. Decision: OPEN.'
