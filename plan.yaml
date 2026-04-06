@@ -34245,7 +34245,7 @@ phases:
     claimed_at: '2026-04-06T12:00:59.497433+00:00'
   - id: canonical_shell_surfaces.wiring-audit
     name: Audit shell wiring for canonical contract reachability
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -34309,6 +34309,8 @@ phases:
     - canonical_shell_surfaces.component-ingestion-impl
     - canonical_shell_surfaces.surface-contract-impl
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-06T12:01:03.999268+00:00'
   - id: canonical_shell_surfaces.gate
     name: Gate shell and projection cleanup
     status: pending
