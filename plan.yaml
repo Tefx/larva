@@ -35611,3 +35611,10 @@ phases:
     DAA remediation contracts or implementation planning starts.
   depends_on:
   - canonical_deep_review
+- id: daa_p0_contracts
+  name: DAA P0 Contracts
+  status: locked
+  gate: Contract surfaces, expected-red tests, and acceptance artifacts for blocker-class
+    DAA work are pinned before implementation begins.
+  depends_on:
+  - daa_arch_basis
