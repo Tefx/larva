@@ -34689,7 +34689,7 @@ phases:
       - gate_decision_basis: ready for gate check'
   - id: canonical_surface_verify.web-liveness-probe
     name: Run packaged web liveness probe for canonical admission
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -34761,6 +34761,44 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-06T12:24:36.743617+00:00'
+    done_at: '2026-04-06T12:37:50.953279+00:00'
+    evidence: '## Runnable Liveness Evidence
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      **Launch command**:
+
+      ```
+
+      uv run larva serve --port 17499 --no-open
+
+      ```
+
+
+      **Operation executed**:
+
+      ```
+
+      POST /api/personas/validate (canonical spec) -> 200 valid true
+
+      POST /api/personas (canonical spec) -> 200 registered true
+
+      GET /api/personas -> 200 list includes registered persona
+
+      ```
+
+
+      **Observed runtime behavior**:
+
+      - started: packaged web server launched and port bound
+
+      - stayed_alive: runtime handled sequential requests successfully
+
+      - canonical_operation_result: canonical admission operations behaved as expected
+      end-to-end'
   - id: canonical_surface_verify.mcp-liveness-probe
     name: Run MCP runtime proof for canonical admission
     status: done
