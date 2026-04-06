@@ -35937,6 +35937,48 @@ phases:
     depends_on:
     - dup_web_convergence.impl
     agent: blind-tester-tacit
+  - id: dup_web_convergence.gate
+    name: Gate web surface convergence
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: packaged and contrib web runtimes must no longer encode divergent
+      persona endpoint semantics.'
+    verification: '- Shared seam is real and used by both runtimes
+
+      - No blocker-class parity drift remains'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - packaged_runtime_status:
+
+      - contrib_runtime_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_web_convergence.router-basis
+    - dup_web_convergence.impl
+    - dup_web_convergence.verify
+    agent: gate-reviewer-tacit
 - id: dup_contract_source
   name: Canonical Contract Source Consolidation
   status: locked
