@@ -140,27 +140,18 @@ def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIss
 @pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, list))
 def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate identity field values (id format, spec_version).
+
+    Note: Required/forbidden field validation is delegated to separate functions.
+    This function validates field content, not field presence.
+
+    Args:
+        spec: A PersonaSpec candidate to validate.
+
+    Returns:
+        List of validation errors for field value issues.
+    """
     errors: list[ValidationIssue] = []
-
-    for field in sorted(_CANONICAL_REQUIRED_FIELDS):
-        if field not in spec:
-            errors.append(
-                _issue(
-                    "MISSING_REQUIRED_FIELD",
-                    f"{field} is required",
-                    {"field": field},
-                )
-            )
-
-    for field in sorted(spec.keys()):
-        if field not in _CANONICAL_ALLOWED_FIELDS:
-            errors.append(
-                _issue(
-                    "FORBIDDEN_EXTRA_FIELD",
-                    f"{field} is not allowed at canonical admission",
-                    {"field": field},
-                )
-            )
 
     persona_id = spec.get("id")
     if persona_id is not None and (
@@ -305,28 +296,106 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 
 @pre(lambda spec: all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list))
-def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
-    """Collect canonical admission warnings.
+def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Reject forbidden fields at canonical admission boundary.
 
-    At the canonical boundary, deprecated transition fields are rejected as
-    forbidden extra fields instead of being admitted with warnings.
+    Contract (from INTERFACES.md, narrowed by opifex authority):
+    - ``tools`` is forbidden at canonical admission boundary
+    - ``side_effect_policy`` is forbidden at canonical admission boundary
+    - unknown top-level fields are forbidden at canonical admission boundary
+
+    These are rejection errors, not deprecation warnings.
 
     Args:
         spec: A PersonaSpec candidate to validate.
 
     Returns:
-        List of warning strings.
+        List of validation errors for forbidden fields.
 
-    >>> _collect_deprecation_warnings({"id": "test"})
+    >>> _validate_forbidden_fields({"id": "test"})
     []
-    >>> _collect_deprecation_warnings({"id": "test", "side_effect_policy": "allow"})
-    []
-    >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}})
-    []
-    >>> _collect_deprecation_warnings({"id": "test", "tools": {"git": "read_only"}, "capabilities": {"git": "read_only"}})
-    []
+    >>> _validate_forbidden_fields({"id": "test", "tools": {"git": "read_only"}})[0]["code"]
+    'FORBIDDEN_EXTRA_FIELD'
+    >>> _validate_forbidden_fields({"id": "test", "side_effect_policy": "allow"})[0]["code"]
+    'FORBIDDEN_EXTRA_FIELD'
+    >>> _validate_forbidden_fields({"id": "test", "unknown_field": "value"})[0]["code"]
+    'FORBIDDEN_EXTRA_FIELD'
     """
-    return []
+    errors: list[ValidationIssue] = []
+
+    # Forbidden field names at canonical admission boundary
+    FORBIDDEN_FIELDS = {"tools", "side_effect_policy"}
+
+    # Canonical required fields (from spec.py PersonaSpec)
+    CANONICAL_FIELDS = {
+        "id",
+        "description",
+        "prompt",
+        "model",
+        "capabilities",
+        "spec_version",
+        "model_params",
+        "can_spawn",
+        "compaction_prompt",
+        "spec_digest",
+    }
+
+    for key in spec:
+        if key in FORBIDDEN_FIELDS:
+            errors.append(
+                _issue(
+                    "FORBIDDEN_EXTRA_FIELD",
+                    f"'{key}' is not permitted at canonical admission boundary",
+                    {"field": key, "value": spec.get(key)},
+                )
+            )
+        elif key not in CANONICAL_FIELDS:
+            errors.append(
+                _issue(
+                    "FORBIDDEN_EXTRA_FIELD",
+                    f"unknown top-level field '{key}' is not permitted at canonical admission boundary",
+                    {"field": key, "value": spec.get(key)},
+                )
+            )
+
+    return errors
+
+
+@pre(lambda spec: all(isinstance(key, str) for key in spec))
+@post(lambda result: isinstance(result, list))
+def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate that required canonical fields are present.
+
+    Contract (from INTERFACES.md, narrowed by opifex authority):
+    - ``capabilities`` is required at canonical admission boundary
+
+    Args:
+        spec: A PersonaSpec candidate to validate.
+
+    Returns:
+        List of validation errors for missing required fields.
+
+    >>> _validate_required_fields({"id": "test", "description": "Test", "prompt": "Help", "model": "gpt-4o", "capabilities": {"git": "read_only"}, "spec_version": "0.1.0"})
+    []
+    >>> _validate_required_fields({"id": "test"})[0]["code"]
+    'MISSING_REQUIRED_FIELD'
+    """
+    errors: list[ValidationIssue] = []
+
+    # Required fields at canonical admission boundary
+    REQUIRED_FIELDS = {"id", "description", "prompt", "model", "capabilities", "spec_version"}
+
+    for field in REQUIRED_FIELDS:
+        if field not in spec:
+            errors.append(
+                _issue(
+                    "MISSING_REQUIRED_FIELD",
+                    f"required field '{field}' is missing at canonical admission boundary",
+                    {"field": field},
+                )
+            )
+
+    return errors
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))
@@ -334,46 +403,46 @@ def _collect_deprecation_warnings(spec: dict[str, object]) -> list[str]:
 def validate_spec(spec: dict[str, object]) -> ValidationReport:
     """Validate a PersonaSpec candidate and return structured results.
 
-    Contract (from INTERFACES.md, narrowed by the opifex authority basis):
-    - validates field types and allowed values for the canonical PersonaSpec
-      contract
-    - produces structured errors with code, message, and details
-    - facade mapping may collapse report failures to ``PERSONA_INVALID`` but
-      must preserve the report in error details
-    - ``tools``, ``side_effect_policy``, and unknown top-level fields are
-      rejection cases at canonical admission, not admissible deprecated inputs
+        Contract (from INTERFACES.md, narrowed by the opifex authority basis):
+        - validates field types and allowed values for the canonical PersonaSpec
+          contract
+        - produces structured errors with code, message, and details
+        - facade mapping may collapse report failures to ``PERSONA_INVALID`` but
+          must preserve the report in error details
+        - ``tools``, ``side_effect_policy``, and unknown top-level fields are
+          rejection cases at canonical admission, not admissible deprecated inputs
 
-    Args:
-        spec: A PersonaSpec candidate to validate.
+        Args:
+            spec: A PersonaSpec candidate to validate.
 
-    Returns:
-        ValidationReport with valid=True/False, errors list, and warnings list.
+        Returns:
+            ValidationReport with valid=True/False, errors list, and warnings list.
 
-    Note:
-        This implementation handles:
-        - Type validation for all fields
-        - Allowed value validation for canonical fields
-        - Field-specific validation rules
-        - Deterministic, pure validation (no I/O side effects)
+        Note:
+            This implementation handles:
+            - Type validation for all fields
+            - Allowed value validation for canonical fields
+            - Field-specific validation rules
+            - Deterministic, pure validation (no I/O side effects)
 
-        Canonical authority remains external to this module. While the
-        repo-local schema artifact exists, it is reference-only and may not be
-        treated as an independent owner of requiredness, field removal, or
-        extra-field policy.
+            Canonical authority remains external to this module. While the
+            repo-local schema artifact exists, it is reference-only and may not be
+            treated as an independent owner of requiredness, field removal, or
+            extra-field policy.
 
-    Acceptance:
-        @pre(lambda spec: _is_json_safe_dict(spec))
-        @post(
-            lambda result: (
-                isinstance(result, dict)
-                and "valid" in result
-                and "errors" in result
-                and "warnings" in result
+        Acceptance:
+            @pre(lambda spec: _is_json_safe_dict(spec))
+            @post(
+                lambda result: (
+                    isinstance(result, dict)
+                    and "valid" in result
+                    and "errors" in result
+                    and "warnings" in result
+                )
             )
-        )
 
     Examples:
-        >>> validate_spec({"id": "code-reviewer", "description": "d", "prompt": "p", "model": "m", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
+        >>> validate_spec({"id": "code-reviewer", "description": "Reviews code", "prompt": "You review code", "model": "gpt-4o-mini", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
         True
         >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
         'MISSING_REQUIRED_FIELD'
@@ -387,8 +456,12 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     capabilities_errors = _validate_capabilities(spec)
     errors.extend(capabilities_errors)
 
-    # Collect deprecation warnings
-    warnings.extend(_collect_deprecation_warnings(spec))
+    # Validate canonical admission requirements (forbidden fields, required fields)
+    forbidden_errors = _validate_forbidden_fields(spec)
+    errors.extend(forbidden_errors)
+
+    required_errors = _validate_required_fields(spec)
+    errors.extend(required_errors)
 
     return {
         "valid": len(errors) == 0,
