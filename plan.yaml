@@ -36503,6 +36503,45 @@ phases:
     depends_on:
     - daa_cross_surface_verify.consumer-conformance
     agent: integration-verifier-tacit
+  - id: daa_cross_surface_verify.gate
+    name: Gate DAA cross-surface verification
+    status: pending
+    description: 'Gate review: verify DAA behavior is consistent across surfaces and
+      broad verification debt is dispositioned before doc sync.
+
+
+      review_depth: THOROUGH'
+    verification: '- Consumer-boundary conformance evidence is present
+
+      - Full-plan-check findings have explicit closure paths
+
+      - No unresolved blocker intersects doc or deep-review gates'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Decision Basis
+
+      - reviewed_artifacts:
+
+      - unresolved_statuses:
+
+      - closure_paths:
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_cross_surface_verify.consumer-conformance
+    - daa_cross_surface_verify.full-plan-check
+    agent: gate-reviewer-tacit
 - id: daa_doc_sync
   name: DAA Documentation Sync
   status: locked
