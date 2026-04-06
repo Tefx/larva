@@ -34704,7 +34704,7 @@ phases:
     agent: blind-tester-tacit
   - id: canonical_surface_verify.mcp-liveness-probe
     name: Run MCP runtime proof for canonical admission
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -34774,6 +34774,8 @@ phases:
 
       '
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-06T12:24:32.485577+00:00'
   - id: canonical_surface_verify.gate
     name: Gate canonical cross-surface verification
     status: pending
