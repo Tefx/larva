@@ -34527,7 +34527,7 @@ phases:
       \ authoritative contract definitions"
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
-  status: in_progress
+  status: done
   depends_on:
   - canonical_shell_surfaces
   steps:
@@ -34911,7 +34911,7 @@ phases:
       structure'
   - id: canonical_surface_verify.gate
     name: Gate canonical cross-surface verification
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -34976,9 +34976,54 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T12:38:44.489142+00:00'
+    done_at: '2026-04-06T12:45:03.571423+00:00'
+    evidence: '## Gate Review Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - ADR-003, INTERFACES, core spec/validate, facade, python_api, cli_commands,
+      mcp, web reviewed.
+
+
+      ### Surface Matrix
+
+      | Surface | Canonical Success Proof | Canonical Failure Proof | Notes |
+
+      | --- | --- | --- | --- |
+
+      | Core validate | validate_spec(canonical)=valid true | validate_spec(with tools)=FORBIDDEN_EXTRA_FIELD
+      | Required/forbidden fields enforced |
+
+      | Facade | register(canonical)=Success | register(with tools)=PERSONA_INVALID
+      | Admission seam consistent |
+
+      | Python API | validate(canonical)=valid true | validate(with tools)=FORBIDDEN_EXTRA_FIELD
+      | Thin facade delegation |
+
+      | CLI | larva validate canonical passes | larva validate with tools fails canonical
+      boundary | Exit/error semantics aligned |
+
+      | MCP | handle_validate canonical valid true | handle_validate with tools invalid
+      with forbidden extra | Handler routing aligned |
+
+      | Web | POST /api/personas/validate canonical valid true | same endpoint rejects
+      forbidden fields | Liveness + correctness proven |
+
+
+      ### Gate Decision Basis
+
+      - blocker_obligations_reviewed: completed with runtime evidence across all required
+      surfaces
+
+      - runtime_proofs_reviewed: cross-surface conformance + MCP liveness + web liveness
+      artifacts
+
+      - residual_mismatches: none identified
+
+      - open_or_block: OPEN'
 - id: canonical_doc_sync
   name: Canonical Documentation Sync
-  status: locked
+  status: pending
   depends_on:
   - canonical_surface_verify
   steps:
