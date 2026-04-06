@@ -35653,3 +35653,10 @@ phases:
     verification evidence before final audit.
   depends_on:
   - daa_cross_surface_verify
+- id: daa_deep_review
+  name: DAA Deep Review
+  status: locked
+  gate: Independent final audit confirms DAA remediation is complete, non-regressive,
+    and ready for closure.
+  depends_on:
+  - daa_doc_sync
