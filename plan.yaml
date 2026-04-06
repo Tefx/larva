@@ -36299,6 +36299,46 @@ phases:
     depends_on:
     - dup_fixture_unification.fixture-basis
     agent: python-senior-tacit
+  - id: dup_fixture_unification.verify
+    name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Independently verify that canonical-boundary tests now use canonical-only fixtures
+      and that legacy coverage is explicit rather than implicit.'
+    verification: '- Canonical fixture sanity checks pass
+
+      - No in-scope canonical test helper silently injects deprecated fields'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Verification Results
+
+      - canonical_fixture_sanity:
+
+      - transition_fixture_explicitness:
+
+      - remaining_mixed_helpers:
+
+      - commands:
+
+      '
+    depends_on:
+    - dup_fixture_unification.impl
+    agent: integration-verifier-tacit
 - id: dup_error_abstraction
   name: Component Error Projection Abstraction
   status: locked
