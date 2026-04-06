@@ -36641,6 +36641,66 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_facade_admission.impl
+    name: Consolidate repeated facade admission workflow
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the shared admission workflow seam from `dup_facade_admission.workflow-basis`.
+
+
+      YOUR SCOPE:
+
+      - collapse repeated register/resolve/update/clone admission choreography into
+      one shared app-layer seam
+
+      - preserve canonical admission semantics, digest behavior, and persistence ordering
+
+      - keep behavior-preservation guardrails from `dup_guardrails` intact
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The shared workflow seam must be used by real facade operations.'
+    verification: '- Main path: register/resolve/update/clone retain existing success
+      semantics
+
+      - Failure path: canonical validation failures and forbidden-field handling remain
+      unchanged across all entrypoints'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Facade Workflow Evidence
+
+      - shared_workflow_location:
+
+      - adopted_operations:
+
+      - validation_ordering_outcome:
+
+      - persistence_invariants_preserved:
+
+
+      ## Verification
+
+      - commands:
+
+      - outputs_summary:
+
+      '
+    depends_on:
+    - dup_facade_admission.workflow-basis
+    agent: python-senior-tacit
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
   status: locked
