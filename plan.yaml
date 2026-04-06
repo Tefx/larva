@@ -32239,7 +32239,7 @@ phases:
       \ contract surface and did not implement full behavioral conformance."
   - id: canonical_core_admission.tests-red
     name: Expose canonical admission gaps with focused tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -32319,6 +32319,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-06T02:00:33.857365+00:00'
+    done_at: '2026-04-06T02:20:26.756884+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this step:\n\
+      - tests/core/test_validate.py — full read and updated for canonical-gap red\
+      \ tests.\n- tests/core/test_schema_validation.py — full read and updated for\
+      \ schema-vs-canonical drift coverage.\n- tests/app/test_facade/test_validate.py\
+      \ — full read and updated for facade validation gap tests.\n- tests/app/test_facade/test_register.py\
+      \ — full read and updated for register path gap tests.\n- tests/app/test_facade/conftest.py\
+      \ — reviewed canonical fixture content.\n- src/larva/core/validate.py — reviewed\
+      \ to align expected red outcomes.\n- src/larva/app/facade.py — reviewed production\
+      \ admission invariant.\n- contracts/persona_spec.schema.json — reviewed local\
+      \ schema drift surfaces.\n\n## Exposed Gaps\n- expected_failures:\n  - tools\
+      \ accepted instead of rejected\n  - side_effect_policy accepted instead of rejected\n\
+      \  - unknown top-level extras accepted\n  - capabilities not enforced as canonical-required\
+      \ on admission path\n  - admission success does not imply canonical conformance\n\
+      \  - local schema drift allows non-canonical shapes\n- gap_to_test_mapping:\n\
+      \  - tools rejection gap → new core/facade/register tests asserting FORBIDDEN_EXTRA_FIELD-style\
+      \ rejection\n  - side_effect_policy rejection gap → new core/facade/register\
+      \ tests asserting rejection\n  - extra-field rejection gap → new core/facade\
+      \ tests asserting rejection for unknown keys\n  - required-field enforcement\
+      \ gap → new tests for missing capabilities and canonical required-only fixtures\n\
+      \  - success-implies-conformance gap → new tests asserting no forbidden fields\
+      \ on valid path\n  - schema drift gap → new schema drift tests documenting mismatch\
+      \ against canonical expectations\n- spec_fixture_sections_used:\n  - canonical\
+      \ required-only fixture (id, description, prompt, model, capabilities, spec_version)\n\
+      \  - invalid fixtures with forbidden tools / side_effect_policy\n  - invalid\
+      \ fixture with unknown extra field\n- downstream_implementation_steps:\n  -\
+      \ canonical_core_admission.core-enforcement-impl\n  - canonical_core_admission.facade-admission-impl\n\
+      \n## Test Step Semantics\n- step_intent: test_define_red\n- expected_result:\
+      \ red\n- observed_result: red (designed failing assertions expose declared canonical\
+      \ gaps)\n- failure_alignment: aligned with declared pre-implementation gaps;\
+      \ failures map directly to enforcement work\n- product_implementation_files_modified:\
+      \ no\n\n## Scope + Verification\n- Modified files are test-only under tests/\n\
+      - Red outcomes intentionally capture canonical divergence before remediation\n\
+      - No product code edits performed"
   - id: canonical_core_admission.core-enforcement-impl
     name: Collapse core contract truth to canonical enforcement
     status: pending
