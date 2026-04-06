@@ -36549,6 +36549,42 @@ phases:
     verification evidence before final audit.
   depends_on:
   - daa_cross_surface_verify
+  steps:
+  - id: daa_doc_sync.update-docs
+    name: Sync DAA documentation
+    status: pending
+    description: Update documentation and remediation notes so implemented DAA behavior,
+      acceptance language, and user-facing examples match the appended remediation
+      module. Do not rewrite historical phase records; only append or reconcile DAA-relevant
+      docs.
+    verification: '- User-facing and architecture docs reflect the DAA module accurately
+
+      - No stale contradictory DAA guidance remains in scope
+
+      - Historical completed phases remain intact'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Doc Sync Report
+
+      - docs_updated:
+
+      - stale_guidance_removed:
+
+      - examples_checked:
+
+      - historical_phase_preservation_notes:
+
+      '
+    agent: doc-reviewer-tacit
 - id: daa_deep_review
   name: DAA Deep Review
   status: locked
