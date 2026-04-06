@@ -33645,7 +33645,7 @@ phases:
       - commit:\n  - 673d5de428cfcfde64f17a28ffd8f35cd3d2dde1"
   - id: canonical_core_admission.retest-gate-blocker-b00-requiredness-authority
     name: Retest authority and runtime requiredness alignment
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -33718,6 +33718,8 @@ phases:
     depends_on:
     - canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-06T07:19:55.554117+00:00'
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
