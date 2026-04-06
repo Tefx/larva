@@ -36208,6 +36208,50 @@ phases:
     depends_on:
     - daa_p1_impl.parallel-seams
     agent: python-senior-tacit
+  - id: daa_p1_impl.verify
+    name: Verify DAA P1 integration
+    status: pending
+    description: 'As an INDEPENDENT TESTER (integration-verifier-tacit), validate
+      the integrated P1 path from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Independence Level: L2'
+    verification: '- Happy path and edge cases are exercised across the joined path
+
+      - Actual command/output evidence is present
+
+      - Findings, if any, are enumerated with reproduction'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      - commands_executed:
+
+      - output_summary:
+
+      - issues_found:
+
+      - not_tested:
+
+      - confidence:
+
+      '
+    depends_on:
+    - daa_p1_impl.parallel-seams
+    - daa_p1_impl.serial-integration
+    agent: integration-verifier-tacit
 - id: daa_p2_vocab
   name: DAA P2 Vocabulary and Drift Cleanup
   status: locked
