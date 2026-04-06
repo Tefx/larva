@@ -36662,3 +36662,35 @@ phases:
     depends_on:
     - daa_deep_review.wiring-audit
     agent: spec-verifier
+  - id: daa_deep_review.black-box
+    name: Run DAA black-box verification
+    status: pending
+    description: Using only the documented DAA-facing contracts and public surfaces,
+      perform black-box verification of the appended remediation module. Focus on
+      consumer-visible behavior, not implementation internals.
+    verification: Evidence shows at least one black-box path per DAA consumer surface
+      and records any divergence from documented behavior.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Black-Box Verification
+
+      - surfaces_tested:
+
+      - commands_or_inputs:
+
+      - observed_outputs:
+
+      - divergences:
+
+      '
+    depends_on:
+    - daa_deep_review.spec-conformance
+    agent: blind-tester
