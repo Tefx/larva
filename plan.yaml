@@ -36425,6 +36425,42 @@ phases:
     before doc sync and final audit.
   depends_on:
   - daa_p2_vocab
+  steps:
+  - id: daa_cross_surface_verify.consumer-conformance
+    name: Verify DAA consumer-boundary conformance
+    status: pending
+    description: 'verification_scope: phase-check
+
+
+      For every DAA-resolved fact that reaches more than one consumer surface, verify
+      all listed consumers interpret the same resolved fact consistently.
+
+
+      Typical surfaces: CLI, MCP, Python API, persisted-state readers.'
+    verification: '- Shared fixture or contract snapshot is used
+
+      - Consumer surfaces no longer re-derive divergent facts independently
+
+      - Any inconsistency is reported with reproduction'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Conformance Report
+
+      | fact | surfaces_checked | shared_fixture | verdict | notes |
+
+      | --- | --- | --- | --- | --- |
+
+      '
+    agent: integration-verifier-tacit
 - id: daa_doc_sync
   name: DAA Documentation Sync
   status: locked
