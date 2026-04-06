@@ -56,8 +56,8 @@ def _compute_spec_digest(spec: dict[str, object]) -> str:
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
 @post(lambda result: "spec_version" in result and "spec_digest" in result)
 @post(lambda result: "capabilities" not in result or isinstance(result.get("capabilities"), dict))
-@post(lambda result: "tools" not in result or isinstance(result.get("tools"), dict))
-@post(lambda result: result.get("capabilities") is not None or result.get("tools") is None)
+@post(lambda result: "tools" not in result)
+@post(lambda result: "side_effect_policy" not in result)
 def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.
 
@@ -69,15 +69,15 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
 
     ADR-002 Transition (tools -> capabilities):
     - If `tools` present and `capabilities` absent: copy tools to capabilities.
-    - If both present: `capabilities` wins (tools ignored).
-    - Output always contains `capabilities` (canonical field).
-    - During transition: output mirrors `capabilities` to `tools` for compatibility.
+    - If both present: `capabilities` wins.
+    - `tools` is removed from normalized output (forbidden at canonical admission).
+    - `side_effect_policy` is removed from normalized output (forbidden at canonical admission).
 
     spec_digest Behavior:
-    - Digest is computed AFTER `tools` -> `capabilities` normalization.
+    - Digest is computed AFTER canonicalization and forbidden-field stripping.
     - Input `spec_digest` is always overwritten with fresh computation.
     - Digest excludes the `spec_digest` field itself from canonical JSON.
-    - Both `capabilities` and `tools` (if present after normalization) are
+    - Canonical output fields (including `capabilities` when present) are
       included in digest computation.
 
     Args:
@@ -103,35 +103,44 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
         >>> result.get("capabilities") == {"filesystem": "read_only"}
         True
-        >>> result.get("tools") == {"filesystem": "read_only"}  # mirrored during transition
+        >>> "tools" in result
+        False
+        >>> "side_effect_policy" in result
+        False
+        >>> result.get("capabilities") == {"filesystem": "read_only"}
         True
         >>> # ADR-002: capabilities-only spec passes through
         >>> result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
         >>> result.get("capabilities") == {"git": "read_write"}
         True
-        >>> result.get("tools") == {"git": "read_write"}  # mirrored during transition
-        True
+        >>> "tools" in result
+        False
         >>> # ADR-002: both present - capabilities wins
         >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}, "capabilities": {"git": "read_write"}})
         >>> result.get("capabilities") == {"git": "read_write"}
         True
-        >>> result.get("tools") == {"git": "read_write"}  # mirrors capabilities
-        True
+        >>> "tools" in result
+        False
+        >>> result = normalize_spec({"id": "test", "side_effect_policy": "read_only"})
+        >>> "side_effect_policy" in result
+        False
     """
+    canonical_spec = dict(spec)
+
     # Apply defaults
-    if "spec_version" not in spec:
-        spec = {**spec, "spec_version": "0.1.0"}
+    if "spec_version" not in canonical_spec:
+        canonical_spec["spec_version"] = "0.1.0"
 
-    # ADR-002: Normalize tools -> capabilities
-    tools = spec.get("tools")
-    capabilities = spec.get("capabilities")
+    # ADR-002 transition input compatibility: tools -> capabilities
+    tools = canonical_spec.get("tools")
+    capabilities = canonical_spec.get("capabilities")
 
-    if capabilities is not None:
-        # Capabilities present (canonical wins) - mirror to tools during transition
-        spec = {**spec, "tools": capabilities}
-    elif tools is not None:
-        # Only tools present - copy to capabilities
-        spec = {**spec, "capabilities": tools}
+    if capabilities is None and isinstance(tools, dict):
+        canonical_spec["capabilities"] = tools
 
-    digest = _compute_spec_digest(spec)
-    return cast("PersonaSpec", {**spec, "spec_digest": digest})
+    # Canonical admission boundary: forbidden fields must not survive normalization.
+    canonical_spec.pop("tools", None)
+    canonical_spec.pop("side_effect_policy", None)
+
+    digest = _compute_spec_digest(canonical_spec)
+    return cast("PersonaSpec", {**canonical_spec, "spec_digest": digest})

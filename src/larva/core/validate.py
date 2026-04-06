@@ -64,6 +64,8 @@ _CANONICAL_ALLOWED_FIELDS: set[str] = _CANONICAL_REQUIRED_FIELDS | {
     "variables",
 }
 
+_CANONICAL_FORBIDDEN_FIELDS: set[str] = {"tools", "side_effect_policy"}
+
 
 @post(lambda result: isinstance(result, bool))
 def _is_json_safe_dict(d: object) -> bool:
@@ -323,25 +325,8 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
     """
     errors: list[ValidationIssue] = []
 
-    # Forbidden field names at canonical admission boundary
-    FORBIDDEN_FIELDS = {"tools", "side_effect_policy"}
-
-    # Canonical required fields (from spec.py PersonaSpec)
-    CANONICAL_FIELDS = {
-        "id",
-        "description",
-        "prompt",
-        "model",
-        "capabilities",
-        "spec_version",
-        "model_params",
-        "can_spawn",
-        "compaction_prompt",
-        "spec_digest",
-    }
-
     for key in spec:
-        if key in FORBIDDEN_FIELDS:
+        if key in _CANONICAL_FORBIDDEN_FIELDS:
             errors.append(
                 _issue(
                     "FORBIDDEN_EXTRA_FIELD",
@@ -349,7 +334,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
                     {"field": key, "value": spec.get(key)},
                 )
             )
-        elif key not in CANONICAL_FIELDS:
+        elif key not in _CANONICAL_ALLOWED_FIELDS:
             errors.append(
                 _issue(
                     "FORBIDDEN_EXTRA_FIELD",
@@ -382,10 +367,7 @@ def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     """
     errors: list[ValidationIssue] = []
 
-    # Required fields at canonical admission boundary
-    REQUIRED_FIELDS = {"id", "description", "prompt", "model", "capabilities", "spec_version"}
-
-    for field in REQUIRED_FIELDS:
+    for field in _CANONICAL_REQUIRED_FIELDS:
         if field not in spec:
             errors.append(
                 _issue(

@@ -3,11 +3,7 @@
   "title": "PersonaSpec",
   "description": "Reference-only local snapshot of the opifex PersonaSpec contract. This file is non-authoritative for canonical admission semantics; larva.core.validate enforces the canonical boundary.",
   "type": "object",
-  "required": ["id", "description", "prompt", "model", "spec_version"],
-  "anyOf": [
-    { "required": ["tools"] },
-    { "required": ["capabilities"] }
-  ],
+  "required": ["id", "description", "prompt", "model", "capabilities", "spec_version"],
   "properties": {
     "id": {
       "type": "string",
@@ -28,14 +24,6 @@
       "type": "string",
       "minLength": 1,
       "description": "Default model identifier, e.g. 'claude-sonnet-4-20250514'. Model selection is part of persona execution identity."
-    },
-    "tools": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "enum": ["none", "read_only", "read_write", "destructive"]
-      },
-      "description": "DEPRECATED: canonical admission rejects this field. Present only as a local compatibility annotation in a non-authoritative snapshot schema."
     },
     "capabilities": {
       "type": "object",
@@ -58,11 +46,6 @@
       },
       "additionalProperties": true,
       "description": "Provider-specific LLM inference parameters. additionalProperties allows provider-specific params (e.g. top_k, frequency_penalty)."
-    },
-    "side_effect_policy": {
-      "type": "string",
-      "enum": ["allow", "approval_required", "read_only"],
-      "description": "DEPRECATED per ADR-002: canonical admission rejects this field. Runtime policy ownership moved to anima; this local schema is non-authoritative."
     },
     "can_spawn": {
       "oneOf": [

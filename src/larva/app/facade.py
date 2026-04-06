@@ -222,6 +222,17 @@ class DefaultLarvaFacade(LarvaFacade):
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         return self._validate.validate_spec(spec)
 
+    def _normalize_and_validate(
+        self,
+        spec: PersonaSpec,
+    ) -> Result[PersonaSpec, LarvaError]:
+        """Normalize then verify canonical admission contract conformance."""
+        normalized = self._normalize.normalize_spec(spec)
+        report = self.validate(normalized)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+        return Success(normalized)
+
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
         assemble_input: AssemblyInput = {
             "id": cast("str", request.get("id", "")),
@@ -279,12 +290,10 @@ class DefaultLarvaFacade(LarvaFacade):
         except AssemblyError as error:
             return Failure(self._assembly_error(error))
 
-        report = self.validate(candidate)
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
-        normalized = self._normalize.normalize_spec(candidate)
-        return Success(normalized)
+        normalized_result = self._normalize_and_validate(candidate)
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        return Success(normalized_result.unwrap())
 
     def _component_error(
         self, error: Exception, component_name: str, component_type: str
@@ -383,7 +392,10 @@ class DefaultLarvaFacade(LarvaFacade):
         if not report["valid"]:
             return Failure(self._validation_error(report))
 
-        normalized = self._normalize.normalize_spec(spec)
+        normalized_result = self._normalize_and_validate(spec)
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        normalized = normalized_result.unwrap()
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))
@@ -408,8 +420,10 @@ class DefaultLarvaFacade(LarvaFacade):
         if not report["valid"]:
             return Failure(self._validation_error(report))
 
-        normalized = self._normalize.normalize_spec(cast("PersonaSpec", resolved))
-        return Success(normalized)
+        normalized_result = self._normalize_and_validate(cast("PersonaSpec", resolved))
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        return Success(normalized_result.unwrap())
 
     def update(
         self,
@@ -427,7 +441,10 @@ class DefaultLarvaFacade(LarvaFacade):
         if not report["valid"]:
             return Failure(self._validation_error(report))
 
-        normalized = self._normalize.normalize_spec(cast("PersonaSpec", patched))
+        normalized_result = self._normalize_and_validate(cast("PersonaSpec", patched))
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        normalized = normalized_result.unwrap()
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))
@@ -535,7 +552,10 @@ class DefaultLarvaFacade(LarvaFacade):
         if not report["valid"]:
             return Failure(self._validation_error(report))
 
-        normalized = self._normalize.normalize_spec(cast("PersonaSpec", cloned))
+        normalized_result = self._normalize_and_validate(cast("PersonaSpec", cloned))
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        normalized = normalized_result.unwrap()
         save_result = self._registry.save(normalized)
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))

@@ -106,7 +106,7 @@ def _has_scalar_conflicts(data: dict[str, object]) -> bool:
         model_sources.append(cast("dict[str, Any]", model))
 
     sources = constraints + model_sources
-    scalar_fields = ("model", "can_spawn", "side_effect_policy", "compaction_prompt")
+    scalar_fields = ("model", "can_spawn", "compaction_prompt")
     for field in scalar_fields:
         values = [source.get(field) for source in sources if field in source]
         values = [value for value in values if value is not None]
@@ -321,10 +321,10 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
 
     Contract (from INTERFACES.md Section C Assembly Rules):
     - Prompts concatenate in declared order with "\\n\\n" separator
-    - Scalars (model, can_spawn, side_effect_policy):
+    - Scalars (model, can_spawn, compaction_prompt):
       Multiple sources for same field -> error (COMPONENT_CONFLICT)
     - Capabilities (canonical): Merged from 'capabilities' field in toolsets
-    - Tools (deprecated): Also read for backward compatibility, merged with capabilities
+    - Tools (deprecated input): read for backward compatibility but NOT emitted
     - model_params: Deep-merged from model component, overrides can patch keys
 
     Acceptance notes:
@@ -362,15 +362,11 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         ... )
         >>> result["capabilities"]
         {'read': 'read_only'}
-        >>> result["tools"]  # mirrored for transition compat
-        {'read': 'read_only'}
         >>> # Tools input (deprecated, still works)
         >>> result = assemble_candidate(
         ...     {"id": "p", "toolsets": [{"tools": {"write": "read_write"}}]}
         ... )
         >>> result["capabilities"]
-        {'write': 'read_write'}
-        >>> result["tools"]
         {'write': 'read_write'}
     """
     persona_id = cast("str", data.get("id"))
@@ -383,7 +379,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
 
     model = data.get("model")
     constraint_sources = _collect_constraint_sources(data)
-    scalar_fields = ["model", "can_spawn", "side_effect_policy", "compaction_prompt"]
+    scalar_fields = ["model", "can_spawn", "compaction_prompt"]
     for field in scalar_fields:
         value = _collect_scalar(constraint_sources, field)
         if value is not None:
@@ -397,9 +393,8 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     )
     if toolsets:
         merged_caps = cast("dict[str, ToolPosture]", _merge_capabilities(toolsets))
-        # Set capabilities (canonical) and mirror to tools (deprecated, transition compat)
+        # Set canonical capability declaration surface only.
         result["capabilities"] = merged_caps
-        result["tools"] = merged_caps
 
     model_component: ModelComponent | None = None
     if isinstance(model, dict):
