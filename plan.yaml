@@ -35632,3 +35632,10 @@ phases:
     after P0 closure.
   depends_on:
   - daa_p0_impl
+- id: daa_p2_vocab
+  name: DAA P2 Vocabulary and Drift Cleanup
+  status: locked
+  gate: Terminology, naming, and spec-code vocabulary drift are reconciled without
+    reopening settled interface decisions.
+  depends_on:
+  - daa_p1_impl
