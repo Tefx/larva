@@ -19,6 +19,9 @@ Accepted (2026-04-06)
 This mismatch created ambiguity about which surface is authoritative for
 requiredness and admission behavior.
 
+This ADR is the synchronization record for the requiredness alignment codified in
+`design/opifex-canonical-authority-basis.md`.
+
 ## Decision
 
 Canonical requiredness authority for admission is:

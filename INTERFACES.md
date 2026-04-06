@@ -167,6 +167,7 @@ satisfy PersonaSpec validation rules.
 Validation enforces strict canonical admission semantics:
 
 - Required fields: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
+- Optional fields: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`, `variables`
 - Forbidden fields: `tools`, `side_effect_policy`
 - Unknown top-level fields are rejected
 
