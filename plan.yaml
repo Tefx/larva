@@ -35646,3 +35646,10 @@ phases:
     before doc sync and final audit.
   depends_on:
   - daa_p2_vocab
+- id: daa_doc_sync
+  name: DAA Documentation Sync
+  status: locked
+  gate: Documentation and remediation records reflect implemented DAA behavior and
+    verification evidence before final audit.
+  depends_on:
+  - daa_cross_surface_verify
