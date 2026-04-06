@@ -32965,6 +32965,194 @@ phases:
     - canonical_core_admission.verify
     - canonical_core_admission.spec-conformance
     agent: gate-reviewer-tacit
+  - id: canonical_core_admission.fix-gate-blockers-b1-b5
+    name: Fix canonical core admission gate blockers B1-B5
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      symbolic_testing: false
+
+
+      Fix ALL blockers found by canonical_core_admission.gate in one batched remediation
+      step.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: canonical admission authority is still split across enforcement
+      logic, assembly/normalize helpers, production-path contracts, and the larva-local
+      schema.
+
+      - Symptom: required-field behavior, forbidden-field rejection, schema authority,
+      and production-path proof diverge even after the initial remediation phase.
+
+      - Why this fix is not surface-level: this step must collapse the full admission
+      path to the canonical authority basis instead of patching isolated call sites.
+
+
+      ### B1: required-field mismatch vs authority basis
+
+      Locations: canonical enforcement and all production admission consumers.
+
+      Remediation: align canonical requiredness so `can_spawn` is required, `description`
+      is optional, and `spec_version` is not elevated to requiredness unless the authority
+      basis explicitly says so.
+
+      Grep hint: search required-field sets and requiredness checks for `description`,
+      `spec_version`, and `can_spawn` across core admission logic, facade admission
+      logic, and schema artifacts.
+
+      IMPORTANT: search for siblings beyond the listed locations.
+
+
+      ### B2: assemble_candidate emits forbidden tools/side_effect_policy
+
+      Locations: assembly candidate construction and any helper shaping candidate
+      payloads.
+
+      Remediation: stop emitting `tools` and `side_effect_policy` on canonical output
+      paths; if legacy inputs mention them, they must be rejected or stripped according
+      to the authority basis rather than preserved into assembled candidates.
+
+      Grep hint: search for `tools` and `side_effect_policy` handling in assemble/patch/admission
+      helpers and candidate builders.
+
+      IMPORTANT: search for siblings beyond the listed locations.
+
+
+      ### B3: normalize_spec preserves forbidden side_effect_policy
+
+      Locations: normalize path and any normalization helpers that copy or retain
+      forbidden fields.
+
+      Remediation: make normalization authoritative with the canonical forbidden-field
+      policy so `side_effect_policy` cannot survive normalized canonical output.
+
+      Grep hint: search normalize helpers and spec field copying logic for `side_effect_policy`
+      preservation.
+
+      IMPORTANT: search for siblings beyond the listed locations.
+
+
+      ### B4: contracts/persona_spec.schema.json anyOf contradicts canonical requiredness
+      and still acts authoritative
+
+      Locations: `contracts/persona_spec.schema.json` and any code/docs that still
+      treat that schema as the contract authority.
+
+      Remediation: remove contradictory `anyOf` requiredness semantics and reframe
+      larva-local schema as derived from the canonical authority basis rather than
+      independent authority.
+
+      Grep hint: search schema requiredness clauses, `anyOf`, and references that
+      present the schema as authoritative for admission semantics.
+
+      IMPORTANT: search for siblings beyond the listed locations.
+
+
+      ### B5: production path contract gap from assembly/normalize behavior
+
+      Locations: production admission path from normalize/assemble through facade/shell-facing
+      admission.
+
+      Remediation: close the runtime contract gap so production behavior proves the
+      same blocker-sensitive semantics as the canonical contract and the behavioral
+      proof register can be completed with runtime-backed evidence.
+
+      Grep hint: search runtime admission path, facade admission entrypoints, and
+      proof-oriented tests/contracts that cover normalize + assemble + admission behavior.
+
+      IMPORTANT: search for siblings beyond the listed locations.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known Risks
+
+      - Canonical authority drift can recur if one path is patched without updating
+      sibling admission paths.
+
+      - Schema text can silently reassert local authority unless explicitly downgraded
+      to derived status.
+
+      - Production-path contract closure is incomplete unless runtime-facing evidence
+      exists for both accept and reject behavior.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any remaining success path that still tolerates `tools`, `side_effect_policy`,
+      or schema-driven weak requiredness.
+
+      2. Any canonical path where `description` is still required or `can_spawn` is
+      still optional.
+
+      3. Any schema artifact that still contradicts or overrides the canonical authority
+      basis.
+
+      4. Any claim of completion without production-path runtime proof that normalize/assemble/admission
+      now agree.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - canonical authority basis refs — key passage or "NOT READ: <reason>"
+
+      - phase contract/spec refs — key passage or "NOT READ: <reason>"
+
+      - schema artifact refs — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Evidence Expectations
+
+      - blocker_fingerprint for each of B1-B5
+
+      - exact files changed and why each change closes the blocker family
+
+      - sibling-search evidence for requiredness, forbidden fields, schema authority,
+      and production-path contracts
+
+      - explicit note of any remaining ambiguity; do not silently defer blocker-class
+      debt'
+    verification: '- Fix step scope covers ALL blocker families B1-B5 in one batch
+
+      - Evidence shows canonical requiredness, forbidden-field handling, schema authority,
+      and production-path contract closure were all updated
+
+      - Sibling-search evidence demonstrates no equivalent blocker pattern remains
+      in the canonical admission path'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Batched Gate Blocker\
+      \ Fix Report\n- blockers addressed: B1, B2, B3, B4, B5\n- blocker_fingerprint:\n\
+      \  - B1: <requiredness family>\n  - B2: <assemble forbidden-field family>\n\
+      \  - B3: <normalize forbidden-field family>\n  - B4: <schema-authority family>\n\
+      \  - B5: <production-path contract family>\n- exact files changed: <list>\n\
+      - sibling-search commands/results: <paste>\n- root cause closed: <why the authority\
+      \ split is now collapsed>\n- remaining ambiguity: <none or explicit item>\n\
+      - downstream proof enabled: <how retest can prove each blocker family>"
+    depends_on:
+    - canonical_core_admission.core-enforcement-impl
+    - canonical_core_admission.facade-admission-impl
+    - canonical_core_admission.verify
+    - canonical_core_admission.spec-conformance
+    agent: python-senior-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
