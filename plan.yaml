@@ -36032,6 +36032,66 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_contract_source.impl
+    name: Consolidate canonical contract metadata and rewire projections
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the single-source contract metadata seam from `dup_contract_source.contract-basis`.
+
+
+      YOUR SCOPE:
+
+      - collapse duplicated field-set and report-shape knowledge into one local source
+
+      - rewire validator, schema parity, and MCP-facing contract projection to consume
+      that source or be strongly derived from it
+
+      - preserve canonical authority ownership language and runtime semantics
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The new seam must actively drive or constrain downstream projections.'
+    verification: '- Main path: validator, schema snapshot, and MCP-facing projection
+      remain aligned
+
+      - Failure path: parity tests or equivalent checks catch drift when field sets
+      or error terms diverge'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Consolidation Evidence
+
+      - metadata_source_created_or_reused:
+
+      - validator_projection_aligned:
+
+      - schema_projection_aligned:
+
+      - mcp_projection_aligned:
+
+
+      ## Verification
+
+      - commands:
+
+      - outputs_summary:
+
+      '
+    depends_on:
+    - dup_contract_source.contract-basis
+    agent: python-senior-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
