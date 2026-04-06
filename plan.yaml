@@ -32239,7 +32239,7 @@ phases:
       \ contract surface and did not implement full behavioral conformance."
   - id: canonical_core_admission.tests-red
     name: Expose canonical admission gaps with focused tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -32317,6 +32317,8 @@ phases:
     depends_on:
     - canonical_core_admission.contract
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-06T02:00:33.857365+00:00'
   - id: canonical_core_admission.core-enforcement-impl
     name: Collapse core contract truth to canonical enforcement
     status: pending
