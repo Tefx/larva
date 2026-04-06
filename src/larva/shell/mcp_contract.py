@@ -44,7 +44,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_validate",
         "description": (
             "Validate a PersonaSpec JSON object against the canonical schema and semantic rules. "
-            "Use the capabilities field (tools field is deprecated but accepted for backward compatibility)."
+            "Use the capabilities field; tools is rejected at canonical admission."
         ),
         "input_schema": {
             "type": "object",
@@ -53,7 +53,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "PersonaSpec JSON to validate. Use capabilities field; "
-                        "tools is deprecated but accepted."
+                        "tools is rejected at canonical admission."
                     ),
                 }
             },
@@ -64,7 +64,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_assemble",
         "description": (
             "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model). "
-            "Toolsets define capabilities (tools field is deprecated but accepted for backward compatibility)."
+            "Toolsets define capabilities for canonical PersonaSpec assembly."
         ),
         "input_schema": {
             "type": "object",
@@ -83,8 +83,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": (
-                        "Toolset component names. Toolsets use the capabilities field "
-                        "(tools is deprecated)."
+                        "Toolset component names. Toolsets provide capability posture data "
+                        "for canonical capabilities output."
                     ),
                 },
                 "constraints": {
@@ -96,8 +96,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "overrides": {
                     "type": "object",
                     "description": (
-                        "Field overrides (wins over components). Use capabilities field; "
-                        "tools is deprecated but accepted."
+                        "Field overrides (wins over components). Canonical admission requires "
+                        "capabilities and rejects tools."
                     ),
                 },
                 "variables": {
@@ -112,8 +112,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_resolve",
         "description": (
             "Resolve a pre-registered persona by id, optionally with runtime overrides. "
-            "The resolved PersonaSpec uses capabilities field (tools is deprecated but "
-            "accepted for backward compatibility)."
+            "The resolved PersonaSpec uses canonical capabilities field."
         ),
         "input_schema": {
             "type": "object",
@@ -122,8 +121,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "overrides": {
                     "type": "object",
                     "description": (
-                        "Field overrides applied to the resolved spec (use capabilities field; "
-                        "tools is deprecated)"
+                        "Field overrides applied to the resolved spec. Canonical admission "
+                        "requires capabilities and rejects tools."
                     ),
                 },
             },
@@ -134,7 +133,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_register",
         "description": (
             "Register a PersonaSpec in the global registry. The spec should use capabilities field "
-            "(tools is deprecated but accepted for backward compatibility)."
+            "and must not include tools at canonical admission."
         ),
         "input_schema": {
             "type": "object",
@@ -142,8 +141,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "type": "object",
                     "description": (
-                        "PersonaSpec JSON (must pass validation). Use capabilities field; "
-                        "tools is deprecated but accepted."
+                        "PersonaSpec JSON (must pass validation). Canonical admission requires "
+                        "capabilities and rejects tools."
                     ),
                 }
             },
@@ -162,7 +161,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_component_list",
         "description": (
             "List all available components by type (prompts, toolsets, constraints, models). "
-            "Toolsets use capabilities field (tools is deprecated but accepted for backward compatibility)."
+            "Toolsets define capability posture data for canonical assembly."
         ),
         "input_schema": {
             "type": "object",
@@ -172,8 +171,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_component_show",
         "description": (
-            "Show content for a specific component by type and name. Toolsets use capabilities field "
-            "(tools is deprecated but accepted for backward compatibility)."
+            "Show content for a specific component by type and name. Toolsets define capability "
+            "posture data for canonical assembly."
         ),
         "input_schema": {
             "type": "object",
@@ -218,8 +217,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_clone",
         "description": (
-            "Clone a registered persona to a new id. The cloned PersonaSpec uses capabilities field "
-            "(tools is deprecated but accepted for backward compatibility)."
+            "Clone a registered persona to a new id. The cloned PersonaSpec uses canonical "
+            "capabilities field."
         ),
         "input_schema": {
             "type": "object",
@@ -240,8 +239,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_export",
         "description": (
             "Export persona specs from the registry. Either 'all' or 'ids' must be provided, "
-            "but not both. Exported specs use capabilities field (tools is deprecated but "
-            "accepted for backward compatibility)."
+            "but not both. Exported specs use canonical capabilities field."
         ),
         "input_schema": {
             "type": "object",
@@ -262,7 +260,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_update",
         "description": (
             "Update a registered persona by applying JSON merge patches to selected fields. "
-            "Patches can use capabilities field (tools is deprecated but accepted for backward compatibility)."
+            "Patches may update canonical capabilities field; tools is rejected at admission."
         ),
         "input_schema": {
             "type": "object",
@@ -274,8 +272,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "patches": {
                     "type": "object",
                     "description": (
-                        "JSON merge patches to apply to the persona. Use capabilities field; "
-                        "tools is deprecated but accepted."
+                        "JSON merge patches to apply to the persona. Canonical admission requires "
+                        "capabilities and rejects tools."
                     ),
                 },
             },
@@ -286,7 +284,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_update_batch",
         "description": (
             "Batch-update all personas matching 'where' clauses by applying JSON merge patches. "
-            "Patches can use capabilities field (tools is deprecated but accepted for backward compatibility)."
+            "Patches may update canonical capabilities field; tools is rejected at admission."
         ),
         "input_schema": {
             "type": "object",
@@ -300,8 +298,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "patches": {
                     "type": "object",
                     "description": (
-                        "JSON merge patches to apply to each matched persona. Use capabilities field; "
-                        "tools is deprecated but accepted."
+                        "JSON merge patches to apply to each matched persona. Canonical admission "
+                        "requires capabilities and rejects tools."
                     ),
                 },
                 "dry_run": {
