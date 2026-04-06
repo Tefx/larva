@@ -36659,3 +36659,35 @@ phases:
 
       '
     agent: wiring-auditor
+  - id: daa_deep_review.spec-conformance
+    name: Run DAA spec conformance audit
+    status: pending
+    description: 'Independent spec conformance audit over the appended DAA module.
+
+
+      Compare the authoritative DAA requirements and vocabulary against implemented
+      behavior and explicitly classify CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
+      AMBIGUOUS_SPEC, and SPEC_POSSIBLY_STALE.'
+    verification: Conformance evidence maps each reviewed requirement to an implementation
+      location and verdict.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Spec Conformance Report
+
+      | requirement | source | implementation | verdict | notes |
+
+      | --- | --- | --- | --- | --- |
+
+      '
+    depends_on:
+    - daa_deep_review.wiring-audit
+    agent: spec-verifier-tacit
