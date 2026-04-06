@@ -35749,3 +35749,11 @@ phases:
   depends_on:
   - dup_contract_source
   - dup_fixture_unification
+- id: dup_facade_admission
+  name: Facade Admission Workflow Consolidation
+  status: locked
+  gate: Collapse repeated app-layer admission skeleton into one preserved-behavior
+    seam.
+  depends_on:
+  - dup_contract_source
+  - dup_guardrails
