@@ -36134,6 +36134,66 @@ phases:
 
       '
     agent: python-executor
+  - id: daa_p1_impl.serial-integration
+    name: Join DAA P1 shared wiring
+    status: pending
+    description: 'step_type: implementation
+
+
+      tags:
+
+      - integration
+
+
+      Serial integration step: join the completed P1 isolated seams into shared registry,
+      wiring, export, or entrypoint surfaces that would otherwise conflict under parallel
+      execution.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Shared wiring is completed after isolated seam work
+
+      - At least one real path source→sink proof is defined for downstream verification
+
+      - No orphan export or unwired command remains in intended scope'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <paste exact command or test>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      **Path exercised**: <source> -> <sink>
+
+      '
+    depends_on:
+    - daa_p1_impl.parallel-seams
+    agent: python-executor
 - id: daa_p2_vocab
   name: DAA P2 Vocabulary and Drift Cleanup
   status: locked
