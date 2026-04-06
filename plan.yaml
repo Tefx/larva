@@ -35741,3 +35741,11 @@ phases:
     remain truthful.
   depends_on:
   - dup_guardrails
+- id: dup_error_abstraction
+  name: Component Error Projection Abstraction
+  status: locked
+  gate: Unify component error construction and transport projection without changing
+    envelopes.
+  depends_on:
+  - dup_contract_source
+  - dup_fixture_unification
