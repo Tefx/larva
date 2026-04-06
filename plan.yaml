@@ -35763,3 +35763,14 @@ phases:
   gate: Normalize single/plural component kind vocabulary across public surfaces.
   depends_on:
   - dup_guardrails
+- id: dup_doc_sync
+  name: Duplicate-Abstraction Documentation Sync
+  status: locked
+  gate: Synchronize architecture and usage docs to the new abstraction boundaries.
+  depends_on:
+  - dup_web_convergence
+  - dup_contract_source
+  - dup_fixture_unification
+  - dup_error_abstraction
+  - dup_facade_admission
+  - dup_component_kind
