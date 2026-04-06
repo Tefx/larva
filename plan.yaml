@@ -36139,6 +36139,48 @@ phases:
     depends_on:
     - dup_contract_source.impl
     agent: spec-verifier-tacit
+  - id: dup_contract_source.gate
+    name: Gate canonical contract source consolidation
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: repeated contract knowledge must now be controlled by one local
+      projection seam with parity enforcement.'
+    verification: '- Single-source seam is real, used, and parity-checked
+
+      - No blocker-class projection drift remains'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - metadata_owner_status:
+
+      - projection_parity_status:
+
+      - residual_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_contract_source.contract-basis
+    - dup_contract_source.impl
+    - dup_contract_source.spec-conformance
+    agent: gate-reviewer-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
