@@ -36496,6 +36496,55 @@ phases:
     depends_on:
     - dup_error_abstraction.error-basis
     agent: python-senior-tacit
+  - id: dup_error_abstraction.verify
+    name: Verify component error envelopes remain aligned across transports
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Independently verify component error semantics after abstraction.'
+    verification: '- Not found, invalid kind, and store unavailable cases retain aligned
+      shared meaning across transports
+
+      - Any transport-specific divergence is explicit and justified'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Cross-Transport Error Matrix
+
+      - facade:
+
+      - cli:
+
+      - mcp:
+
+      - python_api:
+
+      - web:
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      '
+    depends_on:
+    - dup_error_abstraction.impl
+    agent: integration-verifier-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
