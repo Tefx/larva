@@ -35727,3 +35727,10 @@ phases:
     seam.
   depends_on:
   - dup_guardrails
+- id: dup_contract_source
+  name: Canonical Contract Source Consolidation
+  status: locked
+  gate: Collapse repeated contract metadata into a single authoritative local projection
+    source.
+  depends_on:
+  - dup_guardrails
