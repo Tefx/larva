@@ -35686,6 +35686,48 @@ phases:
 
       '
     agent: software-architect
+  - id: daa_arch_basis.remediation-inventory
+    name: Inventory DAA remediation obligations
+    status: pending
+    description: 'Build the blocker-oriented DAA remediation inventory from existing
+      repo state and prior completed phases.
+
+
+      For each obligation record:
+
+      - provenance: pre-existing | introduced_now | out-of-step-origin
+
+      - disposition: blocking-now | blocking-later | non-blocking
+
+      - intersecting downstream gate(s)
+
+      - owning future DAA step
+
+
+      Do not use provenance as disposition. Any item intersecting remaining DAA gates
+      must get explicit remediation ownership.'
+    verification: Evidence lists each DAA obligation with blocker disposition and
+      downstream ownership; no blocker-class item remains ownerless.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## DAA Remediation Inventory
+
+      | obligation | provenance | disposition | intersects_gate | owner_step |
+
+      | --- | --- | --- | --- | --- |
+
+      '
+    depends_on:
+    - daa_arch_basis.authority-map
+    agent: software-architect
 - id: daa_p0_contracts
   name: DAA P0 Contracts
   status: locked
