@@ -34527,13 +34527,13 @@ phases:
       \ authoritative contract definitions"
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
-  status: pending
+  status: in_progress
   depends_on:
   - canonical_shell_surfaces
   steps:
   - id: canonical_surface_verify.cross-surface-conformance
     name: Verify canonical conformance across all consumer surfaces
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -34628,6 +34628,8 @@ phases:
 
       '
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-06T12:24:28.949594+00:00'
   - id: canonical_surface_verify.web-liveness-probe
     name: Run packaged web liveness probe for canonical admission
     status: pending
