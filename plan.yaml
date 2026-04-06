@@ -36435,6 +36435,67 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_error_abstraction.impl
+    name: Implement shared component error projection and rewire transports
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the shared component error seam from `dup_error_abstraction.error-basis`.
+
+
+      YOUR SCOPE:
+
+      - collapse repeated component error construction into one shared abstraction
+
+      - preserve transport-specific wrapping while keeping shared meaning and invariant
+      fields aligned
+
+      - update facade / CLI / MCP / Python API / web component paths to consume the
+      new seam where applicable
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Real production paths must consume the shared error projection seam.'
+    verification: '- Main path: shared component errors preserve envelope invariants
+      across transports
+
+      - Failure path: invalid kind / not found / store unavailable remain distinguishable
+      and aligned'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Error Abstraction Evidence
+
+      - shared_factory_location:
+
+      - transport_adopters:
+
+      - invariant_fields_preserved:
+
+      - edge_case_coverage:
+
+
+      ## Verification
+
+      - commands:
+
+      - outputs_summary:
+
+      '
+    depends_on:
+    - dup_error_abstraction.error-basis
+    agent: python-senior-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
