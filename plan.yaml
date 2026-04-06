@@ -36099,6 +36099,54 @@ phases:
     after P0 closure.
   depends_on:
   - daa_p0_impl
+  steps:
+  - id: daa_p1_impl.parallel-seams
+    name: Implement DAA P1 isolated seams
+    status: pending
+    description: 'step_type: implementation
+
+
+      tags:
+
+      - integration
+
+
+      Implement the P1 isolated seam repairs unlocked by P0 closure, but keep shared
+      registry or wiring edits out of this step. Prefer isolated file clusters and
+      defer shared integration to a later serial join step.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Isolated seam changes are complete
+
+      - Shared writable surfaces remain deferred to join step
+
+      - Focused regressions exist for main path and highest-risk failure path'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Integration Evidence
+
+      - isolated_seams_changed:
+
+      - protected_shared_surfaces:
+
+      - focused_regressions:
+
+      - path_exercised:
+
+      '
+    agent: python-executor
 - id: daa_p2_vocab
   name: DAA P2 Vocabulary and Drift Cleanup
   status: locked
