@@ -222,3 +222,147 @@ class TestSchemaRequiredFields:
         }
         is_valid, error = validate_persona_spec(spec)
         assert not is_valid
+
+
+class TestSchemaDriftFromCanonical:
+    """Tests exposing schema drift from canonical contract.
+
+    These tests document the divergence between:
+    - the local JSON schema (contracts/persona_spec.schema.json)
+    - the opifex canonical contract (INTERFACES.md / validate.py docstring)
+
+    Gap documentation:
+    - gap_1: schema accepts tools (anyOf requires tools OR capabilities)
+    - gap_2: schema accepts side_effect_policy (declared but not forbidden)
+    - gap_3: schema does NOT enforce capabilities as required
+    - gap_4: schema allows extra unknown fields (additionalProperties: true in model_params only)
+      BUT the canonical contract forbids unknown top-level fields
+    - gap_5: tools is not marked as forbidden in schema
+    """
+
+    def test_schema_allows_tools_without_capabilities(self) -> None:
+        """Schema accepts tools-only spec, but canonical contract forbids tools.
+
+        Gap: Schema uses anyOf to allow tools OR capabilities.
+        Canonical: tools is never admissible at canonical boundary.
+        Downstream step: canonical_core_admission.implementation
+        """
+        # This spec uses only tools (no capabilities) - allowed by schema, forbidden by canonical
+        spec = {
+            "id": "tools-only-persona",
+            "description": "Persona using deprecated tools field",
+            "prompt": "You are helpful",
+            "model": "gpt-4",
+            "tools": {"filesystem": "read_write"},
+            "spec_version": "0.1.0",
+        }
+        is_valid, error = validate_persona_spec(spec)
+        # Schema says valid, but canonical contract says FORBIDDEN
+        assert is_valid, (
+            f"Schema accepts tools-only (valid per schema), but canonical forbids it: {error}"
+        )
+        # This documents the gap - schema permits but canonical rejects
+
+    def test_schema_allows_side_effect_policy(self) -> None:
+        """Schema accepts side_effect_policy, but canonical contract forbids it.
+
+        Gap: side_effect_policy is declared in schema properties but not forbidden.
+        Canonical: side_effect_policy is forbidden at canonical admission boundary.
+        Downstream step: canonical_core_admission.implementation
+        """
+        spec = {
+            "id": "sep-persona",
+            "description": "Persona with deprecated side_effect_policy",
+            "prompt": "You are helpful",
+            "model": "gpt-4",
+            "capabilities": {"shell": "read_only"},
+            "side_effect_policy": "read_only",
+            "spec_version": "0.1.0",
+        }
+        is_valid, error = validate_persona_spec(spec)
+        # Schema says valid, canonical contract says forbidden
+        assert is_valid, f"Schema accepts side_effect_policy, but canonical forbids: {error}"
+
+    def test_schema_allows_extra_top_level_fields(self) -> None:
+        """Schema allows extra unknown fields, but canonical contract forbids them.
+
+        Gap: additionalProperties is false at root, BUT the schema structure
+        means local validate.py doesn't actually check this.
+        This test documents that the JSON schema itself doesn't validate
+        extra field prohibition (it relies on code-level validation).
+        Downstream step: canonical_core_admission.implementation
+        """
+        spec = {
+            "id": "extra-fields-persona",
+            "description": "Persona with unknown extra field",
+            "prompt": "You are helpful",
+            "model": "gpt-4",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+            "unknown_canonical_field": "forbidden_value",
+        }
+        is_valid, error = validate_persona_spec(spec)
+        # Schema with additionalProperties:false should reject extra fields
+        assert not is_valid, (
+            "Schema should reject unknown top-level fields "
+            "(additionalProperties:false at root), but got valid"
+        )
+
+    def test_canonical_required_only_shape_passes_schema(self) -> None:
+        """Canonical required-only shape (id, description, prompt, model, capabilities, spec_version).
+
+        This is the shape that canonical contract says MUST be admitted.
+        Schema should accept it.
+        """
+        canonical = {
+            "id": "canonical-persona",
+            "description": "Canonical test persona",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        is_valid, error = validate_persona_spec(canonical)
+        assert is_valid, f"Canonical required-only shape should pass schema: {error}"
+
+    def test_tools_with_capabilities_passes_schema(self) -> None:
+        """Spec with both tools and capabilities passes schema.
+
+        Gap: Schema allows this; canonical contract forbids tools presence entirely.
+        """
+        spec = {
+            "id": "both-fields-persona",
+            "description": "Persona with both tools and capabilities",
+            "prompt": "You are helpful",
+            "model": "gpt-4",
+            "capabilities": {"shell": "read_only"},
+            "tools": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        is_valid, error = validate_persona_spec(spec)
+        assert is_valid, f"Schema allows both fields, but canonical forbids tools: {error}"
+
+
+class TestSchemaVsCanonicalContractSummary:
+    """Summary of schema vs. canonical contract drift.
+
+    These tests summarize the expected behaviors for the implementation phase.
+    """
+
+    def test_canonical_fixtures_summary(self) -> None:
+        """Summary: Canonical contract requires capabilities, forbids tools/side_effect_policy.
+
+        Canonical admission contract (per INTERFACES.md and validate.py):
+        - REQUIRED: id, description, prompt, model, capabilities, spec_version
+        - FORBIDDEN: tools, side_effect_policy, unknown extra fields
+        - OPTIONAL: model_params, can_spawn, compaction_prompt, spec_digest
+
+        Schema (contracts/persona_spec.schema.json):
+        - REQUIRED: id, description, prompt, model, spec_version (capabilities NOT required by schema)
+        - anyOf: tools OR capabilities (so tools-only is valid per schema)
+        - side_effect_policy: declared in properties (accepted)
+        - additionalProperties: false at root (extra fields rejected by schema, but gap_3)
+
+        This divergence is what the implementation step must resolve.
+        """
+        pass  # Documentation only - actual gap tests above

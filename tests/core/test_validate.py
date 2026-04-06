@@ -442,3 +442,316 @@ class TestCapabilitiesValidation:
                 }
             )
             assert report["valid"] is True, f"{posture} should be valid"
+
+
+class TestCanonicalAdmissionRejection:
+    """Tests exposing gaps between current implementation and canonical admission contract.
+
+    Per validate.py docstring and INTERFACES.md:
+    - tools is forbidden at the canonical admission boundary (not deprecated-advisory)
+    - side_effect_policy is forbidden at the canonical admission boundary
+    - unknown top-level fields are forbidden at the canonical admission boundary
+    - capabilities is required at the canonical admission boundary
+
+    These tests document the EXPECTED canonical behavior and will FAIL until
+    the implementation is corrected to match the canonical contract.
+
+    Gap coverage:
+    - gap_1: tools currently emits warning but should be rejected (FORBIDDEN_EXTRA_FIELD)
+    - gap_2: side_effect_policy currently emits warning but should be rejected (FORBIDDEN_EXTRA_FIELD)
+    - gap_3: extra unknown fields currently not checked (extra fields silently accepted)
+    - gap_4: capabilities not enforced as required (spec without capabilities currently passes)
+    """
+
+    def test_tools_field_rejected_at_canonical_boundary(self):
+        """tools is forbidden at canonical admission, not a deprecation warning.
+
+        Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
+        Expected: Should produce FORBIDDEN_EXTRA_FIELD error and mark spec invalid.
+        Downstream step: canonical_core_admission.implementation
+        """
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "tools": {"shell": "read_only"},  # forbidden at canonical boundary
+            }
+        )
+        # Canonical contract: tools is not admissible canonical input
+        assert report["valid"] is False, (
+            "tools is forbidden at canonical admission boundary; got valid=True with warnings only"
+        )
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
+            f"Expected FORBIDDEN_EXTRA_FIELD error for 'tools', got: {[e['code'] for e in report['errors']]}"
+        )
+
+    def test_side_effect_policy_field_rejected_at_canonical_boundary(self):
+        """side_effect_policy is forbidden at canonical admission boundary.
+
+        Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
+        Expected: Should produce FORBIDDEN_EXTRA_FIELD error and mark spec invalid.
+        Downstream step: canonical_core_admission.implementation
+        """
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "side_effect_policy": "read_only",  # forbidden at canonical boundary
+            }
+        )
+        # Canonical contract: side_effect_policy is not admissible canonical input
+        assert report["valid"] is False, (
+            "side_effect_policy is forbidden at canonical admission boundary; "
+            "got valid=True with warnings only"
+        )
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
+            f"Expected FORBIDDEN_EXTRA_FIELD error for 'side_effect_policy', "
+            f"got: {[e['code'] for e in report['errors']]}"
+        )
+
+    def test_extra_unknown_field_rejected(self):
+        """Unknown top-level fields are forbidden at canonical admission.
+
+        Gap: Extra fields are silently accepted currently.
+        Expected: Should produce FORBIDDEN_EXTRA_FIELD error.
+        Downstream step: canonical_core_admission.implementation
+        """
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "unknown_field": "some_value",  # not in canonical contract
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
+            f"Expected FORBIDDEN_EXTRA_FIELD for unknown field, got: {[e['code'] for e in report['errors']]}"
+        )
+
+    def test_capabilities_required_at_canonical_boundary(self):
+        """capabilities is required at canonical admission boundary.
+
+        Gap: Spec without capabilities currently passes (only one of tools/capabilities required by schema).
+        Expected: Should produce MISSING_REQUIRED_FIELD error.
+        Downstream step: canonical_core_admission.implementation
+        """
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is False, (
+            "capabilities is required at canonical boundary; "
+            "spec without capabilities should be rejected"
+        )
+        assert any(e["code"] == "MISSING_REQUIRED_FIELD" for e in report["errors"]), (
+            f"Expected MISSING_REQUIRED_FIELD error for missing 'capabilities', "
+            f"got: {[e['code'] for e in report['errors']]}"
+        )
+
+    def test_both_tools_and_capabilities_rejected(self):
+        """Spec with both tools and capabilities is invalid at canonical boundary.
+
+        Gap: Currently warns that capabilities takes precedence but still passes.
+        Expected: tools presence alone is forbidden regardless of capabilities presence.
+        Downstream step: canonical_core_admission.implementation
+        """
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "capabilities": {"shell": "read_only"},
+                "tools": {"shell": "read_only"},  # forbidden even when capabilities present
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+
+
+class TestCanonicalRequiredOnlyFixture:
+    """Tests using canonical required-only shape from fixture.
+
+    This section validates that a spec with ONLY the required canonical fields
+    (and valid capabilities) passes validation. This is the spec shape that
+    downstream implementation must admit without errors.
+    """
+
+    def test_canonical_required_only_shape_valid(self):
+        """Spec with only required fields + capabilities should be valid.
+
+        Canonical required fields: id, description, prompt, model, capabilities, spec_version
+        No tools, no side_effect_policy, no extra fields.
+        """
+        canonical = {
+            "id": "canonical-persona",
+            "description": "A canonical test persona",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(canonical)
+        assert report["valid"] is True, (
+            f"Canonical required-only shape should be valid, got errors: {report['errors']}"
+        )
+        assert report["warnings"] == [], (
+            f"Canonical shape should have no warnings, got: {report['warnings']}"
+        )
+
+    def test_canonical_shape_with_model_params_still_valid(self):
+        """Canonical shape with optional model_params is still valid."""
+        canonical = {
+            "id": "canonical-with-params",
+            "description": "Test persona with model params",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "model_params": {"temperature": 0.7},
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(canonical)
+        assert report["valid"] is True
+        assert report["warnings"] == []
+
+    def test_canonical_shape_with_can_spawn_still_valid(self):
+        """Canonical shape with optional can_spawn is still valid."""
+        canonical = {
+            "id": "spawnable-persona",
+            "description": "A persona that can spawn",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "can_spawn": True,
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(canonical)
+        assert report["valid"] is True
+        assert report["warnings"] == []
+
+    def test_canonical_shape_with_compaction_prompt_still_valid(self):
+        """Canonical shape with optional compaction_prompt is still valid."""
+        canonical = {
+            "id": "compactable-persona",
+            "description": "A persona with compaction",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "compaction_prompt": "Summarize the conversation.",
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(canonical)
+        assert report["valid"] is True
+        assert report["warnings"] == []
+
+    def test_tools_field_in_canonical_fixture_produces_rejection(self):
+        """Fixture variation: tools present = FORBIDDEN_EXTRA_FIELD.
+
+        This test exposes gap_1: tools should be rejected, not warned.
+        """
+        spec = {
+            "id": "persona-with-tools",
+            "description": "Test persona with forbidden tools field",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "tools": {"shell": "read_only"},  # forbidden at canonical boundary
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(spec)
+        assert report["valid"] is False
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+
+    def test_side_effect_policy_in_canonical_fixture_produces_rejection(self):
+        """Fixture variation: side_effect_policy present = FORBIDDEN_EXTRA_FIELD.
+
+        This test exposes gap_2: side_effect_policy should be rejected, not warned.
+        """
+        spec = {
+            "id": "persona-with-sep",
+            "description": "Test persona with forbidden side_effect_policy",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "side_effect_policy": "read_only",  # forbidden at canonical boundary
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(spec)
+        assert report["valid"] is False
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+
+    def test_extra_forbidden_field_produces_rejection(self):
+        """Fixture variation: extra unknown field produces FORBIDDEN_EXTRA_FIELD.
+
+        This test exposes gap_3: unknown fields should be rejected.
+        """
+        spec = {
+            "id": "persona-with-extra",
+            "description": "Test persona with extra forbidden field",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "forbidden_extra_field": "some_value",  # not in canonical contract
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(spec)
+        assert report["valid"] is False
+        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+
+
+class TestAdmissionSuccessImpliesConformance:
+    """Test that admission success implies canonical contract conformance.
+
+    Per validate.py docstring: "If valid is True for a spec accepted through
+    larva production paths, that success must mean the candidate conforms to
+    the opifex canonical PersonaSpec contract."
+
+    Gap: Currently, specs with tools/side_effect_policy are marked valid
+    (just warned), so admission success does NOT imply conformance.
+    """
+
+    def test_valid_report_does_not_contain_forbidden_fields(self):
+        """A valid report means the spec has no forbidden canonical fields.
+
+        Gap: Currently a spec with tools is marked valid=True with just a warning.
+        Expected: A valid report means zero forbidden fields present.
+        """
+        # This spec has tools - currently valid with warning, should be invalid
+        spec_with_tools = {
+            "id": "tools-persona",
+            "description": "Test",
+            "prompt": "You help.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "tools": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(spec_with_tools)
+        # If valid, then no forbidden fields should be present
+        if report["valid"]:
+            assert "tools" not in spec_with_tools, (
+                "Valid report found with 'tools' field present - "
+                "admission success does not imply conformance"
+            )
+
+    def test_valid_report_does_not_contain_side_effect_policy(self):
+        """A valid report means no side_effect_policy present.
+
+        Gap: Currently a spec with side_effect_policy is marked valid with warning.
+        Expected: Valid report means this field is absent.
+        """
+        spec_with_sep = {
+            "id": "sep-persona",
+            "description": "Test",
+            "prompt": "You help.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "side_effect_policy": "read_only",
+            "spec_version": "0.1.0",
+        }
+        report = validate_module.validate_spec(spec_with_sep)
+        if report["valid"]:
+            assert "side_effect_policy" not in spec_with_sep, (
+                "Valid report found with 'side_effect_policy' field present - "
+                "admission success does not imply conformance"
+            )
