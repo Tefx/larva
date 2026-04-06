@@ -33645,7 +33645,7 @@ phases:
       reviewer: vectl-decide-orchestrator-tacit
   - id: canonical_core_admission.retest-gate-blocker-b00-requiredness-authority
     name: Retest authority and runtime requiredness alignment
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -33720,6 +33720,29 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-06T07:48:53.608749+00:00'
+    done_at: '2026-04-06T07:53:17.436141+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- ADR-003-canonical-requiredness-authority.md\
+      \ — required/optional authority set reviewed.\n- design/opifex-canonical-authority-basis.md\
+      \ — required/optional pins now match ADR/runtime.\n- src/larva/core/validate.py\
+      \ — canonical required and forbidden sets reviewed.\n- contracts/persona_spec.schema.json\
+      \ — required array and additionalProperties posture reviewed.\n- INTERFACES.md\
+      \ — canonical admission required/optional/forbidden summary reviewed.\n\n##\
+      \ Alignment Audit\n- Authority text reviewed: basis doc + ADR-003 are aligned.\n\
+      - Runtime enforcement reviewed: validate.py required/forbidden checks aligned\
+      \ with authority.\n- Additional synchronized artifacts reviewed: schema + interfaces\
+      \ aligned with same field semantics.\n\n## Requiredness Verdict\n- can_spawn\
+      \ status: aligned (optional across authority/runtime/schema/interfaces).\n-\
+      \ description status: aligned (required across authority/runtime/schema/interfaces).\n\
+      - Alignment result: aligned.\n\n## Evidence\n- File/section citations:\n  -\
+      \ design/opifex-canonical-authority-basis.md required/optional section\n  -\
+      \ ADR-003 requiredness section\n  - validate.py _CANONICAL_REQUIRED_FIELDS /\
+      \ _CANONICAL_ALLOWED_FIELDS / _CANONICAL_FORBIDDEN_FIELDS\n  - schema required\
+      \ list and additionalProperties=false\n  - INTERFACES canonical admission summary\n\
+      - Runtime enforcement citations:\n  - _validate_required_fields enforces canonical\
+      \ required set\n  - _validate_forbidden_fields rejects tools/side_effect_policy/unknown\
+      \ fields\n- Residual gaps:\n  - Legacy transition-era tests still expect warning/acceptance\
+      \ behavior; this is test-debt and does not indicate requiredness-authority mismatch.\n\
+      \ngate_open_allowed: true"
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
