@@ -32966,6 +32966,8 @@ phases:
     - canonical_core_admission.spec-conformance
     - canonical_core_admission.fix-gate-blockers-b1-b5
     - canonical_core_admission.retest-gate-blockers-b1-b5
+    - canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
+    - canonical_core_admission.retest-gate-blocker-b00-requiredness-authority
     agent: gate-reviewer-tacit
   - id: canonical_core_admission.fix-gate-blockers-b1-b5
     name: Fix canonical core admission gate blockers B1-B5
