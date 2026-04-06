@@ -36798,6 +36798,40 @@ phases:
   gate: Normalize single/plural component kind vocabulary across public surfaces.
   depends_on:
   - dup_guardrails
+  steps:
+  - id: dup_component_kind.alias-basis
+    name: Define canonical component-kind vocabulary and alias policy
+    status: pending
+    description: 'step_type: review
+
+
+      Define the internal canonical component-kind vocabulary and the compatibility
+      alias policy for public surfaces.'
+    verification: '- Canonical vocabulary is chosen explicitly
+
+      - Alias handling and eventual cleanup strategy are documented'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Alias Basis
+
+      - canonical_vocabulary:
+
+      - accepted_aliases:
+
+      - internal_normalization_owner:
+
+      - cleanup_strategy:
+
+      '
+    agent: software-architect-tacit
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
