@@ -34006,7 +34006,7 @@ phases:
     claimed_at: '2026-04-06T11:39:16.037983+00:00'
   - id: canonical_shell_surfaces.surface-contract-impl
     name: Clean shell transport contract text and handlers to canonical-only semantics
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags:\n- integration\n\nFill in stub\
       \ bodies in the existing shell transport signatures per the contract from step\
       \ `canonical_shell_surfaces.contract`.\n\nUPSTREAM ARTIFACTS (from contract/test\
@@ -34089,6 +34089,51 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-06T11:38:46.870615+00:00'
+    done_at: '2026-04-06T12:00:09.132560+00:00'
+    evidence: '## Integration Evidence
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      uv run pytest tests/shell/test_canonical_boundary_gaps.py -v
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      Canonical boundary gap suite executed with targeted coverage; MCP/web/core override
+      rejection alignment verified by passing focused checks.
+
+      ```
+
+
+      **Path exercised**: transport surface -> facade -> core admission
+
+
+      **Cross-surface consistency checked**:
+
+      - MCP: contract text updated to explicit rejection semantics for deprecated
+      tools acceptance
+
+      - Web: patch/admission handling aligned to canonical capabilities path and rejection
+      boundaries
+
+      - Python API: override path enforces forbidden-field rejection at canonical
+      boundary
+
+      - CLI: projection semantics aligned via shared canonical contract surfaces
+
+
+      Deviations: none'
   - id: canonical_shell_surfaces.verify
     name: Independently verify shell and projection cleanup
     status: pending
