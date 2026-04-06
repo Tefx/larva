@@ -36334,6 +36334,49 @@ phases:
 
       '
     agent: doc-reviewer-tacit
+  - id: daa_p2_vocab.align
+    name: Align DAA vocabulary surfaces
+    status: pending
+    description: 'step_type: implementation
+
+
+      Apply the approved non-blocking vocabulary and naming alignment across the DAA
+      scope without broadening public contract semantics.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Vocabulary drift listed as safe-to-clean is reconciled
+
+      - No authority conflict is silently resolved inside this step
+
+      - Focused regressions or doc assertions exist for renamed surfaces'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Alignment Evidence
+
+      - terms_aligned:
+
+      - surfaces_touched:
+
+      - non_goals_preserved:
+
+      - followups_deferred:
+
+      '
+    depends_on:
+    - daa_p2_vocab.inventory
+    agent: python-executor
 - id: daa_cross_surface_verify
   name: DAA Cross-Surface Verification
   status: locked
