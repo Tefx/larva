@@ -35720,3 +35720,10 @@ phases:
     depends_on:
     - dup_guardrails.behavior-matrix
     agent: gate-reviewer-tacit
+- id: dup_web_convergence
+  name: Web Surface Convergence
+  status: locked
+  gate: Converge packaged and contrib web persona endpoints onto one canonical implementation
+    seam.
+  depends_on:
+  - dup_guardrails
