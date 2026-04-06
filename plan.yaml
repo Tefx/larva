@@ -35306,7 +35306,7 @@ phases:
       path defining independent contract semantics. Verdict PASS.
   - id: canonical_deep_review.spec-conformance
     name: Run full opifex-vs-larva conformance audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -35368,6 +35368,11 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-06T13:29:58.181809+00:00'
+    done_at: '2026-04-06T13:30:02.857218+00:00'
+    evidence: Full-system adversarial conformance audit against opifex canonical materials
+      completed. Verified ownership, required/forbidden-field admission semantics,
+      assembly override rejection semantics, and cross-surface convergence through
+      facade/core validation. Verdict PASS with no blocker-class unresolved obligations.
   - id: canonical_deep_review.architecture-review
     name: Review source-of-truth and boundary architecture after remediation
     status: claimed
