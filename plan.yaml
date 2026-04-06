@@ -32355,7 +32355,7 @@ phases:
       - No product code edits performed"
   - id: canonical_core_admission.core-enforcement-impl
     name: Collapse core contract truth to canonical enforcement
-    status: pending
+    status: claimed
     description: "step_type: implementation\n\nFill in stub bodies within the existing\
       \ core admission signatures so they enforce the contract from step `canonical_core_admission.contract`.\n\
       \nUPSTREAM ARTIFACTS (from contract/test steps):\n- `src/larva/core/spec.py`\
@@ -32415,6 +32415,8 @@ phases:
     - canonical_core_admission.contract
     - canonical_core_admission.tests-red
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-06T02:21:07.824869+00:00'
   - id: canonical_core_admission.facade-admission-impl
     name: Complete facade and assembly admission wiring against the canonical core
     status: pending
