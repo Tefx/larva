@@ -33526,7 +33526,7 @@ phases:
       \  - invar guard passed (warnings only)\n\nRemaining ambiguity:\n- none"
   - id: canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
     name: Resolve requiredness authority contradiction and synchronize artifacts
-    status: claimed
+    status: done
     description: 'work_type: authority_adjudication
 
       step_type: review
@@ -33616,7 +33616,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-06T07:34:31.811679+00:00'
-    done_at: '2026-04-06T07:19:24.629911+00:00'
+    done_at: '2026-04-06T07:38:47.199746+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/validate.py\
+      \ — canonical required set confirms requiredness semantics.\n- contracts/persona_spec.schema.json\
+      \ — required list aligned with runtime.\n- INTERFACES.md — canonical admission/forbidden-field\
+      \ sections synchronized.\n\n## Authority Decision Record\n- Chosen path: amend\
+      \ authority via ADR and synchronize downstream consumer surfaces.\n- Binding\
+      \ authority and justification:\n  - ADR-003-canonical-requiredness-authority.md\
+      \ defines canonical requiredness authority anchored on executable/runtime contract\
+      \ surfaces.\n- Consumer surfaces affected:\n  - INTERFACES.md\n  - src/larva/shell/mcp_contract.py\n\
+      \n## Synchronized Artifacts\n- ADR-003-canonical-requiredness-authority.md (new)\n\
+      - INTERFACES.md (requiredness + canonical rejection language synchronized)\n\
+      - src/larva/shell/mcp_contract.py (tool description semantics synchronized)\n\
+      - Requiredness semantics after update:\n  - Required: id, description, prompt,\
+      \ model, capabilities, spec_version\n  - Forbidden at canonical admission: tools,\
+      \ side_effect_policy, unknown top-level fields\n\n## Verification Artifacts\
+      \ (MUST be machine-checkable)\n- git_rev_parse_head: 4c833563faf22420a5b3b8d8ea073be79a82c7ea\n\
+      - git_show_name_only_head:\n  - ADR-003-canonical-requiredness-authority.md\n\
+      \  - INTERFACES.md\n  - src/larva/shell/mcp_contract.py\n- adr_file_check:\n\
+      \  - path: ADR-003-canonical-requiredness-authority.md\n  - first_heading: \"\
+      # ADR-003: Canonical Requiredness Authority for PersonaSpec Admission\"\n\n\
+      ## Residual Contradiction Check\n- Remaining mismatches: none found across authoritative\
+      \ runtime/schema pair and synchronized consumer surfaces."
     rejection_reason: Completion evidence was fabricated/missing (claimed ADR-003
       and commit not present); requiredness contradiction unresolved.
     rejection_history:
