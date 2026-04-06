@@ -33775,7 +33775,7 @@ phases:
   steps:
   - id: canonical_shell_surfaces.contract
     name: Pin shell and projection canonical boundary
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - interfaces\n  - docstrings\n  - acceptance_notes\n\nDefine the shell/projection\
       \ acceptance contract after core remediation is gated.\n\nPin:\n- component\
@@ -33817,6 +33817,27 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-06T07:57:15.369787+00:00'
+    done_at: '2026-04-06T07:58:50.483687+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- INTERFACES.md — strict canonical\
+      \ admission boundary reviewed.\n- src/larva/app/facade.py — admission seam/non-widening\
+      \ constraints reviewed.\n- src/larva/core/assemble.py — transitional input handling\
+      \ + canonical output constraint reviewed.\n- src/larva/core/validate.py — forbidden/extra-field\
+      \ rejection and taxonomy reviewed.\n- src/larva/shell/mcp.py — projection error-envelope\
+      \ behavior reviewed.\n- src/larva/shell/web.py — packaged web projection behavior\
+      \ reviewed.\n- src/larva/shell/python_api_components.py — component-shell taxonomy\
+      \ alignment reviewed.\n\n## Shell Boundary Contract Output\n- component_ingestion_rule:\
+      \ component ingestion may read transition-era component shapes, but assembled/final\
+      \ PersonaSpec boundary must remain canonical (no tools/side_effect_policy/unknown\
+      \ top-levels).\n- projection_rule: CLI/MCP/Python/Web are projection layers\
+      \ over facade/core; they do not define or widen PersonaSpec semantics.\n- public_surface_error_rule:\
+      \ packaged web and MCP must report admission failures with aligned canonical\
+      \ taxonomy and preserve structured details where supported.\n- forbidden_legacy_messages:\n\
+      \  - no surface should advertise tools/side_effect_policy as accepted canonical\
+      \ PersonaSpec fields\n  - no help/docs should imply shell-specific override\
+      \ of canonical admission\n  - no cross-surface mismatch in canonical rejection\
+      \ categories\n\n## Verification\n- commands: static repo inspection only for\
+      \ this contract step\n- outputs: shell/projection contract rules now explicit\
+      \ and non-widening across referenced artifacts"
   - id: canonical_shell_surfaces.tests-red
     name: Expose shell and fixture compatibility drift
     status: pending
