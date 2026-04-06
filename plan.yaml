@@ -37076,3 +37076,42 @@ phases:
     duplicate logic.
   depends_on:
   - dup_doc_sync
+  steps:
+  - id: dup_deep_review.wiring-audit
+    name: Run full wiring audit over duplicate-abstraction remediation
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      Audit whether all public surfaces actually route through the newly introduced
+      shared seams rather than stale duplicated paths.'
+    verification: '- No stale duplicated path remains active on public surfaces
+
+      - Shared seams are real runtime wiring, not dead abstractions'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Audit Output
+
+      - active_shared_seams:
+
+      - stale_or_orphaned_paths:
+
+      - bypass_findings:
+
+      - verdict:
+
+      '
+    agent: wiring-auditor
