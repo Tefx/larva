@@ -34292,7 +34292,7 @@ phases:
       | N/A | N/A |'
   - id: canonical_shell_surfaces.wiring-audit
     name: Audit shell wiring for canonical contract reachability
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -34358,6 +34358,36 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-06T12:01:03.999268+00:00'
+    done_at: '2026-04-06T12:10:44.693237+00:00'
+    evidence: '## Wiring Audit Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      **Orphan exports / stale compatibility helpers**:
+
+      ```
+
+      No orphaned compatibility exports found among touched shell surfaces.
+
+      Intentional ingestion-boundary compatibility handling identified and bounded.
+
+      ```
+
+
+      **Unaligned registered handlers**:
+
+      ```
+
+      No MCP registration/handler mismatches found. Public shell surface handlers
+      align with canonical contract paths.
+
+      ```
+
+
+      **Verdict**: PASS'
   - id: canonical_shell_surfaces.gate
     name: Gate shell and projection cleanup
     status: pending
