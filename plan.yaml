@@ -36983,6 +36983,53 @@ phases:
   - dup_error_abstraction
   - dup_facade_admission
   - dup_component_kind
+  steps:
+  - id: dup_doc_sync.update-docs
+    name: Update docs for the new duplication-collapse boundaries
+    status: pending
+    description: 'step_type: review
+
+
+      Sync architecture and usage docs to the new abstraction boundaries.
+
+
+      Required targets likely include:
+
+      - ARCHITECTURE.md
+
+      - INTERFACES.md
+
+      - README.md / USAGE.md / USER_GUIDE.md
+
+      - any design notes touched by web runtime, component errors, fixture policy,
+      or canonical projection ownership'
+    verification: '- Docs reflect shared web seam, single-source contract metadata,
+      fixture taxonomy, component error seam, and component-kind alias policy where
+      relevant
+
+      - No doc reintroduces deprecated contract ownership or duplicate boundary claims'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Doc Sync Report
+
+      - files_updated:
+
+      - abstraction_boundaries_updated:
+
+      - deprecated_claims_removed:
+
+      - justified_divergences:
+
+      '
+    agent: doc-reviewer-tacit
 - id: dup_deep_review
   name: Duplicate-Abstraction Deep Review
   status: locked
