@@ -32685,7 +32685,7 @@ phases:
       \ true"
   - id: canonical_core_admission.spec-conformance
     name: Audit core admission against opifex canonical contract
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -32762,6 +32762,131 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-06T02:34:57.078986+00:00'
+    done_at: '2026-04-06T03:26:50.925534+00:00'
+    evidence: '## Spec Conformance Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - design/opifex-canonical-authority-basis.md — required/forbidden/extra-field
+      rules reviewed.
+
+      - contracts/persona_spec.schema.json — non-authoritative schema disposition
+      reviewed.
+
+      - contracts/errors.yaml — taxonomy alignment surface reviewed.
+
+      - src/larva/core/spec.py — PersonaSpec boundary typing reviewed.
+
+      - src/larva/core/validate.py — canonical admission enforcement reviewed.
+
+      - src/larva/app/facade.py — facade mapping and admission seam reviewed.
+
+      - tests/core/test_validate.py — canonical rejection tests reviewed.
+
+      - tests/app/test_facade/test_validate.py — facade-level rejection tests reviewed.
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      |----|--------------|-------------|-------|------------|
+
+      | R1 | Required fields | id required | MUST | Yes |
+
+      | R2 | Required fields | description required | MUST | Yes |
+
+      | R3 | Required fields | prompt required | MUST | Yes |
+
+      | R4 | Required fields | model required | MUST | Yes |
+
+      | R5 | Required fields | capabilities required | MUST | Yes |
+
+      | R6 | Required fields | spec_version required | MUST | Yes |
+
+      | R7 | Forbidden fields | tools rejected | MUST | Yes |
+
+      | R8 | Forbidden fields | side_effect_policy rejected | MUST | Yes |
+
+      | R9 | Extra fields | unknown top-level rejected | MUST | Yes |
+
+      | R10 | Source-of-truth | local schema non-authoritative | MUST | Yes |
+
+      | R11 | Error taxonomy | alignment or explicit justification | SHOULD | Yes
+      |
+
+      | R12 | Optional field support | can_spawn optional | MUST | Yes |
+
+      | R13 | Spec version | only 0.1.0 accepted | MUST | Yes |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      |----|--------------|-------------|----------------|---------|-------|
+
+      | R1 | Required fields | id required | src/larva/core/validate.py required set
+      | CONFORMS | Runtime enforced |
+
+      | R2 | Required fields | description required | src/larva/core/validate.py required
+      set | CONFORMS | Runtime enforced |
+
+      | R3 | Required fields | prompt required | src/larva/core/validate.py required
+      set | CONFORMS | Runtime enforced |
+
+      | R4 | Required fields | model required | src/larva/core/validate.py required
+      set | CONFORMS | Runtime enforced |
+
+      | R5 | Required fields | capabilities required | src/larva/core/validate.py
+      required set | CONFORMS | Runtime enforced |
+
+      | R6 | Required fields | spec_version required | src/larva/core/validate.py
+      required set | CONFORMS | Runtime enforced |
+
+      | R7 | Forbidden fields | tools rejected | src/larva/core/validate.py forbidden
+      field checks | CONFORMS | Canonical rejection tests pass |
+
+      | R8 | Forbidden fields | side_effect_policy rejected | src/larva/core/validate.py
+      forbidden field checks | CONFORMS | Canonical rejection tests pass |
+
+      | R9 | Extra fields | unknown rejected | src/larva/core/validate.py canonical
+      field allowlist checks | CONFORMS | Extra-field rejection tests pass |
+
+      | R10 | Source-of-truth | schema non-authoritative | contracts/persona_spec.schema.json
+      + validate docs | CONFORMS | Explicitly disavowed as canonical authority |
+
+      | R11 | Error taxonomy | alignment | validation report codes + facade PERSONA_INVALID
+      mapping | PARTIAL | Fine-grained validation codes wrapped at facade layer; explicit
+      mapping present |
+
+      | R12 | Optional field support | can_spawn optional | src/larva/core/spec.py
+      NotRequired typing | CONFORMS | Contract-consistent |
+
+      | R13 | Spec version | reject unsupported values | src/larva/core/validate.py
+      spec_version checks | CONFORMS | Runtime enforced |
+
+
+      ## Coverage Summary
+
+      - Total requirements: 13
+
+      - CONFORMS: 12
+
+      - PARTIAL: 1
+
+      - DIVERGES: 0
+
+      - NEEDS_TEST: 0
+
+
+      ## Notes
+
+      - No blocker-class divergence found for canonical core admission scope.
+
+      - Partial item (R11) is explicitly justified via layering (detailed validation
+      report + facade standardized transport code).'
   - id: canonical_core_admission.gate
     name: Gate canonical core admission remediation
     status: pending
