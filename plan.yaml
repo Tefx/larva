@@ -33612,6 +33612,81 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: canonical_core_admission.retest-gate-blocker-b00-requiredness-authority
+    name: Retest authority and runtime requiredness alignment
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer-tacit), verify that authority text
+      and runtime enforcement are now aligned for requiredness semantics.
+
+
+      Review for blocker-class contradictions across:
+
+      - authoritative text and any ADR created by the fix step
+
+      - runtime validators / admission enforcement
+
+      - synchronized contract artifacts and downstream acceptance text
+
+
+      This step succeeds by finding any remaining mismatch or by proving alignment
+      with evidence. It is not a rubber stamp.'
+    verification: '- Authority text and runtime enforcement agree on whether `can_spawn`
+      is required and whether `description` is optional/required
+
+      - Evidence cites the exact synchronized artifacts reviewed
+
+      - Any ADR or authority amendment is present, justified, and reflected in runtime
+      enforcement'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Alignment Audit
+
+      - Authority text reviewed:
+
+      - Runtime enforcement reviewed:
+
+      - Additional synchronized artifacts reviewed:
+
+
+      ## Requiredness Verdict
+
+      - `can_spawn` status:
+
+      - `description` status:
+
+      - Alignment result: aligned | mismatch
+
+
+      ## Evidence
+
+      - File/section citations:
+
+      - Runtime enforcement citations:
+
+      - Residual gaps: none | <list>
+
+      '
+    depends_on:
+    - canonical_core_admission.fix-gate-blocker-b00-requiredness-authority
+    agent: gate-reviewer-tacit
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
   status: locked
