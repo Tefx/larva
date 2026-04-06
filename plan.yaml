@@ -35029,7 +35029,7 @@ phases:
   steps:
   - id: canonical_doc_sync.update-docs
     name: Sync larva documentation to opifex canonical authority
-    status: done
+    status: rejected
     description: 'step_type: review
 
 
@@ -35098,42 +35098,13 @@ phases:
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-06T12:45:22.737002+00:00'
     done_at: '2026-04-06T12:51:00.429571+00:00'
-    evidence: '## refs Read Confirmation (MANDATORY)
-
-      - ARCHITECTURE.md — updated ownership framing to opifex canonical authority
-      and larva as downstream admission/projection surface.
-
-      - INTERFACES.md — removed/de-emphasized deprecated acceptance semantics.
-
-      - README.md / USAGE.md / USER_GUIDE.md — synced consumer-facing contract language
-      to canonical authority model.
-
-      - ADR-002-capability-intent-without-runtime-policy.md — aligned ADR language
-      with canonical ownership boundary.
-
-      - MIGRATION-002-capability-intent.md — updated migration guidance to canonical-only
-      semantics.
-
-
-      ## Doc Sync Report
-
-      - files_updated: ADR-002-capability-intent-without-runtime-policy.md, ARCHITECTURE.md,
-      INTERFACES.md, MIGRATION-002-capability-intent.md, README.md, USAGE.md, USER_GUIDE.md
-
-      - contract_owner_language_updated: yes (opifex as canonical PersonaSpec authority;
-      larva as downstream consumer/admission authority)
-
-      - deprecated_acceptance_removed: yes (tools/side_effect_policy no longer documented
-      as accepted behavior)
-
-      - justified_divergences: none reported in step artifacts
-
-
-      ## Verification
-
-      - commands: git show --name-only --oneline vectl/step-canonical_doc_sync.update-docs
-
-      - outputs_summary: single doc-sync commit touching all required target documents'
+    rejection_reason: Gate found residual documentation drift in MIGRATION-002 deprecation-warnings
+      language conflicting with reject-immediate canonical authority.
+    rejection_history:
+    - reason: Gate found residual documentation drift in MIGRATION-002 deprecation-warnings
+        language conflicting with reject-immediate canonical authority.
+      timestamp: '2026-04-06T12:54:42.342526+00:00'
+      reviewer: vectl-orchestrator
   - id: canonical_doc_sync.gate
     name: Gate canonical documentation sync
     status: claimed
