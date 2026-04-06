@@ -36832,6 +36832,62 @@ phases:
 
       '
     agent: software-architect-tacit
+  - id: dup_component_kind.impl
+    name: Normalize component-kind vocabulary across public surfaces
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the alias-normalization policy from `dup_component_kind.alias-basis`.
+
+
+      YOUR SCOPE:
+
+      - choose one internal canonical component-kind vocabulary
+
+      - accept compatibility aliases at boundaries where required
+
+      - avoid transport-specific semantic drift in component_show paths
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Real public component-show paths must consume the normalization seam.'
+    verification: '- Main path: public surfaces resolve single/plural aliases to the
+      same internal meaning
+
+      - Failure path: invalid component kind errors remain precise and aligned'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Vocabulary Normalization Evidence
+
+      - canonical_internal_kind_set:
+
+      - alias_acceptance_surfaces:
+
+      - invalid_kind_behavior:
+
+
+      ## Verification
+
+      - commands:
+
+      - outputs_summary:
+
+      '
+    depends_on:
+    - dup_component_kind.alias-basis
+    agent: python-senior-tacit
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
