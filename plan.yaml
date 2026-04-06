@@ -36358,6 +36358,46 @@ phases:
     depends_on:
     - daa_p2_vocab.inventory
     agent: python-executor
+  - id: daa_p2_vocab.gate
+    name: Gate DAA vocabulary cleanup
+    status: pending
+    description: 'Gate review: verify vocabulary cleanup stayed within approved non-blocking
+      scope and preserved interface semantics.'
+    verification: '- Vocabulary cleanup is complete
+
+      - No public-surface narrowing occurred
+
+      - Any residual ambiguity is explicitly handed forward'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | daa_p2_vocab.inventory |  |  |  |
+
+      | daa_p2_vocab.align |  |  |  |
+
+
+      ## Gate Decision
+
+      - final_recommendation: OPEN|BLOCKED
+
+      '
+    depends_on:
+    - daa_p2_vocab.inventory
+    - daa_p2_vocab.align
+    agent: gate-reviewer
 - id: daa_cross_surface_verify
   name: DAA Cross-Surface Verification
   status: locked
