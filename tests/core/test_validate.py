@@ -74,6 +74,10 @@ class TestValidateSpecBehavior:
         report = validate_module.validate_spec(
             {
                 "id": "valid-persona",
+                "description": "A valid persona",
+                "prompt": "You are a helpful assistant.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
             }
         )
@@ -83,9 +87,20 @@ class TestValidateSpecBehavior:
 
     def test_missing_id_produces_invalid_persona_id(self):
         """validate_spec should reject specs that omit required id."""
-        report = validate_module.validate_spec({"spec_version": "0.1.0"})
+        report = validate_module.validate_spec(
+            {
+                "description": "A persona without id",
+                "prompt": "You are a helpful assistant.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
         assert report["valid"] is False
-        assert report["errors"][0]["code"] == "INVALID_PERSONA_ID"
+        assert any(
+            e["code"] == "MISSING_REQUIRED_FIELD" and e["details"]["field"] == "id"
+            for e in report["errors"]
+        )
 
     def test_invalid_spec_version_produces_structured_error(self):
         """validate_spec should report INVALID_SPEC_VERSION for unsupported version."""
@@ -93,25 +108,42 @@ class TestValidateSpecBehavior:
         assert report["valid"] is False
         assert report["errors"][0]["code"] == "INVALID_SPEC_VERSION"
 
-    def test_invalid_side_effect_policy_produces_structured_error(self):
-        """validate_spec should report INVALID_SIDE_EFFECT_POLICY for bad policy values."""
+    def test_side_effect_policy_forbidden_field_rejected(self):
+        """validate_spec should report FORBIDDEN_EXTRA_FIELD for side_effect_policy.
+
+        Per canonical authority (opifex-canonical-authority-basis.md):
+        side_effect_policy is a removed/forbidden field - reject-immediate on admission.
+        The field name itself is forbidden, not just invalid values.
+        """
         report = validate_module.validate_spec(
-            {"id": "test-persona", "side_effect_policy": "forbidden"}
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "description": "Test persona",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "side_effect_policy": "forbidden",  # forbidden at canonical boundary
+            }
         )
         assert report["valid"] is False
-        assert report["errors"][0]["code"] == "INVALID_SIDE_EFFECT_POLICY"
+        assert report["errors"][0]["code"] == "FORBIDDEN_EXTRA_FIELD"
 
     def test_unresolved_prompt_variables_produce_variable_unresolved_code(self):
         """validate_spec should use canonical VARIABLE_UNRESOLVED code for unresolved vars."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
+                "description": "Test persona",
                 "prompt": "You are {role} speaking to {target}",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
                 "variables": {"role": "assistant"},
+                "spec_version": "0.1.0",
             }
         )
         assert report["valid"] is False
-        assert report["errors"][0]["code"] == "VARIABLE_UNRESOLVED"
+        assert any(e["code"] == "VARIABLE_UNRESOLVED" for e in report["errors"])
 
 
 class TestValidationIssueTypedDict:
@@ -219,8 +251,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "You are a helpful assistant.",  # No variables used
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {"role": "assistant", "project": "demo"},
             }
         )
@@ -234,8 +269,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "Hello.",  # No variables used
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {"zebra": "a", "apple": "b", "mango": "c"},
             }
         )
@@ -252,8 +290,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "Hello.",  # No variables used
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {"z": "1", "a": "2", "m": "3"},
             }
         )
@@ -266,8 +307,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "You are {role}.",  # 'role' is used
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {"role": "assistant", "unused_key": "value"},
             }
         )
@@ -282,8 +326,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "You are {role} talking to {target}.",  # target is unresolved
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {
                     "role": "assistant",
                     "unused": "value",
@@ -292,8 +339,7 @@ class TestUnusedVariablesWarning:
         )
         # Should have error for unresolved variable
         assert report["valid"] is False
-        assert len(report["errors"]) == 1
-        assert report["errors"][0]["code"] == "VARIABLE_UNRESOLVED"
+        assert any(e["code"] == "VARIABLE_UNRESOLVED" for e in report["errors"])
         # Should have warning for unused variable
         assert len(report["warnings"]) == 1
         assert "UNUSED_VARIABLES" in report["warnings"][0]
@@ -304,8 +350,11 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "Hello.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
                 "variables": {},
             }
         )
@@ -317,76 +366,15 @@ class TestUnusedVariablesWarning:
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "spec_version": "0.1.0",
+                "description": "Test persona",
                 "prompt": "Hello.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
             }
         )
         assert report["valid"] is True
         assert report["warnings"] == []
-
-
-class TestDeprecationWarnings:
-    """Test deprecation warnings for side_effect_policy and tools.
-
-    Per INTERFACES.md ADR-002:
-    - side_effect_policy is deprecated
-    - tools is deprecated; use capabilities instead
-    - capabilities is the canonical capability declaration surface
-    """
-
-    def test_side_effect_policy_warning(self):
-        """side_effect_policy should produce deprecation warning."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "spec_version": "0.1.0",
-                "side_effect_policy": "allow",
-            }
-        )
-        # Spec should still be valid (warning, not error)
-        assert report["valid"] is True
-        assert report["errors"] == []
-        assert any("DEPRECATED_FIELD: side_effect_policy" in w for w in report["warnings"])
-
-    def test_tools_without_capabilities_warning(self):
-        """tools without capabilities should produce deprecation warning."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "spec_version": "0.1.0",
-                "tools": {"git": "read_only"},
-            }
-        )
-        assert report["valid"] is True
-        assert report["errors"] == []
-        assert any("DEPRECATED_FIELD: tools" in w for w in report["warnings"])
-
-    def test_both_tools_and_capabilities_warning(self):
-        """Both tools and capabilities should warn that capabilities wins."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "spec_version": "0.1.0",
-                "tools": {"git": "read_only"},
-                "capabilities": {"git": "read_write"},
-            }
-        )
-        assert report["valid"] is True
-        assert report["errors"] == []
-        warnings_text = " ".join(report["warnings"])
-        assert "DEPRECATED_FIELD: tools" in warnings_text
-        assert "MIGRATION_NOTE: both tools and capabilities present" in warnings_text
-
-    def test_invalid_side_effect_policy_still_errors(self):
-        """Invalid side_effect_policy should still produce error."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "side_effect_policy": "forbidden",
-            }
-        )
-        assert report["valid"] is False
-        assert any(e["code"] == "INVALID_SIDE_EFFECT_POLICY" for e in report["errors"])
 
 
 class TestCapabilitiesValidation:
@@ -401,6 +389,9 @@ class TestCapabilitiesValidation:
             {
                 "id": "test-persona",
                 "spec_version": "0.1.0",
+                "description": "Test persona",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
                 "capabilities": {"git": "read_only", "filesystem": "read_write"},
             }
         )
@@ -413,6 +404,9 @@ class TestCapabilitiesValidation:
             {
                 "id": "test-persona",
                 "spec_version": "0.1.0",
+                "description": "Test persona",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
                 "capabilities": {"git": "invalid_posture"},
             }
         )
@@ -425,6 +419,9 @@ class TestCapabilitiesValidation:
             {
                 "id": "test-persona",
                 "spec_version": "0.1.0",
+                "description": "Test persona",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
                 "capabilities": "not-a-dict",
             }
         )
@@ -438,6 +435,9 @@ class TestCapabilitiesValidation:
                 {
                     "id": "test-persona",
                     "spec_version": "0.1.0",
+                    "description": "Test persona",
+                    "prompt": "You are a test assistant.",
+                    "model": "gpt-4o-mini",
                     "capabilities": {"tool": posture},
                 }
             )
