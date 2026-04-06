@@ -34004,7 +34004,7 @@ phases:
     agent: python-executor
   - id: canonical_shell_surfaces.surface-contract-impl
     name: Clean shell transport contract text and handlers to canonical-only semantics
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags:\n- integration\n\nFill in stub\
       \ bodies in the existing shell transport signatures per the contract from step\
       \ `canonical_shell_surfaces.contract`.\n\nUPSTREAM ARTIFACTS (from contract/test\
@@ -34085,6 +34085,8 @@ phases:
     - canonical_shell_surfaces.contract
     - canonical_shell_surfaces.tests-red
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-06T11:38:46.870615+00:00'
   - id: canonical_shell_surfaces.verify
     name: Independently verify shell and projection cleanup
     status: pending
