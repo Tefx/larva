@@ -35029,7 +35029,7 @@ phases:
   steps:
   - id: canonical_doc_sync.update-docs
     name: Sync larva documentation to opifex canonical authority
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -35097,7 +35097,34 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-06T12:55:19.328109+00:00'
-    done_at: '2026-04-06T12:51:00.429571+00:00'
+    done_at: '2026-04-06T12:56:56.178628+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - MIGRATION-002-capability-intent.md — Validation row now states reject-immediate
+      semantics: "validate.py rejects side_effect_policy and tools at admission (forbidden
+      fields)".
+
+
+      ## Doc Sync Report
+
+      - files_updated: none in remediation rerun (targeted drift already resolved
+      in current main/doc-sync commit state)
+
+      - contract_owner_language_updated: confirmed present
+
+      - deprecated_acceptance_removed: confirmed in MIGRATION-002 and other synced
+      docs
+
+      - justified_divergences: none
+
+
+      ## Verification
+
+      - commands: read MIGRATION-002-capability-intent.md and confirm canonical reject
+      language; git log main..vectl/step-canonical_doc_sync.update-docs
+
+      - outputs_summary: migration doc no longer advertises deprecation-warning acceptance
+      semantics; remediation branch required no additional patch'
     rejection_reason: Gate found residual documentation drift in MIGRATION-002 deprecation-warnings
       language conflicting with reject-immediate canonical authority.
     rejection_history:
