@@ -37030,6 +37030,45 @@ phases:
 
       '
     agent: doc-reviewer-tacit
+  - id: dup_doc_sync.gate
+    name: Gate duplicate-abstraction documentation sync
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review: documentation must describe the new abstraction boundaries without
+      reviving duplicate-truth claims.'
+    verification: '- Docs are aligned with the implemented abstraction seams
+
+      - No blocker-class doc drift remains for canonical boundary or transport behavior
+      claims'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Gate Decision Basis
+
+      - files_reviewed:
+
+      - residual_doc_drift:
+
+      - open_or_block:
+
+      '
+    depends_on:
+    - dup_doc_sync.update-docs
+    agent: gate-reviewer-tacit
 - id: dup_deep_review
   name: Duplicate-Abstraction Deep Review
   status: locked
