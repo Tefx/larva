@@ -36306,6 +36306,34 @@ phases:
     reopening settled interface decisions.
   depends_on:
   - daa_p1_impl
+  steps:
+  - id: daa_p2_vocab.inventory
+    name: Inventory DAA vocabulary drift
+    status: pending
+    description: Classify remaining naming, terminology, and schema-wording drift
+      after P1 closure. Distinguish authority conflicts from implementation drift
+      and route only non-blocking vocabulary cleanup here.
+    verification: Evidence lists each vocabulary mismatch, its authority source, and
+      whether it is safe for P2 cleanup.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Vocabulary Drift Register
+
+      | term | source | implementation_surface | disposition | owner |
+
+      | --- | --- | --- | --- | --- |
+
+      '
+    agent: doc-reviewer-tacit
 - id: daa_cross_surface_verify
   name: DAA Cross-Surface Verification
   status: locked
