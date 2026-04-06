@@ -35604,3 +35604,10 @@ phases:
       validation; forbidden-field rejection and required-field enforcement confirmed.
       Residual compatibility paths classified non-intersecting with active runtime
       authority. Decision: OPEN.'
+- id: daa_arch_basis
+  name: DAA Rectification Basis
+  status: pending
+  gate: Authoritative basis, scope, and acceptance boundaries are frozen before any
+    DAA remediation contracts or implementation planning starts.
+  depends_on:
+  - canonical_deep_review
