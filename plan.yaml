@@ -35757,3 +35757,9 @@ phases:
   depends_on:
   - dup_contract_source
   - dup_guardrails
+- id: dup_component_kind
+  name: Component Kind Vocabulary Normalization
+  status: locked
+  gate: Normalize single/plural component kind vocabulary across public surfaces.
+  depends_on:
+  - dup_guardrails
