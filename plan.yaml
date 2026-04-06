@@ -35992,6 +35992,47 @@ phases:
 
       '
     agent: python-executor
+  - id: daa_p0_impl.retest-green
+    name: Retest DAA P0 green path
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+
+      As an independent tester, rerun the P0 acceptance path after implementation
+      and confirm the formerly-red gaps are now green.'
+    verification: '- Expected-green targeted tests pass
+
+      - Evidence includes actual commands and outputs
+
+      - Any remaining blocker is explicitly recorded for remediation'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      - commands_executed:
+
+      - actual_output:
+
+      - remaining_findings:
+
+      - confidence:
+
+      '
+    depends_on:
+    - daa_p0_impl.fill-stubs
+    agent: integration-verifier
 - id: daa_p1_impl
   name: DAA P1 Implementation
   status: locked
