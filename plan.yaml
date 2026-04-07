@@ -37685,3 +37685,10 @@ phases:
     - baseline_failure_app_shell.impl
     - baseline_failure_app_shell.cross_surface_verify
     agent: gate-reviewer-tacit
+- id: baseline_failure_finalization
+  name: Baseline Failure Final Verification, Doc Sync, and Deep Review
+  status: locked
+  gate: Prove the remaining baseline failures are closed, sync docs, and finish with
+    independent deep review.
+  depends_on:
+  - baseline_failure_app_shell
