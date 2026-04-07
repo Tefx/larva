@@ -35861,7 +35861,7 @@ phases:
   steps:
   - id: dup_web_convergence.router-basis
     name: Design shared web router boundary for packaged and contrib runtimes
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -35907,6 +35907,37 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-07T19:12:21.497196+00:00'
+    done_at: '2026-04-07T19:19:57.680493+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Router Basis
+
+      - shared_endpoints: Shared API seam should host duplicated REST persona/component
+      endpoints (`/api/personas*`, `/api/components*`) while preserving existing HTTP
+      contracts.
+
+      - contrib_only_surfaces: `POST /api/personas/batch-update`, runtime bootstrapping,
+      and HTML root wrappers remain runtime-local (packaged vs contrib) and outside
+      shared API seam.
+
+      - patch_semantics_locked: PATCH semantics are owned by app/core admission pipeline
+      (`DefaultLarvaFacade.update` + patch/validate/normalize flow), preserving canonical
+      `capabilities` authority and preventing deprecated-field (`tools`, `side_effect_policy`)
+      reintroduction drift.
+
+      - error_projection_owner: Domain semantics stay facade/core-owned; shared router
+      owns uniform HTTP projection/envelope behavior for transport surfaces.
+
+
+      Verification:
+
+      - Basis enumerates moved endpoints and retained runtime-only wrappers.
+
+      - Ownership boundaries for PATCH semantics and error projection are explicit
+      with no unresolved ambiguity.'
   - id: dup_web_convergence.impl
     name: Converge packaged and contrib web endpoints onto the shared router seam
     status: pending
