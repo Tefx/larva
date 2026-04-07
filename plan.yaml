@@ -36186,6 +36186,32 @@ phases:
     - dup_contract_source.impl
     - dup_contract_source.spec-conformance
     agent: gate-reviewer-tacit
+  - id: dup_contract_source.workflow_basis
+    name: Design unified app-layer admission workflow seam
+    status: pending
+    description: 'step_type: review
+
+
+      Design the unified admission workflow seam for facade operations.
+
+
+      Must cover:
+
+      - shared candidate-admission skeleton for register/resolve/update/clone
+
+      - where normalization happens and why
+
+      - how behavior-preserving double-validation is retained or intentionally removed
+      under proof
+
+      - how persistence and digest behavior remain unchanged'
+    verification: '- Unified workflow basis names a single app-layer admission seam
+
+      - Any proposed change to validation ordering is explicitly justified with behavior-preservation
+      obligations'
+    depends_on:
+    - dup_contract_source.contract-basis
+    agent: software-architect-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
