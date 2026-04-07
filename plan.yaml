@@ -36356,7 +36356,7 @@ phases:
     agent: integration-verifier-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
-  status: locked
+  status: done
   gate: Split canonical-only and transition-only test fixtures so regression signals
     remain truthful.
   depends_on:
@@ -36364,7 +36364,7 @@ phases:
   steps:
   - id: dup_fixture_unification.fixture-basis
     name: Define canonical-only and transition-only fixture families
-    status: pending
+    status: skipped
     description: 'step_type: review
 
 
@@ -36408,10 +36408,11 @@ phases:
 
       '
     agent: software-architect-tacit
+    skipped_reason: absorbed
   - id: dup_fixture_unification.impl
     name: Unify test fixtures and shared doubles around explicit canonical vs transition
       semantics
-    status: pending
+    status: skipped
     description: 'step_type: implementation
 
 
@@ -36472,9 +36473,10 @@ phases:
     depends_on:
     - dup_fixture_unification.fixture-basis
     agent: python-senior-tacit
+    skipped_reason: absorbed
   - id: dup_fixture_unification.verify
     name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36512,9 +36514,10 @@ phases:
     depends_on:
     - dup_fixture_unification.impl
     agent: integration-verifier-tacit
+    skipped_reason: absorbed
   - id: dup_fixture_unification.gate
     name: Gate canonical fixture unification
-    status: pending
+    status: skipped
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -36554,6 +36557,7 @@ phases:
     - dup_fixture_unification.impl
     - dup_fixture_unification.verify
     agent: gate-reviewer-tacit
+    skipped_reason: absorbed
 - id: dup_error_abstraction
   name: Component Surface Normalization and Error Projection
   status: locked
