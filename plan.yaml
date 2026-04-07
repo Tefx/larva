@@ -37620,3 +37620,39 @@ phases:
     depends_on:
     - baseline_failure_app_shell.tests_red
     agent: python-senior-tacit
+  - id: baseline_failure_app_shell.cross_surface_verify
+    name: Verify cross-surface consistency for validation behavior
+    status: pending
+    description: Independent verification across CLI, MCP, and python_api for the
+      same validation scenarios after remediation. Use shared fixtures and prove these
+      surfaces no longer disagree on the resolved fact set, especially for missing-id
+      and canonical validation warnings. This is a phase-check protecting the final
+      full-suite gate.
+    verification: Run targeted CLI/MCP/python_api tests and record whether the same
+      fixture yields consistent behavioral outcomes across surfaces.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Cross-Surface Verification
+
+      - Shared fixtures used:
+
+      - Commands executed:
+
+      - CLI result:
+
+      - MCP result:
+
+      - python_api result:
+
+      - Any divergence remaining:
+
+      - Verdict: PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - baseline_failure_app_shell.tests_red
+    - baseline_failure_app_shell.impl
+    agent: blind-tester-tacit
