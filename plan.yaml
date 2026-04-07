@@ -37420,3 +37420,10 @@ phases:
     - baseline_failure_authority.behavior_matrix
     - baseline_failure_authority.contract_decision
     agent: gate-reviewer-tacit
+- id: baseline_failure_core
+  name: Baseline Core Contract and Assembly Alignment
+  status: locked
+  gate: Align core spec/schema/normalize/assemble semantics to the frozen authority
+    and close the core failure cluster.
+  depends_on:
+  - baseline_failure_authority
