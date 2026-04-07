@@ -36145,18 +36145,23 @@ phases:
     - dup_contract_source.impl
     agent: spec-verifier-tacit
   - id: dup_contract_source.gate
-    name: Gate canonical contract source consolidation
+    name: Gate contract, fixture, and admission consolidation
     status: pending
     description: 'step_type: gate
 
       verification_scope: phase-check
 
 
-      Gate review: repeated contract knowledge must now be controlled by one local
-      projection seam with parity enforcement.'
-    verification: '- Single-source seam is real, used, and parity-checked
+      Gate review: repeated contract metadata, canonical/transition fixture truth,
+      and facade admission duplication must now be controlled by explicit shared seams
+      with parity enforcement.'
+    verification: '- Single-source contract seam is real, used, and parity-checked
 
-      - No blocker-class projection drift remains'
+      - Canonical and transition fixtures are explicitly separated
+
+      - Shared workflow seam is used by real facade operations
+
+      - No blocker-class projection or entrypoint drift remains'
     evidence_template: '## Gate Review Report
 
 
@@ -36185,6 +36190,12 @@ phases:
     - dup_contract_source.contract-basis
     - dup_contract_source.impl
     - dup_contract_source.spec-conformance
+    - dup_contract_source.fixture_basis
+    - dup_contract_source.fixture_impl
+    - dup_contract_source.fixture_verify
+    - dup_contract_source.workflow_basis
+    - dup_contract_source.workflow_impl
+    - dup_contract_source.workflow_verify
     agent: gate-reviewer-tacit
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
