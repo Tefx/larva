@@ -37545,3 +37545,20 @@ phases:
     then prove cross-surface consistency.
   depends_on:
   - baseline_failure_core
+  steps:
+  - id: baseline_failure_app_shell.tests_red
+    name: Define failing facade and transport expectations
+    status: pending
+    description: Rewrite the remaining facade, CLI, MCP, and python_api failing tests
+      to reflect the frozen authority and the now-stable core contract. Make sequencing
+      expectations explicit (for example validate vs normalize ordering) and make
+      envelope expectations explicit for missing-id and related validation failures.
+      This step is tests/fixtures only; do not change product code here.
+    verification: Run the failing app/shell test clusters and show which expectations
+      are authoritative-red versus already green.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\n## Test Definition\
+      \ Evidence\n- Files changed (tests only):\n- Sequencing assertions pinned:\n\
+      - Envelope assertions pinned:\n- Commands:\n  - uv run pytest -q tests/app/test_facade\
+      \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py"
+    agent: python-executor
