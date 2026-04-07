@@ -37392,3 +37392,31 @@ phases:
     depends_on:
     - baseline_failure_authority.behavior_matrix
     agent: software-architect-tacit
+  - id: baseline_failure_authority.gate
+    name: Gate authority freeze for baseline failure remediation
+    status: pending
+    description: Gate review for the authority and baseline matrix phase. Block if
+      any remaining failing cluster lacks an explicit authority owner, lacks a code-vs-test
+      disposition, or would force downstream phases to guess canonical semantics.
+    verification: Confirm every known baseline-failure cluster has an explicit authority
+      decision and a downstream remediation path.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Step review: behavior_matrix, contract_decision
+
+      - Missing authority decisions: none | <list>
+
+      - Missing disposition paths: none | <list>
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - baseline_failure_authority.behavior_matrix
+    - baseline_failure_authority.contract_decision
+    agent: gate-reviewer-tacit
