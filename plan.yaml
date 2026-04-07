@@ -36240,6 +36240,42 @@ phases:
 
       - Shared doubles and helper seams are identified'
     agent: software-architect-tacit
+  - id: dup_contract_source.fixture_impl
+    name: Unify test fixtures and shared doubles around explicit canonical vs transition
+      semantics
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the fixture taxonomy from `dup_contract_source.fixture_basis`.
+
+
+      YOUR SCOPE:
+
+      - create or consolidate shared canonical-only fixtures
+
+      - create or consolidate explicit transition-only fixtures where legacy coverage
+      is still needed
+
+      - unify repeated in-memory component-store doubles where practical
+
+      - remove misleading implicit defaults from canonical fixture helpers
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Canonical-boundary tests must no longer rely on helpers that silently include
+      deprecated fields.'
+    verification: '- Main path: canonical-boundary tests use canonical-only fixtures
+
+      - Failure path: transition-only tests must opt in explicitly
+
+      - Shared doubles reduce repeated store/validation helper logic'
+    depends_on:
+    - dup_contract_source.fixture_basis
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
