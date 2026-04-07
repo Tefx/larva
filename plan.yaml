@@ -35606,7 +35606,7 @@ phases:
       authority. Decision: OPEN.'
 - id: dup_guardrails
   name: Duplicate-Abstraction Guardrails
-  status: in_progress
+  status: done
   gate: Freeze behavior-preservation matrix before duplicate-abstraction remediation.
   depends_on:
   - canonical_deep_review
@@ -35745,7 +35745,7 @@ phases:
       artifact provided as campaign baseline.'
   - id: dup_guardrails.gate
     name: Gate duplicate-abstraction guardrails
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -35781,9 +35781,79 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-07T18:59:29.574430+00:00'
+    done_at: '2026-04-07T19:11:39.741577+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Gate Review Report
+
+      - guarded_findings: All five P0 baseline areas are explicitly locked with code-level
+      anchors: canonical admission boundary, packaged/contrib web parity drift, component
+      error envelope invariants, fixture family partition, and component kind vocabulary.
+
+      - uncovered_risks: None identified; each high-risk duplicate-abstraction area
+      has explicit preserved-behavior baseline.
+
+      - open_or_block: OPEN.
+
+
+      ## Wiring Audit (MANDATORY)
+
+      - W1 Orphan public functions: PASS (core/shell/app sampled exports are wired
+      through facade and surfaces)
+
+      - W2 Surface registration: PASS (web routes and MCP tool decorators mapped)
+
+      - W3 Config field consumption: N/A (not in scope for this gate)
+
+      - W4 Stub leakage: PASS (NotImplementedError usage only in protocol/interface
+      contract context)
+
+      - W5 Write-only field risk: PASS (baseline fields are consumed downstream)
+
+      - W6 Production entry points: PASS (main/server entry points resolve to real
+      implementations)
+
+      - W7 Result boundary unwrapping: PASS (shell boundaries perform explicit unwrapping)
+
+      - W8 Type-cast authenticity: PASS (casts align with canonical validated shape)
+
+
+      ## Escape Hatch Audit (MANDATORY)
+
+      - Reviewed in-scope `@invar:allow` usage under core/shell/app surfaces; all
+      observed annotations are shell-boundary justified (web/mcp/python API), with
+      inline rationale and no stale core-boundary misuse.
+
+      - dead_export: none found in reviewed scope.
+
+
+      ## Behavioral-Proof Reporting
+
+      - step_intent: Gate review validates preservation-matrix sufficiency for downstream
+      duplicate-abstraction remediation.
+
+      - expected_result: No P0 high-risk area left without explicit behavior lock.
+
+      - observed_result: All required baseline locks confirmed with concrete code
+      anchors.
+
+      - failure_alignment: N/A (gate passes).
+
+      - product_files_modified: none (read-only gate).
+
+      - behavioral_proof_register: Baselines anchored in normalize/validate admission
+      logic, packaged+contrib web PATCH semantics, facade error envelope mapping,
+      components vs fixture partition behavior, and web component-kind routing.
+
+      - gate_open_allowed: true.
+
+      - uncertainty_sources: none.'
 - id: dup_web_convergence
   name: Web Surface Convergence
-  status: locked
+  status: pending
   gate: Converge packaged and contrib web persona endpoints onto one canonical implementation
     seam.
   depends_on:
@@ -36042,7 +36112,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: dup_contract_source
   name: Canonical Contract, Fixture, and Admission Consolidation
-  status: locked
+  status: pending
   gate: Collapse repeated contract metadata, canonical-vs-transition fixture truth,
     and facade admission workflow into one authoritative seam family without observable
     behavior drift.
