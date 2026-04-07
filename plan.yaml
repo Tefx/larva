@@ -37311,3 +37311,44 @@ phases:
   gate: Freeze authority for remaining baseline failures before code or test remediation.
   depends_on:
   - dup_deep_review
+  steps:
+  - id: baseline_failure_authority.behavior_matrix
+    name: Capture failure matrix and baseline dispositions
+    status: pending
+    description: 'Run the known failing test clusters and produce a behavior matrix
+      mapping each failure to one of: update_code, update_tests, or mixed. Group failures
+      into these seams: core spec/schema/normalize drift, assemble output drift, facade
+      sequencing drift, and CLI/MCP/python-api envelope drift. Record exact assertion
+      deltas, authoritative source candidates, and whether the failure is clearly
+      pre-existing versus newly exercised by duplicate-abstraction cleanup.
+
+
+      Touch paths (read-only for this step): tests/core/test_spec.py, tests/core/test_schema_validation.py,
+      tests/core/test_normalize.py, tests/core/test_assemble.py, tests/app/test_facade/**,
+      tests/shell/test_cli.py, tests/shell/test_mcp.py, tests/shell/test_python_api.py.
+
+
+      This is a local-check protecting downstream semantic remediation steps.'
+    verification: 'Run the clustered failing tests and produce a matrix showing: failing
+      assertion, current behavior, expected behavior, likely authority source, and
+      proposed disposition (update_code/update_tests/mixed).'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Baseline Failure Matrix
+
+      - Command(s) run:
+
+      - Exact failing test ids:
+
+      - For each failure cluster: current behavior, expected behavior, authority candidate,
+      disposition
+
+      - Explicit note whether the failure is pre-existing on clean baseline
+
+      - Remaining ambiguity: none | <describe>'
+    agent: integration-verifier-tacit
