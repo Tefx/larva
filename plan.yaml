@@ -37427,3 +37427,37 @@ phases:
     and close the core failure cluster.
   depends_on:
   - baseline_failure_authority
+  steps:
+  - id: baseline_failure_core.tests_red
+    name: Define failing canonical core expectations
+    status: pending
+    description: 'Update the failing core tests to express the frozen authority for
+      PersonaSpec shape, schema acceptance/rejection, normalize semantics, and assemble
+      output. This is a test-definition step only: modify tests and fixtures to expose
+      remaining gaps without changing product code. Where legacy assertions remain
+      intentionally supported, say so explicitly; where tests were asserting obsolete
+      transition semantics, rewrite them to the chosen canonical contract.
+
+
+      Spec-Fixture Conformance (MANDATORY): at least one fixture per external format
+      must match the exact documented canonical shape without convenience fields.'
+    verification: Run pytest on the four core test modules and show which expectations
+      are now authoritative-red versus already green.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Test Definition Evidence
+
+      - Files changed (tests only):
+
+      - Canonical fixtures added/updated:
+
+      - Expected-red gaps exposed:
+
+      - Command(s): uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py
+      tests/core/test_normalize.py tests/core/test_assemble.py'
+    agent: python-executor
