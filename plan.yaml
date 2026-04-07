@@ -37562,3 +37562,61 @@ phases:
       - Envelope assertions pinned:\n- Commands:\n  - uv run pytest -q tests/app/test_facade\
       \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py"
     agent: python-executor
+  - id: baseline_failure_app_shell.impl
+    name: Align facade workflow and shell envelopes
+    status: pending
+    description: 'Implement the downstream remediation implied by the frozen authority
+      and updated tests. Scope includes facade sequencing, digest/normalize/validate
+      choreography, CLI envelope projection, MCP envelope projection, and python_api
+      delegation semantics. Preserve interface names and runnable surfaces. If a failure
+      was adjudicated as obsolete behavior, update tests instead of reviving that
+      behavior in code.
+
+
+      Integration steps detected: facade -> CLI, facade -> MCP, facade -> python_api.'
+    verification: Run the app/shell cluster tests plus invar guard; prove facade and
+      transport failures are closed or explicitly disposed.
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      uv run pytest -q tests/app/test_facade tests/shell/test_cli.py tests/shell/test_mcp.py
+      tests/shell/test_python_api.py
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste>
+
+      ```
+
+
+      **Path exercised**: facade -> CLI/MCP/python_api
+
+
+      ## Contract Decision Applied
+
+      - Sequencing rule chosen:
+
+      - Envelope rule chosen:
+
+      - Remaining residuals: none | <describe>'
+    depends_on:
+    - baseline_failure_app_shell.tests_red
+    agent: python-senior-tacit
