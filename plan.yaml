@@ -36394,7 +36394,7 @@ phases:
     agent: software-architect-tacit
   - id: dup_contract_source.fixture_basis
     name: Define canonical-only and transition-only fixture families
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -36422,6 +36422,40 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-07T19:12:16.871564+00:00'
+    done_at: '2026-04-07T19:19:43.622193+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Fixture Taxonomy
+
+      - canonical_only_fixtures: canonical-boundary helpers identified and constrained
+      to canonical admission shape only; explicit violations cataloged where helpers
+      named `canonical` still inject transition fields.
+
+      - legacy_transition_fixtures: transition/rejection fixtures identified as explicit
+      compatibility artifacts (including mirrored `capabilities+tools` and `side_effect_policy`
+      cases).
+
+      - shared_store_doubles: duplicated `InMemoryComponentStore`/`InMemoryRegistryStore`
+      families across app/shell tests identified for consolidation behind a shared
+      seam with canonical-mode vs transition-mode behavior.
+
+      - forbidden_canonical_defaults: `tools` and `side_effect_policy` defaults are
+      forbidden in any helper named canonical; current violation set enumerated.
+
+      - delete_vs_preserve_helper_map: duplicated ambiguous canonical helpers mapped
+      to split/delete actions; explicit transition fixtures mapped to preserve-with-rename/explicitness
+      actions.
+
+
+      Verification:
+
+      - Taxonomy prevents mixed canonical/legacy defaults by naming forbidden defaults
+      and violation inventory.
+
+      - Shared doubles and helper seams identified with concrete consolidation targets.'
   - id: dup_contract_source.fixture_impl
     name: Unify test fixtures and shared doubles around explicit canonical vs transition
       semantics
