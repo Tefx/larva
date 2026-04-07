@@ -35745,7 +35745,7 @@ phases:
       artifact provided as campaign baseline.'
   - id: dup_guardrails.gate
     name: Gate duplicate-abstraction guardrails
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -35779,6 +35779,8 @@ phases:
     depends_on:
     - dup_guardrails.behavior-matrix
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-07T18:52:04.578998+00:00'
 - id: dup_web_convergence
   name: Web Surface Convergence
   status: locked
