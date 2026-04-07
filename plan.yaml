@@ -36212,6 +36212,34 @@ phases:
     depends_on:
     - dup_contract_source.contract-basis
     agent: software-architect-tacit
+  - id: dup_contract_source.fixture_basis
+    name: Define canonical-only and transition-only fixture families
+    status: pending
+    description: 'step_type: review
+
+
+      Define the fixture taxonomy that separates canonical-boundary tests from transition-compatibility
+      tests.
+
+
+      Must identify:
+
+      - canonical-only fixture constructors
+
+      - legacy-transition fixture constructors
+
+      - store doubles that should become shared
+
+      - forbidden implicit defaults (`tools`, `side_effect_policy`) in anything named
+      canonical
+
+      - which duplicated test helpers should be deleted versus preserved as explicit
+      transition fixtures'
+    verification: '- Fixture taxonomy is explicit enough to prevent mixed canonical/legacy
+      defaults
+
+      - Shared doubles and helper seams are identified'
+    agent: software-architect-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
