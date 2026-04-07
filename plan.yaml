@@ -37041,14 +37041,14 @@ phases:
     skipped_reason: absorbed
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
-  status: locked
+  status: done
   gate: Normalize single/plural component kind vocabulary across public surfaces.
   depends_on:
   - dup_guardrails
   steps:
   - id: dup_component_kind.alias-basis
     name: Define canonical component-kind vocabulary and alias policy
-    status: pending
+    status: skipped
     description: 'step_type: review
 
 
@@ -37079,9 +37079,10 @@ phases:
 
       '
     agent: software-architect-tacit
+    skipped_reason: absorbed
   - id: dup_component_kind.impl
     name: Normalize component-kind vocabulary across public surfaces
-    status: pending
+    status: skipped
     description: 'step_type: implementation
 
 
@@ -37135,9 +37136,10 @@ phases:
     depends_on:
     - dup_component_kind.alias-basis
     agent: python-senior-tacit
+    skipped_reason: absorbed
   - id: dup_component_kind.verify
     name: Verify component-kind aliases converge across transports
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -37177,9 +37179,10 @@ phases:
     depends_on:
     - dup_component_kind.impl
     agent: blind-tester-tacit
+    skipped_reason: absorbed
   - id: dup_component_kind.gate
     name: Gate component-kind vocabulary normalization
-    status: pending
+    status: skipped
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -37219,6 +37222,7 @@ phases:
     - dup_component_kind.impl
     - dup_component_kind.verify
     agent: gate-reviewer-tacit
+    skipped_reason: absorbed
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
