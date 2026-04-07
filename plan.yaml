@@ -35613,7 +35613,7 @@ phases:
   steps:
   - id: dup_guardrails.behavior-matrix
     name: Capture non-regression behavior matrix for duplicate-abstraction remediation
-    status: claimed
+    status: done
     description: 'step_type: review
 
       verification_scope: full-plan-check
@@ -35686,6 +35686,63 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-07T18:45:49.880431+00:00'
+    done_at: '2026-04-07T18:51:39.832722+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - src/larva/core/normalize.py — canonical transition strips `tools` and `side_effect_policy`
+      from canonical output
+
+      - src/larva/core/validate.py — canonical boundary forbids extra fields and enforces
+      required fields
+
+      - src/larva/shell/web.py — packaged web PATCH accepts only `capabilities`
+
+      - contrib/web/server.py — contrib web PATCH accepts both `tools` and `capabilities`
+      (drift)
+
+      - src/larva/shell/components.py — production toolset/constraint loaders enforce
+      canonical-only projection
+
+      - tests/app/test_facade/conftest.py — fixture shape mirrors canonical + legacy
+      for transition testing
+
+      - src/larva/app/facade.py — error envelope field-shape invariants
+
+
+      ## Behavior Preservation Matrix
+
+      - canonical_admission_locked: `capabilities` required canonical field; `tools`,
+      `side_effect_policy`, and unknown fields rejected at canonical boundary; normalization
+      removes legacy fields from canonical output.
+
+      - packaged_vs_contrib_web_locked: parity for most persona/component endpoints;
+      drift detected on PATCH field admission (`capabilities` only vs `tools|capabilities`)
+      and contrib-only batch-update extension.
+
+      - component_error_envelopes_locked: invariant envelope fields are `code`, `numeric_code`,
+      `message`, `details`; numeric-code mapping and taxonomy preserved across component/facade/validation
+      paths.
+
+      - fixture_family_partition_locked: production filesystem loaders are canonical-only;
+      transition fixtures intentionally preserve legacy-mirrored shape for compatibility
+      tests.
+
+      - component_kind_vocabulary_locked: accepted component kinds are exactly `prompts|toolsets|constraints|models`;
+      invalid kinds return HTTP 400.
+
+
+      ## Non-Intersection Notes
+
+      - active_runtime_authority: canonical runtime authority is `capabilities`-first
+      admission with canonical-only output projection and canonical error envelope
+      invariants.
+
+      - deferred_compatibility_paths: legacy-compatible fixture and contrib compatibility
+      paths remain documented as non-authoritative runtime compatibility remnants.
+
+
+      No product-code mutation was required for this review matrix step; evidence
+      artifact provided as campaign baseline.'
   - id: dup_guardrails.gate
     name: Gate duplicate-abstraction guardrails
     status: pending
