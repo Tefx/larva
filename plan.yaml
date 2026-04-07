@@ -36832,7 +36832,7 @@ phases:
     agent: blind-tester-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
-  status: locked
+  status: done
   gate: Collapse repeated app-layer admission skeleton into one preserved-behavior
     seam.
   depends_on:
@@ -36841,7 +36841,7 @@ phases:
   steps:
   - id: dup_facade_admission.workflow-basis
     name: Design unified app-layer admission workflow seam
-    status: pending
+    status: skipped
     description: 'step_type: review
 
 
@@ -36884,9 +36884,10 @@ phases:
 
       '
     agent: software-architect-tacit
+    skipped_reason: absorbed
   - id: dup_facade_admission.impl
     name: Consolidate repeated facade admission workflow
-    status: pending
+    status: skipped
     description: 'step_type: implementation
 
 
@@ -36944,9 +36945,10 @@ phases:
     depends_on:
     - dup_facade_admission.workflow-basis
     agent: python-senior-tacit
+    skipped_reason: absorbed
   - id: dup_facade_admission.verify
     name: Verify unified facade admission workflow preserves entrypoint behavior
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36993,9 +36995,10 @@ phases:
     depends_on:
     - dup_facade_admission.impl
     agent: integration-verifier-tacit
+    skipped_reason: absorbed
   - id: dup_facade_admission.gate
     name: Gate facade admission workflow consolidation
-    status: pending
+    status: skipped
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -37035,6 +37038,7 @@ phases:
     - dup_facade_admission.impl
     - dup_facade_admission.verify
     agent: gate-reviewer-tacit
+    skipped_reason: absorbed
 - id: dup_component_kind
   name: Component Kind Vocabulary Normalization
   status: locked
