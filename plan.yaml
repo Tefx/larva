@@ -37769,3 +37769,35 @@ phases:
     - baseline_failure_finalization.full_verify
     - baseline_failure_finalization.doc_sync
     agent: gate-reviewer-tacit
+  - id: baseline_failure_finalization.gate
+    name: Final gate for baseline-failure remediation
+    status: pending
+    description: Final gate for the compressed remediation stream. Open only when
+      the former baseline failure clusters are closed or explicitly dispositioned
+      with non-intersection evidence, docs are synced, and independent deep review
+      does not identify unresolved blocker-class issues.
+    verification: Review full verification, doc sync, and deep review outputs. Block
+      if any unexplained residuals or blocker-class issues remain.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Final Gate Report
+
+      - Full verification status:
+
+      - Residual failure accounting:
+
+      - Doc sync status:
+
+      - Deep review status:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - baseline_failure_finalization.full_verify
+    - baseline_failure_finalization.doc_sync
+    - baseline_failure_finalization.deep_review
+    agent: gate-reviewer-tacit
