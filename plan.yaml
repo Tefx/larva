@@ -36096,7 +36096,7 @@ phases:
       '
     depends_on:
     - dup_contract_source.contract-basis
-    agent: python-senior-tacit
+    agent: python-refactor-master-tacit
   - id: dup_contract_source.spec-conformance
     name: Audit derived projections against the canonical contract metadata seam
     status: pending
