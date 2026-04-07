@@ -36358,7 +36358,7 @@ phases:
     agent: software-architect-tacit
   - id: dup_contract_source.fixture_basis
     name: Define canonical-only and transition-only fixture families
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -36384,6 +36384,8 @@ phases:
 
       - Shared doubles and helper seams are identified'
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-07T19:12:16.871564+00:00'
   - id: dup_contract_source.fixture_impl
     name: Unify test fixtures and shared doubles around explicit canonical vs transition
       semantics
