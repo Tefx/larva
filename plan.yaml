@@ -36805,6 +36805,22 @@ phases:
     depends_on:
     - dup_error_abstraction.alias_basis
     agent: python-refactor-master-tacit
+  - id: dup_error_abstraction.alias_verify
+    name: Verify component-kind aliases converge across transports
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Independently verify that single/plural kind aliases now reach the same loader
+      and error semantics.'
+    verification: '- Alias pairs converge to the same internal meaning across transports
+
+      - Invalid kind handling remains aligned'
+    depends_on:
+    - dup_error_abstraction.alias_impl
+    agent: blind-tester-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
