@@ -36763,6 +36763,18 @@ phases:
     - dup_error_abstraction.impl
     - dup_error_abstraction.verify
     agent: gate-reviewer-tacit
+  - id: dup_error_abstraction.alias_basis
+    name: Define canonical component-kind vocabulary and alias policy
+    status: pending
+    description: 'step_type: review
+
+
+      Define the internal canonical component-kind vocabulary and the compatibility
+      alias policy for public surfaces.'
+    verification: '- Canonical vocabulary is chosen explicitly
+
+      - Alias handling and eventual cleanup strategy are documented'
+    agent: software-architect-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
