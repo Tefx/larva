@@ -36127,7 +36127,7 @@ phases:
   steps:
   - id: dup_contract_source.contract-basis
     name: Design single-source canonical contract metadata seam
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -36172,6 +36172,40 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-07T19:11:59.878981+00:00'
+    done_at: '2026-04-07T19:19:03.076107+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Contract Basis
+
+      - metadata_owner: `src/larva/core/validate.py` is designated single-source owner
+      for canonical admission metadata (required/optional/forbidden field sets, ValidationIssue/ValidationReport
+      shape, canonical validation phrase stems).
+
+      - derived_projections: `contracts/persona_spec.schema.json` and `src/larva/shell/mcp_contract.py`
+      are explicit derived projections of validator-owned metadata; ownership and
+      dependency direction documented in `design/contract-metadata-single-source-basis.md`.
+
+      - parity_requirements: validator-first sequence pinned (`validate` metadata
+      → schema snapshot → MCP contract text → tests/docs), with no projection-layer
+      semantic redefinition allowed.
+
+      - drift_prevention_strategy: ownership matrix documented; validator/MCP module
+      notes and schema description text clarified; separate phrase-registry approach
+      rejected as over-engineered.
+
+
+      Verification:
+
+      - Single-source metadata basis explicitly names derived artifacts and ownership
+      boundaries.
+
+      - Ownership conflict among validator, schema, and MCP text resolved in documented
+      basis.
+
+      - Subagent evidence includes isolated worktree completion and commit `9e77a210cc78524bfe2c11eb7c7d3c67a90695b5`.'
   - id: dup_contract_source.impl
     name: Consolidate canonical contract metadata and rewire projections
     status: pending
