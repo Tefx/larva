@@ -36722,16 +36722,18 @@ phases:
     - dup_error_abstraction.impl
     agent: integration-verifier-tacit
   - id: dup_error_abstraction.gate
-    name: Gate component error projection abstraction
+    name: Gate component surface normalization and error projection
     status: pending
     description: 'step_type: gate
 
       verification_scope: phase-check
 
 
-      Gate review: component error meaning must now be shared while transport wrappers
-      remain intentionally distinct.'
+      Gate review: component-kind vocabulary and component error meaning must now
+      be shared while transport wrappers remain intentionally distinct.'
     verification: '- Shared meaning/invariant fields are centralized
+
+      - Canonical component-kind vocabulary and alias handling are explicit and aligned
 
       - No blocker-class transport drift remains'
     evidence_template: '## Gate Review Report
@@ -36762,6 +36764,9 @@ phases:
     - dup_error_abstraction.error-basis
     - dup_error_abstraction.impl
     - dup_error_abstraction.verify
+    - dup_error_abstraction.alias_basis
+    - dup_error_abstraction.alias_impl
+    - dup_error_abstraction.alias_verify
     agent: gate-reviewer-tacit
   - id: dup_error_abstraction.alias_basis
     name: Define canonical component-kind vocabulary and alias policy
