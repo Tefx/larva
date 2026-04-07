@@ -36775,6 +36775,36 @@ phases:
 
       - Alias handling and eventual cleanup strategy are documented'
     agent: software-architect-tacit
+  - id: dup_error_abstraction.alias_impl
+    name: Normalize component-kind vocabulary across public surfaces
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the alias-normalization policy from `dup_error_abstraction.alias_basis`.
+
+
+      YOUR SCOPE:
+
+      - choose one internal canonical component-kind vocabulary
+
+      - accept compatibility aliases at boundaries where required
+
+      - avoid transport-specific semantic drift in component_show paths
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Real public component-show paths must consume the normalization seam.'
+    verification: '- Main path: public surfaces resolve single/plural aliases to the
+      same internal meaning
+
+      - Failure path: invalid component kind errors remain precise and aligned'
+    depends_on:
+    - dup_error_abstraction.alias_basis
+    agent: python-refactor-master-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: locked
