@@ -37656,3 +37656,32 @@ phases:
     - baseline_failure_app_shell.tests_red
     - baseline_failure_app_shell.impl
     agent: blind-tester-tacit
+  - id: baseline_failure_app_shell.gate
+    name: Gate facade and transport alignment
+    status: pending
+    description: Gate the compressed app/shell remediation phase. Block if residual
+      app, CLI, MCP, or python_api issues still intersect the final full-suite proof
+      or if cross-surface validation semantics remain inconsistent.
+    verification: Open only if facade and transport semantics are coherent and remaining
+      issues do not intersect final full verification.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Facade sequencing coherence:
+
+      - CLI/MCP/python_api envelope coherence:
+
+      - Cross-surface divergences remaining:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - baseline_failure_app_shell.tests_red
+    - baseline_failure_app_shell.impl
+    - baseline_failure_app_shell.cross_surface_verify
+    agent: gate-reviewer-tacit
