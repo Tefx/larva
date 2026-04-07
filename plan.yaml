@@ -37214,14 +37214,12 @@ phases:
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
   status: locked
-  gate: Synchronize architecture and usage docs to the new abstraction boundaries.
+  gate: Synchronize architecture and usage docs to the merged duplicate-abstraction
+    boundaries.
   depends_on:
   - dup_web_convergence
   - dup_contract_source
-  - dup_fixture_unification
   - dup_error_abstraction
-  - dup_facade_admission
-  - dup_component_kind
   steps:
   - id: dup_doc_sync.update-docs
     name: Update docs for the new duplication-collapse boundaries
