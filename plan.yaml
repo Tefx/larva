@@ -36671,7 +36671,7 @@ phases:
       '
     depends_on:
     - dup_error_abstraction.error-basis
-    agent: python-senior-tacit
+    agent: python-refactor-master-tacit
   - id: dup_error_abstraction.verify
     name: Verify component error envelopes remain aligned across transports
     status: pending
