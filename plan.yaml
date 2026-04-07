@@ -35980,10 +35980,15 @@ phases:
     - dup_web_convergence.verify
     agent: gate-reviewer-tacit
 - id: dup_contract_source
-  name: Canonical Contract Source Consolidation
+  name: Canonical Contract, Fixture, and Admission Consolidation
   status: locked
-  gate: Collapse repeated contract metadata into a single authoritative local projection
-    source.
+  gate: Collapse repeated contract metadata, canonical-vs-transition fixture truth,
+    and facade admission workflow into one authoritative seam family without observable
+    behavior drift.
+  context: 'Merged duplicate-abstraction phase. Absorbs prior fixture-unification
+    and facade-admission work while keeping review depth and verification standards
+    unchanged. Focus: single-source contract metadata, explicit fixture taxonomy,
+    and shared facade admission choreography.'
   depends_on:
   - dup_guardrails
   steps:
