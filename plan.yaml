@@ -37730,7 +37730,7 @@ phases:
       \  - uvx invar-tools guard --all\n- Remaining residuals: none | <describe>"
     depends_on:
     - baseline_failure_core.tests_red
-    agent: python-executor
+    agent: python-senior-tacit
   - id: baseline_failure_core.retest
     name: Retest core failure cluster green
     status: pending
