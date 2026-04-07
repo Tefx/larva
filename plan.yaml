@@ -37538,3 +37538,10 @@ phases:
     - baseline_failure_core.impl
     - baseline_failure_core.retest
     agent: gate-reviewer-tacit
+- id: baseline_failure_app_shell
+  name: Baseline Facade and Transport Alignment
+  status: locked
+  gate: Align facade sequencing and shell transport envelopes to the frozen core contract,
+    then prove cross-surface consistency.
+  depends_on:
+  - baseline_failure_core
