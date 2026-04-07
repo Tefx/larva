@@ -37352,3 +37352,43 @@ phases:
 
       - Remaining ambiguity: none | <describe>'
     agent: integration-verifier-tacit
+  - id: baseline_failure_authority.contract_decision
+    name: Adjudicate canonical authority for remaining failure clusters
+    status: pending
+    description: 'Using the failure matrix, decide the authoritative semantics for:
+      (1) canonical capabilities versus deprecated tools, (2) whether side_effect_policy
+      remains rejected or transition-supported, (3) PersonaSpec required/optional
+      field semantics, (4) assemble candidate output shape, and (5) transport envelope
+      mapping for missing-id and related validation failures. Produce explicit decisions
+      that downstream implementers must follow instead of guessing.
+
+
+      This is the authority_adjudication step for the whole remediation stream.'
+    verification: Produce a decision memo that assigns a disposition path for every
+      failure cluster and explicitly resolves code-vs-test ambiguity for canonical
+      contract, assembly output, facade sequencing, and transport envelopes.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Authority Decision Memo
+
+      - Decision 1: capabilities vs tools
+
+      - Decision 2: side_effect_policy handling
+
+      - Decision 3: PersonaSpec required/optional semantics
+
+      - Decision 4: assemble output contract
+
+      - Decision 5: CLI/MCP/python-api envelope mapping
+
+      - For each decision: chosen rule, rejected alternative, why
+
+      - Disposition map: update_code | update_tests | mixed for each failure cluster'
+    depends_on:
+    - baseline_failure_authority.behavior_matrix
+    agent: software-architect-tacit
