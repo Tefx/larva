@@ -37511,3 +37511,30 @@ phases:
     - baseline_failure_core.tests_red
     - baseline_failure_core.impl
     agent: integration-verifier-tacit
+  - id: baseline_failure_core.gate
+    name: Gate core contract alignment
+    status: pending
+    description: Gate the compressed core remediation phase. Review whether the canonical
+      core contract is now coherent across spec/schema/normalize/assemble and whether
+      any residual failures intersect downstream facade or transport work.
+    verification: Open only if residual core issues are either closed or have explicit
+      non-intersection evidence for downstream phases.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Core coherence across spec/schema/normalize/assemble:
+
+      - Residual blocker intersection with facade/transport:
+
+      - Gate decision: OPEN | BLOCKED'
+    depends_on:
+    - baseline_failure_core.tests_red
+    - baseline_failure_core.impl
+    - baseline_failure_core.retest
+    agent: gate-reviewer-tacit
