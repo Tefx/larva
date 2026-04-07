@@ -37810,7 +37810,7 @@ phases:
       \ Evidence\n- Files changed (tests only):\n- Sequencing assertions pinned:\n\
       - Envelope assertions pinned:\n- Commands:\n  - uv run pytest -q tests/app/test_facade\
       \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py"
-    agent: python-executor
+    agent: python-senior-tacit
   - id: baseline_failure_app_shell.impl
     name: Align facade workflow and shell envelopes
     status: pending
