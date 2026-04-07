@@ -37712,3 +37712,30 @@ phases:
       \ before remediation:\n- Failure count after remediation:\n- Residual failures\
       \ and dispositions:\n- Gate-intersection analysis for any residual blocker"
     agent: integration-verifier-tacit
+  - id: baseline_failure_finalization.doc_sync
+    name: Sync docs and fixtures to final canonical behavior
+    status: pending
+    description: Update docs, examples, and fixture commentary so they match the final
+      canonical behavior established by the remediation. Include any changed expectations
+      for PersonaSpec fields, assembly output, facade sequencing, and transport envelopes.
+    verification: Show doc and fixture updates that align with the final verified
+      behavior; no stale examples or conflicting explanations remain.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Doc Sync Evidence
+
+      - Docs updated:
+
+      - Fixtures/comments updated:
+
+      - Removed stale statements:
+
+      - Commands or checks used to confirm alignment:'
+    depends_on:
+    - baseline_failure_finalization.full_verify
+    agent: doc-reviewer-tacit
