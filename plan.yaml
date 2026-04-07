@@ -37709,7 +37709,7 @@ phases:
 
       - Command(s): uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py
       tests/core/test_normalize.py tests/core/test_assemble.py'
-    agent: python-executor
+    agent: python-senior-tacit
   - id: baseline_failure_core.impl
     name: Align core contract, normalize, and assemble behavior
     status: pending
