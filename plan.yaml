@@ -36292,6 +36292,39 @@ phases:
     depends_on:
     - dup_contract_source.fixture_impl
     agent: integration-verifier-tacit
+  - id: dup_contract_source.workflow_impl
+    name: Consolidate repeated facade admission workflow
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement the shared admission workflow seam from `dup_contract_source.workflow_basis`.
+
+
+      YOUR SCOPE:
+
+      - collapse repeated register/resolve/update/clone admission choreography into
+      one shared app-layer seam
+
+      - preserve canonical admission semantics, digest behavior, and persistence ordering
+
+      - keep behavior-preservation guardrails from `dup_guardrails` intact
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      The shared workflow seam must be used by real facade operations.'
+    verification: '- Main path: register/resolve/update/clone retain existing success
+      semantics
+
+      - Failure path: canonical validation failures and forbidden-field handling remain
+      unchanged across all entrypoints'
+    depends_on:
+    - dup_contract_source.workflow_basis
+    - dup_contract_source.fixture_verify
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: locked
