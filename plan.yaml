@@ -37482,3 +37482,32 @@ phases:
     depends_on:
     - baseline_failure_core.tests_red
     agent: python-executor
+  - id: baseline_failure_core.retest
+    name: Retest core failure cluster green
+    status: pending
+    description: Independent retest of the full core cluster after implementation.
+      Focus on spec/schema/normalize/assemble interactions, not just isolated unit
+      behavior. Finding remaining issues is success for this step; if issues remain,
+      they should be precise enough for fix ownership.
+    verification: Run the full core failure cluster and record pass/fail per module
+      with remaining blocker classification if any.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      - Commands executed:
+
+      - Per-module result: test_spec / test_schema_validation / test_normalize / test_assemble
+
+      - Issues found: blocker | should_fix | suggestion | tech_debt
+
+      - Verdict: PASS | ISSUES_FOUND | INCOMPLETE'
+    depends_on:
+    - baseline_failure_core.tests_red
+    - baseline_failure_core.impl
+    agent: integration-verifier-tacit
