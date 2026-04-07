@@ -36568,7 +36568,6 @@ phases:
     policy, canonical loader vocabulary, and shared component error semantics.'
   depends_on:
   - dup_contract_source
-  - dup_fixture_unification
   steps:
   - id: dup_error_abstraction.error-basis
     name: Design shared component error projection seam
