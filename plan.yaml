@@ -35606,14 +35606,14 @@ phases:
       authority. Decision: OPEN.'
 - id: dup_guardrails
   name: Duplicate-Abstraction Guardrails
-  status: pending
+  status: in_progress
   gate: Freeze behavior-preservation matrix before duplicate-abstraction remediation.
   depends_on:
   - canonical_deep_review
   steps:
   - id: dup_guardrails.behavior-matrix
     name: Capture non-regression behavior matrix for duplicate-abstraction remediation
-    status: pending
+    status: claimed
     description: 'step_type: review
 
       verification_scope: full-plan-check
@@ -35684,6 +35684,8 @@ phases:
 
       '
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-07T18:45:49.880431+00:00'
   - id: dup_guardrails.gate
     name: Gate duplicate-abstraction guardrails
     status: pending
