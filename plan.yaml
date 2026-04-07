@@ -37461,3 +37461,24 @@ phases:
       - Command(s): uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py
       tests/core/test_normalize.py tests/core/test_assemble.py'
     agent: python-executor
+  - id: baseline_failure_core.impl
+    name: Align core contract, normalize, and assemble behavior
+    status: pending
+    description: 'Fill in the remaining code-side gaps in core modules so they satisfy
+      the frozen canonical contract and the updated core tests. Scope includes spec
+      exports/constants, schema alignment, validate error semantics, normalize field
+      handling, and assemble output shape. Maintain core invariants: @pre/@post contracts
+      and doctest coverage for any newly introduced core behavior. If an authority
+      decision says a failing assertion was obsolete, preserve that by changing tests
+      rather than silently reintroducing deprecated semantics.'
+    verification: Run the core cluster tests and invar guard; prove spec/schema/normalize/assemble
+      failures are closed or explicitly disposed.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\n## Core Remediation\
+      \ Evidence\n- Files changed:\n- Core contracts/doctests added or updated:\n\
+      - Authority decisions applied:\n- Commands:\n  - uv run pytest -q tests/core/test_spec.py\
+      \ tests/core/test_schema_validation.py tests/core/test_normalize.py tests/core/test_assemble.py\n\
+      \  - uvx invar-tools guard --all\n- Remaining residuals: none | <describe>"
+    depends_on:
+    - baseline_failure_core.tests_red
+    agent: python-executor
