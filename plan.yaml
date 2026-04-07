@@ -37692,3 +37692,23 @@ phases:
     independent deep review.
   depends_on:
   - baseline_failure_app_shell
+  steps:
+  - id: baseline_failure_finalization.full_verify
+    name: Run clustered and full-suite verification
+    status: pending
+    description: 'Run the formerly failing clusters together, then run the full pytest
+      suite and invar guard. Compare against the recorded pre-existing baseline and
+      account for every residual failure explicitly. This is a full-plan-check: a
+      broad verifier whose findings must be turned into explicit dispositions, not
+      hand-waved as pre-existing.'
+    verification: Run the known failure clusters, full pytest, and invar guard. Record
+      residual failures with disposition and blocker intersection.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\n## Full Verification\
+      \ Report\n- Commands:\n  - uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py\
+      \ tests/core/test_normalize.py tests/core/test_assemble.py tests/app/test_facade\
+      \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py\n\
+      \  - uv run pytest -q\n  - uvx invar-tools guard --all\n- Baseline failure count\
+      \ before remediation:\n- Failure count after remediation:\n- Residual failures\
+      \ and dispositions:\n- Gate-intersection analysis for any residual blocker"
+    agent: integration-verifier-tacit
