@@ -35853,7 +35853,7 @@ phases:
       - uncertainty_sources: none.'
 - id: dup_web_convergence
   name: Web Surface Convergence
-  status: pending
+  status: in_progress
   gate: Converge packaged and contrib web persona endpoints onto one canonical implementation
     seam.
   depends_on:
@@ -35861,7 +35861,7 @@ phases:
   steps:
   - id: dup_web_convergence.router-basis
     name: Design shared web router boundary for packaged and contrib runtimes
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -35905,6 +35905,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-07T19:12:21.497196+00:00'
   - id: dup_web_convergence.impl
     name: Converge packaged and contrib web endpoints onto the shared router seam
     status: pending
