@@ -37305,3 +37305,9 @@ phases:
     - dup_deep_review.black-box
     - dup_deep_review.architecture-review
     agent: gate-reviewer-tacit
+- id: baseline_failure_authority
+  name: Baseline Failure Authority and Triage
+  status: locked
+  gate: Freeze authority for remaining baseline failures before code or test remediation.
+  depends_on:
+  - dup_deep_review
