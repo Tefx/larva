@@ -36387,10 +36387,13 @@ phases:
     - dup_fixture_unification.verify
     agent: gate-reviewer-tacit
 - id: dup_error_abstraction
-  name: Component Error Projection Abstraction
+  name: Component Surface Normalization and Error Projection
   status: locked
-  gate: Unify component error construction and transport projection without changing
-    envelopes.
+  gate: Unify component-kind vocabulary and component error projection across transports
+    without changing externally meaningful envelopes.
+  context: 'Merged duplicate-abstraction phase. Absorbs prior component-kind normalization
+    work while preserving transport-level verification and gate rigor. Focus: alias
+    policy, canonical loader vocabulary, and shared component error semantics.'
   depends_on:
   - dup_contract_source
   - dup_fixture_unification
