@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaSpec",
-  "description": "Reference-only local snapshot of the opifex PersonaSpec contract. This file is non-authoritative for canonical admission semantics; larva.core.validate enforces the canonical boundary.",
+  "description": "Reference-only local snapshot of the opifex PersonaSpec contract. This file is a derived projection of larva.core.validate field-partition metadata and is non-authoritative for canonical admission semantics; larva.core.validate enforces the canonical boundary.",
   "type": "object",
   "required": ["id", "description", "prompt", "model", "capabilities", "spec_version"],
   "properties": {

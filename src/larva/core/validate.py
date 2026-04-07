@@ -5,6 +5,17 @@ candidates as a downstream enforcement layer of the opifex-owned PersonaSpec
 authority. Validation applies deterministic rules and produces a structured
 validation report.
 
+Single-source metadata seam:
+- this module is the local owner of canonical admission metadata used by larva
+  projections
+- owned here: required / optional / forbidden field partitions,
+  ``ValidationIssue`` / ``ValidationReport`` shapes, and canonical validation
+  phrase stems
+- derived downstream from this seam: ``contracts/persona_spec.schema.json``
+  (reference snapshot) and ``larva.shell.mcp_contract`` (transport projection)
+- those projections must not redefine canonical requiredness, issue structure,
+  or failure wording
+
 Admission notes:
 - required PersonaSpec fields at the canonical boundary are ``id``,
   ``description``, ``prompt``, ``model``, ``capabilities``, and

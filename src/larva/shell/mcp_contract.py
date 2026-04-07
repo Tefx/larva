@@ -2,6 +2,14 @@
 
 This module holds schema/type constants used by ``larva.shell.mcp`` so the
 runtime-facing handler module can stay focused on boundary logic.
+
+Ownership rule:
+- this module is a transport projection, not a contract owner
+- ``ValidationIssue`` / ``ValidationReport`` shapes and canonical admission
+  wording derive from ``larva.core.validate``
+- MCP tool descriptions may adapt those semantics for operator clarity, but
+  must not widen or redefine required / optional / forbidden PersonaSpec fields
+  or invent alternate canonical rejection reasons
 """
 
 from __future__ import annotations
