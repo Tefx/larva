@@ -36455,7 +36455,7 @@ phases:
       - Subagent evidence includes isolated worktree completion and commit `9e77a210cc78524bfe2c11eb7c7d3c67a90695b5`.'
   - id: dup_contract_source.impl
     name: Consolidate canonical contract metadata and rewire projections
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -36513,6 +36513,8 @@ phases:
     depends_on:
     - dup_contract_source.contract-basis
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T06:04:52.908554+00:00'
   - id: dup_contract_source.spec-conformance
     name: Audit derived projections against the canonical contract metadata seam
     status: pending
