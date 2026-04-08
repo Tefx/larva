@@ -38296,7 +38296,7 @@ phases:
       \ changed, 5 insertions, 4 deletions)"
   - id: dup_error_abstraction.retest_gate_blockers_round2
     name: Retest remaining dup_error_abstraction blocker families after batched remediation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38362,6 +38362,23 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T13:12:00.803879+00:00'
+    done_at: '2026-04-08T13:44:19.919806+00:00'
+    evidence: "## Verification Report\n\n**Tester**: integration-verifier-tacit (independent\
+      \ of implementation)\n**Scope**: Remaining dup_error_abstraction blocker families\n\
+      **Independence Level**: L1\n\n### refs Read Confirmation (MANDATORY)\nNo refs\
+      \ for this step.\n\n### Test Execution\n- Commands executed:\n  - uv run pytest\
+      \ -v tests/shell/test_web.py::TestWebSurfaceEndpoints::test_get_api_personas_by_id_returns_spec\
+      \ tests/shell/test_python_api.py::TestPythonApiAssemble::test_assemble_failure_passthrough_from_facade\n\
+      \  - uv run pytest -q tests/shell/test_web.py tests/shell/test_python_api.py\
+      \ tests/shell/test_mcp.py tests/shell/test_cli.py\n  - uv run pytest -q tests/\n\
+      - Output summary:\n  - targeted blocker tests: both PASSED\n  - related shell\
+      \ suites: 421 passed\n  - full project suite: 719 passed, 5 xfailed, 44 xpassed,\
+      \ 0 failed\n\n### Issues Found\n| Severity | Description | Location | Reproduction\
+      \ |\n| --- | --- | --- | --- |\n| none | no blocker/should_fix issue remained\
+      \ in targeted blocker families | — | — |\n\n### Coverage Assessment\n- Targeted\
+      \ web test verified: ✅\n- Targeted python_api test verified: ✅\n- Related shell\
+      \ suites exercised: web, python_api, mcp, cli\n- Remaining stale expectations\
+      \ found: none\n\n### Verdict\n- PASS"
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
