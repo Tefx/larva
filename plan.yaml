@@ -36539,7 +36539,7 @@ phases:
       produced.'
   - id: dup_contract_source.spec-conformance
     name: Audit derived projections against the canonical contract metadata seam
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36584,6 +36584,8 @@ phases:
     depends_on:
     - dup_contract_source.impl
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-08T07:55:00.217762+00:00'
   - id: dup_contract_source.gate
     name: Gate contract, fixture, and admission consolidation
     status: pending
