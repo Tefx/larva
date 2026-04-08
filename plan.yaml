@@ -38058,6 +38058,54 @@ phases:
     depends_on:
     - dup_error_abstraction.gate
     agent: python-refactor-master-tacit
+  - id: dup_error_abstraction.retest_gate_blockers
+    name: Retest dup_error_abstraction gate blockers
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      Re-run the targeted MCP + Web failing tests after dup_error_abstraction.fix_gate_blockers,
+      then run the relevant shell component suites covering the same error-projection
+      and web resolve/assemble surfaces.
+
+
+      Required retest focus:
+
+      - tests/shell/test_mcp.py::test_all_required_error_codes_present
+
+      - the 3 currently failing web tests in tests/shell/test_web.py
+
+      - relevant MCP/Web shell component suites needed to prove the blocker families
+      are closed
+
+
+      This retest is successful only when the targeted failures are green and the
+      related component suites stay green.'
+    verification: '- Targeted MCP test passes: tests/shell/test_mcp.py::test_all_required_error_codes_present
+
+      - Targeted failing Web tests pass in tests/shell/test_web.py
+
+      - Relevant MCP/Web component suites pass with no regression on shared error
+      projection or resolve/assemble surfaces
+
+      - Evidence includes exact commands and actual outputs for targeted reruns'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\
+      \n## Verification Report\n**Tester**: integration-verifier-tacit\n**Scope**:\
+      \ dup_error_abstraction blocker retest\n**Independence Level**: L1\n\n### Test\
+      \ Execution\n- Commands executed:\n  ```\n  <paste exact targeted MCP/Web commands>\n\
+      \  ```\n- Actual output:\n  ```\n  <paste actual test output>\n  ```\n\n###\
+      \ Coverage\n- Targeted MCP failure rerun: PASS|FAIL\n- Targeted Web failures\
+      \ rerun: PASS|FAIL\n- Relevant component suites: PASS|FAIL\n\n### Verdict\n\
+      - PASS | ISSUES_FOUND | INCOMPLETE"
+    depends_on:
+    - dup_error_abstraction.fix_gate_blockers
+    agent: integration-verifier-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
