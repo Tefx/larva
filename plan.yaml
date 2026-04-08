@@ -40564,7 +40564,7 @@ phases:
   steps:
   - id: baseline_failure_finalization.full_verify
     name: Run clustered and full-suite verification
-    status: claimed
+    status: done
     description: 'Run the formerly failing clusters together, then run the full pytest
       suite and invar guard. Compare against the recorded pre-existing baseline and
       account for every residual failure explicitly. This is a full-plan-check: a
@@ -40583,6 +40583,33 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T20:15:50.779647+00:00'
+    done_at: '2026-04-08T20:24:29.537476+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/core/test_spec.py —\
+      \ clustered verification input reviewed.\n- tests/core/test_schema_validation.py\
+      \ — clustered verification input reviewed.\n- tests/core/test_normalize.py —\
+      \ clustered verification input reviewed.\n- tests/core/test_assemble.py — clustered\
+      \ verification input reviewed.\n- tests/app/test_facade/** — clustered verification\
+      \ input reviewed.\n- tests/shell/test_cli.py — clustered verification input\
+      \ reviewed.\n- tests/shell/test_mcp.py — clustered verification input reviewed.\n\
+      - tests/shell/test_python_api.py — clustered verification input reviewed.\n\
+      - guard-diagnosis.md — residual guard disposition reference reviewed.\n\n##\
+      \ Full Verification Report\n- Commands:\n  - uv run pytest -q tests/core/test_spec.py\
+      \ tests/core/test_schema_validation.py tests/core/test_normalize.py tests/core/test_assemble.py\
+      \ tests/app/test_facade tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py\n\
+      \  - uv run pytest -q\n  - uvx invar-tools guard --all\n- Baseline failure count\
+      \ before remediation:\n  - non-zero in targeted baseline clusters (historical\
+      \ baseline phase context)\n- Failure count after remediation:\n  - tests: 0\
+      \ failures (cluster and full-suite)\n- Residual failures and dispositions:\n\
+      \  - guard crosshair counterexample in assemble _deep_merge: pre-existing/non-blocking\
+      \ envelope false-positive class\n  - static warnings/infos: pre-existing non-blocking\
+      \ debt\n  - xpassed patch tests: expected due to implementation completion\n\
+      - Gate-intersection analysis for any residual blocker:\n  - no blocker-class\
+      \ residual intersects final acceptance\n\n## Test-step semantic reporting\n\
+      - step_intent: verify\n- expected_result: no test failures; explicit disposition\
+      \ for residual guard findings\n- observed_result: 593 passed (cluster), 760\
+      \ passed + 32 xpassed (full), guard residuals dispositioned\n- failure_alignment:\
+      \ no new regression; residuals align with pre-existing diagnosis\n- whether\
+      \ any product implementation files were modified: no"
   - id: baseline_failure_finalization.doc_sync
     name: Sync docs and fixtures to final canonical behavior
     status: pending
