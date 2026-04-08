@@ -39142,7 +39142,7 @@ phases:
 
       '
     depends_on:
-    - dup_deep_review.retest-blockers
+    - dup_deep_review.wiring-audit
     agent: spec-verifier-tacit
   - id: dup_deep_review.black-box
     name: Black-box verify public surfaces after duplicate-abstraction remediation
