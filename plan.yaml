@@ -36884,7 +36884,7 @@ phases:
       is remediated; no new blockers.'
   - id: dup_contract_source.workflow_impl
     name: Consolidate repeated facade admission workflow
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -36917,6 +36917,24 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T08:12:05.407734+00:00'
+    done_at: '2026-04-08T08:17:14.639309+00:00'
+    evidence: '## Workflow Implementation Evidence
+
+      - files_changed: `src/larva/app/facade.py`.
+
+      - unified_seam_usage: introduced shared admission seam methods (`_admit_candidate`,
+      `_admit_and_persist`) and rewired real operations `register/resolve/update/clone`
+      to consume them.
+
+      - semantics_preservation: canonical validation + forbidden-field rejection behavior
+      unchanged; digest generation remains normalization-owned; persistence ordering
+      retained (mutating ops persist post-admission, resolve remains non-persistent).
+
+      - verification_commands: targeted pytest over MCP/Python API and boundary-gap
+      coverage for register/resolve/update/clone paths; changed-scope invar guard.
+
+      - outputs_summary: all targeted tests passed; invar guard passed (warnings only);
+      branch commit `1bccfd8` recorded.'
   - id: dup_contract_source.workflow_verify
     name: Verify unified facade admission workflow preserves entrypoint behavior
     status: pending
