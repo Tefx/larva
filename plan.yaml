@@ -39194,7 +39194,7 @@ phases:
       \ surfaces; residual is code-clarity/defense-depth improvement only"
   - id: dup_deep_review.black-box
     name: Black-box verify public surfaces after duplicate-abstraction remediation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -39240,6 +39240,8 @@ phases:
     depends_on:
     - dup_deep_review.spec-conformance
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-08T16:54:57.681163+00:00'
   - id: dup_deep_review.architecture-review
     name: Review remaining duplicate logic and abstraction debt after remediation
     status: done
