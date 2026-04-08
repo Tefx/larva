@@ -36619,6 +36619,10 @@ phases:
 
       - Shared workflow seam is used by real facade operations
 
+      - Assemble test divergence is closed: core assemble tests assert capabilities-only
+      output while preserving backward-compatible deprecated tools input handling
+      semantics
+
       - No blocker-class projection or entrypoint drift remains'
     evidence_template: '## Gate Review Report
 
@@ -36654,6 +36658,7 @@ phases:
     - dup_contract_source.workflow_basis
     - dup_contract_source.workflow_impl
     - dup_contract_source.workflow_verify
+    - dup_contract_source.assemble_test_sync
     agent: gate-reviewer-tacit
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
