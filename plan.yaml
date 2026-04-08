@@ -37555,7 +37555,7 @@ phases:
       commit `9797862`.'
   - id: dup_error_abstraction.impl
     name: Implement shared component error projection and rewire transports
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -37616,6 +37616,37 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T11:20:49.685308+00:00'
+    done_at: '2026-04-08T11:34:10.140976+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- design/component-error-projection-basis.md\
+      \ — Read. Key passages applied:\n  - one shared seam for component error projection\n\
+      \  - invariant envelope fields (`code`, `numeric_code`, `message`, `details`)\n\
+      \  - distinct mappings for invalid kind / not found / store unavailable\n  -\
+      \ transport wrappers keep transport semantics without rewriting shared meaning\n\
+      \n## Error Abstraction Evidence\n- shared_factory_location:\n  - src/larva/core/component_error_projection.py\n\
+      \    - component_invalid_kind_error(...)\n    - component_not_found_error(...)\n\
+      \    - component_store_unavailable_error(...)\n    - project_component_store_error(...)\n\
+      - transport_adopters:\n  - Facade: src/larva/app/facade.py delegates _component_error()\
+      \ to project_component_store_error(...)\n  - CLI: src/larva/shell/cli_runtime.py\
+      \ maps via shared seam; invalid/not-found->EXIT_ERROR, internal->EXIT_CRITICAL\n\
+      \  - MCP: src/larva/shell/mcp_handler_ops.py uses shared projection for invalid/store/list/show\
+      \ failures; removed old local factory from mcp_params.py\n  - Python API: src/larva/shell/python_api_components.py\
+      \ list/show errors projected through shared seam\n  - Web: src/larva/shell/web.py\
+      \ component endpoints consume Python API seam and map shared code to HTTP statuses\n\
+      - invariant_fields_preserved:\n  - code\n  - numeric_code\n  - message\n  -\
+      \ details\n  - operation/reason/component_type/component_name/valid_types semantics\
+      \ preserved\n- edge_case_coverage:\n  - invalid kind distinguishable: INVALID_INPUT/1\n\
+      \  - not found distinguishable: COMPONENT_NOT_FOUND/105\n  - store unavailable\
+      \ distinguishable: INTERNAL/10\n  - transport wrappers preserve surface behavior\
+      \ with aligned shared meaning\n\n## Verification\n- commands:\n  - uv run pytest\
+      \ tests/shell/test_python_api.py -k component\n  - uv run pytest tests/shell/test_mcp.py\
+      \ -k component\n  - uv run pytest tests/shell/test_cli.py -k component\n  -\
+      \ uv run pytest tests/shell/test_web.py -k component\n  - uv run pytest tests/app/test_facade/test_assemble.py\n\
+      \  - invar_guard(path=.vectl/worktrees/dup_error_abstraction.impl, changed=true)\n\
+      - outputs_summary:\n  - component-focused suites passed across python_api/mcp/cli/web\n\
+      \  - facade assemble tests passed\n  - invar_guard changed=true passed (warnings\
+      \ only, no errors)\n  - commits on isolated branch:\n    - 6a5e077 shell: centralize\
+      \ component error projection seam\n    - e66c2d9 tests: align transport expectations\
+      \ for component error taxonomy"
   - id: dup_error_abstraction.verify
     name: Verify component error envelopes remain aligned across transports
     status: pending
