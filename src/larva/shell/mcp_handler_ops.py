@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 from returns.result import Failure, Success
+from larva.core.component_kind import (
+    CANONICAL_COMPONENT_KINDS,
+    invalid_component_kind_message,
+    normalize_component_kind,
+)
 from larva.shell.mcp_params import MCPParamValidationMixin
 
 if TYPE_CHECKING:
@@ -74,12 +79,15 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         component_type = checked_params["component_type"]
         name = checked_params["name"]
 
-        valid_types = {"prompts", "toolsets", "constraints", "models"}
-        if component_type not in valid_types:
+        normalized_type = normalize_component_kind(component_type)
+        if normalized_type is None:
             return self._component_store_error(
                 "larva_component_show",
-                f"Unsupported component type: {component_type}",
-                {"component_type": component_type, "valid_types": sorted(valid_types)},
+                invalid_component_kind_message(component_type),
+                {
+                    "component_type": component_type,
+                    "valid_types": sorted(CANONICAL_COMPONENT_KINDS),
+                },
             )
 
         if self._components is None:
@@ -95,14 +103,14 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
             "constraints": self._components.load_constraint,
             "models": self._components.load_model,
         }
-        result = loader_map[component_type](name)
+        result = loader_map[normalized_type](name)
         if isinstance(result, Failure):
             error = result.failure()
             return self._component_store_error(
                 "larva_component_show",
                 str(error),
                 {
-                    "component_type": component_type,
+                    "component_type": normalized_type,
                     "component_name": name,
                 },
             )

@@ -705,6 +705,34 @@ class TestPythonApiComponentShow:
         assert call_record == ["load_prompt:test-prompt"]
         assert result == {"text": "Prompt test-prompt content"}
 
+    def test_component_show_plural_alias_delegates_to_load_prompt(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show('prompts', name) must normalize to load_prompt()."""
+        call_record: list[str] = []
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                call_record.append(f"load_prompt:{name}")
+                return Success({"text": f"Prompt {name} content"})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
+        result = python_api.component_show("prompts", "test-prompt")
+
+        assert call_record == ["load_prompt:test-prompt"]
+        assert result == {"text": "Prompt test-prompt content"}
+
     def test_component_show_toolset_delegates_to_load_toolset(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -809,6 +837,7 @@ class TestPythonApiComponentShow:
         assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
         assert exc_info.value.error["numeric_code"] == 105
         assert "Invalid component type" in exc_info.value.error["message"]
+        assert "prompts | toolsets | constraints | models" in exc_info.value.error["message"]
 
     def test_component_show_not_found_raises_component_not_found(
         self, monkeypatch: pytest.MonkeyPatch

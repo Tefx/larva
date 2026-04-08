@@ -9,6 +9,7 @@ from returns.result import Result, Success
 
 from larva.app import facade as facade_module
 from larva.app.facade import LarvaError, LarvaFacade, PersonaSummary
+from larva.core.component_kind import invalid_component_kind_message
 from larva.core import assemble as assemble_module, normalize as normalize_module
 from larva.core import spec as spec_module, validate as validate_module
 from larva.core.validate import ValidationReport
@@ -212,12 +213,14 @@ def _component_show_invalid_target(
     component_type: str | None = None,
 ) -> Result[CliFailure, object]:
     details: dict[str, object] = {"component_ref": component_ref}
+    message = f"invalid component target: {component_ref}"
     if component_type is not None:
         details["component_type"] = component_type
+        message = invalid_component_kind_message(component_type)
     error_envelope: JsonErrorEnvelope = {
         "code": "COMPONENT_NOT_FOUND",
         "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
-        "message": f"invalid component target: {component_ref}",
+        "message": message,
         "details": details,
     }
     return Success({"exit_code": EXIT_ERROR, "error": error_envelope})

@@ -7,6 +7,7 @@ from typing import cast
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaError
+from larva.core.component_kind import invalid_component_kind_message, normalize_component_kind
 from larva.shell.components import FilesystemComponentStore
 
 
@@ -44,21 +45,22 @@ def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
 def _component_show_result(type: str, name: str) -> Result[dict[str, object], LarvaError]:
     """Return one component as Result with LarvaError failures."""
     store = _component_store
+    normalized_type = normalize_component_kind(type)
 
-    if type == "prompt":
+    if normalized_type == "prompts":
         result = store.load_prompt(name)
-    elif type == "toolset":
+    elif normalized_type == "toolsets":
         result = store.load_toolset(name)
-    elif type == "constraint":
+    elif normalized_type == "constraints":
         result = store.load_constraint(name)
-    elif type == "model":
+    elif normalized_type == "models":
         result = store.load_model(name)
     else:
         return Failure(
             {
                 "code": "COMPONENT_NOT_FOUND",
                 "numeric_code": 105,
-                "message": f"Invalid component type: {type}",
+                "message": invalid_component_kind_message(type),
                 "details": {
                     "component_type": type,
                     "component_name": name,
@@ -74,7 +76,7 @@ def _component_show_result(type: str, name: str) -> Result[dict[str, object], La
                 "numeric_code": 105,
                 "message": str(error),
                 "details": {
-                    "component_type": str(getattr(error, "component_type", type)),
+                    "component_type": str(getattr(error, "component_type", normalized_type)),
                     "component_name": str(getattr(error, "component_name", name)),
                 },
             }

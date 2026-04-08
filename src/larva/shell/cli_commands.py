@@ -17,6 +17,7 @@ from larva.app.facade import (
     DeletedPersona,
     LarvaFacade,
 )
+from larva.core.component_kind import normalize_component_kind
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
@@ -496,7 +497,8 @@ def component_show_command(
         ),
         "models": cast("Callable[[str], Result[object, object]]", component_store.load_model),
     }
-    loader = loaders.get(component_type)
+    normalized_type = normalize_component_kind(component_type)
+    loader = loaders.get(normalized_type) if normalized_type is not None else None
     if loader is None:
         failure = _component_show_invalid_target(
             component_ref, component_type=component_type

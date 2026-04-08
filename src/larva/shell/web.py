@@ -42,6 +42,7 @@ from larva.shell.python_api import (
     resolve,
     validate,
 )
+from larva.core.component_kind import invalid_component_kind_message, normalize_component_kind
 from larva.shell.components import FilesystemComponentStore
 from larva.core.validate import ValidationReport
 
@@ -222,15 +223,16 @@ def api_list_components() -> Any:
 @app.get("/api/components/{component_type}/{name}")
 def api_get_component(component_type: str, name: str) -> Any:
     """Load a specific component."""
+    normalized_type = normalize_component_kind(component_type)
     loaders = {
         "prompts": _component_store.load_prompt,
         "toolsets": _component_store.load_toolset,
         "constraints": _component_store.load_constraint,
         "models": _component_store.load_model,
     }
-    loader = loaders.get(component_type)
+    loader = loaders.get(normalized_type) if normalized_type is not None else None
     if not loader:
-        raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}")
+        raise HTTPException(status_code=400, detail=invalid_component_kind_message(component_type))
     result = loader(name)
     if hasattr(result, "unwrap"):
         return {"data": result.unwrap()}

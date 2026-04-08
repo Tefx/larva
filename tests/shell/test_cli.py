@@ -2192,6 +2192,21 @@ class TestComponentShowCommand:
         assert "data" in cli_result["json"]
         assert "text" in cli_result["json"]["data"]
 
+    def test_component_show_prompt_singular_alias_success_json_mode_returns_payload(self) -> None:
+        """Component show accepts singular alias by normalizing to canonical loader."""
+        components = InMemoryComponentStore()
+
+        result = component_show_command(
+            "prompt/test-prompt", as_json=True, component_store=components
+        )
+
+        assert isinstance(result, Success)
+        cli_result = result.unwrap()
+        assert cli_result["exit_code"] == EXIT_OK
+        assert "json" in cli_result
+        assert "data" in cli_result["json"]
+        assert "text" in cli_result["json"]["data"]
+
     def test_component_show_toolset_success_text_mode_returns_exit_ok(self) -> None:
         """Component show with valid toolset returns exit code 0 in text mode."""
         components = InMemoryComponentStore()

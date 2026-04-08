@@ -1463,6 +1463,21 @@ class TestMCPComponentShowAcceptance:
         assert isinstance(result, dict)
         assert result["code"] == "COMPONENT_NOT_FOUND"
         assert result["numeric_code"] == 105
+        assert "prompts | toolsets | constraints | models" in result["message"]
+
+    def test_handle_component_show_singular_alias_normalizes_to_plural_loader(self) -> None:
+        """component_type singular aliases must resolve via canonical plural loaders."""
+        components = InMemoryComponentStore(
+            prompts_by_name={"test-prompt": {"text": "You are a helpful assistant."}}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "prompt", "name": "test-prompt"})
+
+        assert isinstance(result, dict)
+        assert "error" not in result
+        assert result["text"] == "You are a helpful assistant."
 
     def test_handle_component_show_missing_component_returns_component_not_found(self) -> None:
         """Test handle_component_show returns COMPONENT_NOT_FOUND for missing component."""
