@@ -37741,7 +37741,7 @@ phases:
       branch commit `b46569eed4360eac6ac8f403454fc1f02623505a`.'
   - id: dup_error_abstraction.alias_impl
     name: Normalize component-kind vocabulary across public surfaces
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -37769,6 +37769,8 @@ phases:
     depends_on:
     - dup_error_abstraction.alias_basis
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T11:02:54.333520+00:00'
   - id: dup_error_abstraction.alias_verify
     name: Verify component-kind aliases converge across transports
     status: pending
