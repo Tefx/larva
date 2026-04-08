@@ -40410,7 +40410,7 @@ phases:
       - Remaining residuals: none'
   - id: baseline_failure_app_shell.cross_surface_verify
     name: Verify cross-surface consistency for validation behavior
-    status: pending
+    status: claimed
     description: Independent verification across CLI, MCP, and python_api for the
       same validation scenarios after remediation. Use shared fixtures and prove these
       surfaces no longer disagree on the resolved fact set, especially for missing-id
@@ -40444,6 +40444,8 @@ phases:
     - baseline_failure_app_shell.tests_red
     - baseline_failure_app_shell.impl
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-08T19:32:04.152939+00:00'
   - id: baseline_failure_app_shell.gate
     name: Gate facade and transport alignment
     status: pending
