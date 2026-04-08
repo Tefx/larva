@@ -39502,7 +39502,7 @@ phases:
       \ => passed"
   - id: dup_deep_review.retest-blockers
     name: Re-run deep wiring verification after duplicate-abstraction blocker remediation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -39650,6 +39650,8 @@ phases:
     depends_on:
     - dup_deep_review.fix-blockers
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-08T15:50:58.259102+00:00'
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
   status: locked
