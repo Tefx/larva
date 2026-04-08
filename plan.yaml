@@ -40410,7 +40410,7 @@ phases:
       - Remaining residuals: none'
   - id: baseline_failure_app_shell.cross_surface_verify
     name: Verify cross-surface consistency for validation behavior
-    status: claimed
+    status: done
     description: Independent verification across CLI, MCP, and python_api for the
       same validation scenarios after remediation. Use shared fixtures and prove these
       surfaces no longer disagree on the resolved fact set, especially for missing-id
@@ -40446,6 +40446,32 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-08T19:32:04.152939+00:00'
+    done_at: '2026-04-08T19:49:25.072384+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/shell/test_cli.py —\
+      \ CLI envelope and validation-path behavior reviewed.\n- tests/shell/test_mcp.py\
+      \ — MCP envelope and malformed-param behavior reviewed.\n- tests/shell/test_python_api.py\
+      \ — python_api delegation/error propagation reviewed.\n- tests/shell/fixture_taxonomy.py\
+      \ — shared canonical/transition fixtures reviewed.\n- tests/app/test_facade/test_validate.py\
+      \ — facade validation expectations reviewed.\n- tests/app/test_facade/test_validate_warning.py\
+      \ — forbidden/required issue semantics reviewed.\n- src/larva/app/facade.py\
+      \ / src/larva/core/validate.py / src/larva/shell/{mcp,python_api,cli_runtime}.py\
+      \ — signature-level authority checks.\n- INTERFACES.md / ARCHITECTURE.md — boundary\
+      \ and error-code contract references reviewed.\n\n## Cross-Surface Verification\n\
+      - Shared fixtures used:\n  - canonical spec\n  - missing-id spec\n  - forbidden\
+      \ tools spec\n  - forbidden side_effect_policy spec\n  - unknown-field spec\n\
+      \  - missing-capabilities spec\n  - invalid-posture spec\n- Commands executed:\n\
+      \  - uv run pytest tests/repro/cross_surface_consistency_verify.py -v\n  - uv\
+      \ run pytest -q tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py\
+      \ tests/app/test_facade/ tests/core/test_validate.py tests/repro/cross_surface_consistency_verify.py\n\
+      \  - uvx invar-tools guard --all\n- CLI result: consistent domain/error envelope\
+      \ projection for validation/not-found scenarios.\n- MCP result: consistent validation/not-found\
+      \ mapping plus malformed-params transport behavior.\n- python_api result: consistent\
+      \ domain mapping through LarvaApiError and validation reports.\n- Any divergence\
+      \ remaining: none\n- Verdict: PASS\n\n## Test-step semantic reporting\n- step_intent:\
+      \ verify\n- expected_result: consistent outcomes across CLI/MCP/python_api for\
+      \ shared validation fixtures\n- observed_result: cross-surface verification\
+      \ passed; broad targeted suite passed\n- failure_alignment: no failures\n- whether\
+      \ any product implementation files were modified: no (tests-only repro added)"
   - id: baseline_failure_app_shell.gate
     name: Gate facade and transport alignment
     status: pending
