@@ -36764,7 +36764,7 @@ phases:
   - id: dup_contract_source.fixture_impl
     name: Unify test fixtures and shared doubles around explicit canonical vs transition
       semantics
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -36797,6 +36797,8 @@ phases:
     depends_on:
     - dup_contract_source.fixture_basis
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T07:40:48.301225+00:00'
   - id: dup_contract_source.fixture_verify
     name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
     status: pending
