@@ -235,6 +235,37 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._validation_error(report))
         return Success(normalized)
 
+    def _admit_candidate(self, spec: PersonaSpec) -> Result[PersonaSpec, LarvaError]:
+        """Apply the canonical app-layer admission choreography to a candidate.
+
+        Workflow order is intentionally stable across entrypoints:
+        1) validate incoming candidate
+        2) normalize
+        3) validate normalized output
+        """
+
+        report = self.validate(spec)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+
+        normalized_result = self._normalize_and_validate(spec)
+        if isinstance(normalized_result, Failure):
+            return normalized_result
+        return Success(normalized_result.unwrap())
+
+    def _admit_and_persist(self, spec: PersonaSpec) -> Result[PersonaSpec, LarvaError]:
+        """Admit a candidate, then persist canonical output to the registry."""
+
+        admission_result = self._admit_candidate(spec)
+        if isinstance(admission_result, Failure):
+            return admission_result
+
+        normalized = admission_result.unwrap()
+        save_result = self._registry.save(normalized)
+        if isinstance(save_result, Failure):
+            return Failure(self._registry_failure_error(save_result.failure()))
+        return Success(normalized)
+
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
         assemble_input: AssemblyInput = {
             "id": cast("str", request.get("id", "")),
@@ -393,18 +424,11 @@ class DefaultLarvaFacade(LarvaFacade):
         return current
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
-        report = self.validate(spec)
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
+        admitted_result = self._admit_and_persist(spec)
+        if isinstance(admitted_result, Failure):
+            return admitted_result
 
-        normalized_result = self._normalize_and_validate(spec)
-        if isinstance(normalized_result, Failure):
-            return normalized_result
-        normalized = normalized_result.unwrap()
-        save_result = self._registry.save(normalized)
-        if isinstance(save_result, Failure):
-            return Failure(self._registry_failure_error(save_result.failure()))
-
+        normalized = admitted_result.unwrap()
         persona_id = cast("str", normalized.get("id", ""))
         return Success({"id": persona_id, "registered": True})
 
@@ -421,14 +445,7 @@ class DefaultLarvaFacade(LarvaFacade):
         if overrides is not None:
             resolved.update(overrides)
 
-        report = self.validate(cast("PersonaSpec", resolved))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
-        normalized_result = self._normalize_and_validate(cast("PersonaSpec", resolved))
-        if isinstance(normalized_result, Failure):
-            return normalized_result
-        return Success(normalized_result.unwrap())
+        return self._admit_candidate(cast("PersonaSpec", resolved))
 
     def update(
         self,
@@ -442,19 +459,7 @@ class DefaultLarvaFacade(LarvaFacade):
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
         patched = apply_patches(existing, patches)
 
-        report = self.validate(cast("PersonaSpec", patched))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
-        normalized_result = self._normalize_and_validate(cast("PersonaSpec", patched))
-        if isinstance(normalized_result, Failure):
-            return normalized_result
-        normalized = normalized_result.unwrap()
-        save_result = self._registry.save(normalized)
-        if isinstance(save_result, Failure):
-            return Failure(self._registry_failure_error(save_result.failure()))
-
-        return Success(normalized)
+        return self._admit_and_persist(cast("PersonaSpec", patched))
 
     def update_batch(
         self,
@@ -553,19 +558,7 @@ class DefaultLarvaFacade(LarvaFacade):
         if "spec_digest" in cloned:
             del cloned["spec_digest"]
 
-        report = self.validate(cast("PersonaSpec", cloned))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
-        normalized_result = self._normalize_and_validate(cast("PersonaSpec", cloned))
-        if isinstance(normalized_result, Failure):
-            return normalized_result
-        normalized = normalized_result.unwrap()
-        save_result = self._registry.save(normalized)
-        if isinstance(save_result, Failure):
-            return Failure(self._registry_failure_error(save_result.failure()))
-
-        return Success(normalized)
+        return self._admit_and_persist(cast("PersonaSpec", cloned))
 
     def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]:
         delete_result = self._registry.delete(persona_id)
