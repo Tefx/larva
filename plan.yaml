@@ -38195,7 +38195,7 @@ phases:
       uncertainty_sources: none'
   - id: dup_error_abstraction.gate_reopen
     name: Re-open dup_error_abstraction gate after blocker retest
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -38242,6 +38242,39 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T13:44:59.141889+00:00'
+    done_at: '2026-04-08T13:56:10.197009+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Gate Review Report
+
+      - Retest step reviewed: dup_error_abstraction.retest_gate_blockers_round2
+
+      - B1 status: CLOSED
+
+      - B2 status: CLOSED
+
+      - Gate decision: OPEN
+
+      - Required follow-up if blocked: N/A
+
+
+      behavioral_proof_register:
+
+      - B1 resolve signature conformance proven (2-arg monkeypatches matching production
+      resolve(id, overrides=None))
+
+      - B2 python_api passthrough semantics proven (COMPONENT_NOT_FOUND/105 for not-found
+      assemble failure)
+
+      - No new blocker-class drift proven by targeted checks and full tests pass
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none'
   - id: dup_error_abstraction.fix_gate_blockers_round2
     name: Fix remaining dup_error_abstraction blocker families (web lambda signature
       + python_api stale expectation)
