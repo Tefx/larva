@@ -37971,6 +37971,93 @@ phases:
       \ §Web Runtime Surface, lines 130-134 (canonical component_type + alias normalization\
       \ policy)\n- Step description reference: dup_error_abstraction.alias_basis ->\
       \ dup_error_abstraction.alias_verify"
+  - id: dup_error_abstraction.fix_gate_blockers
+    name: Fix dup_error_abstraction gate blockers
+    status: pending
+    description: 'Fix ALL blockers found by dup_error_abstraction.gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: MCP required error-code coverage drift
+
+      Locations: tests/shell/test_mcp.py::test_all_required_error_codes_present
+
+      Remediation: update the MCP required-error-code expectation so INVALID_INPUT
+      is required for invalid-kind projection, matching the normalized design.
+
+      Grep hint: rg -n "INVALID_INPUT|required_error_codes|test_all_required_error_codes_present"
+      tests/shell/test_mcp.py tests/shell
+
+      IMPORTANT: search sibling MCP error-projection assertions so the same omission
+      does not remain elsewhere.
+
+
+      ### B2: Web monkeypatch signature drift
+
+      Locations: tests/shell/test_web.py
+
+      Remediation: repair monkeypatch lambdas for resolve/assemble so their callable
+      signatures match the current web surface contracts and stop causing the 3 targeted
+      web-test failures.
+
+      Grep hint: rg -n "monkeypatch|lambda|resolve|assemble" tests/shell/test_web.py
+      tests/shell
+
+      IMPORTANT: search sibling resolve/assemble monkeypatch sites beyond the first
+      failing examples.
+
+
+      ## Completion Criteria
+
+      - BOTH B1 and B2 are fixed
+
+      - MCP required error-code expectations include INVALID_INPUT where invalid-kind
+      projection requires it
+
+      - resolve/assemble monkeypatch callables in the web tests match current signatures
+
+      - sibling search completed for both blocker families
+
+      - no new instances of either blocker pattern remain in the touched shell tests
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: '- Targeted MCP suite proves INVALID_INPUT coverage is enforced
+      for invalid-kind projection
+
+      - Targeted web suite proves resolve/assemble monkeypatch signatures no longer
+      drift
+
+      - Relevant shell component suites covering the touched MCP/Web surfaces pass
+
+      - Evidence names sibling searches performed for both blocker families'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Batched Fix Evidence
+
+      - B1 fix summary:
+
+      - B1 sibling search command + result:
+
+      - B2 fix summary:
+
+      - B2 sibling search command + result:
+
+      - Targeted commands run:
+
+      - Result summary:
+
+      - Remaining gaps: none | <list>'
+    depends_on:
+    - dup_error_abstraction.gate
+    agent: python-refactor-master-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
