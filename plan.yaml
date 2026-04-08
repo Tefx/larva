@@ -36937,7 +36937,7 @@ phases:
       branch commit `1bccfd8` recorded.'
   - id: dup_contract_source.workflow_verify
     name: Verify unified facade admission workflow preserves entrypoint behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36962,6 +36962,25 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T08:42:08.885595+00:00'
+    done_at: '2026-04-08T08:56:18.053078+00:00'
+    evidence: '## Workflow Verification Report
+
+      - entrypoint_behavior_parity: register/resolve/update/clone all preserve unified
+      admission choreography and expected success semantics after consolidation.
+
+      - failure_path_parity: canonical validation and registry-related failure mappings
+      remain stable across entrypoints (`PERSONA_INVALID`, `PERSONA_NOT_FOUND`, etc.).
+
+      - non_observability_check: explicit public-entrypoint test confirms first-stage
+      vs second-stage validation failures are non-observable at contract surface.
+
+      - verification_commands: targeted facade workflow test suites plus full `tests/app/test_facade/`
+      verification run.
+
+      - outputs_summary: verification passed (`51 passed`, `5 xfailed`, `12 xpassed`);
+      no behavior drift detected.
+
+      - blocker_findings: none.'
   - id: dup_contract_source.fixture_fix_canonical_helper
     name: Fix canonical helper legacy-field injection in app facade test fixtures
     status: done
