@@ -39476,8 +39476,6 @@ phases:
       ```
 
       '
-    depends_on:
-    - dup_deep_review.wiring-audit
     agent: python-senior
   - id: dup_deep_review.retest-blockers
     name: Re-run deep wiring verification after duplicate-abstraction blocker remediation
