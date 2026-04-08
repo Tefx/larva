@@ -37555,7 +37555,7 @@ phases:
       commit `9797862`.'
   - id: dup_error_abstraction.impl
     name: Implement shared component error projection and rewire transports
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -37614,6 +37614,8 @@ phases:
     depends_on:
     - dup_error_abstraction.error-basis
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T11:02:28.667119+00:00'
   - id: dup_error_abstraction.verify
     name: Verify component error envelopes remain aligned across transports
     status: pending
