@@ -38176,7 +38176,7 @@ phases:
   - id: dup_error_abstraction.fix_gate_blockers_round2
     name: Fix remaining dup_error_abstraction blocker families (web lambda signature
       + python_api stale expectation)
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -38269,6 +38269,27 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T13:06:26.075526+00:00'
+    done_at: '2026-04-08T13:11:08.628845+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Remediation Evidence\n- blocker_families_closed:\n  - web lambda signature\
+      \ mismatch\n  - python_api stale expectation\n- files_changed:\n  - tests/shell/test_web.py\n\
+      \  - tests/shell/test_python_api.py\n- sibling_search_commands:\n  - rg -n \"\
+      get_api_personas_by_id_returns_spec|get_api_personas_by_id|monkeypatch|resolve\"\
+      \ tests/shell/test_web.py tests/shell\n  - rg -n \"test_assemble_failure_passthrough_from_facade|assemble_failure_passthrough|python_api|assemble\"\
+      \ tests/shell/test_python_api.py tests/shell\n- sibling_search_results:\n  -\
+      \ web family: failing test in test_web.py used 1-arg lambda; sibling already\
+      \ used 2-arg fake_resolve(pid, overrides=None)\n  - python_api family: stale\
+      \ INTERNAL/10/store_unavailable expectation found and aligned with current projection\
+      \ semantics\n- why_previous_fix_failed:\n  - prior loop closed earlier blocker\
+      \ set but missed these contracts\n- root_cause_vs_symptom:\n  - root cause:\
+      \ outdated test boundary contracts\n  - symptom: web TypeError and python_api\
+      \ assertion mismatch\n- residual_risk:\n  - none (test-only alignment; no production\
+      \ behavior changes)\n\n## Verification\n- commands:\n  - uv run pytest -q tests/shell/test_web.py::TestWebSurfaceEndpoints::test_get_api_personas_by_id_returns_spec\n\
+      \  - uv run pytest -q tests/shell/test_python_api.py::TestPythonApiAssemble::test_assemble_failure_passthrough_from_facade\n\
+      \  - invar_guard(path=.vectl/worktrees/dup_error_abstraction.fix_gate_blockers_round2,\
+      \ changed=true)\n- outputs_summary:\n  - web blocker test passed\n  - python_api\
+      \ blocker test passed\n  - invar guard passed\n  - commit: 13206c3 (2 files\
+      \ changed, 5 insertions, 4 deletions)"
   - id: dup_error_abstraction.retest_gate_blockers_round2
     name: Retest remaining dup_error_abstraction blocker families after batched remediation
     status: pending
