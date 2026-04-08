@@ -37097,7 +37097,7 @@ phases:
       `9853206`.'
   - id: dup_contract_source.assemble_test_sync
     name: Align core assemble tests with canonical capabilities-only output
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -37134,6 +37134,8 @@ phases:
     - dup_contract_source.workflow_verify
     - dup_contract_source.spec-conformance
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T09:09:02.962267+00:00'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
