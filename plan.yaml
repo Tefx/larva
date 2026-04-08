@@ -37649,7 +37649,7 @@ phases:
       \ for component error taxonomy"
   - id: dup_error_abstraction.verify
     name: Verify component error envelopes remain aligned across transports
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -37698,6 +37698,89 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T11:34:39.887767+00:00'
+    done_at: '2026-04-08T11:39:34.582548+00:00'
+    evidence: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - src/larva/core/component_error_projection.py — Read. Key seam with three canonical
+      error factories and projector function verified.
+
+      - design/component-error-projection-basis.md — Read. Design specification confirming
+      invariant fields and case mappings.
+
+      - src/larva/app/facade.py — Read. _component_error() delegates to project_component_store_error().
+
+      - src/larva/shell/cli_runtime.py — Read. _map_component_error() and _component_show_invalid_target()
+      consume shared seam.
+
+      - src/larva/shell/mcp_handler_ops.py — Read. Handlers use shared factories for
+      invalid kind / store unavailable / not found.
+
+      - src/larva/shell/python_api_components.py — Read. List and show operations
+      project through shared seam.
+
+      - src/larva/shell/web.py — Read. Component endpoints consume Python API seam.
+
+
+      ### Cross-Transport Error Matrix
+
+      - Core seam: INVALID_INPUT/1 (invalid_kind), COMPONENT_NOT_FOUND/105 (not_found),
+      INTERNAL/10 (store_unavailable)
+
+      - Facade: projects via project_component_store_error() aligned with seam
+
+      - CLI: INVALID_INPUT and COMPONENT_NOT_FOUND map to EXIT_ERROR; INTERNAL maps
+      to EXIT_CRITICAL
+
+      - MCP: returns seam envelopes directly
+
+      - Python API: raises LarvaApiError with seam envelope
+
+      - Web: maps seam codes to HTTP 400/404/503 with preserved envelope semantics
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | None | All three cases remain distinguishable and aligned across transports.
+      | — | — |
+
+
+      step_intent: Independently verify shared component error projection semantics
+      across transports.
+
+      expected_result: Invalid kind/not found/store unavailable retain canonical code
+      and numeric_code while wrappers remain explicit and justified.
+
+      observed_result: Component-focused suites passed across Python API, MCP, CLI,
+      and Web; direct seam checks aligned.
+
+      failure_alignment: Drift documented in basis doc is removed; all transports
+      consume shared seam.
+
+      whether_any_product_implementation_files_were_modified: No (verification-only
+      step).
+
+      behavioral_proof_register:
+
+      - test_python_api.py -k component (passed)
+
+      - test_mcp.py -k component (passed)
+
+      - test_cli.py -k component (passed)
+
+      - test_web.py -k component (passed)
+
+      - direct factory invocation for invalid_kind/not_found/store_unavailable (passed)
+
+      gate_open_allowed: true
+
+      uncertainty_sources: None'
   - id: dup_error_abstraction.gate
     name: Gate component surface normalization and error projection
     status: pending
