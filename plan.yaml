@@ -39890,7 +39890,7 @@ phases:
       \ or artifact"
   - id: baseline_failure_authority.contract_decision
     name: Adjudicate canonical authority for remaining failure clusters
-    status: claimed
+    status: done
     description: 'Using the failure matrix, decide the authoritative semantics for:
       (1) canonical capabilities versus deprecated tools, (2) whether side_effect_policy
       remains rejected or transition-supported, (3) PersonaSpec required/optional
@@ -39930,6 +39930,54 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T17:32:59.050264+00:00'
+    done_at: '2026-04-08T17:36:02.137260+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- ADR-002-capability-intent-without-runtime-policy.md\
+      \ — capabilities is sole declaration surface; runtime approval removed from\
+      \ persona declarations.\n- ADR-003-canonical-requiredness-authority.md — canonical\
+      \ admission authority and required/optional/forbidden split is validate/schema\
+      \ owned.\n- MIGRATION-002-capability-intent.md — transition terms historical;\
+      \ tools/side_effect_policy rejected at canonical admission.\n- INTERFACES.md\
+      \ — canonical PersonaSpec and forbidden transition-era fields are explicitly\
+      \ documented.\n- src/larva/core/normalize.py — postconditions forbid tools/side_effect_policy\
+      \ in normalized output; transition copy tools->capabilities only for ingestion\
+      \ compatibility.\n- src/larva/core/validate.py — required/optional/forbidden\
+      \ metadata canonical authority.\n- src/larva/app/facade.py — shared helper normalizes\
+      \ then validates; clone currently applies an extra pre-normalize validate.\n\
+      - tests/app/test_facade/test_assemble.py — assembly contract and transition-era\
+      \ component input context.\n- tests/core/test_validate.py — forbidden-field/required-field\
+      \ behavior.\n- tests/shell/test_cli.py — CLI validation failure envelope behavior.\n\
+      - tests/shell/test_mcp.py — MCP parameter-shape malformed envelope behavior.\n\
+      - tests/shell/test_python_api.py — python API thin-wrapper error mapping behavior.\n\
+      - tests/shell/test_canonical_boundary_gaps.py — MCP descriptions must document\
+      \ tools rejection.\n\n## Authority Decision Memo\n- Decision 1: capabilities\
+      \ vs tools\n  - chosen rule: Canonical output surfaces are capabilities-only;\
+      \ tools allowed only as transition input before normalize.\n  - rejected alternative:\
+      \ mirrored tools in canonical/exported outputs.\n  - why: ADR-002 + normalize\
+      \ postconditions + ADR-003 authority.\n\n- Decision 2: side_effect_policy handling\n\
+      \  - chosen rule: remains rejected at canonical admission and stripped from\
+      \ normalized output.\n  - rejected alternative: warning-only acceptance/preservation.\n\
+      \  - why: ADR-002 removal + ADR-003 forbidden + validate expectations.\n\n-\
+      \ Decision 3: PersonaSpec required/optional semantics\n  - chosen rule: required={id,description,prompt,model,capabilities,spec_version};\
+      \ optional={model_params,can_spawn,compaction_prompt,spec_digest,variables};\
+      \ unknown top-level forbidden.\n  - rejected alternative: permissive typedict/historical\
+      \ fields as authority.\n  - why: validate.py + schema authoritative seam.\n\n\
+      - Decision 4: assemble output contract\n  - chosen rule: transition-era component\
+      \ inputs may include legacy artifacts internally, but public assembled/cloned/exported\
+      \ outputs must be canonical, normalized, validated, with no tools/side_effect_policy.\n\
+      \  - rejected alternative: treat clone’s current double-validation as normative\
+      \ or require tools mirroring in public outputs.\n  - why: INTERFACES canonical\
+      \ output contract + shared facade normalize->validate seam.\n\n- Decision 5:\
+      \ CLI/MCP/python-api envelope mapping\n  - chosen rule:\n    - CLI: spec semantic\
+      \ invalidity => domain validation envelope (PERSONA_INVALID in json mode).\n\
+      \    - MCP: malformed/missing tool params => malformed transport envelope first\
+      \ (INTERNAL/10), before domain validation.\n    - Python API: thin wrapper;\
+      \ domain failures => LarvaApiError; call-shape failures => Python TypeError.\n\
+      \  - rejected alternative: force one universal missing-id mapping across all\
+      \ surfaces.\n  - why: surfaces validate different boundaries (file spec vs RPC\
+      \ params vs direct call).\n\n- Disposition map\n  - core spec/schema/normalize\
+      \ drift: update_tests\n  - assemble output drift: update_tests\n  - facade sequencing\
+      \ drift: update_code\n  - CLI/MCP/python-api envelope drift: update_tests\n\
+      \  - clone/export test-double normalization gap: update_tests"
   - id: baseline_failure_authority.gate
     name: Gate authority freeze for baseline failure remediation
     status: pending
