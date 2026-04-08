@@ -110,7 +110,7 @@ class TestAssembleCandidateBehavior:
             }
         )
         assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
-        assert result["tools"] == {"read": "read_only", "write": "read_write"}  # mirrored
+        assert "tools" not in result
 
     def test_tools_input_backward_compat(self):
         """Tools field (deprecated) should still work for backward compat."""
@@ -121,7 +121,7 @@ class TestAssembleCandidateBehavior:
             }
         )
         assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
-        assert result["tools"] == {"read": "read_only", "write": "read_write"}
+        assert "tools" not in result
 
     def test_capabilities_preferred_over_tools(self):
         """Capabilities should be preferred over tools when both present."""
@@ -135,7 +135,7 @@ class TestAssembleCandidateBehavior:
         )
         # capabilities takes precedence
         assert result["capabilities"] == {"read": "read_only"}
-        assert result["tools"] == {"read": "read_only"}
+        assert "tools" not in result
 
     def test_capabilities_merges_with_tools_across_toolsets(self):
         """Capabilities from one toolset should merge with tools from another."""
@@ -149,7 +149,7 @@ class TestAssembleCandidateBehavior:
             }
         )
         assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
-        assert result["tools"] == {"read": "read_only", "write": "read_write"}
+        assert "tools" not in result
 
     def test_raises_component_conflict_for_contradictory_capability_posture(self):
         """Conflicting capability postures should raise AssemblyError."""
