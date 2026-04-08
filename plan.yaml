@@ -40102,7 +40102,7 @@ phases:
       \ product implementation files were modified: no"
   - id: baseline_failure_core.impl
     name: Align core contract, normalize, and assemble behavior
-    status: pending
+    status: claimed
     description: 'Fill in the remaining code-side gaps in core modules so they satisfy
       the frozen canonical contract and the updated core tests. Scope includes spec
       exports/constants, schema alignment, validate error semantics, normalize field
@@ -40121,6 +40121,8 @@ phases:
     depends_on:
     - baseline_failure_core.tests_red
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T18:20:06.899093+00:00'
   - id: baseline_failure_core.retest
     name: Retest core failure cluster green
     status: pending
