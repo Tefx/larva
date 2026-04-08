@@ -40658,7 +40658,7 @@ phases:
       \ hash(es): c43dded"
   - id: baseline_failure_finalization.deep_review
     name: Independent deep review of baseline-failure remediation
-    status: pending
+    status: claimed
     description: Run an independent final review that checks spec conformance, architecture/coherence,
       and black-box behavior for the remediated baseline failure areas. This is the
       final chance to catch systemic drift that targeted repairs can miss.
@@ -40686,6 +40686,8 @@ phases:
     - baseline_failure_finalization.full_verify
     - baseline_failure_finalization.doc_sync
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T20:30:40.851288+00:00'
   - id: baseline_failure_finalization.gate
     name: Final gate for baseline-failure remediation
     status: pending
