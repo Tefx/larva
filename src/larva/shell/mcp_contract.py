@@ -15,7 +15,7 @@ Ownership rule:
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Any, Literal, Protocol, TypedDict
+from typing import Any, TypedDict
 
 from larva.app import facade as facade_module
 from larva.core import validate as validate_contract
@@ -312,33 +312,3 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
 ]
-
-
-MCPTransportMode = Literal["stdio", "http", "sse"]
-"""MCP transport mode.
-
-- ``"stdio"``: Standard I/O transport (default for CLI usage).
-- ``"http"``: MCP Streamable HTTP transport (spec 2025-03-26+, recommended for remote).
-- ``"sse"``: Legacy Server-Sent Events transport (deprecated, retained for compatibility).
-"""
-
-
-class MCPServerConfig(TypedDict, total=False):
-    """Configuration for MCP server startup."""
-
-    transport: MCPTransportMode
-    host: str | None
-    port: int | None
-
-
-class MCPServer(Protocol):
-    """Contract for MCP server runtime."""
-
-    def __init__(self, handlers: object, config: MCPServerConfig) -> None: ...
-
-    def run(self) -> None:
-        raise NotImplementedError(
-            "MCP server runtime startup is not implemented in this contract step"
-        )
-
-    def shutdown(self) -> None: ...

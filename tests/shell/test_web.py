@@ -322,7 +322,7 @@ class TestWebSurfaceEndpoints:
         mock_registry: CallRecordingRegistry,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """PATCH /api/personas/{id} ignores protected fields and revalidates.
+        """PATCH /api/personas/{id} delegates through shared update seam.
 
         Contract: INTERFACES.md line 117
         """
@@ -336,20 +336,15 @@ class TestWebSurfaceEndpoints:
         }
         mock_registry.save(spec)
 
-        def fake_resolve(pid: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
-            result = mock_facade.resolve(pid)
+        def fake_update(pid: str, patches: dict[str, Any]) -> PersonaSpec:
+            result = mock_facade.update(pid, patches)
             if result is None:
                 raise LarvaError(
                     error={"code": "PERSONA_NOT_FOUND", "message": f"Persona {pid} not found"}
                 )
             return result
 
-        def fake_register(s: PersonaSpec) -> dict[str, Any]:
-            return mock_facade.register(s)
-
-        monkeypatch.setattr(web_module, "resolve", fake_resolve)
-        monkeypatch.setattr(web_module, "validate", lambda s: _valid_report())
-        monkeypatch.setattr(web_module, "register", fake_register)
+        monkeypatch.setattr(web_module, "update", fake_update)
 
         client = TestClient(app)
 

@@ -32,6 +32,7 @@ from larva.shell.python_api import (
     list as list_personas,
     register,
     resolve,
+    update,
     update_batch,
     validate,
 )
@@ -148,40 +149,13 @@ async def api_register_persona(request: Request) -> Any:
         return _api_error_response(e)
 
 
-# @invar:allow entry_point_too_thick: contrib web endpoint, inline patch logic is clearer
+# @invar:allow entry_point_too_thick: contrib web endpoint delegates through shared seam
 @app.patch("/api/personas/{persona_id}")
 async def api_update_persona(persona_id: str, request: Request) -> Any:
-    """Patch a persona (protected fields ignored, revalidates)."""
+    """Patch a persona through the shared facade seam."""
     patches = await request.json()
     try:
-        # Get current spec
-        spec = resolve(persona_id)
-        # Apply patches
-        # Protected fields (id, spec_digest, spec_version) are stripped
-        # Deep-merge fields (model_params, capabilities) get merged correctly
-        # NOTE: contrib does NOT allow deprecated 'tools' field reintroduction
-        # - canonical 'capabilities' field is the only valid tool capability surface
-        # - validate() will reject 'tools' if present in the patched spec
-        for key, value in patches.items():
-            if key in ("spec_digest", "spec_version"):
-                continue  # protected fields
-            if key == "model_params" and isinstance(value, dict):
-                spec["model_params"] = value  # type: ignore[typeddict-item]
-            elif key == "capabilities" and isinstance(value, dict):
-                spec["capabilities"] = value  # canonical field
-            else:
-                spec[key] = value  # type: ignore[misc]
-
-        # Revalidate
-        report = validate(spec)
-        if not report["valid"]:
-            return _validation_error_response(report)
-
-        # Re-register (normalize will recompute digest)
-        register(spec)
-
-        # Return updated spec
-        return {"data": resolve(persona_id)}
+        return {"data": update(persona_id, patches)}
     except LarvaApiError as e:
         return _api_error_response(e)
 
