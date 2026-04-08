@@ -39226,7 +39226,7 @@ phases:
     agent: blind-tester-tacit
   - id: dup_deep_review.architecture-review
     name: Review remaining duplicate logic and abstraction debt after remediation
-    status: claimed
+    status: done
     description: 'step_type: review
 
       verification_scope: full-plan-check
@@ -39267,6 +39267,28 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T16:42:27.342001+00:00'
+    done_at: '2026-04-08T16:43:32.191075+00:00'
+    evidence: '## Architecture Review Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+      ## Review Output
+
+      - critical_seams_closed: component-kind alias routing centralized; canonical
+      admission concentrated in core/app seams; package-root API sprawl bounded to
+      metadata+shim
+
+      - residual_duplicate_paths: packaged/contrib web handler duplication remains;
+      contrib component path divergence; bounded CLI compatibility inversion; component-store
+      doc/behavior mismatch debt
+
+      - non_intersection_evidence: compatibility logic remains ingress-bounded and
+      does not widen canonical PersonaSpec admission
+
+      - closure_recommendations: extract shared web handlers; invert CLI dependency
+      direction; align ComponentStore docs/tests; unify invalid-kind error taxonomy'
   - id: dup_deep_review.gate
     name: Final gate for duplicate-abstraction remediation
     status: pending
