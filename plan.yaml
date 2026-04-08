@@ -35940,7 +35940,7 @@ phases:
       with no unresolved ambiguity.'
   - id: dup_web_convergence.impl
     name: Converge packaged and contrib web endpoints onto the shared router seam
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -36033,6 +36033,79 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T03:32:04.761499+00:00'
+    done_at: '2026-04-08T03:52:45.053737+00:00'
+    evidence: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      uv run pytest tests/shell/test_web.py tests/shell/test_contrib_web.py -x
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      ============================= test session starts ==============================
+
+      platform darwin -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+
+      rootdir: /Users/tefx/Projects/larva
+
+      configfile: pyproject.toml
+
+      plugins: anyio-4.12.1, returns-0.26.0, hypothesis-6.151.9
+
+      collected 39 items
+
+
+      tests/shell/test_web.py .....................                            [ 53%]
+
+      tests/shell/test_contrib_web.py ..................                       [100%]
+
+
+      ============================== 39 passed in 0.21s ==============================
+
+      ```
+
+
+      **Path exercised**: packaged/contrib web runtime -> shared seam helpers + PATCH
+      flow parity -> facade -> core admission
+
+
+      **Parity checks**:
+
+      - packaged: PATCH uses canonical `capabilities` handling and protected-field
+      stripping; deprecated-field transport aliasing absent.
+
+      - contrib: deprecated `tools` PATCH branch removed; PATCH semantics aligned
+      to canonical-only behavior.
+
+      - canonical_success: packaged and contrib follow matching resolve/validate/register
+      update flow and envelope behavior.
+
+      - forbidden_field_failure: canonical validation rejects deprecated fields consistently;
+      contrib-side special handling drift removed.
+
+
+      Implementation notes:
+
+      - Removed contrib deprecated `tools` PATCH branch and aligned comments/logic
+      to canonical capability field semantics.
+
+      - Preserved runtime-specific non-shared concerns (root HTML/bootstrap and contrib
+      batch-update surface).
+
+      - Focused parity tests passing across both runtimes.'
   - id: dup_web_convergence.verify
     name: Verify packaged and contrib web parity through the shared seam
     status: pending
