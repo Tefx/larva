@@ -38918,7 +38918,7 @@ phases:
   steps:
   - id: dup_doc_sync.update-docs
     name: Update docs for the new duplication-collapse boundaries
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -38964,6 +38964,21 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-08T13:57:12.174162+00:00'
+    done_at: '2026-04-08T14:01:28.458516+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Doc Sync Report\n- files_updated:\n  - ARCHITECTURE.md (verified aligned)\n\
+      \  - INTERFACES.md (verified aligned)\n  - README.md (verified aligned)\n  -\
+      \ USAGE.md (verified aligned)\n  - USER_GUIDE.md (verified aligned)\n  - ADR/design\
+      \ docs for canonical authority, contract metadata, component error seam, and\
+      \ alias policy (verified aligned)\n- abstraction_boundaries_updated:\n  - opifex\
+      \ as canonical PersonaSpec authority\n  - larva as downstream admission/projection\n\
+      \  - shared web seam boundaries documented\n  - single-source contract metadata\
+      \ and component error seam documented\n  - canonical plural component-kind policy\
+      \ documented\n- deprecated_claims_removed:\n  - no contract-ownership duplication\
+      \ claims remain\n  - no accepted-tools/side_effect_policy claims remain\n- justified_divergences:\n\
+      \  - none\n\nVerification summary:\n- Cross-document consistency checks passed\n\
+      - No file modifications were required in this step because documents were already\
+      \ synchronized"
   - id: dup_doc_sync.gate
     name: Gate duplicate-abstraction documentation sync
     status: pending
