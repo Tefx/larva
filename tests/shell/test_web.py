@@ -264,7 +264,7 @@ class TestWebSurfaceEndpoints:
         monkeypatch.setattr(
             web_module,
             "resolve",
-            lambda pid: (
+            lambda pid, overrides=None: (
                 mock_facade.resolve(pid)
                 or (_ for _ in ()).throw(
                     LarvaError(

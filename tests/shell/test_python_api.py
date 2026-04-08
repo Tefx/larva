@@ -310,9 +310,10 @@ class TestPythonApiAssemble:
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.assemble("assemble-fail", prompts=["missing"])
 
-        assert exc_info.value.error["code"] == "INTERNAL"
-        assert exc_info.value.error["numeric_code"] == 10
-        assert exc_info.value.error["details"]["reason"] == "store_unavailable"
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+        assert exc_info.value.error["details"]["component_type"] == "prompt"
+        assert exc_info.value.error["details"]["component_name"] == "missing"
 
 
 class TestPythonApiRegister:
