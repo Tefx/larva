@@ -36937,7 +36937,7 @@ phases:
       branch commit `1bccfd8` recorded.'
   - id: dup_contract_source.workflow_verify
     name: Verify unified facade admission workflow preserves entrypoint behavior
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36953,8 +36953,6 @@ phases:
     depends_on:
     - dup_contract_source.workflow_impl
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T08:17:50.214795+00:00'
   - id: dup_contract_source.fixture_fix_canonical_helper
     name: Fix canonical helper legacy-field injection in app facade test fixtures
     status: done
