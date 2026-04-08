@@ -61,6 +61,11 @@ from larva.shell.cli import (
     resolve_command,
     validate_command,
 )
+from tests.shell.fixture_taxonomy import (
+    canonical_persona_spec,
+    transition_constraint_fixture,
+    transition_toolset_fixture,
+)
 
 if TYPE_CHECKING:
     from larva.shell.registry import RegistryError
@@ -101,20 +106,7 @@ def test_python_module_cli_executes_same_shell_entrypoint(monkeypatch: pytest.Mo
 
 
 def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": "You are careful.",
-        "model": "gpt-4o-mini",
-        "capabilities": {"shell": "read_only"},
-        "tools": {"shell": "read_only"},  # DEPRECATED: mirrored from capabilities (ADR-002)
-        "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",
-        "can_spawn": False,
-        "compaction_prompt": "Summarize facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
+    return canonical_persona_spec(persona_id=persona_id, digest=digest)
 
 
 def _valid_report() -> ValidationReport:
@@ -190,15 +182,10 @@ class InMemoryComponentStore:
         default_factory=lambda: Success({"text": "Prompt body"})
     )
     toolset_result: Result[dict[str, dict[str, str]], Exception] = field(
-        default_factory=lambda: Success(
-            {
-                "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
-                "tools": {"shell": "read_only"},  # DEPRECATED: mirrored
-            }
-        )
+        default_factory=lambda: Success(transition_toolset_fixture())
     )
     constraint_result: Result[dict[str, object], Exception] = field(
-        default_factory=lambda: Success({"side_effect_policy": "read_only"})
+        default_factory=lambda: Success(transition_constraint_fixture())
     )
     model_result: Result[dict[str, object], Exception] = field(
         default_factory=lambda: Success({"model": "gpt-4o-mini"})

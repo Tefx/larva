@@ -28,6 +28,10 @@ from larva.app.facade import (
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
+from tests.shell.fixture_taxonomy import (
+    canonical_persona_spec,
+    transition_persona_spec_with_legacy_fields,
+)
 
 if TYPE_CHECKING:
     from larva.app.facade import AssembleRequest, PersonaSummary
@@ -178,22 +182,19 @@ def _canonical_spec(
     digest: str = "sha256:canonical",
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": "You are careful.",
-        "model": model,
-        "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
-        "tools": {
-            "shell": "read_only"
-        },  # REJECTED at canonical admission; retained here only for transition-fixture coverage
-        "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",  # REJECTED at canonical admission; runtime concern retained only for transition-fixture coverage
-        "can_spawn": False,
-        "compaction_prompt": "Summarize facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
+    return canonical_persona_spec(persona_id=persona_id, digest=digest, model=model)
+
+
+def _transition_spec(
+    persona_id: str,
+    digest: str = "sha256:transition",
+    model: str = "gpt-4o-mini",
+) -> PersonaSpec:
+    return transition_persona_spec_with_legacy_fields(
+        persona_id=persona_id,
+        digest=digest,
+        model=model,
+    )
 
 
 def _valid_report() -> ValidationReport:
@@ -460,7 +461,7 @@ class TestMCPAssembleSuccessShape:
         assert "prompt" in spec
 
     def test_assemble_includes_all_required_fields(self) -> None:
-        candidate = _canonical_spec("full-spec", digest="sha256:full")
+        candidate = _transition_spec("full-spec", digest="sha256:full")
         facade = _make_facade(
             validate_report=_valid_report(),
             assemble_candidate=candidate,

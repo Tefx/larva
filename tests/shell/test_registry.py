@@ -27,6 +27,7 @@ from larva.shell.registry import (
     RegistryError,
     RegistryStore,
 )
+from tests.shell.fixture_taxonomy import canonical_persona_spec
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -37,20 +38,11 @@ def _write_json(path: Path, payload: object) -> None:
 
 
 def _canonical_spec(persona_id: str, digest: str, model: str = "gpt-4o-mini") -> PersonaSpec:
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": f"You are {persona_id}",
-        "model": model,
-        "capabilities": {"read": "read_only"},  # canonical (ADR-002)
-        "tools": {"read": "read_only"},  # DEPRECATED: mirrored from capabilities
-        "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",  # DEPRECATED: runtime concern (ADR-002)
-        "can_spawn": False,
-        "compaction_prompt": "Summarize key facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
+    spec = dict(canonical_persona_spec(persona_id=persona_id, digest=digest, model=model))
+    spec["prompt"] = f"You are {persona_id}"
+    spec["capabilities"] = {"read": "read_only"}
+    spec["compaction_prompt"] = "Summarize key facts."
+    return cast("PersonaSpec", spec)
 
 
 @pytest.fixture

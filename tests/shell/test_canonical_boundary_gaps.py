@@ -35,60 +35,16 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS
+from tests.shell.fixture_taxonomy import (
+    TransitionComponentStoreDouble,
+    canonical_persona_spec,
+    transition_constraint_fixture,
+    transition_persona_spec_with_legacy_fields,
+    transition_toolset_fixture,
+)
 
 if TYPE_CHECKING:
     from larva.app.facade import LarvaFacade
-
-
-# -----------------------------------------------------------------------------
-# Fixtures: canonical-only and forbidden-field variants
-# -----------------------------------------------------------------------------
-
-
-def _canonical_spec_only(
-    persona_id: str,
-    digest: str = "sha256:canonical",
-    model: str = "gpt-4o-mini",
-) -> PersonaSpec:
-    """Canonical PersonaSpec with only canonical fields.
-
-    Per ADR-002/ADR-003: `capabilities` is canonical, while `tools` and
-    `side_effect_policy` are rejected at the canonical admission boundary.
-    """
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": "You are careful.",
-        "model": model,
-        "capabilities": {"shell": "read_only"},  # canonical ONLY
-        "model_params": {"temperature": 0.1},
-        "can_spawn": False,
-        "compaction_prompt": "Summarize facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
-
-
-def _forbidden_spec_with_tools(
-    persona_id: str, digest: str = "sha256:forbidden"
-) -> dict[str, object]:
-    """Spec variant carrying forbidden extra fields for rejection coverage."""
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": "You are careful.",
-        "model": "gpt-4o-mini",
-        "capabilities": {"shell": "read_only"},  # canonical
-        "tools": {
-            "shell": "read_only"
-        },  # REJECTED extra field retained only for rejection coverage
-        "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",  # REJECTED runtime field retained only for rejection coverage
-        "can_spawn": False,
-        "compaction_prompt": "Summarize facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
 
 
 # -----------------------------------------------------------------------------
@@ -155,25 +111,9 @@ class TestComponentFixtureSemantics:
     def test_inmemory_toolset_store_returns_capabilities_only(self) -> None:
         """Transition test doubles should make mirrored fields explicit, not implicit."""
 
-        # This local test double intentionally models transition-only mirrored data.
-        class CurrentInMemoryComponentStore:
-            def __init__(self) -> None:
-                self.toolsets_by_name: dict[str, dict[str, dict[str, str]]] = {}
-
-            def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], Exception]:
-                if name not in self.toolsets_by_name:
-                    return Failure(KeyError(f"not found: {name}"))
-                toolset_data = self.toolsets_by_name[name]
-                # Transition-only coverage: returns both capabilities and tools (mirrored)
-                return Success(
-                    {
-                        "capabilities": toolset_data.get("capabilities", {}),
-                        "tools": toolset_data.get("tools", toolset_data.get("capabilities", {})),
-                    }
-                )
-
-        store = CurrentInMemoryComponentStore()
-        store.toolsets_by_name["readonly"] = {"capabilities": {"shell": "read_only"}}
+        store = TransitionComponentStoreDouble(
+            toolsets_by_name={"readonly": transition_toolset_fixture()}
+        )
 
         result = store.load_toolset("readonly")
         assert isinstance(result, Success)
@@ -189,19 +129,9 @@ class TestComponentFixtureSemantics:
     def test_inmemory_constraint_store_returns_side_effect_policy(self) -> None:
         """Transition constraint fixtures must make forbidden fields explicit."""
 
-        class CurrentInMemoryComponentStore:
-            def __init__(self) -> None:
-                self.constraints_by_name: dict[str, dict[str, object]] = {}
-
-            def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
-                if name not in self.constraints_by_name:
-                    return Failure(KeyError(f"not found: {name}"))
-                constraint_data = self.constraints_by_name[name]
-                # Transition-only coverage: returns side_effect_policy for rejection/path tests.
-                return Success(constraint_data)
-
-        store = CurrentInMemoryComponentStore()
-        store.constraints_by_name["safe"] = {"side_effect_policy": "read_only"}
+        store = TransitionComponentStoreDouble(
+            constraints_by_name={"safe": transition_constraint_fixture()}
+        )
 
         result = store.load_constraint("safe")
         assert isinstance(result, Success)
@@ -224,8 +154,8 @@ class TestSpecFixtureSemantics:
 
     def test_canonical_spec_fixture_excludes_deprecated_fields(self) -> None:
         """Canonical-only helper should exclude forbidden fields."""
-        canonical_only = _canonical_spec_only("test")
-        forbidden_spec = _forbidden_spec_with_tools("test")
+        canonical_only = canonical_persona_spec("test")
+        forbidden_spec = transition_persona_spec_with_legacy_fields("test")
 
         # Canonical fixture must exclude forbidden fields.
         assert "tools" not in canonical_only, "Canonical spec should NOT have `tools` field"
@@ -302,7 +232,7 @@ class TestCanonicalBoundaryRejection:
         forbidden extra fields even when a shell transport can parse them.
         """
         # Create a spec with extra `tools` field (should be rejected)
-        spec_with_extra: dict[str, object] = dict(_canonical_spec_only("test"))
+        spec_with_extra: dict[str, object] = dict(canonical_persona_spec("test"))
         spec_with_extra["tools"] = {"shell": "read_only"}  # Extra field
 
         # The facade validate should reject this at canonical boundary
@@ -326,7 +256,7 @@ class TestCanonicalBoundaryRejection:
         # Create a minimal facade with test doubles
         @dataclass
         class SimpleComponentStore:
-            prompts_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
+            prompts_by_name: dict[str, str] = field(default_factory=dict)
             toolsets_by_name: dict[str, dict[str, Any]] = field(default_factory=dict)
             constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
             models_by_name: dict[str, dict[str, object]] = field(default_factory=dict)

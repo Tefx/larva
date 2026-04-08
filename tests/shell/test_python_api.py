@@ -32,26 +32,18 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import RegistryError
+from tests.shell.fixture_taxonomy import (
+    canonical_persona_spec,
+    transition_constraint_fixture,
+    transition_toolset_fixture,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 
 def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
-    return {
-        "id": persona_id,
-        "description": f"Persona {persona_id}",
-        "prompt": "You are careful.",
-        "model": "gpt-4o-mini",
-        "capabilities": {"shell": "read_only"},  # ADR-002: canonical capability field
-        "tools": {"shell": "read_only"},  # ADR-002: mirrored during transition
-        "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",
-        "can_spawn": False,
-        "compaction_prompt": "Summarize facts.",
-        "spec_version": "0.1.0",
-        "spec_digest": digest,
-    }
+    return canonical_persona_spec(persona_id=persona_id, digest=digest)
 
 
 def _valid_report() -> ValidationReport:
@@ -123,9 +115,7 @@ class SpyNormalizeModule:
 class InMemoryComponentStore:
     prompt_text: str = "Prompt body"
     toolset: dict[str, str] = field(default_factory=lambda: {"shell": "read_only"})
-    constraint: dict[str, object] = field(
-        default_factory=lambda: {"side_effect_policy": "read_only"}
-    )
+    constraint: dict[str, object] = field(default_factory=transition_constraint_fixture)
     model: dict[str, object] = field(default_factory=lambda: {"model": "gpt-4o-mini"})
     prompts_by_name: dict[str, str] = field(default_factory=dict)
     toolsets_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -147,7 +137,7 @@ class InMemoryComponentStore:
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
         # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
         capabilities = self.toolsets_by_name.get(name, self.toolset)
-        return Success({"capabilities": capabilities, "tools": capabilities})
+        return Success(transition_toolset_fixture(capabilities))
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
         return Success(self.constraints_by_name.get(name, self.constraint))
