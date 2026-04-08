@@ -36842,7 +36842,7 @@ phases:
       reduced via shared fixture taxonomy seam.'
   - id: dup_contract_source.fixture_verify
     name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36861,6 +36861,8 @@ phases:
     - dup_contract_source.fixture_impl
     - dup_contract_source.fixture_fix_canonical_helper
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T08:01:53.132129+00:00'
   - id: dup_contract_source.workflow_impl
     name: Consolidate repeated facade admission workflow
     status: pending
