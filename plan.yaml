@@ -36617,7 +36617,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
-    status: claimed
+    status: pending
     description: 'step_type: review
 
 
@@ -36641,8 +36641,6 @@ phases:
     depends_on:
     - dup_contract_source.contract-basis
     agent: software-architect-tacit
-    claimed_by: software-architect-tacit
-    claimed_at: '2026-04-07T19:20:43.746356+00:00'
   - id: dup_contract_source.fixture_basis
     name: Define canonical-only and transition-only fixture families
     status: done
