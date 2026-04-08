@@ -39809,7 +39809,7 @@ phases:
       remains'
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
-  status: in_progress
+  status: done
   gate: Freeze authority for remaining baseline failures before code or test remediation.
   depends_on:
   - dup_deep_review
@@ -39980,7 +39980,7 @@ phases:
       \  - clone/export test-double normalization gap: update_tests"
   - id: baseline_failure_authority.gate
     name: Gate authority freeze for baseline failure remediation
-    status: claimed
+    status: done
     description: Gate review for the authority and baseline matrix phase. Block if
       any remaining failing cluster lacks an explicit authority owner, lacks a code-vs-test
       disposition, or would force downstream phases to guess canonical semantics.
@@ -40008,9 +40008,33 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T17:36:15.894899+00:00'
+    done_at: '2026-04-08T17:43:35.579080+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- ADR-002-capability-intent-without-runtime-policy.md\
+      \ — capabilities-only declaration authority confirmed.\n- ADR-003-canonical-requiredness-authority.md\
+      \ — validate/schema authority and required/optional/forbidden split confirmed.\n\
+      - MIGRATION-002-capability-intent.md — transition semantics historical and rejected\
+      \ at canonical boundary.\n- INTERFACES.md — canonical shape and assembly output\
+      \ constraints confirmed.\n- src/larva/core/normalize.py — tools/side_effect_policy\
+      \ removal and transition ingestion rules confirmed.\n- src/larva/core/validate.py\
+      \ — forbidden fields and required fields enforcement confirmed.\n- src/larva/app/facade.py\
+      \ — clone flow double-validation location and shared normalization seam confirmed.\n\
+      - contracts/persona_spec.schema.json — required and additionalProperties=false\
+      \ semantics confirmed.\n- tests/app/test_facade/conftest.py — SpyNormalize gap\
+      \ vs real normalize confirmed.\n- tests/app/test_facade/test_clone.py — 3 failing\
+      \ assertions mapped.\n- tests/app/test_facade/test_export.py — 2 failing assertions\
+      \ mapped.\n\n## Gate Review Report\n- Step review: behavior_matrix, contract_decision\n\
+      \  - behavior_matrix coverage: all 5 known failing tests identified and clustered;\
+      \ no orphan failures.\n  - contract_decision coverage: canonical authority settled\
+      \ for capabilities/tools, side_effect_policy, requiredness semantics, assemble\
+      \ output contract, and transport envelopes.\n- Missing authority decisions:\
+      \ none\n- Missing disposition paths: none\n- Gate decision: OPEN\n\nGate rationale:\n\
+      - Every known baseline failure cluster has explicit authority owner and a concrete\
+      \ code-vs-test disposition path.\n- Dispositions are traceable to ADR-002/ADR-003\
+      \ + normalize/validate/schema contracts.\n- No downstream phase must guess canonical\
+      \ semantics."
 - id: baseline_failure_core
   name: Baseline Core Contract and Assembly Alignment
-  status: locked
+  status: pending
   gate: Align core spec/schema/normalize/assemble semantics to the frozen authority
     and close the core failure cluster.
   depends_on:
