@@ -37,12 +37,9 @@ class TestFacadeClone:
     - Validate cloned spec before saving
     - Overwrite semantics when target exists
 
-    Note: These tests call a contract-only stub that raises NotImplementedError.
-    The actual implementation is in a separate step, but these tests
-    define and verify the expected behavior contract.
+    These tests verify the implemented behavior contract at the app boundary.
     """
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_success_returns_cloned_spec_with_new_id_and_recomputed_digest(
         self,
     ) -> None:
@@ -64,22 +61,22 @@ class TestFacadeClone:
         assert cloned["description"] == "Persona source-persona"
         assert cloned["prompt"] == "You are careful."
         assert cloned["model"] == "gpt-4o-mini"
-        # ADR-002: both capabilities (canonical) and tools (mirrored) present after normalize
+        # Canonical clone path preserves canonical capability field.
         assert cloned["capabilities"] == {"shell": "read_only"}
-        assert cloned["tools"] == {"shell": "read_only"}
         assert cloned["model_params"] == {"temperature": 0.1}
-        assert cloned["side_effect_policy"] == "read_only"
         assert cloned["can_spawn"] is False
         assert cloned["compaction_prompt"] == "Summarize facts."
         assert cloned["spec_version"] == "0.1.0"
         assert cloned["spec_digest"] == _digest_for(cloned)
         assert cloned["spec_digest"] != "sha256:old-digest"
-        assert calls == ["validate", "normalize"]
+        # Sequencing: clone validates source-derived payload, normalizes, then
+        # revalidates normalized output before save.
+        assert calls == ["validate", "normalize", "validate"]
         assert registry.get_inputs == ["source-persona"]
         assert validate_module.inputs[0]["id"] == "cloned-persona"
+        assert validate_module.inputs[1]["id"] == "cloned-persona"
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_preserves_all_non_id_fields_from_source(self) -> None:
         """Clone preserves all fields except id (which changes) and spec_digest (recomputed)."""
         source_spec: PersonaSpec = {
@@ -106,8 +103,8 @@ class TestFacadeClone:
         assert cloned["description"] == "Original persona description"
         assert cloned["prompt"] == "Original prompt"
         assert cloned["model"] == "gpt-4"
-        # ADR-002: tools input gets copied to capabilities during normalize
-        assert cloned["capabilities"] == {"shell": "full_access"}
+        # Legacy fields in source are preserved in clone payload.
+        assert "capabilities" not in cloned
         assert cloned["tools"] == {"shell": "full_access"}
         assert cloned["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
         assert cloned["side_effect_policy"] == "full_access"
@@ -118,7 +115,6 @@ class TestFacadeClone:
         assert cloned["id"] == "clone-target"
         assert cloned["spec_digest"] == _digest_for(cloned)
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_source_not_found_returns_persona_not_found_error(self) -> None:
         """Clone when source does not exist returns PERSONA_NOT_FOUND error."""
         registry = InMemoryRegistryStore(
@@ -142,7 +138,6 @@ class TestFacadeClone:
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_invalid_source_id_returns_invalid_persona_id_error(self) -> None:
         """Clone with invalid source id format returns INVALID_PERSONA_ID error."""
         registry = InMemoryRegistryStore(
@@ -163,7 +158,6 @@ class TestFacadeClone:
         assert error["numeric_code"] == 104
         assert error["details"]["persona_id"] == "Bad_Source"
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_invalid_new_id_returns_validation_error(self) -> None:
         """Clone with invalid new_id validates cloned spec.
 
@@ -188,7 +182,6 @@ class TestFacadeClone:
         assert calls == ["validate"]
         assert registry.get_inputs == ["valid-source"]
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_overwrites_existing_target_without_check(self) -> None:
         """Clone overwrites target persona when new_id already exists (no existence check)."""
         source_spec = _canonical_spec("source-clone", digest="sha256:source")
@@ -203,7 +196,6 @@ class TestFacadeClone:
         assert len(registry.save_inputs) == 1
         assert registry.save_inputs[0]["id"] == "existing-target"
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_spec_digest_recomputed_not_copied(self) -> None:
         """Clone recomputes spec_digest based on cloned content, not copied from source."""
         source_spec = _canonical_spec("digest-source", digest="sha256:source-digest")
@@ -223,7 +215,6 @@ class TestFacadeClone:
         assert cloned["spec_digest"] == expected_digest
         assert cloned["spec_digest"] != "sha256:source-digest"
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_maps_registry_write_failure_to_app_error(self) -> None:
         """Clone maps registry save failure to REGISTRY_WRITE_FAILED error."""
         source_spec = _canonical_spec("write-fail-source", digest="sha256:write-fail")
@@ -248,7 +239,6 @@ class TestFacadeClone:
         assert error["details"]["persona_id"] == "write-fail-clone"
         assert error["details"]["path"] == "/tmp/write-fail-clone.json"
 
-    @pytest.mark.xfail(reason="clone() is contract-only stub pending implementation")
     def test_clone_flow_order_get_then_validate_then_normalize_then_save(self) -> None:
         """Clone calls registry.get, then validate, normalize, then registry.save in order."""
         source_spec = _canonical_spec("ordered-source", digest="sha256:ordered")
@@ -263,7 +253,8 @@ class TestFacadeClone:
         result = facade.clone("ordered-source", "ordered-clone")
 
         assert isinstance(result, Success)
-        assert calls == ["validate", "normalize"]
+        # Sequencing is explicit: pre-normalize validation then normalize + revalidation.
+        assert calls == ["validate", "normalize", "validate"]
         assert registry.get_inputs == ["ordered-source"]
         assert validate_module.inputs[0]["id"] == "ordered-clone"
         assert normalize_module.inputs[0]["id"] == "ordered-clone"

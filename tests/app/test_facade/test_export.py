@@ -8,8 +8,6 @@ Sources:
 from __future__ import annotations
 
 from typing import cast
-
-import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaError
@@ -27,11 +25,9 @@ from .conftest import (
 class TestFacadeExportAll:
     """Pinned acceptance tests for facade export_all operation.
 
-    These tests pin the contract between shell/registry and app/facade
-    before implementation. Tests xfail until facade.export_all() is implemented.
+    These tests pin the contract between shell/registry and app/facade.
     """
 
-    @pytest.mark.xfail(reason="export_all implementation pending")
     def test_export_all_returns_full_canonical_specs_from_registry(self) -> None:
         """Success export_all returns complete PersonaSpec records, not summaries."""
         spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha-digest")
@@ -51,17 +47,14 @@ class TestFacadeExportAll:
             assert "description" in spec
             assert "prompt" in spec
             assert "model" in spec
-            # ADR-002: both capabilities (canonical) and tools (mirrored) present
+            # Frozen canonical authority: export returns canonical shape.
             assert "capabilities" in spec
-            assert "tools" in spec
             assert "model_params" in spec
-            assert "side_effect_policy" in spec
             assert "can_spawn" in spec
             assert "compaction_prompt" in spec
             assert "spec_version" in spec
             assert "spec_digest" in spec
 
-    @pytest.mark.xfail(reason="export_all implementation pending")
     def test_export_all_returns_exactly_empty_list_for_empty_registry(self) -> None:
         """Verify empty registry returns exactly Success([]), no transport envelope."""
         registry = InMemoryRegistryStore(list_result=Success([]))
@@ -78,7 +71,6 @@ class TestFacadeExportAll:
         assert result.unwrap() != [{"error": None}]
         assert result.unwrap() != {"data": [], "error": None}
 
-    @pytest.mark.xfail(reason="export_all implementation pending")
     def test_export_all_maps_registry_list_failure_to_app_error(self) -> None:
         """REGISTRY_INDEX_READ_FAILED from registry maps to LarvaError."""
         registry = InMemoryRegistryStore(
@@ -103,11 +95,9 @@ class TestFacadeExportAll:
 class TestFacadeExportIds:
     """Pinned acceptance tests for facade export_ids operation.
 
-    These tests pin the contract between shell/registry and app/facade
-    before implementation. Tests xfail until facade.export_ids() is implemented.
+    These tests pin the contract between shell/registry and app/facade.
     """
 
-    @pytest.mark.xfail(reason="export_ids implementation pending")
     def test_export_ids_returns_full_canonical_specs_in_input_order(self) -> None:
         """Success export_ids returns complete PersonaSpec records preserving order."""
         spec_one = _canonical_spec("export-one", digest="sha256:one-digest")
@@ -140,15 +130,13 @@ class TestFacadeExportIds:
             assert "description" in spec
             assert "prompt" in spec
             assert "model" in spec
-            assert "tools" in spec
+            assert "capabilities" in spec
             assert "model_params" in spec
-            assert "side_effect_policy" in spec
             assert "can_spawn" in spec
             assert "compaction_prompt" in spec
             assert "spec_version" in spec
             assert "spec_digest" in spec
 
-    @pytest.mark.xfail(reason="export_ids implementation pending")
     def test_export_ids_returns_empty_list_for_empty_ids_immediately(self) -> None:
         """Empty ids list returns Success([]) immediately with no registry calls."""
         get_calls: list[str] = []
@@ -170,7 +158,6 @@ class TestFacadeExportIds:
         assert len(result.unwrap()) == 0
         assert get_calls == []
 
-    @pytest.mark.xfail(reason="export_ids implementation pending")
     def test_export_ids_fail_fast_on_first_not_found(self) -> None:
         """First PERSONA_NOT_FOUND stops iteration, returns error immediately."""
         spec_valid = _canonical_spec("export-valid", digest="sha256:valid")
@@ -197,7 +184,6 @@ class TestFacadeExportIds:
         assert error["numeric_code"] == 100
         assert error["details"]["persona_id"] == "export-missing"
 
-    @pytest.mark.xfail(reason="export_ids implementation pending")
     def test_export_ids_maps_registry_spec_read_failed_to_app_error(self) -> None:
         """REGISTRY_SPEC_READ_FAILED from registry maps to LarvaError with context."""
         registry = InMemoryRegistryStore(
@@ -220,7 +206,6 @@ class TestFacadeExportIds:
         assert error["details"]["persona_id"] == "broken-spec"
         assert error["details"]["path"] == "/tmp/registry/broken-spec.json"
 
-    @pytest.mark.xfail(reason="export_ids implementation pending")
     def test_export_ids_single_id_returns_single_element_list(self) -> None:
         """Single id returns list with one spec, not the spec directly."""
         spec_single = _canonical_spec("export-single", digest="sha256:single")
