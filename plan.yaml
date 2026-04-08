@@ -39233,7 +39233,7 @@ phases:
 
       '
     depends_on:
-    - dup_deep_review.retest-blockers
+    - dup_deep_review.wiring-audit
     agent: software-architect-tacit
   - id: dup_deep_review.gate
     name: Final gate for duplicate-abstraction remediation
