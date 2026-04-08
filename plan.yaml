@@ -37489,7 +37489,7 @@ phases:
   steps:
   - id: dup_error_abstraction.error-basis
     name: Design shared component error projection seam
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -37534,6 +37534,25 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T09:53:59.988227+00:00'
+    done_at: '2026-04-08T09:54:09.404313+00:00'
+    evidence: '## Error Projection Basis
+
+      - canonical_error_factory_surface: shared component error seam with explicit
+      factories for invalid kind, not found, and store unavailable.
+
+      - invariant_fields: canonical envelope invariants locked as `code`, `numeric_code`,
+      `message`, `details`; semantic ownership centralized and transport leakage forbidden
+      in details.
+
+      - transport_wrapper_mapping: CLI/Web/MCP/Python API apply transport-local wrappers
+      only (exit code/http status/tool error/exception wrapper), not semantic rewrites.
+
+      - case_mapping_no_drift: explicit stable mappings documented for invalid_kind
+      (INVALID_INPUT/1), not_found (COMPONENT_NOT_FOUND/105), store_unavailable (INTERNAL/10)
+      with numeric/details ownership boundaries.
+
+      - artifact: `design/component-error-projection-basis.md` from isolated branch
+      commit `9797862`.'
   - id: dup_error_abstraction.impl
     name: Implement shared component error projection and rewire transports
     status: pending
