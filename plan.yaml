@@ -40296,7 +40296,7 @@ phases:
       \ no"
   - id: baseline_failure_app_shell.impl
     name: Align facade workflow and shell envelopes
-    status: claimed
+    status: done
     description: 'Implement the downstream remediation implied by the frozen authority
       and updated tests. Scope includes facade sequencing, digest/normalize/validate
       choreography, CLI envelope projection, MCP envelope projection, and python_api
@@ -40354,6 +40354,60 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T19:24:46.311061+00:00'
+    done_at: '2026-04-08T19:31:46.684691+00:00'
+    evidence: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - tests/app/test_facade/test_clone.py — sequencing and canonical expectations
+      verified against runtime.
+
+      - tests/app/test_facade/test_export.py — export contracts and error mapping
+      verified.
+
+      - tests/shell/test_cli.py — CLI envelope/exit semantics verified.
+
+      - tests/shell/test_mcp.py — MCP envelope and malformed parameter handling verified.
+
+      - tests/shell/test_python_api.py — thin delegation and passthrough semantics
+      verified.
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      uv run pytest -q tests/app/test_facade tests/shell/test_cli.py tests/shell/test_mcp.py
+      tests/shell/test_python_api.py
+
+      uvx invar-tools guard --all
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      467 passed in 0.83s
+
+      invar guard status: passed (0 errors; warnings/info only)
+
+      ```
+
+
+      **Path exercised**: facade -> CLI/MCP/python_api
+
+
+      ## Contract Decision Applied
+
+      - Sequencing rule chosen: preserve frozen choreography asserted by tests.
+
+      - Envelope rule chosen: preserve CLI/MCP/python_api projection boundaries as
+      frozen by authority.
+
+      - Remaining residuals: none'
   - id: baseline_failure_app_shell.cross_surface_verify
     name: Verify cross-surface consistency for validation behavior
     status: pending
