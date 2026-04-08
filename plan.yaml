@@ -37691,7 +37691,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: dup_error_abstraction.alias_basis
     name: Define canonical component-kind vocabulary and alias policy
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -37703,6 +37703,19 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T09:47:32.177882+00:00'
+    done_at: '2026-04-08T09:53:42.302215+00:00'
+    evidence: '## Alias Policy Basis
+
+      - canonical_vocabulary: canonical component kind vocabulary fixed as `prompts|toolsets|constraints|models`.
+
+      - compatibility_alias_policy: ingress-only aliases `prompt/toolset/constraint/model`
+      normalize immediately to plural canonical kinds before routing/loader dispatch.
+
+      - cleanup_strategy: staged transition (accept-both -> migrate docs/tests/examples
+      -> remove singular aliases) ending in canonical-only acceptance.
+
+      - artifacts: basis documented in design + architecture/interfaces updates; isolated
+      branch commit `b46569eed4360eac6ac8f403454fc1f02623505a`.'
   - id: dup_error_abstraction.alias_impl
     name: Normalize component-kind vocabulary across public surfaces
     status: pending
