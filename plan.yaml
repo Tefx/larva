@@ -38106,6 +38106,50 @@ phases:
     depends_on:
     - dup_error_abstraction.fix_gate_blockers
     agent: integration-verifier-tacit
+  - id: dup_error_abstraction.gate_reopen
+    name: Re-open dup_error_abstraction gate after blocker retest
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Follow-up gate review for dup_error_abstraction after the batched blocker fix/retest
+      loop. This step exists to provide the explicit gate reopen path without mutating
+      completed work.
+
+
+      Review focus:
+
+      - B1 closure: INVALID_INPUT is required in MCP invalid-kind projection coverage
+
+      - B2 closure: web resolve/assemble monkeypatch signatures match current contracts
+
+      - No new blocker-class drift was introduced in the targeted MCP/Web shell surfaces'
+    verification: '- Review evidence from dup_error_abstraction.retest_gate_blockers
+
+      - Confirm both blocker families are closed
+
+      - Confirm no blocker-class MCP/Web regression remains in this phase'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Gate Review Report
+
+      - Retest step reviewed: dup_error_abstraction.retest_gate_blockers
+
+      - B1 status: CLOSED|OPEN
+
+      - B2 status: CLOSED|OPEN
+
+      - Gate decision: OPEN|BLOCKED
+
+      - Required follow-up if blocked:'
+    depends_on:
+    - dup_error_abstraction.retest_gate_blockers
+    agent: gate-reviewer-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
