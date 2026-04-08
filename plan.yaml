@@ -38134,23 +38134,26 @@ phases:
       verification_scope: phase-check
 
 
-      Follow-up gate review for dup_error_abstraction after the batched blocker fix/retest
-      loop. This step exists to provide the explicit gate reopen path without mutating
-      completed work.
+      Follow-up gate review for dup_error_abstraction after the second batched blocker
+      fix/retest loop. This step exists to provide the explicit gate reopen path without
+      mutating completed work.
 
 
       Review focus:
 
-      - B1 closure: INVALID_INPUT is required in MCP invalid-kind projection coverage
+      - B1 closure: web resolve monkeypatch/test-double signatures match the current
+      two-argument contract
 
-      - B2 closure: web resolve/assemble monkeypatch signatures match current contracts
+      - B2 closure: python_api failure passthrough expectations align with the canonical
+      projected COMPONENT_NOT_FOUND semantics
 
-      - No new blocker-class drift was introduced in the targeted MCP/Web shell surfaces'
-    verification: '- Review evidence from dup_error_abstraction.retest_gate_blockers
+      - No new blocker-class drift was introduced in the targeted Web/Python API shell
+      surfaces'
+    verification: '- Review evidence from dup_error_abstraction.retest_gate_blockers_round2
 
       - Confirm both blocker families are closed
 
-      - Confirm no blocker-class MCP/Web regression remains in this phase'
+      - Confirm no blocker-class Web/Python API regression remains in this phase'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       No refs for this step.
