@@ -38176,7 +38176,7 @@ phases:
   - id: dup_error_abstraction.fix_gate_blockers_round2
     name: Fix remaining dup_error_abstraction blocker families (web lambda signature
       + python_api stale expectation)
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -38267,6 +38267,8 @@ phases:
     - dup_error_abstraction.fix_gate_blockers
     - dup_error_abstraction.verify
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T13:06:26.075526+00:00'
   - id: dup_error_abstraction.retest_gate_blockers_round2
     name: Retest remaining dup_error_abstraction blocker families after batched remediation
     status: pending
