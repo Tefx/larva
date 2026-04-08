@@ -40144,7 +40144,7 @@ phases:
       \ checks)\n- Remaining residuals: none"
   - id: baseline_failure_core.retest
     name: Retest core failure cluster green
-    status: claimed
+    status: done
     description: Independent retest of the full core cluster after implementation.
       Focus on spec/schema/normalize/assemble interactions, not just isolated unit
       behavior. Finding remaining issues is success for this step; if issues remain,
@@ -40173,6 +40173,28 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T18:31:31.518974+00:00'
+    done_at: '2026-04-08T19:03:08.621206+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/spec.py — canonical\
+      \ PersonaSpec/component shape reviewed.\n- src/larva/core/normalize.py — postconditions\
+      \ and transition handling reviewed.\n- src/larva/core/validate.py — canonical\
+      \ required/optional/forbidden validation reviewed.\n- src/larva/core/assemble.py\
+      \ — assembly output and forbidden override behavior reviewed.\n- tests/core/test_spec.py\
+      \ — module retested.\n- tests/core/test_schema_validation.py — module retested.\n\
+      - tests/core/test_normalize.py — module retested.\n- tests/core/test_assemble.py\
+      \ — module retested.\n\n## Verification Report\n- Commands executed:\n  - uv\
+      \ run pytest tests/core/ -v --tb=short\n  - uv run pytest tests/core/ --doctest-modules\
+      \ src/larva/core/ -q\n  - uv run pytest tests/core/ --cov=src/larva/core --cov-report=term-missing\n\
+      - Per-module result:\n  - test_spec: pass\n  - test_schema_validation: pass\n\
+      \  - test_normalize: pass\n  - test_assemble: pass\n- Issues found:\n  - should_fix:\
+      \ stale xfail markers in tests/core/test_patch.py (XPASS noise)\n  - should_fix:\
+      \ sharp edge requiring assemble before normalize for component-shaped input\
+      \ (non-blocking contract clarity issue)\n  - tech_debt: component_kind.py zero\
+      \ pytest coverage\n  - tech_debt: component_error_projection.py partial coverage\
+      \ gap\n- Verdict: ISSUES_FOUND\n\n## Test-step semantic reporting\n- step_intent:\
+      \ verify\n- expected_result: green with residual classification if any\n- observed_result:\
+      \ 169 passed, 32 xpassed, 0 failed\n- failure_alignment: no blocker-class residuals;\
+      \ should_fix/tech_debt only\n- whether any product implementation files were\
+      \ modified: no"
   - id: baseline_failure_core.gate
     name: Gate core contract alignment
     status: pending
