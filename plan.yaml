@@ -38981,7 +38981,7 @@ phases:
       \ synchronized"
   - id: dup_doc_sync.gate
     name: Gate duplicate-abstraction documentation sync
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -39018,6 +39018,8 @@ phases:
     depends_on:
     - dup_doc_sync.update-docs
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T14:01:53.591457+00:00'
 - id: dup_deep_review
   name: Duplicate-Abstraction Deep Review
   status: locked
