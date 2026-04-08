@@ -39194,7 +39194,7 @@ phases:
       \ surfaces; residual is code-clarity/defense-depth improvement only"
   - id: dup_deep_review.black-box
     name: Black-box verify public surfaces after duplicate-abstraction remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -39242,6 +39242,38 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-08T16:54:57.681163+00:00'
+    done_at: '2026-04-08T17:08:04.140795+00:00'
+    evidence: '## Black-Box Verification Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Fixture Set
+
+      - canonical_success_fixture validated across all public surfaces
+
+      - forbidden_fixture_set covered tools, side_effect_policy, unknown field, missing
+      required fields, invalid spec_version
+
+
+      ## Public-Surface Results
+
+      - cli: canonical accepted; forbidden fields rejected on validate/register/update/resolve/assemble
+      paths
+
+      - python_api: canonical accepted; forbidden fields rejected; outputs free of
+      forbidden fields
+
+      - mcp: canonical accepted; forbidden fields rejected with expected error codes
+
+      - web: canonical accepted; forbidden fields rejected with expected 400/error
+      envelopes
+
+
+      Conclusion: no stale duplicate behavior observed across public surfaces; canonical
+      boundary behavior preserved'
   - id: dup_deep_review.architecture-review
     name: Review remaining duplicate logic and abstraction debt after remediation
     status: done
