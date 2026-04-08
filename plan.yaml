@@ -38082,7 +38082,7 @@ phases:
       - 8be468b (isolated branch vectl/step-dup_error_abstraction.fix_gate_blockers)"
   - id: dup_error_abstraction.retest_gate_blockers
     name: Retest dup_error_abstraction gate blockers
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38130,6 +38130,69 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T13:11:52.046952+00:00'
+    done_at: '2026-04-08T13:44:35.190668+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Verification Report
+
+      Tester: integration-verifier-tacit
+
+      Scope: dup_error_abstraction blocker retest
+
+      Independence Level: L1
+
+
+      Test Execution:
+
+      - uv run pytest "tests/shell/test_mcp.py::TestMCPErrorCodes::test_all_required_error_codes_present"
+      -xvs
+
+      - uv run pytest tests/shell/test_web.py -v --tb=short
+
+      - uv run pytest "tests/shell/test_python_api.py::TestPythonApiAssemble::test_assemble_failure_passthrough_from_facade"
+      -xvs
+
+      - uv run pytest tests/shell/ -v --tb=no
+
+      - uv run pytest tests/ --tb=no
+
+
+      Output summary:
+
+      - 719 passed, 5 xfailed, 44 xpassed, 0 failed
+
+      - targeted MCP/Web/PythonAPI blocker tests passed
+
+
+      Coverage:
+
+      - Targeted MCP failure rerun: PASS
+
+      - Targeted Web failures rerun: PASS
+
+      - Relevant component suites: PASS
+
+
+      Verdict: PASS
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      whether_any_product_implementation_files_were_modified: No
+
+      behavioral_proof_register: targeted blocker tests and full suites passed
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none'
   - id: dup_error_abstraction.gate_reopen
     name: Re-open dup_error_abstraction gate after blocker retest
     status: pending
