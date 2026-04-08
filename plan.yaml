@@ -37151,6 +37151,39 @@ phases:
 
       - outputs_summary: previously failing 4 assertions resolved; assemble test suite
       now passes (`37 passed`).'
+  - id: dup_contract_source.gate_test_sync_batch
+    name: Synchronize gate blocker tests with ADR-002 canonical model
+    status: pending
+    description: 'Synchronize tests/core/test_normalize.py, tests/core/test_spec.py,
+      tests/shell/test_cli.py, tests/shell/test_mcp.py, and tests/shell/test_python_api.py
+      with the ADR-002 canonical model while preserving public behavior expectations.
+
+
+      This batched remediation closes the current dup_contract_source.gate blocker
+      set by updating tool-output assertions, TypedDict required/optional expectations,
+      validation error message expectations, canonical warning expectations, and assemble
+      delegation expectations without changing canonical-model intent.'
+    verification: '- Targeted tests for tests/core/test_normalize.py pass and preserve
+      canonical-model intent
+
+      - Targeted tests for tests/core/test_spec.py pass and preserve TypedDict required/optional
+      expectations under ADR-002
+
+      - Targeted tests for tests/shell/test_cli.py pass and preserve validation error
+      message expectations
+
+      - Targeted tests for tests/shell/test_mcp.py pass and preserve canonical warning
+      expectations
+
+      - Targeted tests for tests/shell/test_python_api.py pass and preserve assemble
+      delegation expectations
+
+      - Combined targeted test run across all five files passes and preserves canonical-model
+      intent'
+    depends_on:
+    - dup_contract_source.assemble_test_sync
+    - dup_contract_source.workflow_verify
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
