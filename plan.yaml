@@ -37478,7 +37478,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_error_abstraction
   name: Component Surface Normalization and Error Projection
-  status: pending
+  status: in_progress
   gate: Unify component-kind vocabulary and component error projection across transports
     without changing externally meaningful envelopes.
   context: 'Merged duplicate-abstraction phase. Absorbs prior component-kind normalization
@@ -37691,7 +37691,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: dup_error_abstraction.alias_basis
     name: Define canonical component-kind vocabulary and alias policy
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -37701,6 +37701,8 @@ phases:
 
       - Alias handling and eventual cleanup strategy are documented'
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-08T09:47:32.177882+00:00'
   - id: dup_error_abstraction.alias_impl
     name: Normalize component-kind vocabulary across public surfaces
     status: pending
