@@ -36848,13 +36848,18 @@ phases:
       verification_scope: phase-check
 
 
-      Independently verify that canonical-boundary tests now use canonical-only fixtures
-      and that legacy coverage is explicit rather than implicit.'
+      Independently verify that canonical-boundary tests now use canonical-only fixtures,
+      that legacy coverage is explicit rather than implicit, and that the canonical
+      helper no longer injects deprecated `tools` or `side_effect_policy` fields.'
     verification: '- Canonical fixture sanity checks pass
 
-      - No in-scope canonical test helper silently injects deprecated fields'
+      - No in-scope canonical test helper silently injects deprecated fields
+
+      - Canonical helper no longer injects deprecated `tools` or `side_effect_policy`
+      fields'
     depends_on:
     - dup_contract_source.fixture_impl
+    - dup_contract_source.fixture_fix_canonical_helper
     agent: integration-verifier-tacit
   - id: dup_contract_source.workflow_impl
     name: Consolidate repeated facade admission workflow
