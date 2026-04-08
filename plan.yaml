@@ -37489,7 +37489,7 @@ phases:
   steps:
   - id: dup_error_abstraction.error-basis
     name: Design shared component error projection seam
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -37532,6 +37532,8 @@ phases:
 
       '
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-08T09:53:59.988227+00:00'
   - id: dup_error_abstraction.impl
     name: Implement shared component error projection and rewire transports
     status: pending
