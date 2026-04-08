@@ -506,21 +506,11 @@ class TestWebSurfaceEndpoints:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """GET /api/components/{type}/{name} accepts singular type aliases."""
-
-        class _Store:
-            def load_prompt(self, name: str) -> Result[dict[str, str], object]:
-                return Success({"text": f"Prompt {name}"})
-
-            def load_toolset(self, name: str) -> Result[dict[str, object], object]:
-                return Success({})
-
-            def load_constraint(self, name: str) -> Result[dict[str, object], object]:
-                return Success({})
-
-            def load_model(self, name: str) -> Result[dict[str, object], object]:
-                return Success({})
-
-        monkeypatch.setattr(web_module, "_component_store", _Store())
+        monkeypatch.setattr(
+            web_module,
+            "component_show",
+            lambda component_type, name: {"text": f"Prompt {name}", "type": component_type},
+        )
         client = TestClient(app)
         resp = client.get("/api/components/prompt/test")
 

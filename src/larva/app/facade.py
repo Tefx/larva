@@ -20,6 +20,7 @@ from typing import Any, Protocol, TypedDict, cast
 
 from returns.result import Failure, Result, Success
 
+from larva.core.component_error_projection import project_component_store_error
 from larva.core.assemble import AssemblyError
 from larva.core.patch import apply_patches
 from larva.core.spec import AssemblyInput, PersonaSpec
@@ -29,6 +30,7 @@ from larva.shell.registry import RegistryError, RegistryStore
 
 
 ERROR_NUMERIC_CODES: dict[str, int] = {
+    "INVALID_INPUT": 1,
     "INTERNAL": 10,
     "PERSONA_NOT_FOUND": 100,
     "PERSONA_INVALID": 101,
@@ -303,15 +305,11 @@ class DefaultLarvaFacade(LarvaFacade):
     def _component_error(
         self, error: Exception, component_name: str, component_type: str
     ) -> LarvaError:
-        message = str(error)
-        details: dict[str, object] = {
-            "component_type": getattr(error, "component_type", component_type),
-            "component_name": getattr(error, "component_name", component_name),
-        }
-        return self._error(
-            code="COMPONENT_NOT_FOUND",
-            message=message,
-            details=details,
+        return project_component_store_error(
+            operation="assemble",
+            error=error,
+            default_component_type=component_type,
+            default_component_name=component_name,
         )
 
     def _assembly_error(self, error: AssemblyError) -> LarvaError:

@@ -7,6 +7,12 @@ from typing import cast
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaError
+from larva.core.component_error_projection import (
+    component_invalid_kind_error,
+    component_store_unavailable_error,
+    project_component_store_error,
+)
+from larva.core.component_kind import CANONICAL_COMPONENT_KINDS
 from larva.core.component_kind import invalid_component_kind_message, normalize_component_kind
 from larva.shell.components import FilesystemComponentStore
 
@@ -28,15 +34,7 @@ def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
     if isinstance(result, Failure):
         error = result.failure()
         return Failure(
-            {
-                "code": "COMPONENT_NOT_FOUND",
-                "numeric_code": 105,
-                "message": str(error),
-                "details": {
-                    "component_type": str(getattr(error, "component_type", "")),
-                    "component_name": str(getattr(error, "component_name", "")),
-                },
-            }
+            project_component_store_error(operation="python_api.component_list", error=error)
         )
     return Success(cast("dict[str, list[str]]", result.unwrap()))
 
@@ -56,30 +54,32 @@ def _component_show_result(type: str, name: str) -> Result[dict[str, object], La
     elif normalized_type == "models":
         result = store.load_model(name)
     else:
-        return Failure(
-            {
-                "code": "COMPONENT_NOT_FOUND",
-                "numeric_code": 105,
-                "message": invalid_component_kind_message(type),
-                "details": {
-                    "component_type": type,
-                    "component_name": name,
-                },
-            }
+        error = component_invalid_kind_error(
+            operation="python_api.component_show",
+            component_type=type,
+            component_name=name,
+            valid_types=sorted(CANONICAL_COMPONENT_KINDS),
         )
+        error["message"] = invalid_component_kind_message(type)
+        return Failure(error)
 
     if isinstance(result, Failure):
         error = result.failure()
-        return Failure(
-            {
-                "code": "COMPONENT_NOT_FOUND",
-                "numeric_code": 105,
-                "message": str(error),
-                "details": {
-                    "component_type": str(getattr(error, "component_type", normalized_type)),
-                    "component_name": str(getattr(error, "component_name", name)),
-                },
-            }
+        projected = project_component_store_error(
+            operation="python_api.component_show",
+            error=error,
+            default_component_type=normalized_type,
+            default_component_name=name,
         )
+        if projected["code"] == "INTERNAL":
+            return Failure(
+                component_store_unavailable_error(
+                    operation="python_api.component_show",
+                    component_type=normalized_type,
+                    component_name=name,
+                    reason=projected["message"],
+                )
+            )
+        return Failure(projected)
 
     return Success(cast("dict[str, object]", result.unwrap()))

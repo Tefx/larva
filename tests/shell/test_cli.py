@@ -1948,8 +1948,9 @@ class TestRunCli:
 
         assert exit_code == EXIT_ERROR
         payload = json.loads(stdout.getvalue())
-        assert payload["error"]["code"] == "COMPONENT_NOT_FOUND"
-        assert payload["error"]["numeric_code"] == 105
+        assert payload["error"]["code"] == "INVALID_INPUT"
+        assert payload["error"]["numeric_code"] == 1
+        assert payload["error"]["details"]["reason"] == "invalid_kind"
         assert stderr.getvalue() == ""
 
     def test_component_list_generic_failure_maps_to_internal_without_text_leak(self) -> None:

@@ -120,17 +120,3 @@ class MCPParamValidationMixin:
                 },
             )
         return None
-
-    @staticmethod
-    def _component_store_error(
-        tool_name: str,
-        reason: str,
-        details: dict[str, object],
-    ) -> LarvaError:
-        """Build a documented MCP error envelope for component store failures."""
-        return {
-            "code": "COMPONENT_NOT_FOUND",
-            "numeric_code": LARVA_ERROR_CODES["COMPONENT_NOT_FOUND"],
-            "message": f"Component error for '{tool_name}': {reason}",
-            "details": {"tool": tool_name, "reason": reason, **details},
-        }

@@ -9,6 +9,10 @@ from returns.result import Result, Success
 
 from larva.app import facade as facade_module
 from larva.app.facade import LarvaError, LarvaFacade, PersonaSummary
+from larva.core.component_error_projection import (
+    component_invalid_kind_error,
+    project_component_store_error,
+)
 from larva.core.component_kind import invalid_component_kind_message
 from larva.core import assemble as assemble_module, normalize as normalize_module
 from larva.core import spec as spec_module, validate as validate_module
@@ -123,22 +127,12 @@ def _render_payload_for_text(command: CommandName, payload: object) -> Result[st
 
 def _map_component_error(error: object) -> Result[tuple[JsonErrorEnvelope, CliExitCode], object]:
     if isinstance(error, ComponentStoreError):
-        details: dict[str, object] = {}
-        component_type = getattr(error, "component_type", None)
-        component_name = getattr(error, "component_name", None)
-        if component_type is not None:
-            details["component_type"] = component_type
-        if component_name is not None:
-            details["component_name"] = component_name
+        envelope = project_component_store_error(operation="cli.component", error=error)
+        exit_code = EXIT_ERROR if envelope["code"] != "INTERNAL" else EXIT_CRITICAL
         return Success(
             (
-                {
-                    "code": "COMPONENT_NOT_FOUND",
-                    "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
-                    "message": str(error),
-                    "details": details,
-                },
-                EXIT_ERROR,
+                envelope,
+                exit_code,
             )
         )
 
@@ -212,17 +206,16 @@ def _component_show_invalid_target(
     *,
     component_type: str | None = None,
 ) -> Result[CliFailure, object]:
-    details: dict[str, object] = {"component_ref": component_ref}
-    message = f"invalid component target: {component_ref}"
+    resolved_type = component_type if component_type is not None else ""
+    error_envelope = component_invalid_kind_error(
+        operation="cli.component_show",
+        component_type=resolved_type,
+        component_name=None,
+        valid_types=["prompts", "toolsets", "constraints", "models"],
+    )
     if component_type is not None:
-        details["component_type"] = component_type
-        message = invalid_component_kind_message(component_type)
-    error_envelope: JsonErrorEnvelope = {
-        "code": "COMPONENT_NOT_FOUND",
-        "numeric_code": facade_module.ERROR_NUMERIC_CODES["COMPONENT_NOT_FOUND"],
-        "message": message,
-        "details": details,
-    }
+        error_envelope["message"] = invalid_component_kind_message(component_type)
+    error_envelope["details"]["component_ref"] = component_ref
     return Success({"exit_code": EXIT_ERROR, "error": error_envelope})
 
 

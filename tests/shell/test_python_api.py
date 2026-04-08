@@ -310,8 +310,9 @@ class TestPythonApiAssemble:
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.assemble("assemble-fail", prompts=["missing"])
 
-        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
-        assert exc_info.value.error["numeric_code"] == 105
+        assert exc_info.value.error["code"] == "INTERNAL"
+        assert exc_info.value.error["numeric_code"] == 10
+        assert exc_info.value.error["details"]["reason"] == "store_unavailable"
 
 
 class TestPythonApiRegister:
@@ -670,8 +671,9 @@ class TestPythonApiComponentList:
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_list()
 
-        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
-        assert exc_info.value.error["numeric_code"] == 105
+        assert exc_info.value.error["code"] == "INTERNAL"
+        assert exc_info.value.error["numeric_code"] == 10
+        assert exc_info.value.error["details"]["reason"] == "store_unavailable"
 
 
 class TestPythonApiComponentShow:
@@ -809,10 +811,10 @@ class TestPythonApiComponentShow:
         result = python_api.component_show("model", "gpt-4")
         assert result == {"model": "gpt-4o-mini"}
 
-    def test_component_show_invalid_type_raises_component_not_found(
+    def test_component_show_invalid_type_raises_invalid_input(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """component_show() with invalid type must raise LarvaApiError with code COMPONENT_NOT_FOUND/105."""
+        """component_show() with invalid type must raise LarvaApiError with code INVALID_INPUT/1."""
 
         class MockComponentStore:
             def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
@@ -834,10 +836,11 @@ class TestPythonApiComponentShow:
         with pytest.raises(python_api.LarvaApiError) as exc_info:
             python_api.component_show("invalid_type", "some-name")
 
-        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
-        assert exc_info.value.error["numeric_code"] == 105
+        assert exc_info.value.error["code"] == "INVALID_INPUT"
+        assert exc_info.value.error["numeric_code"] == 1
         assert "Invalid component type" in exc_info.value.error["message"]
         assert "prompts | toolsets | constraints | models" in exc_info.value.error["message"]
+        assert exc_info.value.error["details"]["reason"] == "invalid_kind"
 
     def test_component_show_not_found_raises_component_not_found(
         self, monkeypatch: pytest.MonkeyPatch

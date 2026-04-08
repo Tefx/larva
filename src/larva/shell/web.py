@@ -36,24 +36,23 @@ from larva.shell.python_api import (
     LarvaApiError,
     assemble,
     clear,
+    component_list,
+    component_show,
     delete,
     list as list_personas,
     register,
     resolve,
     validate,
 )
-from larva.core.component_kind import invalid_component_kind_message, normalize_component_kind
-from larva.shell.components import FilesystemComponentStore
 from larva.core.validate import ValidationReport
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 
 app = FastAPI(title="larva", docs_url=None, redoc_url=None)
 
 STATIC_DIR = Path(__file__).parent
-_component_store = FilesystemComponentStore()
 
 
 # ---------------------------------------------------------------------------
@@ -68,6 +67,20 @@ def _api_error_response(e: LarvaApiError) -> Any:
         status_code=400,
         content={"error": e.error},
     )
+
+
+def _component_api_error_response(e: LarvaApiError) -> Any:
+    """Project component LarvaApiError to transport-specific HTTP statuses."""
+    code = e.error.get("code")
+    if code == "INVALID_INPUT":
+        status_code = 400
+    elif code == "COMPONENT_NOT_FOUND":
+        status_code = 404
+    elif code == "INTERNAL":
+        status_code = 503
+    else:
+        status_code = 400
+    return JSONResponse(status_code=status_code, content={"error": e.error})
 
 
 # @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
@@ -97,7 +110,7 @@ def api_list_personas() -> Any:
 async def api_get_persona(persona_id: str) -> Any:
     """Resolve a persona by ID."""
     try:
-        return {"data": resolve(persona_id)}
+        return {"data": resolve(persona_id, None)}
     except LarvaApiError as e:
         return _api_error_response(e)
 
@@ -125,7 +138,7 @@ async def api_update_persona(persona_id: str, request: Request) -> Any:
     patches = await request.json()
     try:
         # Get current spec
-        spec = resolve(persona_id)
+        spec = resolve(persona_id, None)
         # Apply patches
         # Protected fields (id, spec_digest, spec_version) are stripped
         # Deep-merge fields (model_params, capabilities) get merged correctly
@@ -148,7 +161,7 @@ async def api_update_persona(persona_id: str, request: Request) -> Any:
         register(spec)
 
         # Return updated spec
-        return {"data": resolve(persona_id)}
+        return {"data": resolve(persona_id, None)}
     except LarvaApiError as e:
         return _api_error_response(e)
 
@@ -193,13 +206,14 @@ async def api_assemble_persona(request: Request) -> Any:
     body = await request.json()
     try:
         spec = assemble(
-            id=body["id"],
-            prompts=body.get("prompts"),
-            toolsets=body.get("toolsets"),
-            constraints=body.get("constraints"),
-            model=body.get("model"),
-            overrides=body.get("overrides"),
-            variables=body.get("variables"),
+            body["id"],
+            None,
+            body.get("prompts"),
+            body.get("toolsets"),
+            body.get("constraints"),
+            body.get("model"),
+            body.get("overrides"),
+            body.get("variables"),
         )
         return {"data": spec}
     except LarvaApiError as e:
@@ -214,29 +228,19 @@ async def api_assemble_persona(request: Request) -> Any:
 @app.get("/api/components")
 def api_list_components() -> Any:
     """List all available components."""
-    result = _component_store.list_components()
-    if hasattr(result, "unwrap"):
-        return {"data": result.unwrap()}
-    return {"data": {"prompts": [], "toolsets": [], "constraints": [], "models": []}}
+    try:
+        return {"data": component_list()}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
 
 
 @app.get("/api/components/{component_type}/{name}")
 def api_get_component(component_type: str, name: str) -> Any:
     """Load a specific component."""
-    normalized_type = normalize_component_kind(component_type)
-    loaders = {
-        "prompts": _component_store.load_prompt,
-        "toolsets": _component_store.load_toolset,
-        "constraints": _component_store.load_constraint,
-        "models": _component_store.load_model,
-    }
-    loader = loaders.get(normalized_type) if normalized_type is not None else None
-    if not loader:
-        raise HTTPException(status_code=400, detail=invalid_component_kind_message(component_type))
-    result = loader(name)
-    if hasattr(result, "unwrap"):
-        return {"data": result.unwrap()}
-    raise HTTPException(status_code=404, detail=f"Component not found: {component_type}/{name}")
+    try:
+        return {"data": component_show(component_type, name)}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
 
 
 # ---------------------------------------------------------------------------

@@ -1452,8 +1452,8 @@ class TestMCPComponentShowAcceptance:
             reason="params must be an object",
         )
 
-    def test_handle_component_show_unsupported_type_returns_component_not_found(self) -> None:
-        """Test handle_component_show returns COMPONENT_NOT_FOUND for unsupported type."""
+    def test_handle_component_show_unsupported_type_returns_invalid_input(self) -> None:
+        """Test handle_component_show returns INVALID_INPUT for unsupported type."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1461,8 +1461,9 @@ class TestMCPComponentShowAcceptance:
         result = handlers.handle_component_show({"component_type": "invalid_type", "name": "test"})
 
         assert isinstance(result, dict)
-        assert result["code"] == "COMPONENT_NOT_FOUND"
-        assert result["numeric_code"] == 105
+        assert result["code"] == "INVALID_INPUT"
+        assert result["numeric_code"] == 1
+        assert result["details"]["reason"] == "invalid_kind"
         assert "prompts | toolsets | constraints | models" in result["message"]
 
     def test_handle_component_show_singular_alias_normalizes_to_plural_loader(self) -> None:

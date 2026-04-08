@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 
 from returns.result import Failure, Success
+from larva.core.component_error_projection import (
+    component_invalid_kind_error,
+    component_store_unavailable_error,
+    project_component_store_error,
+)
 from larva.core.component_kind import (
     CANONICAL_COMPONENT_KINDS,
     invalid_component_kind_message,
@@ -34,22 +39,19 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
             return error
 
         if self._components is None:
-            return self._component_store_error(
-                "larva_component_list",
-                "Component store not available",
-                {},
+            return component_store_unavailable_error(
+                operation="mcp.component_list",
+                component_type=None,
+                component_name=None,
+                reason="Component store not available",
             )
 
         result = self._components.list_components()
         if isinstance(result, Failure):
             error = result.failure()
-            return self._component_store_error(
-                "larva_component_list",
-                str(error),
-                {
-                    "component_type": error.component_type,
-                    "component_name": error.component_name,
-                },
+            return project_component_store_error(
+                operation="mcp.component_list",
+                error=error,
             )
 
         return cast("dict[str, list[str]]", result.unwrap())
@@ -81,20 +83,21 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
 
         normalized_type = normalize_component_kind(component_type)
         if normalized_type is None:
-            return self._component_store_error(
-                "larva_component_show",
-                invalid_component_kind_message(component_type),
-                {
-                    "component_type": component_type,
-                    "valid_types": sorted(CANONICAL_COMPONENT_KINDS),
-                },
+            error = component_invalid_kind_error(
+                operation="mcp.component_show",
+                component_type=component_type,
+                component_name=cast("str", name),
+                valid_types=sorted(CANONICAL_COMPONENT_KINDS),
             )
+            error["message"] = invalid_component_kind_message(component_type)
+            return error
 
         if self._components is None:
-            return self._component_store_error(
-                "larva_component_show",
-                "Component store not available",
-                {},
+            return component_store_unavailable_error(
+                operation="mcp.component_show",
+                component_type=normalized_type,
+                component_name=cast("str", name),
+                reason="Component store not available",
             )
 
         loader_map = {
@@ -106,13 +109,11 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         result = loader_map[normalized_type](name)
         if isinstance(result, Failure):
             error = result.failure()
-            return self._component_store_error(
-                "larva_component_show",
-                str(error),
-                {
-                    "component_type": normalized_type,
-                    "component_name": name,
-                },
+            return project_component_store_error(
+                operation="mcp.component_show",
+                error=error,
+                default_component_type=normalized_type,
+                default_component_name=cast("str", name),
             )
 
         return cast("dict[str, object]", result.unwrap())
