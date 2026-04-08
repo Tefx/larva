@@ -39063,7 +39063,7 @@ phases:
   steps:
   - id: dup_deep_review.wiring-audit
     name: Run full wiring audit over duplicate-abstraction remediation
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -39099,8 +39099,6 @@ phases:
 
       '
     agent: wiring-auditor
-    claimed_by: wiring-auditor
-    claimed_at: '2026-04-08T14:15:14.275764+00:00'
   - id: dup_deep_review.spec-conformance
     name: Audit canonical-boundary conformance after duplicate-abstraction remediation
     status: pending
