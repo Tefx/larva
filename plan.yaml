@@ -38908,7 +38908,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
-  status: pending
+  status: in_progress
   gate: Synchronize architecture and usage docs to the merged duplicate-abstraction
     boundaries.
   depends_on:
@@ -38918,7 +38918,7 @@ phases:
   steps:
   - id: dup_doc_sync.update-docs
     name: Update docs for the new duplication-collapse boundaries
-    status: pending
+    status: claimed
     description: 'step_type: review
 
 
@@ -38962,6 +38962,8 @@ phases:
 
       '
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-08T13:57:12.174162+00:00'
   - id: dup_doc_sync.gate
     name: Gate duplicate-abstraction documentation sync
     status: pending
