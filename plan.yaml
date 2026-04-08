@@ -39479,6 +39479,156 @@ phases:
     depends_on:
     - dup_deep_review.wiring-audit
     agent: python-senior
+  - id: dup_deep_review.retest-blockers
+    name: Re-run deep wiring verification after duplicate-abstraction blocker remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      agent_source: project
+
+
+      As an INDEPENDENT TESTER (wiring-auditor), validate closure of the duplicate-abstraction
+      blocker families from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND REMAINING PROBLEMS, not to confirm by assertion.
+
+
+      Retest for:
+
+      - Happy path: canonical public/runtime surfaces route through the real FastMCP
+      and shared facade seams
+
+      - Edge cases: stale exports, dead protocol/config artifacts, undeclared runtime
+      imports, and alternate web update entry points
+
+      - Error scenarios: dependency manifests disagree with runtime imports, or web
+      patch/update behavior still forks around the shared facade
+
+
+      Document ALL findings. A retest that discovers issues is a SUCCESSFUL verification
+      outcome, but this step''s expected result for closure is green before downstream
+      deep-review resumes.
+
+
+      Independence Level: L1
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Control-plane closure obligations
+
+      Produce a structured proof register covering:
+
+      - requirement_ref
+
+      - behavior_claim
+
+      - runtime_proof_expected
+
+      - evidence_ref
+
+      - status
+
+      - closure_path
+
+      - gate_decision_basis'
+    verification: '- Green proof that no stale MCP contract/config artifact remains
+      active or dead on the FastMCP runtime path
+
+      - Green proof that runtime imports and dependency declarations are aligned,
+      including yaml/PyYAML ownership
+
+      - Green proof that web persona update paths route through the shared facade
+      seam with no duplicate patch logic
+
+      - Output includes blocker/non-blocker disposition for any residual issue and
+      explicit gate-decision basis'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: wiring-auditor (independent of implementation)
+
+      **Scope**: duplicate-abstraction blocker closure
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - Commands executed:
+
+      ```text
+
+      <paste exact audit / grep / import-trace commands>
+
+      ```
+
+      - Output summary: <key results>
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      |---|---|---|---|
+
+
+      ### Coverage Assessment
+
+      - MCP runtime seam audited: ✅/❌
+
+      - Dependency/runtime truth audited: ✅/❌
+
+      - Web/facade seam audited: ✅/❌
+
+      - Sibling path search completed: ✅/❌
+
+
+      ### Verdict
+
+      - [ ] PASS
+
+      - [ ] ISSUES_FOUND
+
+      - [ ] INCOMPLETE
+
+      '
+    depends_on:
+    - dup_deep_review.fix-blockers
+    agent: wiring-auditor
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
   status: locked
