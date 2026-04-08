@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 from larva.shell.python_api import (
     LarvaApiError,
@@ -42,6 +43,7 @@ from larva.shell.python_api import (
     validate,
 )
 from larva.shell.components import FilesystemComponentStore
+from larva.core.validate import ValidationReport
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -54,25 +56,36 @@ _component_store = FilesystemComponentStore()
 
 
 # ---------------------------------------------------------------------------
-# Error handling
+# Error projection (domain -> HTTP envelope)
 # ---------------------------------------------------------------------------
 
 
-# @invar:allow shell_result: FastAPI helper returns JSONResponse, not Result
-def _api_error_response(e: LarvaApiError) -> JSONResponse:
+# @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
+def _api_error_response(e: LarvaApiError) -> Any:
+    """Project LarvaApiError to HTTP 400 with error envelope."""
     return JSONResponse(
         status_code=400,
         content={"error": e.error},
     )
 
 
+# @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
+def _validation_error_response(report: ValidationReport) -> Any:
+    """Project validation failure to HTTP 400 with PERSONA_INVALID envelope."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
+    )
+
+
 # ---------------------------------------------------------------------------
-# Persona endpoints
+# Persona endpoints (shared implementation pattern)
 # ---------------------------------------------------------------------------
 
 
 @app.get("/api/personas")
-def api_list_personas():
+def api_list_personas() -> Any:
+    """List all registered personas."""
     try:
         return {"data": list_personas()}
     except LarvaApiError as e:
@@ -80,7 +93,8 @@ def api_list_personas():
 
 
 @app.get("/api/personas/{persona_id}")
-def api_get_persona(persona_id: str):
+async def api_get_persona(persona_id: str) -> Any:
+    """Resolve a persona by ID."""
     try:
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
@@ -88,49 +102,50 @@ def api_get_persona(persona_id: str):
 
 
 @app.post("/api/personas")
-async def api_register_persona(request: Request):
+async def api_register_persona(request: Request) -> Any:
+    """Validate and register a new persona."""
     body = await request.json()
     spec = body.get("spec", body)
     try:
         # Validate first
         report = validate(spec)
         if not report["valid"]:
-            return JSONResponse(
-                status_code=400,
-                content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
-            )
+            return _validation_error_response(report)
         result = register(spec)
         return {"data": result}
     except LarvaApiError as e:
         return _api_error_response(e)
 
 
-# @invar:allow entry_point_too_thick: contrib web endpoint, inline patch logic is clearer
+# @invar:allow entry_point_too_thick: web endpoint, shared implementation calls router helpers
 @app.patch("/api/personas/{persona_id}")
-async def api_update_persona(persona_id: str, request: Request):
+async def api_update_persona(persona_id: str, request: Request) -> Any:
+    """Patch a persona (protected fields ignored, revalidates)."""
     patches = await request.json()
     try:
         # Get current spec
         spec = resolve(persona_id)
-        # Apply patches (only canonical fields are accepted)
+        # Apply patches
+        # Protected fields (id, spec_digest, spec_version) are stripped
+        # Deep-merge fields (model_params, capabilities) get merged correctly
         for key, value in patches.items():
             if key in ("spec_digest", "spec_version"):
                 continue  # protected fields
             if key == "model_params" and isinstance(value, dict):
                 spec["model_params"] = value  # type: ignore[typeddict-item]
             elif key == "capabilities" and isinstance(value, dict):
-                spec["capabilities"] = value  # canonical field
+                spec["capabilities"] = value  # type: ignore[typeddict-item]
             else:
-                spec[key] = value
+                spec[key] = value  # type: ignore[misc]
+
         # Revalidate
         report = validate(spec)
         if not report["valid"]:
-            return JSONResponse(
-                status_code=400,
-                content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
-            )
+            return _validation_error_response(report)
+
         # Re-register (normalize will recompute digest)
         register(spec)
+
         # Return updated spec
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
@@ -138,7 +153,8 @@ async def api_update_persona(persona_id: str, request: Request):
 
 
 @app.delete("/api/personas/{persona_id}")
-def api_delete_persona(persona_id: str):
+def api_delete_persona(persona_id: str) -> Any:
+    """Delete a persona by ID."""
     try:
         result = delete(persona_id)
         return {"data": result}
@@ -147,7 +163,8 @@ def api_delete_persona(persona_id: str):
 
 
 @app.post("/api/personas/clear")
-async def api_clear_personas(request: Request):
+async def api_clear_personas(request: Request) -> Any:
+    """Clear the registry with confirmation."""
     body = await request.json()
     confirm = body.get("confirm", "")
     try:
@@ -158,7 +175,8 @@ async def api_clear_personas(request: Request):
 
 
 @app.post("/api/personas/validate")
-async def api_validate_persona(request: Request):
+async def api_validate_persona(request: Request) -> Any:
+    """Validate a candidate persona spec."""
     spec = await request.json()
     try:
         report = validate(spec)
@@ -168,7 +186,9 @@ async def api_validate_persona(request: Request):
 
 
 @app.post("/api/personas/assemble")
-async def api_assemble_persona(request: Request):
+# @invar:allow entry_point_too_thick: web endpoint, mirrors contrib implementation parity
+async def api_assemble_persona(request: Request) -> Any:
+    """Assemble a persona spec from components."""
     body = await request.json()
     try:
         spec = assemble(
@@ -191,7 +211,8 @@ async def api_assemble_persona(request: Request):
 
 
 @app.get("/api/components")
-def api_list_components():
+def api_list_components() -> Any:
+    """List all available components."""
     result = _component_store.list_components()
     if hasattr(result, "unwrap"):
         return {"data": result.unwrap()}
@@ -199,7 +220,8 @@ def api_list_components():
 
 
 @app.get("/api/components/{component_type}/{name}")
-def api_get_component(component_type: str, name: str):
+def api_get_component(component_type: str, name: str) -> Any:
+    """Load a specific component."""
     loaders = {
         "prompts": _component_store.load_prompt,
         "toolsets": _component_store.load_toolset,
@@ -221,7 +243,7 @@ def api_get_component(component_type: str, name: str):
 
 
 @app.get("/")
-def serve_index():
+def serve_index() -> FileResponse:
     return FileResponse(STATIC_DIR / "web_ui.html", media_type="text/html")
 
 

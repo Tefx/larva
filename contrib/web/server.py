@@ -22,9 +22,7 @@ from __future__ import annotations
 import argparse
 import webbrowser
 from pathlib import Path
-from typing import Any, Callable, cast
-
-from returns.result import Result, Success
+from typing import Any
 
 from larva.shell.python_api import (
     LarvaApiError,
@@ -38,21 +36,20 @@ from larva.shell.python_api import (
     validate,
 )
 from larva.shell.components import FilesystemComponentStore
+from larva.core.validate import ValidationReport
 
 _WEB_IMPORT_ERROR: ImportError | None = None
 
 
 class _MissingFastApiApp:
-    def _decorator(
-        self, *_args: object, **_kwargs: object
-    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def _decorator(self, *_args: object, **_kwargs: object) -> Any:
         return lambda func: func
 
     get = post = patch = delete = _decorator
 
 
 try:
-    from fastapi import FastAPI, HTTPException, Request
+    from fastapi import FastAPI, Request
     from fastapi.responses import FileResponse, JSONResponse
     import uvicorn
 except ImportError as exc:
@@ -67,9 +64,7 @@ except ImportError as exc:
             self.status_code = status_code
             self.detail = detail
 
-    class Request:  # type: ignore[no-redef]
-        async def json(self) -> dict[str, object]:
-            return {}
+    Request = Request  # type: ignore[misc]
 
     class FileResponse:  # type: ignore[no-redef]
         def __init__(self, *_args: object, **_kwargs: object) -> None:
@@ -79,7 +74,7 @@ except ImportError as exc:
         def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-    uvicorn = cast("Any", None)
+    uvicorn = None  # type: ignore[assignment]
 
 app = (
     FastAPI(title="larva", docs_url=None, redoc_url=None)
@@ -92,122 +87,142 @@ _component_store = FilesystemComponentStore()
 
 
 # ---------------------------------------------------------------------------
-# Error handling
+# Error projection (domain -> HTTP envelope)
 # ---------------------------------------------------------------------------
 
 
-def _api_error_response(e: LarvaApiError) -> Result[JSONResponse, object]:
-    return Success(
-        JSONResponse(
-            status_code=400,
-            content={"error": e.error},
-        )
+# @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
+def _api_error_response(e: LarvaApiError) -> Any:
+    """Project LarvaApiError to HTTP 400 with error envelope."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": e.error},
+    )
+
+
+# @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
+def _validation_error_response(report: ValidationReport) -> Any:
+    """Project validation failure to HTTP 400 with PERSONA_INVALID envelope."""
+    return JSONResponse(
+        status_code=400,
+        content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
     )
 
 
 # ---------------------------------------------------------------------------
-# Persona endpoints
+# Persona endpoints (shared implementation pattern)
 # ---------------------------------------------------------------------------
 
 
 @app.get("/api/personas")
-def api_list_personas():
+def api_list_personas() -> Any:
+    """List all registered personas."""
     try:
         return {"data": list_personas()}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.get("/api/personas/{persona_id}")
-def api_get_persona(persona_id: str):
+async def api_get_persona(persona_id: str) -> Any:
+    """Resolve a persona by ID."""
     try:
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.post("/api/personas")
-async def api_register_persona(request: Request):
+async def api_register_persona(request: Request) -> Any:
+    """Validate and register a new persona."""
     body = await request.json()
     spec = body.get("spec", body)
     try:
         # Validate first
         report = validate(spec)
         if not report["valid"]:
-            return JSONResponse(
-                status_code=400,
-                content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
-            )
+            return _validation_error_response(report)
         result = register(spec)
         return {"data": result}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 # @invar:allow entry_point_too_thick: contrib web endpoint, inline patch logic is clearer
 @app.patch("/api/personas/{persona_id}")
-async def api_update_persona(persona_id: str, request: Request):
+async def api_update_persona(persona_id: str, request: Request) -> Any:
+    """Patch a persona (protected fields ignored, revalidates)."""
     patches = await request.json()
     try:
         # Get current spec
         spec = resolve(persona_id)
         # Apply patches
+        # Protected fields (id, spec_digest, spec_version) are stripped
+        # Deep-merge fields (model_params, capabilities) get merged correctly
+        # NOTE: contrib does NOT allow deprecated 'tools' field reintroduction
+        # - canonical 'capabilities' field is the only valid tool capability surface
+        # - validate() will reject 'tools' if present in the patched spec
         for key, value in patches.items():
             if key in ("spec_digest", "spec_version"):
                 continue  # protected fields
             if key == "model_params" and isinstance(value, dict):
                 spec["model_params"] = value  # type: ignore[typeddict-item]
-            elif key == "tools" and isinstance(value, dict):
-                spec["tools"] = value
+            elif key == "capabilities" and isinstance(value, dict):
+                spec["capabilities"] = value  # canonical field
             else:
-                spec[key] = value
+                spec[key] = value  # type: ignore[misc]
+
         # Revalidate
         report = validate(spec)
         if not report["valid"]:
-            return JSONResponse(
-                status_code=400,
-                content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
-            )
+            return _validation_error_response(report)
+
         # Re-register (normalize will recompute digest)
         register(spec)
+
         # Return updated spec
         return {"data": resolve(persona_id)}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.delete("/api/personas/{persona_id}")
-def api_delete_persona(persona_id: str):
+def api_delete_persona(persona_id: str) -> Any:
+    """Delete a persona by ID."""
     try:
         result = delete(persona_id)
         return {"data": result}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.post("/api/personas/clear")
-async def api_clear_personas(request: Request):
+async def api_clear_personas(request: Request) -> Any:
+    """Clear the registry with confirmation."""
     body = await request.json()
     confirm = body.get("confirm", "")
     try:
         count = clear(confirm=confirm)
         return {"data": {"cleared": True, "count": count}}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.post("/api/personas/validate")
-async def api_validate_persona(request: Request):
+async def api_validate_persona(request: Request) -> Any:
+    """Validate a candidate persona spec."""
     spec = await request.json()
     try:
         report = validate(spec)
         return {"data": report}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
 
 
 @app.post("/api/personas/assemble")
-async def api_assemble_persona(request: Request):
+# @invar:allow entry_point_too_thick: contrib web endpoint, mirrors packaged implementation parity
+async def api_assemble_persona(request: Request) -> Any:
+    """Assemble a persona spec from components."""
     body = await request.json()
     try:
         spec = assemble(
@@ -221,11 +236,20 @@ async def api_assemble_persona(request: Request):
         )
         return {"data": spec}
     except LarvaApiError as e:
-        return _api_error_response(e).unwrap()
+        return _api_error_response(e)
+
+
+# ---------------------------------------------------------------------------
+# Contrib-only endpoint: batch-update
+# ---------------------------------------------------------------------------
 
 
 @app.post("/api/personas/batch-update")
-async def api_batch_update_personas(request: Request):
+async def api_batch_update_personas(request: Request) -> Any:
+    """Batch-update endpoint (contrib-only convenience surface).
+
+    Source: INTERFACES.md line 147
+    """
     body = await request.json()
     where = body.get("where", {})
     patches = body.get("patches", {})
@@ -234,7 +258,7 @@ async def api_batch_update_personas(request: Request):
         result = update_batch(where=where, patches=patches, dry_run=dry_run)
         return {"data": result}
     except LarvaApiError as e:
-        return _api_error_response(e)
+        return JSONResponse(status_code=400, content={"error": e.error})
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +267,8 @@ async def api_batch_update_personas(request: Request):
 
 
 @app.get("/api/components")
-def api_list_components():
+def api_list_components() -> Any:
+    """List all available components."""
     result = _component_store.list_components()
     if hasattr(result, "unwrap"):
         return {"data": result.unwrap()}
@@ -251,7 +276,8 @@ def api_list_components():
 
 
 @app.get("/api/components/{component_type}/{name}")
-def api_get_component(component_type: str, name: str):
+def api_get_component(component_type: str, name: str) -> Any:
+    """Load a specific component."""
     loaders = {
         "prompts": _component_store.load_prompt,
         "toolsets": _component_store.load_toolset,
@@ -260,11 +286,11 @@ def api_get_component(component_type: str, name: str):
     }
     loader = loaders.get(component_type)
     if not loader:
-        raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}")  # type: ignore[misc]
     result = loader(name)
     if hasattr(result, "unwrap"):
         return {"data": result.unwrap()}
-    raise HTTPException(status_code=404, detail=f"Component not found: {component_type}/{name}")
+    raise HTTPException(status_code=404, detail=f"Component not found: {component_type}/{name}")  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
@@ -273,7 +299,7 @@ def api_get_component(component_type: str, name: str):
 
 
 @app.get("/")
-def serve_index():
+def serve_index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
 
@@ -282,7 +308,7 @@ def serve_index():
 # ---------------------------------------------------------------------------
 
 
-def main():
+def main() -> None:
     if _WEB_IMPORT_ERROR is not None:
         raise SystemExit(
             "FastAPI and uvicorn are required.\nInstall with: uv pip install fastapi uvicorn"
@@ -298,7 +324,7 @@ def main():
 
         threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{args.port}")).start()
 
-    uvicorn.run(cast("Any", app), host="127.0.0.1", port=args.port, log_level="info")
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")  # type: ignore[misc]
 
 
 if __name__ == "__main__":
