@@ -40556,7 +40556,7 @@ phases:
       debt'
 - id: baseline_failure_finalization
   name: Baseline Failure Final Verification, Doc Sync, and Deep Review
-  status: in_progress
+  status: done
   gate: Prove the remaining baseline failures are closed, sync docs, and finish with
     independent deep review.
   depends_on:
@@ -40712,7 +40712,7 @@ phases:
       \ true\n- uncertainty sources: none blocking"
   - id: baseline_failure_finalization.gate
     name: Final gate for baseline-failure remediation
-    status: claimed
+    status: done
     description: Final gate for the compressed remediation stream. Open only when
       the former baseline failure clusters are closed or explicitly dispositioned
       with non-intersection evidence, docs are synced, and independent deep review
@@ -40744,3 +40744,35 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T20:50:51.081310+00:00'
+    done_at: '2026-04-08T21:18:13.539165+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - full_verify evidence reviewed
+
+      - doc_sync evidence reviewed
+
+      - deep_review evidence reviewed
+
+
+      ## Final Gate Report
+
+      - Full verification status: passed (cluster/full tests and guard accepted with
+      explicit residual disposition)
+
+      - Residual failure accounting: no blocker-class residuals; only non-blocking
+      should-fix debt tracked
+
+      - Doc sync status: completed and aligned to canonical behavior
+
+      - Deep review status: completed; recommendation OPEN
+
+      - Gate decision: OPEN
+
+
+      ## Behavioral proof summary
+
+      - gate_open_allowed: true
+
+      - blocking_behavioral_proofs: none
+
+      - uncertainty sources: none blocking'
