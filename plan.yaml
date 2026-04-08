@@ -37971,7 +37971,7 @@ phases:
       \ dup_error_abstraction.alias_verify"
   - id: dup_error_abstraction.fix_gate_blockers
     name: Fix dup_error_abstraction gate blockers
-    status: claimed
+    status: done
     description: 'Fix ALL blockers found by dup_error_abstraction.gate.
 
 
@@ -38058,6 +38058,26 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T11:58:21.232325+00:00'
+    done_at: '2026-04-08T12:02:37.350331+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Batched Fix Evidence\n- B1 fix summary:\n  Added INVALID_INPUT to required\
+      \ MCP error-code set in tests/shell/test_mcp.py::TestMCPErrorCodes::test_all_required_error_codes_present.\n\
+      - B1 sibling search command + result:\n  Searched required_codes/LARVA_ERROR_CODES\
+      \ assertions under tests/shell; only test_mcp.py had this assertion and now\
+      \ includes INVALID_INPUT.\n- B2 fix summary:\n  Repaired web monkeypatch signature\
+      \ drift in tests/shell/test_web.py by updating fake_resolve signature and replacing\
+      \ assemble monkeypatch with compatible positional/optional signature.\n- B2\
+      \ sibling search command + result:\n  Searched monkeypatch resolve/assemble\
+      \ sites under tests/shell; only test_web.py sites existed and stale patterns\
+      \ were removed.\n- Targeted commands run:\n  - uv run pytest tests/shell/test_mcp.py::TestMCPErrorCodes::test_all_required_error_codes_present\
+      \ tests/shell/test_mcp.py::TestMCPComponentShowAcceptance::test_handle_component_show_unsupported_type_returns_invalid_input\n\
+      \  - uv run pytest tests/shell/test_web.py::TestWebSurfaceEndpoints::test_patch_api_personas_updates_and_revalidates\
+      \ tests/shell/test_web.py::TestWebSurfaceEndpoints::test_post_api_personas_assemble_returns_spec\n\
+      \  - uv run pytest tests/shell/test_python_api.py::TestPythonApiComponentList\
+      \ tests/shell/test_python_api.py::TestPythonApiComponentShow\n- Result summary:\n\
+      \  MCP targeted tests passed, web targeted tests passed, relevant shell component\
+      \ suites passed; both blockers closed.\n- Remaining gaps: none\n\nCommits:\n\
+      - 8be468b (isolated branch vectl/step-dup_error_abstraction.fix_gate_blockers)"
   - id: dup_error_abstraction.retest_gate_blockers
     name: Retest dup_error_abstraction gate blockers
     status: pending
