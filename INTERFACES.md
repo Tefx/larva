@@ -127,6 +127,12 @@ surface:
 | `GET` | `/api/components` | Return available prompt/toolset/constraint/model names |
 | `GET` | `/api/components/{component_type}/{name}` | Return one component or a typed HTTP error |
 
+Component-kind rule for public surfaces:
+
+- [Proven] Canonical `component_type` vocabulary is `prompts | toolsets | constraints | models`.
+- [Likely] Compatibility aliases `prompt | toolset | constraint | model` may be accepted at ingress during transition, but must normalize immediately to the canonical plural vocabulary.
+- [Likely] Public docs and valid-type enumerations should advertise only canonical plural values.
+
 Shared response envelope rules:
 
 - success responses return `{"data": ...}`
