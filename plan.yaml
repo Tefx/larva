@@ -36604,7 +36604,7 @@ phases:
       - blocker_findings: none.'
   - id: dup_contract_source.gate
     name: Gate contract, fixture, and admission consolidation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -36660,6 +36660,8 @@ phases:
     - dup_contract_source.workflow_verify
     - dup_contract_source.assemble_test_sync
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T09:11:28.573245+00:00'
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
     status: done
