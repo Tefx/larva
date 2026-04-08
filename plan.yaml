@@ -39133,7 +39133,7 @@ phases:
       - full test suite green (719 passed, 5 xfailed, 44 xpassed)'
   - id: dup_deep_review.spec-conformance
     name: Audit canonical-boundary conformance after duplicate-abstraction remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -39178,6 +39178,20 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-08T16:43:55.168829+00:00'
+    done_at: '2026-04-08T16:54:34.977522+00:00'
+    evidence: "## Spec Conformance Audit\n### refs Read Confirmation (MANDATORY)\n\
+      No refs for this step.\n\n## Evidence Table\n- requirement: canonical required/forbidden\
+      \ boundary enforcement\n  evidence: validate/normalize/assemble/facade production\
+      \ paths preserve rejection of tools/side_effect_policy and unknown fields\n\
+      \  verdict: CONFORMS\n- requirement: no canonical admission weakening after\
+      \ duplicate-abstraction remediation\n  evidence: end-to-end checks for register/update/resolve/validate\
+      \ reject forbidden fields; persisted specs remain canonical\n  verdict: CONFORMS\n\
+      - requirement: prior patch.py DEEP_MERGE_KEYS concern disposition\n  evidence:\
+      \ tools still in DEEP_MERGE_KEYS but validate barrier always executes post-patch\
+      \ and blocks forbidden-field persistence\n  verdict: NON-BLOCKING defense-in-depth\
+      \ residual\n\n## Residuals\n- blocker_class_obligations_unresolved: none\n-\
+      \ non_intersection_proofs: canonical admission barrier upheld at all production\
+      \ surfaces; residual is code-clarity/defense-depth improvement only"
   - id: dup_deep_review.black-box
     name: Black-box verify public surfaces after duplicate-abstraction remediation
     status: pending
