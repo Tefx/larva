@@ -40296,7 +40296,7 @@ phases:
       \ no"
   - id: baseline_failure_app_shell.impl
     name: Align facade workflow and shell envelopes
-    status: pending
+    status: claimed
     description: 'Implement the downstream remediation implied by the frozen authority
       and updated tests. Scope includes facade sequencing, digest/normalize/validate
       choreography, CLI envelope projection, MCP envelope projection, and python_api
@@ -40352,6 +40352,8 @@ phases:
     depends_on:
     - baseline_failure_app_shell.tests_red
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T19:24:46.311061+00:00'
   - id: baseline_failure_app_shell.cross_surface_verify
     name: Verify cross-surface consistency for validation behavior
     status: pending
