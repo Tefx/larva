@@ -381,6 +381,7 @@ class TestMCPErrorCodes:
     def test_all_required_error_codes_present(self) -> None:
         required_codes = {
             "INTERNAL",
+            "INVALID_INPUT",
             "PERSONA_NOT_FOUND",
             "PERSONA_INVALID",
             "PERSONA_CYCLE",

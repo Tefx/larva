@@ -336,7 +336,7 @@ class TestWebSurfaceEndpoints:
         }
         mock_registry.save(spec)
 
-        def fake_resolve(pid: str) -> PersonaSpec:
+        def fake_resolve(pid: str, overrides: dict[str, Any] | None = None) -> PersonaSpec:
             result = mock_facade.resolve(pid)
             if result is None:
                 raise LarvaError(
@@ -461,7 +461,21 @@ class TestWebSurfaceEndpoints:
 
         Contract: INTERFACES.md line 121
         """
-        monkeypatch.setattr(web_module, "assemble", lambda **kw: mock_facade.assemble(**kw))
+        monkeypatch.setattr(
+            web_module,
+            "assemble",
+            lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None, variables=None: (
+                mock_facade.assemble(
+                    id=id,
+                    prompts=prompts,
+                    toolsets=toolsets,
+                    constraints=constraints,
+                    model=model,
+                    overrides=overrides,
+                    variables=variables,
+                )
+            ),
+        )
 
         client = TestClient(app)
         resp = client.post(
