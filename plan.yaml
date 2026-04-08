@@ -37090,6 +37090,45 @@ phases:
 
       - outputs_summary: targeted tests passed (24); invar guard passed; branch commit
       `9853206`.'
+  - id: dup_contract_source.assemble_test_sync
+    name: Align core assemble tests with canonical capabilities-only output
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: local-check
+
+
+      Align core assemble tests with canonical capabilities-only output.
+
+
+      Update `tests/core/test_assemble.py` so canonical output assertions require
+      `capabilities` only, while preserving backward-compatible input handling semantics
+      for deprecated `tools` input.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+      '
+    verification: '- Remove deprecated tools-output assertions from `tests/core/test_assemble.py`
+
+      - Assert capabilities-only output
+
+      - Assert backward-compatible input handling semantics for deprecated tools input'
+    depends_on:
+    - dup_contract_source.workflow_verify
+    - dup_contract_source.spec-conformance
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
