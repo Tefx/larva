@@ -39055,7 +39055,7 @@ phases:
       uncertainty_sources: none blocking'
 - id: dup_deep_review
   name: Duplicate-Abstraction Deep Review
-  status: in_progress
+  status: done
   gate: Final independent audit over refactor safety, boundary preservation, and residual
     duplicate logic.
   depends_on:
@@ -39341,7 +39341,7 @@ phases:
       direction; align ComponentStore docs/tests; unify invalid-kind error taxonomy'
   - id: dup_deep_review.gate
     name: Final gate for duplicate-abstraction remediation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -39397,6 +39397,18 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T17:08:29.119710+00:00'
+    done_at: '2026-04-08T17:15:55.115662+00:00'
+    evidence: "## Gate Review Report\n### refs Read Confirmation (MANDATORY)\nNo refs\
+      \ for this step.\n### Gate Decision Basis\n- evidence_refs_reviewed:\n  - dup_deep_review.fix-blockers\
+      \ (B1/B2/B3 remediation)\n  - dup_deep_review.retest-blockers (green closure\
+      \ retest)\n  - dup_deep_review.wiring-audit (shared seam routing proof)\n  -\
+      \ dup_deep_review.spec-conformance (canonical boundary conformance)\n  - dup_deep_review.black-box\
+      \ (public-surface behavior verification)\n  - dup_deep_review.architecture-review\
+      \ (residual debt classification)\n- unresolved_statuses: none blocker-class\n\
+      - non_intersection_evidence:\n  - DEEP_MERGE tools residual is defense-in-depth/non-blocking\
+      \ due enforce-after-patch validation barrier\n  - ruamel.yaml phantom dependency\
+      \ is hygiene-only/non-blocking\n- open_or_block: OPEN\n- follow_up_if_blocked:\
+      \ N/A\n\ngate_open_allowed: true"
   - id: dup_deep_review.fix-blockers
     name: Fix duplicate-abstraction deep-review blocker families
     status: done
@@ -39797,7 +39809,7 @@ phases:
       remains'
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
-  status: locked
+  status: pending
   gate: Freeze authority for remaining baseline failures before code or test remediation.
   depends_on:
   - dup_deep_review
