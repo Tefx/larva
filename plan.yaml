@@ -40255,7 +40255,7 @@ phases:
   steps:
   - id: baseline_failure_app_shell.tests_red
     name: Define failing facade and transport expectations
-    status: claimed
+    status: done
     description: Rewrite the remaining facade, CLI, MCP, and python_api failing tests
       to reflect the frozen authority and the now-stable core contract. Make sequencing
       expectations explicit (for example validate vs normalize ordering) and make
@@ -40271,6 +40271,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T19:20:46.979355+00:00'
+    done_at: '2026-04-08T19:24:23.859560+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/app/test_facade/test_clone.py\
+      \ — sequencing and canonical-shape expectations updated to authority.\n- tests/app/test_facade/test_export.py\
+      \ — canonical export shape expectations updated to authority.\n- tests/shell/test_cli.py\
+      \ — envelope expectations reviewed; no edits required.\n- tests/shell/test_mcp.py\
+      \ — malformed/missing parameter envelope expectations reviewed; no edits required.\n\
+      - tests/shell/test_python_api.py — delegation/error mapping expectations reviewed;\
+      \ no edits required.\n- src/larva/app/facade.py — authoritative sequencing read\
+      \ for expectation alignment.\n\n## Test Definition Evidence\n- Files changed\
+      \ (tests only):\n  - tests/app/test_facade/test_clone.py\n  - tests/app/test_facade/test_export.py\n\
+      - Sequencing assertions pinned:\n  - clone flow pinned to validate->normalize->validate\n\
+      \  - clone success checks normalized candidate before second validate\n- Envelope\
+      \ assertions pinned:\n  - existing CLI/MCP/python_api envelope assertions validated\
+      \ as already explicit and retained\n- Commands:\n  - uv run pytest -q tests/app/test_facade\
+      \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py\n\
+      \    - baseline before edits: 450 passed, 5 xfailed, 12 xpassed\n    - after\
+      \ test updates: 467 passed\n- commit hash(es): 6c6f9f7\n\n## Test-step semantic\
+      \ reporting\n- step_intent: test_define_red\n- expected_result: green after\
+      \ rewriting obsolete expectations to frozen authority\n- observed_result: green\
+      \ (467 passed)\n- failure_alignment: surfaced mismatches were obsolete test\
+      \ expectations (legacy tools/side_effect_policy and stale sequencing assumptions),\
+      \ corrected in tests only\n- whether any product implementation files were modified:\
+      \ no"
   - id: baseline_failure_app_shell.impl
     name: Align facade workflow and shell envelopes
     status: pending
