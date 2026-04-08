@@ -36907,6 +36907,17 @@ phases:
     depends_on:
     - dup_contract_source.workflow_impl
     agent: integration-verifier-tacit
+  - id: dup_contract_source.fixture_fix_canonical_helper
+    name: Fix canonical helper legacy-field injection in app facade test fixtures
+    status: pending
+    description: Remove deprecated-field injection from the canonical helper in app
+      facade test fixtures while preserving transition coverage explicitly so canonical-boundary
+      fixtures remain canonical-only.
+    verification: Remove deprecated-field injection from the canonical helper and
+      preserve transition coverage explicitly.
+    depends_on:
+    - dup_contract_source.fixture_impl
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
