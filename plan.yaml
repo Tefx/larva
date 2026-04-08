@@ -40247,7 +40247,7 @@ phases:
       \ patch merge-key debt"
 - id: baseline_failure_app_shell
   name: Baseline Facade and Transport Alignment
-  status: pending
+  status: in_progress
   gate: Align facade sequencing and shell transport envelopes to the frozen core contract,
     then prove cross-surface consistency.
   depends_on:
@@ -40255,7 +40255,7 @@ phases:
   steps:
   - id: baseline_failure_app_shell.tests_red
     name: Define failing facade and transport expectations
-    status: pending
+    status: claimed
     description: Rewrite the remaining facade, CLI, MCP, and python_api failing tests
       to reflect the frozen authority and the now-stable core contract. Make sequencing
       expectations explicit (for example validate vs normalize ordering) and make
@@ -40269,6 +40269,8 @@ phases:
       - Envelope assertions pinned:\n- Commands:\n  - uv run pytest -q tests/app/test_facade\
       \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_python_api.py"
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T19:20:46.979355+00:00'
   - id: baseline_failure_app_shell.impl
     name: Align facade workflow and shell envelopes
     status: pending
