@@ -38195,7 +38195,7 @@ phases:
       uncertainty_sources: none'
   - id: dup_error_abstraction.gate_reopen
     name: Re-open dup_error_abstraction gate after blocker retest
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -38240,6 +38240,8 @@ phases:
     depends_on:
     - dup_error_abstraction.retest_gate_blockers_round2
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T13:44:59.141889+00:00'
   - id: dup_error_abstraction.fix_gate_blockers_round2
     name: Fix remaining dup_error_abstraction blocker families (web lambda signature
       + python_api stale expectation)
