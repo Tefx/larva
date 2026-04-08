@@ -40247,7 +40247,7 @@ phases:
       \ patch merge-key debt"
 - id: baseline_failure_app_shell
   name: Baseline Facade and Transport Alignment
-  status: in_progress
+  status: done
   gate: Align facade sequencing and shell transport envelopes to the frozen core contract,
     then prove cross-surface consistency.
   depends_on:
@@ -40474,7 +40474,7 @@ phases:
       \ any product implementation files were modified: no (tests-only repro added)"
   - id: baseline_failure_app_shell.gate
     name: Gate facade and transport alignment
-    status: claimed
+    status: done
     description: Gate the compressed app/shell remediation phase. Block if residual
       app, CLI, MCP, or python_api issues still intersect the final full-suite proof
       or if cross-surface validation semantics remain inconsistent.
@@ -40503,9 +40503,60 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T19:49:44.928042+00:00'
+    done_at: '2026-04-08T20:15:35.121390+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - src/larva/app/facade.py — sequencing and error contract reviewed.
+
+      - src/larva/shell/mcp.py / mcp_handler_ops.py / mcp_contract.py — envelope and
+      mapping reviewed.
+
+      - src/larva/shell/python_api.py — delegation and LarvaApiError mapping reviewed.
+
+      - src/larva/shell/cli.py / cli_commands.py / cli_runtime.py — CLI projection
+      boundary reviewed.
+
+      - tests/app/test_facade/test_{register,clone,export}.py — sequencing and shape
+      assertions reviewed.
+
+      - tests/repro/cross_surface_consistency_verify.py — cross-surface parity evidence
+      reviewed.
+
+      - src/larva/core/{validate,normalize}.py and INTERFACES.md — canonical authority
+      boundary reviewed.
+
+
+      ## Gate Review Report
+
+      - Facade sequencing coherence: coherent and explicitly tested (validate->normalize->validate
+      choreography where required).
+
+      - CLI/MCP/python_api envelope coherence: coherent; consistent error envelope
+      fields and numeric-code mapping.
+
+      - Cross-surface divergences remaining: none (cross-surface parity verification
+      passed).
+
+      - Gate decision: OPEN
+
+
+      ## Behavioral Proof Register
+
+      - facade sequencing proof: PROVEN
+
+      - cross-surface envelope parity: PROVEN
+
+      - malformed parameter boundary handling: PROVEN
+
+      - canonical rejection semantics parity: PROVEN
+
+      - gate_open_allowed: true
+
+      - uncertainty sources: none blocking; only pre-existing non-intersecting should-fix
+      debt'
 - id: baseline_failure_finalization
   name: Baseline Failure Final Verification, Doc Sync, and Deep Review
-  status: locked
+  status: pending
   gate: Prove the remaining baseline failures are closed, sync docs, and finish with
     independent deep review.
   depends_on:
