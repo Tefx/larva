@@ -37158,7 +37158,7 @@ phases:
       now passes (`37 passed`).'
   - id: dup_contract_source.gate_test_sync_batch
     name: Synchronize gate blocker tests with ADR-002 canonical model
-    status: pending
+    status: claimed
     description: 'Synchronize tests/core/test_normalize.py, tests/core/test_spec.py,
       tests/shell/test_cli.py, tests/shell/test_mcp.py, and tests/shell/test_python_api.py
       with the ADR-002 canonical model while preserving public behavior expectations.
@@ -37189,6 +37189,8 @@ phases:
     - dup_contract_source.assemble_test_sync
     - dup_contract_source.workflow_verify
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T09:32:57.417479+00:00'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
