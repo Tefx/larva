@@ -36617,7 +36617,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
-    status: claimed
+    status: done
     description: 'step_type: review
 
 
@@ -36643,6 +36643,38 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-08T06:02:04.117846+00:00'
+    done_at: '2026-04-08T06:04:02.299041+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Workflow Basis
+
+      - unified_seam: define a single app-layer admission seam (`admit_candidate`)
+      in facade to centralize shared flow used by register/resolve/update/clone after
+      source-specific candidate preparation.
+
+      - normalization_boundary: keep orchestration in app facade and canonicalization
+      in `core.normalize.normalize_spec`; candidate shaping remains pre-normalization,
+      canonicalization remains explicit pre-persistence.
+
+      - validation_ordering_policy: retain current double-validation (pre-normalization
+      + post-normalization) unless formal equivalence proof and regression evidence
+      justify removal; removal risks widening admission due to normalization-side
+      field translation/stripping.
+
+      - persistence_digest_invariants: persist normalized spec only for mutating operations;
+      digest ownership remains in normalize; registry remains storage/index projection
+      only with existing write/rollback ordering.
+
+
+      Verification:
+
+      - Unified seam and ownership boundaries explicitly specified.
+
+      - Validation-order change explicitly constrained by behavior-preservation proof
+      obligations.'
   - id: dup_contract_source.fixture_basis
     name: Define canonical-only and transition-only fixture families
     status: done
