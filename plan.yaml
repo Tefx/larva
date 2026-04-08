@@ -36842,7 +36842,7 @@ phases:
       reduced via shared fixture taxonomy seam.'
   - id: dup_contract_source.fixture_verify
     name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36863,6 +36863,25 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T08:01:53.132129+00:00'
+    done_at: '2026-04-08T08:11:24.115095+00:00'
+    evidence: '## Fixture Verification Report
+
+      - canonical_sanity_checks: canonical fixtures in fixture taxonomy and app facade
+      conftest are clean (no implicit `tools`/`side_effect_policy`); explicit transition
+      helper carries deprecated fields by design.
+
+      - deprecated_field_injection_scan: no in-scope canonical helper silently injects
+      deprecated fields; transition fixtures remain explicit.
+
+      - verification_commands: targeted python assertion check for canonical helper
+      fields, targeted pytest over canonical-boundary/facade fixture tests, and direct
+      content confirmation of remediated helper.
+
+      - outputs_summary: 19/19 relevant boundary tests passed; canonical/transition
+      fixture separation enforced.
+
+      - blocker_findings: prior blocker in `tests/app/test_facade/conftest.py::_canonical_spec`
+      is remediated; no new blockers.'
   - id: dup_contract_source.workflow_impl
     name: Consolidate repeated facade admission workflow
     status: pending
