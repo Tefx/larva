@@ -39816,7 +39816,7 @@ phases:
   steps:
   - id: baseline_failure_authority.behavior_matrix
     name: Capture failure matrix and baseline dispositions
-    status: claimed
+    status: done
     description: 'Run the known failing test clusters and produce a behavior matrix
       mapping each failure to one of: update_code, update_tests, or mixed. Group failures
       into these seams: core spec/schema/normalize drift, assemble output drift, facade
@@ -39856,6 +39856,38 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-08T17:23:20.409500+00:00'
+    done_at: '2026-04-08T17:32:39.358205+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/core/test_spec.py —\
+      \ executed and confirmed in clustered run (44 passed)\n- tests/core/test_schema_validation.py\
+      \ — executed and confirmed in clustered run (8 passed)\n- tests/core/test_normalize.py\
+      \ — executed and confirmed in clustered run (16 passed)\n- tests/core/test_assemble.py\
+      \ — executed and confirmed in clustered run (34 passed)\n- tests/app/test_facade/**\
+      \ — executed and confirmed (51 passed, 5 xfail, 12 xpass)\n- tests/shell/test_cli.py\
+      \ — executed and confirmed in shell cluster (pass)\n- tests/shell/test_mcp.py\
+      \ — executed and confirmed in shell cluster (pass)\n- tests/shell/test_python_api.py\
+      \ — executed and confirmed in shell cluster (pass)\n\n## Baseline Failure Matrix\n\
+      - Command(s) run:\n  - uv run pytest tests/core/test_spec.py tests/core/test_schema_validation.py\
+      \ tests/core/test_normalize.py tests/core/test_assemble.py -v --tb=short\n \
+      \ - uv run pytest tests/app/test_facade/ -v --tb=short\n  - uv run pytest tests/shell/test_cli.py\
+      \ tests/shell/test_mcp.py tests/shell/test_python_api.py -v --tb=short\n  -\
+      \ uv run pytest tests/app/test_facade/test_clone.py tests/app/test_facade/test_export.py\
+      \ --runxfail -v --tb=long\n  - uv run pytest -q --tb=no\n- Exact failing test\
+      \ ids (via --runxfail):\n  - tests/app/test_facade/test_clone.py::TestFacadeClone::test_clone_success_returns_cloned_spec_with_new_id_and_recomputed_digest\n\
+      \  - tests/app/test_facade/test_clone.py::TestFacadeClone::test_clone_preserves_all_non_id_fields_from_source\n\
+      \  - tests/app/test_facade/test_clone.py::TestFacadeClone::test_clone_flow_order_get_then_validate_then_normalize_then_save\n\
+      \  - tests/app/test_facade/test_export.py::TestFacadeExportAll::test_export_all_returns_full_canonical_specs_from_registry\n\
+      \  - tests/app/test_facade/test_export.py::TestFacadeExportIds::test_export_ids_returns_full_canonical_specs_in_input_order\n\
+      - Cluster dispositions:\n  - ADR-002 mirror expectation drift (tools present\
+      \ after normalize/export) → update_tests (authority points to normalize contract\
+      \ forbidding tools output)\n  - Spy normalize fixture pass-through drift (missing\
+      \ capabilities migration in spy) → update_tests\n  - clone flow validate->normalize->validate\
+      \ sequence mismatch → mixed, code-primary recommendation to remove clone pre-validate\
+      \ duplication for consistency with other facade flows\n- Explicit pre-existing\
+      \ note:\n  - All surfaced failures are pre-existing xfail-covered surfaces,\
+      \ newly exercised via --runxfail inspection.\n- Remaining ambiguity:\n  - confirm\
+      \ whether any mirrored `tools` expectation is still valid versus ADR-002 canonical-only\
+      \ capabilities\n  - confirm whether clone pre-normalize validation is intentional\
+      \ or artifact"
   - id: baseline_failure_authority.contract_decision
     name: Adjudicate canonical authority for remaining failure clusters
     status: pending
