@@ -35940,7 +35940,7 @@ phases:
       with no unresolved ambiguity.'
   - id: dup_web_convergence.impl
     name: Converge packaged and contrib web endpoints onto the shared router seam
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -36031,6 +36031,8 @@ phases:
     depends_on:
     - dup_web_convergence.router-basis
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T03:32:04.761499+00:00'
   - id: dup_web_convergence.verify
     name: Verify packaged and contrib web parity through the shared seam
     status: pending
