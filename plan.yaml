@@ -38908,7 +38908,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
-  status: in_progress
+  status: done
   gate: Synchronize architecture and usage docs to the merged duplicate-abstraction
     boundaries.
   depends_on:
@@ -38981,7 +38981,7 @@ phases:
       \ synchronized"
   - id: dup_doc_sync.gate
     name: Gate duplicate-abstraction documentation sync
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -39020,9 +39020,42 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T14:01:53.591457+00:00'
+    done_at: '2026-04-08T14:14:52.851373+00:00'
+    evidence: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Gate Decision Basis
+
+      - files_reviewed: ARCHITECTURE.md, INTERFACES.md, README.md, USER_GUIDE.md,
+      USAGE.md, ADR/design docs for authority/metadata/error seam/alias policy
+
+      - residual_doc_drift: SHOULD_FIX only (ambiguous USER_GUIDE authority phrasing;
+      component error seam discoverability in mainline docs; stale historical evidence
+      note)
+
+      - open_or_block: OPEN (no blocker-class doc drift)
+
+
+      behavioral_proof_register:
+
+      - canonical authority and boundary claims aligned across core docs
+
+      - shared web seam and single-source metadata ownership documented
+
+      - component-kind alias policy rendered consistently
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none blocking'
 - id: dup_deep_review
   name: Duplicate-Abstraction Deep Review
-  status: locked
+  status: pending
   gate: Final independent audit over refactor safety, boundary preservation, and residual
     duplicate logic.
   depends_on:
