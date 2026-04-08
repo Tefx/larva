@@ -40197,7 +40197,7 @@ phases:
       \ modified: no"
   - id: baseline_failure_core.gate
     name: Gate core contract alignment
-    status: pending
+    status: claimed
     description: Gate the compressed core remediation phase. Review whether the canonical
       core contract is now coherent across spec/schema/normalize/assemble and whether
       any residual failures intersect downstream facade or transport work.
@@ -40222,6 +40222,8 @@ phases:
     - baseline_failure_core.impl
     - baseline_failure_core.retest
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T19:03:28.423750+00:00'
 - id: baseline_failure_app_shell
   name: Baseline Facade and Transport Alignment
   status: locked
