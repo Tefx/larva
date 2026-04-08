@@ -36455,7 +36455,7 @@ phases:
       - Subagent evidence includes isolated worktree completion and commit `9e77a210cc78524bfe2c11eb7c7d3c67a90695b5`.'
   - id: dup_contract_source.impl
     name: Consolidate canonical contract metadata and rewire projections
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -36515,6 +36515,28 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T06:04:52.908554+00:00'
+    done_at: '2026-04-08T07:39:59.939979+00:00'
+    evidence: '## Contract Consolidation Evidence
+
+      - metadata_source_created_or_reused: promoted `src/larva/core/validate.py` as
+      single local metadata seam with exported canonical field partitions/report-shape/message
+      constants and consolidated metadata map.
+
+      - validator_projection_aligned: validator logic now consumes seam constants
+      while preserving runtime semantics.
+
+      - schema_projection_aligned: schema updated for seam alignment (including optional
+      `variables`), with seam-driven parity tests replacing drift-era assertions.
+
+      - mcp_projection_aligned: MCP contract aliases core ValidationIssue/ValidationReport
+      types and derives canonical phrase clauses from validator seam constants.
+
+      - verification_commands: invar_guard(changed=true), targeted ruff, pytest (`tests/core/test_schema_validation.py`,
+      `tests/core/test_validate.py`, MCP validation-contract tests), commit on step
+      branch.
+
+      - outputs_summary: guard/ruff/targeted pytest passed; branch commit `5d0ddc0`
+      produced.'
   - id: dup_contract_source.spec-conformance
     name: Audit derived projections against the canonical contract metadata seam
     status: pending
