@@ -52,7 +52,12 @@ def transition_persona_spec_with_legacy_fields(
     model: str = "gpt-4o-mini",
     side_effect_policy: str = "read_only",
 ) -> PersonaSpec:
-    """Return transition-only PersonaSpec fixture with deprecated fields."""
+    """Return PersonaSpec fixture with non-canonical fields for rejection testing.
+
+    Per ADR-002/opifex authority basis: tools and side_effect_policy are
+    rejected at canonical admission boundary. This fixture is used to test
+    that validation properly rejects specs containing these fields.
+    """
     spec = dict(canonical_persona_spec(persona_id=persona_id, digest=digest, model=model))
     spec["tools"] = {"shell": "read_only"}
     spec["side_effect_policy"] = side_effect_policy

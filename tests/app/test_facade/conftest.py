@@ -50,7 +50,12 @@ def _transition_spec_with_deprecated_fields(
     persona_id: str,
     digest: str = "sha256:transition",
 ) -> PersonaSpec:
-    """Return transition-only fixture with deprecated mirrored fields."""
+    """Return fixture with non-canonical fields for rejection testing.
+
+    Per ADR-002/opifex authority basis: tools and side_effect_policy are
+    rejected at canonical admission boundary. This fixture is used to test
+    that validation properly rejects specs containing these fields.
+    """
     spec = dict(_canonical_spec(persona_id, digest=digest))
     spec["tools"] = {"shell": "read_only"}
     spec["side_effect_policy"] = "read_only"
@@ -164,7 +169,9 @@ class InMemoryComponentStore:
         return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
+        # Component load returns capabilities for assembly (canonical per ADR-002).
+        # The double returns both for legacy compatibility testing of component loading,
+        # but assembly output is canonical-only.
         capabilities = self.toolsets_by_name.get(name, self.toolset)
         return Success({"capabilities": capabilities, "tools": capabilities})
 
