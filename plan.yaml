@@ -40034,7 +40034,7 @@ phases:
       \ semantics."
 - id: baseline_failure_core
   name: Baseline Core Contract and Assembly Alignment
-  status: in_progress
+  status: done
   gate: Align core spec/schema/normalize/assemble semantics to the frozen authority
     and close the core failure cluster.
   depends_on:
@@ -40197,7 +40197,7 @@ phases:
       \ modified: no"
   - id: baseline_failure_core.gate
     name: Gate core contract alignment
-    status: claimed
+    status: done
     description: Gate the compressed core remediation phase. Review whether the canonical
       core contract is now coherent across spec/schema/normalize/assemble and whether
       any residual failures intersect downstream facade or transport work.
@@ -40224,9 +40224,30 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T19:03:28.423750+00:00'
+    done_at: '2026-04-08T19:20:29.448411+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/spec.py — canonical\
+      \ PersonaSpec and component shape reviewed.\n- src/larva/core/normalize.py —\
+      \ postconditions forbidding tools/side_effect_policy reviewed.\n- src/larva/core/validate.py\
+      \ — canonical required/optional/forbidden sets reviewed.\n- src/larva/core/assemble.py\
+      \ — forbidden override handling and output shape reviewed.\n- src/larva/core/patch.py\
+      \ — deep-merge keys reviewed for residual should-fix.\n- src/larva/app/facade.py\
+      \ — downstream non-intersection via validation boundary reviewed.\n- contracts/persona_spec.schema.json\
+      \ — schema contract parity reviewed.\n\n## Gate Review Report\n- Core coherence\
+      \ across spec/schema/normalize/assemble:\n  - coherent on blocking acceptance\
+      \ path; canonical semantics enforced end-to-end.\n  - residual should_fix only:\
+      \ patch deep-merge includes `tools`; `variables` optional metadata not represented\
+      \ in PersonaSpec TypedDict.\n- Residual blocker intersection with facade/transport:\n\
+      \  - none blocking; downstream validation boundary prevents forbidden-field\
+      \ persistence.\n- Gate decision: OPEN\n\n## Behavioral Proof Register\n- P1\
+      \ normalize strips tools/side_effect_policy: PROVEN\n- P2 assemble output excludes\
+      \ tools/side_effect_policy: PROVEN\n- P3 validate rejects forbidden fields:\
+      \ PROVEN\n- P4 metadata/typed-annotation parity for variables: UNCERTAIN_SHOULD_FIX\n\
+      - P5 patch forbidden merge-key strictness: UNCERTAIN_SHOULD_FIX\n- gate_open_allowed:\
+      \ true\n- uncertainty sources: metadata-vs-typed-shape drift and non-blocking\
+      \ patch merge-key debt"
 - id: baseline_failure_app_shell
   name: Baseline Facade and Transport Alignment
-  status: locked
+  status: pending
   gate: Align facade sequencing and shell transport envelopes to the frozen core contract,
     then prove cross-surface consistency.
   depends_on:
