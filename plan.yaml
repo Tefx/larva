@@ -40612,7 +40612,7 @@ phases:
       \ any product implementation files were modified: no"
   - id: baseline_failure_finalization.doc_sync
     name: Sync docs and fixtures to final canonical behavior
-    status: pending
+    status: claimed
     description: Update docs, examples, and fixture commentary so they match the final
       canonical behavior established by the remediation. Include any changed expectations
       for PersonaSpec fields, assembly output, facade sequencing, and transport envelopes.
@@ -40637,6 +40637,8 @@ phases:
     depends_on:
     - baseline_failure_finalization.full_verify
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-08T20:24:50.853969+00:00'
   - id: baseline_failure_finalization.deep_review
     name: Independent deep review of baseline-failure remediation
     status: pending
