@@ -36994,7 +36994,7 @@ phases:
   - id: dup_contract_source.workflow_verify_fix
     name: Fix facade workflow verification assertions to match preserved entrypoint
       semantics
-    status: pending
+    status: claimed
     description: 'Fix blocker-class workflow verification assertions so facade admission
       tests match preserved entrypoint semantics without changing user-visible behavior.
 
@@ -37040,6 +37040,8 @@ phases:
     depends_on:
     - dup_contract_source.workflow_impl
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T08:37:06.636899+00:00'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
