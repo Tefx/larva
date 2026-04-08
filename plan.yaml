@@ -37783,7 +37783,7 @@ phases:
       uncertainty_sources: None'
   - id: dup_error_abstraction.gate
     name: Gate component surface normalization and error projection
-    status: claimed
+    status: pending
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -37828,8 +37828,6 @@ phases:
     - dup_error_abstraction.alias_impl
     - dup_error_abstraction.alias_verify
     agent: gate-reviewer-tacit
-    claimed_by: gate-reviewer-tacit
-    claimed_at: '2026-04-08T11:41:37.049916+00:00'
   - id: dup_error_abstraction.alias_basis
     name: Define canonical component-kind vocabulary and alias policy
     status: done
