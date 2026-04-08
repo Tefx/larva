@@ -37478,7 +37478,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_error_abstraction
   name: Component Surface Normalization and Error Projection
-  status: in_progress
+  status: done
   gate: Unify component-kind vocabulary and component error projection across transports
     without changing externally meaningful envelopes.
   context: 'Merged duplicate-abstraction phase. Absorbs prior component-kind normalization
@@ -37783,7 +37783,7 @@ phases:
       uncertainty_sources: None'
   - id: dup_error_abstraction.gate
     name: Gate component surface normalization and error projection
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -37830,6 +37830,42 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T13:11:46.506853+00:00'
+    done_at: '2026-04-08T13:56:54.953488+00:00'
+    evidence: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Gate Decision Basis
+
+      - shared_error_seam_status: centralized and consumed across Python API/MCP/CLI/Web
+      via core seam
+
+      - transport_alignment_status: aligned after blocker remediation loops
+
+      - residual_drift: no blocker-class drift remains
+
+      - open_or_block: OPEN
+
+
+      behavioral_proof_register:
+
+      - dup_error_abstraction.retest_gate_blockers passed targeted MCP/Web/PythonAPI
+      blocker paths and full suite
+
+      - dup_error_abstraction.fix_gate_blockers_round2 + retest_round2 closed remaining
+      stale test-contract blocker families
+
+      - dup_error_abstraction.gate_reopen independent review concluded gate_open_allowed
+      true
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none'
   - id: dup_error_abstraction.alias_basis
     name: Define canonical component-kind vocabulary and alias policy
     status: done
@@ -38872,7 +38908,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_doc_sync
   name: Duplicate-Abstraction Documentation Sync
-  status: locked
+  status: pending
   gate: Synchronize architecture and usage docs to the merged duplicate-abstraction
     boundaries.
   depends_on:
