@@ -37741,7 +37741,7 @@ phases:
       branch commit `b46569eed4360eac6ac8f403454fc1f02623505a`.'
   - id: dup_error_abstraction.alias_impl
     name: Normalize component-kind vocabulary across public surfaces
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -37771,6 +37771,33 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T11:02:54.333520+00:00'
+    done_at: '2026-04-08T11:14:16.266541+00:00'
+    evidence: "Artifact:\n- PR: N/A\n- Commits:\n  - ce3553d cover component-show\
+      \ alias normalization across surfaces\n  - ea53dd3 normalize component kind\
+      \ aliases at show boundaries\n\nVerification:\n- Run: `invar_guard(path=.vectl/worktrees/dup_error_abstraction.alias_impl,\
+      \ changed=true)` -> passed (0 errors, doctest/crosshair/property checks passed\
+      \ for new core seam)\n- Run: `uv run pytest tests/shell/test_python_api.py::TestPythonApiComponentShow\
+      \ tests/shell/test_cli.py::TestComponentShowCommand tests/shell/test_mcp.py::TestMCPComponentShowAcceptance\
+      \ tests/shell/test_web.py::TestWebSurfaceEndpoints` -> 42 passed\n- Run: `git\
+      \ status --short --branch` -> clean on `vectl/step-dup_error_abstraction.alias_impl`\n\
+      \nScope completed:\n- Chose canonical internal component-kind vocabulary: `prompts|toolsets|constraints|models`\
+      \ in `src/larva/core/component_kind.py`\n- Added normalization seam + shared\
+      \ invalid-kind message:\n  - `normalize_component_kind(kind) -> canonical plural\
+      \ | None`\n  - `invalid_component_kind_message(kind) -> aligned precise message`\n\
+      - Wired real public component-show paths to consume seam:\n  - Python API component\
+      \ show (`src/larva/shell/python_api_components.py`)\n  - MCP component show\
+      \ (`src/larva/shell/mcp_handler_ops.py`)\n  - CLI component show path routing\
+      \ (`src/larva/shell/cli_commands.py` + aligned error text in `src/larva/shell/cli_runtime.py`)\n\
+      \  - Web `/api/components/{component_type}/{name}` (`src/larva/shell/web.py`)\n\
+      - Added boundary tests proving single/plural aliases normalize to same meaning\
+      \ and invalid-kind errors remain aligned across surfaces:\n  - `tests/shell/test_python_api.py`\n\
+      \  - `tests/shell/test_cli.py`\n  - `tests/shell/test_mcp.py`\n  - `tests/shell/test_web.py`\n\
+      \nRelated issues discovered (reported only, not fixed per scope):\n- Web component\
+      \ endpoint currently unwraps `Failure` directly, which can raise 500 on missing\
+      \ component lookup (`src/larva/shell/web.py: api_get_component`), observed during\
+      \ test design.\n\nSpec link:\n- INTERFACES.md §Web Runtime Surface, lines 130-134\
+      \ (canonical component_type + alias normalization policy)\n- Step description\
+      \ reference: `dup_error_abstraction.alias_basis` -> `dup_error_abstraction.alias_impl`"
   - id: dup_error_abstraction.alias_verify
     name: Verify component-kind aliases converge across transports
     status: pending
