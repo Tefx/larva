@@ -39890,7 +39890,7 @@ phases:
       \ or artifact"
   - id: baseline_failure_authority.contract_decision
     name: Adjudicate canonical authority for remaining failure clusters
-    status: pending
+    status: claimed
     description: 'Using the failure matrix, decide the authoritative semantics for:
       (1) canonical capabilities versus deprecated tools, (2) whether side_effect_policy
       remains rejected or transition-supported, (3) PersonaSpec required/optional
@@ -39928,6 +39928,8 @@ phases:
     depends_on:
     - baseline_failure_authority.behavior_matrix
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-08T17:32:59.050264+00:00'
   - id: baseline_failure_authority.gate
     name: Gate authority freeze for baseline failure remediation
     status: pending
