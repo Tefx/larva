@@ -40034,7 +40034,7 @@ phases:
       \ semantics."
 - id: baseline_failure_core
   name: Baseline Core Contract and Assembly Alignment
-  status: pending
+  status: in_progress
   gate: Align core spec/schema/normalize/assemble semantics to the frozen authority
     and close the core failure cluster.
   depends_on:
@@ -40042,7 +40042,7 @@ phases:
   steps:
   - id: baseline_failure_core.tests_red
     name: Define failing canonical core expectations
-    status: pending
+    status: claimed
     description: 'Update the failing core tests to express the frozen authority for
       PersonaSpec shape, schema acceptance/rejection, normalize semantics, and assemble
       output. This is a test-definition step only: modify tests and fixtures to expose
@@ -40073,6 +40073,8 @@ phases:
       - Command(s): uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py
       tests/core/test_normalize.py tests/core/test_assemble.py'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-08T17:43:55.147955+00:00'
   - id: baseline_failure_core.impl
     name: Align core contract, normalize, and assemble behavior
     status: pending
