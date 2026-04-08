@@ -38264,7 +38264,8 @@ phases:
       \ the same wave\n- root_cause_vs_symptom:\n  - <brief explanation>\n- residual_risk:\n\
       \  - <none or explicit follow-up needed>"
     depends_on:
-    - dup_error_abstraction.retest_gate_blockers
+    - dup_error_abstraction.fix_gate_blockers
+    - dup_error_abstraction.verify
     agent: python-refactor-master-tacit
   - id: dup_error_abstraction.retest_gate_blockers_round2
     name: Retest remaining dup_error_abstraction blocker families after batched remediation
