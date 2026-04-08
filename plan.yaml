@@ -35853,7 +35853,7 @@ phases:
       - uncertainty_sources: none.'
 - id: dup_web_convergence
   name: Web Surface Convergence
-  status: in_progress
+  status: done
   gate: Converge packaged and contrib web persona endpoints onto one canonical implementation
     seam.
   depends_on:
@@ -36249,7 +36249,7 @@ phases:
       - uncertainty_sources: none.'
   - id: dup_web_convergence.gate
     name: Gate web surface convergence
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -36291,6 +36291,74 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T04:21:13.673802+00:00'
+    done_at: '2026-04-08T05:44:46.050446+00:00'
+    evidence: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Gate Decision Basis
+
+      - packaged_runtime_status: PASS — packaged web persona endpoints follow canonical
+      admission/rejection semantics and expected runtime envelope behavior.
+
+      - contrib_runtime_status: PASS — contrib web now matches packaged semantics
+      for persona endpoints, with contrib-only extension explicitly isolated.
+
+      - residual_drift: none blocker-class; deprecated contrib PATCH `tools`-handling
+      divergence no longer present.
+
+      - open_or_block: OPEN.
+
+
+      ### Wiring Audit
+
+      - W1 endpoint routing coverage: PASS
+
+      - W2 shared validation seam usage: PASS
+
+      - W3 PATCH protected-field behavior wiring: PASS
+
+      - W4 error projection consistency: PASS
+
+      - W5 runtime bootstrap separation (API vs HTML/startup): PASS
+
+      - W6 contrib-only endpoint isolation (`batch-update`): PASS
+
+      - W7 orphan/surplus parity handlers: PASS
+
+      - W8 regression surface checks (canonical success + forbidden failures): PASS
+
+
+      ### Escape Hatch Audit
+
+      - Web-layer escape hatches reviewed and classified as transport-boundary justifications;
+      no blocker found for this phase gate.
+
+
+      ### Behavioral-Proof Reporting
+
+      - step_intent: independent gate validation that packaged/contrib web runtimes
+      no longer encode divergent persona semantics.
+
+      - expected_result: parity across canonical success, forbidden-field failures,
+      PATCH semantics, and runtime expectations.
+
+      - observed_result: parity suite reports 24/24 pass and no divergence findings.
+
+      - failure_alignment: N/A (gate pass).
+
+      - product_files_modified: verification artifacts under `tests/repro/`.
+
+      - behavioral_proof_register: all required parity dimensions proven PASS by convergence
+      verification run.
+
+      - gate_open_allowed: true.
+
+      - uncertainty_sources: none material.'
 - id: dup_contract_source
   name: Canonical Contract, Fixture, and Admission Consolidation
   status: in_progress
