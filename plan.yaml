@@ -37097,7 +37097,7 @@ phases:
       `9853206`.'
   - id: dup_contract_source.assemble_test_sync
     name: Align core assemble tests with canonical capabilities-only output
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -37136,6 +37136,21 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T09:09:02.962267+00:00'
+    done_at: '2026-04-08T09:11:01.961578+00:00'
+    evidence: '## Assemble Test Sync Evidence
+
+      - files_changed: `tests/core/test_assemble.py` (step branch commit `6264a77`).
+
+      - assertion_updates: removed deprecated `tools`-output assertions; switched
+      canonical output checks to `capabilities`-only; added explicit `"tools" not
+      in result` assertions while retaining backward-compatible deprecated-input mapping
+      checks.
+
+      - verification_commands: `uv run pytest tests/core/test_assemble.py -q` and
+      branch cleanliness checks.
+
+      - outputs_summary: previously failing 4 assertions resolved; assemble test suite
+      now passes (`37 passed`).'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
