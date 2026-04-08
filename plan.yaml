@@ -36994,7 +36994,7 @@ phases:
   - id: dup_contract_source.workflow_verify_fix
     name: Fix facade workflow verification assertions to match preserved entrypoint
       semantics
-    status: claimed
+    status: done
     description: 'Fix blocker-class workflow verification assertions so facade admission
       tests match preserved entrypoint semantics without changing user-visible behavior.
 
@@ -37042,6 +37042,33 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T08:37:06.636899+00:00'
+    done_at: '2026-04-08T08:41:38.763113+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Remediation Evidence
+
+      - files_updated: `tests/app/test_facade/test_register.py`, `test_resolve.py`,
+      `test_update.py`, `test_batch.py`.
+
+      - assertions_changed: admission sequence expectations updated to preserved choreography
+      (`validate -> normalize -> validate`) where ordering is intentionally tested;
+      batch per-item sequence assertions updated accordingly.
+
+      - public_entrypoint_non_observability_proof: added explicit register test proving
+      first-vs-second-stage validation failure yields same public contract (`PERSONA_INVALID`/101,
+      same surfaced validation error family, no persistence side effects).
+
+      - user_visible_behavior_preserved: no production `src/**` changes; test-only
+      alignment.
+
+      - verification_commands: targeted facade workflow pytest suite; changed-scope
+      invar guard.
+
+      - outputs_summary: targeted tests passed (24); invar guard passed; branch commit
+      `9853206`.'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
