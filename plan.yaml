@@ -40102,7 +40102,7 @@ phases:
       \ product implementation files were modified: no"
   - id: baseline_failure_core.impl
     name: Align core contract, normalize, and assemble behavior
-    status: claimed
+    status: done
     description: 'Fill in the remaining code-side gaps in core modules so they satisfy
       the frozen canonical contract and the updated core tests. Scope includes spec
       exports/constants, schema alignment, validate error semantics, normalize field
@@ -40123,6 +40123,25 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-08T18:20:06.899093+00:00'
+    done_at: '2026-04-08T18:31:10.574984+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/spec.py — canonical\
+      \ required/optional keys and component annotation authority confirmed.\n- src/larva/core/validate.py\
+      \ — canonical required/optional/forbidden field sets and validation semantics\
+      \ confirmed.\n- src/larva/core/normalize.py — postconditions and forbidden-field\
+      \ stripping confirmed.\n- src/larva/core/assemble.py — forbidden override handling\
+      \ and canonical output projection confirmed.\n- contracts/persona_spec.schema.json\
+      \ — canonical required fields and additionalProperties=false confirmed.\n- tests/core/test_spec.py\
+      \ / test_schema_validation.py / test_normalize.py / test_assemble.py — updated\
+      \ canonical tests consumed as upstream authority.\n\n## Core Remediation Evidence\n\
+      - Files changed: none\n- Core contracts/doctests added or updated: none (existing\
+      \ contracts/doctests already satisfy requirements)\n- Authority decisions applied:\n\
+      \  - capabilities-only canonical outputs already enforced\n  - side_effect_policy\
+      \ rejection already enforced\n  - canonical required/optional/forbidden semantics\
+      \ already enforced\n  - assemble output canonical shape already enforced\n-\
+      \ Commands:\n  - uv run pytest -q tests/core/test_spec.py tests/core/test_schema_validation.py\
+      \ tests/core/test_normalize.py tests/core/test_assemble.py\n    - result: 126\
+      \ passed\n  - uvx invar-tools guard --all\n    - result: passed (static/doctest/crosshair/property\
+      \ checks)\n- Remaining residuals: none"
   - id: baseline_failure_core.retest
     name: Retest core failure cluster green
     status: pending
