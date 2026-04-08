@@ -39980,7 +39980,7 @@ phases:
       \  - clone/export test-double normalization gap: update_tests"
   - id: baseline_failure_authority.gate
     name: Gate authority freeze for baseline failure remediation
-    status: pending
+    status: claimed
     description: Gate review for the authority and baseline matrix phase. Block if
       any remaining failing cluster lacks an explicit authority owner, lacks a code-vs-test
       disposition, or would force downstream phases to guess canonical semantics.
@@ -40006,6 +40006,8 @@ phases:
     - baseline_failure_authority.behavior_matrix
     - baseline_failure_authority.contract_decision
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T17:36:15.894899+00:00'
 - id: baseline_failure_core
   name: Baseline Core Contract and Assembly Alignment
   status: locked
