@@ -37800,7 +37800,7 @@ phases:
       \ reference: `dup_error_abstraction.alias_basis` -> `dup_error_abstraction.alias_impl`"
   - id: dup_error_abstraction.alias_verify
     name: Verify component-kind aliases converge across transports
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -37816,6 +37816,43 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-08T11:14:50.120949+00:00'
+    done_at: '2026-04-08T11:19:33.237515+00:00'
+    evidence: "Artifact:\n- PR: N/A (verification-only step, no product PR)\n- Commit:\
+      \ 354e16f add alias convergence and error alignment verification tests\n\nVerification:\n\
+      - Run: `invar_guard(path=.vectl/worktrees/dup_error_abstraction.alias_verify,\
+      \ changed=true)` -> passed (no product modifications)\n- Run: `uv run pytest\
+      \ tests/shell/test_python_api.py::TestPythonApiComponentShow tests/shell/test_cli.py::TestComponentShowCommand\
+      \ tests/shell/test_mcp.py::TestMCPComponentShowAcceptance tests/shell/test_web.py::TestWebSurfaceEndpoints\
+      \ -v` -> 42 passed\n- Run: `uv run pytest tests/repro/alias_convergence_verify.py\
+      \ -v` -> 23 passed\n- Run: targeted transport verification (7 tests across Python\
+      \ API, MCP, CLI, Web) -> 7 passed\n- Product implementation files modified:\
+      \ NO (only verification test additions)\n\nstep_intent:\n  Independently verify\
+      \ that single/plural kind aliases now reach the same loader\n  and that invalid-kind\
+      \ handling is aligned across all public surfaces (Python API,\n  MCP, CLI, Web).\n\
+      \nexpected_result:\n  - Alias pairs (prompt/prompts, toolset/toolsets, constraint/constraints,\
+      \ model/models)\n    must normalize to identical internal canonical representation\n\
+      \  - Invalid kind errors must include canonical vocabulary list for discoverability\n\
+      \  - All four transport boundaries must apply normalization consistently\n\n\
+      observed_result:\n  - ALIAS CONVERGENCE verified for all 4 singular aliases\
+      \ to canonical plural\n  - LOADER ROUTING verified singular aliases route to\
+      \ same loader as canonical plural\n  - CANONICAL VOCABULARY verified exactly\
+      \ prompts/toolsets/constraints/models\n  - INVALID KIND HANDLING verified canonical\
+      \ vocabulary in error messages\n  - TRANSPORT COVERAGE verified across Python\
+      \ API, MCP, CLI, Web\n  - ERROR ALIGNMENT verified across surfaces with consistent\
+      \ semantics\n\nfailure_alignment:\n  - Invalid kind errors uniformly include\
+      \ canonical vocabulary for discoverability\n  - Error structure maintained:\
+      \ COMPONENT_NOT_FOUND code, numeric 105, aligned message format\n  - No regression\
+      \ in existing error handling semantics\n\nbehavioral_proof_register:\n  - tests/repro/alias_convergence_verify.py::TestAliasConvergence::test_singular_reaches_same_loader_as_plural\n\
+      \  - tests/repro/alias_convergence_verify.py::TestCanonicalVocabulary::test_canonical_kinds_match_spec\n\
+      \  - tests/repro/alias_convergence_verify.py::TestErrorAlignment::test_error_message_format\n\
+      \  - tests/shell/test_python_api.py::TestPythonApiComponentShow::test_component_show_plural_alias_delegates_to_load_prompt\n\
+      \  - tests/shell/test_mcp.py::TestMCPComponentShowAcceptance::test_handle_component_show_singular_alias_normalizes_to_plural_loader\n\
+      \  - tests/shell/test_cli.py::TestComponentShowCommand::test_component_show_prompt_singular_alias_success_json_mode_returns_payload\n\
+      \  - tests/shell/test_web.py::TestWebSurfaceEndpoints::test_get_api_components_by_type_name_accepts_singular_alias\n\
+      \ngate_open_allowed: true\nuncertainty_sources: None\n\nSpec link:\n- INTERFACES.md\
+      \ §Web Runtime Surface, lines 130-134 (canonical component_type + alias normalization\
+      \ policy)\n- Step description reference: dup_error_abstraction.alias_basis ->\
+      \ dup_error_abstraction.alias_verify"
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
