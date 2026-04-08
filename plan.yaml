@@ -38082,7 +38082,7 @@ phases:
       - 8be468b (isolated branch vectl/step-dup_error_abstraction.fix_gate_blockers)"
   - id: dup_error_abstraction.retest_gate_blockers
     name: Retest dup_error_abstraction gate blockers
-    status: claimed
+    status: pending
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38128,8 +38128,6 @@ phases:
     depends_on:
     - dup_error_abstraction.fix_gate_blockers
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T12:58:06.273576+00:00'
   - id: dup_error_abstraction.gate_reopen
     name: Re-open dup_error_abstraction gate after blocker retest
     status: pending
