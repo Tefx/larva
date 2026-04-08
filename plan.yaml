@@ -40612,7 +40612,7 @@ phases:
       \ any product implementation files were modified: no"
   - id: baseline_failure_finalization.doc_sync
     name: Sync docs and fixtures to final canonical behavior
-    status: claimed
+    status: done
     description: Update docs, examples, and fixture commentary so they match the final
       canonical behavior established by the remediation. Include any changed expectations
       for PersonaSpec fields, assembly output, facade sequencing, and transport envelopes.
@@ -40639,6 +40639,23 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-08T20:24:50.853969+00:00'
+    done_at: '2026-04-08T20:30:14.960043+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- tests/app/test_facade/conftest.py\
+      \ — updated transition-fixture wording and component-store commentary.\n- tests/shell/fixture_taxonomy.py\
+      \ — updated transition fixture wording.\n- tests/app/test_facade/test_clone.py\
+      \ — canonical sequencing commentary remains aligned.\n- tests/app/test_facade/test_export.py\
+      \ — canonical export commentary remains aligned.\n- tests/repro/cross_surface_consistency_verify.py\
+      \ — cross-surface canonical rejection behavior remains aligned.\n- USER_GUIDE.md\
+      \ / INTERFACES.md / ARCHITECTURE.md — reviewed as already aligned (no edits\
+      \ required).\n\n## Doc Sync Evidence\n- Docs updated:\n  - tests/app/test_facade/conftest.py\
+      \ docstrings/comments\n  - tests/shell/fixture_taxonomy.py docstrings\n- Fixtures/comments\
+      \ updated:\n  - transition fixtures now explicitly described as non-canonical\
+      \ rejection fixtures\n  - stale “mirrored deprecated fields accepted” implication\
+      \ removed\n- Removed stale statements:\n  - transition-only wording that implied\
+      \ acceptance of tools/side_effect_policy at admission\n- Commands or checks\
+      \ used to confirm alignment:\n  - pytest on affected facade/repro/core slices\
+      \ (all passing)\n  - git diff verification for docs/comments-only scope\n- commit\
+      \ hash(es): c43dded"
   - id: baseline_failure_finalization.deep_review
     name: Independent deep review of baseline-failure remediation
     status: pending
