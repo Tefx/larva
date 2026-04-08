@@ -38168,7 +38168,7 @@ phases:
 
       - Required follow-up if blocked:'
     depends_on:
-    - dup_error_abstraction.retest_gate_blockers
+    - dup_error_abstraction.retest_gate_blockers_round2
     agent: gate-reviewer-tacit
   - id: dup_error_abstraction.fix_gate_blockers_round2
     name: Fix remaining dup_error_abstraction blocker families (web lambda signature
