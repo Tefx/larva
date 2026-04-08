@@ -36984,6 +36984,55 @@ phases:
       invar guard.
 
       - outputs_summary: focused tests passed; invar guard passed; commit hooks passed.'
+  - id: dup_contract_source.workflow_verify_fix
+    name: Fix facade workflow verification assertions to match preserved entrypoint
+      semantics
+    status: pending
+    description: 'Fix blocker-class workflow verification assertions so facade admission
+      tests match preserved entrypoint semantics without changing user-visible behavior.
+
+
+      Update assertions to validate semantic outcomes and the intentionally preserved
+      call sequence where ordering is under test. Add explicit coverage that any validation-order
+      difference remains non-observable at public entrypoints.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- Update test expectations to assert semantic outcomes and correct
+      call-sequence where intentionally tested; keep user-visible behavior unchanged.
+
+      - Explicitly confirm validation-order behavior change is non-observable at public
+      entrypoints.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Remediation Evidence
+
+      - Files updated:
+
+      - Assertions changed:
+
+      - Public-entrypoint non-observability proof:
+
+      - User-visible behavior preserved:
+
+      '
+    depends_on:
+    - dup_contract_source.workflow_impl
+    agent: python-refactor-master-tacit
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
