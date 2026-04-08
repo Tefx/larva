@@ -37158,7 +37158,7 @@ phases:
       now passes (`37 passed`).'
   - id: dup_contract_source.gate_test_sync_batch
     name: Synchronize gate blocker tests with ADR-002 canonical model
-    status: claimed
+    status: done
     description: 'Synchronize tests/core/test_normalize.py, tests/core/test_spec.py,
       tests/shell/test_cli.py, tests/shell/test_mcp.py, and tests/shell/test_python_api.py
       with the ADR-002 canonical model while preserving public behavior expectations.
@@ -37191,6 +37191,24 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T09:32:57.417479+00:00'
+    done_at: '2026-04-08T09:37:47.161104+00:00'
+    evidence: '## Batched Test Sync Evidence
+
+      - files_changed: `tests/core/test_normalize.py`, `tests/core/test_spec.py`,
+      `tests/shell/test_cli.py`, `tests/shell/test_mcp.py`, `tests/shell/test_python_api.py`.
+
+      - assertion_sync_by_file: normalized tests now assert capabilities-only canonical
+      output and no tools mirroring; PersonaSpec/Toolset expectations updated to canonical
+      requiredness; CLI/MCP/Python API assertions aligned with canonical validation
+      and facade flow semantics.
+
+      - verification_commands: targeted pytest across all five files, py_compile over
+      touched tests, changed-scope invar guard.
+
+      - outputs_summary: targeted suite passed (`453 passed, 0 failed`), compile checks
+      passed, invar guard passed; step branch commit `0564649`.
+
+      - residual_blockers: none in scoped gate blocker batch.'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
