@@ -38,14 +38,23 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
         "prompt": "You are careful.",
         "model": "gpt-4o-mini",
         "capabilities": {"shell": "read_only"},  # ADR-002: canonical capability field
-        "tools": {"shell": "read_only"},  # ADR-002: mirrored during transition
         "model_params": {"temperature": 0.1},
-        "side_effect_policy": "read_only",
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
         "spec_digest": digest,
     }
+
+
+def _transition_spec_with_deprecated_fields(
+    persona_id: str,
+    digest: str = "sha256:transition",
+) -> PersonaSpec:
+    """Return transition-only fixture with deprecated mirrored fields."""
+    spec = dict(_canonical_spec(persona_id, digest=digest))
+    spec["tools"] = {"shell": "read_only"}
+    spec["side_effect_policy"] = "read_only"
+    return spec
 
 
 def _valid_report() -> ValidationReport:

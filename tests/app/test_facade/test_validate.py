@@ -11,7 +11,7 @@ from typing import cast
 
 from larva.core.validate import ValidationReport
 
-from .conftest import _canonical_spec, _facade
+from .conftest import _canonical_spec, _facade, _transition_spec_with_deprecated_fields
 
 
 class TestFacadeValidate:
@@ -49,13 +49,13 @@ class TestFacadeValidateExposesCanonicalGaps:
     def test_facade_validate_rejects_tools_field(self):
         """Facade validate should expose FORBIDDEN_EXTRA_FIELD for tools.
 
-        Gap: _canonical_spec includes tools, which should be rejected.
+        Gap: transition fixtures include tools, which should be rejected.
         """
         facade, _, _, _ = _facade(
             report=cast("ValidationReport", {"valid": True, "errors": [], "warnings": []})
         )
 
-        spec = _canonical_spec("tools-persona")
+        spec = _transition_spec_with_deprecated_fields("tools-persona")
         result = facade.validate(spec)
 
         # The spy returns valid=True regardless of input
@@ -67,13 +67,13 @@ class TestFacadeValidateExposesCanonicalGaps:
     def test_facade_validate_rejects_side_effect_policy(self):
         """Facade validate should expose FORBIDDEN_EXTRA_FIELD for side_effect_policy.
 
-        Gap: _canonical_spec includes side_effect_policy, which should be rejected.
+        Gap: transition fixtures include side_effect_policy, which should be rejected.
         """
         facade, _, _, _ = _facade(
             report=cast("ValidationReport", {"valid": True, "errors": [], "warnings": []})
         )
 
-        spec = _canonical_spec("sep-persona")
+        spec = _transition_spec_with_deprecated_fields("sep-persona")
         result = facade.validate(spec)
 
         assert "side_effect_policy" in spec, (

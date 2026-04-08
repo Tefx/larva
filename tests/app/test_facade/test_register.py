@@ -20,6 +20,7 @@ from .conftest import (
     _digest_for,
     _facade,
     _failure,
+    _transition_spec_with_deprecated_fields,
     _invalid_report,
     _valid_report,
 )
@@ -207,30 +208,16 @@ class TestFacadeRegisterExposesCanonicalGaps:
         # Currently succeeds because _valid_report() returns valid=True
         # Gap: capabilities is required at canonical boundary
 
-    def test_canonical_spec_fixture_contains_forbidden_fields(self):
-        """Document that _canonical_spec fixture contains forbidden fields.
+    def test_fixture_taxonomy_keeps_canonical_clean_and_transition_explicit(self):
+        """Canonical helper is canonical-only; transition helper carries deprecated fields."""
+        canonical_spec = _canonical_spec("fixture-check")
+        transition_spec = _transition_spec_with_deprecated_fields("fixture-check-transition")
 
-        This test exposes that the test fixture itself violates canonical contract:
-        _canonical_spec includes both tools and side_effect_policy which are
-        forbidden at the canonical admission boundary.
+        assert "tools" not in canonical_spec
+        assert "side_effect_policy" not in canonical_spec
+        assert "tools" in transition_spec
+        assert "side_effect_policy" in transition_spec
 
-        After canonical enforcement, this fixture must be updated to remove
-        the forbidden fields, or tests using it may break.
-        """
-        spec = _canonical_spec("fixture-check")
-
-        # Document the gap: fixture has forbidden fields
-        assert "tools" in spec, (
-            "_canonical_spec should contain 'tools' to document the gap. "
-            "This field is forbidden at canonical boundary."
-        )
-        assert "side_effect_policy" in spec, (
-            "_canonical_spec should contain 'side_effect_policy' to document the gap. "
-            "This field is forbidden at canonical boundary."
-        )
-
-        # These assertions document expected canonical behavior AFTER enforcement
-        # After implementation, _canonical_spec should NOT have these fields
-        # or they should produce errors
+        # Keep current gap documentation explicit through transition fixture usage.
         report = _valid_report()
         assert report["valid"] is True, "Setup: spy returns valid for any input"
