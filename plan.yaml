@@ -37971,7 +37971,7 @@ phases:
       \ dup_error_abstraction.alias_verify"
   - id: dup_error_abstraction.fix_gate_blockers
     name: Fix dup_error_abstraction gate blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL blockers found by dup_error_abstraction.gate.
 
 
@@ -38056,6 +38056,8 @@ phases:
     depends_on:
     - dup_error_abstraction.verify
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T11:58:21.232325+00:00'
   - id: dup_error_abstraction.retest_gate_blockers
     name: Retest dup_error_abstraction gate blockers
     status: pending
