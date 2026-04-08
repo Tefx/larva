@@ -46,6 +46,7 @@ See:
 """
 
 import re
+from types import MappingProxyType
 from typing import TypedDict, cast
 
 from deal import post, pre
@@ -58,24 +59,55 @@ _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 # Valid postures for capabilities/tools (from ToolPosture in spec.py)
 _VALID_POSTURES: set[str] = {"none", "read_only", "read_write", "destructive"}
 
-_CANONICAL_REQUIRED_FIELDS: set[str] = {
+CANONICAL_REQUIRED_FIELDS: tuple[str, ...] = (
     "id",
     "description",
     "prompt",
     "model",
     "capabilities",
     "spec_version",
-}
-
-_CANONICAL_ALLOWED_FIELDS: set[str] = _CANONICAL_REQUIRED_FIELDS | {
+)
+CANONICAL_OPTIONAL_FIELDS: tuple[str, ...] = (
     "model_params",
     "can_spawn",
     "compaction_prompt",
     "spec_digest",
     "variables",
-}
+)
+CANONICAL_FORBIDDEN_FIELDS: tuple[str, ...] = ("tools", "side_effect_policy")
 
-_CANONICAL_FORBIDDEN_FIELDS: set[str] = {"tools", "side_effect_policy"}
+VALIDATION_ISSUE_KEYS: tuple[str, ...] = ("code", "message", "details")
+VALIDATION_REPORT_KEYS: tuple[str, ...] = ("valid", "errors", "warnings")
+
+CANONICAL_REQUIRED_FIELD_MESSAGE = (
+    "required field '{field}' is missing at canonical admission boundary"
+)
+CANONICAL_FORBIDDEN_FIELD_MESSAGE = "'{field}' is not permitted at canonical admission boundary"
+CANONICAL_UNKNOWN_FIELD_MESSAGE = (
+    "unknown top-level field '{field}' is not permitted at canonical admission boundary"
+)
+
+CANONICAL_CAPABILITIES_REQUIRED_CLAUSE = "canonical admission requires capabilities"
+CANONICAL_TOOLS_REJECTED_CLAUSE = "tools is rejected at canonical admission"
+
+CANONICAL_CONTRACT_METADATA = MappingProxyType(
+    {
+        "required_fields": CANONICAL_REQUIRED_FIELDS,
+        "optional_fields": CANONICAL_OPTIONAL_FIELDS,
+        "forbidden_fields": CANONICAL_FORBIDDEN_FIELDS,
+        "validation_issue_keys": VALIDATION_ISSUE_KEYS,
+        "validation_report_keys": VALIDATION_REPORT_KEYS,
+        "required_field_message": CANONICAL_REQUIRED_FIELD_MESSAGE,
+        "forbidden_field_message": CANONICAL_FORBIDDEN_FIELD_MESSAGE,
+        "unknown_field_message": CANONICAL_UNKNOWN_FIELD_MESSAGE,
+        "capabilities_required_clause": CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
+        "tools_rejected_clause": CANONICAL_TOOLS_REJECTED_CLAUSE,
+    }
+)
+
+_CANONICAL_REQUIRED_FIELDS: set[str] = set(CANONICAL_REQUIRED_FIELDS)
+_CANONICAL_ALLOWED_FIELDS: set[str] = _CANONICAL_REQUIRED_FIELDS | set(CANONICAL_OPTIONAL_FIELDS)
+_CANONICAL_FORBIDDEN_FIELDS: set[str] = set(CANONICAL_FORBIDDEN_FIELDS)
 
 
 @post(lambda result: isinstance(result, bool))
@@ -341,7 +373,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
             errors.append(
                 _issue(
                     "FORBIDDEN_EXTRA_FIELD",
-                    f"'{key}' is not permitted at canonical admission boundary",
+                    CANONICAL_FORBIDDEN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
                 )
             )
@@ -349,7 +381,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
             errors.append(
                 _issue(
                     "FORBIDDEN_EXTRA_FIELD",
-                    f"unknown top-level field '{key}' is not permitted at canonical admission boundary",
+                    CANONICAL_UNKNOWN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
                 )
             )
@@ -383,7 +415,7 @@ def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
             errors.append(
                 _issue(
                     "MISSING_REQUIRED_FIELD",
-                    f"required field '{field}' is missing at canonical admission boundary",
+                    CANONICAL_REQUIRED_FIELD_MESSAGE.format(field=field),
                     {"field": field},
                 )
             )

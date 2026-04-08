@@ -71,6 +71,11 @@
     "spec_digest": {
       "type": "string",
       "description": "SHA-256 of canonical JSON (sorted keys, no whitespace, spec_digest excluded from input). Computed by larva; optional in raw input, always present in larva output."
+    },
+    "variables": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Optional prompt variable map used for deterministic placeholder resolution and unresolved-variable checks."
     }
   },
   "additionalProperties": false

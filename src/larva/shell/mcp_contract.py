@@ -18,25 +18,16 @@ from types import MappingProxyType
 from typing import Any, Literal, Protocol, TypedDict
 
 from larva.app import facade as facade_module
-
+from larva.core import validate as validate_contract
 
 LARVA_ERROR_CODES = MappingProxyType(facade_module.ERROR_NUMERIC_CODES)
 
 
-class ValidationIssue(TypedDict):
-    """Error detail structure for validation failures."""
+ValidationIssue = validate_contract.ValidationIssue
+ValidationReport = validate_contract.ValidationReport
 
-    code: str
-    message: str
-    details: dict[str, Any]
-
-
-class ValidationReport(TypedDict):
-    """Response from larva.validate()."""
-
-    valid: bool
-    errors: list[ValidationIssue]
-    warnings: list[str]
+_CAPABILITIES_REQUIRED_CLAUSE = validate_contract.CANONICAL_CAPABILITIES_REQUIRED_CLAUSE
+_TOOLS_REJECTED_CLAUSE = validate_contract.CANONICAL_TOOLS_REJECTED_CLAUSE
 
 
 class MCPToolDefinition(TypedDict):
@@ -52,7 +43,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_validate",
         "description": (
             "Validate a PersonaSpec JSON object against the canonical schema and semantic rules. "
-            "Use the capabilities field; tools is rejected at canonical admission."
+            f"Use the capabilities field; {_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -60,8 +51,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "type": "object",
                     "description": (
-                        "PersonaSpec JSON to validate. Use capabilities field; "
-                        "tools is rejected at canonical admission."
+                        "PersonaSpec JSON to validate. "
+                        f"Use capabilities field; {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 }
             },
@@ -72,7 +63,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_assemble",
         "description": (
             "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model). "
-            "Canonical admission requires capabilities; tools is rejected."
+            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -104,8 +95,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "overrides": {
                     "type": "object",
                     "description": (
-                        "Field overrides (wins over components). Canonical admission requires "
-                        "capabilities and rejects tools."
+                        "Field overrides (wins over components). "
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 },
                 "variables": {
@@ -120,7 +111,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_resolve",
         "description": (
             "Resolve a pre-registered persona by id, optionally with runtime overrides. "
-            "Canonical admission requires capabilities; tools is rejected."
+            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -130,7 +121,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "Field overrides applied to the resolved spec. Canonical admission "
-                        "requires capabilities and rejects tools."
+                        f"requires capabilities and {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 },
             },
@@ -140,8 +131,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_register",
         "description": (
-            "Register a PersonaSpec in the global registry. Canonical admission requires "
-            "capabilities and rejected tools is not permitted."
+            "Register a PersonaSpec in the global registry. "
+            f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -149,8 +140,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "type": "object",
                     "description": (
-                        "PersonaSpec JSON (must pass validation). Canonical admission requires "
-                        "capabilities and rejected tools is not permitted."
+                        "PersonaSpec JSON (must pass validation). "
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 }
             },
@@ -268,7 +259,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_update",
         "description": (
             "Update a registered persona by applying JSON merge patches to selected fields. "
-            "Patches may update canonical capabilities field; tools is rejected at admission."
+            f"Patches may update canonical capabilities field; {_CAPABILITIES_REQUIRED_CLAUSE}; "
+            f"{_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -280,8 +272,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "patches": {
                     "type": "object",
                     "description": (
-                        "JSON merge patches to apply to the persona. Canonical admission requires "
-                        "capabilities and rejects tools."
+                        "JSON merge patches to apply to the persona. "
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 },
             },
@@ -292,7 +284,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_update_batch",
         "description": (
             "Batch-update all personas matching 'where' clauses by applying JSON merge patches. "
-            "Patches may update canonical capabilities field; tools is rejected at admission."
+            f"Patches may update canonical capabilities field; {_CAPABILITIES_REQUIRED_CLAUSE}; "
+            f"{_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -307,7 +300,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "JSON merge patches to apply to each matched persona. Canonical admission "
-                        "requires capabilities and rejects tools."
+                        f"requires capabilities and {_TOOLS_REJECTED_CLAUSE}."
                     ),
                 },
                 "dry_run": {
