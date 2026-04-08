@@ -36623,6 +36623,10 @@ phases:
       output while preserving backward-compatible deprecated tools input handling
       semantics
 
+      - Gate blocker test-sync batch is closed: normalize/spec/CLI/MCP/python-API
+      expectations match ADR-002 canonical model while preserved public behavior remains
+      verified
+
       - No blocker-class projection or entrypoint drift remains'
     evidence_template: '## Gate Review Report
 
@@ -36659,6 +36663,7 @@ phases:
     - dup_contract_source.workflow_impl
     - dup_contract_source.workflow_verify
     - dup_contract_source.assemble_test_sync
+    - dup_contract_source.gate_test_sync_batch
     agent: gate-reviewer-tacit
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
