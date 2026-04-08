@@ -39502,7 +39502,7 @@ phases:
       \ => passed"
   - id: dup_deep_review.retest-blockers
     name: Re-run deep wiring verification after duplicate-abstraction blocker remediation
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -39652,6 +39652,43 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-08T15:50:58.259102+00:00'
+    done_at: '2026-04-08T16:03:48.822557+00:00'
+    evidence: '## Verification Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Behavioral Proof Register
+
+      - MCP runtime seam: PASS (no stale contract artifact on runtime path)
+
+      - Dependency/runtime truth: PASS (PyYAML declared+used; no undeclared imports;
+      ruamel.yaml phantom noted as non-blocking hygiene)
+
+      - Web/facade seam: PASS (web/contrib/mcp/cli update paths converge on facade.update
+      -> apply_patches)
+
+
+      ### Issues Found
+
+      - LOW: ruamel.yaml declared but unused (phantom dependency; non-blocking)
+
+
+      ### Coverage Assessment
+
+      - MCP seam audited: yes
+
+      - Dependency truth audited: yes
+
+      - Web/facade seam audited: yes
+
+      - Full tests: 719 passed, 5 xfailed, 44 xpassed
+
+
+      gate_decision_basis: blocker families closed; only non-blocking dependency hygiene
+      remains'
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
   status: locked
