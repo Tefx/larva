@@ -39293,7 +39293,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: dup_deep_review.fix-blockers
     name: Fix duplicate-abstraction deep-review blocker families
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: technical_debt_remediation
@@ -39481,6 +39481,25 @@ phases:
     agent: python-senior
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T15:40:27.295643+00:00'
+    done_at: '2026-04-08T15:49:38.911195+00:00'
+    evidence: "Implemented blocker-family batch remediation in isolated worktree commit\
+      \ 6777d03.\n- B1: Removed stale MCP runtime artifacts (MCPServer/MCPServerConfig/MCPTransportMode)\
+      \ from src/larva/shell/mcp_contract.py and pruned stale imports/exports in src/larva/shell/mcp.py\
+      \ so MCP runtime authority remains FastMCP in src/larva/shell/mcp_server.py.\n\
+      - B2: Declared runtime yaml import truth by adding PyYAML>=6.0 in pyproject.toml\
+      \ and uv.lock to match FilesystemComponentStore._read_yaml import yaml/safe_load\
+      \ usage.\n- B3: Rewired both web patch endpoints to shared update seam:\n  -\
+      \ src/larva/shell/web.py api_update_persona now returns {\"data\": update(persona_id,\
+      \ patches)}\n  - contrib/web/server.py api_update_persona now returns {\"data\"\
+      : update(persona_id, patches)}\n  This removes direct resolve+manual patch+validate+register\
+      \ bypass path.\n- Updated tests/shell/test_web.py patch test to assert update\
+      \ seam delegation.\nVerification:\n- uv run pytest tests/shell/test_canonical_boundary_gaps.py\
+      \ -q  => 11 passed\n- uv run pytest tests/shell/test_mcp_server.py tests/shell/test_web.py\
+      \ tests/shell/test_contrib_web.py tests/shell/test_components.py tests/shell/test_canonical_boundary_gaps.py\
+      \ -q => 87 passed\n- uv run python -m py_compile src/larva/shell/mcp_contract.py\
+      \ src/larva/shell/mcp.py src/larva/shell/components.py src/larva/shell/web.py\
+      \ contrib/web/server.py tests/shell/test_web.py => pass\n- invar_guard(changed=true)\
+      \ => passed"
   - id: dup_deep_review.retest-blockers
     name: Re-run deep wiring verification after duplicate-abstraction blocker remediation
     status: pending
