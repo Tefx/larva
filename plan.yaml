@@ -36764,7 +36764,7 @@ phases:
   - id: dup_contract_source.fixture_impl
     name: Unify test fixtures and shared doubles around explicit canonical vs transition
       semantics
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -36799,6 +36799,29 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T07:40:48.301225+00:00'
+    done_at: '2026-04-08T07:41:00.249888+00:00'
+    evidence: '## Fixture Implementation Evidence
+
+      - files_changed: `tests/shell/fixture_taxonomy.py`, shell test modules (`test_canonical_boundary_gaps.py`,
+      `test_mcp.py`, `test_python_api.py`, `test_cli.py`, `test_registry.py`), package
+      init files; implementation commit `339a255` on step branch.
+
+      - canonical_fixture_changes: canonical fixture constructors consolidated into
+      canonical-only helpers; canonical helpers no longer include implicit deprecated
+      fields.
+
+      - transition_fixture_changes: explicit transition constructors added and consumed
+      only by transition/rejection coverage paths.
+
+      - shared_doubles_changes: shared transition component-store double introduced
+      and reused to reduce repeated legacy-mirroring logic.
+
+      - verification_commands: invar_guard(changed=true); targeted canonical-boundary
+      + shell pytest selections; py_compile checks for touched fixture/test modules.
+
+      - verification_summary: canonical-boundary tests now use canonical-only fixtures;
+      transition-only behavior requires explicit fixture opt-in; helper duplication
+      reduced via shared fixture taxonomy seam.'
   - id: dup_contract_source.fixture_verify
     name: Verify canonical-boundary tests no longer depend on legacy-default fixtures
     status: pending
