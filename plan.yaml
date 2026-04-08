@@ -39098,6 +39098,8 @@ phases:
       - verdict:
 
       '
+    depends_on:
+    - dup_deep_review.retest-blockers
     agent: wiring-auditor
   - id: dup_deep_review.spec-conformance
     name: Audit canonical-boundary conformance after duplicate-abstraction remediation
