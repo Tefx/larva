@@ -40658,7 +40658,7 @@ phases:
       \ hash(es): c43dded"
   - id: baseline_failure_finalization.deep_review
     name: Independent deep review of baseline-failure remediation
-    status: claimed
+    status: done
     description: Run an independent final review that checks spec conformance, architecture/coherence,
       and black-box behavior for the remediated baseline failure areas. This is the
       final chance to catch systemic drift that targeted repairs can miss.
@@ -40688,6 +40688,28 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T20:30:40.851288+00:00'
+    done_at: '2026-04-08T20:50:36.420193+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/spec.py — canonical\
+      \ type-shape reviewed.\n- src/larva/core/validate.py — canonical metadata and\
+      \ rejection semantics reviewed.\n- src/larva/core/normalize.py — postconditions\
+      \ and transition handling reviewed.\n- src/larva/core/assemble.py — output contract\
+      \ and forbidden override handling reviewed.\n- src/larva/core/patch.py — residual\
+      \ should-fix seam reviewed.\n- src/larva/app/facade.py — sequencing/delegation\
+      \ coherence reviewed.\n- contracts/persona_spec.schema.json — schema parity\
+      \ reviewed.\n- ADR-002 / ADR-003 / INTERFACES.md — authority conformance reviewed.\n\
+      - src/larva/shell/mcp_contract.py — transport contract alignment reviewed.\n\
+      - tests/repro/cross_surface_consistency_verify.py — black-box parity evidence\
+      \ reviewed.\n\n## Deep Review Report\n- Spec-conformance findings:\n  - canonical\
+      \ required/forbidden semantics coherent across core + schema + docs\n  - normalize/validate/assemble\
+      \ contracts align with authority decisions\n- Architecture/coherence findings:\n\
+      \  - clean core-shell boundary and consistent transport projection via facade\n\
+      \  - cross-surface error code mapping coherent\n- Black-box findings:\n  - cross-surface\
+      \ parity and baseline clusters verified as closed\n- Residual blocker-class\
+      \ issues:\n  - none\n  - should-fix only: patch deep-merge tools key; variables\
+      \ TypedDict drift\n- Recommendation: OPEN\n\n## Behavioral Proof Register\n\
+      - canonical rejection semantics: PROVEN\n- cross-surface parity: PROVEN\n- baseline-failure\
+      \ closure: PROVEN\n- residual should-fix seams: PROVEN_SHOULD_FIX\n- gate_open_allowed:\
+      \ true\n- uncertainty sources: none blocking"
   - id: baseline_failure_finalization.gate
     name: Final gate for baseline-failure remediation
     status: pending
