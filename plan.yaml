@@ -36884,7 +36884,7 @@ phases:
       is remediated; no new blockers.'
   - id: dup_contract_source.workflow_impl
     name: Consolidate repeated facade admission workflow
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -36915,6 +36915,8 @@ phases:
     - dup_contract_source.workflow_basis
     - dup_contract_source.fixture_verify
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-08T08:12:05.407734+00:00'
   - id: dup_contract_source.workflow_verify
     name: Verify unified facade admission workflow preserves entrypoint behavior
     status: pending
