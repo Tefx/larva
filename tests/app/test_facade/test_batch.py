@@ -49,8 +49,15 @@ class TestFacadeUpdateBatch:
             {"id": "alpha", "updated": True},
             {"id": "beta", "updated": True},
         ]
-        assert calls == ["validate", "normalize", "validate", "normalize"]
-        assert len(validate_module.inputs) == 2
+        assert calls == [
+            "validate",
+            "normalize",
+            "validate",
+            "validate",
+            "normalize",
+            "validate",
+        ]
+        assert len(validate_module.inputs) == 4
         assert len(normalize_module.inputs) == 2
         assert len(registry.save_inputs) == 2
 

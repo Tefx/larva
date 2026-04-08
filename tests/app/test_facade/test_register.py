@@ -41,8 +41,10 @@ class TestFacadeRegister:
 
         assert isinstance(result, Success)
         assert result.unwrap() == {"id": "register-ok", "registered": True}
-        assert calls == ["validate", "normalize"]
-        assert validate_module.inputs == [spec]
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
+        assert validate_module.inputs[0] == spec
+        assert validate_module.inputs[1] == registry.save_inputs[0]
         assert normalize_module.inputs[0]["id"] == "register-ok"
         assert registry.save_inputs[0]["id"] == "register-ok"
         assert registry.save_inputs[0]["spec_digest"] == _digest_for(spec)
@@ -64,7 +66,11 @@ class TestFacadeRegister:
         result = facade.register(spec)
 
         assert isinstance(result, Success)
-        assert calls == ["validate", "normalize"]
+        assert calls.count("validate") == 2
+        assert calls.count("normalize") == 1
+        assert calls[0] == "validate"
+        assert calls[1] == "normalize"
+        assert calls[2] == "validate"
         assert validate_module.inputs[0]["can_spawn"] is False
         assert validate_module.inputs[0]["description"] is None
         assert validate_module.inputs[0]["compaction_prompt"] == ""
@@ -74,6 +80,66 @@ class TestFacadeRegister:
         assert registry.save_inputs[0]["can_spawn"] is False
         assert registry.save_inputs[0]["description"] is None
         assert registry.save_inputs[0]["compaction_prompt"] == ""
+
+    def test_register_validation_stage_difference_is_non_observable_at_entrypoint(self) -> None:
+        """Public register error contract is stable across validation stage ordering."""
+
+        class SequencedValidateModule:
+            def __init__(self, reports: list[dict[str, object]], calls: list[str]) -> None:
+                self._reports = reports
+                self._calls = calls
+                self.inputs: list[PersonaSpec] = []
+                self._index = 0
+
+            def validate_spec(self, spec: PersonaSpec) -> dict[str, object]:
+                self._calls.append("validate")
+                self.inputs.append(dict(spec))
+                report = self._reports[min(self._index, len(self._reports) - 1)]
+                self._index += 1
+                return report
+
+        invalid_report = cast("dict[str, object]", _invalid_report("INVALID_SPEC_VERSION"))
+
+        first_stage_calls: list[str] = []
+        first_stage_registry = InMemoryRegistryStore()
+        first_stage_facade, _, _, _ = _facade(
+            report=_valid_report(),
+            registry=first_stage_registry,
+            calls=first_stage_calls,
+        )
+        first_stage_facade._validate = SequencedValidateModule(  # type: ignore[attr-defined]
+            [invalid_report],
+            first_stage_calls,
+        )
+        first_stage_result = first_stage_facade.register(_canonical_spec("register-order-proof"))
+
+        second_stage_calls: list[str] = []
+        second_stage_registry = InMemoryRegistryStore()
+        second_stage_facade, _, _, _ = _facade(
+            report=_valid_report(),
+            registry=second_stage_registry,
+            calls=second_stage_calls,
+        )
+        second_stage_facade._validate = SequencedValidateModule(  # type: ignore[attr-defined]
+            [_valid_report(), invalid_report],
+            second_stage_calls,
+        )
+        second_stage_result = second_stage_facade.register(_canonical_spec("register-order-proof"))
+
+        first_stage_error = _failure(cast("Result[object, LarvaError]", first_stage_result))
+        second_stage_error = _failure(cast("Result[object, LarvaError]", second_stage_result))
+
+        assert first_stage_calls == ["validate"]
+        assert second_stage_calls == ["validate", "normalize", "validate"]
+        assert first_stage_error["code"] == second_stage_error["code"] == "PERSONA_INVALID"
+        assert first_stage_error["numeric_code"] == second_stage_error["numeric_code"] == 101
+        assert (
+            first_stage_error["details"]["report"]["errors"][0]["code"]
+            == second_stage_error["details"]["report"]["errors"][0]["code"]
+            == "INVALID_SPEC_VERSION"
+        )
+        assert first_stage_registry.save_inputs == []
+        assert second_stage_registry.save_inputs == []
 
     def test_register_validation_failure_blocks_persistence(self) -> None:
         registry = InMemoryRegistryStore()

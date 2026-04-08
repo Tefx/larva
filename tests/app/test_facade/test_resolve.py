@@ -39,8 +39,10 @@ class TestFacadeResolve:
 
         assert isinstance(result, Success)
         assert registry.get_inputs == ["resolve-me"]
-        assert calls == ["validate", "normalize"]
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
         assert validate_module.inputs[0]["id"] == "resolve-me"
+        assert validate_module.inputs[1]["id"] == "resolve-me"
         assert normalize_module.inputs[0]["id"] == "resolve-me"
         assert result.unwrap()["spec_digest"] == _digest_for(result.unwrap())
         assert result.unwrap()["spec_digest"] != "sha256:canonical-old"
@@ -67,7 +69,8 @@ class TestFacadeResolve:
 
         assert isinstance(result, Success)
         resolved = result.unwrap()
-        assert calls == ["validate", "normalize"]
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
         assert validate_module.inputs[0]["description"] is None
         assert validate_module.inputs[0]["can_spawn"] is False
         assert validate_module.inputs[0]["compaction_prompt"] == ""

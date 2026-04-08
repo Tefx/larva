@@ -46,7 +46,8 @@ class TestFacadeUpdate:
         assert isinstance(result, Success)
         updated = result.unwrap()
         assert registry.get_inputs == ["update-me"]
-        assert calls == ["validate", "normalize"]
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
         assert validate_module.inputs[0]["description"] == "Updated description"
         assert validate_module.inputs[0]["model_params"] == {"temperature": 0}
         assert normalize_module.inputs[0]["description"] == "Updated description"
