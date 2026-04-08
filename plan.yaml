@@ -37649,7 +37649,7 @@ phases:
       \ for component error taxonomy"
   - id: dup_error_abstraction.verify
     name: Verify component error envelopes remain aligned across transports
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -37696,6 +37696,8 @@ phases:
     depends_on:
     - dup_error_abstraction.impl
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T11:34:39.887767+00:00'
   - id: dup_error_abstraction.gate
     name: Gate component surface normalization and error projection
     status: pending
