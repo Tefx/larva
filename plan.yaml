@@ -36108,7 +36108,7 @@ phases:
       - Focused parity tests passing across both runtimes.'
   - id: dup_web_convergence.verify
     name: Verify packaged and contrib web parity through the shared seam
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36178,6 +36178,75 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-08T04:13:12.537982+00:00'
+    done_at: '2026-04-08T04:20:46.415190+00:00'
+    evidence: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ### Test Execution
+
+      Commands executed:
+
+      - `uv run pytest tests/repro/web_convergence_parity.py -v`
+
+
+      Observed output summary:
+
+      - 24 tests collected
+
+      - 24 passed (0 failed)
+
+      - runtime: ~0.24s
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+      | None | No packaged/contrib divergence found in tested seams | N/A | N/A |
+
+
+      ### Coverage Assessment
+
+      - packaged_vs_contrib_parity: PASS (persona endpoint semantics aligned)
+
+      - canonical_success: PASS (both accept canonical spec forms)
+
+      - forbidden_field_failure: PASS (`tools`, `side_effect_policy`, unknown top-level
+      all rejected consistently via validation report)
+
+      - patch_semantics: PASS (`spec_version`/`spec_digest` protected semantics preserved)
+
+      - startup/runtime expectations: PASS (port/default/bootstrap expectations preserved)
+
+
+      ### Behavioral-Proof Reporting
+
+      - step_intent: independent parity verification after web convergence implementation.
+
+      - expected_result: packaged and contrib runtimes agree on canonical admission,
+      rejection behavior, PATCH semantics, and startup expectations.
+
+      - observed_result: all parity tests passed; no divergence reproduced.
+
+      - failure_alignment: N/A (no failures).
+
+      - product_files_modified: verification artifacts only (repro tests/report scripts
+      in `tests/repro/`).
+
+      - behavioral_proof_register: parity checks across canonical success, forbidden-field
+      rejection, PATCH immutability behavior, runtime startup, and endpoint inventory
+      all PASS.
+
+      - gate_open_allowed: true.
+
+      - uncertainty_sources: none.'
   - id: dup_web_convergence.gate
     name: Gate web surface convergence
     status: pending
