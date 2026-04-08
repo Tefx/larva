@@ -39289,6 +39289,196 @@ phases:
     - dup_deep_review.black-box
     - dup_deep_review.architecture-review
     agent: gate-reviewer-tacit
+  - id: dup_deep_review.fix-blockers
+    name: Fix duplicate-abstraction deep-review blocker families
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: technical_debt_remediation
+
+      verification_scope: full-plan-check
+
+      agent_source: project
+
+
+      Fix ALL blocker families found after dup_deep_review.wiring-audit.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      symbolic_testing: false
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: duplicate-abstraction cleanup left stale contract/runtime artifacts,
+      dependency declarations/imports drifted away from real runtime behavior, and
+      the web update path still bypasses the shared facade seam.
+
+      - Symptom: dead MCP Protocol/config surfaces remain alongside FastMCP runtime
+      wiring, runtime imports disagree with declared dependencies, and web persona
+      patching reimplements logic instead of routing through the canonical seam.
+
+      - Why this fix is not surface-level: it must remove or bound dead abstractions,
+      reconcile dependency/runtime truth, and collapse the duplicate web mutation
+      path onto the shared facade rather than patching isolated call sites.
+
+
+      ### B1: stale MCP contract artifacts
+
+      Locations: MCPServer Protocol / MCPServerConfig / MCPTransportMode surfaces
+      along the FastMCP runtime path
+
+      Remediation: remove dead or unimplemented contract artifacts from active runtime
+      ownership, or explicitly rebind them so the FastMCP path and published contract
+      share one authoritative seam.
+
+      Grep hint: search for MCPServer, MCPServerConfig, and MCPTransportMode across
+      shell/mcp, app/facade, and public component surfaces; prove each surviving symbol
+      is runtime-reachable and implemented.
+
+      IMPORTANT: search for sibling protocol/config/export references beyond the reported
+      locations.
+
+
+      ### B2: dependency drift
+
+      Locations: phantom deps around ruamel.yaml and pydantic direct-import assumptions,
+      plus undeclared yaml/PyYAML runtime import in components.py
+
+      Remediation: align declared/runtime dependency truth with actual imports; remove
+      phantom assumptions, add any real runtime dependency ownership, and ensure components.py
+      no longer depends on undeclared imports.
+
+      Grep hint: search for ruamel\.yaml|pydantic|import yaml|from yaml across pyproject/lockfiles
+      and runtime modules, then reconcile declarations against real runtime imports.
+
+      IMPORTANT: search for sibling undeclared-import and dead-dependency references
+      beyond the reported files.
+
+
+      ### B3: web bypass of shared facade seam
+
+      Locations: web.py api_update_persona path duplicating patch logic instead of
+      routing through the shared facade seam
+
+      Remediation: collapse duplicate patch/update behavior onto the shared facade
+      seam so public update paths do not maintain parallel mutation logic.
+
+      Grep hint: search for api_update_persona, patch/update persona flows, and direct
+      mutation helpers across web/app facade layers; verify only the shared facade
+      seam owns patch behavior.
+
+      IMPORTANT: search for sibling update-entry points beyond web.py.
+
+
+      ## KNOWN RISKS
+
+      - Public-surface cleanup can accidentally preserve dead exports that still look
+      contract-valid but are not runtime-valid.
+
+      - Dependency cleanup can leave hidden runtime imports in shell code paths if
+      only manifest files are updated.
+
+      - Web/facade convergence can regress canonical admission semantics if the bypass
+      is removed without preserving shared validation/merge behavior.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any MCP contract/config symbol that remains exported but dead relative to
+      the real FastMCP runtime path.
+
+      2. Any dependency/import mismatch where runtime imports are undeclared or declared
+      deps are still phantom.
+
+      3. Any web update entry point that still duplicates patch logic instead of routing
+      through the shared facade seam.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Out-of-scope guardrail
+
+      Do not broaden this step into new feature work or unrelated transport redesign;
+      limit scope to removing blocker-class stale abstractions, dependency drift,
+      and duplicate update-path ownership discovered by the deep-review audit.'
+    verification: '- All three blocker families are remediated in one batched change
+      set
+
+      - Evidence identifies the surviving authoritative MCP/runtime seam, the reconciled
+      dependency/runtime truth, and the single shared update facade path
+
+      - Sibling-search evidence shows no remaining blocker-pattern instances on public/runtime
+      paths'
+    evidence_template: '## Remediation Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Blocker closure
+
+      - B1 stale MCP artifacts: <what was removed/rebound, with file:line>
+
+      - B2 dependency drift: <what declarations/imports were reconciled, with file:line>
+
+      - B3 web bypass: <what route now goes through shared facade seam, with file:line>
+
+
+      ### Sibling search evidence
+
+      - MCP artifact grep/search results: <results>
+
+      - Dependency/import drift grep/search results: <results>
+
+      - Web bypass grep/search results: <results>
+
+
+      ### Root-cause proof
+
+      - Why these changes close the blocker family rather than only the reported symptom:
+      <explanation>
+
+      - Remaining non-blocking debt: <none or list>
+
+
+      ### Commands / checks run
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      '
+    depends_on:
+    - dup_deep_review.wiring-audit
+    agent: python-senior
 - id: baseline_failure_authority
   name: Baseline Failure Authority and Triage
   status: locked
