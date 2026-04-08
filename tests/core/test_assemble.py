@@ -1,4 +1,13 @@
-"""Tests for larva.core.assemble module contracts and behavior."""
+"""Canonical contract tests for larva.core.assemble module.
+
+These tests express the frozen authority for assembly output per ADR-002
+and the opifex canonical authority basis:
+- Assembly produces a PersonaSpec candidate
+- Output contains 'capabilities', never 'tools'
+- ConstraintComponent only has can_spawn and compaction_prompt
+- 'tools' in assembly input (ToolsetComponent) is transition-era backward compat
+- 'side_effect_policy' is NOT a ConstraintComponent field
+"""
 
 import deal
 import pytest
@@ -9,9 +18,26 @@ from larva.core.spec import (
     AssemblyInput,
     ConstraintComponent,
     ModelComponent,
+    PersonaSpec,
     PromptComponent,
     ToolsetComponent,
 )
+
+
+# ---------------------------------------------------------------------------
+# Canonical fixtures
+# ---------------------------------------------------------------------------
+
+CANONICAL_ASSEMBLY_OUTPUT_MINIMAL: dict = {
+    "id": "canonical-assembly-fixture",
+    "description": "Canonical assembly fixture — minimal output",
+    "prompt": "You are a canonical test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0",
+}
+"""Exact canonical PersonaSpec shape that assembly should produce as output.
+No 'tools', no 'side_effect_policy' — forbidden at canonical admission."""
 
 
 class TestAssembleCandidateExists:
@@ -39,20 +65,17 @@ class TestAssembleCandidateContracts:
 
     def test_has_deal_contract(self):
         """assemble_candidate should have a __deal_contract attribute from invar."""
-        # Check that the function has __deal_contract attribute from invar/deal
         assert hasattr(assemble_candidate, "__deal_contract"), (
             "assemble_candidate should have __deal_contract"
         )
 
     def test_pre_contract_rejects_non_dict(self):
         """@pre contract should reject non-dict input."""
-        # Invalid: not a dict - should raise due to contract violation
         with pytest.raises(deal.PreContractError):
             assemble_candidate("not a dict")
 
     def test_pre_contract_rejects_dict_without_id(self):
         """@pre contract should reject dict without 'id' key."""
-        # Invalid: dict without id
         with pytest.raises(deal.PreContractError):
             assemble_candidate({"name": "test"})
 
@@ -69,7 +92,13 @@ class TestAssembleCandidateContracts:
 
 
 class TestAssembleCandidateBehavior:
-    """Test concrete assemble behavior and failure signals."""
+    """Test concrete assemble behavior — canonical output contract.
+
+    Per ADR-002 authority decision:
+    - Assembly output is capabilities-only; no 'tools' in output
+    - Assembly input may use 'tools' in ToolsetComponent for backward compat
+    - 'tools' input is read and normalized to 'capabilities' in output
+    """
 
     def test_concatenates_prompts_in_order(self):
         """Prompt components should concatenate using a double-newline separator."""
@@ -87,7 +116,12 @@ class TestAssembleCandidateBehavior:
         assert result["description"] == "persona description"
 
     def test_raises_component_conflict_for_contradictory_tool_posture(self):
-        """Conflicting tool postures should raise AssemblyError with conflict code."""
+        """Conflicting tool postures should raise AssemblyError with conflict code.
+
+        Note: This test uses 'tools' key in assembly INPUT, which is transition-era
+        backward compat (INTENTIONAL TRANSITION SUPPORT). The input is accepted but
+        the output will only contain 'capabilities'.
+        """
         with pytest.raises(AssemblyError) as exc_info:
             assemble_candidate(
                 {
@@ -113,7 +147,11 @@ class TestAssembleCandidateBehavior:
         assert "tools" not in result
 
     def test_tools_input_backward_compat(self):
-        """Tools field (deprecated) should still work for backward compat."""
+        """Tools field (deprecated) should still work for backward compat.
+
+        INTENTIONAL TRANSITION SUPPORT: 'tools' in assembly input is accepted
+        but the output contains only 'capabilities'.
+        """
         result = assemble_candidate(
             {
                 "id": "persona",
@@ -138,7 +176,11 @@ class TestAssembleCandidateBehavior:
         assert "tools" not in result
 
     def test_capabilities_merges_with_tools_across_toolsets(self):
-        """Capabilities from one toolset should merge with tools from another."""
+        """Capabilities from one toolset should merge with tools from another.
+
+        INTENTIONAL TRANSITION SUPPORT: 'tools' in one toolset is read as
+        transition-era input and merged into 'capabilities' in output.
+        """
         result = assemble_candidate(
             {
                 "id": "persona",
@@ -181,29 +223,108 @@ class TestAssembleCandidateBehavior:
         assert exc_info.value.code == "COMPONENT_CONFLICT"
         assert "Contradictory posture" in exc_info.value.message
 
+    def test_output_never_contains_tools_key(self):
+        """Assembly output must never contain 'tools' — ADR-002.
+
+        Even when tools is provided as input, the output only contains 'capabilities'.
+        """
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [{"tools": {"read": "read_only"}}],
+            }
+        )
+        assert "tools" not in result, (
+            "Assembly output must not contain 'tools'; forbidden at canonical admission per ADR-002"
+        )
+
+    def test_output_never_contains_side_effect_policy(self):
+        """Assembly output must never contain 'side_effect_policy' — ADR-002."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "toolsets": [{"capabilities": {"read": "read_only"}}],
+            }
+        )
+        assert "side_effect_policy" not in result, (
+            "Assembly output must not contain 'side_effect_policy'; "
+            "forbidden at canonical admission per ADR-002"
+        )
+
+    def test_forbidden_override_field_rejected(self):
+        """Assembly must reject 'tools' in overrides — forbidden at canonical boundary."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "overrides": {"tools": {"read": "read_only"}},
+                }
+            )
+        assert exc_info.value.code == "FORBIDDEN_OVERRIDE_FIELD"
+
+    def test_forbidden_side_effect_policy_override_rejected(self):
+        """Assembly must reject 'side_effect_policy' in overrides — forbidden."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "overrides": {"side_effect_policy": "allow"},
+                }
+            )
+        assert exc_info.value.code == "FORBIDDEN_OVERRIDE_FIELD"
+
 
 class TestTypedDictShapes:
-    """Test that TypedDict shapes match expected contracts from spec.py."""
+    """Test that TypedDict shapes match expected contracts from spec.py — canonical authority.
+
+    Per ADR-002 and spec.py:
+    - ToolsetComponent has only 'capabilities' (Required)
+    - ConstraintComponent has 'can_spawn' and 'compaction_prompt' (total=False)
+    - PromptComponent has 'text'
+    - ModelComponent has 'model' and 'model_params' (total=False)
+    """
 
     def test_prompt_component_has_text(self):
         """PromptComponent should have 'text' field per spec."""
         prompt: PromptComponent = {"text": "You are a helpful assistant"}
         assert prompt["text"] == "You are a helpful assistant"
 
-    def test_toolset_component_has_tools(self):
-        """ToolsetComponent should have 'tools' field per spec."""
-        toolset: ToolsetComponent = {"tools": {"read": "read_only", "write": "read_write"}}
-        assert toolset["tools"]["read"] == "read_only"
+    def test_toolset_component_has_capabilities(self):
+        """ToolsetComponent should have 'capabilities' field — canonical (ADR-002).
+
+        Per ADR-002, the canonical ToolsetComponent has only 'capabilities'.
+        'tools' is NOT a ToolsetComponent field.
+        """
+        from larva.core.spec import ToolPosture
+
+        capabilities: dict[str, ToolPosture] = {"read": "read_only", "write": "read_write"}
+        toolset: ToolsetComponent = {"capabilities": capabilities}
+        assert toolset["capabilities"]["read"] == "read_only"
+
+    def test_toolset_component_no_tools_key_in_annotations(self):
+        """ToolsetComponent annotations must NOT contain 'tools' — ADR-002 canonical."""
+        assert "tools" not in ToolsetComponent.__annotations__, (
+            "'tools' must not be in ToolsetComponent annotations; use 'capabilities' per ADR-002"
+        )
 
     def test_constraint_component_fields(self):
-        """ConstraintComponent should have can_spawn, side_effect_policy, compaction_prompt."""
+        """ConstraintComponent should have can_spawn and compaction_prompt only.
+
+        Per ADR-002: side_effect_policy is NOT a ConstraintComponent field;
+        it is rejected at canonical admission.
+        """
         constraint: ConstraintComponent = {
             "can_spawn": True,
-            "side_effect_policy": "approval_required",
             "compaction_prompt": "Summarize the conversation",
         }
         assert constraint["can_spawn"] is True
-        assert constraint["side_effect_policy"] == "approval_required"
+
+    def test_constraint_component_no_side_effect_policy(self):
+        """ConstraintComponent annotations must NOT contain 'side_effect_policy' — ADR-002."""
+        assert "side_effect_policy" not in ConstraintComponent.__annotations__, (
+            "'side_effect_policy' must not be in ConstraintComponent; "
+            "rejected at canonical admission per ADR-002"
+        )
 
     def test_model_component_fields(self):
         """ModelComponent should have model and model_params fields."""
@@ -222,7 +343,6 @@ class TestTypedDictShapes:
 
     def test_assembly_input_all_fields_optional(self):
         """AssemblyInput should have total=False (all fields optional)."""
-        # Empty dict should be valid for AssemblyInput
         data: AssemblyInput = {}
         assert isinstance(data, dict)
 
@@ -247,7 +367,7 @@ class TestTypedDictShapes:
         """AssemblyInput should support 'toolsets' field as list[ToolsetComponent]."""
         data: AssemblyInput = {
             "id": "test",
-            "toolsets": [{"tools": {"read": "read_only"}}],
+            "toolsets": [{"capabilities": {"read": "read_only"}}],
         }
         assert len(data["toolsets"]) == 1
 
@@ -261,10 +381,8 @@ class TestTypedDictShapes:
 
     def test_assembly_input_supports_model(self):
         """AssemblyInput should support 'model' field as ModelComponent | str."""
-        # String form
         data1: AssemblyInput = {"id": "test", "model": "gpt-4"}
         assert data1["model"] == "gpt-4"
-        # Dict form
         data2: AssemblyInput = {"id": "test", "model": {"model": "gpt-4"}}
         assert data2["model"]["model"] == "gpt-4"
 
@@ -285,12 +403,12 @@ class TestTypedDictShapes:
         assert data["variables"]["name"] == "Alice"
 
     def test_assembly_input_full_example(self):
-        """AssemblyInput should accept a complete example per spec."""
+        """AssemblyInput should accept a complete example per spec — canonical shape."""
         data: AssemblyInput = {
             "id": "full-test-persona",
             "prompts": [{"text": "system-prompt"}, {"text": "user-prompt"}],
-            "toolsets": [{"tools": {"read": "read_only"}}],
-            "constraints": [{"can_spawn": True, "side_effect_policy": "allow"}],
+            "toolsets": [{"capabilities": {"read": "read_only"}}],
+            "constraints": [{"can_spawn": True}],
             "model": {"model": "gpt-4", "model_params": {"temperature": 0.5}},
             "overrides": {"temperature": 0.7},
             "variables": {"agent_name": "TestBot"},

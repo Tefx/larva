@@ -1,16 +1,61 @@
-"""Contract-focused tests for larva.core.spec.
+"""Canonical contract tests for larva.core.spec.
 
-These tests verify the type contracts defined in the spec module:
-- Literal domains for ToolPosture and SideEffectPolicy
-- PersonaSpec structure (total=False, documented fields)
-- spec_version pinned to Literal["0.1.0"]
-- Import/usage checks proving consumability by downstream modules
+These tests express the frozen authority for the PersonaSpec type shape,
+as established by ADR-002 (capabilities is sole declaration surface; tools
+rejected at canonical admission), ADR-003 (canonical requiredness authority),
+and the opifex canonical authority basis.
+
+Canonical contract (per validate.py CANONICAL_*_FIELDS):
+- Required: id, description, prompt, model, capabilities, spec_version
+- Optional: model_params, can_spawn, compaction_prompt, spec_digest, variables
+- Forbidden: tools, side_effect_policy
+- Unknown top-level fields: forbidden at canonical admission
+
+Where tests reference transition-era behaviour (assembly input shapes,
+normalise input compat), they are explicitly annotated as INTENTIONAL
+TRANSITION SUPPORT.
 """
 
-import sys
-from typing import TypedDict
-
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Canonical fixtures
+# ---------------------------------------------------------------------------
+
+# At least one fixture per external format must match the exact documented
+# canonical shape without convenience fields.  This fixture is the single
+# source of truth for downstream test consumers.
+
+CANONICAL_PERSONA_SPEC_MINIMAL: dict = {
+    "id": "canonical-fixture",
+    "description": "Canonical fixture — minimal required-only shape",
+    "prompt": "You are a canonical test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0",
+}
+"""Exact canonical shape: required fields only, no optional fields,
+no forbidden fields, no convenience aliases."""
+
+CANONICAL_PERSONA_SPEC_FULL: dict = {
+    "id": "canonical-fixture-full",
+    "description": "Canonical fixture — all optional fields present",
+    "prompt": "You are a canonical test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only", "git": "read_write"},
+    "model_params": {"temperature": 0.7},
+    "can_spawn": True,
+    "compaction_prompt": "Summarise the conversation.",
+    "spec_version": "0.1.0",
+    "spec_digest": "sha256:" + "a" * 64,
+}
+"""Canonical shape: required plus every optional field.  No forbidden fields."""
+
+
+# ---------------------------------------------------------------------------
+# ToolPosture literal domain
+# ---------------------------------------------------------------------------
 
 
 class TestToolPostureLiteralDomain:
@@ -19,7 +64,6 @@ class TestToolPostureLiteralDomain:
     def test_tool_posture_accepts_none(self) -> None:
         """Assert 'none' is a valid ToolPosture value."""
         posture: str = "none"
-        # Verify it matches expected literal
         assert posture in ("none", "read_only", "read_write", "destructive")
 
     def test_tool_posture_accepts_read_only(self) -> None:
@@ -49,8 +93,18 @@ class TestToolPostureLiteralDomain:
         assert len(domain) == 4
 
 
+# ---------------------------------------------------------------------------
+# SideEffectPolicy — retained as compatibility type alias, NOT a PersonaSpec field
+# ---------------------------------------------------------------------------
+
+
 class TestSideEffectPolicyLiteralDomain:
-    """Tests for SideEffectPolicy type alias literal domain."""
+    """Tests for SideEffectPolicy type alias literal domain.
+
+    SideEffectPolicy is retained as a compatibility type alias outside canonical
+    PersonaSpec admission.  It is NOT a PersonaSpec field; it is forbidden at
+    the canonical boundary per ADR-002 / ADR-003.
+    """
 
     def test_side_effect_policy_accepts_allow(self) -> None:
         """Assert 'allow' is a valid SideEffectPolicy value."""
@@ -79,21 +133,34 @@ class TestSideEffectPolicyLiteralDomain:
         assert len(domain) == 3
 
 
+# ---------------------------------------------------------------------------
+# PersonaSpec structure — canonical authority
+# ---------------------------------------------------------------------------
+
+
 class TestPersonaSpecStructure:
-    """Tests for PersonaSpec TypedDict structure."""
+    """Tests for PersonaSpec TypedDict structure — canonical authority.
+
+    Per ADR-003 and the opifex authority basis:
+    - Required keys: id, description, prompt, model, capabilities, spec_version
+    - Optional keys: model_params, can_spawn, compaction_prompt, spec_digest
+    - Forbidden: tools, side_effect_policy (and any unknown top-level field)
+    """
 
     def test_persona_spec_is_typeddict(self) -> None:
         """Assert PersonaSpec is a TypedDict subclass."""
         from larva.core.spec import PersonaSpec
 
-        # TypedDict has __required_keys__ and __optional_keys__ attributes
-        # and inherits from dict in Python 3.12+
         assert hasattr(PersonaSpec, "__required_keys__")
         assert hasattr(PersonaSpec, "__optional_keys__")
         assert hasattr(PersonaSpec, "__annotations__")
 
-    def test_persona_spec_is_optional_key_total_false(self) -> None:
-        """Assert PersonaSpec has canonical required key set."""
+    def test_persona_spec_has_canonical_required_keys(self) -> None:
+        """Assert PersonaSpec required keys match canonical admission boundary.
+
+        Per ADR-003: required = {id, description, prompt, model, capabilities,
+        spec_version}.  capabilities is required, not optional.
+        """
         from larva.core.spec import PersonaSpec
 
         assert PersonaSpec.__required_keys__ == {
@@ -105,8 +172,30 @@ class TestPersonaSpecStructure:
             "spec_version",
         }
 
+    def test_persona_spec_has_canonical_optional_keys(self) -> None:
+        """Assert PersonaSpec optional keys match canonical admission boundary.
+
+        Per ADR-003: optional = {model_params, can_spawn, compaction_prompt,
+        spec_digest}.  Note: variables is NOT a PersonaSpec field — it is an
+        assembly-time concept only.
+        """
+        from larva.core.spec import PersonaSpec
+
+        assert PersonaSpec.__optional_keys__ == {
+            "model_params",
+            "can_spawn",
+            "compaction_prompt",
+            "spec_digest",
+        }
+
     def test_persona_spec_exposes_all_documented_fields(self) -> None:
-        """Assert PersonaSpec exposes canonical fields (10 total)."""
+        """Assert PersonaSpec exposes canonical fields (9 total).
+
+        Canonical fields: id, description, prompt, model, capabilities,
+        spec_version, model_params, can_spawn, compaction_prompt, spec_digest.
+        Note: 9 annotations because spec_version is Required[Literal["0.1.0"]]
+        which counts as one annotation key.
+        """
         from larva.core.spec import PersonaSpec
 
         expected_fields = {
@@ -126,11 +215,29 @@ class TestPersonaSpecStructure:
         assert actual_fields == expected_fields
 
     def test_persona_spec_field_count(self) -> None:
-        """Assert PersonaSpec has exactly 10 canonical fields."""
+        """Assert PersonaSpec has exactly 10 canonical fields (6 required + 4 optional)."""
         from larva.core.spec import PersonaSpec
 
         field_count = len(PersonaSpec.__annotations__)
         assert field_count == 10
+
+    def test_tools_not_in_persona_spec_annotations(self) -> None:
+        """Assert 'tools' is NOT a PersonaSpec annotation — forbidden at canonical admission."""
+        from larva.core.spec import PersonaSpec
+
+        assert "tools" not in PersonaSpec.__annotations__, (
+            "'tools' is forbidden at canonical admission and must not appear "
+            "in PersonaSpec type annotations"
+        )
+
+    def test_side_effect_policy_not_in_persona_spec_annotations(self) -> None:
+        """Assert 'side_effect_policy' is NOT a PersonaSpec annotation — forbidden."""
+        from larva.core.spec import PersonaSpec
+
+        assert "side_effect_policy" not in PersonaSpec.__annotations__, (
+            "'side_effect_policy' is forbidden at canonical admission and must "
+            "not appear in PersonaSpec type annotations"
+        )
 
 
 class TestSpecVersion:
@@ -150,7 +257,6 @@ class TestSpecVersion:
 
     def test_spec_version_value_pinned(self) -> None:
         """Assert spec_version value is pinned to '0.1.0'."""
-        # The literal type should only allow "0.1.0"
         valid_version = "0.1.0"
         assert valid_version == "0.1.0"
 
@@ -160,11 +266,16 @@ class TestSpecVersion:
             assert invalid != "0.1.0"
 
 
+# ---------------------------------------------------------------------------
+# Import consumability — canonical exports
+# ---------------------------------------------------------------------------
+
+
 class TestImportConsumability:
-    """Tests proving the contract is consumable by downstream modules."""
+    """Tests proving the canonical contract is consumable by downstream modules."""
 
     def test_imports_from_core_spec(self) -> None:
-        """Assert all expected symbols are importable from larva.core.spec."""
+        """Assert canonical symbols are importable from larva.core.spec."""
         from larva.core.spec import (
             PersonaSpec,
             SideEffectPolicy,
@@ -187,7 +298,6 @@ class TestImportConsumability:
         """Assert all public symbols are in __all__."""
         import larva.core.spec as spec_module
 
-        # __all__ should contain all public types exported by the module
         expected_all = {
             "AssemblyInput",
             "ConstraintComponent",
@@ -200,175 +310,177 @@ class TestImportConsumability:
         }
         assert set(spec_module.__all__) == expected_all
 
-    def test_persona_spec_instantiation_with_empty_dict(self) -> None:
-        """Assert PersonaSpec can be instantiated with empty dict (total=False)."""
+    def test_canonical_minimal_fixture_is_valid_typed_dict(self) -> None:
+        """Assert CANONICAL_PERSONA_SPEC_MINIMAL satisfies PersonaSpec shape.
+
+        This is the spec-fixture conformance test: the minimal fixture must
+        match the exact documented canonical shape without convenience fields.
+        """
         from larva.core.spec import PersonaSpec
 
-        # With total=False, empty dict should be valid
-        spec: PersonaSpec = {}
-        assert spec == {}
+        spec: PersonaSpec = CANONICAL_PERSONA_SPEC_MINIMAL  # type: ignore[assignment]
+        assert spec["id"] == "canonical-fixture"
+        assert spec["description"] == "Canonical fixture — minimal required-only shape"
+        assert spec["prompt"] == "You are a canonical test persona."
+        assert spec["model"] == "gpt-4o-mini"
+        assert spec["capabilities"]["shell"] == "read_only"
+        assert spec["spec_version"] == "0.1.0"
+        # No forbidden fields
+        assert "tools" not in spec
+        assert "side_effect_policy" not in spec
 
-    def test_persona_spec_instantiation_with_partial_fields(self) -> None:
-        """Assert PersonaSpec accepts partial field specification."""
+    def test_canonical_full_fixture_is_valid_typed_dict(self) -> None:
+        """Assert CANONICAL_PERSONA_SPEC_FULL satisfies PersonaSpec shape.
+
+        This fixture includes all optional canonical fields.
+        """
         from larva.core.spec import PersonaSpec
 
-        # Partial spec - only required fields
-        spec: PersonaSpec = {
-            "id": "test-persona",
-            "prompt": "You are a helpful assistant",
-        }
-        assert spec["id"] == "test-persona"
-        assert spec["prompt"] == "You are a helpful assistant"
+        spec: PersonaSpec = CANONICAL_PERSONA_SPEC_FULL  # type: ignore[assignment]
+        assert spec["id"] == "canonical-fixture-full"
+        assert spec["model_params"]["temperature"] == 0.7
+        assert spec["can_spawn"] is True
+        assert spec["compaction_prompt"] == "Summarise the conversation."
+        assert spec["spec_digest"].startswith("sha256:")
+        # No forbidden fields
+        assert "tools" not in spec
+        assert "side_effect_policy" not in spec
 
-    def test_persona_spec_instantiation_with_all_fields(self) -> None:
-        """Assert PersonaSpec accepts full field specification with capabilities."""
+    def test_persona_spec_no_forbidden_keys_at_runtime(self) -> None:
+        """Assert PersonaSpec TypedDict does not accept forbidden keys at type level.
+
+        tools and side_effect_policy are not in __annotations__ or __required_keys__
+        or __optional_keys__.  This test confirms the frozen contract.
+        """
         from larva.core.spec import PersonaSpec
 
-        spec: PersonaSpec = {
-            "id": "test-persona",
-            "description": "A test persona",
-            "prompt": "You are helpful",
-            "model": "gpt-4",
-            "capabilities": {"web_search": "read_only", "file_write": "destructive"},
-            "tools": {"web_search": "read_only", "file_write": "destructive"},
-            "model_params": {"temperature": 0.7},
-            "side_effect_policy": "approval_required",
-            "can_spawn": True,
-            "compaction_prompt": "Summarize the conversation",
-            "spec_version": "0.1.0",
-            "spec_digest": "abc123",
-        }
-        assert spec["id"] == "test-persona"
-        assert spec["capabilities"]["web_search"] == "read_only"
-        assert spec["tools"]["web_search"] == "read_only"
-        assert spec["side_effect_policy"] == "approval_required"
+        all_keys = PersonaSpec.__required_keys__ | PersonaSpec.__optional_keys__
+        assert "tools" not in all_keys, (
+            "'tools' must not be a PersonaSpec key at canonical admission"
+        )
+        assert "side_effect_policy" not in all_keys, (
+            "'side_effect_policy' must not be a PersonaSpec key at canonical admission"
+        )
 
-    def test_tool_posture_in_dict_value(self) -> None:
-        """Assert ToolPosture can be used as dict value type."""
+    def test_capabilities_in_dict_value(self) -> None:
+        """Assert ToolPosture can be used as dict value type for capabilities."""
         from larva.core.spec import PersonaSpec, ToolPosture
 
-        tools: dict[str, ToolPosture] = {
+        capabilities: dict[str, ToolPosture] = {
             "read": "read_only",
             "write": "read_write",
             "delete": "destructive",
         }
-        spec: PersonaSpec = {"tools": tools}
-        assert spec["tools"]["read"] == "read_only"
+        spec: PersonaSpec = {"id": "test", "capabilities": capabilities}
+        assert spec["capabilities"]["read"] == "read_only"
 
-    def test_side_effect_policy_in_spec(self) -> None:
-        """Assert SideEffectPolicy can be assigned to PersonaSpec field."""
-        from larva.core.spec import PersonaSpec, SideEffectPolicy
 
-        policy: SideEffectPolicy = "approval_required"
-        spec: PersonaSpec = {"side_effect_policy": policy}
-        assert spec["side_effect_policy"] == "approval_required"
+# ---------------------------------------------------------------------------
+# Capabilities field — canonical surface
+# ---------------------------------------------------------------------------
 
 
 class TestCapabilitiesField:
-    """Tests for the new capabilities field in PersonaSpec and related types."""
+    """Tests for the canonical capabilities field in PersonaSpec."""
 
     def test_capabilities_field_accepts_tool_postures(self) -> None:
-        """Assert PersonaSpec with capabilities: {'filesystem': 'read_write'} is valid TypedDict usage."""
+        """Assert PersonaSpec with capabilities: {'filesystem': 'read_write'} is valid."""
         from larva.core.spec import PersonaSpec, ToolPosture
 
         capabilities: dict[str, ToolPosture] = {"filesystem": "read_write"}
         spec: PersonaSpec = {"id": "test", "capabilities": capabilities}
         assert spec["capabilities"]["filesystem"] == "read_write"
 
-    def test_capabilities_field_coexists_with_tools(self) -> None:
-        """Assert PersonaSpec can have both tools and capabilities during transition."""
+    def test_tools_not_in_persona_spec_field_set(self) -> None:
+        """Assert 'tools' is NOT a PersonaSpec key — ADR-002 canonical contract.
+
+        Per ADR-002, capabilities is the sole canonical declaration surface.
+        'tools' is forbidden at canonical admission and must not appear as a
+        PersonaSpec type field.
+        """
         from larva.core.spec import PersonaSpec
 
-        spec: PersonaSpec = {
-            "id": "test-persona",
-            "prompt": "You are helpful",
-            "capabilities": {"web_search": "read_only", "filesystem": "read_write"},
-            "tools": {"web_search": "read_only", "filesystem": "read_write"},
-        }
-        assert spec["capabilities"]["web_search"] == "read_only"
-        assert spec["tools"]["web_search"] == "read_only"
-        # Both fields should be independent
-        assert "capabilities" in spec
-        assert "tools" in spec
+        all_keys = PersonaSpec.__required_keys__ | PersonaSpec.__optional_keys__
+        assert "tools" not in all_keys
 
 
-class TestToolsetComponentCapabilities:
-    """Tests for ToolsetComponent capabilities field and backward compat."""
+# ---------------------------------------------------------------------------
+# ToolsetComponent — canonical shape (capabilities-only)
+# ---------------------------------------------------------------------------
+
+
+class TestToolsetComponentCanonicalShape:
+    """Tests for ToolsetComponent canonical shape — ADR-002 authority.
+
+    Per ADR-002 and spec.py docstring: ``ToolsetComponent`` has only the
+    ``capabilities`` field as Required.  The ``tools`` key existed in
+    transition-era shapes but is NOT part of the canonical TypedDict.
+
+    Assembly input (ToolsetComponent dicts with a ``tools`` key) is a
+    transition-era compat surface handled by ``assemble_candidate``, not by
+    the type definition.
+    """
 
     def test_toolset_component_has_capabilities(self) -> None:
-        """Assert ToolsetComponent accepts capabilities key."""
+        """Assert ToolsetComponent requires capabilities key."""
         from larva.core.spec import ToolsetComponent, ToolPosture
 
         capabilities: dict[str, ToolPosture] = {"search": "read_only", "fs": "read_write"}
         toolset: ToolsetComponent = {"capabilities": capabilities}
         assert toolset["capabilities"]["search"] == "read_only"
 
-    def test_toolset_component_backward_compat_tools(self) -> None:
-        """Assert ToolsetComponent still accepts tools key."""
-        from larva.core.spec import ToolsetComponent, ToolPosture
-
-        tools: dict[str, ToolPosture] = {"search": "read_only", "fs": "read_write"}
-        toolset: ToolsetComponent = {"tools": tools}
-        assert toolset["tools"]["search"] == "read_only"
-
     def test_toolset_component_capabilities_only_shape(self) -> None:
-        """Assert ToolsetComponent accepts capabilities-only shape (ADR-002 canonical)."""
+        """Assert ToolsetComponent canonical shape is capabilities-only (ADR-002)."""
         from larva.core.spec import ToolsetComponent, ToolPosture
 
         # Per ADR-002: capabilities is the canonical field
-        # ToolsetComponent should accept capabilities-only without requiring tools
         capabilities: dict[str, ToolPosture] = {"filesystem": "read_write", "git": "read_only"}
         toolset: ToolsetComponent = {"capabilities": capabilities}
         assert "capabilities" in toolset
-        assert "tools" not in toolset  # tools field should be absent, not present with empty
+        assert "tools" not in toolset
 
-    def test_toolset_component_tools_only_shape(self) -> None:
-        """Assert ToolsetComponent accepts tools-only shape (backward compat)."""
-        from larva.core.spec import ToolsetComponent, ToolPosture
-
-        # During transition, tools-only is acceptable for backward compatibility
-        tools: dict[str, ToolPosture] = {"web_search": "read_only", "file_ops": "destructive"}
-        toolset: ToolsetComponent = {"tools": tools}
-        assert "tools" in toolset
-        assert "capabilities" not in toolset  # capabilities field should be absent
-
-    def test_toolset_component_both_fields_shape(self) -> None:
-        """Assert ToolsetComponent accepts both capabilities and tools together."""
-        from larva.core.spec import ToolsetComponent, ToolPosture
-
-        # During transition, both fields may coexist
-        capabilities: dict[str, ToolPosture] = {"filesystem": "read_write"}
-        tools: dict[str, ToolPosture] = {"filesystem": "read_write"}
-        toolset: ToolsetComponent = {"capabilities": capabilities, "tools": tools}
-        assert "capabilities" in toolset
-        assert "tools" in toolset
-
-    def test_toolset_component_is_total_false(self) -> None:
-        """Assert ToolsetComponent requires canonical capabilities key."""
+    def test_toolset_component_required_keys_is_capabilities_only(self) -> None:
+        """Assert ToolsetComponent __required_keys__ is {'capabilities'}."""
         from larva.core.spec import ToolsetComponent
 
         assert ToolsetComponent.__required_keys__ == {"capabilities"}
 
-    def test_toolset_component_empty_dict_valid(self) -> None:
-        """Assert ToolsetComponent accepts empty dict (all fields optional per total=False)."""
+    def test_toolset_component_annotations_is_capabilities_only(self) -> None:
+        """Assert ToolsetComponent annotations contain only 'capabilities'.
+
+        The canonical ToolsetComponent has exactly one annotation key:
+        'capabilities'.  The 'tools' key is NOT part of this TypedDict.
+        """
         from larva.core.spec import ToolsetComponent
 
-        # With total=False, empty dict is technically valid
-        # (Runtime validation elsewhere should enforce at least one field)
-        toolset: ToolsetComponent = {}
-        assert toolset == {}
+        assert set(ToolsetComponent.__annotations__.keys()) == {"capabilities"}
+
+    def test_toolset_component_has_no_tools_key(self) -> None:
+        """Assert 'tools' is NOT in ToolsetComponent annotations — canonical authority.
+
+        Per ADR-002: capabilities is the canonical surface; tools only exists
+        as a transition-era input shape for assembly, not in ToolsetComponent.
+        """
+        from larva.core.spec import ToolsetComponent
+
+        assert "tools" not in ToolsetComponent.__annotations__, (
+            "'tools' must not appear in ToolsetComponent annotations; "
+            "use 'capabilities' per ADR-002"
+        )
 
 
-class TestConstraintComponentBackwardCompat:
-    """Tests for ConstraintComponent backward compatibility during transition."""
+# ---------------------------------------------------------------------------
+# ConstraintComponent — canonical shape (can_spawn, compaction_prompt only)
+# ---------------------------------------------------------------------------
 
-    def test_constraint_component_still_accepts_side_effect_policy(self) -> None:
-        """Assert ConstraintComponent still works with side_effect_policy (backward compat during transition)."""
-        from larva.core.spec import ConstraintComponent, SideEffectPolicy
 
-        policy: SideEffectPolicy = "allow"
-        constraint: ConstraintComponent = {"side_effect_policy": policy}
-        assert constraint["side_effect_policy"] == "allow"
+class TestConstraintComponentCanonicalShape:
+    """Tests for ConstraintComponent canonical shape — ADR-002 authority.
+
+    Per spec.py docstring: ``ConstraintComponent`` has ``can_spawn`` and
+    ``compaction_prompt`` only (total=False).  The ``side_effect_policy``
+    key is NOT part of the canonical ConstraintComponent.
+    """
 
     def test_constraint_component_accepts_can_spawn(self) -> None:
         """Assert ConstraintComponent accepts can_spawn field."""
@@ -386,6 +498,37 @@ class TestConstraintComponentBackwardCompat:
 
         constraint: ConstraintComponent = {"compaction_prompt": "Summarize the state"}
         assert constraint["compaction_prompt"] == "Summarize the state"
+
+    def test_constraint_component_annotations_are_canonical(self) -> None:
+        """Assert ConstraintComponent annotations match canonical shape.
+
+        Canonical: can_spawn and compaction_prompt only.
+        side_effect_policy is NOT in ConstraintComponent.
+        """
+        from larva.core.spec import ConstraintComponent
+
+        assert set(ConstraintComponent.__annotations__.keys()) == {
+            "can_spawn",
+            "compaction_prompt",
+        }
+
+    def test_constraint_component_has_no_side_effect_policy(self) -> None:
+        """Assert 'side_effect_policy' is NOT in ConstraintComponent annotations.
+
+        Per ADR-002: side_effect_policy is rejected at canonical admission.
+        It is NOT a ConstraintComponent field.
+        """
+        from larva.core.spec import ConstraintComponent
+
+        assert "side_effect_policy" not in ConstraintComponent.__annotations__, (
+            "'side_effect_policy' must not appear in ConstraintComponent; "
+            "rejected at canonical admission per ADR-002"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Capabilities with all ToolPosture values — canonical surface
+# ---------------------------------------------------------------------------
 
 
 class TestCapabilitiesWithAllToolPostures:

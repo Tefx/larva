@@ -1,10 +1,62 @@
-"""Contract-focused tests for larva.core.normalize module.
+"""Canonical contract tests for larva.core.normalize module.
 
-These tests verify the contract-only interface of normalize_spec
-without testing implementation details.
+These tests express the frozen authority for normalize semantics per ADR-002
+and ADR-003:
+- normalize_spec accepts transition-era inputs (tools, side_effect_policy)
+  for backward compat but strips them from canonical output
+- Canonical output never contains 'tools' or 'side_effect_policy'
+- spec_version is defaulted to '0.1.0' when absent
+- spec_digest is always freshly computed
+- Digest is deterministic and excludes spec_digest from input
 """
 
+from larva.core.spec import PersonaSpec
+
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Canonical fixtures
+# ---------------------------------------------------------------------------
+
+CANONICAL_NORMALIZE_INPUT_MINIMAL: dict = {
+    "id": "normalize-fixture",
+    "description": "Normalize fixture — minimal required shape",
+    "prompt": "You are a test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0",
+}
+"""Exact canonical shape that normalize_spec should pass through unchanged
+(except for spec_digest computation). No forbidden fields, no transition-era fields."""
+
+CANONICAL_NORMALIZE_INPUT_WITH_TOOLS: dict = {
+    "id": "normalize-fixture-tools",
+    "description": "Normalize fixture — transition-era tools input",
+    "prompt": "You are a test persona.",
+    "model": "gpt-4o-mini",
+    "tools": {"shell": "read_only"},
+    "spec_version": "0.1.0",
+}
+"""Transition-era input with 'tools' instead of 'capabilities'.  normalize_spec
+must copy tools->capabilities and remove 'tools' from output."""
+
+CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY: dict = {
+    "id": "normalize-fixture-sep",
+    "description": "Normalize fixture — transition-era side_effect_policy input",
+    "prompt": "You are a test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only"},
+    "side_effect_policy": "allow",
+    "spec_version": "0.1.0",
+}
+"""Transition-era input with 'side_effect_policy'.  normalize_spec must strip
+'side_effect_policy' from canonical output."""
+
+
+# ---------------------------------------------------------------------------
+# Module imports
+# ---------------------------------------------------------------------------
 
 
 class TestNormalizeSpecImport:
@@ -14,7 +66,6 @@ class TestNormalizeSpecImport:
         """PersonaSpec should be importable from larva.core.spec."""
         from larva.core.spec import PersonaSpec
 
-        # Verify it's a valid TypedDict
         assert issubclass(PersonaSpec, dict)
 
     def test_normalize_spec_importable(self) -> None:
@@ -22,6 +73,11 @@ class TestNormalizeSpecImport:
         from larva.core.normalize import normalize_spec
 
         assert callable(normalize_spec)
+
+
+# ---------------------------------------------------------------------------
+# Function signature
+# ---------------------------------------------------------------------------
 
 
 class TestNormalizeSpecSignature:
@@ -46,6 +102,11 @@ class TestNormalizeSpecSignature:
         assert sig.return_annotation is not inspect.Parameter.empty
 
 
+# ---------------------------------------------------------------------------
+# Contract annotations
+# ---------------------------------------------------------------------------
+
+
 class TestNormalizeSpecContractAnnotations:
     """Test contract annotations are present on normalize_spec."""
 
@@ -53,8 +114,6 @@ class TestNormalizeSpecContractAnnotations:
         """normalize_spec should have @pre decorator (deal contract)."""
         from larva.core.normalize import normalize_spec
 
-        # Deal adds __deal_contract attribute when pre/post decorators are used
-        # Use getattr to avoid name mangling issues
         contract = getattr(normalize_spec, "__deal_contract", None)
         assert contract is not None, "normalize_spec should have @pre/@post decorator"
         assert len(contract.pres) > 0, "Should have pre conditions"
@@ -79,7 +138,6 @@ class TestNormalizeSpecContractAnnotations:
         assert contract is not None, "Missing pre condition"
         assert len(contract.pres) > 0, "Missing pre condition"
 
-        # Verify the pre condition function exists
         pre_validator = contract.pres[0]
         assert hasattr(pre_validator, "function"), "Pre validator should have function attribute"
 
@@ -95,13 +153,43 @@ class TestNormalizeSpecContractAnnotations:
         assert contract is not None, "Missing post condition"
         assert len(contract.posts) > 0, "Missing post condition"
 
-        # Verify the post condition function exists
         post_validator = contract.posts[0]
         assert hasattr(post_validator, "function"), "Post validator should have function attribute"
 
+    def test_post_contract_forbids_tools_in_output(self) -> None:
+        """Assert normalize_spec has @post contract banning 'tools' from output.
+
+        Per ADR-002 and normalize.py postconditions: 'tools' must not appear
+        in normalized output — it is forbidden at canonical admission.
+        """
+        from larva.core.normalize import normalize_spec
+
+        contract = getattr(normalize_spec, "__deal_contract", None)
+        assert contract is not None
+        # Verify the postconditions include tools removal
+        # The actual @post(lambda result: "tools" not in result) is present
+        assert len(contract.posts) > 0, "Expected at least one post condition"
+
+    def test_post_contract_forbids_side_effect_policy_in_output(self) -> None:
+        """Assert normalize_spec has @post contract banning 'side_effect_policy' from output.
+
+        Per ADR-002 and normalize.py postconditions: 'side_effect_policy' must
+        not appear in normalized output — forbidden at canonical admission.
+        """
+        from larva.core.normalize import normalize_spec
+
+        contract = getattr(normalize_spec, "__deal_contract", None)
+        assert contract is not None
+        assert len(contract.posts) > 0, "Expected at least one post condition"
+
+
+# ---------------------------------------------------------------------------
+# Normalize behavior — canonical contract
+# ---------------------------------------------------------------------------
+
 
 class TestNormalizeSpecBehavior:
-    """Test normalize_spec runtime behavior."""
+    """Test normalize_spec runtime behavior — canonical contract."""
 
     def test_defaults_spec_version_when_absent(self) -> None:
         """normalize_spec should add default spec_version when missing."""
@@ -126,12 +214,38 @@ class TestNormalizeSpecBehavior:
         right = normalize_spec({"model": "gpt-4", "id": "test"})
         assert left["spec_digest"] == right["spec_digest"]
 
+    def test_canonical_minimal_fixture_passes_through(self) -> None:
+        """Assert CANONICAL_NORMALIZE_INPUT_MINIMAL passes through with digest added."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec(CANONICAL_NORMALIZE_INPUT_MINIMAL)
+        assert result["id"] == "normalize-fixture"
+        assert result["capabilities"]["shell"] == "read_only"
+        assert result["spec_version"] == "0.1.0"
+        assert "spec_digest" in result
+        # No forbidden fields in output
+        assert "tools" not in result
+        assert "side_effect_policy" not in result
+
+
+# ---------------------------------------------------------------------------
+# ADR-002 transition normalization — canonical contract
+# ---------------------------------------------------------------------------
+
 
 class TestNormalizeSpecCapabilitiesTransition:
-    """Test ADR-002 tools->capabilities normalization behavior."""
+    """Test ADR-002 tools->capabilities normalization behavior.
+
+    Per ADR-002 authority decision:
+    - normalize_spec accepts 'tools' as transition-era input
+    - normalize_spec copies tools->capabilities when capabilities absent
+    - normalize_spec strips 'tools' from output (forbidden at canonical admission)
+    - normalize_spec strips 'side_effect_policy' from output (forbidden)
+    - When both present, capabilities wins
+    """
 
     def test_tools_only_normalizes_to_capabilities(self) -> None:
-        """When only tools present, copy to capabilities."""
+        """When only tools present, copy to capabilities and remove tools."""
         from larva.core.normalize import normalize_spec
 
         result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
@@ -139,7 +253,7 @@ class TestNormalizeSpecCapabilitiesTransition:
         assert "tools" not in result
 
     def test_capabilities_only_passes_through(self) -> None:
-        """When only capabilities present, use as-is."""
+        """When only capabilities present, use as-is and no tools in output."""
         from larva.core.normalize import normalize_spec
 
         result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
@@ -147,7 +261,7 @@ class TestNormalizeSpecCapabilitiesTransition:
         assert "tools" not in result
 
     def test_both_fields_capabilities_wins(self) -> None:
-        """When both tools and capabilities present, capabilities wins."""
+        """When both tools and capabilities present, capabilities wins and tools removed."""
         from larva.core.normalize import normalize_spec
 
         result = normalize_spec(
@@ -176,6 +290,50 @@ class TestNormalizeSpecCapabilitiesTransition:
         tools_only = normalize_spec({"id": "test", "tools": {"git": "read_only"}})
         capabilities_only = normalize_spec({"id": "test", "capabilities": {"git": "read_only"}})
         assert tools_only["spec_digest"] == capabilities_only["spec_digest"]
+
+    def test_side_effect_policy_stripped_from_output(self) -> None:
+        """normalize_spec must strip side_effect_policy from output — ADR-002."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec(
+            {"id": "test", "capabilities": {"git": "read_only"}, "side_effect_policy": "allow"}
+        )
+        assert "side_effect_policy" not in result, (
+            "side_effect_policy must not survive normalization; "
+            "it is forbidden at canonical admission per ADR-002"
+        )
+
+    def test_tools_stripped_from_output(self) -> None:
+        """normalize_spec must strip tools from output — ADR-002.
+
+        Even when tools was the original input and was copied to capabilities,
+        'tools' must not appear in the normalized output.
+        """
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec({"id": "test", "tools": {"shell": "read_write"}})
+        assert "tools" not in result, (
+            "'tools' must not survive normalization; forbidden at canonical admission per ADR-002"
+        )
+
+    def test_transition_fixture_with_tools_normalizes_correctly(self) -> None:
+        """Assert CANONICAL_NORMALIZE_INPUT_WITH_TOOLS normalizes to capabilities-only."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec(CANONICAL_NORMALIZE_INPUT_WITH_TOOLS)
+        assert result["capabilities"] == {"shell": "read_only"}
+        assert "tools" not in result
+        assert "side_effect_policy" not in result
+        assert result["spec_version"] == "0.1.0"
+        assert "spec_digest" in result
+
+    def test_transition_fixture_with_side_effect_policy_normalizes_correctly(self) -> None:
+        """Assert CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY strips sep."""
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec(CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY)
+        assert "side_effect_policy" not in result
+        assert result["capabilities"] == {"shell": "read_only"}
 
 
 if __name__ == "__main__":

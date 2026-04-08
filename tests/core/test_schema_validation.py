@@ -4,17 +4,56 @@ This module asserts that downstream projections stay aligned with the single
 contract metadata seam in ``larva.core.validate``. It also includes explicit
 failure-path tests that demonstrate drift detection for field sets and
 canonical error wording.
+
+Canonical authority (per ADR-002, ADR-003, opifex authority basis):
+- Schema is a derived projection of validate.py metadata, not an independent owner.
+- Forbidden fields (tools, side_effect_policy) must NOT appear in schema properties.
+- additionalProperties must be false at canonical boundary.
+- Canonical required/optional field sets are authoritative from validate.py.
 """
 
 import json
 from pathlib import Path
 from typing import Any, get_type_hints
 
+import jsonschema
+import pytest
+
 from larva.core import validate as validate_module
 from larva.shell import mcp_contract
 
 SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "persona_spec.schema.json"
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
+
+# ---------------------------------------------------------------------------
+# Canonical fixtures
+# ---------------------------------------------------------------------------
+
+CANONICAL_SCHEMA_INSTANCE_MINIMAL: dict = {
+    "id": "canonical-schema-fixture",
+    "description": "Canonical schema fixture — minimal required-only shape",
+    "prompt": "You are a canonical test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0",
+}
+"""Exact canonical shape that MUST validate against the JSON schema.
+Required fields only, no optional fields, no forbidden fields."""
+
+CANONICAL_SCHEMA_INSTANCE_FULL: dict = {
+    "id": "canonical-schema-fixture-full",
+    "description": "Canonical schema fixture — all optional fields present",
+    "prompt": "You are a canonical test persona.",
+    "model": "gpt-4o-mini",
+    "capabilities": {"shell": "read_only", "git": "read_write"},
+    "model_params": {"temperature": 0.7},
+    "can_spawn": True,
+    "compaction_prompt": "Summarise the conversation.",
+    "spec_version": "0.1.0",
+    "spec_digest": "sha256:" + "a" * 64,
+    "variables": {"agent_name": "TestBot"},
+}
+"""Canonical shape with every optional field present."""
 
 
 def _schema_parity_violations(schema: dict[str, Any]) -> list[str]:
@@ -66,8 +105,89 @@ def _tool_definition(name: str) -> dict[str, Any]:
 
 
 class TestSchemaProjectionParity:
+    """Tests that schema projection matches the single authoritative seam in validate.py."""
+
     def test_schema_projection_matches_validator_field_metadata(self) -> None:
         assert _schema_parity_violations(SCHEMA) == []
+
+    def test_schema_forbids_tools_field(self) -> None:
+        """Assert 'tools' does not appear in schema properties — ADR-002."""
+        assert "tools" not in SCHEMA.get("properties", {}), (
+            "'tools' must not be in schema properties; forbidden at canonical admission"
+        )
+
+    def test_schema_forbids_side_effect_policy_field(self) -> None:
+        """Assert 'side_effect_policy' does not appear in schema properties — ADR-002."""
+        assert "side_effect_policy" not in SCHEMA.get("properties", {}), (
+            "'side_effect_policy' must not be in schema properties; "
+            "forbidden at canonical admission"
+        )
+
+    def test_schema_sets_additional_properties_false(self) -> None:
+        """Assert schema has additionalProperties=false at canonical boundary."""
+        assert SCHEMA.get("additionalProperties") is False, (
+            "Schema must set additionalProperties=false at canonical admission boundary"
+        )
+
+
+class TestSchemaAcceptanceRejection:
+    """Tests for schema acceptance/rejection of canonical and forbidden shapes.
+
+    Uses jsonschema to validate canonical fixtures pass and forbidden shapes fail.
+    """
+
+    def test_canonical_minimal_fixture_passes_schema(self) -> None:
+        """Assert CANONICAL_SCHEMA_INSTANCE_MINIMAL validates against the schema.
+
+        Spec-Fixture Conformance: this fixture matches the exact documented
+        canonical shape without convenience fields.
+        """
+        jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_MINIMAL, SCHEMA)
+
+    def test_canonical_full_fixture_passes_schema(self) -> None:
+        """Assert CANONICAL_SCHEMA_INSTANCE_FULL validates against the schema.
+
+        Includes all optional canonical fields.
+        """
+        jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_FULL, SCHEMA)
+
+    def test_tools_field_rejected_by_schema(self) -> None:
+        """Assert spec with 'tools' field is rejected by schema — ADR-002."""
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec["tools"] = {"shell": "read_only"}
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+
+    def test_side_effect_policy_field_rejected_by_schema(self) -> None:
+        """Assert spec with 'side_effect_policy' is rejected by schema — ADR-002."""
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec["side_effect_policy"] = "allow"
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+
+    def test_unknown_field_rejected_by_schema(self) -> None:
+        """Assert spec with unknown top-level field is rejected by schema."""
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec["unknown_extra"] = "value"
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+
+    def test_missing_capabilities_rejected_by_schema(self) -> None:
+        """Assert spec without 'capabilities' is rejected — required field."""
+        invalid_spec = {
+            "id": "no-caps",
+            "description": "Test",
+            "prompt": "You help.",
+            "model": "gpt-4o-mini",
+            "spec_version": "0.1.0",
+        }
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+
+    def test_empty_spec_rejected_by_schema(self) -> None:
+        """Assert empty dict is rejected by schema — all required fields missing."""
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate({}, SCHEMA)
 
 
 class TestMCPProjectionParity:
