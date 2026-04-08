@@ -36914,7 +36914,7 @@ phases:
     agent: integration-verifier-tacit
   - id: dup_contract_source.fixture_fix_canonical_helper
     name: Fix canonical helper legacy-field injection in app facade test fixtures
-    status: claimed
+    status: done
     description: Remove deprecated-field injection from the canonical helper in app
       facade test fixtures while preserving transition coverage explicitly so canonical-boundary
       fixtures remain canonical-only.
@@ -36925,6 +36925,24 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-08T07:56:44.874448+00:00'
+    done_at: '2026-04-08T08:01:20.740323+00:00'
+    evidence: '## Remediation Evidence
+
+      - files_changed: `tests/app/test_facade/conftest.py`, `tests/app/test_facade/test_register.py`,
+      `tests/app/test_facade/test_validate.py` (step branch commit `6a6f93e`).
+
+      - canonical_helper_fix: canonical helper `_canonical_spec` no longer injects
+      deprecated `tools`/`side_effect_policy`; explicit transition helper introduced
+      for deprecated-field scenarios.
+
+      - transition_coverage_preservation: deprecated-field checks now opt in through
+      transition helper; fixture taxonomy assertions updated to verify canonical-clean
+      vs transition-explicit split.
+
+      - verification_commands: focused pytest on affected facade tests plus changed-scope
+      invar guard.
+
+      - outputs_summary: focused tests passed; invar guard passed; commit hooks passed.'
 - id: dup_fixture_unification
   name: Canonical Fixture Unification
   status: done
