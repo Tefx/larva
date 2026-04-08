@@ -39816,7 +39816,7 @@ phases:
   steps:
   - id: baseline_failure_authority.behavior_matrix
     name: Capture failure matrix and baseline dispositions
-    status: claimed
+    status: pending
     description: 'Run the known failing test clusters and produce a behavior matrix
       mapping each failure to one of: update_code, update_tests, or mixed. Group failures
       into these seams: core spec/schema/normalize drift, assemble output drift, facade
@@ -39854,8 +39854,6 @@ phases:
 
       - Remaining ambiguity: none | <describe>'
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-08T17:16:19.260689+00:00'
   - id: baseline_failure_authority.contract_decision
     name: Adjudicate canonical authority for remaining failure clusters
     status: pending
