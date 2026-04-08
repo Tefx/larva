@@ -39286,7 +39286,7 @@ phases:
 
       '
     depends_on:
-    - dup_deep_review.retest-blockers
+    - dup_deep_review.wiring-audit
     - dup_deep_review.spec-conformance
     - dup_deep_review.black-box
     - dup_deep_review.architecture-review
