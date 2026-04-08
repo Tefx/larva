@@ -1733,7 +1733,8 @@ class TestRunCli:
         assert exit_code == EXIT_ERROR
         assert stdout.getvalue() == ""
         assert "Validation failed" in stderr.getvalue()
-        assert "id is required" in stderr.getvalue()
+        assert "required field" in stderr.getvalue()
+        assert "canonical admission boundary" in stderr.getvalue()
 
     def test_validate_missing_id_json_returns_persona_invalid_envelope(
         self, tmp_path: Path
@@ -1754,7 +1755,15 @@ class TestRunCli:
         payload = json.loads(stdout.getvalue())
         assert payload["error"]["code"] == "PERSONA_INVALID"
         assert payload["error"]["numeric_code"] == 101
-        assert payload["error"]["details"]["report"]["errors"][0]["code"] == "INVALID_PERSONA_ID"
+        first_error = payload["error"]["details"]["report"]["errors"][0]
+        assert first_error["code"] == "MISSING_REQUIRED_FIELD"
+        assert first_error["details"]["field"] in {
+            "id",
+            "description",
+            "prompt",
+            "model",
+            "capabilities",
+        }
         assert stderr.getvalue() == ""
 
     def test_register_missing_file_text_returns_critical_and_stderr_only(self) -> None:

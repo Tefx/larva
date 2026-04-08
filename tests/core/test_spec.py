@@ -93,15 +93,20 @@ class TestPersonaSpecStructure:
         assert hasattr(PersonaSpec, "__annotations__")
 
     def test_persona_spec_is_optional_key_total_false(self) -> None:
-        """Assert PersonaSpec has total=False (all keys optional)."""
+        """Assert PersonaSpec has canonical required key set."""
         from larva.core.spec import PersonaSpec
 
-        # TypedDict with total=False makes all keys optional
-        assert PersonaSpec.__required_keys__ == set()
-        assert len(PersonaSpec.__required_keys__) == 0
+        assert PersonaSpec.__required_keys__ == {
+            "id",
+            "description",
+            "prompt",
+            "model",
+            "capabilities",
+            "spec_version",
+        }
 
     def test_persona_spec_exposes_all_documented_fields(self) -> None:
-        """Assert PersonaSpec exposes exactly the documented 12 fields."""
+        """Assert PersonaSpec exposes canonical fields (10 total)."""
         from larva.core.spec import PersonaSpec
 
         expected_fields = {
@@ -110,9 +115,7 @@ class TestPersonaSpecStructure:
             "prompt",
             "model",
             "capabilities",
-            "tools",
             "model_params",
-            "side_effect_policy",
             "can_spawn",
             "compaction_prompt",
             "spec_version",
@@ -123,11 +126,11 @@ class TestPersonaSpecStructure:
         assert actual_fields == expected_fields
 
     def test_persona_spec_field_count(self) -> None:
-        """Assert PersonaSpec has exactly 12 fields."""
+        """Assert PersonaSpec has exactly 10 canonical fields."""
         from larva.core.spec import PersonaSpec
 
         field_count = len(PersonaSpec.__annotations__)
-        assert field_count == 12
+        assert field_count == 10
 
 
 class TestSpecVersion:
@@ -139,10 +142,10 @@ class TestSpecVersion:
 
         spec_version_type = PersonaSpec.__annotations__["spec_version"]
 
-        # Extract the literal value from the Literal type
-        # Literal["0.1.0"] -> ("0.1.0",)
+        # spec_version is annotated as Required[Literal["0.1.0"]]
         if hasattr(spec_version_type, "__args__"):
-            literal_values = spec_version_type.__args__
+            required_inner = spec_version_type.__args__[0]
+            literal_values = required_inner.__args__
             assert "0.1.0" in literal_values
 
     def test_spec_version_value_pinned(self) -> None:
@@ -341,13 +344,10 @@ class TestToolsetComponentCapabilities:
         assert "tools" in toolset
 
     def test_toolset_component_is_total_false(self) -> None:
-        """Assert ToolsetComponent has total=False (all keys optional for transition)."""
+        """Assert ToolsetComponent requires canonical capabilities key."""
         from larva.core.spec import ToolsetComponent
 
-        # Per ADR-002: both fields are optional during transition
-        # This enables capabilities-only or tools-only shapes
-        assert ToolsetComponent.__required_keys__ == set()
-        assert len(ToolsetComponent.__required_keys__) == 0
+        assert ToolsetComponent.__required_keys__ == {"capabilities"}
 
     def test_toolset_component_empty_dict_valid(self) -> None:
         """Assert ToolsetComponent accepts empty dict (all fields optional per total=False)."""

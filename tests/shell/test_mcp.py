@@ -1000,8 +1000,11 @@ class TestMCPHandlersImplementation:
             {
                 "spec": {
                     "id": "warning-roundtrip",
+                    "description": "Roundtrip warning coverage",
                     "spec_version": "0.1.0",
                     "prompt": "Hello.",
+                    "model": "gpt-4o-mini",
+                    "capabilities": {"shell": "read_only"},
                     "variables": {"role": "assistant"},
                 }
             }

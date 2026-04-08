@@ -136,7 +136,7 @@ class TestNormalizeSpecCapabilitiesTransition:
 
         result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
         assert result.get("capabilities") == {"filesystem": "read_only"}
-        assert result.get("tools") == {"filesystem": "read_only"}
+        assert "tools" not in result
 
     def test_capabilities_only_passes_through(self) -> None:
         """When only capabilities present, use as-is."""
@@ -144,7 +144,7 @@ class TestNormalizeSpecCapabilitiesTransition:
 
         result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
         assert result.get("capabilities") == {"git": "read_write"}
-        assert result.get("tools") == {"git": "read_write"}
+        assert "tools" not in result
 
     def test_both_fields_capabilities_wins(self) -> None:
         """When both tools and capabilities present, capabilities wins."""
@@ -158,7 +158,7 @@ class TestNormalizeSpecCapabilitiesTransition:
             }
         )
         assert result.get("capabilities") == {"git": "read_write"}
-        assert result.get("tools") == {"git": "read_write"}
+        assert "tools" not in result
 
     def test_neither_field_no_change(self) -> None:
         """When neither tools nor capabilities present, neither is added."""
