@@ -36249,7 +36249,7 @@ phases:
       - uncertainty_sources: none.'
   - id: dup_web_convergence.gate
     name: Gate web surface convergence
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -36289,6 +36289,8 @@ phases:
     - dup_web_convergence.impl
     - dup_web_convergence.verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T04:21:13.673802+00:00'
 - id: dup_contract_source
   name: Canonical Contract, Fixture, and Admission Consolidation
   status: in_progress
