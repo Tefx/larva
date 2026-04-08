@@ -36946,12 +36946,19 @@ phases:
       As an independent tester, hunt for entrypoint drift after workflow consolidation.
 
 
-      Check register, resolve, update, and clone success/failure paths.'
+      Check register, resolve, update, and clone success/failure paths.
+
+      Also verify that preserved validation-order behavior remains non-observable
+      at public entrypoints after the assertion fix.'
     verification: '- All facade entrypoints preserve canonical success/failure behavior
 
-      - Any change in validation ordering is shown non-observable or explicitly blocker-class'
+      - Any change in validation ordering is shown non-observable or explicitly blocker-class
+
+      - Explicitly check that validation-order behavior changes remain non-observable
+      at public entrypoints'
     depends_on:
     - dup_contract_source.workflow_impl
+    - dup_contract_source.workflow_verify_fix
     agent: integration-verifier-tacit
   - id: dup_contract_source.fixture_fix_canonical_helper
     name: Fix canonical helper legacy-field injection in app facade test fixtures
