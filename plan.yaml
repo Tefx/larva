@@ -36361,7 +36361,7 @@ phases:
       - uncertainty_sources: none material.'
 - id: dup_contract_source
   name: Canonical Contract, Fixture, and Admission Consolidation
-  status: in_progress
+  status: done
   gate: Collapse repeated contract metadata, canonical-vs-transition fixture truth,
     and facade admission workflow into one authoritative seam family without observable
     behavior drift.
@@ -36604,7 +36604,7 @@ phases:
       - blocker_findings: none.'
   - id: dup_contract_source.gate
     name: Gate contract, fixture, and admission consolidation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -36667,6 +36667,67 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-08T09:38:16.104753+00:00'
+    done_at: '2026-04-08T09:42:34.649029+00:00'
+    evidence: '## Gate Review Report
+
+
+      ### refs Read Confirmation
+
+      No refs for this step.
+
+
+      ### Gate Decision Basis
+
+      - metadata_owner_status: VERIFIED (single-source metadata seam in validate layer
+      is active and parity-checked).
+
+      - projection_parity_status: VERIFIED (schema/MCP projections remain aligned
+      to canonical metadata model).
+
+      - residual_drift: none blocker-class.
+
+      - open_or_block: OPEN.
+
+
+      ### Wiring Audit (W1-W8)
+
+      - W1 export coverage: pass
+
+      - W2 CLI registration impact: N/A for this phase scope
+
+      - W3 config consumption: N/A
+
+      - W4 stub leakage: pass
+
+      - W5 write-only fields: none
+
+      - W6 dead export risk: none material
+
+      - W7 runtime authenticity: pass
+
+      - W8 seam completeness: pass
+
+
+      ### Escape Hatch Audit
+
+      - Entry/transport boundary escape hatches reviewed; no blocker-class abuse detected
+      in scope.
+
+
+      ### Behavioral Proof
+
+      - Assemble test divergence closure: verified closed (capabilities-only output
+      assertions; deprecated tools-output mirroring removed).
+
+      - Batched gate blocker sync closure: verified closed across normalize/spec/CLI/MCP/python-api
+      targeted suites.
+
+      - Workflow seam drift: no observable public-entrypoint drift remains.
+
+      - gate_open_allowed: true.
+
+
+      Result: phase gate criteria satisfied with zero blocker findings.'
   - id: dup_contract_source.workflow_basis
     name: Design unified app-layer admission workflow seam
     status: done
@@ -37417,7 +37478,7 @@ phases:
     skipped_reason: absorbed
 - id: dup_error_abstraction
   name: Component Surface Normalization and Error Projection
-  status: locked
+  status: pending
   gate: Unify component-kind vocabulary and component error projection across transports
     without changing externally meaningful envelopes.
   context: 'Merged duplicate-abstraction phase. Absorbs prior component-kind normalization
