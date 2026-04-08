@@ -38263,6 +38263,72 @@ phases:
     depends_on:
     - dup_error_abstraction.retest_gate_blockers
     agent: python-refactor-master-tacit
+  - id: dup_error_abstraction.retest_gate_blockers_round2
+    name: Retest remaining dup_error_abstraction blocker families after batched remediation
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+
+      As an INDEPENDENT TESTER (integration-verifier-tacit), validate that the remaining
+      dup_error_abstraction blocker families are closed from a fresh perspective.
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works.
+
+
+      Test for:
+
+      - Happy path: updated targeted web and python_api tests now pass under the current
+      shared error projection contract
+
+      - Edge cases: related shell test suites do not contain sibling stale expectations
+      for resolve arity or projected component error codes
+
+      - Error scenarios: confirm no blocker-class regression remains in the targeted
+      shell surfaces
+
+
+      Document ALL findings. A test that discovers issues is a SUCCESS.
+
+      A test that finds nothing must justify the coverage achieved.
+
+
+      Independence Level: L1
+
+
+      Targeted command family should cover the named failing tests plus the closest
+      related shell suites needed to prove no sibling drift remains.'
+    verification: '- Main path: targeted tests for tests/shell/test_web.py::test_get_api_personas_by_id_returns_spec
+      and tests/shell/test_python_api.py::TestPythonApiAssemble::test_assemble_failure_passthrough_from_facade
+      pass
+
+      - Related suite proof: run the closest related shell suites for web and python_api
+      surfaces to confirm no sibling stale expectations remain
+
+      - Proof: evidence includes actual commands, outputs, and any remaining issues
+      with explicit severity'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier-tacit\
+      \ (independent of implementation)\n**Scope**: Remaining dup_error_abstraction\
+      \ blocker families\n**Independence Level**: L1\n\n### refs Read Confirmation\
+      \ (MANDATORY)\nIf no refs were provided, state: \"No refs for this step.\"\n\
+      \n### Test Execution\n- Commands executed:\n  ```\n  <actual targeted pytest\
+      \ commands>\n  ```\n- Output summary:\n  <key results>\n\n### Issues Found\n\
+      | Severity | Description | Location | Reproduction |\n| --- | --- | --- | ---\
+      \ |\n| blocker | <issue> | <file:test> | <steps> |\n| should_fix | <issue> |\
+      \ <file:test> | <steps> |\n| suggestion | <improvement> | <context> | - |\n\n\
+      ### Coverage Assessment\n- Targeted web test verified: ✅/❌\n- Targeted python_api\
+      \ test verified: ✅/❌\n- Related shell suites exercised: <list>\n- Remaining\
+      \ stale expectations found: <none or list>\n\n### Verdict\n- [ ] PASS\n- [ ]\
+      \ ISSUES_FOUND\n- [ ] INCOMPLETE"
+    depends_on:
+    - dup_error_abstraction.fix_gate_blockers_round2
+    agent: integration-verifier-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
