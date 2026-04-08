@@ -38296,7 +38296,7 @@ phases:
       \ changed, 5 insertions, 4 deletions)"
   - id: dup_error_abstraction.retest_gate_blockers_round2
     name: Retest remaining dup_error_abstraction blocker families after batched remediation
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -38360,6 +38360,8 @@ phases:
     depends_on:
     - dup_error_abstraction.fix_gate_blockers_round2
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T13:12:00.803879+00:00'
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
