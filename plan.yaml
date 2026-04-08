@@ -39341,7 +39341,7 @@ phases:
       direction; align ComponentStore docs/tests; unify invalid-kind error taxonomy'
   - id: dup_deep_review.gate
     name: Final gate for duplicate-abstraction remediation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -39395,6 +39395,8 @@ phases:
     - dup_deep_review.black-box
     - dup_deep_review.architecture-review
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T17:08:29.119710+00:00'
   - id: dup_deep_review.fix-blockers
     name: Fix duplicate-abstraction deep-review blocker families
     status: done
