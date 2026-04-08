@@ -39133,7 +39133,7 @@ phases:
       - full test suite green (719 passed, 5 xfailed, 44 xpassed)'
   - id: dup_deep_review.spec-conformance
     name: Audit canonical-boundary conformance after duplicate-abstraction remediation
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -39176,8 +39176,6 @@ phases:
     depends_on:
     - dup_deep_review.wiring-audit
     agent: spec-verifier-tacit
-    claimed_by: spec-verifier-tacit
-    claimed_at: '2026-04-08T16:23:46.605297+00:00'
   - id: dup_deep_review.black-box
     name: Black-box verify public surfaces after duplicate-abstraction remediation
     status: pending
