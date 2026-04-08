@@ -38170,6 +38170,99 @@ phases:
     depends_on:
     - dup_error_abstraction.retest_gate_blockers
     agent: gate-reviewer-tacit
+  - id: dup_error_abstraction.fix_gate_blockers_round2
+    name: Fix remaining dup_error_abstraction blocker families (web lambda signature
+      + python_api stale expectation)
+    status: pending
+    description: 'step_type: implementation
+
+
+      Fix ALL remaining blocker families reported in the same orchestration wave for
+      dup_error_abstraction.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause: targeted shell tests still encode pre-projection call/expectation
+      contracts after the shared component error projection seam changed transport-facing
+      behavior.
+
+      - Symptom: (1) web monkeypatch resolve lambda still uses an outdated one-argument
+      signature while production resolve is called with two arguments; (2) python_api
+      passthrough expectation still asserts INTERNAL where the canonical projection
+      now returns COMPONENT_NOT_FOUND.
+
+      - Why this fix is not surface-level: update the tests and any sibling expectations
+      to match the current shared projection contract rather than patching production
+      code back toward stale behavior.
+
+
+      ### B1: web resolve monkeypatch signature mismatch
+
+      Locations: tests/shell/test_web.py::test_get_api_personas_by_id_returns_spec
+
+      Remediation: update the monkeypatch lambda/test double signature to match the
+      current resolve invocation contract (two args) and search for sibling web test
+      doubles that still assume the old arity.
+
+      Grep hint: rg -n "monkeypatch|lambda .*resolve|resolve\(" tests/shell/test_web.py
+      tests/shell
+
+
+      ### B2: stale python_api projection expectation
+
+      Locations: tests/shell/test_python_api.py::TestPythonApiAssemble::test_assemble_failure_passthrough_from_facade
+
+      Remediation: align the asserted projected error code with the canonical facade/python_api
+      projection semantics (COMPONENT_NOT_FOUND) and search for sibling stale INTERNAL
+      expectations in related shell tests.
+
+      Grep hint: rg -n "INTERNAL|COMPONENT_NOT_FOUND|passthrough_from_facade|assemble_failure"
+      tests/shell/test_python_api.py tests/shell
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Completion Criteria
+
+      - BOTH blocker families are closed in tests/shell/test_web.py and tests/shell/test_python_api.py
+
+      - Sibling search completed for each blocker family across related shell tests
+
+      - No remaining stale one-arg resolve monkeypatches or stale INTERNAL passthrough
+      expectations remain where this phase''s projection contract requires the new
+      semantics
+
+      - If any additional stale expectation is found outside immediate scope, document
+      it explicitly rather than leaving silent drift'
+    verification: '- Targeted shell tests updated for the current shared projection
+      contract
+
+      - Sibling search evidence provided for both blocker families
+
+      - No new production-surface behavior changes introduced; remediation is limited
+      to stale test-contract alignment'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Remediation Evidence\n- blocker_families_closed:\n\
+      \  - web lambda signature mismatch\n  - python_api stale expectation\n- files_changed:\n\
+      \  - tests/shell/test_web.py\n  - tests/shell/test_python_api.py\n- sibling_search_commands:\n\
+      \  - <paste commands run>\n- sibling_search_results:\n  - <paste key output\
+      \ or explain none>\n- why_previous_fix_failed:\n  - prior loop closed earlier\
+      \ blocker set but did not update these remaining test contracts surfaced in\
+      \ the same wave\n- root_cause_vs_symptom:\n  - <brief explanation>\n- residual_risk:\n\
+      \  - <none or explicit follow-up needed>"
+    depends_on:
+    - dup_error_abstraction.retest_gate_blockers
+    agent: python-refactor-master-tacit
 - id: dup_facade_admission
   name: Facade Admission Workflow Consolidation
   status: done
