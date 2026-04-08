@@ -40556,7 +40556,7 @@ phases:
       debt'
 - id: baseline_failure_finalization
   name: Baseline Failure Final Verification, Doc Sync, and Deep Review
-  status: pending
+  status: in_progress
   gate: Prove the remaining baseline failures are closed, sync docs, and finish with
     independent deep review.
   depends_on:
@@ -40564,7 +40564,7 @@ phases:
   steps:
   - id: baseline_failure_finalization.full_verify
     name: Run clustered and full-suite verification
-    status: pending
+    status: claimed
     description: 'Run the formerly failing clusters together, then run the full pytest
       suite and invar guard. Compare against the recorded pre-existing baseline and
       account for every residual failure explicitly. This is a full-plan-check: a
@@ -40581,6 +40581,8 @@ phases:
       \ before remediation:\n- Failure count after remediation:\n- Residual failures\
       \ and dispositions:\n- Gate-intersection analysis for any residual blocker"
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-08T20:15:50.779647+00:00'
   - id: baseline_failure_finalization.doc_sync
     name: Sync docs and fixtures to final canonical behavior
     status: pending
