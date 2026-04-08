@@ -36108,7 +36108,7 @@ phases:
       - Focused parity tests passing across both runtimes.'
   - id: dup_web_convergence.verify
     name: Verify packaged and contrib web parity through the shared seam
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -36176,6 +36176,8 @@ phases:
     depends_on:
     - dup_web_convergence.impl
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-08T04:13:12.537982+00:00'
   - id: dup_web_convergence.gate
     name: Gate web surface convergence
     status: pending
