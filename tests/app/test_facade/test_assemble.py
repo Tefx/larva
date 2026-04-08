@@ -47,7 +47,7 @@ class TestFacadeAssemble:
         )
 
         assert isinstance(result, Success)
-        assert calls == ["assemble", "validate", "normalize"]
+        assert calls == ["assemble", "normalize", "validate"]
         assemble_input = assemble_module.inputs[0]
         assert assemble_input["id"] == "persona-a"
         assert assemble_input["prompts"] == [{"text": "Prompt body"}]
@@ -58,7 +58,8 @@ class TestFacadeAssemble:
         assert assemble_input["model"] == {"model": "gpt-4o-mini"}
         assert assemble_input["variables"] == {"role": "analyst"}
         assert assemble_input["overrides"] == {"description": "runtime description"}
-        assert validate_module.inputs[0] == assemble_module.candidate
+        # validate receives normalized spec, not the original candidate
+        assert validate_module.inputs[0] == normalize_module.inputs[0]
         assert normalize_module.inputs[0]["id"] == "assembled"
 
     def test_assemble_component_miss_maps_to_app_error(self) -> None:
@@ -140,8 +141,10 @@ class TestFacadeAssemble:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_VERSION"
-        assert normalize_module.inputs == []
-        assert calls == ["assemble", "validate"]
+        # normalize is called before validation in _normalize_and_validate
+        # normalize receives the assembled candidate (default "assembled" id from SpyAssembleModule)
+        assert normalize_module.inputs[0]["id"] == "assembled"
+        assert calls == ["assemble", "normalize", "validate"]
 
 
 from larva.app.facade import DefaultLarvaFacade
