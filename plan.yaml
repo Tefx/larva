@@ -40474,7 +40474,7 @@ phases:
       \ any product implementation files were modified: no (tests-only repro added)"
   - id: baseline_failure_app_shell.gate
     name: Gate facade and transport alignment
-    status: pending
+    status: claimed
     description: Gate the compressed app/shell remediation phase. Block if residual
       app, CLI, MCP, or python_api issues still intersect the final full-suite proof
       or if cross-surface validation semantics remain inconsistent.
@@ -40501,6 +40501,8 @@ phases:
     - baseline_failure_app_shell.impl
     - baseline_failure_app_shell.cross_surface_verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-08T19:49:44.928042+00:00'
 - id: baseline_failure_finalization
   name: Baseline Failure Final Verification, Doc Sync, and Deep Review
   status: locked
