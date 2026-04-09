@@ -40783,6 +40783,95 @@ phases:
     remediation.
   depends_on:
   - baseline_failure_finalization
+  steps:
+  - id: repair_dup_guardrails.architecture_basis
+    name: Approve duplicate-repair architecture basis
+    status: pending
+    description: "step_type: planning\nagent_source: default\nwork_type: technical_debt_remediation\n\
+      spec_refs:\n  - ARCHITECTURE.md :: module boundaries and shell/core split\n\
+      \  - INTERFACES.md :: packaged web endpoint inventory and cross-surface contracts\n\
+      \  - README.md :: CLI/MCP/Web runtime surfaces\n  - contrib/web/server.py module\
+      \ docstring :: contrib-only extension boundary\n  - Duplicate-abstraction audit\
+      \ :: latest audit summary from current session\n touch_paths:\n  - ARCHITECTURE.md\n\
+      \  - INTERFACES.md\n  - README.md\n  - src/larva/shell/web.py\n  - contrib/web/server.py\n\
+      \  - src/larva/shell/cli*.py\n  - src/larva/shell/mcp*.py\n  - src/larva/shell/python_api*.py\n\
+      \ authoritative_interface: NONE PINNED\n\nProduce the approved architecture\
+      \ basis for this remediation campaign and freeze the structural decisions that\
+      \ downstream refactors must obey.\n\nRequired outputs:\n- system_layers\n- source_of_truth_matrix\n\
+      - service_catalog\n- runtime_contract\n- state_strata\n- transport_boundary_rules\n\
+      - cross_cutting_governance\n- shared_abstractions\n- module_split_recommendations\n\
+      - open_questions\n- readiness\n\nThe basis MUST explicitly state:\n- packaged\
+      \ `src/larva/shell/web.py` is the authoritative packaged REST surface\n- `contrib/web/server.py`\
+      \ is an extension consumer, not the contract owner\n- component-query semantics\
+      \ are transport-neutral and centralized\n- CLI/MCP/Web/Python API keep adapter-local\
+      \ envelopes/rendering/runtime hooks\n- `src/larva/core/patch.py` dotted-path\
+      \ semantics and `src/larva/app/facade.py` dotted lookup remain separate authorities\
+      \ unless later evidence overturns that.\n"
+    verification: '- Architecture basis includes all required fields and explicit
+      authority decisions
+
+      - Runtime/deployability obligations for CLI, MCP, packaged Web, and contrib
+      Web are preserved
+
+      - Shared-vs-local abstraction boundaries are explicit enough to sequence downstream
+      work safely'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Architecture Basis
+
+      - system_layers:
+
+      - source_of_truth_matrix:
+
+      - service_catalog:
+
+      - runtime_contract:
+
+      - state_strata:
+
+      - transport_boundary_rules:
+
+      - cross_cutting_governance:
+
+      - shared_abstractions:
+
+      - module_split_recommendations:
+
+      - open_questions:
+
+      - readiness:
+
+
+      ## Binding Decisions
+
+      - packaged_web_authority:
+
+      - contrib_extension_boundary:
+
+      - component_query_truth_owner:
+
+      - dotted_path_non_merge_ruling:
+
+
+      ## Downstream Constraints
+
+      - parallelizable_branches:
+
+      - forced_serial_joins:
+
+      - compatibility_sensitive_surfaces:
+
+      '
+    agent: software-architect-tacit
 - id: repair_dup_shared_foundations
   name: Duplicate Repair Shared Foundations
   status: locked
