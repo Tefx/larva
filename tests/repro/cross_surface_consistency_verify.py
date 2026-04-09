@@ -751,10 +751,10 @@ class TestDefaultFacadeAssemblyEquivalence:
 
     def test_cli_and_python_api_default_facades_validate_equivalently(self) -> None:
         """Default facade factories should agree on validate() outcomes."""
-        from larva.shell import cli_runtime
+        from larva.shell.shared.facade_factory import build_default_facade
 
         python_facade = python_api._get_facade()
-        cli_facade = cli_runtime._build_default_facade().unwrap()
+        cli_facade = build_default_facade()
         spec = canonical_spec("default-facade-equivalence")
         invalid_spec = spec_with_forbidden_tools()
 
@@ -765,10 +765,10 @@ class TestDefaultFacadeAssemblyEquivalence:
         self,
     ) -> None:
         """Default facade factories should project the same missing-component failure."""
-        from larva.shell import cli_runtime
+        from larva.shell.shared.facade_factory import build_default_facade
 
         python_facade = python_api._get_facade()
-        cli_facade = cli_runtime._build_default_facade().unwrap()
+        cli_facade = build_default_facade()
         request = {"id": "missing-prompt", "prompts": ["definitely-missing-prompt"]}
 
         python_result = python_facade.assemble(request)

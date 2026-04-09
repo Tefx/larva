@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from returns.result import Failure, Result, Success
 
 from larva.shell.mcp_contract import LARVA_ERROR_CODES
+from larva.shell.shared import request_validation
 
 if TYPE_CHECKING:
     from larva.app.facade import LarvaError
@@ -35,15 +36,11 @@ class MCPParamValidationMixin:
         params: object,
     ) -> Result[dict[str, Any], LarvaError]:
         """Validate MCP params top-level shape as JSON object."""
-        if not isinstance(params, dict):
-            return Failure(
-                self._malformed_params_error(
-                    tool_name,
-                    "params must be an object",
-                    {"field": "params", "received_type": type(params).__name__},
-                )
-            )
-        return Success(params)
+        validation_result = request_validation.require_params_object(params)
+        if isinstance(validation_result, Failure):
+            issue = validation_result.failure()
+            return Failure(self._malformed_params_error(tool_name, issue.reason, issue.details))
+        return Success(validation_result.unwrap())
 
     def _reject_unknown_params(
         self,
@@ -52,13 +49,10 @@ class MCPParamValidationMixin:
         allowed_keys: set[str],
     ) -> LarvaError | None:
         """Reject unsupported parameters at MCP boundary."""
-        unknown_keys = sorted(key for key in params if key not in allowed_keys)
-        if unknown_keys:
-            return self._malformed_params_error(
-                tool_name,
-                "unknown parameter(s)",
-                {"field": "params", "unknown": unknown_keys},
-            )
+        validation_result = request_validation.reject_unknown_params(params, allowed_keys)
+        if isinstance(validation_result, Failure):
+            issue = validation_result.failure()
+            return self._malformed_params_error(tool_name, issue.reason, issue.details)
         return None
 
     def _require_param(
@@ -68,12 +62,10 @@ class MCPParamValidationMixin:
         key: str,
     ) -> LarvaError | None:
         """Require key presence for mandatory parameters."""
-        if key not in params:
-            return self._malformed_params_error(
-                tool_name,
-                f"missing required parameter '{key}'",
-                {"field": key},
-            )
+        validation_result = request_validation.require_param(params, key)
+        if isinstance(validation_result, Failure):
+            issue = validation_result.failure()
+            return self._malformed_params_error(tool_name, issue.reason, issue.details)
         return None
 
     def _require_type(
@@ -85,17 +77,15 @@ class MCPParamValidationMixin:
         expected_label: str,
     ) -> LarvaError | None:
         """Require parameter runtime type at MCP boundary."""
-        value = params.get(key)
-        if not isinstance(value, expected_type):
-            return self._malformed_params_error(
-                tool_name,
-                f"parameter '{key}' must be {expected_label}",
-                {
-                    "field": key,
-                    "expected_type": expected_label,
-                    "received_type": type(value).__name__,
-                },
-            )
+        validation_result = request_validation.require_type(
+            params,
+            key,
+            expected_type,
+            expected_label,
+        )
+        if isinstance(validation_result, Failure):
+            issue = validation_result.failure()
+            return self._malformed_params_error(tool_name, issue.reason, issue.details)
         return None
 
     def _require_list_of_strings(
@@ -105,18 +95,8 @@ class MCPParamValidationMixin:
         key: str,
     ) -> LarvaError | None:
         """Require optional list[str] parameter shape when present."""
-        if key not in params:
-            return None
-
-        value = params[key]
-        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
-            return self._malformed_params_error(
-                tool_name,
-                f"parameter '{key}' must be list[string]",
-                {
-                    "field": key,
-                    "expected_type": "list[string]",
-                    "received_type": type(value).__name__,
-                },
-            )
+        validation_result = request_validation.require_list_of_strings(params, key)
+        if isinstance(validation_result, Failure):
+            issue = validation_result.failure()
+            return self._malformed_params_error(tool_name, issue.reason, issue.details)
         return None

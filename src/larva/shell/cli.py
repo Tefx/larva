@@ -8,8 +8,8 @@ from typing import IO, TYPE_CHECKING, Callable, Sequence, cast
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaFacade
-from larva.cli_facade import build_default_facade
 from larva.cli_entrypoint import main
+from larva.cli_facade import build_default_facade
 from larva.shell.components import ComponentStore, FilesystemComponentStore
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,

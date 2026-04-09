@@ -46,6 +46,7 @@ from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import cli
+from larva.shell import cli_runtime
 from larva.shell.components import ComponentStoreError
 from larva.shell.cli import (
     EXIT_ERROR,
@@ -122,7 +123,10 @@ def test_cli_facade_wrapper_uses_shared_default_factory(monkeypatch: pytest.Monk
         calls.append("build")
         return sentinel
 
-    monkeypatch.setattr(cli_facade, "build_shared_default_facade", fake_build_default_facade)
+    monkeypatch.setattr(
+        "larva.shell.shared.facade_factory.build_default_facade",
+        fake_build_default_facade,
+    )
 
     assert cli_facade.build_default_facade() is sentinel
     assert calls == ["build"]
@@ -1452,6 +1456,16 @@ class TestCliSharedProjectionAuthority:
         assert "class CliFailure(TypedDict, total=False):" not in source
         assert "class CliCommandResult(TypedDict, total=False):" not in source
 
+    def test_cli_runtime_source_removes_duplicate_cli_type_and_validation_renderer_authority(
+        self,
+    ) -> None:
+        assert cli_runtime.__file__ is not None
+        source = Path(cli_runtime.__file__).read_text(encoding="utf-8")
+
+        assert "CliExitCode = Literal[0, 1, 2]" not in source
+        assert "class JsonErrorEnvelope(TypedDict):" not in source
+        assert "def _render_validation_report(" not in source
+
     def test_validation_report_projection_preserves_invalid_parity_facts(self) -> None:
         report: ValidationReport = {
             "valid": False,
@@ -1491,6 +1505,59 @@ class TestCliSharedProjectionAuthority:
         assert rendered.startswith("valid\n")
         for warning in report["warnings"]:
             assert warning in rendered
+
+    def test_component_show_uses_shared_component_query_service(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        recorded: dict[str, object] = {}
+
+        def _fake_query_component(
+            component_store: object,
+            *,
+            component_type: str,
+            component_name: str,
+            operation: str,
+        ) -> Result[dict[str, object], LarvaError]:
+            recorded.update(
+                {
+                    "component_store": component_store,
+                    "component_type": component_type,
+                    "component_name": component_name,
+                    "operation": operation,
+                }
+            )
+            return Success({"text": "Shared query payload"})
+
+        store = InMemoryComponentStore()
+        monkeypatch.setattr("larva.shell.cli_commands.query_component", _fake_query_component)
+
+        result = component_show_command("prompt/test-prompt", as_json=True, component_store=store)
+
+        assert isinstance(result, Success)
+        assert result.unwrap()["json"]["data"] == {"text": "Shared query payload"}
+        assert recorded == {
+            "component_store": store,
+            "component_type": "prompt",
+            "component_name": "test-prompt",
+            "operation": "cli.component_show",
+        }
+
+    def test_cli_component_error_exit_code_helper_marks_internal_as_critical(self) -> None:
+        internal_error: JsonErrorEnvelope = {
+            "code": "INTERNAL",
+            "numeric_code": 10,
+            "message": "boom",
+            "details": {},
+        }
+        invalid_error: JsonErrorEnvelope = {
+            "code": "INVALID_INPUT",
+            "numeric_code": 1,
+            "message": "bad input",
+            "details": {},
+        }
+
+        assert cli_runtime.cli_exit_code_for_error(internal_error) == EXIT_CRITICAL
+        assert cli_runtime.cli_exit_code_for_error(invalid_error) == EXIT_ERROR
 
 
 @dataclass

@@ -21,21 +21,26 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import python_api_components
 from larva.shell.python_api_components import LarvaApiError
-from larva.shell.shared.facade_factory import build_default_facade as build_shared_default_facade
-
-
-_facade = build_shared_default_facade()
+from larva.shell.shared import facade_factory
 
 
 class _FacadeAccessor:
-    def __init__(self, facade: LarvaFacade) -> None:
+    def __init__(self, facade: LarvaFacade, factory: Callable[[], LarvaFacade]) -> None:
         self._facade = facade
+        self._factory = factory
 
     def __call__(self) -> LarvaFacade:
+        current_factory = facade_factory.build_default_facade
+        if current_factory is not self._factory:
+            self._facade = current_factory()
+            self._factory = current_factory
         return self._facade
 
 
-_get_facade = _FacadeAccessor(_facade)
+_get_facade = _FacadeAccessor(
+    facade_factory.build_default_facade(),
+    facade_factory.build_default_facade,
+)
 
 
 # @invar:allow shell_result: shared Python API dispatch unwraps facade Results to exceptions

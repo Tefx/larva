@@ -3,68 +3,30 @@
 from __future__ import annotations
 
 import json
-from typing import IO, Literal, TypedDict, cast
+from typing import IO, cast
 
 from returns.result import Result, Success
 
 from larva.app import facade as facade_module
-from larva.app.facade import LarvaError, LarvaFacade, PersonaSummary
+from larva.app.facade import LarvaError, PersonaSummary
 from larva.core.component_error_projection import (
     component_invalid_kind_error,
     project_component_store_error,
 )
 from larva.core.component_kind import invalid_component_kind_message
-from larva.core import assemble as assemble_module, normalize as normalize_module
-from larva.core import spec as spec_module, validate as validate_module
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
-from larva.shell.registry import FileSystemRegistryStore
-
-CliExitCode = Literal[0, 1, 2]
-
-EXIT_OK: CliExitCode = 0
-EXIT_ERROR: CliExitCode = 1
-EXIT_CRITICAL: CliExitCode = 2
-
-CommandName = Literal[
-    "validate",
-    "assemble",
-    "register",
-    "resolve",
-    "clone",
-    "delete",
-    "clear",
-    "list",
-    "export",
-    "update",
-    "update-batch",
-    "component list",
-    "component show",
-]
-
-
-class JsonErrorEnvelope(TypedDict):
-    code: str
-    numeric_code: int
-    message: str
-    details: dict[str, object]
-
-
-class CliFailure(TypedDict, total=False):
-    exit_code: CliExitCode
-    stderr: str
-    error: JsonErrorEnvelope
-
-
-class CliJsonSuccess(TypedDict):
-    data: object
-
-
-class CliCommandResult(TypedDict, total=False):
-    exit_code: CliExitCode
-    stdout: str
-    stderr: str
-    json: CliJsonSuccess
+from larva.shell.cli_projection import render_validation_report_text
+from larva.shell.cli_types import (
+    EXIT_CRITICAL,
+    EXIT_ERROR,
+    EXIT_OK,
+    CliCommandResult,
+    CliExitCode,
+    CliFailure,
+    CommandName,
+    JsonErrorEnvelope,
+)
 
 
 def _map_facade_error(error: LarvaError) -> Result[JsonErrorEnvelope, object]:
@@ -96,18 +58,6 @@ def _json_line(payload: object) -> Result[str, object]:
     return Success(json.dumps(payload, ensure_ascii=True, separators=(",", ":")) + "\n")
 
 
-def _render_validation_report(report: ValidationReport) -> Result[str, object]:
-    if report["valid"]:
-        warnings = report.get("warnings", [])
-        if not warnings:
-            return Success("valid\n")
-        return Success("valid\n" + "\n".join(f"warning: {warning}" for warning in warnings) + "\n")
-    errors = report.get("errors", [])
-    if not errors:
-        return Success("invalid\n")
-    return Success(f"invalid: {errors[0].get('message', 'validation failed')}\n")
-
-
 def _render_list_summaries(summaries: list[PersonaSummary]) -> Result[str, object]:
     if not summaries:
         return Success("\n")
@@ -119,16 +69,23 @@ def _render_list_summaries(summaries: list[PersonaSummary]) -> Result[str, objec
 
 def _render_payload_for_text(command: CommandName, payload: object) -> Result[str, object]:
     if command == "validate":
-        return _render_validation_report(cast("ValidationReport", payload))
+        return render_validation_report_text(cast("ValidationReport", payload))
     if command == "list":
         return _render_list_summaries(cast("list[PersonaSummary]", payload))
     return Success(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True) + "\n")
 
 
+# @invar:allow shell_result: CLI exit-code projection is a pure transport helper returning a process code
+def cli_exit_code_for_error(error: JsonErrorEnvelope) -> CliExitCode:
+    """Return the CLI exit-code projection for a canonical error envelope."""
+
+    return EXIT_CRITICAL if error["code"] == "INTERNAL" else EXIT_ERROR
+
+
 def _map_component_error(error: object) -> Result[tuple[JsonErrorEnvelope, CliExitCode], object]:
     if isinstance(error, ComponentStoreError):
         envelope = project_component_store_error(operation="cli.component", error=error)
-        exit_code = EXIT_ERROR if envelope["code"] != "INTERNAL" else EXIT_CRITICAL
+        exit_code = cli_exit_code_for_error(envelope)
         return Success(
             (
                 envelope,
@@ -158,11 +115,11 @@ def _infer_value_type(value: str) -> Result[object, object]:
     try:
         return Success(int(value))
     except ValueError:
-        pass
+        ...
     try:
         return Success(float(value))
     except ValueError:
-        pass
+        ...
     return Success(value)
 
 
@@ -217,16 +174,3 @@ def _component_show_invalid_target(
         error_envelope["message"] = invalid_component_kind_message(component_type)
     error_envelope["details"]["component_ref"] = component_ref
     return Success({"exit_code": EXIT_ERROR, "error": error_envelope})
-
-
-def _build_default_facade() -> Result[LarvaFacade, object]:
-    return Success(
-        facade_module.DefaultLarvaFacade(
-            spec=spec_module,
-            assemble=assemble_module,
-            validate=validate_module,
-            normalize=normalize_module,
-            components=FilesystemComponentStore(),
-            registry=FileSystemRegistryStore(),
-        )
-    )

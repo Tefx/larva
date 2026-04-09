@@ -16,6 +16,7 @@ from larva.shell.cli_projection import (
 )
 from larva.shell.cli_runtime import (
     _component_show_invalid_target,
+    cli_exit_code_for_error,
     _critical_error,
     _emit_result,
     _infer_value_type,
@@ -54,6 +55,7 @@ __all__ = [
     "_CliParseError",
     "_CliParser",
     "_component_show_invalid_target",
+    "cli_exit_code_for_error",
     "_critical_error",
     "_emit_result",
     "_infer_value_type",

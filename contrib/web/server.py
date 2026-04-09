@@ -28,6 +28,8 @@ from larva.shell.python_api import (
     LarvaApiError,
     assemble,
     clear,
+    component_list,
+    component_show,
     delete,
     list as list_personas,
     register,
@@ -108,6 +110,21 @@ def _validation_error_response(report: ValidationReport) -> Any:
         status_code=400,
         content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
     )
+
+
+def _component_api_error_response(e: LarvaApiError) -> Any:
+    """Project component LarvaApiError to transport-specific HTTP statuses."""
+
+    code = e.error.get("code")
+    if code == "INVALID_INPUT":
+        status_code = 400
+    elif code == "COMPONENT_NOT_FOUND":
+        status_code = 404
+    elif code == "INTERNAL":
+        status_code = 503
+    else:
+        status_code = 400
+    return JSONResponse(status_code=status_code, content={"error": e.error})
 
 
 # ---------------------------------------------------------------------------
@@ -243,28 +260,19 @@ async def api_batch_update_personas(request: Request) -> Any:
 @app.get("/api/components")
 def api_list_components() -> Any:
     """List all available components."""
-    result = _component_store.list_components()
-    if hasattr(result, "unwrap"):
-        return {"data": result.unwrap()}
-    return {"data": {"prompts": [], "toolsets": [], "constraints": [], "models": []}}
+    try:
+        return {"data": component_list()}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
 
 
 @app.get("/api/components/{component_type}/{name}")
 def api_get_component(component_type: str, name: str) -> Any:
     """Load a specific component."""
-    loaders = {
-        "prompts": _component_store.load_prompt,
-        "toolsets": _component_store.load_toolset,
-        "constraints": _component_store.load_constraint,
-        "models": _component_store.load_model,
-    }
-    loader = loaders.get(component_type)
-    if not loader:
-        raise HTTPException(status_code=400, detail=f"Invalid component type: {component_type}")  # type: ignore[misc]
-    result = loader(name)
-    if hasattr(result, "unwrap"):
-        return {"data": result.unwrap()}
-    raise HTTPException(status_code=404, detail=f"Component not found: {component_type}/{name}")  # type: ignore[misc]
+    try:
+        return {"data": component_show(component_type, name)}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
 
 
 # ---------------------------------------------------------------------------

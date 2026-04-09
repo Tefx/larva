@@ -7,7 +7,7 @@ decoupled from argument parsing and dispatch logic.
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Callable, cast
+from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
@@ -17,7 +17,6 @@ from larva.app.facade import (
     DeletedPersona,
     LarvaFacade,
 )
-from larva.core.component_kind import normalize_component_kind
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
@@ -29,9 +28,11 @@ from larva.shell.cli_helpers import (
     _map_facade_error,
     _render_payload_for_text,
     _write_output_json,
+    render_validation_report_text,
 )
 from larva.shell.components import ComponentStore
 from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
+from larva.shell.shared.component_queries import query_component
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -40,25 +41,12 @@ if TYPE_CHECKING:
     from larva.shell.cli_helpers import CliExitCode
 
 
-# @shell_orchestration: text projection for CLI validate command
-def _render_validation_report(report: "ValidationReport") -> Result[str, object]:
-    if report["valid"]:
-        warnings = report.get("warnings", [])
-        if not warnings:
-            return Success("valid\n")
-        return Success("valid\n" + "\n".join(f"warning: {warning}" for warning in warnings) + "\n")
-    errors = report.get("errors", [])
-    if not errors:
-        return Success("invalid\n")
-    return Success(f"invalid: {errors[0].get('message', 'validation failed')}\n")
-
-
 def _validation_success_result(
     report: "ValidationReport", *, as_json: bool
 ) -> Result[CliCommandResult, CliFailure]:
     result: CliCommandResult = {
         "exit_code": EXIT_OK,
-        "stdout": _render_validation_report(report).unwrap(),
+        "stdout": render_validation_report_text(report).unwrap(),
     }
     if as_json:
         result["json"] = {
@@ -479,7 +467,11 @@ def component_show_command(
     component_store: ComponentStore,
 ) -> Result[CliCommandResult, CliFailure]:
     """Show a specific component by ref (type/name)."""
-    from larva.shell.cli_helpers import _component_show_invalid_target, _map_component_error
+    from larva.shell.cli_helpers import (
+        _component_show_invalid_target,
+        _map_component_error,
+        cli_exit_code_for_error,
+    )
 
     component_type, separator, component_name = component_ref.partition("/")
     if separator == "" or component_type == "" or component_name == "":
@@ -489,46 +481,27 @@ def component_show_command(
             failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
         return Failure(failure)
 
-    loaders: dict[str, "Callable[[str], Result[object, object]]"] = {
-        "prompts": cast("Callable[[str], Result[object, object]]", component_store.load_prompt),
-        "toolsets": cast("Callable[[str], Result[object, object]]", component_store.load_toolset),
-        "constraints": cast(
-            "Callable[[str], Result[object, object]]", component_store.load_constraint
-        ),
-        "models": cast("Callable[[str], Result[object, object]]", component_store.load_model),
-    }
-    normalized_type = normalize_component_kind(component_type)
-    loader = loaders.get(normalized_type) if normalized_type is not None else None
-    if loader is None:
-        failure = _component_show_invalid_target(
-            component_ref, component_type=component_type
-        ).unwrap()
-        if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error").unwrap())
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    try:
-        load_result = loader(component_name)
-    except Exception as error:
-        error_envelope, exit_code = _map_component_error(error).unwrap()
-        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    if isinstance(load_result, Success):
-        payload = cast("dict[str, object]", dict(cast("dict[str, object]", load_result.unwrap())))
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component show", payload).unwrap(),
+    query_result = query_component(
+        component_store,
+        component_type=component_type,
+        component_name=component_name,
+        operation="cli.component_show",
+    )
+    if isinstance(query_result, Failure):
+        error_envelope = query_result.failure()
+        failure: CliFailure = {
+            "exit_code": cli_exit_code_for_error(error_envelope),
+            "error": error_envelope,
         }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
+        if not as_json:
+            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+        return Failure(failure)
 
-    error_envelope, exit_code = _map_component_error(load_result.failure()).unwrap()
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-    return Failure(failure)
+    payload = cast("dict[str, object]", dict(query_result.unwrap()))
+    cli_result: CliCommandResult = {
+        "exit_code": EXIT_OK,
+        "stdout": _render_payload_for_text("component show", payload).unwrap(),
+    }
+    if as_json:
+        cli_result["json"] = {"data": payload}
+    return Success(cli_result)

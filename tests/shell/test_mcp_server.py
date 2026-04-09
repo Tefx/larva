@@ -118,6 +118,33 @@ class TestCreateMcpServer:
         expected = {t["name"] for t in LARVA_MCP_TOOLS}
         assert registered == expected
 
+    def test_default_server_uses_shared_facade_factory(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        facade = object()
+        recorded: dict[str, object] = {}
+
+        class RecordingHandlers:
+            def __init__(self, facade: object, components: object) -> None:
+                recorded["facade"] = facade
+                recorded["components"] = components
+
+            def __getattr__(self, name: str) -> Any:
+                if name.startswith("handle_"):
+                    return lambda params: {"ok": True, "params": params}
+                raise AttributeError(name)
+
+        monkeypatch.setattr(
+            "larva.shell.shared.facade_factory.build_default_facade",
+            lambda: facade,
+        )
+        monkeypatch.setattr("larva.shell.mcp.MCPHandlers", RecordingHandlers)
+
+        create_mcp_server()
+
+        assert recorded["facade"] is facade
+        assert recorded["components"].__class__.__name__ == "FilesystemComponentStore"
+
 
 # ---------------------------------------------------------------------------
 # Tool delegation
@@ -159,12 +186,8 @@ class TestToolDelegation:
         mock_handlers.handle_delete.assert_called_once_with({"id": "my-persona"})
 
     def test_clone_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
-        result = self._call_tool(
-            server, "larva_clone", source_id="src", new_id="dst"
-        )
-        mock_handlers.handle_clone.assert_called_once_with(
-            {"source_id": "src", "new_id": "dst"}
-        )
+        result = self._call_tool(server, "larva_clone", source_id="src", new_id="dst")
+        mock_handlers.handle_clone.assert_called_once_with({"source_id": "src", "new_id": "dst"})
 
     def test_success_returns_content_directly(self, server: Any, mock_handlers: MagicMock) -> None:
         """Verify successful results are returned directly (not JSON-encoded)."""
@@ -193,5 +216,3 @@ class TestToolDelegation:
 # ---------------------------------------------------------------------------
 # Import guard
 # ---------------------------------------------------------------------------
-
-

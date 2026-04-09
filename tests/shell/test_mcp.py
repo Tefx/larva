@@ -28,6 +28,7 @@ from larva.app.facade import (
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
+from larva.shell import mcp_params
 from larva.shell.mcp_export import handle_export as handle_export_impl
 from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_impl
 from larva.shell.shared import request_validation
@@ -2603,3 +2604,36 @@ class TestSharedMCPRequestValidation:
             reason="unknown parameter(s)",
         )
         assert error["details"]["unknown"] == ["extra"]
+
+    def test_mcp_core_handler_adopts_shared_request_validation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        facade = _make_facade(registry=InMemoryRegistryStore())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        def _fake_require_params_object(
+            params: object,
+        ) -> Result[dict[str, Any], request_validation.RequestValidationIssue]:
+            del params
+            return Failure(
+                request_validation.RequestValidationIssue(
+                    reason="shared validator sentinel",
+                    details={"field": "params", "received_type": "sentinel"},
+                )
+            )
+
+        monkeypatch.setattr(
+            mcp_params.request_validation,
+            "require_params_object",
+            _fake_require_params_object,
+        )
+
+        result = handlers.handle_list({})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            result,
+            tool="larva_list",
+            reason="shared validator sentinel",
+        )
+        assert result["details"]["received_type"] == "sentinel"

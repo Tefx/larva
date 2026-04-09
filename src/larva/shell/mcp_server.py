@@ -75,11 +75,11 @@ def create_mcp_server(
         ImportError: If ``mcp`` package is not installed.
     """
     if handlers is None:
-        from larva.shell.cli_runtime import _build_default_facade
         from larva.shell.components import FilesystemComponentStore
         from larva.shell.mcp import MCPHandlers
+        from larva.shell.shared.facade_factory import build_default_facade
 
-        facade = _build_default_facade().unwrap()
+        facade = build_default_facade()
         component_store = FilesystemComponentStore()
         handlers = MCPHandlers(facade=facade, components=component_store)
 
