@@ -40811,3 +40811,10 @@ phases:
     projection/rendering without widening CLI semantics.
   depends_on:
   - duplicate_remediation_mcp_dispatch
+- id: duplicate_remediation_bootstrap
+  name: Duplicate Remediation E — Default Facade Bootstrap Convergence
+  status: locked
+  gate: Standardize default facade/bootstrap assembly so CLI, python_api, and compatibility
+    entrypoints share one bootstrap source without changing published runtime surfaces.
+  depends_on:
+  - duplicate_remediation_cli_projection
