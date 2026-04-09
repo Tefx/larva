@@ -40812,7 +40812,7 @@ phases:
   steps:
   - id: repair_dup_shared_foundations.component_query_core
     name: Extract shared component-query core
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: component endpoint behavior and invalid-kind expectations\n\
       \  - ARCHITECTURE.md :: shell/shared abstraction boundary\n touch_paths:\n \
@@ -40892,6 +40892,8 @@ phases:
     depends_on:
     - repair_dup_guardrails.gate
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T16:50:04.468908+00:00'
   - id: repair_dup_shared_foundations.mcp_validation_core
     name: Extract shared MCP validation core
     status: done
