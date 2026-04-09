@@ -40896,7 +40896,7 @@ phases:
     claimed_at: '2026-04-09T16:40:15.120378+00:00'
   - id: repair_dup_shared_foundations.mcp_validation_core
     name: Extract shared MCP validation core
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP tool parameter rules and malformed-parameter envelope\
       \ expectations\n  - ARCHITECTURE.md :: shell/shared validation boundary\n touch_paths:\n\
@@ -40973,6 +40973,82 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-09T16:40:59.779991+00:00'
+    done_at: '2026-04-09T16:48:40.798463+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - INTERFACES.md — shared semantics centralized; adapter envelopes local
+
+      - ARCHITECTURE.md — MCP local schemas/envelopes retained, shared semantic rules
+      outside envelopes
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied: MCP malformed envelopes kept adapter-local;
+      only transport-neutral validators extracted
+
+      - preservation_harness MCP cases consumed: unknown/missing/wrong-type malformed
+      envelope expectations preserved
+
+
+      ## Implementation Evidence
+
+      - Shared validation module: src/larva/shell/shared/request_validation.py with
+      require_params_object/reject_unknown_params/require_param/require_type/require_list_of_strings
+
+      - Rebased isolated callers: src/larva/shell/mcp_export.py and src/larva/shell/mcp_update_batch.py
+      now consume shared validator
+
+      - Deferred MCP files: src/larva/shell/mcp.py and src/larva/shell/mcp_handler_ops.py
+      left unchanged
+
+
+      ## Main Path Proof
+
+      - uv run pytest tests/shell/test_mcp.py -q -> 140 passed
+
+
+      ## Failure Path Proof
+
+      - unknown_params: malformed envelope tests preserved + isolated-module coverage
+
+      - missing_required: malformed envelope tests preserved
+
+      - wrong_type: malformed envelope tests preserved across boolean/list/object
+      type checks
+
+
+      ## Commit hash(es)
+
+      - c5ac553a14594e80c22f663d67b67eb30f284b78
+
+
+      ## Files changed
+
+      - src/larva/shell/shared/request_validation.py
+
+      - src/larva/shell/mcp_export.py
+
+      - src/larva/shell/mcp_update_batch.py
+
+      - tests/shell/test_mcp.py
+
+
+      ## Spec link
+
+      - repair_dup_shared_foundations.mcp_validation_core
+
+
+      ## Deviations
+
+      - none
+
+
+      ## Gaps/Notes
+
+      - deferred rebasing of mcp.py and mcp_handler_ops.py per step scope
+
+      - shared validator has no MCP runtime export surface'
   - id: repair_dup_shared_foundations.cli_projection_core
     name: Extract shared CLI projection core
     status: claimed
