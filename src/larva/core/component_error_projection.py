@@ -25,7 +25,14 @@ class ComponentErrorEnvelope(TypedDict):
     details: dict[str, object]
 
 
-@pre(lambda operation, component_type, component_name, valid_types: bool(operation))
+@pre(
+    lambda operation, component_type, component_name, valid_types: (
+        "\x00" not in operation
+        and "\x00" not in component_type
+        and (component_name is None or "\x00" not in component_name)
+        and all("\x00" not in valid_type for valid_type in valid_types)
+    )
+)
 @post(lambda result: result["code"] == "INVALID_INPUT")
 def component_invalid_kind_error(
     operation: str,
@@ -58,7 +65,14 @@ def component_invalid_kind_error(
     }
 
 
-@pre(lambda operation, component_type, component_name, message: isinstance(operation, str))
+@pre(
+    lambda operation, component_type, component_name, message: (
+        "\x00" not in operation
+        and "\x00" not in message
+        and (component_type is None or "\x00" not in component_type)
+        and (component_name is None or "\x00" not in component_name)
+    )
+)
 @post(lambda result: result["code"] == "COMPONENT_NOT_FOUND")
 def component_not_found_error(
     operation: str,
@@ -85,7 +99,14 @@ def component_not_found_error(
     }
 
 
-@pre(lambda operation, component_type, component_name, reason: isinstance(operation, str))
+@pre(
+    lambda operation, component_type, component_name, reason: (
+        "\x00" not in operation
+        and "\x00" not in reason
+        and (component_type is None or "\x00" not in component_type)
+        and (component_name is None or "\x00" not in component_name)
+    )
+)
 @post(lambda result: result["code"] == "INTERNAL")
 def component_store_unavailable_error(
     operation: str,
@@ -113,8 +134,11 @@ def component_store_unavailable_error(
 
 
 @pre(
-    lambda operation, error, default_component_type=None, default_component_name=None: isinstance(
-        operation, str
+    lambda operation, error, default_component_type=None, default_component_name=None: (
+        "\x00" not in operation
+        and hasattr(error, "args")
+        and (default_component_type is None or "\x00" not in default_component_type)
+        and (default_component_name is None or "\x00" not in default_component_name)
     )
 )
 @post(lambda result: result["code"] in {"INTERNAL", "COMPONENT_NOT_FOUND"})

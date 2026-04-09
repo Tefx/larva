@@ -31,7 +31,7 @@ _COMPONENT_KIND_ALIASES: dict[str, str] = {
 }
 
 
-@pre(lambda kind: isinstance(kind, str))
+@pre(lambda kind: "\x00" not in kind)
 @post(lambda result: result is None or result in CANONICAL_COMPONENT_KINDS)
 def normalize_component_kind(kind: str) -> str | None:
     """Normalize component kind aliases to canonical plural values.
@@ -47,7 +47,7 @@ def normalize_component_kind(kind: str) -> str | None:
     return _COMPONENT_KIND_ALIASES.get(kind)
 
 
-@pre(lambda kind: isinstance(kind, str))
+@pre(lambda kind: "\x00" not in kind)
 @post(lambda result: result.startswith("Invalid component type: "))
 def invalid_component_kind_message(kind: str) -> str:
     """Return consistent invalid-kind message text for public surfaces.
