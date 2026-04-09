@@ -42945,7 +42945,7 @@ phases:
     claimed_at: '2026-04-09T19:45:30.965171+00:00'
   - id: repair_dup_surface_integration.web_liveness
     name: Probe packaged and contrib web liveness
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -43026,6 +43026,8 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-09T19:45:38.100003+00:00'
   - id: repair_dup_surface_integration.wiring_audit
     name: Audit surface-integration wiring completeness
     status: pending
