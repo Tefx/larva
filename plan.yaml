@@ -42945,7 +42945,7 @@ phases:
     claimed_at: '2026-04-09T19:45:30.965171+00:00'
   - id: repair_dup_surface_integration.web_liveness
     name: Probe packaged and contrib web liveness
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -43028,6 +43028,71 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-09T19:45:38.100003+00:00'
+    done_at: '2026-04-09T19:51:02.115250+00:00'
+    evidence: '## Web Liveness Verification Report
+
+
+      ### Packaged Runtime (larva.shell.web:app, port 7400)
+
+      - **Launch**: ✅ Server started and accepted requests
+
+      - GET `/` → 200 (HTML UI served)
+
+      - GET `/api/personas` → 200 (persona list returned with 3 entries)
+
+      - GET `/api/components` → 200 (component listing returned)
+
+      - POST `/api/personas/batch-update` → **405 Method Not Allowed** (route not
+      in packaged inventory)
+
+      - **packaged_alive**: true
+
+
+      ### Contrib Runtime (contrib/web/server.py, port 7401)
+
+      - **Launch**: ✅ Server started and accepted requests (via `run_web_app` from
+      packaged)
+
+      - GET `/` → 200 (contrib HTML UI served)
+
+      - GET `/api/personas` → 200 (same persona list)
+
+      - GET `/api/components` → 200 (same component listing)
+
+      - POST `/api/personas/batch-update` → **422 Unprocessable Entity** (route IS
+      mounted; FastAPI validation on body — proves route exists)
+
+      - **contrib_alive**: true
+
+
+      ### Route Inventory Comparison
+
+      - **Packaged routes (12)**: GET /, GET /api/personas, GET /api/personas/{id},
+      POST /api/personas, PATCH /api/personas/{id}, DELETE /api/personas/{id}, POST
+      /api/personas/clear, POST /api/personas/validate, POST /api/personas/assemble,
+      GET /api/components, GET /api/components/{type}/{name}, GET /openapi.json
+
+      - **Contrib routes (13)**: All 12 packaged routes + `POST /api/personas/batch-update`
+
+      - **Contrib-only route**: `POST /api/personas/batch-update` (present only in
+      contrib)
+
+      - **Packaged-only routes**: none (all canonical routes present in both)
+
+
+      ### Boundary Verdict
+
+      - ✅ Packaged canonical routes preserved in both runtimes
+
+      - ✅ `POST /api/personas/batch-update` present ONLY in contrib (422 in contrib
+      vs 405 in packaged)
+
+      - ✅ No contrib route leaks into packaged runtime
+
+      - ✅ Both runtimes start and serve at least one successful request
+
+
+      **packaged_alive: true | contrib_alive: true | boundary_verdict: PASS**'
   - id: repair_dup_surface_integration.wiring_audit
     name: Audit surface-integration wiring completeness
     status: pending
