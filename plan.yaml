@@ -42463,3 +42463,65 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_wiring
     agent: gate-reviewer-tacit
+  - id: repair_dup_finalization.deep_review_black_box
+    name: Deep-review black-box cross-surface verification
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+      scope_protects: repair_dup_finalization.gate
+
+
+      Using only public/runtime interfaces and the documented contract, verify the
+      repaired duplicate-abstraction families behave consistently across exposed surfaces.
+
+      '
+    verification: '- Public interfaces alone are sufficient to prove repaired behavior
+      across CLI/MCP/Web/Python API where documented
+
+      - Packaged/contrib distinction is visible from runtime behavior, not hidden
+      implementation knowledge
+
+      - Any remaining runtime inconsistency is surfaced before final gate'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - commands_or_requests:
+
+
+      ### Actual Output
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ### Issues Found
+
+      - blocker:
+
+      - should_fix:
+
+      - suggestion:
+
+      '
+    depends_on:
+    - repair_dup_finalization.deep_review_spec
+    agent: blind-tester-tacit
