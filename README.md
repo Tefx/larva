@@ -248,6 +248,8 @@ Scope note:
 - documented REST endpoints are the verified contract surface
 - the prompt copy button is documented only as browser convenience UI behavior
 - batch update is documented only for the contrib runtime, not for `larva serve`
+- component query semantics are shared across transports and should be centralized outside adapter-local envelopes
+- CLI, MCP, Web, and Python API keep their own rendering, error envelopes, and runtime hooks
 - preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
 
 ### OpenCode plugin
@@ -264,6 +266,13 @@ larva uses a strict layered structure enforced by Invar.
 | Core | `src/larva/core/` | Pure logic, contracts, no I/O |
 | App | `src/larva/app/` | Use-case orchestration |
 | Shell | `src/larva/shell/` | CLI, MCP, filesystem, web adapters |
+
+Structural guardrails frozen for the remediation campaign:
+
+- `src/larva/shell/web.py` is the authoritative packaged REST surface
+- `contrib/web/server.py` is an extension consumer, not the contract owner
+- `src/larva/core/patch.py` dotted-path patch semantics stay separate from
+  `src/larva/app/facade.py` dotted lookup semantics unless later evidence says otherwise
 
 ## Read next
 

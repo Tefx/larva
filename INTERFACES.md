@@ -83,6 +83,21 @@ Representative CLI operations:
 CLI is an operator interface over the same canonical contract. It does not add
 new persona semantics.
 
+## Cross-Surface Authority Rules
+
+- [Proven] `src/larva/shell/web.py` is the authoritative packaged REST surface.
+- [Proven] `contrib/web/server.py` is a supported extension consumer and local
+  review runtime, not the packaged contract owner.
+- [Proven] Component-query semantics (`component_type` normalization, accepted
+  aliases, and lookup meaning) are transport-neutral and must stay centralized
+  outside adapter-local HTTP/MCP/CLI/Python envelopes.
+- [Proven] CLI, MCP, packaged Web, contrib Web, and Python API may each keep
+  adapter-local rendering, envelopes, and runtime hooks as long as they do not
+  redefine shared semantic meaning.
+- [Proven] `src/larva/core/patch.py` dotted-path patch semantics and
+  `src/larva/app/facade.py` dotted lookup for batch `where` clauses remain
+  separate authorities unless later evidence proves they should merge.
+
 ### Web Runtime Surface
 
 The web surface has two runnable entrypoints with one authoritative packaged
