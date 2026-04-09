@@ -11,33 +11,31 @@ from larva.app.facade import (
     AssembleRequest,
     BatchUpdateResult,
     ClearedRegistry,
-    DefaultLarvaFacade,
     DeletedPersona,
     LarvaError,
+    LarvaFacade,
     PersonaSummary,
     RegisteredPersona,
 )
-from larva.core import assemble as assemble_module
-from larva.core import normalize as normalize_module
-from larva.core import spec as spec_module
-from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.shell.components import FilesystemComponentStore
-from larva.shell.python_api_components import LarvaApiError
 from larva.shell import python_api_components
-from larva.shell.registry import FileSystemRegistryStore
+from larva.shell.python_api_components import LarvaApiError
+from larva.shell.shared.facade_factory import build_default_facade as build_shared_default_facade
 
 
-_facade = DefaultLarvaFacade(
-    spec=spec_module,
-    assemble=assemble_module,
-    validate=validate_module,
-    normalize=normalize_module,
-    components=FilesystemComponentStore(),
-    registry=FileSystemRegistryStore(),
-)
-_get_facade = lambda: _facade
+_facade = build_shared_default_facade()
+
+
+class _FacadeAccessor:
+    def __init__(self, facade: LarvaFacade) -> None:
+        self._facade = facade
+
+    def __call__(self) -> LarvaFacade:
+        return self._facade
+
+
+_get_facade = _FacadeAccessor(_facade)
 
 
 # @invar:allow shell_result: shared Python API dispatch unwraps facade Results to exceptions

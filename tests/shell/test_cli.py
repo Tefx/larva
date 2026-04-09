@@ -21,6 +21,7 @@ Sources:
 from __future__ import annotations
 
 import json
+import importlib
 import io
 import runpy
 import sys
@@ -38,6 +39,7 @@ from larva.app.facade import (
     PersonaSummary,
     RegisteredPersona,
 )
+from larva import cli_facade
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
@@ -103,6 +105,60 @@ def test_python_module_cli_executes_same_shell_entrypoint(monkeypatch: pytest.Mo
 
     assert exc_info.value.code == 9
     assert calls == [None]
+
+
+def test_cli_facade_wrapper_uses_shared_default_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    sentinel = object()
+    calls: list[str] = []
+
+    def fake_build_default_facade() -> object:
+        calls.append("build")
+        return sentinel
+
+    monkeypatch.setattr(cli_facade, "build_shared_default_facade", fake_build_default_facade)
+
+    assert cli_facade.build_default_facade() is sentinel
+    assert calls == ["build"]
+
+
+def test_cli_facade_and_python_api_share_default_factory_entrypoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[object] = []
+
+    def fake_build_default_facade() -> object:
+        facade = object()
+        calls.append(facade)
+        return facade
+
+    monkeypatch.setattr(
+        "larva.shell.shared.facade_factory.build_default_facade",
+        fake_build_default_facade,
+    )
+
+    import larva.shell.python_api as python_api_module
+
+    reloaded_python_api = importlib.reload(python_api_module)
+    reloaded_cli_facade = importlib.reload(cli_facade)
+    try:
+        python_api_build_count = len(calls)
+        cli_facade_instance = reloaded_cli_facade.build_default_facade()
+
+        assert python_api_build_count >= 1
+        assert len(calls) == python_api_build_count + 1
+        assert reloaded_python_api._get_facade() is calls[python_api_build_count - 1]
+        assert cli_facade_instance is calls[-1]
+    finally:
+        importlib.reload(reloaded_python_api)
+        importlib.reload(reloaded_cli_facade)
+
+
+def test_cli_facade_source_has_no_direct_default_facade_constructor() -> None:
+    assert cli_facade.__file__ is not None
+    source = Path(cli_facade.__file__).read_text(encoding="utf-8")
+
+    assert "DefaultLarvaFacade(" not in source
+    assert "_build_default_facade" not in source
 
 
 def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:

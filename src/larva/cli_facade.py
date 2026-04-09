@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from larva.app.facade import LarvaFacade
-from larva.shell.cli_runtime import _build_default_facade
+from larva.shell.shared.facade_factory import build_default_facade as build_shared_default_facade
 
 
 def build_default_facade() -> LarvaFacade:
     """Return a default facade instance for CLI-compatible callers."""
-    return _build_default_facade().unwrap()
+    return build_shared_default_facade()

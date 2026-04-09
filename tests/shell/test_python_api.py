@@ -14,8 +14,10 @@ Sources:
 from __future__ import annotations
 
 import json
+import importlib
 import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
@@ -600,6 +602,37 @@ class TestThinAdapterSemantics:
         assert callable(getattr(python_api, "register", None))
         assert callable(getattr(python_api, "resolve", None))
         assert callable(getattr(python_api, "list", None))
+
+    def test_module_singleton_uses_shared_default_factory(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """python_api should build its singleton through the shared default factory."""
+        sentinel = object()
+        calls: list[str] = []
+
+        def fake_build_default_facade() -> object:
+            calls.append("build")
+            return sentinel
+
+        monkeypatch.setattr(
+            "larva.shell.shared.facade_factory.build_default_facade",
+            fake_build_default_facade,
+        )
+
+        reloaded = importlib.reload(python_api)
+        try:
+            assert calls == ["build"]
+            assert reloaded._get_facade() is sentinel
+            assert reloaded._get_facade() is sentinel
+        finally:
+            importlib.reload(reloaded)
+
+    def test_python_api_source_has_no_direct_default_facade_constructor(self) -> None:
+        """python_api should no longer construct DefaultLarvaFacade directly."""
+        assert python_api.__file__ is not None
+        source = Path(python_api.__file__).read_text(encoding="utf-8")
+
+        assert "DefaultLarvaFacade(" not in source
 
 
 class TestPythonApiComponentList:
