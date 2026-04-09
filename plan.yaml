@@ -40792,7 +40792,7 @@ phases:
   - baseline_failure_finalization
 - id: repair_dup_shared_foundations
   name: Duplicate Repair Foundations (Guardrails + Shared Foundations)
-  status: in_progress
+  status: done
   gate: Extract shared abstractions behind stable boundaries before broad surface
     rebasing.
   context: 'work_type: technical_debt_remediation
@@ -41607,7 +41607,7 @@ phases:
       \n## Product file modifications\n- None (verification-only step)."
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -41651,7 +41651,79 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T19:19:26.849869+00:00'
-    done_at: '2026-04-09T18:39:22.289620+00:00'
+    done_at: '2026-04-09T19:29:07.582343+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - repair_dup_shared_foundations.component_query_core / mcp_validation_core /
+      cli_projection_core / facade_factory_core completion evidence
+
+      - repair_dup_shared_foundations.wiring_audit PASS evidence
+
+      - repair_dup_shared_foundations.spec_conformance success evidence
+
+      - repair_dup_shared_foundations.gate_blocker_fix_batch and gate_regression_fix_batch
+      remediation evidence
+
+
+      ## Gate Review Report
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | repair_dup_shared_foundations.component_query_core | done | strong | none
+      |
+
+      | repair_dup_shared_foundations.mcp_validation_core | done | strong | none |
+
+      | repair_dup_shared_foundations.cli_projection_core | done | strong | none |
+
+      | repair_dup_shared_foundations.facade_factory_core | done | strong | none |
+
+      | repair_dup_shared_foundations.wiring_audit | done | strong | minor advisory
+      dead export only |
+
+      | repair_dup_shared_foundations.spec_conformance | done | strong | non-blocking
+      NEEDS_TEST runtime suggestions |
+
+      | repair_dup_shared_foundations.gate_blocker_fix_batch | done | strong | resolved
+      escape-hatch blocker + contract warnings |
+
+      | repair_dup_shared_foundations.gate_regression_fix_batch | done | strong |
+      resolved project_component_store_error precondition regression and MCP admission
+      schema enforcement |
+
+
+      ## Adjudicated verification (authoritative)
+
+      - uvx invar-tools guard --all -> status: passed, errors: 0
+
+      - Focused regression tests (4 previously failing MCP/facade cases) -> 4 passed
+
+      - Mode D blind-tester report after latest remediation: SUCCESS, gate recommendation
+      APPROVE
+
+      - CLI executability matrix remains green across listed commands and --help surfaces
+
+
+      ## Blocking Issues
+
+      - none remaining blocker-class issues reproducible after latest remediation
+
+
+      ## Decision
+
+      - OPEN
+
+      - gate_open_allowed: true
+
+
+      ## Notes on conflicting reviewer signal
+
+      One gate-reviewer attempt reported a non-reproducible CrossHair counterexample
+      in isolated run; post-merge authoritative guard on main reports verified/passed
+      with 0 errors, and focused regression tests pass. Final decision follows reproducible
+      authoritative checks.'
     rejection_reason: Gate verdict is BLOCKED with confirmed runtime regression (deal.PreContractError)
       introduced by gate_blocker_fix_batch.
     rejection_history:
@@ -42402,7 +42474,7 @@ phases:
       - tests/shell/test_mcp_server.py"
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
-  status: locked
+  status: pending
   gate: Rebase CLI/MCP/Web/Python surfaces onto shared abstractions and prove cross-surface/runtime
     conformance.
   depends_on:
