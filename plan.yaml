@@ -40882,6 +40882,8 @@ phases:
       - store_unavailable:
 
       '
+    depends_on:
+    - repair_dup_guardrails.gate
     agent: python-senior-tacit
   - id: repair_dup_shared_foundations.mcp_validation_core
     name: Extract shared MCP validation core
