@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from returns.result import Failure, Success
+from returns.result import Failure
 from larva.core.component_error_projection import (
     component_store_unavailable_error,
     project_component_store_error,
@@ -26,12 +26,11 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
     _components: ComponentStore | None
 
     def _handle_component_list_impl(self, params: object) -> dict[str, list[str]] | LarvaError:
-        validated_params = self._require_params_object("larva_component_list", params)
+        validated_params = self._validated_params(
+            "larva_component_list", params, allowed_keys=set()
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
-        checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_component_list", checked_params, set()):
-            return error
 
         if self._components is None:
             return component_store_unavailable_error(
@@ -52,26 +51,16 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         return cast("dict[str, list[str]]", result.unwrap())
 
     def _handle_component_show_impl(self, params: object) -> dict[str, object] | LarvaError:
-        validated_params = self._require_params_object("larva_component_show", params)
+        validated_params = self._validated_params(
+            "larva_component_show",
+            params,
+            allowed_keys={"component_type", "name"},
+            required_keys=("component_type", "name"),
+            typed_keys=(("component_type", str, "string"), ("name", str, "string")),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params(
-            "larva_component_show", checked_params, {"component_type", "name"}
-        ):
-            return error
-        if error := self._require_param("larva_component_show", checked_params, "component_type"):
-            return error
-        if error := self._require_param("larva_component_show", checked_params, "name"):
-            return error
-        if error := self._require_type(
-            "larva_component_show", checked_params, "component_type", str, "string"
-        ):
-            return error
-        if error := self._require_type(
-            "larva_component_show", checked_params, "name", str, "string"
-        ):
-            return error
 
         component_type = checked_params["component_type"]
         name = checked_params["name"]
@@ -96,14 +85,10 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         return cast("dict[str, object]", result.unwrap())
 
     def _handle_assemble_impl(self, params: object) -> PersonaSpec | LarvaError:
-        validated_params = self._require_params_object("larva_assemble", params)
-        if isinstance(validated_params, Failure):
-            return validated_params.failure()
-        checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params(
+        validated_params = self._validated_params(
             "larva_assemble",
-            checked_params,
-            {
+            params,
+            allowed_keys={
                 "id",
                 "description",
                 "prompts",
@@ -113,40 +98,19 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
                 "overrides",
                 "variables",
             },
-        ):
-            return error
-        if error := self._require_param("larva_assemble", checked_params, "id"):
-            return error
-        if error := self._require_type("larva_assemble", checked_params, "id", str, "string"):
-            return error
-        if "description" in checked_params and (
-            error := self._require_type(
-                "larva_assemble", checked_params, "description", str, "string"
-            )
-        ):
-            return error
-        if error := self._require_list_of_strings("larva_assemble", checked_params, "prompts"):
-            return error
-        if error := self._require_list_of_strings("larva_assemble", checked_params, "toolsets"):
-            return error
-        if error := self._require_list_of_strings("larva_assemble", checked_params, "constraints"):
-            return error
-        if "model" in checked_params and (
-            error := self._require_type("larva_assemble", checked_params, "model", str, "string")
-        ):
-            return error
-        if "overrides" in checked_params and (
-            error := self._require_type(
-                "larva_assemble", checked_params, "overrides", dict, "object"
-            )
-        ):
-            return error
-        if "variables" in checked_params and (
-            error := self._require_type(
-                "larva_assemble", checked_params, "variables", dict, "object"
-            )
-        ):
-            return error
+            required_keys=("id",),
+            typed_keys=(
+                ("id", str, "string"),
+                ("description", str, "string"),
+                ("model", str, "string"),
+                ("overrides", dict, "object"),
+                ("variables", dict, "object"),
+            ),
+            list_string_keys=("prompts", "toolsets", "constraints"),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
 
         request: AssembleRequest = {
             "id": checked_params["id"],
@@ -160,53 +124,39 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         if "description" in checked_params:
             request["description"] = checked_params["description"]
         facade = cast("Any", self._facade)
-        result = cast("Success[object] | Failure[LarvaError]", facade.assemble(request))
-        if isinstance(result, Success):
-            return cast("PersonaSpec", result.unwrap())
-        return result.failure()
+        result = cast("Failure[LarvaError] | object", self._unwrap_result(facade.assemble(request)))
+        return cast("PersonaSpec | LarvaError", result)
 
     def _handle_resolve_impl(self, params: object) -> PersonaSpec | LarvaError:
-        validated_params = self._require_params_object("larva_resolve", params)
+        validated_params = self._validated_params(
+            "larva_resolve",
+            params,
+            allowed_keys={"id", "overrides"},
+            required_keys=("id",),
+            typed_keys=(("id", str, "string"), ("overrides", dict, "object")),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params(
-            "larva_resolve", checked_params, {"id", "overrides"}
-        ):
-            return error
-        if error := self._require_param("larva_resolve", checked_params, "id"):
-            return error
-        if error := self._require_type("larva_resolve", checked_params, "id", str, "string"):
-            return error
-        if "overrides" in checked_params and (
-            error := self._require_type(
-                "larva_resolve", checked_params, "overrides", dict, "object"
-            )
-        ):
-            return error
 
         persona_id = checked_params["id"]
         overrides: dict[str, object] | None = checked_params.get("overrides")
         facade = cast("Any", self._facade)
-        result = cast(
-            "Success[object] | Failure[LarvaError]",
-            facade.resolve(persona_id, overrides),
+        return cast(
+            "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides))
         )
-        if isinstance(result, Success):
-            return cast("PersonaSpec", result.unwrap())
-        return result.failure()
 
     def _handle_validate_impl(self, params: object) -> ValidationReport | LarvaError:
-        validated_params = self._require_params_object("larva_validate", params)
+        validated_params = self._validated_params(
+            "larva_validate",
+            params,
+            allowed_keys={"spec"},
+            required_keys=("spec",),
+            typed_keys=(("spec", dict, "object"),),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_validate", checked_params, {"spec"}):
-            return error
-        if error := self._require_param("larva_validate", checked_params, "spec"):
-            return error
-        if error := self._require_type("larva_validate", checked_params, "spec", dict, "object"):
-            return error
         spec = checked_params["spec"]
         facade = cast("Any", self._facade)
         return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))

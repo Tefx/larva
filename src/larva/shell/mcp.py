@@ -132,28 +132,21 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva_register", params)
+        validated_params = self._validated_params(
+            "larva_register",
+            params,
+            allowed_keys={"spec"},
+            required_keys=("spec",),
+            typed_keys=(("spec", dict, "object"),),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_register", checked_params, {"spec"}):
-            return error
-        if error := self._require_param("larva_register", checked_params, "spec"):
-            return error
-        if error := self._require_type("larva_register", checked_params, "spec", dict, "object"):
-            return error
         spec = checked_params["spec"]
-
-        # Delegate to facade
-        result = self._facade.register(cast("PersonaSpec", spec))
-
-        # Success shaping: return RegisteredPersona on success
-        if isinstance(result, Success):
-            return cast("RegisteredPersona", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast(
+            "RegisteredPersona | LarvaError",
+            self._unwrap_result(self._facade.register(cast("PersonaSpec", spec))),
+        )
 
     def handle_list(self, params: object) -> Union[list[dict[str, str]], LarvaError]:
         """Handle larva.list MCP tool call.
@@ -168,23 +161,10 @@ class MCPHandlers(MCPHandlerOpsMixin):
             [{"id": str, "spec_digest": str, "model": str}, ...]
             Or error envelope on failure.
         """
-        validated_params = self._require_params_object("larva_list", params)
+        validated_params = self._validated_params("larva_list", params, allowed_keys=set())
         if isinstance(validated_params, Failure):
             return validated_params.failure()
-        checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_list", checked_params, set()):
-            return error
-
-        # Delegate to facade
-        result = self._facade.list()
-
-        # Success shaping: return list of summaries
-        if isinstance(result, Success):
-            return cast("list[dict[str, str]]", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast("list[dict[str, str]] | LarvaError", self._unwrap_result(self._facade.list()))
 
     def handle_delete(self, params: object) -> Union["DeletedPersona", LarvaError]:
         """Handle larva.delete MCP tool call.
@@ -200,29 +180,20 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva_delete", params)
+        validated_params = self._validated_params(
+            "larva_delete",
+            params,
+            allowed_keys={"id"},
+            required_keys=("id",),
+            typed_keys=(("id", str, "string"),),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_delete", checked_params, {"id"}):
-            return error
-        if error := self._require_param("larva_delete", checked_params, "id"):
-            return error
-        if error := self._require_type("larva_delete", checked_params, "id", str, "string"):
-            return error
-
         persona_id = checked_params["id"]
-
-        # Delegate to facade
-        result = self._facade.delete(persona_id)
-
-        # Success shaping: return DeletedPersona on success
-        if isinstance(result, Success):
-            return cast("DeletedPersona", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast(
+            "DeletedPersona | LarvaError", self._unwrap_result(self._facade.delete(persona_id))
+        )
 
     def handle_clear(self, params: object) -> Union["ClearedRegistry", LarvaError]:
         """Handle larva.clear MCP tool call.
@@ -239,29 +210,20 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva_clear", params)
+        validated_params = self._validated_params(
+            "larva_clear",
+            params,
+            allowed_keys={"confirm"},
+            required_keys=("confirm",),
+            typed_keys=(("confirm", str, "string"),),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_clear", checked_params, {"confirm"}):
-            return error
-        if error := self._require_param("larva_clear", checked_params, "confirm"):
-            return error
-        if error := self._require_type("larva_clear", checked_params, "confirm", str, "string"):
-            return error
-
         confirm = checked_params["confirm"]
-
-        # Delegate to facade
-        result = self._facade.clear(confirm)
-
-        # Success shaping: return ClearedRegistry on success
-        if isinstance(result, Success):
-            return cast("ClearedRegistry", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast(
+            "ClearedRegistry | LarvaError", self._unwrap_result(self._facade.clear(confirm))
+        )
 
     def handle_clone(self, params: object) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.clone MCP tool call.
@@ -278,36 +240,22 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva_clone", params)
+        validated_params = self._validated_params(
+            "larva_clone",
+            params,
+            allowed_keys={"source_id", "new_id"},
+            required_keys=("source_id", "new_id"),
+            typed_keys=(("source_id", str, "string"), ("new_id", str, "string")),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params(
-            "larva_clone", checked_params, {"source_id", "new_id"}
-        ):
-            return error
-        if error := self._require_param("larva_clone", checked_params, "source_id"):
-            return error
-        if error := self._require_param("larva_clone", checked_params, "new_id"):
-            return error
-        if error := self._require_type("larva_clone", checked_params, "source_id", str, "string"):
-            return error
-        if error := self._require_type("larva_clone", checked_params, "new_id", str, "string"):
-            return error
 
         source_id = checked_params["source_id"]
         new_id = checked_params["new_id"]
-
-        # Delegate to facade
-        result = self._facade.clone(source_id, new_id)
-
-        # Success shaping: return PersonaSpec on success
-        if isinstance(result, Success):
-            return cast("PersonaSpec", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast(
+            "PersonaSpec | LarvaError", self._unwrap_result(self._facade.clone(source_id, new_id))
+        )
 
     def handle_update(self, params: object) -> Union[PersonaSpec, LarvaError]:
         """Handle larva.update MCP tool call.
@@ -324,34 +272,23 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Malformed requests return the documented MCP error envelope.
         """
-        validated_params = self._require_params_object("larva_update", params)
+        validated_params = self._validated_params(
+            "larva_update",
+            params,
+            allowed_keys={"id", "patches"},
+            required_keys=("id", "patches"),
+            typed_keys=(("id", str, "string"), ("patches", dict, "object")),
+        )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
-        if error := self._reject_unknown_params("larva_update", checked_params, {"id", "patches"}):
-            return error
-        if error := self._require_param("larva_update", checked_params, "id"):
-            return error
-        if error := self._require_param("larva_update", checked_params, "patches"):
-            return error
-        if error := self._require_type("larva_update", checked_params, "id", str, "string"):
-            return error
-        if error := self._require_type("larva_update", checked_params, "patches", dict, "object"):
-            return error
 
         persona_id = checked_params["id"]
         patches = checked_params["patches"]
-
-        # Delegate to facade
-        result = self._facade.update(persona_id, patches)
-
-        # Success shaping: return PersonaSpec on success
-        if isinstance(result, Success):
-            return cast("PersonaSpec", result.unwrap())
-
-        # Error envelope fidelity: return error with code, numeric_code, message, details
-        error = result.failure()
-        return error
+        return cast(
+            "PersonaSpec | LarvaError",
+            self._unwrap_result(self._facade.update(persona_id, patches)),
+        )
 
     def handle_update_batch(self, params: object) -> Union[dict[str, object], LarvaError]:
         """Handle larva.update_batch MCP tool call.
