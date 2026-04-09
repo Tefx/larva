@@ -42009,6 +42009,79 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: wiring-auditor
+  - id: repair_dup_surface_integration.spec_conformance
+    name: Verify surface-integration spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+      scope_protects: repair_dup_surface_integration.gate
+
+
+      Spec conformance verification via adversarial divergence hunting for the surface
+      behaviors touched by the duplicate-abstraction repair.
+
+
+      Focus areas:
+
+      - CLI text/json behavior that remains user-visible
+
+      - MCP malformed-parameter and component-query semantics
+
+      - packaged web endpoint inventory and contrib-only batch-update exception
+
+      - Python API and web component-query parity with canonical component vocabulary
+
+      '
+    verification: '- Requirement-to-implementation evidence table exists for each
+      touched surface contract
+
+      - Any remaining divergence is explicitly classified as DIVERGES, PARTIAL, or
+      NEEDS_TEST
+
+      - Packaged-versus-contrib authority is confirmed rather than inferred implicitly'
+    evidence_template: '## Spec Conformance Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+
+      ## Coverage Summary
+
+      - CONFORMS:
+
+      - DIVERGES:
+
+      - PARTIAL:
+
+      - NEEDS_TEST:
+
+      '
+    depends_on:
+    - repair_dup_surface_integration.cli_surface_rebase
+    - repair_dup_surface_integration.mcp_surface_rebase
+    - repair_dup_surface_integration.web_convergence_rebase
+    agent: spec-verifier-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
