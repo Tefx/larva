@@ -42482,7 +42482,7 @@ phases:
   steps:
   - id: repair_dup_surface_integration.cli_surface_rebase
     name: Rebase CLI surface onto shared abstractions
-    status: claimed
+    status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: CLI-facing validate/component/update semantics\n  - README.md\
       \ :: CLI usage and runtime surface\n touch_paths:\n  - src/larva/shell/cli_runtime.py\n\
@@ -42560,8 +42560,6 @@ phases:
 
       '
     agent: python-senior-tacit
-    claimed_by: python-senior-tacit
-    claimed_at: '2026-04-09T19:29:35.617654+00:00'
   - id: repair_dup_surface_integration.mcp_surface_rebase
     name: Rebase MCP surface onto shared abstractions
     status: claimed
