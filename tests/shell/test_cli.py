@@ -63,6 +63,13 @@ from larva.shell.cli import (
     resolve_command,
     validate_command,
 )
+from larva.shell.cli_projection import (
+    project_validation_report,
+    render_validation_report_text,
+)
+from larva.shell.cli_types import CliCommandResult as SharedCliCommandResult
+from larva.shell.cli_types import CliFailure as SharedCliFailure
+from larva.shell.cli_types import JsonErrorEnvelope as SharedJsonErrorEnvelope
 from tests.shell.fixture_taxonomy import (
     canonical_persona_spec,
     transition_constraint_fixture,
@@ -1416,6 +1423,74 @@ class TestJsonErrorEnvelope:
             assert error["numeric_code"] == expected_numeric, (
                 f"Expected {expected_numeric} for {code}"
             )
+
+
+class TestCliSharedProjectionAuthority:
+    """Shared CLI helper authorities stay centralized."""
+
+    def test_cli_helpers_reexport_shared_cli_types(self) -> None:
+        from larva.shell import cli_helpers
+
+        assert cli_helpers.CliCommandResult is SharedCliCommandResult
+        assert cli_helpers.CliFailure is SharedCliFailure
+        assert cli_helpers.JsonErrorEnvelope is SharedJsonErrorEnvelope
+
+    def test_cli_helpers_reexport_shared_validation_projection_helpers(self) -> None:
+        from larva.shell import cli_helpers
+
+        assert cli_helpers.project_validation_report is project_validation_report
+        assert cli_helpers.render_validation_report_text is render_validation_report_text
+
+    def test_cli_helpers_source_removes_duplicate_cli_type_declarations(self) -> None:
+        from larva.shell import cli_helpers
+
+        assert cli_helpers.__file__ is not None
+        source = Path(cli_helpers.__file__).read_text(encoding="utf-8")
+
+        assert "CliExitCode = Literal[0, 1, 2]" not in source
+        assert "class JsonErrorEnvelope(TypedDict):" not in source
+        assert "class CliFailure(TypedDict, total=False):" not in source
+        assert "class CliCommandResult(TypedDict, total=False):" not in source
+
+    def test_validation_report_projection_preserves_invalid_parity_facts(self) -> None:
+        report: ValidationReport = {
+            "valid": False,
+            "errors": [
+                {
+                    "code": "FORBIDDEN_EXTRA_FIELD",
+                    "message": "unknown top-level field: tools",
+                    "details": {"field": "tools"},
+                }
+            ],
+            "warnings": [],
+        }
+
+        projection = project_validation_report(report).unwrap()
+
+        assert projection["primary_message"] == "unknown top-level field: tools"
+        assert projection["report"] == report
+        assert (
+            render_validation_report_text(report).unwrap()
+            == "invalid: unknown top-level field: tools\n"
+        )
+
+    def test_validation_report_projection_preserves_warning_parity_facts(self) -> None:
+        report: ValidationReport = {
+            "valid": True,
+            "errors": [],
+            "warnings": [
+                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role",
+                "TRANSITION: deprecated compatibility alias accepted at ingress",
+            ],
+        }
+
+        projection = project_validation_report(report).unwrap()
+        rendered = render_validation_report_text(report).unwrap()
+
+        assert projection["warnings"] == report["warnings"]
+        assert rendered.startswith("valid\n")
+        for warning in report["warnings"]:
+            assert warning in rendered
 
 
 @dataclass

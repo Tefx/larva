@@ -4,63 +4,19 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal, TypedDict, cast
+from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.core.spec import PersonaSpec
 from larva.shell.cli_parser import _CliParseError, _CliParser
-
-CliExitCode = Literal[0, 1, 2]
-
-EXIT_OK: CliExitCode = 0
-EXIT_ERROR: CliExitCode = 1
-EXIT_CRITICAL: CliExitCode = 2
-
-CommandName = Literal[
-    "validate",
-    "assemble",
-    "register",
-    "resolve",
-    "clone",
-    "delete",
-    "clear",
-    "list",
-    "export",
-    "update",
-    "update-batch",
-    "component list",
-    "component show",
-]
-
-
-class JsonErrorEnvelope(TypedDict):
-    code: str
-    numeric_code: int
-    message: str
-    details: dict[str, object]
-
-
-class CliFailure(TypedDict, total=False):
-    exit_code: CliExitCode
-    stderr: str
-    error: JsonErrorEnvelope
-
-
-class CliJsonSuccess(TypedDict):
-    data: object
-
-
-class CliCommandResult(TypedDict, total=False):
-    exit_code: CliExitCode
-    stdout: str
-    stderr: str
-    json: CliJsonSuccess
-
-
-from larva.shell.cli_runtime import (  # noqa: E402
-    _critical_error,
+from larva.shell.cli_projection import (
+    ValidationReportProjection,
+    project_validation_report,
+    render_validation_report_text,
+)
+from larva.shell.cli_runtime import (
     _component_show_invalid_target,
+    _critical_error,
     _emit_result,
     _infer_value_type,
     _map_component_error,
@@ -68,6 +24,50 @@ from larva.shell.cli_runtime import (  # noqa: E402
     _operation_failure,
     _render_payload_for_text,
 )
+from larva.shell.cli_types import (
+    EXIT_CRITICAL,
+    EXIT_ERROR,
+    EXIT_OK,
+    CliCommandResult,
+    CliExitCode,
+    CliFailure,
+    CliJsonSuccess,
+    CommandName,
+    JsonErrorEnvelope,
+)
+
+if TYPE_CHECKING:
+    from larva.core.spec import PersonaSpec
+
+
+__all__ = [
+    "EXIT_CRITICAL",
+    "EXIT_ERROR",
+    "EXIT_OK",
+    "CliCommandResult",
+    "CliExitCode",
+    "CliFailure",
+    "CliJsonSuccess",
+    "CommandName",
+    "JsonErrorEnvelope",
+    "ValidationReportProjection",
+    "_CliParseError",
+    "_CliParser",
+    "_component_show_invalid_target",
+    "_critical_error",
+    "_emit_result",
+    "_infer_value_type",
+    "_map_component_error",
+    "_map_facade_error",
+    "_operation_failure",
+    "_parse_key_value_pairs",
+    "_parse_set_values",
+    "_read_spec_json",
+    "_render_payload_for_text",
+    "_write_output_json",
+    "project_validation_report",
+    "render_validation_report_text",
+]
 
 
 def _parse_key_value_pairs(
