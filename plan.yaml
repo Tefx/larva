@@ -42417,3 +42417,49 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_wiring
     agent: software-architect-tacit
+  - id: repair_dup_finalization.deep_review_contract_strength
+    name: Deep-review contract and projection strength
+    status: pending
+    description: 'step_type: review
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+      scope_protects: repair_dup_finalization.gate
+
+
+      Audit the repaired shared abstractions and projections for vacuous or duplicated
+      contract claims. Focus on whether one real source of truth now exists per repaired
+      semantic family.
+
+      '
+    verification: '- No repaired semantic family still has two competing contract
+      owners
+
+      - Projection/contract helpers are substantive and non-vacuous
+
+      - Any residual duplicate authority is surfaced before the final gate'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Contract Strength Audit
+
+      - duplicate_authority_families:
+
+      - vacuous_helpers:
+
+      - projection_truth_owner_status:
+
+      '
+    depends_on:
+    - repair_dup_finalization.deep_review_wiring
+    agent: gate-reviewer-tacit
