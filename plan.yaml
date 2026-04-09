@@ -41428,6 +41428,55 @@ phases:
     - repair_dup_shared_foundations.cli_projection_core
     - repair_dup_shared_foundations.facade_factory_core
     agent: wiring-auditor
+  - id: repair_dup_shared_foundations.spec_conformance
+    name: Verify shared-foundation spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+      scope_protects: repair_dup_shared_foundations.gate
+
+
+      Spec conformance verification via adversarial divergence hunting for the externally
+      relevant semantics touched by this foundation phase.
+
+
+      Focus areas:
+
+      - component kind alias handling and invalid-kind error category
+
+      - MCP malformed-parameter rule preservation in migrated isolated handlers
+
+      - CLI type/projection authority claims versus current implementation
+
+      - default facade construction equivalence for migrated callers
+
+
+      Behavioral precedence claims that cannot be proven statically MUST be marked
+      NEEDS_TEST with a concrete test suggestion.
+
+      '
+    verification: '- Requirement-to-implementation evidence table exists for all touched
+      semantics
+
+      - Any drift, partial conformance, or NEEDS_TEST item is explicitly recorded
+
+      - No unreviewed authority split survives into the gate step'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Spec Conformance Report\n\
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |\n\n##\
+      \ Coverage Summary\n- CONFORMS:\n- DIVERGES:\n- PARTIAL:\n- NEEDS_TEST:\n- NOT_FOUND:\n\
+      \n## Top Risks\n- \n"
+    depends_on:
+    - repair_dup_shared_foundations.component_query_core
+    - repair_dup_shared_foundations.mcp_validation_core
+    - repair_dup_shared_foundations.cli_projection_core
+    - repair_dup_shared_foundations.facade_factory_core
+    agent: spec-verifier-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
