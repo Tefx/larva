@@ -41430,7 +41430,7 @@ phases:
       - cli_runtime adoption intentionally deferred by step scope'
   - id: repair_dup_shared_foundations.wiring_audit
     name: Audit shared-foundation wiring completeness
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       agent_source: default
@@ -41510,8 +41510,6 @@ phases:
     - repair_dup_shared_foundations.cli_projection_core
     - repair_dup_shared_foundations.facade_factory_core
     agent: wiring-auditor
-    claimed_by: wiring-auditor
-    claimed_at: '2026-04-09T16:59:34.688075+00:00'
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
     status: pending
