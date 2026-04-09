@@ -40783,3 +40783,10 @@ phases:
     remediation.
   depends_on:
   - baseline_failure_finalization
+- id: repair_dup_shared_foundations
+  name: Duplicate Repair Shared Foundations
+  status: locked
+  gate: Extract shared abstractions behind stable boundaries before broad surface
+    rebasing.
+  depends_on:
+  - repair_dup_guardrails
