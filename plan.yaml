@@ -41477,6 +41477,48 @@ phases:
     - repair_dup_shared_foundations.cli_projection_core
     - repair_dup_shared_foundations.facade_factory_core
     agent: spec-verifier-tacit
+  - id: repair_dup_shared_foundations.gate
+    name: Gate shared duplicate-repair foundations
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - shared abstractions introduced across multiple transport families
+
+      - new public/shared modules are being created and must be demonstrably consumed
+
+      - drift here would poison all downstream CLI/MCP/Web rebasing
+
+
+      As an INDEPENDENT REVIEWER, assess whether the shared-foundation extraction
+      phase is complete, wired, spec-aligned, and safe for broad surface migration.
+
+      '
+    verification: '- All shared abstractions are implemented with no unresolved blocker-class
+      wiring gaps
+
+      - Spec-conformance findings are dispositioned before surface migration begins
+
+      - Phase is safe to fan out into CLI/MCP/Web rebasing without reopening authority
+      questions'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Gate Review Report\n\
+      | Step ID | Status | Evidence Quality | Concerns |\n| ------- | ------ | ----------------\
+      \ | -------- |\n\n## Blocking Issues\n- \n\n## Decision\n- OPEN or BLOCKED\n"
+    depends_on:
+    - repair_dup_shared_foundations.component_query_core
+    - repair_dup_shared_foundations.mcp_validation_core
+    - repair_dup_shared_foundations.cli_projection_core
+    - repair_dup_shared_foundations.facade_factory_core
+    - repair_dup_shared_foundations.wiring_audit
+    - repair_dup_shared_foundations.spec_conformance
+    agent: gate-reviewer-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
