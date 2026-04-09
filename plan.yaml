@@ -41038,6 +41038,87 @@ phases:
     rebasing.
   depends_on:
   - repair_dup_guardrails
+  steps:
+  - id: repair_dup_shared_foundations.component_query_core
+    name: Extract shared component-query core
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: component endpoint behavior and invalid-kind expectations\n\
+      \  - ARCHITECTURE.md :: shell/shared abstraction boundary\n touch_paths:\n \
+      \ - src/larva/shell/shared/component_queries.py\n  - src/larva/shell/python_api_components.py\n\
+      \  - tests/repro/alias_convergence_verify.py\n  - tests/repro/cross_surface_consistency_verify.py\n\
+      \  - tests/shell/test_python_api.py\n authoritative_interface: transport-neutral\
+      \ component query service; adapters keep local envelopes\n upstream_artifacts:\n\
+      \  - from_step: repair_dup_guardrails.architecture_basis\n    tier: contract\n\
+      \    path: architecture basis for component-query truth ownership\n  - from_step:\
+      \ repair_dup_guardrails.preservation_harness\n    tier: test\n    path: cross-surface\
+      \ component-query preservation harness\n\nFill in shared service bodies in the\
+      \ new shared component-query module and adopt that service in the Python API\
+      \ component adapter as the first consumer.\n\nYOUR SCOPE:\n- centralize kind\
+      \ normalization, loader selection, and canonical projected failure semantics\n\
+      - keep adapter-local HTTP/CLI/MCP envelope shaping OUT of this step\n- do not\
+      \ migrate CLI or MCP callers here; that is deferred to later surface rebasing\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
+      \ that processes its inputs and produces outputs that vary based on those inputs.\n\
+      \n## Gate Preview (what the gate WILL reject)\n1. A shared service that still\
+      \ leaks CLI/MCP/HTTP response objects\n2. Silent coupling of contrib-only semantics\
+      \ into canonical packaged behavior\n3. Any hidden merge of dotted-path update\
+      \ semantics with facade lookup semantics\n"
+    verification: '- Main path: focused tests prove shared component query service
+      resolves canonical/singular aliases identically and preserves canonical error
+      categories
+
+      - Failure path: regression covers invalid-kind and store-unavailable/not-found
+      projection families
+
+      - Proof: no CLI/MCP/HTTP framework types exist in the extracted shared module'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied:
+
+      - preservation_harness cases consumed:
+
+
+      ## Implementation Evidence
+
+      - New shared module paths:
+
+      - First consumer migrated:
+
+      - Transport-local behavior intentionally deferred:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted test command/output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - invalid_kind:
+
+      - not_found:
+
+      - store_unavailable:
+
+      '
+    agent: python-senior-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
