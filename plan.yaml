@@ -41300,7 +41300,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: repair_dup_guardrails.gate
     name: Mid-gate duplicate-repair guardrails
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -41371,6 +41371,8 @@ phases:
 
       '
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T16:06:53.006342+00:00'
   - id: repair_dup_guardrails.preservation_harness
     name: Pin preservation harness for duplicate-repair scope
     status: pending
