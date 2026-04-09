@@ -41946,6 +41946,69 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: blind-tester-tacit
+  - id: repair_dup_surface_integration.wiring_audit
+    name: Audit surface-integration wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+      scope_protects: repair_dup_surface_integration.gate
+
+
+      Wiring completeness audit: verify every rebased shared abstraction is reachable
+      at runtime from the intended surface adapters.
+
+
+      REQUIRED CHECKS:
+
+      1. CLI rebased paths reach shared query/projection/factory modules
+
+      2. MCP rebased paths reach shared validation/query modules
+
+      3. packaged Web and contrib Web both consume canonical component-query behavior
+
+      4. no dead duplicate renderer/validator/factory helper remains in the old surface
+      files
+
+      '
+    verification: '- Runtime caller reachability is shown for each shared abstraction
+
+      - No dead duplicate helper remains in rebased surface files where migration
+      scope requires removal
+
+      - Any orphan/duplicate is reported as blocking debt for the phase gate'
+    evidence_template: '## Wiring Audit Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      **Reachability / duplicate report**
+
+      ```
+
+      <grep/import-trace output or ''none found''>
+
+      ```
+
+      **Verdict**: PASS | ISSUES_FOUND
+
+      '
+    depends_on:
+    - repair_dup_surface_integration.cli_surface_rebase
+    - repair_dup_surface_integration.mcp_surface_rebase
+    - repair_dup_surface_integration.web_convergence_rebase
+    agent: wiring-auditor
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
