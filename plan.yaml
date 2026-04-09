@@ -42222,6 +42222,50 @@ phases:
 
       - Minimal scoped deviation: updated contrib/web/server.py for shared-foundation
       parity discovered during runtime verification.'
+  - id: repair_dup_shared_foundations.gate_blocker_fix_batch
+    name: Remediate gate blockers and contract warnings
+    status: pending
+    description: 'step_type: implementation
+
+      owner_role: remediation
+
+      scope: failed gate follow-up confined to shared-foundation phase context
+
+
+      Resolve the failed phase-gate blockers with the smallest safe patch set:
+
+      - eliminate the invar full-scan escape-hatch blocker by either reducing active
+      escape hatches to fit budget or landing an explicit, justified budget update
+      with supporting rationale and regression coverage
+
+      - tighten contract quality in component_kind and component_error_projection
+      by removing partial/redundant contracts and replacing them with complete, non-overlapping
+      contracts/doctests where needed
+
+      - preserve runtime surface behavior across existing CLI/MCP/facade consumers
+      while making only remediation-grade changes
+
+
+      Do not broaden scope beyond the shared-foundation gate follow-up; prefer local
+      fixes and evidence over new abstraction work.'
+    verification: '- `uvx invar-tools guard --all` (or equivalent guard full scan)
+      passes without the reported escape_hatch_project_limit or escape_hatch_budget
+      blockers
+
+      - Contract warnings in the affected component_kind/component_error_projection
+      areas are reduced or eliminated, with updated doctest/contract evidence
+
+      - Targeted regression tests covering existing runtime surfaces pass and show
+      no intended behavior change'
+    evidence_template: 'Paste: (1) guard full-scan result, (2) exact hatch count/budget
+      disposition, (3) contract warning before/after summary for component_kind and
+      component_error_projection, (4) targeted regression test commands/results showing
+      preserved runtime behavior.'
+    depends_on:
+    - repair_dup_shared_foundations.foundation_fix_batch
+    - repair_dup_shared_foundations.wiring_audit
+    - repair_dup_shared_foundations.spec_conformance
+    agent: python-senior-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
