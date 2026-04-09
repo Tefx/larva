@@ -41426,7 +41426,7 @@ phases:
       - blocker count: 0; should_fix items: 2'
   - id: repair_dup_guardrails.preservation_harness
     name: Pin preservation harness for duplicate-repair scope
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: default\nspec_refs:\n  - INTERFACES.md :: component endpoints,\
       \ packaged web inventory, CLI/MCP/Python API behavior\n  - tests/repro/web_convergence_parity.py\
@@ -41508,6 +41508,32 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T16:29:14.854500+00:00'
+    done_at: '2026-04-09T16:39:49.972567+00:00'
+    evidence: "step_intent: test_define_red\nexpected_result: red\nobserved_result:\
+      \ focused preservation harness run produced 4 failures and 7 passes\nfailure_alignment:\
+      \ aligned (intended contrib-web/component-query gaps exposed)\nwhether any product\
+      \ implementation files were modified: no\n\n## refs Read Confirmation (MANDATORY)\n\
+      - INTERFACES.md — endpoint inventory + contrib-only batch-update + shared envelope\
+      \ semantics\n- tests/repro/web_convergence_parity.py — parity harness baseline\
+      \ extended\n- tests/repro/cross_surface_consistency_verify.py — cross-surface\
+      \ consistency harness baseline extended\n- tests/repro/alias_convergence_verify.py\
+      \ — canonical alias normalization expectations\n\n## Test-Only Scope Confirmation\n\
+      - Modified files:\n  - tests/repro/web_convergence_parity.py\n  - tests/repro/cross_surface_consistency_verify.py\n\
+      \  - tests/shell/test_cli.py\n- Product runtime files changed: NONE\n\n## Exposed\
+      \ Gaps / Expected Failures\n- packaged_vs_contrib_web: contrib singular-alias\
+      \ and invalid-kind parity gaps (500 vs canonical behavior)\n- component_query_cross_surface:\
+      \ contrib web fails alias/invalid-kind typed-error parity while packaged surfaces\
+      \ align\n- cli_projection_parity: text/json projection parity preserved (passes)\n\
+      - facade_factory_equivalence: default facade equivalence guardrails pass\n\n\
+      ## Commands\n- uv run pytest tests/repro/web_convergence_parity.py -k 'RouteInventoryParity\
+      \ or ComponentQueryParity' -q\n- uv run pytest tests/repro/cross_surface_consistency_verify.py\
+      \ -k 'ComponentQueryConsistency or DefaultFacadeAssemblyEquivalence' -q\n- uv\
+      \ run pytest tests/shell/test_cli.py -k 'validate_invalid_text_and_json_projections_share_primary_message\
+      \ or validate_warning_text_and_json_projections_preserve_same_warning_facts'\
+      \ -q\n- combined focused run: 4 failed, 7 passed (expected red)\n\n## Downstream\
+      \ Owners\n- repair_dup_shared_foundations.component_query_core\n- repair_dup_shared_foundations.mcp_validation_core\n\
+      - repair_dup_shared_foundations.cli_projection_core\n- repair_dup_shared_foundations.facade_factory_core\n\
+      - repair_dup_surface_integration.*\n\n## Commit\n- 2a4515c87e12807cf2a9efcdf37930f07d1c7e7a"
   - id: repair_dup_guardrails.architecture_basis
     name: Approve duplicate-repair architecture basis
     status: done
