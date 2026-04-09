@@ -41440,30 +41440,37 @@ phases:
       scope_protects: repair_dup_shared_foundations.gate
 
 
-      Wiring completeness audit: verify every new shared abstraction introduced in
-      this phase is actually consumed by at least one intended caller and no duplicate
-      authority remains hidden.
+      Post-fix wiring completeness audit for the shared-foundation remediation batch:
+      verify every new shared abstraction introduced in this phase is actually consumed
+      by its intended production callers and no duplicate authority remains hidden.
 
 
       REQUIRED CHECKS:
 
-      1. Shared component-query module has at least one real consumer
+      1. Shared component-query module is consumed by MCP core and Python API callers
 
-      2. Shared request-validation helper has at least one real MCP consumer
+      2. Shared request-validation helper is consumed by MCP core and isolated handlers
 
-      3. `cli_types.py` remains the only CLI type authority among migrated files
+      3. `cli_types.py` is the only CLI type authority among migrated files including
+      cli_runtime.py
 
-      4. Shared facade factory is consumed by migrated callers
+      4. Shared CLI projection is used by production callers and `render_validation_report_text`
+      is no longer orphaned write-only production code
 
-      5. No orphan shared module export remains write-only in this phase
+      5. Shared facade factory is the single migrated path for callers in this phase,
+      including MCP server path decision consistency
 
-      '
-    verification: '- Export reachability is demonstrated for each newly introduced
-      shared abstraction
+      6. No unmigrated MCP core duplicate logic remains for component query or request
+      validation'
+    verification: '- Export reachability is demonstrated for each shared abstraction
+      audited after the batched fix
 
       - No duplicate type authority remains among migrated CLI files
 
-      - Any orphan shared symbol is reported as a blocking issue for the phase gate'
+      - No orphan shared symbol remains write-only in production for this phase
+
+      - Any surviving duplicate MCP logic or divergent facade path is reported as
+      blocking for the phase gate'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
@@ -41505,10 +41512,7 @@ phases:
 
       '
     depends_on:
-    - repair_dup_shared_foundations.component_query_core
-    - repair_dup_shared_foundations.mcp_validation_core
-    - repair_dup_shared_foundations.cli_projection_core
-    - repair_dup_shared_foundations.facade_factory_core
+    - repair_dup_shared_foundations.foundation_fix_batch
     agent: wiring-auditor
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
