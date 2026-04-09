@@ -40956,81 +40956,6 @@ phases:
     depends_on:
     - repair_dup_guardrails.architecture_basis
     agent: python-senior-tacit
-  - id: repair_dup_guardrails.gate
-    name: Gate duplicate-repair guardrails
-    status: pending
-    description: 'step_type: gate
-
-      agent_source: default
-
-      review_depth: THOROUGH
-
-      review_depth_rationale:
-
-      - cross-surface technical-debt remediation with shared truth boundaries
-
-      - runnable packaged/contrib web surfaces are in scope downstream
-
-      - prior audit found systemic duplicate-abstraction risk across CLI/MCP/Web/Python
-      API
-
-
-      As an INDEPENDENT REVIEWER, verify the remediation campaign now has an approved
-      architecture basis and executable preservation guardrails before any shared-abstraction
-      extraction begins.
-
-
-      This gate protects downstream shared-service extraction and surface rebasing.
-
-      '
-    verification: '- Architecture basis is approved and specific enough for safe sequencing
-
-      - Preservation harnesses exist and make the drift visible/provable
-
-      - No unresolved authority conflict remains around packaged web ownership, contrib
-      extension status, or dotted-path semantics'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      If no refs were provided, state: "No refs for this step."
-
-
-      ## Gate Review Report
-
-      - architecture_basis_complete: yes|no
-
-      - guardrail_harness_complete: yes|no
-
-      - remaining_authority_conflicts:
-
-      - blocked_downstream_steps_if_any:
-
-
-      ## Gate Decision Basis
-
-      - packaged_web_authority:
-
-      - contrib_extension_boundary:
-
-      - component_query_truth_owner:
-
-      - dotted_path_non_merge_ruling:
-
-
-      ## Decision
-
-      - OPEN or BLOCKED
-
-      '
-    depends_on:
-    - repair_dup_guardrails.architecture_basis
-    - repair_dup_guardrails.preservation_harness
-    agent: gate-reviewer-tacit
 - id: repair_dup_shared_foundations
   name: Duplicate Repair Shared Foundations
   status: locked
@@ -41518,6 +41443,78 @@ phases:
     - repair_dup_shared_foundations.facade_factory_core
     - repair_dup_shared_foundations.wiring_audit
     - repair_dup_shared_foundations.spec_conformance
+    agent: gate-reviewer-tacit
+  - id: repair_dup_guardrails.gate
+    name: Gate duplicate-repair guardrails
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - cross-surface technical-debt remediation with shared truth boundaries
+
+      - runnable packaged/contrib web surfaces are in scope downstream
+
+      - prior audit found systemic duplicate-abstraction risk across CLI/MCP/Web/Python
+      API
+
+
+      As an INDEPENDENT REVIEWER, verify the remediation campaign now has an approved
+      architecture basis and executable preservation guardrails before any shared-abstraction
+      extraction begins.
+
+
+      This gate protects downstream shared-service extraction and surface rebasing.
+
+      '
+    verification: '- Architecture basis is approved and specific enough for safe sequencing
+
+      - Preservation harnesses exist and make the drift visible/provable
+
+      - No unresolved authority conflict remains around packaged web ownership, contrib
+      extension status, or dotted-path semantics'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - architecture_basis_complete: yes|no
+
+      - guardrail_harness_complete: yes|no
+
+      - remaining_authority_conflicts:
+
+      - blocked_downstream_steps_if_any:
+
+
+      ## Gate Decision Basis
+
+      - packaged_web_authority:
+
+      - contrib_extension_boundary:
+
+      - component_query_truth_owner:
+
+      - dotted_path_non_merge_ruling:
+
+
+      ## Decision
+
+      - OPEN or BLOCKED
+
+      '
     agent: gate-reviewer-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
