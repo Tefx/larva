@@ -41274,6 +41274,78 @@ phases:
 
       '
     agent: python-refactor-master-tacit
+  - id: repair_dup_shared_foundations.facade_factory_core
+    name: Extract shared default-facade factory core
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - ARCHITECTURE.md :: facade/application orchestration boundary\n  - README.md\
+      \ :: CLI and Python API entry surfaces\n touch_paths:\n  - src/larva/shell/shared/facade_factory.py\n\
+      \  - src/larva/shell/python_api.py\n  - src/larva/cli_facade.py\n  - tests/shell/test_python_api.py\n\
+      \  - tests/shell/test_cli.py\n authoritative_interface: one default facade construction\
+      \ path with small adapter-local wrappers\n upstream_artifacts:\n  - from_step:\
+      \ repair_dup_guardrails.architecture_basis\n    tier: contract\n    path: facade\
+      \ assembly truth owner\n  - from_step: repair_dup_guardrails.preservation_harness\n\
+      \    tier: test\n    path: default facade equivalence guardrails\n\nFill in\
+      \ the shared default-facade factory and rebase Python API and `cli_facade.py`\
+      \ onto that single construction path.\n\nYOUR SCOPE:\n- centralize default dependency\
+      \ assembly once\n- preserve Python API singleton/lifecycle semantics where already\
+      \ observable\n- defer `cli_runtime.py` adoption to the later CLI surface rebase\
+      \ to avoid shared-write conflict with CLI projection work\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs.\n"
+    verification: '- Main path: focused tests prove Python API and cli_facade now
+      build from the same default factory path
+
+      - Failure path: regression covers facade-equivalence and singleton/adapter wrapper
+      expectations
+
+      - Proof: no second default `DefaultLarvaFacade(...)` construction path remains
+      in the migrated callers'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied:
+
+      - preservation_harness facade-equivalence cases consumed:
+
+
+      ## Implementation Evidence
+
+      - Shared facade factory path:
+
+      - Migrated callers:
+
+      - Deferred callers:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted test command/output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - facade_equivalence:
+
+      - singleton_or_wrapper_semantics:
+
+      '
+    agent: python-refactor-master-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
