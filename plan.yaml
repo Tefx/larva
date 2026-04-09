@@ -42321,6 +42321,55 @@ phases:
       - Commit: 4e6107f24595624d75707ee61bf327c8c4decde1
 
       - Files: pyproject.toml, src/larva/core/component_kind.py, src/larva/core/component_error_projection.py'
+  - id: repair_dup_shared_foundations.gate_regression_fix_batch
+    name: Remediate shared-foundation gate regression batch
+    status: pending
+    description: 'step_type: implementation
+
+      owner_role: remediation
+
+      scope: latest shared-foundation gate follow-up confined to this phase
+
+
+      Resolve the newly observed gate blockers in one constrained remediation batch
+      before re-running the phase gate.
+
+
+      Blocker families to close together:
+
+      - fix the `deal.PreContractError` regression around `project_component_store_error`
+      so component-not-found/error projection paths no longer trip a contract precondition
+      on real exception objects
+
+      - restore failing MCP/facade component-not-found behavior so missing-component
+      paths are handled consistently across shared-foundation consumers
+
+      - enforce admission consistency so MCP `validate`/`register` reject the same
+      non-conformant specs rejected by CLI and Python core/facade paths
+
+
+      Keep the patch set narrow, preserve completed shared-foundation extraction work,
+      and avoid introducing new surface-specific validation forks.'
+    verification: '- Focused regression tests from the gate-reviewer failure set pass,
+      including the `project_component_store_error`/component-not-found paths for
+      MCP and facade consumers
+
+      - Cross-surface admission consistency tests prove MCP `validate`/`register`
+      reject the same non-conformant specs as CLI and Python core/facade paths
+
+      - `uvx invar-tools guard --all` (or equivalent full invar scan) completes with
+      no errors for the repo'
+    evidence_template: '- Paste focused regression test commands/results for the gate-reviewer
+      failures here
+
+      - Paste cross-surface admission consistency test commands/results here
+
+      - Paste full invar scan command/result here
+
+      - List files changed and any remaining risk or explicit `# SPEC QUESTION` markers'
+    depends_on:
+    - repair_dup_shared_foundations.gate_blocker_fix_batch
+    agent: python-senior-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
