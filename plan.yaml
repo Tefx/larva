@@ -42324,7 +42324,7 @@ phases:
       - Files: pyproject.toml, src/larva/core/component_kind.py, src/larva/core/component_error_projection.py'
   - id: repair_dup_shared_foundations.gate_regression_fix_batch
     name: Remediate shared-foundation gate regression batch
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       owner_role: remediation
@@ -42371,6 +42371,8 @@ phases:
     depends_on:
     - repair_dup_shared_foundations.gate_blocker_fix_batch
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T19:06:21.599384+00:00'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
