@@ -15,8 +15,10 @@ should remain.
 from __future__ import annotations
 
 import json
+import importlib.util
 from dataclasses import dataclass, field
-from typing import Any
+from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from returns.result import Failure, Result, Success
@@ -30,16 +32,33 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport, validate_spec
 from larva.shell import cli as cli_module
 from larva.shell import python_api
+from larva.shell import python_api_components
+from larva.shell import web as web_module
 from larva.shell.cli import (
     EXIT_ERROR,
     EXIT_OK,
     validate_command,
     assemble_command,
+    component_show_command,
     register_command,
     resolve_command,
 )
 from larva.shell.components import ComponentStoreError
 from larva.shell import mcp as mcp_module
+
+
+CONTRIB_WEB_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
+
+
+def _load_contrib_web_module() -> Any:
+    """Load contrib web module for parity probes."""
+    spec = importlib.util.spec_from_file_location("contrib_web_server", CONTRIB_WEB_PATH)
+    if spec is None or spec.loader is None:
+        pytest.skip("contrib web server module not loadable")
+    proven_spec = cast(Any, spec)
+    module = importlib.util.module_from_spec(proven_spec)
+    cast(Any, proven_spec.loader).exec_module(module)
+    return module
 
 
 # ============================================================================
@@ -554,6 +573,145 @@ class TestCrossSurfaceErrorEnvelopeConsistency:
                 f"Error code {code}: expected numeric {expected_numeric}, "
                 f"got {ERROR_NUMERIC_CODES.get(code)}"
             )
+
+
+class TestCrossSurfaceComponentQueryConsistency:
+    """Expose current cross-surface component query drift."""
+
+    def test_component_alias_query_semantics_align_across_all_surfaces(self) -> None:
+        """Singular aliases should normalize consistently across every public surface."""
+        from starlette.testclient import TestClient
+
+        components = InMemoryComponentStore(
+            prompt_result=Success({"text": "Prompt body"}),
+        )
+        facade = make_facade(registry=InMemoryRegistryStore())
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+        contrib_module = _load_contrib_web_module()
+
+        original_py_store = python_api_components._component_store
+        original_contrib_store = contrib_module._component_store
+        python_api_components._component_store = components
+        contrib_module._component_store = components
+        try:
+            cli_result = component_show_command(
+                "prompt/test-item", as_json=True, component_store=components
+            )
+            assert isinstance(cli_result, Success)
+            cli_payload = cli_result.unwrap()["json"]["data"]
+
+            mcp_payload = handlers.handle_component_show(
+                {"component_type": "prompt", "name": "test-item"}
+            )
+            assert isinstance(mcp_payload, dict)
+
+            python_payload = python_api.component_show("prompt", "test-item")
+
+            packaged_response = TestClient(web_module.app, raise_server_exceptions=False).get(
+                "/api/components/prompt/test-item"
+            )
+            contrib_response = TestClient(contrib_module.app, raise_server_exceptions=False).get(
+                "/api/components/prompt/test-item"
+            )
+
+            assert packaged_response.status_code == 200
+            assert packaged_response.json()["data"] == cli_payload == mcp_payload == python_payload
+            assert contrib_response.status_code == 200, (
+                "exposed_gap[component_query_cross_surface]: contrib web does not honor the "
+                "shared singular-alias query contract"
+            )
+            assert contrib_response.json()["data"] == packaged_response.json()["data"]
+        finally:
+            python_api_components._component_store = original_py_store
+            contrib_module._component_store = original_contrib_store
+
+    def test_invalid_component_kind_projects_typed_error_across_all_surfaces(self) -> None:
+        """Invalid kind handling should stay typed and aligned across all surfaces."""
+        from starlette.testclient import TestClient
+
+        components = InMemoryComponentStore()
+        facade = make_facade(registry=InMemoryRegistryStore())
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+        contrib_module = _load_contrib_web_module()
+
+        original_py_store = python_api_components._component_store
+        original_contrib_store = contrib_module._component_store
+        python_api_components._component_store = components
+        contrib_module._component_store = components
+        try:
+            cli_result = component_show_command(
+                "invalid-kind/test-item", as_json=True, component_store=components
+            )
+            assert isinstance(cli_result, Failure)
+            cli_error = cli_result.failure()["error"]
+
+            mcp_error = handlers.handle_component_show(
+                {"component_type": "invalid-kind", "name": "test-item"}
+            )
+            assert isinstance(mcp_error, dict)
+
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.component_show("invalid-kind", "test-item")
+            python_error = python_exc.value.error
+
+            packaged_response = TestClient(web_module.app, raise_server_exceptions=False).get(
+                "/api/components/invalid-kind/test-item"
+            )
+            contrib_response = TestClient(contrib_module.app, raise_server_exceptions=False).get(
+                "/api/components/invalid-kind/test-item"
+            )
+
+            assert cli_error["code"] == "INVALID_INPUT"
+            assert mcp_error["code"] == cli_error["code"] == python_error["code"]
+            assert packaged_response.status_code == 400
+            assert packaged_response.json()["error"]["code"] == cli_error["code"]
+            assert contrib_response.status_code == 400, (
+                "exposed_gap[component_query_cross_surface]: contrib web invalid-kind "
+                "projection diverges from CLI/MCP/Web/Python API"
+            )
+            assert contrib_response.headers.get("content-type", "").startswith(
+                "application/json"
+            ), (
+                "exposed_gap[component_query_cross_surface]: contrib web invalid-kind "
+                "projection is not typed JSON"
+            )
+        finally:
+            python_api_components._component_store = original_py_store
+            contrib_module._component_store = original_contrib_store
+
+
+class TestDefaultFacadeAssemblyEquivalence:
+    """Preserve observable equivalence between default facade factories."""
+
+    def test_cli_and_python_api_default_facades_validate_equivalently(self) -> None:
+        """Default facade factories should agree on validate() outcomes."""
+        from larva.shell import cli_runtime
+
+        python_facade = python_api._get_facade()
+        cli_facade = cli_runtime._build_default_facade().unwrap()
+        spec = canonical_spec("default-facade-equivalence")
+        invalid_spec = spec_with_forbidden_tools()
+
+        assert python_facade.validate(spec) == cli_facade.validate(spec)
+        assert python_facade.validate(invalid_spec) == cli_facade.validate(invalid_spec)
+
+    def test_cli_and_python_api_default_facades_assemble_equivalently_for_missing_prompt(
+        self,
+    ) -> None:
+        """Default facade factories should project the same missing-component failure."""
+        from larva.shell import cli_runtime
+
+        python_facade = python_api._get_facade()
+        cli_facade = cli_runtime._build_default_facade().unwrap()
+        request = {"id": "missing-prompt", "prompts": ["definitely-missing-prompt"]}
+
+        python_result = python_facade.assemble(request)
+        cli_result = cli_facade.assemble(request)
+
+        assert isinstance(python_result, Failure)
+        assert isinstance(cli_result, Failure)
+        assert python_result.failure()["code"] == cli_result.failure()["code"]
+        assert python_result.failure()["numeric_code"] == cli_result.failure()["numeric_code"]
 
 
 # ===========================================================================

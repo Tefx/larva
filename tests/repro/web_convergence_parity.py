@@ -24,7 +24,7 @@ from __future__ import annotations
 import subprocess
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -43,15 +43,48 @@ import importlib.util
 
 CONTRIB_WEB_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
 
+_CONTRACT_ROUTE_INVENTORY: set[tuple[str, str]] = {
+    ("GET", "/"),
+    ("GET", "/api/personas"),
+    ("GET", "/api/personas/{persona_id}"),
+    ("POST", "/api/personas"),
+    ("PATCH", "/api/personas/{persona_id}"),
+    ("DELETE", "/api/personas/{persona_id}"),
+    ("POST", "/api/personas/clear"),
+    ("POST", "/api/personas/validate"),
+    ("POST", "/api/personas/assemble"),
+    ("GET", "/api/components"),
+    ("GET", "/api/components/{component_type}/{name}"),
+}
+
+_CONTRIB_ONLY_ROUTE = ("POST", "/api/personas/batch-update")
+
 
 def _load_contrib_module() -> Any:
     """Load contrib web server module."""
     spec = importlib.util.spec_from_file_location("contrib_web_server", CONTRIB_WEB_PATH)
     if spec is None or spec.loader is None:
         pytest.skip("contrib web server module not loadable")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    proven_spec = cast(Any, spec)
+    loader = cast(Any, proven_spec.loader)
+    module = importlib.util.module_from_spec(proven_spec)
+    loader.exec_module(module)
     return module
+
+
+def _route_inventory(app: Any) -> set[tuple[str, str]]:
+    """Return explicit method/path pairs for application routes."""
+    inventory: set[tuple[str, str]] = set()
+    for route in app.routes:
+        methods = getattr(route, "methods", None)
+        path = getattr(route, "path", None)
+        if methods is None or path is None:
+            continue
+        for method in methods:
+            if method in {"HEAD", "OPTIONS"}:
+                continue
+            inventory.add((method, path))
+    return inventory
 
 
 # -----------------------------------------------------------------------------
@@ -121,6 +154,72 @@ class TestCanonicalSuccessParity:
         assert resp.status_code == 200
         data = resp.json()
         assert data["data"]["valid"] is True
+
+
+class TestRouteInventoryParity:
+    """Preserve packaged/contrib route parity guardrails."""
+
+    def test_packaged_and_contrib_match_normative_route_inventory(self) -> None:
+        """Contrib should add only the documented batch-update route."""
+        contrib_module = _load_contrib_module()
+
+        packaged_routes = _route_inventory(packaged_app)
+        contrib_routes = _route_inventory(contrib_module.app)
+
+        packaged_contract_routes = packaged_routes & _CONTRACT_ROUTE_INVENTORY
+        contrib_contract_routes = contrib_routes & _CONTRACT_ROUTE_INVENTORY
+
+        assert packaged_contract_routes == _CONTRACT_ROUTE_INVENTORY
+        assert contrib_contract_routes == _CONTRACT_ROUTE_INVENTORY
+
+        packaged_only = packaged_routes - contrib_routes
+        contrib_only = contrib_routes - packaged_routes
+        assert packaged_only == set(), f"Unexpected packaged-only routes: {packaged_only}"
+        assert contrib_only == {_CONTRIB_ONLY_ROUTE}, (
+            f"Route parity drift outside documented contrib-only surface: {contrib_only}"
+        )
+
+
+class TestComponentQueryParity:
+    """Expose current packaged/contrib component-query divergence."""
+
+    def test_component_alias_query_parity_exposes_contrib_gap(self) -> None:
+        """Singular aliases should behave the same on packaged and contrib web."""
+        from starlette.testclient import TestClient
+
+        contrib_module = _load_contrib_module()
+        packaged_client = TestClient(packaged_app, raise_server_exceptions=False)
+        contrib_client = TestClient(contrib_module.app, raise_server_exceptions=False)
+
+        packaged_response = packaged_client.get("/api/components/prompt/test-alias")
+        contrib_response = contrib_client.get("/api/components/prompt/test-alias")
+
+        assert packaged_response.status_code == contrib_response.status_code, (
+            "exposed_gap[component_query_alias_web]: packaged and contrib alias ingress "
+            f"diverged: packaged={packaged_response.status_code} contrib={contrib_response.status_code}"
+        )
+
+    def test_component_invalid_kind_error_parity_exposes_contrib_gap(self) -> None:
+        """Invalid component kinds should project the same typed error envelope."""
+        from starlette.testclient import TestClient
+
+        contrib_module = _load_contrib_module()
+        packaged_client = TestClient(packaged_app, raise_server_exceptions=False)
+        contrib_client = TestClient(contrib_module.app, raise_server_exceptions=False)
+
+        packaged_response = packaged_client.get("/api/components/not-a-kind/test-item")
+        contrib_response = contrib_client.get("/api/components/not-a-kind/test-item")
+
+        assert packaged_response.status_code == 400
+        assert contrib_response.status_code == 400, (
+            "exposed_gap[component_query_invalid_kind_web]: contrib does not preserve the "
+            "packaged 400 invalid-kind contract"
+        )
+
+        assert contrib_response.headers.get("content-type", "").startswith("application/json"), (
+            "exposed_gap[component_query_invalid_kind_web]: contrib invalid-kind response "
+            "is not a typed JSON error envelope"
+        )
 
     def test_contrib_accepts_canonical_spec(self) -> None:
         """Contrib runtime accepts minimal valid PersonaSpec.

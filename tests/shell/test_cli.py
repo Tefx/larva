@@ -339,6 +339,57 @@ class TestValidateCommand:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
 
+    def test_validate_invalid_text_and_json_projections_share_primary_message(self) -> None:
+        """Text and JSON failure projections should agree on the primary validation message."""
+        report: ValidationReport = {
+            "valid": False,
+            "errors": [
+                {
+                    "code": "FORBIDDEN_EXTRA_FIELD",
+                    "message": "unknown top-level field: tools",
+                    "details": {"field": "tools"},
+                }
+            ],
+            "warnings": [],
+        }
+        facade = _make_facade(report=report)
+        spec = _canonical_spec("invalid-projection")
+
+        text_result = validate_command(spec, as_json=False, facade=facade)
+        json_result = validate_command(spec, as_json=True, facade=facade)
+
+        assert isinstance(text_result, Failure)
+        assert isinstance(json_result, Failure)
+        assert (
+            text_result.failure()["exit_code"] == json_result.failure()["exit_code"] == EXIT_ERROR
+        )
+        assert report["errors"][0]["message"] in text_result.failure()["stderr"]
+        assert json_result.failure()["error"]["message"] == report["errors"][0]["message"]
+        assert json_result.failure()["error"]["details"]["report"] == report
+
+    def test_validate_warning_text_and_json_projections_preserve_same_warning_facts(self) -> None:
+        """Text and JSON success projections should preserve the same warning facts."""
+        report: ValidationReport = {
+            "valid": True,
+            "errors": [],
+            "warnings": [
+                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role",
+                "TRANSITION: deprecated compatibility alias accepted at ingress",
+            ],
+        }
+        facade = _make_facade(report=report)
+        spec = _canonical_spec("warning-projection")
+
+        text_result = validate_command(spec, as_json=False, facade=facade)
+        json_result = validate_command(spec, as_json=True, facade=facade)
+
+        assert isinstance(text_result, Success)
+        assert isinstance(json_result, Success)
+        assert text_result.unwrap()["exit_code"] == json_result.unwrap()["exit_code"] == EXIT_OK
+        for warning in report["warnings"]:
+            assert warning in text_result.unwrap()["stdout"]
+        assert json_result.unwrap()["json"]["data"] == report
+
 
 # ============================================================================
 # Assemble Command Tests
