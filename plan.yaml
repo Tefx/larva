@@ -41041,6 +41041,8 @@ phases:
       - duplicate_type_elimination:
 
       '
+    depends_on:
+    - repair_dup_guardrails.gate
     agent: python-refactor-master-tacit
   - id: repair_dup_shared_foundations.facade_factory_core
     name: Extract shared default-facade factory core
