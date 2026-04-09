@@ -41993,7 +41993,7 @@ phases:
       recorded as open question.'
   - id: repair_dup_shared_foundations.foundation_fix_batch
     name: Batched shared-foundation remediation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -42100,6 +42100,94 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T17:18:26.653512+00:00'
+    done_at: '2026-04-09T17:30:46.022203+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Batched Remediation Report
+
+      - Single CLI type authority location: src/larva/shell/cli_types.py (duplicate
+      cli_runtime declarations removed)
+
+      - Production callers now using shared CLI projection: cli_runtime.py and cli_commands.py
+      now use render_validation_report_text; local duplicate renderers removed
+
+      - MCP core + Python API shared component-query consumers: python_api_components.py
+      and mcp_handler_ops.py consume query_component; CLI component-show aligned to
+      shared seam
+
+      - MCP core + isolated handlers shared request-validation consumers: mcp_params.py
+      delegates to shared request_validation; mcp_export.py and mcp_update_batch.py
+      already on shared validators
+
+      - Facade factory single-path consumers including MCP server decision path: mcp_server
+      now uses shared facade factory directly; old cli_runtime facade path removed;
+      python_api/cli_facade aligned
+
+      - Runtime-proof support for CLI exit-code mapping: cli_exit_code_for_error helper
+      added and tested
+
+      - Runtime-proof support for admission seam invariants: MCP-core shared-validator
+      proof test and cross-surface runtime proofs updated
+
+      - Remaining ambiguity/non-blockers: none
+
+
+      ## Commit hash(es)
+
+      - b3ca9167d3f41e242ef754f93296953a2b0bfeed
+
+
+      ## Files changed
+
+      - contrib/web/server.py
+
+      - src/larva/cli_facade.py
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_commands.py
+
+      - src/larva/shell/cli_helpers.py
+
+      - src/larva/shell/cli_runtime.py
+
+      - src/larva/shell/mcp_handler_ops.py
+
+      - src/larva/shell/mcp_params.py
+
+      - src/larva/shell/mcp_server.py
+
+      - src/larva/shell/python_api.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_mcp_server.py
+
+
+      ## Verification commands and outputs
+
+      - uv run pytest tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_mcp_server.py
+      tests/shell/test_python_api.py tests/shell/test_contrib_web.py tests/repro/alias_convergence_verify.py
+      tests/repro/cross_surface_consistency_verify.py -q -> 528 passed
+
+      - uv run python -m compileall src tests -> success
+
+      - invar guard --changed -> passed
+
+      - rg checks confirm single CLI type authority and shared seam consumption
+
+
+      ## Deviations
+
+      - Minimal scoped deviation: updated contrib/web/server.py for shared-foundation
+      parity discovered during runtime verification.'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
