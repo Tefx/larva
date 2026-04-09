@@ -41514,7 +41514,7 @@ phases:
     claimed_at: '2026-04-09T16:59:34.688075+00:00'
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
-    status: claimed
+    status: pending
     description: 'step_type: verification
 
       agent_source: default
@@ -41561,8 +41561,6 @@ phases:
     - repair_dup_shared_foundations.cli_projection_core
     - repair_dup_shared_foundations.facade_factory_core
     agent: spec-verifier-tacit
-    claimed_by: spec-verifier-tacit
-    claimed_at: '2026-04-09T16:59:30.137990+00:00'
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
     status: pending
