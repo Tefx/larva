@@ -42177,3 +42177,69 @@ phases:
     before declaring duplicate-abstraction repair complete.
   depends_on:
   - repair_dup_surface_integration
+  steps:
+  - id: repair_dup_finalization.full_plan_check
+    name: Run full-plan verification for duplicate repair
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+      scope_protects: repair_dup_finalization.gate
+
+
+      Full-plan check for the duplicate-abstraction repair after all rebased surfaces
+      are gated.
+
+
+      This check should rerun the authoritative broad commands and focused repro suites
+      at the nearest final boundary instead of deferring broad failure discovery to
+      the final gate.
+
+      '
+    verification: '- Full-plan verification covers authoritative broad checks plus
+      focused duplicate-repair repro suites
+
+      - Any remaining broad failure is classified with blocker ownership before final
+      gate review
+
+      - Evidence includes exact command family used for the broad check(s)'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full-Plan Check
+
+      - broad_commands:
+
+      - focused_repro_commands:
+
+
+      ## Actual Output
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Remaining Issues
+
+      - blocker:
+
+      - should_fix:
+
+      - non_intersecting_notes:
+
+      '
+    agent: integration-verifier-tacit
