@@ -41979,6 +41979,113 @@ phases:
 
       - Standalone duplicate-abstraction audit artifact was not found in-worktree;
       recorded as open question.'
+  - id: repair_dup_shared_foundations.foundation_fix_batch
+    name: Batched shared-foundation remediation
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      verification_scope: local-check
+
+      scope_protects: repair_dup_shared_foundations.wiring_audit, repair_dup_shared_foundations.spec_conformance,
+      repair_dup_shared_foundations.gate
+
+
+      Fix ALL blocker/should-fix shared-foundation verification findings from the
+      current repair_dup_shared_foundations cycle in one constrained remediation batch.
+
+
+      This step owns all reported issues together so authority/wiring/spec drift is
+      closed coherently rather than with parallel partial fixes.
+
+
+      Required remediation scope:
+
+      - remove duplicate CLI type authority in cli_runtime.py so there is a single
+      CLI type authority
+
+      - migrate production CLI callers to the shared CLI projection and remove remaining
+      local duplicate renderers
+
+      - ensure the shared component query seam is the consumed path for MCP core and
+      Python API callers
+
+      - complete adoption of shared request validation for MCP core and isolated handlers
+
+      - resolve numeric code duplication risk in component_error_projection through
+      the shared projection path
+
+      - collapse facade construction to a single migrated factory path, including
+      MCP server path decision consistency and old-facade-path removal where this
+      phase owns it
+
+      - provide runtime-proof-oriented support changes needed so post-fix verification
+      can prove CLI exit-code mapping and admission seam invariants
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.
+
+
+      ## Known Risks / review focus
+
+      - Shared abstraction adoption must be real production consumption, not write-only
+      exports
+
+      - Do not preserve parallel normalization or error-path logic beside the shared
+      query seam
+
+      - Do not leave MCP server on a divergent facade path when migrated callers are
+      supposed to share one authority'
+    verification: '- Targeted checks show a single CLI type authority remains
+
+      - Shared CLI projection is used by production callers with no local duplicate
+      renderer left in this phase scope
+
+      - Shared component query is consumed by MCP core and Python API
+
+      - Shared request validation is consumed by MCP core and isolated handlers
+
+      - Facade factory resolves to a single migrated path including MCP server path
+      decision consistency
+
+      - Runtime-proof support exists for CLI exit-code mapping and admission seam
+      invariants'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Remediation Report
+
+      - Single CLI type authority location:
+
+      - Production callers now using shared CLI projection:
+
+      - MCP core + Python API shared component-query consumers:
+
+      - MCP core + isolated handlers shared request-validation consumers:
+
+      - Facade factory single-path consumers including MCP server decision path:
+
+      - Runtime-proof support added for CLI exit-code mapping:
+
+      - Runtime-proof support added for admission seam invariants:
+
+      - Remaining ambiguity or intentionally deferred non-blockers:
+
+      '
+    depends_on:
+    - repair_dup_shared_foundations.component_query_core
+    - repair_dup_shared_foundations.mcp_validation_core
+    - repair_dup_shared_foundations.cli_projection_core
+    - repair_dup_shared_foundations.facade_factory_core
+    agent: python-senior-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
