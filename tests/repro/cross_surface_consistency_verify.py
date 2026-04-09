@@ -33,6 +33,7 @@ from larva.core.validate import ValidationReport, validate_spec
 from larva.shell import cli as cli_module
 from larva.shell import python_api
 from larva.shell import python_api_components
+from larva.shell.shared.component_queries import query_component
 from larva.shell import web as web_module
 from larva.shell.cli import (
     EXIT_ERROR,
@@ -577,6 +578,71 @@ class TestCrossSurfaceErrorEnvelopeConsistency:
 
 class TestCrossSurfaceComponentQueryConsistency:
     """Expose current cross-surface component query drift."""
+
+    def test_shared_service_projects_not_found_like_python_api(self) -> None:
+        """Shared service and first consumer must preserve not-found category."""
+        components = InMemoryComponentStore()
+        original_py_store = python_api_components._component_store
+        python_api_components._component_store = components
+
+        try:
+            shared_result = query_component(
+                components,
+                component_type="prompt",
+                component_name="missing",
+                operation="python_api.component_show",
+            )
+            assert isinstance(shared_result, Failure)
+            shared_error = shared_result.failure()
+
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.component_show("prompt", "missing")
+            python_error = python_exc.value.error
+
+            assert shared_error["code"] == "COMPONENT_NOT_FOUND"
+            assert shared_error["details"]["reason"] == "not_found"
+            assert python_error["code"] == shared_error["code"]
+            assert python_error["details"]["reason"] == shared_error["details"]["reason"]
+        finally:
+            python_api_components._component_store = original_py_store
+
+    def test_shared_service_projects_store_unavailable_like_python_api(self) -> None:
+        """Shared service and first consumer must preserve unavailable category."""
+
+        class UnavailableComponentStore(InMemoryComponentStore):
+            def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
+                return Failure(
+                    ComponentStoreError(
+                        "Components directory not found: /tmp/components",
+                        component_type="prompt",
+                        component_name=name,
+                    )
+                )
+
+        components = UnavailableComponentStore()
+        original_py_store = python_api_components._component_store
+        python_api_components._component_store = components
+
+        try:
+            shared_result = query_component(
+                components,
+                component_type="prompt",
+                component_name="missing",
+                operation="python_api.component_show",
+            )
+            assert isinstance(shared_result, Failure)
+            shared_error = shared_result.failure()
+
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.component_show("prompt", "missing")
+            python_error = python_exc.value.error
+
+            assert shared_error["code"] == "INTERNAL"
+            assert shared_error["details"]["reason"] == "store_unavailable"
+            assert python_error["code"] == shared_error["code"]
+            assert python_error["details"]["reason"] == shared_error["details"]["reason"]
+        finally:
+            python_api_components._component_store = original_py_store
 
     def test_component_alias_query_semantics_align_across_all_surfaces(self) -> None:
         """Singular aliases should normalize consistently across every public surface."""

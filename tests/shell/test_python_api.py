@@ -713,6 +713,43 @@ class TestPythonApiComponentList:
 class TestPythonApiComponentShow:
     """Verify component_show() is thin delegation over FilesystemComponentStore loaders."""
 
+    def test_component_show_uses_shared_component_query_service(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show() must delegate shared kind normalization and projection."""
+        recorded: dict[str, object] = {}
+
+        def _fake_query_component(
+            component_store: object,
+            *,
+            component_type: str,
+            component_name: str,
+            operation: str,
+        ) -> Result[dict[str, object], LarvaError]:
+            recorded.update(
+                {
+                    "component_store": component_store,
+                    "component_type": component_type,
+                    "component_name": component_name,
+                    "operation": operation,
+                }
+            )
+            return Success({"text": "Shared query payload"})
+
+        store = InMemoryComponentStore()
+        monkeypatch.setattr(python_api_components, "_component_store", store)
+        monkeypatch.setattr(python_api_components, "query_component", _fake_query_component)
+
+        result = python_api.component_show("prompt", "test-prompt")
+
+        assert result == {"text": "Shared query payload"}
+        assert recorded == {
+            "component_store": store,
+            "component_type": "prompt",
+            "component_name": "test-prompt",
+            "operation": "python_api.component_show",
+        }
+
     def test_component_show_prompt_delegates_to_load_prompt(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
