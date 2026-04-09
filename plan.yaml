@@ -42225,7 +42225,7 @@ phases:
       parity discovered during runtime verification.'
   - id: repair_dup_shared_foundations.gate_blocker_fix_batch
     name: Remediate gate blockers and contract warnings
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       owner_role: remediation
@@ -42267,6 +42267,8 @@ phases:
     - repair_dup_shared_foundations.wiring_audit
     - repair_dup_shared_foundations.spec_conformance
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T18:18:22.875132+00:00'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
