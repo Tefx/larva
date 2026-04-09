@@ -41346,6 +41346,88 @@ phases:
 
       '
     agent: python-refactor-master-tacit
+  - id: repair_dup_shared_foundations.wiring_audit
+    name: Audit shared-foundation wiring completeness
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+      scope_protects: repair_dup_shared_foundations.gate
+
+
+      Wiring completeness audit: verify every new shared abstraction introduced in
+      this phase is actually consumed by at least one intended caller and no duplicate
+      authority remains hidden.
+
+
+      REQUIRED CHECKS:
+
+      1. Shared component-query module has at least one real consumer
+
+      2. Shared request-validation helper has at least one real MCP consumer
+
+      3. `cli_types.py` remains the only CLI type authority among migrated files
+
+      4. Shared facade factory is consumed by migrated callers
+
+      5. No orphan shared module export remains write-only in this phase
+
+      '
+    verification: '- Export reachability is demonstrated for each newly introduced
+      shared abstraction
+
+      - No duplicate type authority remains among migrated CLI files
+
+      - Any orphan shared symbol is reported as a blocking issue for the phase gate'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Wiring Audit Report
+
+      **Orphan shared exports**
+
+      ```
+
+      <grep/import-trace output or ''none found''>
+
+      ```
+
+      **Duplicate CLI type authorities**
+
+      ```
+
+      <grep output or ''none found''>
+
+      ```
+
+      **Shared factory consumers**
+
+      ```
+
+      <import/use trace>
+
+      ```
+
+      **Verdict**: PASS | ISSUES_FOUND
+
+      '
+    depends_on:
+    - repair_dup_shared_foundations.component_query_core
+    - repair_dup_shared_foundations.mcp_validation_core
+    - repair_dup_shared_foundations.cli_projection_core
+    - repair_dup_shared_foundations.facade_factory_core
+    agent: wiring-auditor
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
