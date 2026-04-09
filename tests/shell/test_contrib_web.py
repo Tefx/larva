@@ -14,8 +14,10 @@ Sources:
 
 from __future__ import annotations
 
+import importlib.util
+import inspect
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -28,6 +30,33 @@ from starlette.testclient import TestClient
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.app.facade import LarvaError
+
+CONTRIB_WEB_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
+
+
+def _load_contrib_module() -> Any:
+    """Load contrib web module for behavioral endpoint checks."""
+    spec = importlib.util.spec_from_file_location("contrib_web_server", CONTRIB_WEB_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    loader = cast(Any, spec.loader)
+    loader.exec_module(module)
+    return module
+
+
+def _route_inventory(app: Any) -> set[tuple[str, str]]:
+    """Return explicit method/path pairs for application routes."""
+    inventory: set[tuple[str, str]] = set()
+    for route in app.routes:
+        methods = getattr(route, "methods", None)
+        path = getattr(route, "path", None)
+        if methods is None or path is None:
+            continue
+        for method in methods:
+            if method in {"HEAD", "OPTIONS"}:
+                continue
+            inventory.add((method, path))
+    return inventory
 
 
 # -----------------------------------------------------------------------------
@@ -210,105 +239,31 @@ class TestContribMirrorEndpointInventory:
     Note: Contrib adds batch-update as extra convenience (line 147)
     """
 
-    def test_contrib_has_get_api_personas_endpoint(self) -> None:
-        """Contrib server has GET /api/personas.
+    def test_contrib_route_inventory_matches_packaged_plus_batch_update(self) -> None:
+        """Contrib app should reuse packaged inventory plus batch-update."""
+        from larva.shell.web import app as packaged_app
 
-        Contract: INTERFACES.md line 113
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
+        contrib_module = _load_contrib_module()
+        packaged_routes = _route_inventory(packaged_app)
+        contrib_routes = _route_inventory(contrib_module.app)
 
-        assert '@app.get("/api/personas")' in content, "Contrib should have GET /api/personas"
-
-    def test_contrib_has_post_api_personas_endpoint(self) -> None:
-        """Contrib server has POST /api/personas.
-
-        Contract: INTERFACES.md line 116
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.post("/api/personas")' in content, "Contrib should have POST /api/personas"
-
-    def test_contrib_has_patch_api_personas_endpoint(self) -> None:
-        """Contrib server has PATCH /api/personas/{id}.
-
-        Contract: INTERFACES.md line 117
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.patch("/api/personas/{persona_id}")' in content, (
-            "Contrib should have PATCH /api/personas/{persona_id}"
-        )
-
-    def test_contrib_has_delete_api_personas_endpoint(self) -> None:
-        """Contrib server has DELETE /api/personas/{id}.
-
-        Contract: INTERFACES.md line 118
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.delete("/api/personas/{persona_id}")' in content, (
-            "Contrib should have DELETE /api/personas/{persona_id}"
-        )
-
-    def test_contrib_has_post_clear_endpoint(self) -> None:
-        """Contrib server has POST /api/personas/clear.
-
-        Contract: INTERFACES.md line 119
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.post("/api/personas/clear")' in content, (
-            "Contrib should have POST /api/personas/clear"
-        )
-
-    def test_contrib_has_validate_endpoint(self) -> None:
-        """Contrib server has POST /api/personas/validate.
-
-        Contract: INTERFACES.md line 120
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.post("/api/personas/validate")' in content, (
-            "Contrib should have POST /api/personas/validate"
-        )
-
-    def test_contrib_has_assemble_endpoint(self) -> None:
-        """Contrib server has POST /api/personas/assemble.
-
-        Contract: INTERFACES.md line 121
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.post("/api/personas/assemble")' in content, (
-            "Contrib should have POST /api/personas/assemble"
-        )
-
-    def test_contrib_has_components_endpoints(self) -> None:
-        """Contrib server has GET /api/components endpoints.
-
-        Contract: INTERFACES.md lines 122-123
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
-
-        assert '@app.get("/api/components")' in content, "Contrib should have GET /api/components"
-        assert '@app.get("/api/components/{component_type}/{name}")' in content, (
-            "Contrib should have GET /api/components/{type}/{name}"
-        )
+        assert contrib_routes - packaged_routes == {("POST", "/api/personas/batch-update")}
+        assert packaged_routes - contrib_routes == set()
 
     def test_contrib_serves_html_at_root(self) -> None:
-        """Contrib server serves HTML at GET /.
+        """Contrib server serves HTML at GET /."""
+        contrib_module = _load_contrib_module()
+        client = TestClient(contrib_module.app)
 
-        Contract: INTERFACES.md line 104, 113
-        """
-        contrib_path = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
-        content = contrib_path.read_text()
+        response = client.get("/")
 
-        assert '@app.get("/")' in content, "Contrib should serve HTML at root"
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+
+    def test_contrib_main_keeps_packaged_launch_signature(self) -> None:
+        """Contrib launch path preserves packaged port/no_open entrypoint."""
+        contrib_module = _load_contrib_module()
+        signature = inspect.signature(contrib_module.main)
+
+        assert signature.parameters["port"].default == 7400
+        assert signature.parameters["no_open"].default is False

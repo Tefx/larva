@@ -51,8 +51,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 
-app = FastAPI(title="larva", docs_url=None, redoc_url=None)
-
 STATIC_DIR = Path(__file__).parent
 
 
@@ -98,136 +96,125 @@ def _validation_error_response(report: ValidationReport) -> Any:
 # ---------------------------------------------------------------------------
 
 
-@app.get("/api/personas")
-def api_list_personas() -> Any:
-    """List all registered personas."""
-    try:
-        return {"data": list_personas()}
-    except LarvaApiError as e:
-        return _api_error_response(e)
+def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html") -> FastAPI:
+    """Create a FastAPI app for the canonical web REST surface."""
+    resolved_static_dir = STATIC_DIR if static_dir is None else Path(static_dir)
+    app = FastAPI(title="larva", docs_url=None, redoc_url=None)
+
+    @app.get("/api/personas")
+    def api_list_personas() -> Any:
+        """List all registered personas."""
+        try:
+            return {"data": list_personas()}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.get("/api/personas/{persona_id}")
+    async def api_get_persona(persona_id: str) -> Any:
+        """Resolve a persona by ID."""
+        try:
+            return {"data": resolve(persona_id, None)}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas")
+    async def api_register_persona(request: Request) -> Any:
+        """Validate and register a new persona."""
+        body = await request.json()
+        spec = body.get("spec", body)
+        try:
+            report = validate(spec)
+            if not report["valid"]:
+                return _validation_error_response(report)
+            result = register(spec)
+            return {"data": result}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    # @invar:allow entry_point_too_thick: web endpoint, shared implementation calls router helpers
+    @app.patch("/api/personas/{persona_id}")
+    async def api_update_persona(persona_id: str, request: Request) -> Any:
+        """Patch a persona through the shared facade seam."""
+        patches = await request.json()
+        try:
+            return {"data": update(persona_id, patches)}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.delete("/api/personas/{persona_id}")
+    def api_delete_persona(persona_id: str) -> Any:
+        """Delete a persona by ID."""
+        try:
+            result = delete(persona_id)
+            return {"data": result}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas/clear")
+    async def api_clear_personas(request: Request) -> Any:
+        """Clear the registry with confirmation."""
+        body = await request.json()
+        confirm = body.get("confirm", "")
+        try:
+            count = clear(confirm=confirm)
+            return {"data": {"cleared": True, "count": count}}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas/validate")
+    async def api_validate_persona(request: Request) -> Any:
+        """Validate a candidate persona spec."""
+        spec = await request.json()
+        try:
+            report = validate(spec)
+            return {"data": report}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas/assemble")
+    # @invar:allow entry_point_too_thick: web endpoint, mirrors contrib implementation parity
+    async def api_assemble_persona(request: Request) -> Any:
+        """Assemble a persona spec from components."""
+        body = await request.json()
+        try:
+            spec = assemble(
+                body["id"],
+                None,
+                body.get("prompts"),
+                body.get("toolsets"),
+                body.get("constraints"),
+                body.get("model"),
+                body.get("overrides"),
+                body.get("variables"),
+            )
+            return {"data": spec}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.get("/api/components")
+    def api_list_components() -> Any:
+        """List all available components."""
+        try:
+            return {"data": component_list()}
+        except LarvaApiError as e:
+            return _component_api_error_response(e)
+
+    @app.get("/api/components/{component_type}/{name}")
+    def api_get_component(component_type: str, name: str) -> Any:
+        """Load a specific component."""
+        try:
+            return {"data": component_show(component_type, name)}
+        except LarvaApiError as e:
+            return _component_api_error_response(e)
+
+    @app.get("/")
+    def serve_index() -> FileResponse:
+        return FileResponse(resolved_static_dir / index_file, media_type="text/html")
+
+    return app
 
 
-@app.get("/api/personas/{persona_id}")
-async def api_get_persona(persona_id: str) -> Any:
-    """Resolve a persona by ID."""
-    try:
-        return {"data": resolve(persona_id, None)}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-@app.post("/api/personas")
-async def api_register_persona(request: Request) -> Any:
-    """Validate and register a new persona."""
-    body = await request.json()
-    spec = body.get("spec", body)
-    try:
-        # Validate first
-        report = validate(spec)
-        if not report["valid"]:
-            return _validation_error_response(report)
-        result = register(spec)
-        return {"data": result}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-# @invar:allow entry_point_too_thick: web endpoint, shared implementation calls router helpers
-@app.patch("/api/personas/{persona_id}")
-async def api_update_persona(persona_id: str, request: Request) -> Any:
-    """Patch a persona through the shared facade seam."""
-    patches = await request.json()
-    try:
-        return {"data": update(persona_id, patches)}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-@app.delete("/api/personas/{persona_id}")
-def api_delete_persona(persona_id: str) -> Any:
-    """Delete a persona by ID."""
-    try:
-        result = delete(persona_id)
-        return {"data": result}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-@app.post("/api/personas/clear")
-async def api_clear_personas(request: Request) -> Any:
-    """Clear the registry with confirmation."""
-    body = await request.json()
-    confirm = body.get("confirm", "")
-    try:
-        count = clear(confirm=confirm)
-        return {"data": {"cleared": True, "count": count}}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-@app.post("/api/personas/validate")
-async def api_validate_persona(request: Request) -> Any:
-    """Validate a candidate persona spec."""
-    spec = await request.json()
-    try:
-        report = validate(spec)
-        return {"data": report}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-@app.post("/api/personas/assemble")
-# @invar:allow entry_point_too_thick: web endpoint, mirrors contrib implementation parity
-async def api_assemble_persona(request: Request) -> Any:
-    """Assemble a persona spec from components."""
-    body = await request.json()
-    try:
-        spec = assemble(
-            body["id"],
-            None,
-            body.get("prompts"),
-            body.get("toolsets"),
-            body.get("constraints"),
-            body.get("model"),
-            body.get("overrides"),
-            body.get("variables"),
-        )
-        return {"data": spec}
-    except LarvaApiError as e:
-        return _api_error_response(e)
-
-
-# ---------------------------------------------------------------------------
-# Component endpoints
-# ---------------------------------------------------------------------------
-
-
-@app.get("/api/components")
-def api_list_components() -> Any:
-    """List all available components."""
-    try:
-        return {"data": component_list()}
-    except LarvaApiError as e:
-        return _component_api_error_response(e)
-
-
-@app.get("/api/components/{component_type}/{name}")
-def api_get_component(component_type: str, name: str) -> Any:
-    """Load a specific component."""
-    try:
-        return {"data": component_show(component_type, name)}
-    except LarvaApiError as e:
-        return _component_api_error_response(e)
-
-
-# ---------------------------------------------------------------------------
-# Static files
-# ---------------------------------------------------------------------------
-
-
-@app.get("/")
-def serve_index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "web_ui.html", media_type="text/html")
+app = create_app()
 
 
 # ---------------------------------------------------------------------------
@@ -235,17 +222,22 @@ def serve_index() -> FileResponse:
 # ---------------------------------------------------------------------------
 
 
-def main(port: int = 7400, no_open: bool = False) -> None:
-    """Start the web UI server.
-
-    Can be called from CLI (larva serve) or directly.
-    """
+def run_web_app(runtime_app: FastAPI, *, port: int = 7400, no_open: bool = False) -> None:
+    """Run a web app with the packaged launch contract."""
     if not no_open:
         import threading
 
         threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
 
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(runtime_app, host="127.0.0.1", port=port, log_level="info")
+
+
+def main(port: int = 7400, no_open: bool = False) -> None:
+    """Start the web UI server.
+
+    Can be called from CLI (larva serve) or directly.
+    """
+    run_web_app(app, port=port, no_open=no_open)
 
 
 if __name__ == "__main__":
