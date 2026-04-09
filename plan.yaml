@@ -40777,10 +40777,17 @@ phases:
 
       - uncertainty sources: none blocking'
 - id: repair_dup_guardrails
-  name: Duplicate Repair Guardrails
+  name: Absorbed Duplicate Repair Guardrails
   status: done
   gate: Pin architecture authority and preservation guardrails before duplicate-abstraction
     remediation.
+  context: 'status: absorbed
+
+    merged_into: repair_dup_shared_foundations
+
+    note: kept only as a historical shell because vectl plan structure is append/retain
+    oriented; active execution now begins in the merged foundations phase with an
+    internal guardrail mid-gate.'
   depends_on:
   - baseline_failure_finalization
 - id: repair_dup_shared_foundations
