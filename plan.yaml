@@ -41646,6 +41646,7 @@ phases:
     - repair_dup_shared_foundations.facade_factory_core
     - repair_dup_shared_foundations.wiring_audit
     - repair_dup_shared_foundations.spec_conformance
+    - repair_dup_shared_foundations.gate_blocker_fix_batch
     agent: gate-reviewer-tacit
   - id: repair_dup_guardrails.gate
     name: Mid-gate duplicate-repair guardrails
