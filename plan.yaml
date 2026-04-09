@@ -42612,7 +42612,7 @@ phases:
       - 61fca79 (refactor: rebase CLI entry wiring on shared facade factory)'
   - id: repair_dup_surface_integration.mcp_surface_rebase
     name: Rebase MCP surface onto shared abstractions
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP tool contracts and malformed-parameter behavior\n \
       \ - README.md :: MCP runtime surface\n touch_paths:\n  - src/larva/shell/mcp.py\n\
@@ -42691,6 +42691,55 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-09T19:37:16.678478+00:00'
+    done_at: '2026-04-09T19:45:04.197784+00:00'
+    evidence: '## Upstream Artifact Confirmation
+
+      - component_query_core and mcp_validation_core consumed in MCP surface paths
+
+      - preservation_harness MCP cases retained
+
+
+      ## Main Path Proof
+
+      - uv run pytest tests/shell/test_mcp.py -k "component_list or component_show
+      or shared_validator or handle_register or handle_list or handle_delete or handle_clear
+      or handle_clone or handle_update or handle_validate or handle_assemble or handle_resolve"
+      -> 81 passed
+
+      - focused MCP + server checks -> 5 passed and 4 passed
+
+      - invar guard on changed files -> passed (0 errors, 0 warnings)
+
+
+      ## Failure Path Proof
+
+      - malformed params, invalid component kind, and component lookup failure paths
+      preserved
+
+
+      ## Duplicate Skeleton Reduction
+
+      - repeated require/reject/unwrap skeletons in mcp.py and mcp_handler_ops.py
+      replaced with shared helper calls (_validated_params/_unwrap_result)
+
+      - net MCP surface diffstat: substantial deletion over insertion (213 deletions
+      vs 134 insertions in evidence run)
+
+
+      ## Files changed
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_handler_ops.py
+
+      - src/larva/shell/mcp_params.py
+
+      - src/larva/shell/shared/mcp_handler_helpers.py
+
+
+      ## Commit
+
+      - f9937e7 (refactor: unify MCP handler validation and result helpers)'
   - id: repair_dup_surface_integration.web_convergence_rebase
     name: Rebase packaged and contrib web surfaces
     status: done
