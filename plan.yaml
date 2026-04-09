@@ -40790,3 +40790,10 @@ phases:
     rebasing.
   depends_on:
   - repair_dup_guardrails
+- id: repair_dup_surface_integration
+  name: Duplicate Repair Surface Integration
+  status: locked
+  gate: Rebase CLI/MCP/Web/Python surfaces onto shared abstractions and prove cross-surface/runtime
+    conformance.
+  depends_on:
+  - repair_dup_shared_foundations
