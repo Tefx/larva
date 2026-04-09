@@ -42243,3 +42243,48 @@ phases:
 
       '
     agent: integration-verifier-tacit
+  - id: repair_dup_finalization.doc_sync
+    name: Sync documentation to repaired duplicate-abstraction architecture
+    status: pending
+    description: "step_type: review\nagent_source: default\nspec_refs:\n  - README.md\n\
+      \  - ARCHITECTURE.md\n  - INTERFACES.md\n  - USER_GUIDE.md\n  - USAGE.md\n touch_paths:\n\
+      \  - README.md\n  - ARCHITECTURE.md\n  - INTERFACES.md\n  - USER_GUIDE.md\n\
+      \  - USAGE.md\n authoritative_interface: packaged web contract remains canonical;\
+      \ contrib extension boundary is explicitly documented\n\nUpdate project documentation\
+      \ to match the repaired shared-abstraction architecture and surface boundaries.\n\
+      \nRequired checks:\n- packaged vs contrib web ownership is documented clearly\n\
+      - shared component-query semantics are documented once, not repeated inconsistently\n\
+      - CLI/MCP/Web/Python API docs no longer imply multiple conflicting authorities\n\
+      - default facade construction path and any new shared modules are documented\
+      \ only where user-facing or maintainer-relevant\n"
+    verification: '- Docs match implemented packaged/contrib boundary and shared-abstraction
+      ownership
+
+      - No stale duplicate-authority statements remain in the touched docs
+
+      - User-facing usage examples remain aligned with runtime behavior'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Doc Sync Report
+
+      - updated_docs:
+
+      - removed_stale_authority_statements:
+
+      - packaged_vs_contrib_boundary_doc:
+
+      - shared_component_query_doc:
+
+      '
+    depends_on:
+    - repair_dup_finalization.full_plan_check
+    agent: doc-reviewer-tacit
