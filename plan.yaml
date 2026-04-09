@@ -40825,3 +40825,10 @@ phases:
     behavior across CLI, MCP, Python API, packaged web, and contrib web.
   depends_on:
   - duplicate_remediation_bootstrap
+- id: duplicate_remediation_full_verify
+  name: Duplicate Remediation Full Verification
+  status: locked
+  gate: Run the nearest full-plan-check barrier so broad duplicate-remediation debt
+    is surfaced before docs and deep review.
+  depends_on:
+  - duplicate_remediation_system_wiring
