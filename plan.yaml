@@ -40804,3 +40804,10 @@ phases:
     seam without changing tool-specific business rules.
   depends_on:
   - duplicate_remediation_web_runtime
+- id: duplicate_remediation_cli_projection
+  name: Duplicate Remediation D — CLI Projection and Type Source Consolidation
+  status: locked
+  gate: Make cli_types.py the single source of CLI transport truth and centralize
+    projection/rendering without widening CLI semantics.
+  depends_on:
+  - duplicate_remediation_mcp_dispatch
