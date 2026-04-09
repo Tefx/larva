@@ -42482,7 +42482,7 @@ phases:
   steps:
   - id: repair_dup_surface_integration.cli_surface_rebase
     name: Rebase CLI surface onto shared abstractions
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: CLI-facing validate/component/update semantics\n  - README.md\
       \ :: CLI usage and runtime surface\n touch_paths:\n  - src/larva/shell/cli_runtime.py\n\
@@ -42562,6 +42562,54 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T19:37:07.114657+00:00'
+    done_at: '2026-04-09T19:44:46.577052+00:00'
+    evidence: '## Upstream Artifact Confirmation
+
+      - component_query_core applied (CLI component show continues through shared
+      query seam)
+
+      - cli_projection_core applied (validation-report projection parity retained)
+
+      - facade_factory_core applied (CLI entry wiring now directly uses shared facade
+      factory authority)
+
+      - preservation_harness CLI cases consumed
+
+
+      ## Main Path Proof
+
+      - uv run pytest tests/shell/test_cli.py -q -k "validate_invalid_text_and_json_projections_share_primary_message
+      or validation_report_projection_preserves_invalid_parity_facts or invalid_component_kind
+      or component_show_uses_shared_component_query_service or cli_entrypoint_delegates_to_shell_cli_main
+      or shell_cli_source_uses_shared_factory_without_entrypoint_reexport or cli_entrypoint_source_has_no_local_default_factory_or_store_authority"
+      -> 6 passed
+
+      - uv run pytest tests/shell/test_cli.py -q -> 186 passed
+
+      - invar guard (changed files) passed
+
+
+      ## Failure Path Proof
+
+      - component_invalid_kind preserved
+
+      - validation_report_parity preserved across text/json
+
+      - default_facade_construction_uniqueness asserted by source-level tests
+
+
+      ## Files changed
+
+      - src/larva/cli_entrypoint.py
+
+      - src/larva/shell/cli.py
+
+      - tests/shell/test_cli.py
+
+
+      ## Commit
+
+      - 61fca79 (refactor: rebase CLI entry wiring on shared facade factory)'
   - id: repair_dup_surface_integration.mcp_surface_rebase
     name: Rebase MCP surface onto shared abstractions
     status: claimed
