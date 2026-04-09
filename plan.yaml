@@ -40812,7 +40812,7 @@ phases:
   steps:
   - id: repair_dup_shared_foundations.component_query_core
     name: Extract shared component-query core
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: component endpoint behavior and invalid-kind expectations\n\
       \  - ARCHITECTURE.md :: shell/shared abstraction boundary\n touch_paths:\n \
@@ -40894,6 +40894,82 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T16:50:04.468908+00:00'
+    done_at: '2026-04-09T16:58:53.277203+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - INTERFACES.md — component-query semantics transport-neutral; canonical kinds
+      and typed invalid-kind behavior
+
+      - ARCHITECTURE.md — shared service owns semantics; adapters keep local envelopes
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis applied: transport-neutral truth ownership retained; no
+      adapter envelope leakage
+
+      - preservation_harness consumed: alias convergence + invalid-kind + not-found/store-unavailable
+      projection families
+
+
+      ## Implementation Evidence
+
+      - New shared module: src/larva/shell/shared/component_queries.py
+
+      - First consumer migrated: src/larva/shell/python_api_components.py delegates
+      _component_show_result to query_component
+
+      - Deferred behavior: CLI/MCP/Web/contrib callers not migrated in this step
+
+
+      ## Main Path Proof
+
+      - Focused pytest set on python_api component show + alias convergence + cross-surface
+      repro checks: 12 passed
+
+      - invar guard --changed passed
+
+
+      ## Failure Path Proof
+
+      - invalid_kind: dedicated python_api and repro tests passed
+
+      - not_found: python_api + repro projection tests passed
+
+      - store_unavailable: cross-surface repro projection tests passed
+
+
+      ## Commit hash(es)
+
+      - 06324f25cd494e742a7c3b4b7f4168faa2267898
+
+
+      ## Files changed
+
+      - src/larva/shell/shared/component_queries.py
+
+      - src/larva/shell/python_api_components.py
+
+      - tests/repro/alias_convergence_verify.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+      - tests/shell/test_python_api.py
+
+
+      ## Spec link
+
+      - INTERFACES.md (component behavior and invalid-kind expectations)
+
+      - ARCHITECTURE.md (shared abstraction boundary)
+
+
+      ## Gaps/Notes
+
+      - no deviations
+
+      - broader contrib/default-facade repro failures seen outside this step scope
+      were not modified'
   - id: repair_dup_shared_foundations.mcp_validation_core
     name: Extract shared MCP validation core
     status: done
