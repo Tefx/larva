@@ -41049,7 +41049,7 @@ phases:
       - shared validator has no MCP runtime export surface'
   - id: repair_dup_shared_foundations.cli_projection_core
     name: Extract shared CLI projection core
-    status: claimed
+    status: pending
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: CLI validation and component output expectations\n  - ARCHITECTURE.md\
       \ :: CLI shell boundary\n touch_paths:\n  - src/larva/shell/cli_types.py\n \
@@ -41129,8 +41129,6 @@ phases:
     depends_on:
     - repair_dup_guardrails.gate
     agent: python-refactor-master-tacit
-    claimed_by: python-refactor-master-tacit
-    claimed_at: '2026-04-09T16:40:05.618796+00:00'
   - id: repair_dup_shared_foundations.facade_factory_core
     name: Extract shared default-facade factory core
     status: done
