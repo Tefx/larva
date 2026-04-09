@@ -41430,7 +41430,7 @@ phases:
       - cli_runtime adoption intentionally deferred by step scope'
   - id: repair_dup_shared_foundations.wiring_audit
     name: Audit shared-foundation wiring completeness
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -41516,6 +41516,21 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-09T17:32:28.800978+00:00'
+    done_at: '2026-04-09T17:48:25.561476+00:00'
+    evidence: 'Post-fix wiring audit PASS.
+
+      - Shared component query has real production consumers (CLI, MCP, Python API)
+
+      - Shared request validation consumed by MCP core path + isolated handlers
+
+      - cli_types.py is sole CLI type authority among migrated files
+
+      - Shared facade factory consumed by migrated callers including MCP server path
+
+      - No blocker-class orphan shared module issues; one minor advisory dead export
+      (ComponentPayload) and non-blocking phantom dependency note (ruamel.yaml)
+
+      - Product files modified: no'
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
     status: claimed
