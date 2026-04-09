@@ -40818,3 +40818,10 @@ phases:
     entrypoints share one bootstrap source without changing published runtime surfaces.
   depends_on:
   - duplicate_remediation_cli_projection
+- id: duplicate_remediation_system_wiring
+  name: Duplicate Remediation System Wiring
+  status: locked
+  gate: Wire the new shared abstractions into all runtime entrypoints and prove end-to-end
+    behavior across CLI, MCP, Python API, packaged web, and contrib web.
+  depends_on:
+  - duplicate_remediation_bootstrap
