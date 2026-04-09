@@ -136,7 +136,7 @@ def component_store_unavailable_error(
 @pre(
     lambda operation, error, default_component_type=None, default_component_name=None: (
         "\x00" not in operation
-        and hasattr(error, "args")
+        and isinstance(error, (Exception, dict))
         and (default_component_type is None or "\x00" not in default_component_type)
         and (default_component_name is None or "\x00" not in default_component_name)
     )
@@ -144,7 +144,7 @@ def component_store_unavailable_error(
 @post(lambda result: result["code"] in {"INTERNAL", "COMPONENT_NOT_FOUND"})
 def project_component_store_error(
     operation: str,
-    error: Exception,
+    error: object,
     default_component_type: str | None = None,
     default_component_name: str | None = None,
 ) -> ComponentErrorEnvelope:
@@ -156,18 +156,41 @@ def project_component_store_error(
     >>> err = project_component_store_error("mcp.component_show", _Err("Prompt not found: missing"))
     >>> err["code"]
     'COMPONENT_NOT_FOUND'
+    >>> projected = project_component_store_error(
+    ...     "assemble",
+    ...     {
+    ...         "code": "COMPONENT_NOT_FOUND",
+    ...         "message": "Prompt not found: missing",
+    ...         "details": {"component_type": "prompt", "component_name": "missing"},
+    ...     },
+    ... )
+    >>> (projected["code"], projected["details"]["component_name"])
+    ('COMPONENT_NOT_FOUND', 'missing')
     """
-    message = str(error)
+    details = cast(
+        "dict[str, object]",
+        error.get("details", {}) if isinstance(error, dict) else {},
+    )
+    message_obj = error.get("message") if isinstance(error, dict) else str(error)
+    message = message_obj if isinstance(message_obj, str) else str(error)
     component_type = cast(
         "str | None",
-        getattr(error, "component_type", default_component_type),
+        details.get("component_type")
+        if isinstance(details.get("component_type"), str)
+        else getattr(error, "component_type", default_component_type),
     )
     component_name = cast(
         "str | None",
-        getattr(error, "component_name", default_component_name),
+        details.get("component_name")
+        if isinstance(details.get("component_name"), str)
+        else getattr(error, "component_name", default_component_name),
     )
     lowered = message.lower()
-    if "components directory not found" in lowered or "not available" in lowered:
+    if (
+        (isinstance(error, dict) and error.get("code") == "INTERNAL")
+        or "components directory not found" in lowered
+        or "not available" in lowered
+    ):
         return component_store_unavailable_error(
             operation=operation,
             component_type=component_type,

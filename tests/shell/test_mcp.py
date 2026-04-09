@@ -299,6 +299,18 @@ class TestMCPToolDefinitions:
         validate_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_validate")
         assert "spec" in validate_tool["input_schema"]["properties"]
         assert "spec" in validate_tool["input_schema"]["required"]
+        spec_schema = validate_tool["input_schema"]["properties"]["spec"]
+        assert spec_schema["additionalProperties"] is False
+        assert "tools" not in spec_schema["properties"]
+        assert "side_effect_policy" not in spec_schema["properties"]
+        assert set(spec_schema["required"]) == {
+            "id",
+            "description",
+            "prompt",
+            "model",
+            "capabilities",
+            "spec_version",
+        }
 
     def test_assemble_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
@@ -333,6 +345,10 @@ class TestMCPToolDefinitions:
         register_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_register")
         assert "spec" in register_tool["input_schema"]["properties"]
         assert "spec" in register_tool["input_schema"]["required"]
+        spec_schema = register_tool["input_schema"]["properties"]["spec"]
+        assert spec_schema["additionalProperties"] is False
+        assert "tools" not in spec_schema["properties"]
+        assert "side_effect_policy" not in spec_schema["properties"]
 
     def test_list_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]

@@ -20,11 +20,82 @@ Boundary citations:
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import WithJsonSchema
 
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS, MCPToolDefinition
+
+
+def _annotation_for_schema(schema: dict[str, object]) -> object:
+    """Build a Python annotation that preserves the declared MCP JSON schema."""
+    schema_type = schema.get("type")
+    python_type: object
+    if schema_type == "string":
+        python_type = str
+    elif schema_type == "integer":
+        python_type = int
+    elif schema_type == "number":
+        python_type = float
+    elif schema_type == "boolean":
+        python_type = bool
+    elif schema_type == "array":
+        python_type = list[object]
+    elif schema_type == "object":
+        python_type = dict[str, object]
+    else:
+        python_type = object
+    return Annotated[python_type, WithJsonSchema(schema)]
+
+
+def _schema_type_matches(value: object, schema_type: object) -> bool:
+    if schema_type == "string":
+        return isinstance(value, str)
+    if schema_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if schema_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if schema_type == "boolean":
+        return isinstance(value, bool)
+    if schema_type == "array":
+        return isinstance(value, list)
+    if schema_type == "object":
+        return isinstance(value, dict)
+    return True
+
+
+def _validate_schema_value(value: object, schema: dict[str, object], path: str) -> str | None:
+    schema_type = schema.get("type")
+    if not _schema_type_matches(value, schema_type):
+        return f"{path} must match schema type {schema_type}"
+    if schema_type != "object":
+        if schema_type == "array" and isinstance(value, list):
+            item_schema = schema.get("items")
+            if isinstance(item_schema, dict):
+                for index, item in enumerate(value):
+                    if error := _validate_schema_value(item, item_schema, f"{path}[{index}]"):
+                        return error
+        return None
+    if not isinstance(value, dict):
+        return f"{path} must be an object"
+    properties = schema.get("properties", {})
+    required = schema.get("required", [])
+    if isinstance(required, list):
+        for field in required:
+            if isinstance(field, str) and field not in value:
+                return f"{path}.{field} is required"
+    if schema.get("additionalProperties") is False and isinstance(properties, dict):
+        for key in value:
+            if key not in properties:
+                return f"{path}.{key} is not permitted"
+    if not isinstance(properties, dict):
+        return None
+    for key, sub_schema in properties.items():
+        if key in value and isinstance(sub_schema, dict):
+            if error := _validate_schema_value(value[key], sub_schema, f"{path}.{key}"):
+                return error
+    return None
 
 
 # @invar:allow shell_result: pure string transform helper for MCP registration
@@ -128,6 +199,9 @@ def _build_tool_fn(method: Any, tool_def: MCPToolDefinition) -> Any:
         else:
             source += f"    if {name} is not None:\n"
             source += f"        kwargs['{name}'] = {name}\n"
+    source += "    schema_error = _validate_schema(kwargs, _schema, 'params')\n"
+    source += "    if schema_error is not None:\n"
+    source += "        raise ValueError(schema_error)\n"
     source += "    result = _method(kwargs)\n"
     source += "    if _is_err(result):\n"
     source += "        return _json_dumps(result)\n"
@@ -138,11 +212,15 @@ def _build_tool_fn(method: Any, tool_def: MCPToolDefinition) -> Any:
         "_method": method,
         "_is_err": _is_error_envelope,
         "_json_dumps": json.dumps,
+        "_schema": schema,
+        "_validate_schema": _validate_schema_value,
     }
     exec(source, namespace)  # noqa: S102
 
     fn = namespace[fn_name]
     fn.__doc__ = description
+    annotations = {name: _annotation_for_schema(schema["properties"][name]) for name in param_names}
+    fn.__annotations__ = annotations
     return fn
 
 

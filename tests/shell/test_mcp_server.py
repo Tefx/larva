@@ -105,6 +105,45 @@ class TestCreateMcpServer:
         expected = {t["name"] for t in LARVA_MCP_TOOLS}
         assert registered == expected
 
+    def test_validate_tool_schema_rejects_missing_required_persona_fields(self) -> None:
+        server = create_mcp_server()
+        tool = server._tool_manager._tools["larva_validate"]
+
+        with pytest.raises(ValueError, match=r"params\.spec\.description is required"):
+            tool.fn(spec={"id": "missing-fields"})
+
+    def test_register_tool_schema_rejects_forbidden_top_level_fields(self) -> None:
+        server = create_mcp_server()
+        tool = server._tool_manager._tools["larva_register"]
+        invalid_spec = {
+            "id": "bad",
+            "description": "bad",
+            "prompt": "bad",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+            "tools": {"shell": "read_only"},
+        }
+
+        with pytest.raises(ValueError, match=r"params\.spec\.tools is not permitted"):
+            tool.fn(spec=invalid_spec)
+
+    def test_validate_tool_schema_rejects_unknown_top_level_fields(self) -> None:
+        server = create_mcp_server()
+        tool = server._tool_manager._tools["larva_validate"]
+        invalid_spec = {
+            "id": "bad",
+            "description": "bad",
+            "prompt": "bad",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+            "unexpected": True,
+        }
+
+        with pytest.raises(ValueError, match=r"params\.spec\.unexpected is not permitted"):
+            tool.fn(spec=invalid_spec)
+
     def test_accepts_custom_handlers(self) -> None:
         """Verify create_mcp_server works with injected handlers."""
         mock_handlers = MagicMock()
@@ -172,8 +211,16 @@ class TestToolDelegation:
         return tool.fn(**kwargs)
 
     def test_validate_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:
-        result = self._call_tool(server, "larva_validate", spec={"id": "test"})
-        mock_handlers.handle_validate.assert_called_once_with({"spec": {"id": "test"}})
+        spec = {
+            "id": "test",
+            "description": "test",
+            "prompt": "test",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        result = self._call_tool(server, "larva_validate", spec=spec)
+        mock_handlers.handle_validate.assert_called_once_with({"spec": spec})
         assert result == {"result": "ok"}
 
     def test_list_tool_delegates(self, server: Any, mock_handlers: MagicMock) -> None:

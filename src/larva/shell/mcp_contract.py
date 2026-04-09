@@ -15,7 +15,7 @@ Ownership rule:
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from larva.app import facade as facade_module
 from larva.core import validate as validate_contract
@@ -28,6 +28,38 @@ ValidationReport = validate_contract.ValidationReport
 
 _CAPABILITIES_REQUIRED_CLAUSE = validate_contract.CANONICAL_CAPABILITIES_REQUIRED_CLAUSE
 _TOOLS_REJECTED_CLAUSE = validate_contract.CANONICAL_TOOLS_REJECTED_CLAUSE
+
+_PERSONA_SPEC_FIELD_TYPES: dict[str, dict[str, object]] = {
+    "id": {"type": "string"},
+    "description": {"type": "string"},
+    "prompt": {"type": "string"},
+    "model": {"type": "string"},
+    "capabilities": {"type": "object"},
+    "spec_version": {"type": "string"},
+    "model_params": {"type": "object"},
+    "can_spawn": {},
+    "compaction_prompt": {"type": "string"},
+    "spec_digest": {"type": "string"},
+    "variables": {"type": "object"},
+}
+_PERSONA_SPEC_ALLOWED_FIELDS = (
+    validate_contract.CANONICAL_REQUIRED_FIELDS + validate_contract.CANONICAL_OPTIONAL_FIELDS
+)
+_PERSONA_SPEC_INPUT_SCHEMA = cast(
+    "dict[str, Any]",
+    {
+        "type": "object",
+        "properties": {
+            field: _PERSONA_SPEC_FIELD_TYPES[field] for field in _PERSONA_SPEC_ALLOWED_FIELDS
+        },
+        "required": list(validate_contract.CANONICAL_REQUIRED_FIELDS),
+        "additionalProperties": False,
+        "description": (
+            "Canonical PersonaSpec object. Unknown top-level fields and forbidden legacy "
+            "fields are rejected at the MCP admission boundary."
+        ),
+    },
+)
 
 
 class MCPToolDefinition(TypedDict):
@@ -49,11 +81,11 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "type": "object",
             "properties": {
                 "spec": {
-                    "type": "object",
                     "description": (
                         "PersonaSpec JSON to validate. "
                         f"Use capabilities field; {_TOOLS_REJECTED_CLAUSE}."
                     ),
+                    **_PERSONA_SPEC_INPUT_SCHEMA,
                 }
             },
             "required": ["spec"],
@@ -138,11 +170,11 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "type": "object",
             "properties": {
                 "spec": {
-                    "type": "object",
                     "description": (
                         "PersonaSpec JSON (must pass validation). "
                         f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
                     ),
+                    **_PERSONA_SPEC_INPUT_SCHEMA,
                 }
             },
             "required": ["spec"],
