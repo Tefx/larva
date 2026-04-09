@@ -40790,3 +40790,10 @@ phases:
     query seam and proving CLI/MCP/Python/web parity.
   depends_on:
   - duplicate_remediation_authority
+- id: duplicate_remediation_web_runtime
+  name: Duplicate Remediation A — Web Runtime Convergence
+  status: locked
+  gate: Converge packaged and contrib web runtimes onto one shared app factory while
+    preserving packaged-vs-contrib bootstrap differences and runnable parity.
+  depends_on:
+  - duplicate_remediation_component_query
