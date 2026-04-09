@@ -41533,7 +41533,7 @@ phases:
       - Product files modified: no'
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -41590,6 +41590,21 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-09T17:32:38.338036+00:00'
+    done_at: '2026-04-09T17:48:46.106731+00:00'
+    evidence: "Post-fix spec conformance verification completed successfully.\n\n\
+      ## Summary\n- Requirements assessed across component-kind alias policy, component-error\
+      \ projection, admission authority, shared abstraction ownership, and facade\
+      \ construction consistency.\n- No hard divergences found.\n- Coverage profile:\
+      \ majority CONFORMS; one PARTIAL structural-risk note on duplicated numeric-code\
+      \ table ownership; several NEEDS_TEST runtime-proof items flagged as non-blocking.\n\
+      \n## Key outcomes\n- Canonical kind vocabulary and alias normalization: conformant.\n\
+      - Shared component error envelopes and category mapping: conformant.\n- Removed-field\
+      \ and unknown-field admission rejection at canonical boundary: conformant.\n\
+      - Shared seams (component queries, request validation, facade factory) now structurally\
+      \ aligned post-fix.\n\n## Behavioral proof register\n- Runtime proof still suggested\
+      \ (non-blocking) for:\n  - CLI process-level exit code mapping\n  - Web HTTP\
+      \ status mapping by error class\n  - Cross-transport seam equivalence checks\n\
+      \n## Product file modifications\n- None (verification-only step)."
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
     status: pending
