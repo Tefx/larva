@@ -42324,7 +42324,7 @@ phases:
       - Files: pyproject.toml, src/larva/core/component_kind.py, src/larva/core/component_error_projection.py'
   - id: repair_dup_shared_foundations.gate_regression_fix_batch
     name: Remediate shared-foundation gate regression batch
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       owner_role: remediation
@@ -42373,6 +42373,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-09T19:06:21.599384+00:00'
+    done_at: '2026-04-09T19:18:35.399326+00:00'
+    evidence: "Focused regression remediation completed.\n\n- Fixed contract-caller\
+      \ mismatch in src/larva/core/component_error_projection.py so project_component_store_error\
+      \ handles canonical error-envelope dict failures and exception-like failures\
+      \ without deal.PreContractError.\n- Strengthened MCP validate/register admission\
+      \ schemas and ensured runtime schema enforcement in MCP server path (src/larva/shell/mcp_contract.py,\
+      \ src/larva/shell/mcp_server.py).\n- Added/updated MCP tests to lock regression\
+      \ and schema behavior.\n\nVerification\n1) Focused prior-failing tests + MCP\
+      \ admission checks:\n   uv run pytest tests/shell/test_mcp.py::TestMCPFailureEnvelope::test_assemble_component_not_found_has_envelope\
+      \ tests/shell/test_mcp.py::TestMCPFailureEnvelope::test_assemble_missing_component_preserves_code\
+      \ tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_assemble_failure_returns_error_envelope\
+      \ tests/shell/test_mcp.py::TestMCPComponentShowAcceptance::test_handle_component_show_missing_component_returns_component_not_found\
+      \ tests/shell/test_mcp.py::TestMCPToolDefinitions::test_validate_tool_is_defined\
+      \ tests/shell/test_mcp.py::TestMCPToolDefinitions::test_register_tool_is_defined\
+      \ tests/shell/test_mcp_server.py::TestCreateMcpServer::test_validate_tool_schema_rejects_missing_required_persona_fields\
+      \ tests/shell/test_mcp_server.py::TestCreateMcpServer::test_register_tool_schema_rejects_forbidden_top_level_fields\
+      \ tests/shell/test_mcp_server.py::TestCreateMcpServer::test_validate_tool_schema_rejects_unknown_top_level_fields\n\
+      \   -> 9 passed\n2) Cross-surface consistency and MCP suites:\n   uv run pytest\
+      \ tests/repro/cross_surface_consistency_verify.py -q tests/shell/test_mcp_server.py\
+      \ -q -> passed (65)\n   uv run pytest tests/shell/test_mcp.py -q tests/shell/test_mcp_server.py\
+      \ -q -> passed (163)\n3) Full guard:\n   uvx invar-tools guard --all -> status\
+      \ passed, errors 0\n\nCommit\n- b3b4189 (fix: align MCP admission and component\
+      \ error preconditions)\n\nFiles changed\n- src/larva/core/component_error_projection.py\n\
+      - src/larva/shell/mcp_contract.py\n- src/larva/shell/mcp_server.py\n- tests/shell/test_mcp.py\n\
+      - tests/shell/test_mcp_server.py"
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
