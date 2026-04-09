@@ -40896,7 +40896,7 @@ phases:
     claimed_at: '2026-04-09T16:40:15.120378+00:00'
   - id: repair_dup_shared_foundations.mcp_validation_core
     name: Extract shared MCP validation core
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP tool parameter rules and malformed-parameter envelope\
       \ expectations\n  - ARCHITECTURE.md :: shell/shared validation boundary\n touch_paths:\n\
@@ -40971,6 +40971,8 @@ phases:
     depends_on:
     - repair_dup_guardrails.gate
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-09T16:40:59.779991+00:00'
   - id: repair_dup_shared_foundations.cli_projection_core
     name: Extract shared CLI projection core
     status: claimed
