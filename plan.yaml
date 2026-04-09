@@ -40839,3 +40839,10 @@ phases:
     abstractions and preserved exceptions.
   depends_on:
   - duplicate_remediation_full_verify
+- id: duplicate_remediation_deep_review
+  name: Duplicate Remediation Deep Review
+  status: locked
+  gate: Finish with an independent audit over duplicate-abstraction closure, runtime
+    parity, preserved semantic splits, and residual drift risk.
+  depends_on:
+  - duplicate_remediation_doc_sync
