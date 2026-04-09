@@ -41194,6 +41194,86 @@ phases:
 
       '
     agent: python-refactor-master-tacit
+  - id: repair_dup_shared_foundations.cli_projection_core
+    name: Extract shared CLI projection core
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: CLI validation and component output expectations\n  - ARCHITECTURE.md\
+      \ :: CLI shell boundary\n touch_paths:\n  - src/larva/shell/cli_types.py\n \
+      \ - src/larva/shell/cli_projection.py\n  - src/larva/shell/cli_helpers.py\n\
+      \  - tests/shell/test_cli.py\n authoritative_interface: cli_types.py is the\
+      \ single source of truth for CLI result types; terminal rendering remains adapter-local\
+      \ unless explicitly centralized\n upstream_artifacts:\n  - from_step: repair_dup_guardrails.architecture_basis\n\
+      \    tier: contract\n    path: CLI shared-vs-local projection boundary\n  -\
+      \ from_step: repair_dup_guardrails.preservation_harness\n    tier: test\n  \
+      \  path: CLI projection parity guardrails\n\nFill in shared CLI projection/type\
+      \ bodies and remove the duplicated CLI type declarations from `cli_helpers.py`\
+      \ while preserving current surface behavior.\n\nYOUR SCOPE:\n- centralize CLI\
+      \ TypedDict/exit-code truth and shared validation-report intermediate projection\n\
+      - keep broad command callsite migration for `cli_runtime.py` and `cli_commands.py`\
+      \ deferred to surface integration\n- avoid widening public CLI behavior or text\
+      \ wording in this step\n\n## KNOWN RISKS (from project history)\n- Output-format\
+      \ drift can survive green unit tests if text/json parity is not checked together.\n\
+      - Cross-module helper extraction often leaves one duplicate renderer behind.\n\
+      \n## Gate Preview (what the gate WILL reject)\n1. `cli_types.py` still not being\
+      \ the real type authority\n2. more than one validation-report renderer surviving\
+      \ after extraction\n3. adapter-local terminal wording silently changing in this\
+      \ foundation step\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable.\nEach deliverable MUST contain\
+      \ substantive logic that processes its inputs and produces outputs that vary\
+      \ based on those inputs.\n"
+    verification: '- Main path: focused CLI tests prove shared type/projection module
+      is live and current helper imports use it
+
+      - Failure path: regression covers validation-report rendering parity and duplicate-type
+      removal
+
+      - Proof: duplicate TypedDict definitions are eliminated from `cli_helpers.py`
+      in favor of imported authority'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied:
+
+      - preservation_harness CLI cases consumed:
+
+
+      ## Implementation Evidence
+
+      - Shared CLI projection/type module:
+
+      - Duplicates removed from cli_helpers.py:
+
+      - Deferred CLI files for later rebase:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted test command/output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - validation_report_parity:
+
+      - duplicate_type_elimination:
+
+      '
+    agent: python-refactor-master-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
