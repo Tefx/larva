@@ -40832,3 +40832,10 @@ phases:
     is surfaced before docs and deep review.
   depends_on:
   - duplicate_remediation_system_wiring
+- id: duplicate_remediation_doc_sync
+  name: Duplicate Remediation Documentation Sync
+  status: locked
+  gate: Synchronize architecture and interface documentation with the consolidated
+    abstractions and preserved exceptions.
+  depends_on:
+  - duplicate_remediation_full_verify
