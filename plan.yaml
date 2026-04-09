@@ -41284,7 +41284,7 @@ phases:
     - repair_dup_shared_foundations.spec_conformance
     agent: gate-reviewer-tacit
   - id: repair_dup_guardrails.gate
-    name: Gate duplicate-repair guardrails
+    name: Mid-gate duplicate-repair guardrails
     status: pending
     description: 'step_type: gate
 
@@ -41298,24 +41298,25 @@ phases:
 
       - runnable packaged/contrib web surfaces are in scope downstream
 
-      - prior audit found systemic duplicate-abstraction risk across CLI/MCP/Web/Python
-      API
+      - this mid-gate now guards the merged foundations phase before any shared-abstraction
+      extraction begins
 
 
-      As an INDEPENDENT REVIEWER, verify the remediation campaign now has an approved
-      architecture basis and executable preservation guardrails before any shared-abstraction
-      extraction begins.
+      As an INDEPENDENT REVIEWER, verify the remediation campaign has an approved
+      architecture basis and executable preservation harnesses before the shared-foundation
+      implementation branch fan-out starts.
 
 
-      This gate protects downstream shared-service extraction and surface rebasing.
-
-      '
+      This is the internal guardrail checkpoint for the merged foundations phase.'
     verification: '- Architecture basis is approved and specific enough for safe sequencing
 
       - Preservation harnesses exist and make the drift visible/provable
 
       - No unresolved authority conflict remains around packaged web ownership, contrib
-      extension status, or dotted-path semantics'
+      extension status, or dotted-path semantics
+
+      - Decision explicitly authorizes or blocks the downstream foundation extraction
+      branches'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
 
