@@ -41607,7 +41607,7 @@ phases:
       \n## Product file modifications\n- None (verification-only step)."
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -41648,6 +41648,8 @@ phases:
     - repair_dup_shared_foundations.spec_conformance
     - repair_dup_shared_foundations.gate_blocker_fix_batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-09T18:28:10.187523+00:00'
   - id: repair_dup_guardrails.gate
     name: Mid-gate duplicate-repair guardrails
     status: done
