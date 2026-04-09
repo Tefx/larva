@@ -42564,7 +42564,7 @@ phases:
     claimed_at: '2026-04-09T19:37:07.114657+00:00'
   - id: repair_dup_surface_integration.mcp_surface_rebase
     name: Rebase MCP surface onto shared abstractions
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP tool contracts and malformed-parameter behavior\n \
       \ - README.md :: MCP runtime surface\n touch_paths:\n  - src/larva/shell/mcp.py\n\
@@ -42641,6 +42641,8 @@ phases:
 
       '
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-04-09T19:37:16.678478+00:00'
   - id: repair_dup_surface_integration.web_convergence_rebase
     name: Rebase packaged and contrib web surfaces
     status: done
