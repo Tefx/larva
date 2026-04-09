@@ -42645,7 +42645,7 @@ phases:
     claimed_at: '2026-04-09T19:29:46.488837+00:00'
   - id: repair_dup_surface_integration.web_convergence_rebase
     name: Rebase packaged and contrib web surfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: packaged web endpoint inventory and contrib-only batch-update\
       \ distinction\n  - README.md :: `larva serve` web runtime\n  - contrib/web/server.py\
@@ -42734,6 +42734,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T19:29:57.463904+00:00'
   - id: repair_dup_surface_integration.cross_surface_conformance
     name: Verify cross-surface conformance after rebase
     status: pending
