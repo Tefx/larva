@@ -40776,73 +40776,10 @@ phases:
       - blocking_behavioral_proofs: none
 
       - uncertainty sources: none blocking'
-- id: duplicate_remediation_authority
-  name: Duplicate Remediation Authority and Shared Contracts
+- id: repair_dup_guardrails
+  name: Duplicate Repair Guardrails
   status: pending
-  gate: Produce the architecture basis, shared contract seams, and repro harness required
-    before duplicate-abstraction remediation touches runtime surfaces.
+  gate: Pin architecture authority and preservation guardrails before duplicate-abstraction
+    remediation.
   depends_on:
   - baseline_failure_finalization
-- id: duplicate_remediation_component_query
-  name: Duplicate Remediation B — Cross-Transport Component Query Consolidation
-  status: locked
-  gate: Close the CONSOLIDATION_BLOCKER by extracting a transport-neutral component
-    query seam and proving CLI/MCP/Python/web parity.
-  depends_on:
-  - duplicate_remediation_authority
-- id: duplicate_remediation_web_runtime
-  name: Duplicate Remediation A — Web Runtime Convergence
-  status: locked
-  gate: Converge packaged and contrib web runtimes onto one shared app factory while
-    preserving packaged-vs-contrib bootstrap differences and runnable parity.
-  depends_on:
-  - duplicate_remediation_component_query
-- id: duplicate_remediation_mcp_dispatch
-  name: Duplicate Remediation C — MCP Dispatch and Validation Consolidation
-  status: locked
-  gate: Replace copied MCP parameter-validation scaffolding with a schema-driven dispatch
-    seam without changing tool-specific business rules.
-  depends_on:
-  - duplicate_remediation_web_runtime
-- id: duplicate_remediation_cli_projection
-  name: Duplicate Remediation D — CLI Projection and Type Source Consolidation
-  status: locked
-  gate: Make cli_types.py the single source of CLI transport truth and centralize
-    projection/rendering without widening CLI semantics.
-  depends_on:
-  - duplicate_remediation_mcp_dispatch
-- id: duplicate_remediation_bootstrap
-  name: Duplicate Remediation E — Default Facade Bootstrap Convergence
-  status: locked
-  gate: Standardize default facade/bootstrap assembly so CLI, python_api, and compatibility
-    entrypoints share one bootstrap source without changing published runtime surfaces.
-  depends_on:
-  - duplicate_remediation_cli_projection
-- id: duplicate_remediation_system_wiring
-  name: Duplicate Remediation System Wiring
-  status: locked
-  gate: Wire the new shared abstractions into all runtime entrypoints and prove end-to-end
-    behavior across CLI, MCP, Python API, packaged web, and contrib web.
-  depends_on:
-  - duplicate_remediation_bootstrap
-- id: duplicate_remediation_full_verify
-  name: Duplicate Remediation Full Verification
-  status: locked
-  gate: Run the nearest full-plan-check barrier so broad duplicate-remediation debt
-    is surfaced before docs and deep review.
-  depends_on:
-  - duplicate_remediation_system_wiring
-- id: duplicate_remediation_doc_sync
-  name: Duplicate Remediation Documentation Sync
-  status: locked
-  gate: Synchronize architecture and interface documentation with the consolidated
-    abstractions and preserved exceptions.
-  depends_on:
-  - duplicate_remediation_full_verify
-- id: duplicate_remediation_deep_review
-  name: Duplicate Remediation Deep Review
-  status: locked
-  gate: Finish with an independent audit over duplicate-abstraction closure, runtime
-    parity, preserved semantic splits, and residual drift risk.
-  depends_on:
-  - duplicate_remediation_doc_sync
