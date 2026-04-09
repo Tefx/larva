@@ -41526,6 +41526,87 @@ phases:
     conformance.
   depends_on:
   - repair_dup_shared_foundations
+  steps:
+  - id: repair_dup_surface_integration.cli_surface_rebase
+    name: Rebase CLI surface onto shared abstractions
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: CLI-facing validate/component/update semantics\n  - README.md\
+      \ :: CLI usage and runtime surface\n touch_paths:\n  - src/larva/shell/cli_runtime.py\n\
+      \  - src/larva/shell/cli_commands.py\n  - src/larva/shell/cli.py\n  - src/larva/cli_entrypoint.py\n\
+      \  - tests/shell/test_cli.py\n authoritative_interface: existing CLI commands,\
+      \ exit codes, JSON/text output contracts remain authoritative\n upstream_artifacts:\n\
+      \  - from_step: repair_dup_shared_foundations.component_query_core\n    tier:\
+      \ contract\n    path: shared component-query service\n  - from_step: repair_dup_shared_foundations.cli_projection_core\n\
+      \    tier: contract\n    path: shared CLI projection/type authority\n  - from_step:\
+      \ repair_dup_shared_foundations.facade_factory_core\n    tier: contract\n  \
+      \  path: shared default-facade factory\n  - from_step: repair_dup_guardrails.preservation_harness\n\
+      \    tier: test\n    path: CLI projection parity and component-query guardrails\n\
+      \nFill in the CLI surface rebase by replacing duplicated local logic with the\
+      \ already-extracted shared abstractions while keeping existing command signatures,\
+      \ exit codes, and JSON/text semantics intact.\n\nYOUR SCOPE:\n- migrate remaining\
+      \ CLI callers to shared component-query/projection/factory paths\n- remove surviving\
+      \ duplicate validation-report rendering and facade-construction logic from CLI\
+      \ runtime files\n- preserve argparse command tree and terminal-facing wording\
+      \ unless an upstream artifact explicitly permits change\n\n## KNOWN RISKS (from\
+      \ project history)\n- output formatting drift can leave JSON clean but text\
+      \ mode stale, or vice versa\n- one duplicate renderer or type alias often survives\
+      \ in CLI runtime paths after partial extraction\n\n## Gate Preview (what the\
+      \ gate WILL reject)\n1. ANSI/text/JSON parity drift across CLI output paths\n\
+      2. `cli_types.py` still not being the real single authority after rebase\n3.\
+      \ any surviving second default facade construction path in CLI runtime code\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only\
+      \ completion is NOT acceptable.\nEach deliverable MUST contain substantive logic\
+      \ that processes its inputs and produces outputs that vary based on those inputs.\n"
+    verification: '- Main path: targeted CLI tests prove commands still emit the same
+      JSON/text structures and exit codes
+
+      - Failure path: regression covers component invalid-kind handling and validation-report
+      parity
+
+      - Proof: no duplicate local type/render/factory authority remains in the rebased
+      CLI files'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - component_query_core applied:
+
+      - cli_projection_core applied:
+
+      - facade_factory_core applied:
+
+      - preservation_harness CLI cases consumed:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted CLI command/test output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - component_invalid_kind:
+
+      - validation_report_parity:
+
+      - default_facade_construction_uniqueness:
+
+      '
+    agent: python-senior-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
