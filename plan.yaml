@@ -40959,6 +40959,8 @@ phases:
       - wrong_type:
 
       '
+    depends_on:
+    - repair_dup_guardrails.gate
     agent: python-refactor-master-tacit
   - id: repair_dup_shared_foundations.cli_projection_core
     name: Extract shared CLI projection core
