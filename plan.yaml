@@ -41375,7 +41375,7 @@ phases:
     claimed_at: '2026-04-09T16:06:53.006342+00:00'
   - id: repair_dup_guardrails.preservation_harness
     name: Pin preservation harness for duplicate-repair scope
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: default\nspec_refs:\n  - INTERFACES.md :: component endpoints,\
       \ packaged web inventory, CLI/MCP/Python API behavior\n  - tests/repro/web_convergence_parity.py\
@@ -41455,6 +41455,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T16:29:14.854500+00:00'
   - id: repair_dup_guardrails.architecture_basis
     name: Approve duplicate-repair architecture basis
     status: claimed
