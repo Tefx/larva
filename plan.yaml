@@ -41115,6 +41115,8 @@ phases:
       - singleton_or_wrapper_semantics:
 
       '
+    depends_on:
+    - repair_dup_guardrails.gate
     agent: python-refactor-master-tacit
   - id: repair_dup_shared_foundations.wiring_audit
     name: Audit shared-foundation wiring completeness
