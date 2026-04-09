@@ -42338,3 +42338,33 @@ phases:
     depends_on:
     - repair_dup_finalization.full_plan_check
     agent: wiring-auditor
+  - id: repair_dup_finalization.deep_review_spec
+    name: Deep-review full spec conformance
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+      scope_protects: repair_dup_finalization.gate
+
+
+      Full-system adversarial conformance audit focused on cross-surface and packaged/contrib
+      properties that per-phase checks can miss.
+
+      '
+    verification: '- Cross-surface requirements are reviewed against implementation
+      with explicit verdicts
+
+      - Packaged/contrib authority split is confirmed by evidence
+
+      - Any remaining DIVERGES/PARTIAL/NEEDS_TEST item is surfaced before final gate'
+    evidence_template: "## Spec Conformance Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\nIf no refs were provided, state: \"No refs for this step.\"\n\n## Evidence\
+      \ Table\n| Requirement | Implementation | Verdict | Notes |\n\n## Top Risks\n\
+      - \n"
+    depends_on:
+    - repair_dup_finalization.deep_review_wiring
+    agent: spec-verifier-tacit
