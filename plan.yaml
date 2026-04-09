@@ -40783,3 +40783,10 @@ phases:
     before duplicate-abstraction remediation touches runtime surfaces.
   depends_on:
   - baseline_failure_finalization
+- id: duplicate_remediation_component_query
+  name: Duplicate Remediation B — Cross-Transport Component Query Consolidation
+  status: locked
+  gate: Close the CONSOLIDATION_BLOCKER by extracting a transport-neutral component
+    query seam and proving CLI/MCP/Python/web parity.
+  depends_on:
+  - duplicate_remediation_authority
