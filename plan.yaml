@@ -40784,12 +40784,24 @@ phases:
   depends_on:
   - baseline_failure_finalization
 - id: repair_dup_shared_foundations
-  name: Duplicate Repair Shared Foundations
-  status: locked
+  name: Duplicate Repair Foundations (Guardrails + Shared Foundations)
+  status: pending
   gate: Extract shared abstractions behind stable boundaries before broad surface
     rebasing.
+  context: 'work_type: technical_debt_remediation
+
+    phase_role: preserve-scope guardrails plus shared-foundation extraction
+
+    style: balanced with micro isolation for shared-file conflict control
+
+    compaction_note: absorbed the former repair_dup_guardrails phase into this phase
+    while preserving a pre-implementation review checkpoint via repair_dup_guardrails.gate
+    as an internal mid-gate
+
+    parallelism_pattern: architecture basis + preservation harness -> guardrail mid-gate
+    -> parallel isolated extractions -> wiring/spec review -> phase gate'
   depends_on:
-  - repair_dup_guardrails
+  - baseline_failure_finalization
   steps:
   - id: repair_dup_shared_foundations.component_query_core
     name: Extract shared component-query core
