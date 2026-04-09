@@ -41300,7 +41300,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: repair_dup_guardrails.gate
     name: Mid-gate duplicate-repair guardrails
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -41373,6 +41373,57 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-09T16:06:53.006342+00:00'
+    done_at: '2026-04-09T16:39:26.622702+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - ARCHITECTURE.md, INTERFACES.md, ADR-001/002/003, design/* basis docs, guard-diagnosis.md,
+      INVAR.md, relevant shell/core files reviewed
+
+      - Evidence included key passages for packaged-web authority, contrib boundary,
+      component-query truth owner, and dotted-path separation
+
+
+      ## Gate Review Report
+
+      - architecture_basis_complete: partial at review time (formal synthesis pending),
+      but authority decisions substantively settled
+
+      - guardrail_harness_complete: partial at review time (baseline repro harness
+      existed)
+
+      - remaining_authority_conflicts: component-query shared-module placement formalization
+      and dotted-path separation archival
+
+      - blocked_downstream_steps_if_any: listed dependent shared-foundation implementation
+      steps
+
+
+      ## Gate Decision Basis
+
+      - packaged_web_authority: settled in src/larva/shell/web.py + docs
+
+      - contrib_extension_boundary: contrib/web/server.py extension-only, contrib-only
+      batch-update
+
+      - component_query_truth_owner: centralized transport-neutral semantics; adapter
+      envelopes stay local
+
+      - dotted_path_non_merge_ruling: preserve separate authorities unless new evidence
+
+
+      ## Decision
+
+      - OPEN (conditional pass) with gate_open_allowed: true
+
+      - no product implementation files modified by gate step
+
+
+      ## Behavioral proof
+
+      - behavioral_proof_register provided with PARTIALLY_PROVEN entries and uncertainty
+      sources
+
+      - blocker count: 0; should_fix items: 2'
   - id: repair_dup_guardrails.preservation_harness
     name: Pin preservation harness for duplicate-repair scope
     status: claimed
