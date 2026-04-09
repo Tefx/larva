@@ -41522,31 +41522,42 @@ phases:
       scope_protects: repair_dup_shared_foundations.gate
 
 
+      Post-fix spec conformance verification for the shared-foundation remediation
+      batch.
+
+
       Spec conformance verification via adversarial divergence hunting for the externally
       relevant semantics touched by this foundation phase.
 
 
       Focus areas:
 
-      - component kind alias handling and invalid-kind error category
+      - shared component-query seam is the single normalization/error-path authority
+      for migrated MCP usage
 
-      - MCP malformed-parameter rule preservation in migrated isolated handlers
+      - MCP malformed-parameter and request-validation rules are preserved through
+      shared validation adoption
 
-      - CLI type/projection authority claims versus current implementation
+      - CLI type/projection authority claims versus current implementation after duplicate-renderer
+      removal
 
-      - default facade construction equivalence for migrated callers
+      - default facade construction equivalence and MCP server path decision consistency
+
+      - behavioral proofs for CLI exit-code/process-level semantics and admission
+      seam uniqueness are recorded, not implied
 
 
       Behavioral precedence claims that cannot be proven statically MUST be marked
-      NEEDS_TEST with a concrete test suggestion.
-
-      '
+      NEEDS_TEST with a concrete test suggestion.'
     verification: '- Requirement-to-implementation evidence table exists for all touched
-      semantics
+      semantics after the batched fix
 
       - Any drift, partial conformance, or NEEDS_TEST item is explicitly recorded
 
-      - No unreviewed authority split survives into the gate step'
+      - No unreviewed authority split survives into the gate step
+
+      - Behavioral proof obligations for CLI exit-code/process-level semantics and
+      admission seam uniqueness are dispositioned before gate review'
     evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
       \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
       \ were provided, state: \"No refs for this step.\"\n\n## Spec Conformance Report\n\
@@ -41554,10 +41565,7 @@ phases:
       \ Coverage Summary\n- CONFORMS:\n- DIVERGES:\n- PARTIAL:\n- NEEDS_TEST:\n- NOT_FOUND:\n\
       \n## Top Risks\n- \n"
     depends_on:
-    - repair_dup_shared_foundations.component_query_core
-    - repair_dup_shared_foundations.mcp_validation_core
-    - repair_dup_shared_foundations.cli_projection_core
-    - repair_dup_shared_foundations.facade_factory_core
+    - repair_dup_shared_foundations.foundation_fix_batch
     agent: spec-verifier-tacit
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
