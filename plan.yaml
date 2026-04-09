@@ -42082,6 +42082,94 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: spec-verifier-tacit
+  - id: repair_dup_surface_integration.gate
+    name: Gate duplicate-repair surface integration
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - phase touches runnable packaged/contrib web surfaces
+
+      - cross-surface duplicate repair can regress user-visible output and protocol
+      behavior
+
+      - prior audit identified systemic drift across CLI/MCP/Web/Python API
+
+
+      As an INDEPENDENT REVIEWER, assess whether the rebased surfaces are complete,
+      spec-aligned, wired, and runnable.
+
+
+      Gate MUST review:
+
+      - cross-surface conformance evidence
+
+      - web liveness evidence
+
+      - wiring audit findings
+
+      - spec-conformance findings
+
+      - whether packaged web remains the contract owner and contrib remains extension-only
+
+      '
+    verification: '- All phase steps completed with acceptable evidence quality
+
+      - Runnable packaged/contrib web proof exists
+
+      - Cross-surface parity is proven or any remaining non-intersection is explicit
+
+      - Ready for finalization without reopening the architecture basis'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+
+      ## Gate Decision Basis
+
+      - packaged_web_authority_preserved:
+
+      - contrib_extension_boundary_preserved:
+
+      - cross_surface_conformance_status:
+
+      - runnable_surface_status:
+
+
+      ## Decision
+
+      - OPEN or BLOCKED
+
+      '
+    depends_on:
+    - repair_dup_surface_integration.cli_surface_rebase
+    - repair_dup_surface_integration.mcp_surface_rebase
+    - repair_dup_surface_integration.web_convergence_rebase
+    - repair_dup_surface_integration.cross_surface_conformance
+    - repair_dup_surface_integration.web_liveness
+    - repair_dup_surface_integration.wiring_audit
+    - repair_dup_surface_integration.spec_conformance
+    agent: gate-reviewer-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
