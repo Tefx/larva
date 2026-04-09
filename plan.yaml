@@ -41119,6 +41119,81 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: repair_dup_shared_foundations.mcp_validation_core
+    name: Extract shared MCP validation core
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: MCP tool parameter rules and malformed-parameter envelope\
+      \ expectations\n  - ARCHITECTURE.md :: shell/shared validation boundary\n touch_paths:\n\
+      \  - src/larva/shell/shared/request_validation.py\n  - src/larva/shell/mcp_export.py\n\
+      \  - src/larva/shell/mcp_update_batch.py\n  - tests/shell/test_mcp.py\n authoritative_interface:\
+      \ MCP protocol envelopes remain adapter-local; shared validator returns normalized\
+      \ params/issues only\n upstream_artifacts:\n  - from_step: repair_dup_guardrails.architecture_basis\n\
+      \    tier: contract\n    path: request-validation truth owner and adapter-local\
+      \ envelope boundary\n  - from_step: repair_dup_guardrails.preservation_harness\n\
+      \    tier: test\n    path: MCP parameter guardrails\n\nFill in shared request-validation\
+      \ helper bodies and rebase the already-extracted isolated MCP files (`mcp_export.py`,\
+      \ `mcp_update_batch.py`) onto that helper.\n\nYOUR SCOPE:\n- centralize unknown/required/type\
+      \ validation skeletons\n- preserve MCP method names and protocol envelopes in\
+      \ adapter files\n- do not yet rebase `mcp.py` or `mcp_handler_ops.py`; that\
+      \ join happens in the surface-integration phase\n\n## Completion Criteria (stub\
+      \ exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\n\
+      Each deliverable MUST contain substantive logic that processes its inputs and\
+      \ produces outputs that vary based on those inputs.\n"
+    verification: '- Main path: targeted MCP tests prove exported/update-batch handlers
+      use the shared validator without changing happy-path results
+
+      - Failure path: regression covers unknown params, missing required params, and
+      wrong-type params with preserved MCP error envelope structure
+
+      - Proof: shared validator module contains no MCP server registration/runtime
+      code'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied:
+
+      - preservation_harness MCP cases consumed:
+
+
+      ## Implementation Evidence
+
+      - Shared validation module:
+
+      - Rebased isolated MCP callers:
+
+      - Deferred MCP files:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted test command/output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - unknown_params:
+
+      - missing_required:
+
+      - wrong_type:
+
+      '
+    agent: python-refactor-master-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
