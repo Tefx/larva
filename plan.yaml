@@ -41459,7 +41459,7 @@ phases:
     claimed_at: '2026-04-09T16:29:14.854500+00:00'
   - id: repair_dup_guardrails.architecture_basis
     name: Approve duplicate-repair architecture basis
-    status: claimed
+    status: done
     description: "step_type: planning\nagent_source: default\nwork_type: technical_debt_remediation\n\
       spec_refs:\n  - ARCHITECTURE.md :: module boundaries and shell/core split\n\
       \  - INTERFACES.md :: packaged web endpoint inventory and cross-surface contracts\n\
@@ -41547,6 +41547,58 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-09T16:02:32.673126+00:00'
+    done_at: '2026-04-09T16:38:52.336232+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - ARCHITECTURE.md — authoritative packaged web boundary and remediation architecture
+      basis added
+
+      - INTERFACES.md — packaged surface authority + contrib extension boundary clarified
+
+      - README.md — packaged web runtime and frozen remediation guardrails summarized
+
+      - contrib/web/server.py — extension consumer boundary with contrib-only batch-update
+
+      - Duplicate-abstraction audit — NOT READ: no standalone artifact present in
+      worktree
+
+
+      ## Architecture Basis
+
+      - system_layers/source_of_truth_matrix/service_catalog/runtime_contract/state_strata/transport_boundary_rules/cross_cutting_governance/shared_abstractions/module_split_recommendations/open_questions/readiness
+      all produced
+
+      - explicit binding decisions included for packaged_web_authority, contrib_extension_boundary,
+      component_query_truth_owner, dotted_path_non_merge_ruling
+
+
+      ## Verification
+
+      - Required architecture fields present in ARCHITECTURE.md section
+
+      - Runtime/deployability obligations for CLI/MCP/packaged Web/contrib Web preserved
+
+      - Downstream sequencing constraints and forced joins documented
+
+
+      ## Files changed
+
+      - ARCHITECTURE.md
+
+      - INTERFACES.md
+
+      - README.md
+
+
+      ## Commit
+
+      - 2c1e254 (vectl/step-repair_dup_guardrails.architecture_basis)
+
+
+      ## Gaps/Notes
+
+      - Standalone duplicate-abstraction audit artifact was not found in-worktree;
+      recorded as open question.'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
