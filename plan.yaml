@@ -41059,7 +41059,7 @@ phases:
     claimed_at: '2026-04-09T16:40:05.618796+00:00'
   - id: repair_dup_shared_foundations.facade_factory_core
     name: Extract shared default-facade factory core
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - ARCHITECTURE.md :: facade/application orchestration boundary\n  - README.md\
       \ :: CLI and Python API entry surfaces\n touch_paths:\n  - src/larva/shell/shared/facade_factory.py\n\
@@ -41133,6 +41133,81 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-04-09T16:40:50.305480+00:00'
+    done_at: '2026-04-09T16:48:17.439831+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - ARCHITECTURE.md — facade ownership in app layer; shell stays adapter-local
+
+      - README.md — CLI/Python API canonical ops with local wrappers
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis points applied: shared default facade assembly centralized
+      once; adapter-local wrappers preserved; cli_runtime.py deferred
+
+      - preservation_harness facade-equivalence consumed: cross-surface default facade
+      equivalence checks used
+
+
+      ## Implementation Evidence
+
+      - Shared facade factory path: src/larva/shell/shared/facade_factory.py::build_default_facade()
+
+      - Migrated callers: src/larva/shell/python_api.py, src/larva/cli_facade.py
+
+      - Deferred callers: src/larva/shell/cli_runtime.py and downstream mcp runtime
+      joins
+
+
+      ## Main Path Proof
+
+      - uv run pytest tests/shell/test_python_api.py -k "shared_default_factory or
+      direct_default_facade_constructor" -> 2 passed
+
+      - uv run pytest tests/shell/test_cli.py -k "shared_default_factory or share_default_factory_entrypoint
+      or direct_default_facade_constructor" -> 3 passed
+
+
+      ## Failure Path Proof
+
+      - facade_equivalence: added assertions that python_api and cli_facade resolve
+      shared factory
+
+      - singleton_or_wrapper_semantics: singleton behavior preserved via _get_facade
+      and CLI wrapper checks
+
+
+      ## Commit hash(es)
+
+      - 749b3a0846aeca84a50327c5e34ac2a4074dc1df
+
+
+      ## Files changed
+
+      - src/larva/shell/shared/facade_factory.py
+
+      - src/larva/shell/python_api.py
+
+      - src/larva/cli_facade.py
+
+      - tests/shell/test_python_api.py
+
+      - tests/shell/test_cli.py
+
+
+      ## Spec link
+
+      - repair_dup_shared_foundations.facade_factory_core
+
+
+      ## Gaps/Notes
+
+      - no deviations
+
+      - invar_guard passed on changed files
+
+      - cli_runtime adoption intentionally deferred by step scope'
   - id: repair_dup_shared_foundations.wiring_audit
     name: Audit shared-foundation wiring completeness
     status: pending
