@@ -42857,7 +42857,7 @@ phases:
       \ (refactor: converge contrib web on packaged canonical app)"
   - id: repair_dup_surface_integration.cross_surface_conformance
     name: Verify cross-surface conformance after rebase
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -42941,6 +42941,8 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-09T19:45:30.965171+00:00'
   - id: repair_dup_surface_integration.web_liveness
     name: Probe packaged and contrib web liveness
     status: pending
