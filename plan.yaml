@@ -41863,6 +41863,89 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: integration-verifier-tacit
+  - id: repair_dup_surface_integration.web_liveness
+    name: Probe packaged and contrib web liveness
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+      scope_protects: repair_dup_surface_integration.gate
+
+
+      Runnable-surface liveness probe for the web runtime family.
+
+
+      As an independent black-box tester, run the packaged web entrypoint and the
+      contrib direct-script entrypoint far enough to prove:
+
+      - each starts successfully
+
+      - each accepts at least one request
+
+      - packaged preserves canonical routes
+
+      - contrib preserves its explicit extension-only route without becoming packaged
+      behavior
+
+      '
+    verification: '- Entry points start and stay alive long enough for one successful
+      request each
+
+      - Packaged route inventory matches authoritative expectation
+
+      - Contrib extension route is present only in contrib runtime
+
+      - Actual launch commands and request outputs are recorded'
+    evidence_template: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - packaged_launch:
+
+      - contrib_launch:
+
+      - requests_sent:
+
+
+      ### Actual Output
+
+      ```
+
+      <paste startup and request output>
+
+      ```
+
+
+      ### Verdict
+
+      - packaged_alive:
+
+      - contrib_alive:
+
+      - packaged_contract_routes_ok:
+
+      - contrib_extension_boundary_ok:
+
+      '
+    depends_on:
+    - repair_dup_surface_integration.cli_surface_rebase
+    - repair_dup_surface_integration.mcp_surface_rebase
+    - repair_dup_surface_integration.web_convergence_rebase
+    agent: blind-tester-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
