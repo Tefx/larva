@@ -40778,7 +40778,7 @@ phases:
       - uncertainty sources: none blocking'
 - id: repair_dup_guardrails
   name: Duplicate Repair Guardrails
-  status: pending
+  status: done
   gate: Pin architecture authority and preservation guardrails before duplicate-abstraction
     remediation.
   depends_on:
