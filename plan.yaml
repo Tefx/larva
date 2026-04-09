@@ -41607,6 +41607,85 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: repair_dup_surface_integration.mcp_surface_rebase
+    name: Rebase MCP surface onto shared abstractions
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: MCP tool contracts and malformed-parameter behavior\n \
+      \ - README.md :: MCP runtime surface\n touch_paths:\n  - src/larva/shell/mcp.py\n\
+      \  - src/larva/shell/mcp_handler_ops.py\n  - src/larva/shell/mcp_params.py\n\
+      \  - src/larva/shell/mcp_export.py\n  - src/larva/shell/mcp_update_batch.py\n\
+      \  - tests/shell/test_mcp.py\n  - tests/shell/test_mcp_server.py\n authoritative_interface:\
+      \ MCP tool names, protocol envelopes, and runtime registration remain adapter-local\
+      \ and authoritative\n upstream_artifacts:\n  - from_step: repair_dup_shared_foundations.component_query_core\n\
+      \    tier: contract\n    path: shared component-query service\n  - from_step:\
+      \ repair_dup_shared_foundations.mcp_validation_core\n    tier: contract\n  \
+      \  path: shared request-validation helper\n  - from_step: repair_dup_guardrails.preservation_harness\n\
+      \    tier: test\n    path: MCP parameter and component-query guardrails\n\n\
+      Fill in the MCP surface rebase by routing the remaining handler family through\
+      \ the shared validator and component-query abstractions while preserving MCP\
+      \ tool names, response envelopes, and server registration behavior.\n\nYOUR\
+      \ SCOPE:\n- rebase `mcp.py` and `mcp_handler_ops.py` to the shared validation/query\
+      \ helpers\n- keep protocol envelopes and FastMCP/server registration local to\
+      \ the MCP adapter\n- remove repeated validate/reject/require/delegate skeletons\
+      \ where the shared abstraction can prove equivalence\n\n## Completion Criteria\
+      \ (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion is\
+      \ NOT acceptable.\nEach deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs.\n"
+    verification: '- Main path: targeted MCP tests prove handler results and server
+      registration remain unchanged on happy paths
+
+      - Failure path: regression covers malformed params, invalid component kinds,
+      and component lookup failures
+
+      - Proof: repeated handler skeleton logic is materially reduced without moving
+      protocol envelopes into shared modules'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - component_query_core applied:
+
+      - mcp_validation_core applied:
+
+      - preservation_harness MCP cases consumed:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted MCP test output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - malformed_params:
+
+      - invalid_component_kind:
+
+      - component_lookup_failure:
+
+
+      ## Duplicate Skeleton Reduction
+
+      - before_sites:
+
+      - after_sites:
+
+      '
+    agent: python-refactor-master-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
