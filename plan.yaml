@@ -42525,3 +42525,76 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_spec
     agent: blind-tester-tacit
+  - id: repair_dup_finalization.gate
+    name: Final gate for duplicate-abstraction repair
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - full-plan duplicate-repair closure depends on wiring, spec, architecture,
+      contract-strength, and black-box evidence together
+
+      - broad verification can still surface blocker-class drift outside any single
+      surface
+
+
+      As an INDEPENDENT REVIEWER, decide whether the duplicate-abstraction repair
+      is complete, durable, and safe to treat as closed.
+
+      '
+    verification: '- Full-plan verification, doc sync, and deep-review evidence are
+      all present and internally consistent
+
+      - No blocker-class duplicate authority or runtime drift remains open
+
+      - Final decision basis explicitly records any non-intersecting residual debt'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+
+      ## Final Decision Basis
+
+      - full_plan_check_status:
+
+      - doc_sync_status:
+
+      - deep_review_status:
+
+      - residual_non_intersecting_debt:
+
+
+      ## Decision
+
+      - OPEN or BLOCKED
+
+      '
+    depends_on:
+    - repair_dup_finalization.full_plan_check
+    - repair_dup_finalization.doc_sync
+    - repair_dup_finalization.deep_review_wiring
+    - repair_dup_finalization.deep_review_spec
+    - repair_dup_finalization.deep_review_architecture
+    - repair_dup_finalization.deep_review_contract_strength
+    - repair_dup_finalization.deep_review_black_box
+    agent: gate-reviewer-tacit
