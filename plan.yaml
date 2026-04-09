@@ -40776,3 +40776,10 @@ phases:
       - blocking_behavioral_proofs: none
 
       - uncertainty sources: none blocking'
+- id: duplicate_remediation_authority
+  name: Duplicate Remediation Authority and Shared Contracts
+  status: pending
+  gate: Produce the architecture basis, shared contract seams, and repro harness required
+    before duplicate-abstraction remediation touches runtime surfaces.
+  depends_on:
+  - baseline_failure_finalization
