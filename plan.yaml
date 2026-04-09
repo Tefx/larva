@@ -41516,7 +41516,7 @@ phases:
     agent: wiring-auditor
   - id: repair_dup_shared_foundations.spec_conformance
     name: Verify shared-foundation spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -41571,6 +41571,8 @@ phases:
     depends_on:
     - repair_dup_shared_foundations.foundation_fix_batch
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-09T17:32:08.088686+00:00'
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
     status: pending
