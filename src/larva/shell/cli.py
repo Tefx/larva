@@ -9,7 +9,6 @@ from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaFacade
 from larva.cli_entrypoint import main
-from larva.cli_facade import build_default_facade
 from larva.shell.components import ComponentStore, FilesystemComponentStore
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
@@ -43,6 +42,7 @@ from larva.shell.cli_commands import (
     update_command,
     validate_command,
 )
+from larva.shell.shared.facade_factory import build_default_facade
 
 PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
 COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"

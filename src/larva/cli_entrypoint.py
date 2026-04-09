@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from larva.cli_facade import build_default_facade
 from larva.shell.components import FilesystemComponentStore
+from larva.shell.shared.facade_factory import build_default_facade
 
 
 # @invar:allow shell_result: process entrypoint returns int exit code for console scripts

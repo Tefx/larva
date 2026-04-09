@@ -45,6 +45,7 @@ from larva.core import spec as spec_module
 from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
+from larva import cli_entrypoint
 from larva.shell import cli
 from larva.shell import cli_runtime
 from larva.shell.components import ComponentStoreError
@@ -115,6 +116,38 @@ def test_python_module_cli_executes_same_shell_entrypoint(monkeypatch: pytest.Mo
     assert calls == [None]
 
 
+def test_cli_entrypoint_delegates_to_shell_cli_main(monkeypatch: pytest.MonkeyPatch) -> None:
+    facade = object()
+    component_store = object()
+    calls: list[tuple[list[str], object, object]] = []
+
+    def fake_build_default_facade() -> object:
+        return facade
+
+    def fake_component_store() -> object:
+        return component_store
+
+    def fake_run_cli(
+        argv: list[str],
+        *,
+        facade: object,
+        stdout: object,
+        stderr: object,
+        component_store: object | None = None,
+    ) -> int:
+        calls.append((argv, facade, component_store))
+        assert stdout is sys.stdout
+        assert stderr is sys.stderr
+        return 23
+
+    monkeypatch.setattr(cli_entrypoint, "build_default_facade", fake_build_default_facade)
+    monkeypatch.setattr(cli_entrypoint, "FilesystemComponentStore", fake_component_store)
+    monkeypatch.setattr("larva.shell.cli.run_cli", fake_run_cli)
+
+    assert cli_entrypoint.main(["list"]) == 23
+    assert calls == [(["list"], facade, component_store)]
+
+
 def test_cli_facade_wrapper_uses_shared_default_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     sentinel = object()
     calls: list[str] = []
@@ -170,6 +203,25 @@ def test_cli_facade_source_has_no_direct_default_facade_constructor() -> None:
 
     assert "DefaultLarvaFacade(" not in source
     assert "_build_default_facade" not in source
+
+
+def test_shell_cli_source_uses_shared_factory_without_entrypoint_reexport() -> None:
+    assert cli.__file__ is not None
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+
+    assert "from larva.cli_entrypoint import main" in source
+    assert "from larva.cli_facade import build_default_facade" not in source
+    assert "from larva.shell.shared.facade_factory import build_default_facade" in source
+
+
+def test_cli_entrypoint_source_has_no_local_default_factory_or_store_authority() -> None:
+    assert cli_entrypoint.__file__ is not None
+    source = Path(cli_entrypoint.__file__).read_text(encoding="utf-8")
+
+    assert "from larva.cli_facade import build_default_facade" not in source
+    assert "from larva.shell.shared.facade_factory import build_default_facade" in source
+    assert "FilesystemComponentStore(" in source
+    assert "run_cli(" in source
 
 
 def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
