@@ -41607,7 +41607,7 @@ phases:
       \n## Product file modifications\n- None (verification-only step)."
   - id: repair_dup_shared_foundations.gate
     name: Gate shared duplicate-repair foundations
-    status: claimed
+    status: pending
     description: 'step_type: gate
 
       agent_source: default
@@ -41648,8 +41648,6 @@ phases:
     - repair_dup_shared_foundations.spec_conformance
     - repair_dup_shared_foundations.gate_blocker_fix_batch
     agent: gate-reviewer-tacit
-    claimed_by: gate-reviewer-tacit
-    claimed_at: '2026-04-09T18:45:29.985175+00:00'
     done_at: '2026-04-09T18:39:22.289620+00:00'
     rejection_reason: Gate verdict is BLOCKED with confirmed runtime regression (deal.PreContractError)
       introduced by gate_blocker_fix_batch.
