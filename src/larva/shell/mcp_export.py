@@ -10,6 +10,13 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from returns.result import Failure, Success
 
+from larva.shell.shared.request_validation import (
+    reject_unknown_params,
+    require_list_of_strings,
+    require_params_object,
+    require_type,
+)
+
 if TYPE_CHECKING:
     from returns.result import Result
 
@@ -18,71 +25,46 @@ if TYPE_CHECKING:
 
 
 class _ExportFacade(Protocol):
-    def export_all(self) -> "Result[list[PersonaSpec], LarvaError]": ...
+    def export_all(self) -> Result[list[PersonaSpec], LarvaError]: ...
 
-    def export_ids(self, ids: list[str]) -> "Result[list[PersonaSpec], LarvaError]": ...
+    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]: ...
 
 
 class ExportHandlerDeps(Protocol):
     @property
     def _facade(self) -> _ExportFacade: ...
 
-    def _require_params_object(
-        self,
-        tool_name: str,
-        params: object,
-    ) -> "Result[dict[str, Any], LarvaError]": ...
-
-    def _reject_unknown_params(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        allowed_keys: set[str],
-    ) -> "LarvaError | None": ...
-
-    def _require_type(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        key: str,
-        expected_type: type[object],
-        expected_label: str,
-    ) -> "LarvaError | None": ...
-
-    def _require_list_of_strings(
-        self,
-        tool_name: str,
-        params: dict[str, Any],
-        key: str,
-    ) -> "LarvaError | None": ...
-
     def _malformed_params_error(
         self,
         tool_name: str,
         reason: str,
         details: dict[str, object],
-    ) -> "LarvaError": ...
+    ) -> LarvaError: ...
 
 
 def handle_export(
     handlers: ExportHandlerDeps,
     params: object,
-) -> "Result[list[PersonaSpec], LarvaError]":
+) -> Result[list[PersonaSpec], LarvaError]:
     """Handle ``larva.export`` with ``all`` xor ``ids`` validation."""
     return _handle_export_impl(handlers, params)
 
 
-# @shell_complexity: MCP export handler enforces mutually exclusive selector validation before facade delegation.
+# @shell_complexity: MCP export handler enforces mutually exclusive selector
+# validation before facade delegation.
 def _handle_export_impl(
     handlers: ExportHandlerDeps,
     params: object,
-) -> "Result[list[PersonaSpec], LarvaError]":
-    validated_params = handlers._require_params_object("larva_export", params)
-    if isinstance(validated_params, Failure):
-        return Failure(validated_params.failure())
-    checked_params = validated_params.unwrap()
-    if error := handlers._reject_unknown_params("larva_export", checked_params, {"all", "ids"}):
-        return Failure(error)
+) -> Result[list[PersonaSpec], LarvaError]:
+    params_result = require_params_object(params)
+    if isinstance(params_result, Failure):
+        issue = params_result.failure()
+        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
+    checked_params = params_result.unwrap()
+    unknown_result = reject_unknown_params(checked_params, {"all", "ids"})
+    if isinstance(unknown_result, Failure):
+        issue = unknown_result.failure()
+        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
 
     export_target = _validate_export_target(handlers, checked_params)
     if isinstance(export_target, Failure):
@@ -93,11 +75,12 @@ def _handle_export_impl(
     return handlers._facade.export_ids(ids)
 
 
-# @shell_complexity: export selection keeps explicit all/ids conflict handling at the transport boundary.
+# @shell_complexity: export selection keeps explicit all/ids conflict handling
+# at the transport boundary.
 def _validate_export_target(
     handlers: ExportHandlerDeps,
     checked_params: dict[str, Any],
-) -> "Result[tuple[bool, list[str]], LarvaError]":
+) -> Result[tuple[bool, list[str]], LarvaError]:
     """Validate export selector and return execution target."""
 
     has_all = "all" in checked_params
@@ -121,10 +104,23 @@ def _validate_export_target(
         )
 
     if has_all:
-        if error := handlers._require_type("larva_export", checked_params, "all", bool, "boolean"):
-            return Failure(error)
+        type_result = require_type(checked_params, "all", bool, "boolean")
+        if isinstance(type_result, Failure):
+            issue = type_result.failure()
+            return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
         return Success((True, []))
 
-    if error := handlers._require_list_of_strings("larva_export", checked_params, "ids"):
-        return Failure(error)
+    list_result = require_list_of_strings(checked_params, "ids")
+    if isinstance(list_result, Failure):
+        issue = list_result.failure()
+        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
     return Success((False, cast("list[str]", checked_params["ids"])))
+
+
+def _validation_failure(
+    handlers: ExportHandlerDeps,
+    tool_name: str,
+    reason: str,
+    details: dict[str, object],
+) -> Result[Any, LarvaError]:
+    return Failure(handlers._malformed_params_error(tool_name, reason, details))

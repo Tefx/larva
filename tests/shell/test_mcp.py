@@ -28,6 +28,9 @@ from larva.app.facade import (
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
+from larva.shell.mcp_export import handle_export as handle_export_impl
+from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_impl
+from larva.shell.shared import request_validation
 from tests.shell.fixture_taxonomy import (
     canonical_persona_spec,
     transition_persona_spec_with_legacy_fields,
@@ -175,6 +178,30 @@ class InMemoryRegistryStore:
 
     def clear(self, confirm: str) -> Result[int, LarvaError]:
         return self.clear_result
+
+
+@dataclass
+class IsolatedMCPHandlerDeps:
+    """Minimal deps double for isolated MCP handler modules."""
+
+    facade: Any
+
+    @property
+    def _facade(self) -> Any:
+        return self.facade
+
+    def _malformed_params_error(
+        self,
+        tool_name: str,
+        reason: str,
+        details: dict[str, object],
+    ) -> LarvaError:
+        return {
+            "code": "INTERNAL",
+            "numeric_code": 10,
+            "message": f"Malformed parameters for '{tool_name}': {reason}",
+            "details": {"tool": tool_name, "reason": reason, **details},
+        }
 
 
 def _canonical_spec(
@@ -2537,4 +2564,42 @@ class TestMCPUpdateToolDefinition:
         assert "id" in props
         assert "patches" in props
         assert "id" in update_tool["input_schema"]["required"]
-        assert "patches" in update_tool["input_schema"]["required"]
+
+
+class TestSharedMCPRequestValidation:
+    """Direct coverage for the isolated shared validation seam."""
+
+    def test_shared_validator_has_no_mcp_runtime_exports(self) -> None:
+        assert not hasattr(request_validation, "FastMCP")
+        assert not hasattr(request_validation, "register_mcp_tools")
+
+    def test_update_batch_module_uses_shared_validator_and_preserves_happy_path(self) -> None:
+        spec_alpha = _canonical_spec("alpha")
+        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
+        facade = _make_facade(registry=registry)
+
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"where": {"model": "gpt-4o-mini"}, "patches": {"description": "Updated"}},
+        )
+
+        assert isinstance(result, Success)
+        payload = result.unwrap()
+        assert payload["matched"] == 1
+        assert payload["updated"] == 1
+        assert payload["items"][0]["id"] == "alpha"
+
+    def test_export_module_uses_shared_validator_and_preserves_unknown_param_envelope(self) -> None:
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+
+        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {"all": True, "extra": "param"})
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="unknown parameter(s)",
+        )
+        assert error["details"]["unknown"] == ["extra"]
