@@ -40797,3 +40797,10 @@ phases:
     preserving packaged-vs-contrib bootstrap differences and runnable parity.
   depends_on:
   - duplicate_remediation_component_query
+- id: duplicate_remediation_mcp_dispatch
+  name: Duplicate Remediation C — MCP Dispatch and Validation Consolidation
+  status: locked
+  gate: Replace copied MCP parameter-validation scaffolding with a schema-driven dispatch
+    seam without changing tool-specific business rules.
+  depends_on:
+  - duplicate_remediation_web_runtime
