@@ -40797,3 +40797,10 @@ phases:
     conformance.
   depends_on:
   - repair_dup_shared_foundations
+- id: repair_dup_finalization
+  name: Duplicate Repair Finalization
+  status: locked
+  gate: Run full-plan verification, sync docs, and finish with independent deep review
+    before declaring duplicate-abstraction repair complete.
+  depends_on:
+  - repair_dup_surface_integration
