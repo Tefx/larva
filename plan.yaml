@@ -41993,7 +41993,7 @@ phases:
       recorded as open question.'
   - id: repair_dup_shared_foundations.foundation_fix_batch
     name: Batched shared-foundation remediation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -42098,6 +42098,8 @@ phases:
     - repair_dup_shared_foundations.cli_projection_core
     - repair_dup_shared_foundations.facade_factory_core
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-09T17:18:26.653512+00:00'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
