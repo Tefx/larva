@@ -41686,6 +41686,97 @@ phases:
 
       '
     agent: python-refactor-master-tacit
+  - id: repair_dup_surface_integration.web_convergence_rebase
+    name: Rebase packaged and contrib web surfaces
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: packaged web endpoint inventory and contrib-only batch-update\
+      \ distinction\n  - README.md :: `larva serve` web runtime\n  - contrib/web/server.py\
+      \ module docstring :: contrib extension semantics\n touch_paths:\n  - src/larva/shell/web.py\n\
+      \  - contrib/web/server.py\n  - src/larva/shell/python_api_components.py\n \
+      \ - tests/repro/web_convergence_parity.py\n  - tests/shell/test_contrib_web.py\n\
+      \ authoritative_interface: packaged `src/larva/shell/web.py` remains the canonical\
+      \ packaged REST surface; contrib remains an extension layer\n upstream_artifacts:\n\
+      \  - from_step: repair_dup_guardrails.architecture_basis\n    tier: contract\n\
+      \    path: packaged/contrib authority boundary\n  - from_step: repair_dup_shared_foundations.component_query_core\n\
+      \    tier: contract\n    path: shared component-query service\n  - from_step:\
+      \ repair_dup_shared_foundations.facade_factory_core\n    tier: contract\n  \
+      \  path: shared default-facade construction path\n  - from_step: repair_dup_guardrails.preservation_harness\n\
+      \    tier: test\n    path: packaged/contrib web parity harness\n\nFill in the\
+      \ packaged/contrib web rebase so the packaged runtime remains the contract owner\
+      \ and contrib composes canonical behavior plus its explicit extension-only route.\n\
+      \nYOUR SCOPE:\n- centralize canonical packaged route behavior behind shared\
+      \ abstractions\n- collapse contrib duplication by consuming the canonical path\
+      \ where possible\n- preserve contrib-only `batch-update` as an explicit extension,\
+      \ not a packaged dependency\n- keep runtime/entrypoint wiring runnable for both\
+      \ packaged and contrib surfaces\n\n## KNOWN RISKS (from project history)\n-\
+      \ packaged/contrib drift can hide in component endpoints even when persona endpoints\
+      \ stay aligned\n- extension routes tend to leak back into packaged runtime during\
+      \ convergence work\n\n## Gate Preview (what the gate WILL reject)\n1. packaged\
+      \ runtime no longer clearly owning the canonical REST contract\n2. contrib batch-update\
+      \ becoming a hidden packaged dependency\n3. component endpoints still diverging\
+      \ between packaged and contrib surfaces\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.\nEach\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs.\n"
+    verification: '- Main path: targeted web tests prove packaged and contrib share
+      canonical route behavior where required
+
+      - Failure path: regression covers contrib-only batch-update boundary and component
+      endpoint parity
+
+      - Runnable proof: packaged and contrib web entrypoints remain startable with
+      at least one successful request each'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Upstream Artifact Confirmation
+
+      - architecture_basis packaged/contrib boundary applied:
+
+      - component_query_core applied:
+
+      - facade_factory_core applied:
+
+      - preservation_harness web cases consumed:
+
+
+      ## Main Path Proof
+
+      ```
+
+      <paste targeted web/parity command or test output>
+
+      ```
+
+
+      ## Failure Path Proof
+
+      - component_endpoint_parity:
+
+      - contrib_extension_boundary:
+
+      - packaged_contract_authority:
+
+
+      ## Runnable Evidence
+
+      - packaged_launch_command:
+
+      - contrib_launch_command:
+
+      - one_successful_request_each:
+
+      '
+    agent: python-senior-tacit
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
   status: locked
