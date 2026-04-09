@@ -40872,90 +40872,6 @@ phases:
 
       '
     agent: software-architect-tacit
-  - id: repair_dup_guardrails.preservation_harness
-    name: Pin preservation harness for duplicate-repair scope
-    status: pending
-    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
-      \ red\nagent_source: default\nspec_refs:\n  - INTERFACES.md :: component endpoints,\
-      \ packaged web inventory, CLI/MCP/Python API behavior\n  - tests/repro/web_convergence_parity.py\
-      \ :: packaged vs contrib parity expectations\n  - tests/repro/cross_surface_consistency_verify.py\
-      \ :: CLI/MCP/Python API consistency expectations\n  - tests/repro/alias_convergence_verify.py\
-      \ :: component kind alias convergence expectations\n touch_paths:\n  - tests/repro/web_convergence_parity.py\n\
-      \  - tests/repro/cross_surface_consistency_verify.py\n  - tests/repro/alias_convergence_verify.py\n\
-      \  - tests/shell/test_cli.py\n  - tests/shell/test_mcp.py\n  - tests/shell/test_python_api.py\n\
-      \ authoritative_interface: packaged web endpoint inventory in INTERFACES.md;\
-      \ shared component-query semantics across CLI/MCP/Web/Python API\n\nAdd or update\
-      \ preservation harnesses that expose the currently-audited duplicate-abstraction\
-      \ gaps before refactor lands.\n\nScope rules:\n- Modify tests/repro fixtures\
-      \ and focused tests only\n- Do not change product runtime code in this step\n\
-      - Encode guardrails for:\n  - packaged vs contrib route inventory parity except\
-      \ contrib-only batch-update\n  - shared component-query semantics across CLI/MCP/Web/Python\
-      \ API/contrib\n  - CLI validation-report projection invariants and JSON/text\
-      \ parity\n  - default facade assembly equivalence where externally observable\n\
-      \nSuccess for this step is that the gap is exposed or preserved as an executable\
-      \ guardrail without broadening product behavior.\nDownstream implementation\
-      \ owners: repair_dup_shared_foundations.* and repair_dup_surface_integration.*\n"
-    verification: '- Modified files are limited to tests/ plus focused fixtures/helpers
-
-      - Harness clearly reports exposed_gaps or expected_failures for the audited
-      duplication families
-
-      - Guardrails cover packaged/contrib web parity, component-query semantics, CLI
-      projection parity, and facade factory equivalence'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      If no refs were provided, state: "No refs for this step."
-
-
-      ## Test-Only Scope Confirmation
-
-      - Modified files:
-
-      - Product runtime files changed: NONE (required)
-
-
-      ## Exposed Gaps / Expected Failures
-
-      - packaged_vs_contrib_web:
-
-      - component_query_cross_surface:
-
-      - cli_projection_parity:
-
-      - facade_factory_equivalence:
-
-
-      ## Commands
-
-      ```
-
-      <paste targeted commands/tests>
-
-      ```
-
-
-      ## Downstream Owners
-
-      - repair_dup_shared_foundations.component_query_core
-
-      - repair_dup_shared_foundations.mcp_validation_core
-
-      - repair_dup_shared_foundations.cli_projection_core
-
-      - repair_dup_shared_foundations.facade_factory_core
-
-      - repair_dup_surface_integration.*
-
-      '
-    depends_on:
-    - repair_dup_guardrails.architecture_basis
-    agent: python-senior-tacit
 - id: repair_dup_shared_foundations
   name: Duplicate Repair Shared Foundations
   status: locked
@@ -41516,6 +41432,88 @@ phases:
 
       '
     agent: gate-reviewer-tacit
+  - id: repair_dup_guardrails.preservation_harness
+    name: Pin preservation harness for duplicate-repair scope
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nagent_source: default\nspec_refs:\n  - INTERFACES.md :: component endpoints,\
+      \ packaged web inventory, CLI/MCP/Python API behavior\n  - tests/repro/web_convergence_parity.py\
+      \ :: packaged vs contrib parity expectations\n  - tests/repro/cross_surface_consistency_verify.py\
+      \ :: CLI/MCP/Python API consistency expectations\n  - tests/repro/alias_convergence_verify.py\
+      \ :: component kind alias convergence expectations\n touch_paths:\n  - tests/repro/web_convergence_parity.py\n\
+      \  - tests/repro/cross_surface_consistency_verify.py\n  - tests/repro/alias_convergence_verify.py\n\
+      \  - tests/shell/test_cli.py\n  - tests/shell/test_mcp.py\n  - tests/shell/test_python_api.py\n\
+      \ authoritative_interface: packaged web endpoint inventory in INTERFACES.md;\
+      \ shared component-query semantics across CLI/MCP/Web/Python API\n\nAdd or update\
+      \ preservation harnesses that expose the currently-audited duplicate-abstraction\
+      \ gaps before refactor lands.\n\nScope rules:\n- Modify tests/repro fixtures\
+      \ and focused tests only\n- Do not change product runtime code in this step\n\
+      - Encode guardrails for:\n  - packaged vs contrib route inventory parity except\
+      \ contrib-only batch-update\n  - shared component-query semantics across CLI/MCP/Web/Python\
+      \ API/contrib\n  - CLI validation-report projection invariants and JSON/text\
+      \ parity\n  - default facade assembly equivalence where externally observable\n\
+      \nSuccess for this step is that the gap is exposed or preserved as an executable\
+      \ guardrail without broadening product behavior.\nDownstream implementation\
+      \ owners: repair_dup_shared_foundations.* and repair_dup_surface_integration.*\n"
+    verification: '- Modified files are limited to tests/ plus focused fixtures/helpers
+
+      - Harness clearly reports exposed_gaps or expected_failures for the audited
+      duplication families
+
+      - Guardrails cover packaged/contrib web parity, component-query semantics, CLI
+      projection parity, and facade factory equivalence'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Test-Only Scope Confirmation
+
+      - Modified files:
+
+      - Product runtime files changed: NONE (required)
+
+
+      ## Exposed Gaps / Expected Failures
+
+      - packaged_vs_contrib_web:
+
+      - component_query_cross_surface:
+
+      - cli_projection_parity:
+
+      - facade_factory_equivalence:
+
+
+      ## Commands
+
+      ```
+
+      <paste targeted commands/tests>
+
+      ```
+
+
+      ## Downstream Owners
+
+      - repair_dup_shared_foundations.component_query_core
+
+      - repair_dup_shared_foundations.mcp_validation_core
+
+      - repair_dup_shared_foundations.cli_projection_core
+
+      - repair_dup_shared_foundations.facade_factory_core
+
+      - repair_dup_surface_integration.*
+
+      '
+    agent: python-senior-tacit
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: locked
