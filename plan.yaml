@@ -44522,6 +44522,23 @@ phases:
     depends_on:
     - post_sweep_remediation.contrib_batch_update_runtime_fix
     agent: python-executor
+  - id: post_sweep_remediation.cli_component_kind_authority_cleanup
+    name: Remove remaining CLI component-kind shadow authority
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - src/larva/shell/cli_runtime.py\n  - src/larva/core/component_kind.py\n\n\
+      Eliminate the last low-risk duplicate authority noted in the wiring audit by\
+      \ sourcing CLI malformed-ref valid-types output from the canonical component-kind\
+      \ authority instead of a hardcoded list. Preserve current CLI wording and exit\
+      \ behavior."
+    verification: '- CLI malformed-ref invalid-kind path still emits stable wording/exit
+      code
+
+      - valid_types now flow from canonical component-kind authority rather than a
+      local list'
+    depends_on:
+    - post_sweep_remediation.contrib_batch_update_runtime_fix
+    agent: python-executor
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
