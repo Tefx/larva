@@ -38,14 +38,13 @@ class _MissingFastApiApp:
     get = post = patch = delete = _decorator
 
 
-Request: Any = Any
 JSONResponse: Any = Any
 
 try:
-    from fastapi import Request
     from fastapi.responses import JSONResponse
 except ImportError as exc:
     _WEB_IMPORT_ERROR = exc
+
 
 STATIC_DIR = Path(__file__).parent
 run_web_app: Callable[..., None] | None = None
@@ -64,12 +63,11 @@ else:
 
 
 @app.post("/api/personas/batch-update")
-async def api_batch_update_personas(request: Any) -> Any:
+async def api_batch_update_personas(body: dict[str, Any]) -> Any:
     """Batch-update endpoint (contrib-only convenience surface).
 
     Source: INTERFACES.md line 147
     """
-    body = await request.json()
     where = body.get("where", {})
     patches = body.get("patches", {})
     dry_run = body.get("dry_run", False)

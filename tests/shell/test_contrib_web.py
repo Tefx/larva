@@ -225,6 +225,55 @@ class TestContribBatchUpdateEndpoint:
         assert "patches" in content, "Batch-update should accept 'patches'"
         assert "dry_run" in content, "Batch-update should accept 'dry_run'"
 
+    def test_batch_update_post_reaches_python_api_path(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Contrib POST runtime reaches the Python API batch-update path.
+
+        Source: contrib/web/server.py :: contrib-only batch-update extension
+        Source: INTERFACES.md :: contrib-only convenience surface
+        """
+        contrib_module = _load_contrib_module()
+        client = TestClient(contrib_module.app)
+        observed: dict[str, Any] = {}
+
+        def _spy_update_batch(
+            *, where: dict[str, Any], patches: dict[str, Any], dry_run: bool
+        ) -> dict[str, Any]:
+            observed["where"] = where
+            observed["patches"] = patches
+            observed["dry_run"] = dry_run
+            return {
+                "matched": 1,
+                "updated": 1,
+                "items": [{"id": "contrib-test-persona", "updated": True}],
+            }
+
+        monkeypatch.setattr(contrib_module, "update_batch", _spy_update_batch)
+
+        response = client.post(
+            "/api/personas/batch-update",
+            json={
+                "where": {"model": "test-model"},
+                "patches": {"description": "Updated from contrib runtime"},
+                "dry_run": False,
+            },
+        )
+
+        assert response.status_code == 200
+        assert observed == {
+            "where": {"model": "test-model"},
+            "patches": {"description": "Updated from contrib runtime"},
+            "dry_run": False,
+        }
+        assert response.json() == {
+            "data": {
+                "matched": 1,
+                "updated": 1,
+                "items": [{"id": "contrib-test-persona", "updated": True}],
+            }
+        }
+
 
 # -----------------------------------------------------------------------------
 # Tests: Contrib server mirrors packaged endpoint inventory
@@ -259,6 +308,24 @@ class TestContribMirrorEndpointInventory:
 
         assert response.status_code == 200
         assert "text/html" in response.headers.get("content-type", "")
+
+    def test_packaged_runtime_does_not_expose_batch_update(self) -> None:
+        """Packaged runtime keeps batch-update out of the canonical POST surface.
+
+        Source: INTERFACES.md :: packaged vs contrib route boundary
+        Source: README.md :: packaged web remains canonical; contrib is extension-only
+        """
+        from larva.shell.web import app as packaged_app
+
+        client = TestClient(packaged_app)
+
+        response = client.post(
+            "/api/personas/batch-update",
+            json={"where": {}, "patches": {"description": "unused"}, "dry_run": True},
+        )
+
+        assert response.status_code == 405
+        assert response.headers.get("allow") == "GET"
 
     def test_contrib_main_keeps_packaged_launch_signature(self) -> None:
         """Contrib launch path preserves packaged port/no_open entrypoint."""
