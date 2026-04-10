@@ -44464,6 +44464,24 @@ phases:
     verification and a clean broad sweep.
   depends_on:
   - repair_dup_finalization
+  steps:
+  - id: post_sweep_remediation.mcp_clear_token_sync
+    name: Sync MCP clear-token contract to runtime truth
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - INTERFACES.md :: MCP clear/delete contract\n  - src/larva/shell/mcp_contract.py\
+      \ :: tool schema and descriptions\n  - src/larva/shell/registry.py :: runtime\
+      \ confirmation-token authority\n\nRepair the documented MCP clear confirmation\
+      \ token mismatch discovered in final verification. Keep the runtime token authority\
+      \ unless direct evidence proves the contract should change instead. Update schemas/docs/tests\
+      \ so MCP consumers see the same token the runtime enforces."
+    verification: '- MCP clear-tool schema/docs advertise the same confirm token the
+      runtime enforces
+
+      - Any touched tests/assertions use the same token
+
+      - No widening of destructive behavior is introduced'
+    agent: python-executor
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
