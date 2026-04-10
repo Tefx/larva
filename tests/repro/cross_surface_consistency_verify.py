@@ -656,9 +656,7 @@ class TestCrossSurfaceComponentQueryConsistency:
         contrib_module = _load_contrib_web_module()
 
         original_py_store = python_api_components._component_store
-        original_contrib_store = contrib_module._component_store
         python_api_components._component_store = components
-        contrib_module._component_store = components
         try:
             cli_result = component_show_command(
                 "prompt/test-item", as_json=True, component_store=components
@@ -689,7 +687,6 @@ class TestCrossSurfaceComponentQueryConsistency:
             assert contrib_response.json()["data"] == packaged_response.json()["data"]
         finally:
             python_api_components._component_store = original_py_store
-            contrib_module._component_store = original_contrib_store
 
     def test_invalid_component_kind_projects_typed_error_across_all_surfaces(self) -> None:
         """Invalid kind handling should stay typed and aligned across all surfaces."""
@@ -701,9 +698,7 @@ class TestCrossSurfaceComponentQueryConsistency:
         contrib_module = _load_contrib_web_module()
 
         original_py_store = python_api_components._component_store
-        original_contrib_store = contrib_module._component_store
         python_api_components._component_store = components
-        contrib_module._component_store = components
         try:
             cli_result = component_show_command(
                 "invalid-kind/test-item", as_json=True, component_store=components
@@ -743,7 +738,6 @@ class TestCrossSurfaceComponentQueryConsistency:
             )
         finally:
             python_api_components._component_store = original_py_store
-            contrib_module._component_store = original_contrib_store
 
 
 class TestDefaultFacadeAssemblyEquivalence:

@@ -34,6 +34,7 @@ from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
+from larva.shell import web as web_module
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS
 from tests.shell.fixture_taxonomy import (
     TransitionComponentStoreDouble,
@@ -196,21 +197,43 @@ class TestWebApiCanonicalSemantics:
         """Web PATCH endpoint should reject `tools` field at canonical boundary.
 
         The endpoint must not special-case `tools`; forbidden fields should fall
-        through to revalidation and be rejected.
+        through to revalidation and be rejected. This is verified through the
+        public web surface via TestClient, not by inspecting private internals.
         """
-        import inspect
-        from larva.shell import web as web_module
+        from starlette.testclient import TestClient
 
-        source = inspect.getsource(web_module.api_update_persona)
+        # Use the public web surface (FastAPI app) to verify canonical rejection
+        client = TestClient(web_module.app, raise_server_exceptions=False)
 
-        # The patch handler now only explicitly handles:
-        # - spec_digest/spec_version (protected, skipped)
-        # - model_params (explicit)
-        # - capabilities (canonical field)
-        # - other fields fall through and get rejected by revalidation
-        assert 'key == "tools"' not in source, (
-            "web.py patch endpoint should NOT explicitly handle `tools` field. "
-            "Canonical boundary: tools is forbidden and rejected by revalidation."
+        # Create a canonical persona first
+        canonical = canonical_persona_spec("patch-target")
+        register_result = client.post(
+            "/api/personas",
+            json={"spec": canonical},
+        )
+        assert register_result.status_code == 200, (
+            f"Setup failed: could not register canonical persona: {register_result.json()}"
+        )
+
+        # Attempt to patch with forbidden `tools` field
+        patch_response = client.patch(
+            "/api/personas/patch-target",
+            json={"tools": {"shell": "read_write"}},  # forbidden field
+        )
+
+        # Canonical boundary: web PATCH must reject `tools` via revalidation
+        assert patch_response.status_code == 400, (
+            f"Web PATCH should reject `tools` field at canonical boundary. "
+            f"Expected 400, got {patch_response.status_code}. "
+            f"Response: {patch_response.json()}"
+        )
+        error_data = patch_response.json()
+        assert "error" in error_data
+        # Verify the rejection is due to FORBIDDEN_EXTRA_FIELD, not some other issue
+        error_code = error_data["error"].get("code", "")
+        # Could be PERSONA_INVALID (from revalidation) or FORBIDDEN_OVERRIDE_FIELD (from assemble overrides)
+        assert error_code in ("PERSONA_INVALID", "FORBIDDEN_OVERRIDE_FIELD"), (
+            f"Expected canonical rejection code, got: {error_code}"
         )
 
 
