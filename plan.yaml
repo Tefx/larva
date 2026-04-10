@@ -43685,7 +43685,7 @@ phases:
     claimed_at: '2026-04-10T01:43:38.366524+00:00'
   - id: repair_dup_finalization.deep_review_wiring
     name: Deep-review wiring audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -43735,6 +43735,46 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-04-10T01:43:19.123055+00:00'
+    done_at: '2026-04-10T01:48:34.705766+00:00'
+    evidence: "## Wiring Audit Report\n### refs Read Confirmation (MANDATORY)\n- No\
+      \ refs for this step.\n\n**Orphan exports / duplicate authorities**\n```text\n\
+      FINDING 1 (NON-BLOCKER): cli_runtime.py:171 hardcodes valid_types\n  src/larva/shell/cli_runtime.py:171:\n\
+      \    valid_types=[\"prompts\", \"toolsets\", \"constraints\", \"models\"]\n\
+      \  This duplicates the authority of core.component_kind.CANONICAL_COMPONENT_KINDS\n\
+      \  and shared.component_queries.query_component which both use the canonical\
+      \ source.\n  The function _component_show_invalid_target manually calls\n  component_invalid_kind_error\
+      \ + invalid_component_kind_message instead of\n  routing through query_component.\
+      \ However, this function only fires for the\n  malformed-ref edge case (missing\
+      \ \"/\" separator in CLI arg), so it never\n  reaches the normalize_component_kind\
+      \ path. It is a consistency risk, not\n  a runtime correctness issue — the hardcoded\
+      \ list matches the canonical values.\n\nALL OTHER SHARED ABSTRACTIONS VERIFIED\
+      \ CLEAN:\n1. build_default_facade (shared/facade_factory.py): 5 callers\n  \
+      \ - cli.py:45, cli_entrypoint.py:9, mcp_server.py:151, python_api.py:24,31,41,\
+      \ cli_facade.py:6\n   No direct DefaultLarvaFacade() calls found anywhere outside\
+      \ facade_factory.py\n\n2. query_component (shared/component_queries.py): 3 runtime\
+      \ callers\n   - mcp_handler_ops.py:76, cli_commands.py:484, python_api_components.py:41\n\
+      \   No shell code calls .load_prompt/.load_toolset/.load_constraint/.load_model\
+      \ directly\n\n3. validate_mcp_params (shared/mcp_handler_helpers.py): 1 caller\n\
+      \   - mcp_params.py:123 (called via MCPParamValidationMixin._validated_params)\n\
+      \   All MCP handlers use the mixin, which delegates to validate_mcp_params\n\
+      \n4. unwrap_result (shared/mcp_handler_helpers.py): 1 caller\n   - mcp_params.py:136\
+      \ (called via MCPParamValidationMixin._unwrap_result)\n   All Result→error projection\
+      \ in MCP layer flows through the shared helper\n\n5. request_validation (shared/request_validation.py):\
+      \ 4 direct importers\n   - mcp_params.py:10, mcp_handler_helpers.py:9, mcp_export.py:13,\
+      \ mcp_update_batch.py:13\n   All request validation flows through shared module\n\
+      \n6. Web wiring boundary (packaged vs contrib):\n   - Packaged (web.py): 11\
+      \ REST routes under /api/personas, /api/components\n   - Contrib (server.py):\
+      \ 1 route POST /api/personas/batch-update\n   - No overlap. Contrib creates\
+      \ canonical app via create_canonical_app() and adds only batch-update.\n   -\
+      \ Contrib imports from larva.shell.python_api (update_batch), not duplicating\
+      \ web.py logic.\n```\n\n**Verdict**: ISSUES_FOUND\n\n### Findings Classification\n\
+      \n**Blocker findings**: None\n\n**Non-blocker findings**:\n1. `cli_runtime._component_show_invalid_target`\
+      \ hardcodes `valid_types=[\"prompts\", \"toolsets\", \"constraints\", \"models\"\
+      ]` instead of importing `CANONICAL_COMPONENT_KINDS` from `core.component_kind`.\
+      \ This creates a latent consistency risk if a new component kind is ever added\
+      \ — the CLI error message would show the wrong valid-types list. Not a runtime\
+      \ correctness issue today since the list matches. Risk: low, cosmetic/DRY violation\
+      \ only."
   - id: repair_dup_finalization.deep_review_spec
     name: Deep-review full spec conformance
     status: pending
