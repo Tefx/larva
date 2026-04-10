@@ -43974,7 +43974,7 @@ phases:
     claimed_at: '2026-04-10T01:51:08.414885+00:00'
   - id: repair_dup_finalization.deep_review_contract_strength
     name: Deep-review contract and projection strength
-    status: pending
+    status: claimed
     description: 'step_type: review
 
       agent_source: default
@@ -44018,6 +44018,8 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_wiring
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-10T01:51:13.615325+00:00'
   - id: repair_dup_finalization.deep_review_black_box
     name: Deep-review black-box cross-surface verification
     status: pending
