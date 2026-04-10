@@ -43283,7 +43283,7 @@ phases:
     agent: wiring-auditor
   - id: repair_dup_surface_integration.spec_conformance
     name: Verify surface-integration spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -43354,6 +43354,8 @@ phases:
     - repair_dup_surface_integration.mcp_surface_rebase
     - repair_dup_surface_integration.web_convergence_rebase
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-10T01:32:14.980166+00:00'
   - id: repair_dup_surface_integration.gate
     name: Gate duplicate-repair surface integration
     status: pending
