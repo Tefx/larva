@@ -44457,3 +44457,10 @@ phases:
       3. Fix cross_surface_consistency_verify.py stale references\n4. Fix contrib\
       \ web request: Any annotation (restructure FastAPI import guard)\n5. Optional:\
       \ cli_runtime.py import CANONICAL_COMPONENT_KINDS"
+- id: post_sweep_remediation
+  name: Post-Sweep Remediation
+  status: pending
+  gate: All final-sweep failures and should-fix repair debt are addressed with targeted
+    verification and a clean broad sweep.
+  depends_on:
+  - repair_dup_finalization
