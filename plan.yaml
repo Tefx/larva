@@ -43683,7 +43683,7 @@ phases:
     agent: doc-reviewer-tacit
   - id: repair_dup_finalization.deep_review_wiring
     name: Deep-review wiring audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -43731,6 +43731,8 @@ phases:
     depends_on:
     - repair_dup_finalization.full_plan_check
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-04-10T01:43:19.123055+00:00'
   - id: repair_dup_finalization.deep_review_spec
     name: Deep-review full spec conformance
     status: pending
