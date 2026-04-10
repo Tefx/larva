@@ -43638,7 +43638,7 @@ phases:
       \ contract regression)."
   - id: repair_dup_finalization.doc_sync
     name: Sync documentation to repaired duplicate-abstraction architecture
-    status: pending
+    status: claimed
     description: "step_type: review\nagent_source: default\nspec_refs:\n  - README.md\n\
       \  - ARCHITECTURE.md\n  - INTERFACES.md\n  - USER_GUIDE.md\n  - USAGE.md\n touch_paths:\n\
       \  - README.md\n  - ARCHITECTURE.md\n  - INTERFACES.md\n  - USER_GUIDE.md\n\
@@ -43681,6 +43681,8 @@ phases:
     depends_on:
     - repair_dup_finalization.full_plan_check
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-10T01:43:38.366524+00:00'
   - id: repair_dup_finalization.deep_review_wiring
     name: Deep-review wiring audit
     status: claimed
