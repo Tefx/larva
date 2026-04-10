@@ -43893,7 +43893,7 @@ phases:
       \ only."
   - id: repair_dup_finalization.deep_review_spec
     name: Deep-review full spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -43921,6 +43921,8 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_wiring
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-10T01:51:19.581888+00:00'
   - id: repair_dup_finalization.deep_review_architecture
     name: Deep-review architecture and boundary integrity
     status: claimed
