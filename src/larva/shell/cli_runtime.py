@@ -13,7 +13,7 @@ from larva.core.component_error_projection import (
     component_invalid_kind_error,
     project_component_store_error,
 )
-from larva.core.component_kind import invalid_component_kind_message
+from larva.core.component_kind import CANONICAL_COMPONENT_KINDS, invalid_component_kind_message
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.cli_projection import render_validation_report_text
@@ -168,7 +168,7 @@ def _component_show_invalid_target(
         operation="cli.component_show",
         component_type=resolved_type,
         component_name=None,
-        valid_types=["prompts", "toolsets", "constraints", "models"],
+        valid_types=list(CANONICAL_COMPONENT_KINDS),
     )
     if component_type is not None:
         error_envelope["message"] = invalid_component_kind_message(component_type)
