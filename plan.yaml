@@ -44526,7 +44526,7 @@ phases:
       reference'
   - id: post_sweep_remediation.contrib_batch_update_runtime_fix
     name: Repair contrib batch-update runtime path
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - contrib/web/server.py :: contrib-only batch-update extension\n  - INTERFACES.md\
       \ :: packaged vs contrib route boundary\n  - README.md :: packaged web remains\
@@ -44546,6 +44546,39 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-10T03:06:26.367541+00:00'
+    done_at: '2026-04-10T03:11:25.651367+00:00'
+    evidence: 'Artifact:
+
+      - PR: 46fc94b2d161d26e5984db6fa377f0a5de349f94
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_contrib_web.py -v -> 14 passed; includes
+      regression proving contrib POST /api/personas/batch-update accepts JSON body
+      at runtime, reaches the Python API call path, and packaged web still does not
+      expose the contrib-only POST surface (405 Allow: GET on packaged app).
+
+      - Run: invar guard (changed files) -> passed (static: 0 errors).
+
+      - Run: git status --short -> clean after commit.
+
+
+      Spec link:
+
+      - contrib/web/server.py :: contrib-only batch-update extension
+
+      - INTERFACES.md :: packaged vs contrib route boundary
+
+      - README.md :: packaged web remains canonical; contrib route is extension-only
+
+
+      NOT Done:
+
+      - Did not change packaged web route inventory or packaged endpoint behavior
+      beyond verifying the contrib-only POST surface remains absent.
+
+      - Did not modify plan/orchestrator state files.'
   - id: post_sweep_remediation.stale_surface_tests_rebase
     name: Rebase stale surface tests onto supported interfaces
     status: pending
