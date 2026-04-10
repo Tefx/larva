@@ -43285,7 +43285,7 @@ phases:
     claimed_at: '2026-04-10T01:32:36.065588+00:00'
   - id: repair_dup_surface_integration.spec_conformance
     name: Verify surface-integration spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -43358,6 +43358,20 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-10T01:32:52.118153+00:00'
+    done_at: '2026-04-10T01:37:39.019541+00:00'
+    evidence: 'Surface-integration spec conformance audit completed with overall SUCCESS.
+
+      - Conformance across PersonaSpec admission, CLI/MCP/Python/Web surfaces, component-kind
+      normalization, canonical authorities, and shared abstraction ownership.
+
+      - One partial divergence flagged: MCP clear-tool confirm token documentation
+      mismatch (`DELETE ALL PERSONAS` in mcp_contract tool description vs runtime
+      token `CLEAR REGISTRY`).
+
+      - Remaining notes were documentation completeness/vestigial-key style issues;
+      no blocker-class divergence.
+
+      - Product files modified: none.'
   - id: repair_dup_surface_integration.gate
     name: Gate duplicate-repair surface integration
     status: pending
