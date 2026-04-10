@@ -44590,3 +44590,26 @@ phases:
     and no blocker-class runtime or authority drift remains.
   depends_on:
   - post_sweep_remediation
+  steps:
+  - id: post_sweep_review.architecture_reaudit
+    name: Re-audit architecture and boundary integrity
+    status: pending
+    description: 'step_type: review
+
+      agent_source: default
+
+      verification_scope: focused-post-remediation
+
+
+      After remediation, re-check that the shared abstractions still stop at the right
+      seams and that the contrib batch-update fix did not blur packaged-versus-contrib
+      ownership. Also confirm the CLI authority cleanup removed duplication without
+      shifting transport responsibilities into shared code.'
+    verification: '- Packaged web remains canonical and contrib remains extension-only
+
+      - Shared abstractions still avoid absorbing adapter-specific runtime/framework
+      duties
+
+      - CLI component-kind cleanup preserves authority direction instead of creating
+      a new seam leak'
+    agent: software-architect-tacit
