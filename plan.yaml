@@ -43923,7 +43923,7 @@ phases:
     agent: spec-verifier-tacit
   - id: repair_dup_finalization.deep_review_architecture
     name: Deep-review architecture and boundary integrity
-    status: pending
+    status: claimed
     description: 'step_type: review
 
       agent_source: default
@@ -43970,6 +43970,8 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_wiring
     agent: software-architect-tacit
+    claimed_by: software-architect-tacit
+    claimed_at: '2026-04-10T01:51:08.414885+00:00'
   - id: repair_dup_finalization.deep_review_contract_strength
     name: Deep-review contract and projection strength
     status: pending
