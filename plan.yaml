@@ -44464,3 +44464,10 @@ phases:
     verification and a clean broad sweep.
   depends_on:
   - repair_dup_finalization
+- id: post_sweep_review
+  name: Post-Sweep Review and Gate
+  status: locked
+  gate: Independent spec, black-box, and gate review all confirm the repairs are complete
+    and no blocker-class runtime or authority drift remains.
+  depends_on:
+  - post_sweep_remediation
