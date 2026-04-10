@@ -44632,3 +44632,24 @@ phases:
 
       - Rebased tests still prove the same or stronger public-surface requirements'
     agent: spec-verifier-tacit
+  - id: post_sweep_review.black_box_reaudit
+    name: Re-run black-box cross-surface verification
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: public-interface
+
+
+      Using only public/runtime interfaces, prove the repaired surfaces now behave
+      consistently. This rerun must especially prove that contrib batch-update works
+      at runtime, packaged still does not expose that route, and canonical component-query
+      semantics remain aligned across CLI, MCP, Web, and Python API.'
+    verification: '- Public-interface evidence shows contrib batch-update succeeds
+      for a valid request
+
+      - Packaged web visibly rejects batch-update as non-canonical
+
+      - Component alias/invalid-kind/not-found behavior remains aligned across surfaces'
+    agent: blind-tester-tacit
