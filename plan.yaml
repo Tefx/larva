@@ -44581,7 +44581,7 @@ phases:
       - Did not modify plan/orchestrator state files.'
   - id: post_sweep_remediation.stale_surface_tests_rebase
     name: Rebase stale surface tests onto supported interfaces
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - tests/shell/test_canonical_boundary_gaps.py\n  - tests/repro/cross_surface_consistency_verify.py\n\
       \  - INTERFACES.md :: public surface contracts\n\nRepair stale tests uncovered\
@@ -44601,6 +44601,40 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T03:12:44.201154+00:00'
+    done_at: '2026-04-10T03:35:35.697223+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 9e40455
+
+
+      Implementation:
+
+      - Replaced white-box inspect.getsource assertion in tests/shell/test_canonical_boundary_gaps.py
+      with public web-surface PATCH rejection test for forbidden tools field
+
+      - Removed stale contrib_module._component_store monkeypatch coupling from tests/repro/cross_surface_consistency_verify.py
+      while preserving cross-surface behavior assertions
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_canonical_boundary_gaps.py tests/repro/cross_surface_consistency_verify.py
+      -v -> 54 passed
+
+      - Canonical-boundary test still proves forbidden tools handling via supported
+      web surface
+
+      - Cross-surface consistency repro no longer depends on removed contrib private
+      attributes
+
+
+      Spec link:
+
+      - tests/shell/test_canonical_boundary_gaps.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+      - INTERFACES.md'
   - id: post_sweep_remediation.cli_component_kind_authority_cleanup
     name: Remove remaining CLI component-kind shadow authority
     status: done
