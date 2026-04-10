@@ -44190,7 +44190,7 @@ phases:
       convention). Verdict: PASS.'
   - id: repair_dup_finalization.deep_review_black_box
     name: Deep-review black-box cross-surface verification
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -44250,6 +44250,8 @@ phases:
     depends_on:
     - repair_dup_finalization.deep_review_spec
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-10T01:56:05.886477+00:00'
   - id: repair_dup_finalization.gate
     name: Final gate for duplicate-abstraction repair
     status: pending
