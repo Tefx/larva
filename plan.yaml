@@ -43547,7 +43547,7 @@ phases:
   steps:
   - id: repair_dup_finalization.full_plan_check
     name: Run full-plan verification for duplicate repair
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -43612,6 +43612,30 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-10T01:40:45.846675+00:00'
+    done_at: '2026-04-10T01:43:04.959766+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Full-Plan Check\n- broad_commands:\n  - `uv run pytest -q`\n  - `uvx invar-tools\
+      \ guard --all`\n- focused_repro_commands:\n  - `uv run pytest tests/repro/web_convergence_parity.py\
+      \ tests/repro/cross_surface_consistency_verify.py tests/repro/alias_convergence_verify.py\
+      \ -q`\n\n## Actual Output\n```text\nuv run pytest -q -> 1 failed, 780 passed,\
+      \ 32 xpassed (2.61s)\nFAILED tests/shell/test_canonical_boundary_gaps.py::TestWebApiCanonicalSemantics::test_web_patch_rejects_tools_in_canonical_boundary\n\
+      \  AttributeError: module 'larva.shell.web' has no attribute 'api_update_persona'\n\
+      \nuvx invar-tools guard --all -> passed (errors:0 warnings:6 infos:1)\n  static\
+      \ passed (34 files)\n  doctest passed\n  crosshair verified (6 cached, 1 skipped,\
+      \ 0 failures)\n  property_tests passed (10/10 functions, 700 examples)\n\nFocused\
+      \ repro suites -> 2 failed, 97 passed (0.35s)\nFAILED tests/repro/cross_surface_consistency_verify.py::...test_component_alias_query_semantics_align_across_all_surfaces\n\
+      FAILED tests/repro/cross_surface_consistency_verify.py::...test_invalid_component_kind_projects_typed_error_accross_all_surfaces\n\
+      \  Both: AttributeError: module 'contrib_web_server' has no attribute '_component_store'\n\
+      \ntests/repro/web_convergence_parity.py -> pass\ntests/repro/alias_convergence_verify.py\
+      \ -> pass\n```\n\n## Remaining Issues\n- blocker: none identified in product/runtime\
+      \ logic; failures are stale test references after web/contrib surface refactor.\n\
+      - should_fix:\n  1) Update canonical boundary test to current web API symbol\
+      \ path (`api_update_persona` reference stale).\n  2) Update cross-surface consistency\
+      \ repro to current contrib web internals (stale `_component_store` private attribute\
+      \ reference).\n- non_intersecting_notes:\n  - Invar guard full scan is clean\
+      \ (0 errors).\n  - Duplicate-repair parity suites remain green except stale-attribute\
+      \ tests above.\n  - Failure ownership: test harness maintenance (not runtime\
+      \ contract regression)."
   - id: repair_dup_finalization.doc_sync
     name: Sync documentation to repaired duplicate-abstraction architecture
     status: pending
