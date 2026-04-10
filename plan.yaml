@@ -43976,7 +43976,7 @@ phases:
     claimed_at: '2026-04-10T01:51:08.414885+00:00'
   - id: repair_dup_finalization.deep_review_contract_strength
     name: Deep-review contract and projection strength
-    status: claimed
+    status: done
     description: 'step_type: review
 
       agent_source: default
@@ -44022,6 +44022,37 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T01:51:13.615325+00:00'
+    done_at: '2026-04-10T01:52:38.748805+00:00'
+    evidence: 'Contract strength audit completed. Examined all repaired semantic families
+      across 4 focus areas:
+
+
+      1. **Component-query family**: `core/component_kind.py` (sole normalization
+      owner) → `shell/shared/component_queries.py::query_component` (sole query entry
+      point consuming normalize + error projection). 3 adapter surfaces (CLI, MCP,
+      Python API) all delegate to `query_component`. No duplicate authority.
+
+
+      2. **Request validation family**: `shell/shared/request_validation.py` owns
+      5 pure validation functions with `Result[_, RequestValidationIssue]` semantics.
+      `MCPParamValidationMixin` wraps and converts to `LarvaError` — adapter projection,
+      not a duplicate. No competing owner.
+
+
+      3. **Projection helpers family**: `core/component_error_projection.py` owns
+      4 envelope constructors with `@pre`/`@post` contracts. All surfaces (facade,
+      CLI, MCP, Python API) import and call these — zero re-implementations. `cli_projection.py::project_validation_report`
+      is a clean structured intermediate, not a validation re-implementation.
+
+
+      4. **Adapter-local envelopes**: `LarvaError` (facade-owned) → CLI projects to
+      `JsonErrorEnvelope` via `_map_facade_error`. MCP uses `LarvaError` directly.
+      No surface re-constructs facade-level errors independently.
+
+
+      Blocker findings: 0. Non-blocker findings: 3 (informational: dual build_default_facade
+      convenience, narrow visibility of component_not_found_error, MCP mixin''s direct-LarvaError
+      convention). Verdict: PASS.'
   - id: repair_dup_finalization.deep_review_black_box
     name: Deep-review black-box cross-surface verification
     status: pending
