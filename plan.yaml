@@ -44459,7 +44459,7 @@ phases:
       \ cli_runtime.py import CANONICAL_COMPONENT_KINDS"
 - id: post_sweep_remediation
   name: Post-Sweep Remediation
-  status: in_progress
+  status: done
   gate: All final-sweep failures and should-fix repair debt are addressed with targeted
     verification and a clean broad sweep.
   depends_on:
@@ -44786,7 +44786,7 @@ phases:
       - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.full_sweep
     name: Re-run full pytest and guard sweep
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -44807,9 +44807,69 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T03:39:24.183017+00:00'
+    done_at: '2026-04-10T03:43:49.473022+00:00'
+    evidence: 'step_intent: End-of-remediation broad verification via full pytest
+      and full invar guard.
+
+
+      expected_result:
+
+      - uv run pytest -q passes without failures
+
+      - uvx invar-tools guard --all passes without errors
+
+
+      observed_result:
+
+      - Run: uv run pytest -q -> 783 passed, 32 xpassed in 4.38s
+
+      - Run: uvx invar-tools guard --all -> passed, 0 errors, warnings recorded
+
+
+      failure_alignment: N/A (no failures)
+
+
+      whether_any_product_implementation_files_were_modified: No; verification-only,
+      git diff empty.
+
+
+      behavioral_proof_register:
+
+      - Full pytest green across suite
+
+      - Guard static/doctest/property checks passed without errors
+
+      - CrossHair verified supported core files; one unsupported-file skip noted
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none
+
+
+      Residual warning-class debt (recorded):
+
+      - assemble.py file-size warning
+
+      - validate.py file-size warning (near limit)
+
+      - _validate_prompt_variables function-size warning
+
+      - facade.py file-size warning
+
+      - escape hatch budget near limit
+
+      - shell complexity info warning
+
+
+      Disposition mapping:
+
+      - Size/complexity warnings: batched_fix
+
+      - Escape-hatch budget warnings: explicitly_non_blocking_with_non_intersection_evidence'
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
-  status: locked
+  status: pending
   gate: Independent spec, black-box, and gate review all confirm the repairs are complete
     and no blocker-class runtime or authority drift remains.
   depends_on:
