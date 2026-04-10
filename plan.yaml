@@ -44947,7 +44947,7 @@ phases:
     claimed_at: '2026-04-10T03:44:23.186234+00:00'
   - id: post_sweep_review.black_box_reaudit
     name: Re-run black-box cross-surface verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -44968,6 +44968,50 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-10T03:44:18.991421+00:00'
+    done_at: '2026-04-10T04:06:06.972556+00:00'
+    evidence: 'step_intent: Public-interface black-box re-verification of repaired
+      surfaces.
+
+
+      expected_result:
+
+      - Contrib batch-update succeeds for valid request
+
+      - Packaged web does not expose batch-update
+
+      - Component alias/invalid-kind/not-found semantics align across CLI/MCP/Web/Python
+      API
+
+
+      observed_result:
+
+      - Verification suite passed (27/27) with runtime evidence
+
+      - Contrib POST /api/personas/batch-update succeeded and mutation observed
+
+      - Packaged POST /api/personas/batch-update rejected and absent from packaged
+      route list
+
+      - Cross-surface semantic alignment verified for alias normalization and error
+      projections
+
+
+      failure_alignment: No failures
+
+      whether_any_product_implementation_files_were_modified: No (verification-only)
+
+      behavioral_proof_register:
+
+      - contrib_batch_update_runtime: proven
+
+      - packaged_route_rejection: proven
+
+      - cross_surface_semantics_alignment: proven
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none'
   - id: post_sweep_review.gate
     name: Final post-sweep repair gate
     status: pending
