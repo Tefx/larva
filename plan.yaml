@@ -42474,7 +42474,7 @@ phases:
       - tests/shell/test_mcp_server.py"
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
-  status: in_progress
+  status: done
   gate: Rebase CLI/MCP/Web/Python surfaces onto shared abstractions and prove cross-surface/runtime
     conformance.
   depends_on:
@@ -43387,7 +43387,7 @@ phases:
       - Product files modified: none.'
   - id: repair_dup_surface_integration.gate
     name: Gate duplicate-repair surface integration
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -43475,9 +43475,71 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: vectl-decide-orchestrator-tacit
     claimed_at: '2026-04-10T01:38:57.123997+00:00'
+    done_at: '2026-04-10T01:40:32.313079+00:00'
+    evidence: '## Gate Review Report
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      ## Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | ------- | ------ | ---------------- | -------- |
+
+      | cross_surface_conformance | done | Strong (4 fixtures × 5 surfaces, shared-authority
+      delegation chain) | None |
+
+      | web_liveness | done | Strong (both runtimes booted; inventory + 405/422 boundary
+      proof) | None |
+
+      | wiring_audit | done | Strong (reachability + no duplicate authorities/orphans)
+      | None |
+
+      | spec_conformance | done | Good (overall SUCCESS) | One partial: MCP clear
+      confirm-token doc/runtime mismatch |
+
+      | cli_surface_rebase | done | Good (targeted + full tests pass; invar guard
+      pass) | None |
+
+      | mcp_surface_rebase | done | Good (targeted tests pass; skeleton reduction;
+      invar guard pass) | None |
+
+      | web_convergence_rebase | done | Good (parity suites + launch/boundary proof;
+      invar guard pass) | None |
+
+
+      ## Gate Decision Basis
+
+      - packaged_web_authority_preserved: YES (canonical packaged routes preserved;
+      contrib-only route absent in packaged)
+
+      - contrib_extension_boundary_preserved: YES (contrib adds only batch-update
+      route)
+
+      - cross_surface_conformance_status: PASS (aligned success + invalid-kind + not-found
+      semantics across CLI/MCP/Web/Python API)
+
+      - runnable_surface_status: PASS (surface tests + web liveness evidence)
+
+      - outstanding_non_blockers: MCP clear-tool confirm-token docs mismatch (`DELETE
+      ALL PERSONAS` description vs runtime `CLEAR REGISTRY`)
+
+
+      ## Decision
+
+      - OPEN
+
+      - rationale: Gate criteria satisfied; no blocker-class divergence; packaged/contrib
+      authority boundary and cross-surface semantics hold.
+
+      - required_follow_up: Carry doc-token mismatch as non-blocking cleanup in finalization/doc
+      housekeeping.'
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
-  status: locked
+  status: pending
   gate: Run full-plan verification, sync docs, and finish with independent deep review
     before declaring duplicate-abstraction repair complete.
   depends_on:
