@@ -44920,7 +44920,7 @@ phases:
     agent: spec-verifier-tacit
   - id: post_sweep_review.black_box_reaudit
     name: Re-run black-box cross-surface verification
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -44939,6 +44939,8 @@ phases:
 
       - Component alias/invalid-kind/not-found behavior remains aligned across surfaces'
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-10T03:44:18.991421+00:00'
   - id: post_sweep_review.gate
     name: Final post-sweep repair gate
     status: pending
