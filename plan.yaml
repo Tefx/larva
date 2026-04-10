@@ -44190,7 +44190,7 @@ phases:
       convention). Verdict: PASS.'
   - id: repair_dup_finalization.deep_review_black_box
     name: Deep-review black-box cross-surface verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -44252,6 +44252,99 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-10T01:56:05.886477+00:00'
+    done_at: '2026-04-10T02:02:48.408364+00:00'
+    evidence: '## Verification Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      ### Test Execution
+
+      - commands_or_requests: CLI component list/show, Python API component_list/component_show,
+      MCP handler component_show, packaged web TestClient GET /api/components, contrib
+      web TestClient GET+POST, kind alias normalization, error envelope field comparison,
+      update_batch surface visibility across CLI/MCP/Python API/packaged web/contrib
+      web
+
+
+      ### Actual Output
+
+
+      **1. Component list semantics — all 5 surfaces agree on data shape:**
+
+      - CLI --json: `{"data":{"prompts":["tester"],"toolsets":["basic"],"constraints":["safe"],"models":["default"]}}`
+
+      - Python API: `{"constraints":["safe"],"models":["default"],"prompts":["tester"],"toolsets":["basic"]}`
+
+      - MCP handler: same as Python API
+
+      - Packaged web (200): `{"data":{"constraints":["safe"],...}}`
+
+      - Contrib web (200): `{"data":{"constraints":["safe"],...}}`
+
+
+      **2. Component show canonical kind (`prompts/tester`) — all surfaces return
+      `{"text":"You are a test assistant.\n"}` (web wraps in `{"data":...}`)**
+
+
+      **3. Component show alias kind (`prompt/tester`) — all surfaces resolve alias
+      identically (200 OK on both webs, correct data on Python API/MCP)**
+
+
+      **4. Invalid kind error (`boguskind/tester`) — consistent across all surfaces:**
+
+      - code=INVALID_INPUT, numeric_code=1, message="Invalid component type: boguskind.
+      Supported values: prompts | toolsets | constraints | models"
+
+      - details_keys: [component_name, component_type, reason, valid_types] (plus
+      operation=transport-specific)
+
+      - Web HTTP status: 400 on both packaged and contrib
+
+
+      **5. Not-found error (`prompts/nonexistent`) — consistent across all surfaces:**
+
+      - code=COMPONENT_NOT_FOUND, numeric_code=105, message="Prompt not found: nonexistent"
+
+      - details_keys: [component_name, component_type, reason] (plus operation=transport-specific)
+
+      - Web HTTP status: 404 on both packaged and contrib
+
+
+      **6. update_batch surface visibility:**
+
+      - CLI: available (update-batch command)
+
+      - MCP: available (larva_update_batch tool)
+
+      - Python API: available (update_batch callable)
+
+      - Packaged web: NOT available (no route) — correct by design
+
+      - Contrib web: route exists (`POST /api/personas/batch-update`) BUT endpoint
+      returns 422 ("Field required" on query param "request") — **BUG: `request: Any`
+      annotation prevents FastAPI dependency injection of the Request object**
+
+
+      ### Issues Found
+
+      - blocker: (none — core cross-surface consistency confirmed)
+
+      - should_fix: **Contrib web `POST /api/personas/batch-update` endpoint is broken
+      at runtime (422).** The `api_batch_update_personas` function has `request: Any`
+      type annotation; FastAPI interprets this as a required query parameter instead
+      of injecting `fastapi.Request`. The function on line 67 needs `request: Request`
+      annotation using the FastAPI Request type that is already imported on line 45.
+      The `Request: Any = Any` fallback on line 41 overwrites the name when FastAPI
+      is not installed, but when it IS installed the annotation still resolves to
+      string `''Any''` rather than the actual `fastapi.Request` type.
+
+      - suggestion: Consider adding a smoke test for contrib web batch-update endpoint
+      to catch this regression. The `tests/repro/web_convergence_parity.py::TestEndpointInventoryParity::test_contrib_has_all_normative_endpoints_plus_batch`
+      only checks route existence, not runtime liveness.'
   - id: repair_dup_finalization.gate
     name: Final gate for duplicate-abstraction repair
     status: pending
