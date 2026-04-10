@@ -44901,7 +44901,7 @@ phases:
     claimed_at: '2026-04-10T03:44:08.419092+00:00'
   - id: post_sweep_review.spec_reaudit
     name: Re-audit spec and contract conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -44918,6 +44918,8 @@ phases:
 
       - Rebased tests still prove the same or stronger public-surface requirements'
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-10T03:44:23.186234+00:00'
   - id: post_sweep_review.black_box_reaudit
     name: Re-run black-box cross-surface verification
     status: claimed
