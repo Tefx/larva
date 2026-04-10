@@ -44502,6 +44502,26 @@ phases:
     depends_on:
     - post_sweep_remediation.mcp_clear_token_sync
     agent: python-senior-tacit
+  - id: post_sweep_remediation.stale_surface_tests_rebase
+    name: Rebase stale surface tests onto supported interfaces
+    status: pending
+    description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
+      \ - tests/shell/test_canonical_boundary_gaps.py\n  - tests/repro/cross_surface_consistency_verify.py\n\
+      \  - INTERFACES.md :: public surface contracts\n\nRepair stale tests uncovered\
+      \ by the final sweep so they validate supported runtime/public interfaces instead\
+      \ of removed module attributes or private internals. The resulting tests must\
+      \ preserve coverage intent while avoiding white-box coupling to obsolete names\
+      \ like module-local closures or contrib-only private stores."
+    verification: '- Canonical-boundary test still proves forbidden `tools` handling
+      through the supported web surface
+
+      - Cross-surface consistency repro no longer depends on removed contrib private
+      attributes
+
+      - Test intent stays at least as strong as before the rebase'
+    depends_on:
+    - post_sweep_remediation.contrib_batch_update_runtime_fix
+    agent: python-executor
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
