@@ -44786,7 +44786,7 @@ phases:
       - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.full_sweep
     name: Re-run full pytest and guard sweep
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -44805,6 +44805,8 @@ phases:
     depends_on:
     - post_sweep_remediation.targeted_verify
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T03:39:24.183017+00:00'
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
