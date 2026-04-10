@@ -44562,6 +44562,27 @@ phases:
     - post_sweep_remediation.stale_surface_tests_rebase
     - post_sweep_remediation.cli_component_kind_authority_cleanup
     agent: integration-verifier-tacit
+  - id: post_sweep_remediation.full_sweep
+    name: Re-run full pytest and guard sweep
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: broad-check
+
+
+      Repeat the authoritative broad verification at the end of remediation: full
+      pytest and full invar guard. This step closes the loop on the user''s final-sweep
+      request and ensures focused fixes did not hide broader regressions.'
+    verification: '- `uv run pytest -q` passes cleanly
+
+      - `uvx invar-tools guard --all` passes without new errors
+
+      - Any residual warning-class debt is explicitly recorded'
+    depends_on:
+    - post_sweep_remediation.targeted_verify
+    agent: integration-verifier-tacit
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
