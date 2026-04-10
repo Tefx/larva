@@ -44653,3 +44653,36 @@ phases:
 
       - Component alias/invalid-kind/not-found behavior remains aligned across surfaces'
     agent: blind-tester-tacit
+  - id: post_sweep_review.gate
+    name: Final post-sweep repair gate
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - user explicitly requested a complete repair plan after the final sweep
+
+      - plan must not trade away independent verification or review rigor while being
+      more compact
+
+      - residual failures touched runtime, tests, docs, and authority ownership together
+
+
+      As an independent reviewer, decide whether the post-sweep repair package is
+      complete and safe to close.'
+    verification: '- Full-sweep evidence is green and internally consistent with targeted
+      verification
+
+      - No blocker-class runtime drift, contract mismatch, or duplicate authority
+      remains
+
+      - Any residual warning-class debt is recorded explicitly as non-blocking'
+    depends_on:
+    - post_sweep_review.architecture_reaudit
+    - post_sweep_review.spec_reaudit
+    - post_sweep_review.black_box_reaudit
+    agent: gate-reviewer-tacit
