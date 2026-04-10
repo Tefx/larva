@@ -44877,7 +44877,7 @@ phases:
   steps:
   - id: post_sweep_review.architecture_reaudit
     name: Re-audit architecture and boundary integrity
-    status: claimed
+    status: done
     description: 'step_type: review
 
       agent_source: default
@@ -44899,6 +44899,31 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T03:44:08.419092+00:00'
+    done_at: '2026-04-10T04:05:45.647953+00:00'
+    evidence: 'Architecture re-audit findings:
+
+      - Packaged web remains canonical; contrib remains extension-only (`src/larva/shell/web.py`
+      authoritative, `contrib/web/server.py` adds only contrib batch-update).
+
+      - Shared abstractions remain semantic/transport-neutral (`shell/shared/*` avoids
+      framework/runtime duties).
+
+      - Contrib batch-update continues to delegate to app/facade/python API authority;
+      no ownership blur.
+
+      - CLI authority cleanup sources canonical component-kind authority while keeping
+      CLI transport responsibilities local.
+
+
+      Verification artifacts:
+
+      - File-level inspection across ARCHITECTURE.md, INTERFACES.md, web.py, contrib/web/server.py,
+      shell/shared modules, cli modules, and targeted tests.
+
+
+      Conclusion:
+
+      - No seam regression detected; boundary integrity preserved.'
   - id: post_sweep_review.spec_reaudit
     name: Re-audit spec and contract conformance
     status: claimed
