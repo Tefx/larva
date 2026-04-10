@@ -43925,7 +43925,7 @@ phases:
     claimed_at: '2026-04-10T01:51:19.581888+00:00'
   - id: repair_dup_finalization.deep_review_architecture
     name: Deep-review architecture and boundary integrity
-    status: claimed
+    status: done
     description: 'step_type: review
 
       agent_source: default
@@ -43974,6 +43974,53 @@ phases:
     agent: software-architect-tacit
     claimed_by: software-architect-tacit
     claimed_at: '2026-04-10T01:51:08.414885+00:00'
+    done_at: '2026-04-10T01:53:41.006447+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      ## Architecture Review
+
+      - seam_integrity: Shared seams stop at transport-neutral concerns. `src/larva/shell/shared/component_queries.py`
+      centralizes component-kind normalization/error meaning while CLI/MCP/Web/Python
+      API keep local envelopes and runtime hooks. `src/larva/shell/shared/facade_factory.py`
+      centralizes dependency assembly without absorbing CLI/MCP/web startup responsibilities.
+      `src/larva/shell/shared/request_validation.py` and `shared/mcp_handler_helpers.py`
+      centralize malformed-param checks, but MCP still owns tool envelopes via `mcp_params.py`
+      and handler mixins.
+
+      - dependency_direction: Direction remains shell entrypoints/adapters -> app
+      facade -> core semantics, with shell stores injected downward into app facade.
+      `contrib/web/server.py` depends on packaged `larva.shell.web.create_app` plus
+      Python API `update_batch`; no reverse dependency from packaged web into contrib.
+      Grep confirms `apply_patches()` is only consumed from `app/facade.py`, preserving
+      core->app reuse instead of adapter-local mutation logic.
+
+      - packaged_contrib_boundary: Coherent. `src/larva/shell/web.py` owns authoritative
+      packaged REST routes and launch contract; `contrib/web/server.py` imports `create_canonical_app()`/`run_web_app()`
+      and adds only contrib `POST /api/personas/batch-update`. This preserves packaged
+      contract authority while allowing extension-only local review behavior.
+
+      - dotted_path_authority_status: Intentional separation preserved. `src/larva/core/patch.py`
+      remains sole owner of dotted-path patch expansion/deep-merge/protected-key stripping;
+      `src/larva/app/facade.py` retains separate `_dotted_lookup_or_not_found()` for
+      batch `where` selection. No code search evidence of semantic collapse or alternate
+      patch authority.
+
+      - blocker_findings: None. Architecture is coherent at current repo state. Full-plan-check
+      failures remain stale test references (`larva.shell.web.api_update_persona`,
+      contrib `_component_store`) rather than boundary-direction regressions.
+
+      - non_blocker_findings: Existing wiring-audit non-blocker remains valid: `src/larva/shell/cli_runtime.py::_component_show_invalid_target`
+      hardcodes valid component kinds instead of sourcing `CANONICAL_COMPONENT_KINDS`.
+      This is a minor consistency/maintenance risk, not an architectural blocker.
+
+
+      Verification: reviewed `src/larva/shell/web.py`, `contrib/web/server.py`, `src/larva/shell/shared/{component_queries.py,facade_factory.py,request_validation.py,mcp_handler_helpers.py}`,
+      `src/larva/core/{component_kind.py,patch.py}`, `src/larva/app/facade.py`, `src/larva/shell/{python_api.py,cli.py,cli_commands.py,mcp_params.py,mcp_handler_ops.py,mcp_server.py}`;
+      incorporated prior evidence from `repair_dup_finalization.full_plan_check` and
+      `repair_dup_finalization.deep_review_wiring`.'
   - id: repair_dup_finalization.deep_review_contract_strength
     name: Deep-review contract and projection strength
     status: done
