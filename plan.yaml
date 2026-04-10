@@ -44613,3 +44613,22 @@ phases:
       - CLI component-kind cleanup preserves authority direction instead of creating
       a new seam leak'
     agent: software-architect-tacit
+  - id: post_sweep_review.spec_reaudit
+    name: Re-audit spec and contract conformance
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: focused-post-remediation
+
+
+      Re-run a focused spec/contract audit over the repaired areas: MCP clear-token
+      contract language, contrib batch-update behavior, packaged/contrib route boundary,
+      stale test intent preservation, and CLI invalid-kind canonical kind projection.'
+    verification: '- Runtime, schemas, and docs agree on the MCP clear token
+
+      - Contrib batch-update behavior matches the documented extension-only contract
+
+      - Rebased tests still prove the same or stronger public-surface requirements'
+    agent: spec-verifier-tacit
