@@ -44581,7 +44581,7 @@ phases:
       - Did not modify plan/orchestrator state files.'
   - id: post_sweep_remediation.stale_surface_tests_rebase
     name: Rebase stale surface tests onto supported interfaces
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - tests/shell/test_canonical_boundary_gaps.py\n  - tests/repro/cross_surface_consistency_verify.py\n\
       \  - INTERFACES.md :: public surface contracts\n\nRepair stale tests uncovered\
@@ -44599,6 +44599,8 @@ phases:
     depends_on:
     - post_sweep_remediation.contrib_batch_update_runtime_fix
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T03:12:44.201154+00:00'
   - id: post_sweep_remediation.cli_component_kind_authority_cleanup
     name: Remove remaining CLI component-kind shadow authority
     status: claimed
