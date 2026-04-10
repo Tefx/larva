@@ -44603,7 +44603,7 @@ phases:
     claimed_at: '2026-04-10T03:12:44.201154+00:00'
   - id: post_sweep_remediation.cli_component_kind_authority_cleanup
     name: Remove remaining CLI component-kind shadow authority
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - src/larva/shell/cli_runtime.py\n  - src/larva/core/component_kind.py\n\n\
       Eliminate the last low-risk duplicate authority noted in the wiring audit by\
@@ -44620,6 +44620,37 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T03:11:51.638164+00:00'
+    done_at: '2026-04-10T03:35:25.823528+00:00'
+    evidence: 'Artifact:
+
+      - Commit: 7a56a6119d13dff435380f950f98f839af512081
+
+
+      Implementation:
+
+      - Imported CANONICAL_COMPONENT_KINDS into src/larva/shell/cli_runtime.py
+
+      - Replaced hardcoded valid_types list in _component_show_invalid_target with
+      list(CANONICAL_COMPONENT_KINDS)
+
+
+      Verification:
+
+      - Run: uv run python -c "from larva.cli_entrypoint import main; main([''component'',
+      ''show'', ''badref''])" -> stable invalid-kind error wording and exit code 1
+
+      - Run: uv run python -c "from larva.cli_entrypoint import main; main([''component'',
+      ''show'', ''badref'', ''--json''])" -> JSON error envelope includes valid_types=["prompts","toolsets","constraints","models"]
+
+      - Run: uv run pytest tests/shell/test_cli.py::TestComponentShowCommand -v ->
+      9 passed
+
+
+      Spec link:
+
+      - src/larva/shell/cli_runtime.py
+
+      - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.targeted_verify
     name: Run targeted remediation verification
     status: pending
