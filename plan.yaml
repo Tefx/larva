@@ -42857,7 +42857,7 @@ phases:
       \ (refactor: converge contrib web on packaged canonical app)"
   - id: repair_dup_surface_integration.cross_surface_conformance
     name: Verify cross-surface conformance after rebase
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -42943,6 +42943,131 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-09T19:45:30.965171+00:00'
+    done_at: '2026-04-10T01:30:55.170766+00:00'
+    evidence: '## Cross-Surface Conformance Verification — PASS
+
+
+      ### Surfaces Exercised
+
+      1. **CLI** — `larva component show` with `--json`
+
+      2. **MCP** — `_handle_component_show_impl()` via direct handler invocation
+
+      3. **Packaged Web** — `GET /api/components/{type}/{name}` via FastAPI TestClient
+
+      4. **Contrib Web** — Same endpoint via `create_app(static_dir=contrib/web, index_file=index.html)`
+
+      5. **Python API** — `component_show()` via import
+
+
+      ### Fixture (shared across all surfaces)
+
+      - Prompt component: `~/.larva/components/prompts/developer.md` → text "You are
+      a helpful developer assistant."
+
+
+      ### Test Matrix (4 fixtures × 5 surfaces = 20 exercised paths)
+
+
+      | Fixture | Input | Python API | CLI | MCP | Packaged Web | Contrib Web |
+
+      |---------|-------|-----------|-----|-----|-------------|-------------|
+
+      | valid canonical kind | `prompts/developer` | ✅ SUCCESS: `{"text":"You are
+      a helpful developer assistant.\n"}` | ✅ SUCCESS: `{"data":{"text":"You are a
+      helpful developer assistant.\n"}}` | ✅ SUCCESS: `{"text":"You are a helpful
+      developer assistant.\n"}` | ✅ 200: `{"data":{"text":"You are a helpful developer
+      assistant.\n"}}` | ✅ 200: `{"data":{"text":"You are a helpful developer assistant.\n"}}`
+      |
+
+      | alias kind | `prompt/developer` | ✅ SUCCESS (same data) | ✅ SUCCESS (same
+      data) | ✅ SUCCESS (same data) | ✅ 200 (same data) | ✅ 200 (same data) |
+
+      | invalid kind | `bogus/developer` | ✅ ERROR code=INVALID_INPUT reason=invalid_kind
+      | ✅ ERROR code=INVALID_INPUT reason=invalid_kind | ✅ ERROR code=INVALID_INPUT
+      reason=invalid_kind | ✅ 400 code=INVALID_INPUT reason=invalid_kind | ✅ 400 code=INVALID_INPUT
+      reason=invalid_kind |
+
+      | not-found name | `prompts/nonexistent` | ✅ ERROR code=COMPONENT_NOT_FOUND
+      reason=not_found | ✅ ERROR code=COMPONENT_NOT_FOUND reason=not_found | ✅ ERROR
+      code=COMPONENT_NOT_FOUND reason=not_found | ✅ 404 code=COMPONENT_NOT_FOUND reason=not_found
+      | ✅ 404 code=COMPONENT_NOT_FOUND reason=not_found |
+
+
+      ### Delegation Chain (single authority proven)
+
+      All 5 surfaces route through `src/larva/shell/shared/component_queries.py::query_component()`:
+
+      - CLI: `component_show_command` → `query_component()` (line 484)
+
+      - MCP: `_handle_component_show_impl` → `query_component()` (line 76)
+
+      - Python API: `component_show` → `_component_show_result` → `query_component()`
+      (line 41)
+
+      - Packaged Web: `api_get_component` → `component_show()` → `_component_show_result`
+      → `query_component()`
+
+      - Contrib Web: inherits `create_app` from packaged web → same chain
+
+
+      `query_component()` calls `normalize_component_kind()` from `src/larva/core/component_kind.py`
+      — the single core authority for kind normalization.
+
+
+      ### No Independent Re-derivation
+
+      - Zero stray calls to `normalize_component_kind` outside `core/component_kind.py`
+      and `shared/component_queries.py`
+
+      - Zero stray references to `CANONICAL_COMPONENT_KINDS` outside core and shared
+
+      - Zero stray "Invalid component type" messages outside core
+
+
+      ### Existing Test Suite Confirmation
+
+      - `tests/repro/alias_convergence_verify.py`: 29/29 passed
+
+      - Component-related tests (`-k component`): 113/113 passed
+
+      - Key test: `test_handle_component_show_singular_alias_normalizes_to_plural_loader`
+      confirms MCP alias handling
+
+      - Key test: `test_component_show_uses_shared_component_query_service` confirms
+      Python API delegation
+
+      - Key test: `test_get_api_components_by_type_name_accepts_singular_alias` confirms
+      Web alias handling
+
+
+      ### Error Semantic Alignment
+
+      All surfaces produce identical error structures for invalid-kind:
+
+      - `code`: `INVALID_INPUT`
+
+      - `reason`: `invalid_kind`
+
+      - `message`: `"Invalid component type: bogus. Supported values: prompts | toolsets
+      | constraints | models"`
+
+      - `valid_types`: `["constraints", "models", "prompts", "toolsets"]`
+
+
+      All surfaces produce identical error structures for not-found:
+
+      - `code`: `COMPONENT_NOT_FOUND`
+
+      - `reason`: `not_found`
+
+      - `message`: `"Prompt not found: nonexistent"`
+
+
+      ### Divergence Status
+
+      **Zero remaining divergence.** All 5 surfaces agree on component-query and invalid-kind/not-found
+      behavior.'
   - id: repair_dup_surface_integration.web_liveness
     name: Probe packaged and contrib web liveness
     status: done
