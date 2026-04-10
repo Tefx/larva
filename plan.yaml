@@ -43893,7 +43893,7 @@ phases:
       \ only."
   - id: repair_dup_finalization.deep_review_spec
     name: Deep-review full spec conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -43923,6 +43923,94 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-10T01:51:19.581888+00:00'
+    done_at: '2026-04-10T01:55:07.483496+00:00'
+    evidence: "## Spec Conformance Report\n### refs Read Confirmation (MANDATORY)\n\
+      - No refs for this step.\n\n## Evidence Table\n| Requirement | Implementation\
+      \ | Verdict | Notes |\n|---|---|---|---|\n| PersonaSpec canonical fields (INTERFACES.md\
+      \ §PersonaSpec Contract) | core/spec.py PersonaSpec TypedDict + core/validate.py\
+      \ CANONICAL_REQUIRED_FIELDS/OPTIONAL_FIELDS/FORBIDDEN_FIELDS | CONFORMS | Required:\
+      \ id, description, prompt, model, capabilities, spec_version. Optional: model_params,\
+      \ can_spawn, compaction_prompt, spec_digest, variables. Forbidden: tools, side_effect_policy.\
+      \ |\n| `capabilities` is sole capability surface | core/validate.py _validate_capabilities\
+      \ + _validate_forbidden_fields; core/normalize.py post-contracts assert tools\
+      \ not in result | CONFORMS | tools rejected at admission, side_effect_policy\
+      \ rejected, unknown top-level fields rejected |\n| Assembly outputs canonical\
+      \ PersonaSpec candidate | core/assemble.py _merge_capabilities reads tools for\
+      \ transition but emits capabilities only; facade.assemble validates after assembly\
+      \ | CONFORMS | ADR-002 transition handled in normalize, not in admission |\n\
+      | Normalization strips forbidden fields | core/normalize.py post-contracts:\
+      \ 'tools' not in result, 'side_effect_policy' not in result | CONFORMS | Verified\
+      \ via contracts and doctests |\n| spec_digest computed from canonical JSON excluding\
+      \ itself | core/normalize.py _compute_spec_digest with sorted keys, no whitespace,\
+      \ excludes spec_digest | CONFORMS | |\n| Cross-surface component-query semantics\
+      \ centralized | shell/shared/component_queries.py uses core/component_kind.py\
+      \ normalize_component_kind; consumed by CLI, MCP, Python API, contrib | CONFORMS\
+      \ | CLI (cli_commands.py), MCP (mcp_handler_ops.py), Python API (python_api_components.py)\
+      \ all go through query_component |\n| Component-kind vocabulary: canonical plural\
+      \ set | core/component_kind.py CANONICAL_COMPONENT_KINDS = prompts/toolsets/constraints/models;\
+      \ normalize_component_kind maps singular aliases | CONFORMS | |\n| MCP tool\
+      \ schema matches canonical admission | shell/mcp_contract.py derives required/optional/forbidden\
+      \ from core/validate.py CANONICAL_* tuples; tools/side_effect_policy excluded\
+      \ from PersonSpec input schema | CONFORMS | additionalProperties: False on spec\
+      \ schema |\n| Web packaged surface owns REST contract (INTERFACES.md normative\
+      \ endpoints) | shell/web.py create_app implements all 10 normative endpoints\
+      \ + / GET | CONFORMS | Full parity with INTERFACES.md endpoint inventory |\n\
+      | Contrib web mirrors packaged, adds batch-update only | contrib/web/server.py\
+      \ imports create_canonical_app, adds POST /api/personas/batch-update | CONFORMS\
+      \ | contrib-only convenience surface properly documented |\n| Packaged web does\
+      \ NOT expose batch-update endpoint | shell/web.py has no /api/personas/batch-update\
+      \ route | CONFORMS | Correctly excluded from authoritative contract |\n| CLI\
+      \ delegates to facade + component store | shell/cli_commands.py uses LarvaFacade\
+      \ + query_component | CONFORMS | |\n| MCP delegates to facade + component store\
+      \ | shell/mcp.py MCPHandlers uses facade + query_component | CONFORMS | |\n\
+      | Python API delegates to facade | shell/python_api.py _invoke pattern delegates\
+      \ to LarvaFacade | CONFORMS | |\n| App facade does not widen admission | facade.py\
+      \ _normalize_and_validate runs normalize then validate; PersonaInvalid on failure\
+      \ | CONFORMS | |\n| Core layer has no I/O imports (ARCHITECTURE.md dependency\
+      \ rules) | core/normalize.py imports json (pure serialization); core/spec.py,\
+      \ core/validate.py, core/assemble.py, core/patch.py, core/component_kind.py,\
+      \ core/component_error_projection.py — no I/O imports | CONFORMS | json/hashlib\
+      \ in normalize are pure computation, not I/O |\n| App layer may import from\
+      \ shell for DI Protocol seams | facade.py imports ComponentStore, RegistryStore\
+      \ as Protocol seams | CONFORMS | Acceptable per architecture — Protocol typing\
+      \ only, not runtime coupling |\n| Package root is metadata-only | src/larva/__init__.py\
+      \ exports only __version__ | CONFORMS | |\n| Dotted-path patch vs dotted lookup\
+      \ remain separate authorities | core/patch.py apply_patches; facade.py _dotted_lookup_or_not_found\
+      \ | CONFORMS | Separate ownership as documented in ARCHITECTURE.md |\n| MCP\
+      \ clear confirmation token matches implementation | MCP contract schema says\
+      \ \"DELETE ALL PERSONAS\"; actual token is \"CLEAR REGISTRY\" via shell/registry.py\
+      \ | DIVERGES | MCP tool description and input_schema say `confirm='DELETE ALL\
+      \ PERSONAS'` but the actual registry token is `CLEAR REGISTRY`. A user sending\
+      \ `DELETE ALL PERSONAS` via MCP would get INVALID_CONFIRMATION_TOKEN. |\n| Error\
+      \ meaning traces back to app/core | LarvaError code taxonomy in facade.py; ComponentErrorEnvelope\
+      \ in core/component_error_projection.py; CLI/MCP/Web adapt envelopes | CONFORMS\
+      \ | |\n| Contracts schema is reference-only | contracts/persona_spec.schema.json\
+      \ header says \"Reference-only local snapshot…non-authoritative\" | CONFORMS\
+      \ | |\n| Stale test: test_canonical_boundary_gaps.py references web_module.api_update_persona\
+      \ | That function is a closure inside create_app(), not a module-level attribute\
+      \ | DIVERGES | Known stale-test reference from full_plan_check. Test will AttributeError.\
+      \ |\n| Stale test: cross_surface_consistency_verify.py references contrib_module._component_store\
+      \ | contrib/web/server.py has no _component_store attribute | DIVERGES | Known\
+      \ stale-test reference; contrib imports create_canonical_app, delegates to python_api.\
+      \ |\n\n## Top Risks\n1. **MCP clear-token contract mismatch (DIVERGES)** — MCP\
+      \ schema says `DELETE ALL PERSONAS` but code enforces `CLEAR REGISTRY`. This\
+      \ is a runtime-visible bug for MCP consumers who follow the documented schema.\
+      \ Severity: should-fix.\n2. **Two stale test references** — `test_canonical_boundary_gaps.py::TestWebApiCanonicalSemantics::test_web_patch_rejects_tools_in_canonical_boundary`\
+      \ and `cross_surface_consistency_verify.py::test_component_alias_query_semantics_align_across_all_surfaces`\
+      \ + `test_invalid_component_kind_projects_typed_error_accross_all_surfaces`\
+      \ fail with AttributeError. Not runtime regressions, but CI noise.\n3. **App-facade\
+      \ imports shell Protocol types** — facade.py imports ComponentStore and RegistryStore\
+      \ directly from shell. This is acceptable as Protocol/DI typing but creates\
+      \ a tighter coupling surface than ideal. Low risk; documented in ARCHITECTURE.md\
+      \ as explicit seam.\n\n## Gate Impact\n- blocker_findings: None identified.\
+      \ The MCP token mismatch is a should-fix documentation/runtime inconsistency\
+      \ but does not block the duplicate-abstraction repair gate (the token value\
+      \ is consistent across CLI/web implementations — only the MCP schema description\
+      \ is wrong).\n- should_fix_findings:\n  1. Fix mcp_contract.py clear tool description\
+      \ to say `confirm='CLEAR REGISTRY'` instead of `DELETE ALL PERSONAS`.\n  2.\
+      \ Fix test_canonical_boundary_gaps.py stale `api_update_persona` reference.\n\
+      \  3. Fix cross_surface_consistency_verify.py stale `contrib_module._component_store`\
+      \ references.\n- verdict: ISSUES_FOUND"
   - id: repair_dup_finalization.deep_review_architecture
     name: Deep-review architecture and boundary integrity
     status: done
