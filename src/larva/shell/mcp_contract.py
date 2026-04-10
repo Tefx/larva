@@ -233,13 +233,13 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     },
     {
         "name": "larva_clear",
-        "description": "Delete all registered personas. Requires confirm='DELETE ALL PERSONAS'.",
+        "description": "Delete all registered personas. Requires confirm='CLEAR REGISTRY'.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "confirm": {
                     "type": "string",
-                    "description": "Must be exactly 'DELETE ALL PERSONAS' to proceed",
+                    "description": "Must be exactly 'CLEAR REGISTRY' to proceed",
                 },
             },
             "required": ["confirm"],
