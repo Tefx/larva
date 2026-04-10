@@ -44687,7 +44687,7 @@ phases:
       - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.targeted_verify
     name: Run targeted remediation verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent_source: default
@@ -44710,6 +44710,80 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-10T03:36:24.974762+00:00'
+    done_at: '2026-04-10T03:39:06.756687+00:00'
+    evidence: 'step_intent: Rerun focused suites and runtime checks for repaired surface
+      families (contrib batch-update runtime behavior, stale test replacements, MCP
+      clear-token contract alignment, CLI component-kind projection parity).
+
+
+      expected_result:
+
+      - Focused contrib web, canonical boundary gaps, cross-surface consistency, MCP
+      contract, and CLI invalid-kind tests pass
+
+      - At least one successful contrib batch-update request is proven
+
+      - Packaged surface still rejects batch-update route
+
+
+      observed_result:
+
+      - Run: uv run pytest tests/shell/test_contrib_web.py tests/shell/test_canonical_boundary_gaps.py
+      tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_cli.py
+      tests/repro/cross_surface_consistency_verify.py -v --tb=short -> 417 passed,
+      0 failed
+
+      - Contrib POST /api/personas/batch-update success path verified (status 200,
+      correct args)
+
+      - Packaged route rejection verified (POST /api/personas/batch-update -> 405,
+      Allow: GET)
+
+      - MCP clear contract behavior verified across wrong/missing/non-string/unknown
+      confirm cases
+
+      - CLI valid_types projection verified via canonical component-kind authority
+
+
+      failure_alignment: No failures observed; verification matched expected green
+      outcome.
+
+
+      whether_any_product_implementation_files_were_modified: No; verification-only
+      step, working tree clean.
+
+
+      behavioral_proof_register:
+
+      - contrib_batch_update_runtime: verified via test_batch_update_post_reaches_python_api_path
+
+      - packaged_rejects_batch_update: verified via test_packaged_runtime_does_not_expose_batch_update
+
+      - mcp_clear_token_contract: verified via TestMCPHandleClear tests
+
+      - cli_component_kind_authority: cli_runtime uses list(CANONICAL_COMPONENT_KINDS)
+
+      - canonical_boundary_upgrade: test_web_patch_rejects_tools_in_canonical_boundary
+      uses TestClient
+
+      - cross_surface_invalid_kind: cross-surface invalid-kind projection test passes
+
+
+      gate_open_allowed: true
+
+      uncertainty_sources: none
+
+
+      Artifact:
+
+      - Commit/reference: d5cdf04 (verification step branch)
+
+
+      Spec link:
+
+      - INTERFACES.md (contrib-only and MCP contracts)
+
+      - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.full_sweep
     name: Re-run full pytest and guard sweep
     status: pending
