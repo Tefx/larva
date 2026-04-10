@@ -44526,7 +44526,7 @@ phases:
       reference'
   - id: post_sweep_remediation.contrib_batch_update_runtime_fix
     name: Repair contrib batch-update runtime path
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - contrib/web/server.py :: contrib-only batch-update extension\n  - INTERFACES.md\
       \ :: packaged vs contrib route boundary\n  - README.md :: packaged web remains\
@@ -44544,6 +44544,8 @@ phases:
     depends_on:
     - post_sweep_remediation.mcp_clear_token_sync
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-10T03:06:26.367541+00:00'
   - id: post_sweep_remediation.stale_surface_tests_rebase
     name: Rebase stale surface tests onto supported interfaces
     status: pending
