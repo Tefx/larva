@@ -43539,7 +43539,7 @@ phases:
       housekeeping.'
 - id: repair_dup_finalization
   name: Duplicate Repair Finalization
-  status: in_progress
+  status: done
   gate: Run full-plan verification, sync docs, and finish with independent deep review
     before declaring duplicate-abstraction repair complete.
   depends_on:
@@ -44347,7 +44347,7 @@ phases:
       only checks route existence, not runtime liveness.'
   - id: repair_dup_finalization.gate
     name: Final gate for duplicate-abstraction repair
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -44420,3 +44420,40 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-10T02:03:52.246858+00:00'
+    done_at: '2026-04-10T02:05:17.910041+00:00'
+    evidence: "## Gate Review Report\n### refs Read Confirmation (MANDATORY)\n- No\
+      \ refs for this step.\n\n## Step-by-Step Review\n| Step ID | Status | Evidence\
+      \ Quality | Concerns |\n|---|---|---|---|\n| repair_dup_finalization.full_plan_check\
+      \ | ✓ done | GOOD — Commands, output, failure classification present. 3 stale-test\
+      \ failures correctly classified. | None. |\n| repair_dup_finalization.doc_sync\
+      \ | ✓ done | GOOD — All 5 docs read; cross-refs verified; no stale authority\
+      \ statements. | Agent could not apply edits (tool policy); docs already aligned.\
+      \ |\n| repair_dup_finalization.deep_review_wiring | ✓ done | EXCELLENT — All\
+      \ shared abstractions enumerated with callers; orphan search performed. | Non-blocker:\
+      \ cli_runtime.py:171 hardcodes valid_types (matches canonical today). |\n| repair_dup_finalization.deep_review_architecture\
+      \ | ✓ done | GOOD — Seam integrity, dep direction, packaged/contrib boundary\
+      \ all verified. | No blockers. |\n| repair_dup_finalization.deep_review_contract_strength\
+      \ | ✓ done | EXCELLENT — All 4 repaired families audited; zero duplicate contract\
+      \ owners. | None. |\n| repair_dup_finalization.deep_review_spec | ✓ done | EXCELLENT\
+      \ — 19-row conformance table; 3 DIVERGES all should-fix. | MCP clear-token mismatch,\
+      \ 2 stale test refs. |\n| repair_dup_finalization.deep_review_black_box | ✓\
+      \ done | EXCELLENT — Live runtime verification across all 5 surfaces. | Contrib\
+      \ web batch-update 422 (request: Any annotation). |\n\n## Classification: Contrib\
+      \ Batch-Update 422\nNon-blocking debt, NOT blocker-class runtime drift. (1)\
+      \ Not duplicate-authority — one surface owns batch-update, it's just broken.\
+      \ (2) Not drift across repaired surfaces — no competing claim. (3) Contrib is\
+      \ non-normative extension; packaged contract is clean. (4) Pre-existing condition\
+      \ predating repair.\n\n## Final Decision Basis\n- full_plan_check_status: PASSED\
+      \ — guard --all 0 errors; 3 stale-test failures only\n- doc_sync_status: PASSED\
+      \ — docs aligned with repaired architecture\n- deep_review_status: PASSED with\
+      \ should-fix items — zero blocker-class duplicate authorities remain\n- residual_non_intersecting_debt:\n\
+      \  1. MCP clear-token docs/runtime mismatch (should-fix)\n  2. Stale test references\
+      \ x2 (should-fix)\n  3. CLI hardcoded valid_types (nice-to-fix)\n  4. Contrib\
+      \ web batch-update 422 (should-fix, non-normative surface)\n\n## Decision: OPEN\n\
+      Gate criterion \"No blocker-class duplicate authority or runtime drift remains\
+      \ open\" is SATISFIED. All should-fix items are real but non-intersecting with\
+      \ duplicate-abstraction repair scope.\n\nRequired follow-up:\n1. Fix mcp_contract.py\
+      \ clear token description\n2. Fix test_canonical_boundary_gaps.py stale reference\n\
+      3. Fix cross_surface_consistency_verify.py stale references\n4. Fix contrib\
+      \ web request: Any annotation (restructure FastAPI import guard)\n5. Optional:\
+      \ cli_runtime.py import CANONICAL_COMPONENT_KINDS"
