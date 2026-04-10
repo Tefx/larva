@@ -44467,7 +44467,7 @@ phases:
   steps:
   - id: post_sweep_remediation.mcp_clear_token_sync
     name: Sync MCP clear-token contract to runtime truth
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP clear/delete contract\n  - src/larva/shell/mcp_contract.py\
       \ :: tool schema and descriptions\n  - src/larva/shell/registry.py :: runtime\
@@ -44484,6 +44484,46 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-10T02:57:09.724959+00:00'
+    done_at: '2026-04-10T03:05:58.541646+00:00'
+    evidence: 'Artifact:
+
+      - PR: 5656c7b (commit on branch vectl/step-post_sweep_remediation.mcp_clear_token_sync)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_mcp.py -k clear -> 8 passed
+
+      - Run: uv run pytest tests/ -x -q (excluding known-stale tests) -> 770 passed,
+      32 xpassed
+
+      - Run: uv run python -c "from larva.shell.mcp_contract import LARVA_MCP_TOOLS;
+      ..." -> confirm token now matches ''CLEAR REGISTRY''
+
+
+      Spec link:
+
+      - plan.yaml :: repair_dup_finalization.deep_review_architecture (should_fix
+      #1)
+
+
+      Summary:
+
+      - Fixed mcp_contract.py: larva_clear tool description and input_schema description
+      now advertise ''CLEAR REGISTRY'' instead of erroneous ''DELETE ALL PERSONAS''.
+
+      - Runtime token authority (registry.py::CLEAR_CONFIRMATION_TOKEN = ''CLEAR REGISTRY'')
+      is preserved — only the MCP schema/documentation was updated to match.
+
+      - No widening of destructive behavior: token value unchanged, only docs aligned.
+
+
+      NOT Done (out of scope — reported, not fixed):
+
+      - test_canonical_boundary_gaps.py stale web_module.api_update_persona reference
+
+      - cross_surface_consistency_verify.py stale contrib_module._component_store
+      reference'
   - id: post_sweep_remediation.contrib_batch_update_runtime_fix
     name: Repair contrib batch-update runtime path
     status: pending
