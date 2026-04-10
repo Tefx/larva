@@ -44459,7 +44459,7 @@ phases:
       \ cli_runtime.py import CANONICAL_COMPONENT_KINDS"
 - id: post_sweep_remediation
   name: Post-Sweep Remediation
-  status: pending
+  status: in_progress
   gate: All final-sweep failures and should-fix repair debt are addressed with targeted
     verification and a clean broad sweep.
   depends_on:
@@ -44467,7 +44467,7 @@ phases:
   steps:
   - id: post_sweep_remediation.mcp_clear_token_sync
     name: Sync MCP clear-token contract to runtime truth
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\nspec_refs:\n \
       \ - INTERFACES.md :: MCP clear/delete contract\n  - src/larva/shell/mcp_contract.py\
       \ :: tool schema and descriptions\n  - src/larva/shell/registry.py :: runtime\
@@ -44482,6 +44482,8 @@ phases:
 
       - No widening of destructive behavior is introduced'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-10T02:57:09.724959+00:00'
   - id: post_sweep_remediation.contrib_batch_update_runtime_fix
     name: Repair contrib batch-update runtime path
     status: pending
