@@ -44539,6 +44539,29 @@ phases:
     depends_on:
     - post_sweep_remediation.contrib_batch_update_runtime_fix
     agent: python-executor
+  - id: post_sweep_remediation.targeted_verify
+    name: Run targeted remediation verification
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: focused-remediation
+
+
+      After the scoped fixes land, rerun the focused suites and runtime checks that
+      cover the repaired surface families: contrib batch-update runtime behavior,
+      stale test replacements, MCP clear-token contract alignment, and CLI component-kind
+      projection parity. Record exact commands and key outputs.'
+    verification: '- Focused tests for contrib web, canonical boundary gaps, cross-surface
+      consistency, MCP contract expectations, and CLI invalid-kind behavior pass
+
+      - Evidence includes at least one successful contrib batch-update request and
+      proof packaged still rejects that route'
+    depends_on:
+    - post_sweep_remediation.stale_surface_tests_rebase
+    - post_sweep_remediation.cli_component_kind_authority_cleanup
+    agent: integration-verifier-tacit
 - id: post_sweep_review
   name: Post-Sweep Review and Gate
   status: locked
