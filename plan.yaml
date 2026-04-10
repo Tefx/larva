@@ -44687,7 +44687,7 @@ phases:
       - src/larva/core/component_kind.py'
   - id: post_sweep_remediation.targeted_verify
     name: Run targeted remediation verification
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -44708,6 +44708,8 @@ phases:
     - post_sweep_remediation.stale_surface_tests_rebase
     - post_sweep_remediation.cli_component_kind_authority_cleanup
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-10T03:36:24.974762+00:00'
   - id: post_sweep_remediation.full_sweep
     name: Re-run full pytest and guard sweep
     status: pending
