@@ -45855,6 +45855,25 @@ phases:
       - Result for legacy stored record on each surface:'
     depends_on:
     - canonical_cutover_impl.component_loader
+  - id: canonical_cutover_impl.transport_surfaces
+    name: Make CLI MCP Python and web outputs canonical-only
+    status: pending
+    description: Remove mirrored legacy fields from public transport surfaces and
+      align published MCP vocabulary to snake_case only. Public outputs such as resolve,
+      export, clone, and component_show must be canonical-only.
+    verification: Public surface tests prove canonical-only outputs and snake_case
+      MCP naming with no dotted aliases or mirrored tools fields in outputs.
+    evidence_template: '## Transport Surfaces
+
+      - Surfaces updated:
+
+      - Output checks run:
+
+      - Snake_case checks run:
+
+      - Remaining dotted references in transport code/tests/docs:'
+    depends_on:
+    - canonical_cutover_impl.registry_policy
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
