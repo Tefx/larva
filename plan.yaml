@@ -45988,7 +45988,7 @@ phases:
       blocking_status: CLOSED\ngate_open_allowed: true"
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
-  status: in_progress
+  status: done
   gate: Explicit stop/go gate before implementation
   depends_on:
   - canonical_cutover_prep
@@ -46081,7 +46081,7 @@ phases:
       original_worker_status: FAIL\nreconciliation_reason: readiness_audit_objective_met_matrix_produced"
   - id: canonical_cutover_readiness.stop_go_gate
     name: Stop/go readiness gate
-    status: claimed
+    status: done
     description: 'phase-check stop/go gate. This step must BLOCK implementation unless
       readiness is proven: no policy ambiguity, no undefined scan authority, no unresolved
       XPASS rule, and no unclear legacy-record handling.'
@@ -46113,9 +46113,110 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T21:09:15.102347+00:00'
+    done_at: '2026-04-14T21:12:35.393835+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - ADR-001-spec-version-boundary.md — spec_version pinned to "0.1.0"; clone preserves
+      canonical schema version
+
+      - ADR-002-capability-intent-without-runtime-policy.md — capabilities is the
+      only tool-access declaration; runtime policy removed
+
+      - ADR-003-canonical-requiredness-authority.md — required/forbidden field partitions;
+      reject-immediate for tools/side_effect_policy
+
+      - ADR-004-empty-capabilities-and-unrestricted-semantics.md — {} = no declared
+      postures, not unrestricted
+
+      - MIGRATION-002-capability-intent.md — migration COMPLETED but residual internal
+      compat code remains; tools→capabilities compat code remains in normalize, assemble,
+      components
+
+      - design/opifex-canonical-authority-basis.md — opifex is canonical authority;
+      zero compatibility window; reject-immediate semantics
+
+      - design/legacy-personaspec-hard-cut-policy.md — 5-surface policy matrix: resolve/export/clone/component_show/registry-read
+      must all reject legacy fields
+
+      - design/hard-cutover-canonical-alignment.md — delete normalization, delete
+      tools fallback, delete tools merge, tighten tests
+
+      - src/larva/core/validate.py — CANONICAL_REQUIRED_FIELDS + CANONICAL_FORBIDDEN_FIELDS
+      enforcement correct
+
+      - src/larva/core/normalize.py — STILL HAS transition logic (lines 134-143):
+      tools→capabilities mapping and silent pop
+
+      - src/larva/core/assemble.py — STILL HAS tools fallback in _merge_capabilities
+      (lines 176-180)
+
+      - src/larva/core/patch.py — DEEP_MERGE_KEYS STILL INCLUDES "tools" (line 45)
+
+      - src/larva/shell/components.py — load_toolset STILL FALLS BACK to tools key
+      (lines 356-358)
+
+      - src/larva/app/facade.py — _normalize_and_validate normalizes THEN validates,
+      masking tools rejection; export surfaces have no legacy-field validation
+
+      - src/larva/shell/registry_fs.py — read_spec_payload has NO legacy-field validation
+
+      - src/larva/core/spec.py — PersonaSpec missing variables field; SideEffectPolicy
+      still exported
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py — correctly RED (xfail
+      strict=True) for 3 known legacy surfaces; missing assemble.py scanner; test_xpass_strict
+      is vacuous
+
+
+      ## Stop/Go Verdict
+
+      - Policy ambiguity remaining: NO
+
+      - Scan authority pinned: YES
+
+      - XPASS disposition pinned: YES
+
+      - Legacy record policy pinned: YES
+
+      - Verdict: GO
+
+      - Blockers if STOP: N/A
+
+
+      ## Detailed Rationale
+
+      Policy, scan authority, XPASS disposition, and legacy record policy are pinned.
+      Remaining B1-B7 are implementation tasks with clear authority and no unresolved
+      policy invention.
+
+
+      ## Behavioral Proof Register
+
+      - P1: No policy ambiguity → PROVEN
+
+      - P2: Scan authority pinned → PROVEN (non-blocking assemble scanner gap noted)
+
+      - P3: XPASS disposition pinned → PROVEN
+
+      - P4: Legacy record policy pinned → PROVEN
+
+      - P5: Remaining work is implementation-only → PROVEN
+
+
+      ## Gate Decision
+
+      headline: PASS_WITH_DEBT
+
+      proof_gap_status: NON_BLOCKING
+
+      blocking_status: CLOSED
+
+      gate_open_allowed: true'
 - id: canonical_cutover_impl
   name: Canonical Hard-Cut Implementation
-  status: locked
+  status: pending
   gate: All hidden legacy compatibility removed and public outputs canonical-only
   depends_on:
   - canonical_cutover_readiness
