@@ -45647,3 +45647,9 @@ phases:
   gate: Policy pinned and red-first readiness harness defined
   depends_on:
   - web_preset_redesign_followup
+- id: canonical_cutover_readiness
+  name: Canonical Hard-Cut Readiness Re-Review
+  status: locked
+  gate: Explicit stop/go gate before implementation
+  depends_on:
+  - canonical_cutover_prep
