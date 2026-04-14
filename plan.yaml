@@ -45560,7 +45560,7 @@ phases:
       - Canonical backend docs intentionally unchanged'
   - id: web_preset_redesign_followup.gate
     name: Gate the lean web preset redesign follow-up
-    status: pending
+    status: claimed
     description: 'Gate review: verify the web preset redesign follow-up is complete,
       preserves canonical assembly semantics, and leaves the web surface in a clearer
       user-facing state.
@@ -45617,3 +45617,5 @@ phases:
     - web_preset_redesign_followup.web-preset-library-ui
     - web_preset_redesign_followup.web-compose-persona-reframe
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T18:30:11.220661+00:00'
