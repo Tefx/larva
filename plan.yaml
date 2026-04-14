@@ -46477,13 +46477,27 @@ phases:
   - id: canonical_cutover_final.verify
     name: Run final hard-cut verification
     status: pending
-    description: 'Run the explicit hard-cut verification set: no-legacy scan, snake_case
-      scan, focused pytest gate, XPASS check, larva-legacy-field-rejections.jsonl
+    description: 'verification_scope: full-plan-check
+
+      step_type: verification
+
+      expected_result: green
+
+
+      Run the explicit hard-cut verification set over the full repo: no-legacy scan,
+      snake_case scan, focused pytest gate, XPASS check, larva-legacy-field-rejections.jsonl
       tally generation, and invar guard.'
     verification: Required checks are green, larva-legacy-field-rejections.jsonl exists
       with expected coverage, and no unreviewed XPASS remains in the focused verification
       set.
-    evidence_template: '## Final Verification
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Full-Plan Verification
 
       - No-legacy scan:
 
@@ -46497,9 +46511,12 @@ phases:
 
       - JSONL artifact path:
 
-      - JSONL sample lines:'
+      - JSONL sample lines:
+
+      '
     depends_on:
     - canonical_cutover_final.docs_sync
+    agent: integration-verifier-tacit
   - id: canonical_cutover_final.gate
     name: Final canonical alignment gate
     status: pending
