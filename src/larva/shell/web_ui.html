@@ -343,6 +343,39 @@
     transition: background 0.15s;
   }
   .comp-section-header:hover { background: var(--bg-elevated); }
+  .comp-library-intro {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px; margin-bottom: 16px;
+  }
+  .comp-library-kicker {
+    color: var(--accent); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 8px;
+  }
+  .comp-library-copy {
+    color: var(--text-secondary); font-size: 13px; line-height: 1.5;
+    max-width: 72ch;
+  }
+  .comp-library-copy strong { color: var(--text-primary); font-weight: 500; }
+  .comp-section-copy {
+    display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
+  }
+  .comp-section-title-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .comp-section-title {
+    color: var(--text-primary); font-size: 13px; text-transform: none;
+    font-weight: 500;
+  }
+  .comp-section-description {
+    color: var(--text-muted); font-size: 12px; text-transform: none;
+    line-height: 1.4;
+  }
+  .comp-kind-badge {
+    background: rgba(56, 189, 248, 0.12); color: var(--accent);
+    border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 999px;
+    padding: 2px 8px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
   .comp-item {
     width: 100%; padding: 12px 16px; text-align: left;
     background: none; border: none; border-top: 1px solid var(--border);
@@ -351,12 +384,26 @@
     transition: background 0.15s;
   }
   .comp-item:hover { background: var(--bg-elevated); }
+  .comp-item-body {
+    display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
+  }
+  .comp-item-title { color: var(--text-primary); font-size: 13px; }
+  .comp-item-meta {
+    color: var(--text-muted); font-size: 11px; display: flex;
+    gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+  .comp-item-meta strong { color: var(--text-secondary); font-weight: 500; }
   .comp-content {
     padding: 0 16px 12px;
     background: var(--bg-primary); margin: 0 12px 12px;
     border-radius: 4px; font-size: 12px;
     white-space: pre-wrap; padding: 16px;
   }
+  .comp-content-meta {
+    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
+    color: var(--text-secondary); font-size: 11px;
+  }
+  .comp-content-meta strong { color: var(--text-primary); font-weight: 500; }
 
   /* Empty state */
   .empty-state {
@@ -435,7 +482,7 @@
   <header class="header">
     <div class="header-title">LARVA</div>
     <div class="header-actions">
-      <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Components</button>
+      <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Preset Library</button>
       <button class="btn" @click="modals.import = true">Import</button>
       <button class="btn btn-accent" @click="modals.assemble = true" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
     </div>
@@ -764,19 +811,33 @@
 
     </div>
 
-    <!-- COMPONENT BROWSER -->
+    <!-- PRESET LIBRARY -->
     <div class="detail" x-show="view === 'components'" style="display:none;">
       <div class="detail-inner">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
           <button class="btn" @click="view = 'detail'">&#8592; Back</button>
-          <h1 class="detail-title">Component Library</h1>
+          <h1 class="detail-title">Preset Library</h1>
+        </div>
+        <div class="comp-library-intro">
+          <div class="comp-library-kicker">Reusable building blocks</div>
+          <div class="comp-library-copy">
+            Browse <strong>prompt presets</strong>, <strong>capability presets</strong>,
+            <strong>behavior &amp; policy presets</strong>, and <strong>model presets</strong>.
+            Each card keeps the canonical internal source kind visible so you can inspect the exact backend component without changing how requests are sent.
+          </div>
         </div>
         <template x-if="components">
           <div>
             <template x-for="type in ['prompts', 'toolsets', 'constraints', 'models']" :key="type">
               <div class="comp-section">
                 <button class="comp-section-header" @click="compExpanded[type] = !compExpanded[type]">
-                  <span x-text="type.toUpperCase()"></span>
+                  <span class="comp-section-copy">
+                    <span class="comp-section-title-row">
+                      <span class="comp-section-title" x-text="getComponentLibraryLabel(type)"></span>
+                      <span class="comp-kind-badge" x-text="'Internal source: ' + type"></span>
+                    </span>
+                    <span class="comp-section-description" x-text="getComponentLibraryDescription(type)"></span>
+                  </span>
                   <span x-text="compExpanded[type] ? '&#9660;' : '&#9654;'"></span>
                 </button>
                 <template x-if="compExpanded[type]">
@@ -784,16 +845,29 @@
                     <template x-for="name in (components[type] || [])" :key="name">
                       <div>
                         <button class="comp-item" @click="toggleCompItem(type, name)">
-                          <span x-text="name"></span>
+                          <span class="comp-item-body">
+                            <span class="comp-item-title" x-text="name"></span>
+                            <span class="comp-item-meta">
+                              <strong x-text="getComponentItemLabel(type)"></strong>
+                              <span aria-hidden="true">•</span>
+                              <span x-text="'Internal source: ' + type + '/' + name"></span>
+                            </span>
+                          </span>
                           <span x-text="compItemExpanded[type+'/'+name] ? '&#9660;' : '&#9654;'" style="color:var(--text-muted);"></span>
                         </button>
                         <template x-if="compItemExpanded[type+'/'+name]">
-                          <div class="comp-content" x-text="compItemContent[type+'/'+name] || 'Loading...'"></div>
+                          <div class="comp-content">
+                            <div class="comp-content-meta">
+                              <span><strong>Preset label:</strong> <span x-text="getComponentItemLabel(type)"></span></span>
+                              <span><strong>Internal source:</strong> <span x-text="type + '/' + name"></span></span>
+                            </div>
+                            <div x-text="compItemContent[type+'/'+name] || 'Loading...'"></div>
+                          </div>
                         </template>
                       </div>
                     </template>
                     <div x-show="(components[type] || []).length === 0" style="padding:12px 16px;color:var(--text-muted);border-top:1px solid var(--border);">
-                      No components found
+                      <span x-text="'No ' + getComponentLibraryLabel(type).toLowerCase() + ' found'"></span>
                     </div>
                   </div>
                 </template>
@@ -946,6 +1020,28 @@ function larvaApp() {
     showRawJson: false,
     showCompaction: false,
     components: null,
+    componentLibraryCopy: {
+      prompts: {
+        sectionLabel: 'Prompt Presets',
+        itemLabel: 'Prompt Preset',
+        description: 'Instruction presets for role, tone, and task framing.',
+      },
+      toolsets: {
+        sectionLabel: 'Capability Presets',
+        itemLabel: 'Capability Preset',
+        description: 'Reusable capability bundles that map to internal toolset sources.',
+      },
+      constraints: {
+        sectionLabel: 'Behavior & Policy Presets',
+        itemLabel: 'Behavior & Policy Preset',
+        description: 'Behavioral and policy presets that shape guardrails without exposing compose-only jargon.',
+      },
+      models: {
+        sectionLabel: 'Model Presets',
+        itemLabel: 'Model Preset',
+        description: 'Model configuration presets for runtime selection and parameters.',
+      },
+    },
     compExpanded: {},
     compItemExpanded: {},
     compItemContent: {},
@@ -1074,6 +1170,26 @@ function larvaApp() {
         const data = await resp.json();
         this.components = data.data;
       } catch { this.components = { prompts: [], toolsets: [], constraints: [], models: [] }; }
+    },
+
+    getComponentLibraryCopy(type) {
+      return this.componentLibraryCopy[type] || {
+        sectionLabel: type,
+        itemLabel: type,
+        description: 'Internal component source',
+      };
+    },
+
+    getComponentLibraryLabel(type) {
+      return this.getComponentLibraryCopy(type).sectionLabel;
+    },
+
+    getComponentLibraryDescription(type) {
+      return this.getComponentLibraryCopy(type).description;
+    },
+
+    getComponentItemLabel(type) {
+      return this.getComponentLibraryCopy(type).itemLabel;
     },
 
     async selectPersona(id) {
@@ -1369,7 +1485,7 @@ function larvaApp() {
       }
     },
 
-    // Component browser
+    // Preset library
     async toggleCompItem(type, name) {
       const key = type + '/' + name;
       if (this.compItemExpanded[key]) {

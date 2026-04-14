@@ -660,6 +660,29 @@ class TestWebUiHtmlContent:
             "Repeated inline staged section styling should be removed"
         )
 
+    def test_components_view_uses_preset_library_copy_and_internal_source_labels(self) -> None:
+        """Components view should present a preset library without losing canonical source kinds.
+
+        Source: user task web_preset_redesign_followup.web-preset-library-ui
+        Required outcome: preset-library wording becomes primary while internal
+        component kinds remain inspectable in the HTML surface.
+        """
+        client = TestClient(app)
+        resp = client.get("/")
+
+        assert resp.status_code == 200
+        html = resp.text
+
+        assert "Preset Library" in html
+        assert "Prompt Presets" in html
+        assert "Capability Presets" in html
+        assert "Behavior & Policy Presets" in html
+        assert "Model Presets" in html
+        assert "Internal source" in html
+        assert "Component Library" not in html
+        assert ">Components</button>" not in html
+        assert "type.toUpperCase()" not in html
+
     def test_served_html_uses_sidebar_description_fallback_without_digest_noise(self) -> None:
         """Sidebar summary rows should prefer description and show empty fallback copy.
 
