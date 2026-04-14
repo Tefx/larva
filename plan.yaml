@@ -45836,6 +45836,25 @@ phases:
       - Example rejection payload:'
     depends_on:
     - canonical_cutover_impl.core_admission
+  - id: canonical_cutover_impl.registry_policy
+    name: Apply hard-cut policy to registry and facade reads
+    status: pending
+    description: Apply the pinned hard-cut policy to registry-sourced legacy records
+      across resolve, export, clone, update-related reads, and any other facade path
+      that can surface stored PersonaSpec data. No silent field dropping or auto-rewrite.
+    verification: Facade and registry tests prove registry-backed legacy records now
+      follow the pinned hard-cut policy consistently across affected read/update surfaces.
+    evidence_template: '## Registry/Facade Policy
+
+      - Pinned policy applied:
+
+      - Surfaces checked:
+
+      - Tests run:
+
+      - Result for legacy stored record on each surface:'
+    depends_on:
+    - canonical_cutover_impl.component_loader
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
