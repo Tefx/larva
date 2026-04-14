@@ -45957,22 +45957,68 @@ phases:
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
     status: pending
-    description: Apply the pinned hard-cut policy to registry-sourced legacy records
-      across resolve, export, clone, update-related reads, and any other facade path
-      that can surface stored PersonaSpec data. No silent field dropping or auto-rewrite.
+    description: 'Implement-and-verify step for registry/facade read semantics. Apply
+      the pinned hard-cut policy to registry-sourced legacy records across resolve,
+      export, clone, update-related reads, and any other facade path that can surface
+      stored PersonaSpec data. No silent field dropping, no auto-rewrite, and no hidden
+      compatibility.
+
+
+      ## Failure-mode checklist
+
+      - legacy stored spec read behavior is explicit
+
+      - resolve/export/clone behavior is consistent
+
+      - explicit failure shape is stable across affected surfaces
+
+      - no stale-definition vs new-state ambiguity remains between stored records
+      and canonical output
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
     verification: Facade and registry tests prove registry-backed legacy records now
       follow the pinned hard-cut policy consistently across affected read/update surfaces.
-    evidence_template: '## Registry/Facade Policy
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - Pinned policy applied:
+      For each ref in this step:
 
-      - Surfaces checked:
+      - <filename> — key passage or "NOT READ: <reason>"
 
-      - Tests run:
 
-      - Result for legacy stored record on each surface:'
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Surfaces checked
+
+      - resolve:
+
+      - export:
+
+      - clone:
+
+      - update-related reads:
+
+
+      ## Result for legacy stored record on each surface:
+
+      '
     depends_on:
     - canonical_cutover_impl.component_loader
+    agent: python-senior-tacit
   - id: canonical_cutover_impl.transport_surfaces
     name: Make CLI MCP Python and web outputs canonical-only
     status: pending
