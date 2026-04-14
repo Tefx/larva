@@ -45399,7 +45399,7 @@ phases:
   - id: web_preset_redesign_followup.web-compose-persona-reframe
     name: Reframe Assemble Persona into an output-first compose persona flow plus
       docs/tests sync
-    status: claimed
+    status: done
     description: 'Rework the web compose flow so the assemble modal becomes an output-first
       compose-persona surface and sync the directly impacted tests/docs for the approved
       terminology.
@@ -45493,6 +45493,71 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-04-14T18:22:48.962414+00:00'
+    done_at: '2026-04-14T18:29:33.201088+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/larva/shell/web_ui.html — compose modal state/methods and submit semantics
+      inspected and updated
+
+      - tests/shell/test_web.py — focused compose-flow and payload-forwarding coverage
+      updated
+
+      - INTERFACES.md and USER_GUIDE.md — minimal web-facing docs updated for terminology
+      and behavior
+
+      - README.md reviewed for scope; USAGE.md intentionally not edited (canonical
+      backend/API docs unchanged)
+
+
+      ## Expected-Red Proof
+
+      - Added focused tests for compose copy/preset-prefill/prefill-failure behavior
+      and constraints-picker removal
+
+      - Initial run failed with missing "Compose Persona", missing preset-prefill
+      handlers, and missing preset status/error wiring
+
+
+      ## Main Path Proof
+
+      - Compose modal reframed output-first: "Compose Persona", "Output Persona ID",
+      capability preset wording
+
+      - Top-level constraints picker removed from compose flow; behavior preset affordance
+      added
+
+      - Behavior preset prefill uses canonical constraints source and can prefill
+      `overrides.can_spawn` / `overrides.compaction_prompt` while keeping both fields
+      directly editable
+
+      - Canonical assemble submission semantics preserved: payload still forwards
+      canonical fields (`toolsets`, `constraints`, `model`, `overrides.can_spawn`,
+      `overrides.compaction_prompt`)
+
+
+      ## Failure/Risk Path Proof
+
+      - Added failure-path UI handling for behavior preset prefill load failures with
+      explicit status/error/fallback messaging
+
+      - Added assertions proving top-level constraints picker is absent in compose
+      modal
+
+
+      ## Green Verification
+
+      - .venv/bin/pytest tests/shell/test_web.py -q → 36 passed
+
+      - changed-file invar guard → passed (no errors/warnings)
+
+
+      ## Docs Updated
+
+      - INTERFACES.md (web-only compose terminology and prefill/edit semantics)
+
+      - USER_GUIDE.md (packaged web UI compose flow wording)
+
+      - Canonical backend docs intentionally unchanged'
   - id: web_preset_redesign_followup.gate
     name: Gate the lean web preset redesign follow-up
     status: pending
