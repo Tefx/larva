@@ -45145,7 +45145,7 @@ phases:
   steps:
   - id: web_preset_redesign_followup.web-preset-projection
     name: Add web-facing preset projection without changing canonical assembly inputs
-    status: claimed
+    status: done
     description: 'Implement the web-only projection surface that translates internal
       assembly/component terms into user-facing preset language while preserving canonical
       backend semantics.
@@ -45228,6 +45228,49 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-14T18:01:24.467974+00:00'
+    done_at: '2026-04-14T18:15:33.566518+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/larva/shell/web.py — canonical web surface; primary implementation file
+
+      - contrib/web/server.py — contrib server imports create_app from web.py; parity
+      confirmed no change needed
+
+      - tests/shell/test_web.py and tests/shell/test_contrib_web.py — updated/validated
+      projection behavior and packaged/contrib parity
+
+      - INTERFACES.md, ADR-002-capability-intent-without-runtime-policy.md, MIGRATION-002-capability-intent.md
+      — authority and terminology context
+
+      - src/larva/core/spec.py, src/larva/core/component_kind.py, src/larva/shell/components.py,
+      src/larva/shell/shared/component_queries.py — canonical categories preserved
+
+
+      ## Implementation Proof
+
+      - Files changed: src/larva/shell/web.py; tests/shell/test_web.py
+
+      - Added web-only projection endpoint metadata for UI wording while preserving
+      canonical assemble input categories (`prompts`, `toolsets`, `constraints`, `models`)
+
+      - Added additive projection fields (e.g., canonical_kind, display_label, plural_display_label,
+      description, singular_alias, assemble_field, ui_hint)
+
+      - `/api/components` and `/api/personas/assemble` compatibility preserved
+
+      - Packaged/contrib parity: contrib uses shared create_app surface, no contrib
+      file change required
+
+
+      ## Verification
+
+      - uv run pytest tests/shell/test_web.py -v
+
+      - uv run pytest tests/shell/test_contrib_web.py -v
+
+      - uvx invar-tools guard --all
+
+      - Result: web tests pass, contrib web tests pass, invar guard full scan passed'
   - id: web_preset_redesign_followup.web-preset-library-ui
     name: Reframe the Components view as a preset library
     status: pending
