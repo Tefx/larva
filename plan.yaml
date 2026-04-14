@@ -45983,6 +45983,54 @@ phases:
       - Verdict:'
     depends_on:
     - canonical_cutover_impl.transport_surfaces
+  - id: canonical_cutover_impl.assemble_cutover
+    name: Remove assembly tools fallback
+    status: pending
+    description: 'Implement-and-verify step for src/larva/core/assemble.py only. Remove
+      any fallback or merge behavior that treats toolset tools content as admissible
+      assembly input for canonical cutover behavior. Toolset assembly must be capability-only
+      and fail closed on legacy toolset content.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: Focused assembly tests prove toolset tools content is no longer
+      accepted as canonical assembly input and overrides still reject forbidden fields.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/core/assemble.py
+
+      - tests/core/test_assemble.py
+
+
+      ## Remaining legacy hits in assembly:
+
+      '
+    depends_on:
+    - canonical_cutover_impl.core_admission
+    agent: python-executor
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
