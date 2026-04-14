@@ -46596,7 +46596,7 @@ phases:
       \  - src/larva/core/assemble.py\n  - tests/core/test_assemble.py"
   - id: canonical_cutover_impl.patch_cutover
     name: Remove patch-time tools merge semantics
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for src/larva/core/patch.py only. Remove
       legacy tools deep-merge semantics so patch/update paths do not accept or merge
       tools during hard cut behavior. Patches that introduce forbidden legacy fields
@@ -46644,6 +46644,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.assemble_cutover
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-14T21:40:40.596262+00:00'
   - id: canonical_cutover_impl.python_api_surface
     name: Cut over Python API component and persona outputs
     status: pending
