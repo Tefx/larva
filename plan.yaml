@@ -45746,6 +45746,26 @@ phases:
   gate: Explicit stop/go gate before implementation
   depends_on:
   - canonical_cutover_prep
+  steps:
+  - id: canonical_cutover_readiness.rereview
+    name: Re-review against canonical authority
+    status: pending
+    description: Re-audit the repo against the latest canonical docs plus the pinned
+      hard-cut policy. Confirm remaining work is implementation-only, not unresolved
+      spec discovery or compatibility design.
+    verification: A readiness matrix exists that maps every remaining divergence to
+      a concrete implementation step, with blockers separated from non-blockers.
+    evidence_template: '## Readiness Matrix
+
+      - Blocking issues:
+
+      - Non-blocking issues:
+
+      - Affected files:
+
+      - Remaining work is implementation-only: YES/NO
+
+      - Notes:'
 - id: canonical_cutover_impl
   name: Canonical Hard-Cut Implementation
   status: locked
