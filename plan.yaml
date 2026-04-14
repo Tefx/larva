@@ -45647,6 +45647,41 @@ phases:
   gate: Policy pinned and red-first readiness harness defined
   depends_on:
   - web_preset_redesign_followup
+  steps:
+  - id: canonical_cutover_prep.policy_pin
+    name: Pin hard-cut policy for legacy records
+    status: pending
+    description: Decide and record one explicit hard-cut rule for registry-sourced
+      legacy PersonaSpec records and legacy toolset components across resolve, export,
+      clone, component_show, and any related read path. No silent compatibility, no
+      silent field dropping, no hidden rewrite.
+    verification: A single policy matrix exists covering each affected surface, each
+      legacy input kind, the expected behavior, and the error/output shape. The rule
+      is hard-cut only and does not rely on transition compatibility.
+    evidence_template: '## Policy Matrix
+
+      - Surface:
+
+      - Legacy input kind:
+
+      - Hard-cut behavior:
+
+      - Error/output shape:
+
+      - Why this matches canonical docs:
+
+
+      ## Coverage
+
+      - [ ] resolve
+
+      - [ ] export
+
+      - [ ] clone
+
+      - [ ] component_show
+
+      - [ ] registry-backed read paths'
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: locked
