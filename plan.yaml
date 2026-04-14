@@ -45794,12 +45794,19 @@ phases:
   - id: canonical_cutover_readiness.rereview
     name: Re-review against canonical authority
     status: pending
-    description: Re-audit the repo against the latest canonical docs plus the pinned
-      hard-cut policy. Confirm remaining work is implementation-only, not unresolved
-      spec discovery or compatibility design.
+    description: spec-readiness re-review. Re-audit the repo against the latest canonical
+      docs plus the pinned hard-cut policy. Confirm remaining work is implementation-only,
+      not unresolved spec discovery, compatibility design, or hidden policy invention.
     verification: A readiness matrix exists that maps every remaining divergence to
       a concrete implementation step, with blockers separated from non-blockers.
-    evidence_template: '## Readiness Matrix
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Readiness Matrix
 
       - Blocking issues:
 
@@ -45810,6 +45817,7 @@ phases:
       - Remaining work is implementation-only: YES/NO
 
       - Notes:'
+    agent: spec-verifier-tacit
   - id: canonical_cutover_readiness.stop_go_gate
     name: Stop/go readiness gate
     status: pending
