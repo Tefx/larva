@@ -45765,7 +45765,7 @@ phases:
       - [x] registry-backed read paths — Validate at load time, reject legacy records"
   - id: canonical_cutover_prep.harness_define_red
     name: Define red-first readiness harness
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -45823,6 +45823,8 @@ phases:
     depends_on:
     - canonical_cutover_prep.policy_pin
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-14T19:49:59.869878+00:00'
   - id: canonical_cutover_prep.gate
     name: Prep completeness gate
     status: pending
