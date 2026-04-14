@@ -45273,7 +45273,7 @@ phases:
       - Result: web tests pass, contrib web tests pass, invar guard full scan passed'
   - id: web_preset_redesign_followup.web-preset-library-ui
     name: Reframe the Components view as a preset library
-    status: claimed
+    status: done
     description: 'Update the packaged web UI component browser into a preset-library
       view that uses user-facing terminology while preserving the internal component
       kinds under the hood.
@@ -45348,6 +45348,54 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-04-14T18:16:14.814942+00:00'
+    done_at: '2026-04-14T18:22:22.982131+00:00'
+    evidence: '## refs Read Confirmation
+
+      - src/larva/shell/web_ui.html — existing Components view and raw type headings
+      refactored to preset-library layout
+
+      - tests/shell/test_web.py — added focused served-HTML assertions for preset-library
+      wording and internal-source labeling
+
+      - src/larva/shell/web.py — terminology context checked; no backend changes required
+
+
+      ## Expected-Red Proof
+
+      - Added focused test requiring preset-library labels and internal-source markers
+
+      - First run failed before UI updates with missing "Preset Library" assertion
+
+
+      ## Frontend Completion Criteria
+
+      - Components view reframed as Preset Library with user-facing labels for prompt/capability/behavior-policy/model
+      presets
+
+      - Raw internal jargon removed as primary headings; internal source retained
+      as explicit metadata for inspectability
+
+      - Rendered HTML includes updated headings, labels, and detail rows proving visible
+      layout/content updates
+
+
+      ## Green Verification
+
+      - .venv/bin/pytest tests/shell/test_web.py -k preset_library_copy_and_internal_source_labels
+
+      - .venv/bin/pytest tests/shell/test_web.py
+
+      - invar_guard(path=worktree, changed=true)
+
+      - Result: targeted test passes; full web test module passes; changed-file invar
+      guard passed with zero errors/warnings
+
+
+      ## Commits
+
+      - 68bd07a test: capture preset library UI copy requirements
+
+      - b015440 feat: reframe web components view as preset library'
   - id: web_preset_redesign_followup.web-compose-persona-reframe
     name: Reframe Assemble Persona into an output-first compose persona flow plus
       docs/tests sync
