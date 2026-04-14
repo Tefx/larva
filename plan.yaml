@@ -45641,3 +45641,9 @@ phases:
       \ served-HTML assertions\n\n## Gate Decision\n- OPEN\n- Blocking issues: none\n\
       - Suggestion only: one internal HTML comment could use updated wording for consistency\
       \ (non-user-facing)"
+- id: canonical_cutover_prep
+  name: Canonical Hard-Cut Prep
+  status: pending
+  gate: Policy pinned and red-first readiness harness defined
+  depends_on:
+  - web_preset_redesign_followup
