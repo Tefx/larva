@@ -45659,3 +45659,9 @@ phases:
   gate: All hidden legacy compatibility removed and public outputs canonical-only
   depends_on:
   - canonical_cutover_readiness
+- id: canonical_cutover_final
+  name: Canonical Hard-Cut Final Verification
+  status: locked
+  gate: Docs, examples, scans, tests, and guard all prove canonical alignment
+  depends_on:
+  - canonical_cutover_impl
