@@ -67,11 +67,11 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
       no whitespace, excluding the spec_digest field itself).
     - Preserve flat self-contained output.
 
-    ADR-002 Transition (tools -> capabilities):
-    - If `tools` present and `capabilities` absent: copy tools to capabilities.
-    - If both present: `capabilities` wins.
-    - `tools` is removed from normalized output (forbidden at canonical admission).
-    - `side_effect_policy` is removed from normalized output (forbidden at canonical admission).
+    Forbidden-Field Handling (hard-cut per ADR-002):
+    - `tools` is forbidden at canonical admission and must not survive
+      normalization. It is NOT mapped to capabilities.
+    - `side_effect_policy` is forbidden at canonical admission and must
+      not survive normalization.
 
     spec_digest Behavior:
     - Digest is computed AFTER canonicalization and forbidden-field stripping.
@@ -84,8 +84,8 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         spec: Input PersonaSpec candidate (possibly incomplete).
 
     Returns:
-        Canonical PersonaSpec with spec_version defaulted, tools normalized
-        to capabilities (transition), and spec_digest computed.
+        Canonical PersonaSpec with spec_version defaulted, forbidden fields
+        stripped, and spec_digest computed.
 
     Examples:
         >>> normalize_spec({"id": "test"})["spec_version"]
@@ -99,28 +99,6 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         True
         >>> normalize_spec({"spec_digest": "stale_digest"})["spec_digest"] != "stale_digest"
         True
-        >>> # ADR-002: tools-only spec normalizes to capabilities
-        >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
-        >>> result.get("capabilities") == {"filesystem": "read_only"}
-        True
-        >>> "tools" in result
-        False
-        >>> "side_effect_policy" in result
-        False
-        >>> result.get("capabilities") == {"filesystem": "read_only"}
-        True
-        >>> # ADR-002: capabilities-only spec passes through
-        >>> result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
-        >>> result.get("capabilities") == {"git": "read_write"}
-        True
-        >>> "tools" in result
-        False
-        >>> # ADR-002: both present - capabilities wins
-        >>> result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}, "capabilities": {"git": "read_write"}})
-        >>> result.get("capabilities") == {"git": "read_write"}
-        True
-        >>> "tools" in result
-        False
         >>> result = normalize_spec({"id": "test", "side_effect_policy": "read_only"})
         >>> "side_effect_policy" in result
         False
@@ -131,14 +109,7 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     if "spec_version" not in canonical_spec:
         canonical_spec["spec_version"] = "0.1.0"
 
-    # ADR-002 transition input compatibility: tools -> capabilities
-    tools = canonical_spec.get("tools")
-    capabilities = canonical_spec.get("capabilities")
-
-    if capabilities is None and isinstance(tools, dict):
-        canonical_spec["capabilities"] = tools
-
-    # Canonical admission boundary: forbidden fields must not survive normalization.
+    # Forbidden fields stripped — tools is NOT mapped to capabilities (hard-cut).
     canonical_spec.pop("tools", None)
     canonical_spec.pop("side_effect_policy", None)
 

@@ -28,18 +28,7 @@ CANONICAL_NORMALIZE_INPUT_MINIMAL: dict = {
     "spec_version": "0.1.0",
 }
 """Exact canonical shape that normalize_spec should pass through unchanged
-(except for spec_digest computation). No forbidden fields, no transition-era fields."""
-
-CANONICAL_NORMALIZE_INPUT_WITH_TOOLS: dict = {
-    "id": "normalize-fixture-tools",
-    "description": "Normalize fixture — transition-era tools input",
-    "prompt": "You are a test persona.",
-    "model": "gpt-4o-mini",
-    "tools": {"shell": "read_only"},
-    "spec_version": "0.1.0",
-}
-"""Transition-era input with 'tools' instead of 'capabilities'.  normalize_spec
-must copy tools->capabilities and remove 'tools' from output."""
+(except for spec_digest computation). No forbidden fields."""
 
 CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY: dict = {
     "id": "normalize-fixture-sep",
@@ -229,28 +218,43 @@ class TestNormalizeSpecBehavior:
 
 
 # ---------------------------------------------------------------------------
-# ADR-002 transition normalization — canonical contract
+# ADR-002 hard-cut normalization — canonical contract
 # ---------------------------------------------------------------------------
 
 
 class TestNormalizeSpecCapabilitiesTransition:
-    """Test ADR-002 tools->capabilities normalization behavior.
+    """Test ADR-002 hard-cut normalization behavior.
 
-    Per ADR-002 authority decision:
-    - normalize_spec accepts 'tools' as transition-era input
-    - normalize_spec copies tools->capabilities when capabilities absent
-    - normalize_spec strips 'tools' from output (forbidden at canonical admission)
-    - normalize_spec strips 'side_effect_policy' from output (forbidden)
-    - When both present, capabilities wins
+    Per ADR-002 authority decision (hard-cut semantics):
+    - normalize_spec strips 'tools' from output — it is NEVER mapped to capabilities
+    - normalize_spec strips 'side_effect_policy' from output — forbidden at admission
+    - tools presence in input does NOT result in capabilities being added
     """
 
-    def test_tools_only_normalizes_to_capabilities(self) -> None:
-        """When only tools present, copy to capabilities and remove tools."""
+    def test_tools_removed_from_output(self) -> None:
+        """normalize_spec must strip tools from output — ADR-002 hard-cut.
+
+        'tools' must not survive normalization; it is forbidden at canonical
+        admission and is NOT mapped to capabilities.
+        """
+        from larva.core.normalize import normalize_spec
+
+        result = normalize_spec({"id": "test", "tools": {"shell": "read_write"}})
+        assert "tools" not in result, (
+            "'tools' must not survive normalization; forbidden at canonical admission per ADR-002"
+        )
+
+    def test_tools_not_mapped_to_capabilities(self) -> None:
+        """tools in input must NOT result in capabilities being added — hard-cut.
+
+        Unlike transition-era behavior, tools is rejected outright, not mapped.
+        """
         from larva.core.normalize import normalize_spec
 
         result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
-        assert result.get("capabilities") == {"filesystem": "read_only"}
+        # tools stripped, capabilities NOT added from tools
         assert "tools" not in result
+        assert "capabilities" not in result or result.get("capabilities") is None
 
     def test_capabilities_only_passes_through(self) -> None:
         """When only capabilities present, use as-is and no tools in output."""
@@ -260,36 +264,13 @@ class TestNormalizeSpecCapabilitiesTransition:
         assert result.get("capabilities") == {"git": "read_write"}
         assert "tools" not in result
 
-    def test_both_fields_capabilities_wins(self) -> None:
-        """When both tools and capabilities present, capabilities wins and tools removed."""
-        from larva.core.normalize import normalize_spec
-
-        result = normalize_spec(
-            {
-                "id": "test",
-                "tools": {"filesystem": "read_only"},
-                "capabilities": {"git": "read_write"},
-            }
-        )
-        assert result.get("capabilities") == {"git": "read_write"}
-        assert "tools" not in result
-
     def test_neither_field_no_change(self) -> None:
         """When neither tools nor capabilities present, neither is added."""
         from larva.core.normalize import normalize_spec
 
         result = normalize_spec({"id": "test", "model": "gpt-4"})
         assert "capabilities" not in result or result.get("capabilities") is None
-        assert "tools" not in result or result.get("tools") is None
-
-    def test_digest_includes_capabilities_after_normalization(self) -> None:
-        """Digest should reflect normalized capabilities field."""
-        from larva.core.normalize import normalize_spec
-
-        # tools-only input should produce same digest as if it had capabilities from start
-        tools_only = normalize_spec({"id": "test", "tools": {"git": "read_only"}})
-        capabilities_only = normalize_spec({"id": "test", "capabilities": {"git": "read_only"}})
-        assert tools_only["spec_digest"] == capabilities_only["spec_digest"]
+        assert "tools" not in result
 
     def test_side_effect_policy_stripped_from_output(self) -> None:
         """normalize_spec must strip side_effect_policy from output — ADR-002."""
@@ -303,31 +284,27 @@ class TestNormalizeSpecCapabilitiesTransition:
             "it is forbidden at canonical admission per ADR-002"
         )
 
-    def test_tools_stripped_from_output(self) -> None:
-        """normalize_spec must strip tools from output — ADR-002.
+    def test_tools_and_capabilities_both_stripped(self) -> None:
+        """When both tools and capabilities present, both are stripped from output.
 
-        Even when tools was the original input and was copied to capabilities,
-        'tools' must not appear in the normalized output.
+        Per hard-cut semantics: tools is NOT mapped to capabilities.
         """
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "tools": {"shell": "read_write"}})
-        assert "tools" not in result, (
-            "'tools' must not survive normalization; forbidden at canonical admission per ADR-002"
+        result = normalize_spec(
+            {
+                "id": "test",
+                "tools": {"filesystem": "read_only"},
+                "capabilities": {"git": "read_write"},
+            }
         )
-
-    def test_transition_fixture_with_tools_normalizes_correctly(self) -> None:
-        """Assert CANONICAL_NORMALIZE_INPUT_WITH_TOOLS normalizes to capabilities-only."""
-        from larva.core.normalize import normalize_spec
-
-        result = normalize_spec(CANONICAL_NORMALIZE_INPUT_WITH_TOOLS)
-        assert result["capabilities"] == {"shell": "read_only"}
         assert "tools" not in result
-        assert "side_effect_policy" not in result
-        assert result["spec_version"] == "0.1.0"
-        assert "spec_digest" in result
+        # capabilities from input should survive
+        assert result.get("capabilities") == {"git": "read_write"}
 
-    def test_transition_fixture_with_side_effect_policy_normalizes_correctly(self) -> None:
+    def test_transition_fixture_with_side_effect_policy_normalizes_correctly(
+        self,
+    ) -> None:
         """Assert CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY strips sep."""
         from larva.core.normalize import normalize_spec
 
