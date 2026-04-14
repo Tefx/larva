@@ -46596,7 +46596,7 @@ phases:
       \  - src/larva/core/assemble.py\n  - tests/core/test_assemble.py"
   - id: canonical_cutover_impl.patch_cutover
     name: Remove patch-time tools merge semantics
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for src/larva/core/patch.py only. Remove
       legacy tools deep-merge semantics so patch/update paths do not accept or merge
       tools during hard cut behavior. Patches that introduce forbidden legacy fields
@@ -46646,6 +46646,24 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-14T21:40:40.596262+00:00'
+    done_at: '2026-04-14T21:47:02.151255+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/patch.py —\
+      \ `DEEP_MERGE_KEYS` now excludes `tools`.\n- tests/core/test_patch.py — deep-merge\
+      \ tests updated for shallow overwrite semantics on tools.\n- tests/app/test_facade/test_update.py\
+      \ — update path compatibility check run.\n- src/larva/core/validate.py — forbidden-field\
+      \ rejection for `tools` remains active.\n\n## Expected-Red Proof\n- Command:\
+      \ `uv run python -c \"from larva.core.patch import DEEP_MERGE_KEYS; print('tools'\
+      \ in DEEP_MERGE_KEYS)\"`\n- Actual output before implementation: `True`\n\n\
+      ## Green Proof\n- Command: `uv run pytest tests/core/test_patch.py tests/app/test_facade/test_update.py\
+      \ -v --tb=short`\n- Actual output after implementation: tests pass; tools removed\
+      \ from deep merge semantics.\n- Command: `uv run python -c \"from larva.core.patch\
+      \ import apply_patches, DEEP_MERGE_KEYS; print('tools in DEEP_MERGE_KEYS:',\
+      \ 'tools' in DEEP_MERGE_KEYS)\"`\n- Output: `tools in DEEP_MERGE_KEYS: False`\n\
+      \n## Changed files\n- src/larva/core/patch.py\n- tests/core/test_patch.py\n\n\
+      ## Remaining legacy hits in patch/update:\n- none in patch merge semantics;\
+      \ forbidden tools now rejected via canonical validation path.\n\n## Git Proof\n\
+      - Commit hash: `39715f6ab2982685e9fe2ad77b5017c9dafd5482`\n- `git show --pretty=oneline\
+      \ --name-only 39715f6`:\n  - src/larva/core/patch.py\n  - tests/core/test_patch.py"
   - id: canonical_cutover_impl.python_api_surface
     name: Cut over Python API component and persona outputs
     status: pending
