@@ -45907,22 +45907,53 @@ phases:
   - id: canonical_cutover_impl.component_loader
     name: Make toolset loading capability-only
     status: pending
-    description: Remove shell-level tools fallback from component loading and fail
-      closed on legacy toolset component content. Toolset components must be capability-only
-      at the hard-cut boundary.
+    description: 'Implement-and-verify step for src/larva/shell/components.py and
+      adjacent shell component query behavior. Remove shell-level tools fallback from
+      component loading and fail closed on legacy toolset component content. Toolset
+      components must be capability-only at the hard-cut boundary.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
     verification: Component loader tests prove legacy toolset content fails explicitly
       and canonical toolsets return capabilities only.
-    evidence_template: '## Component Loader
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - Behavior on canonical toolset:
+      For each ref in this step:
 
-      - Behavior on legacy toolset:
+      - <filename> — key passage or "NOT READ: <reason>"
 
-      - Tests run:
 
-      - Example rejection payload:'
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/shell/components.py
+
+      - tests/shell/test_components.py
+
+      - tests/shell/fixture_taxonomy.py
+
+
+      ## Example rejection payload:
+
+      '
     depends_on:
-    - canonical_cutover_impl.core_admission
+    - canonical_cutover_impl.patch_cutover
+    agent: python-executor
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
     status: pending
