@@ -45653,3 +45653,9 @@ phases:
   gate: Explicit stop/go gate before implementation
   depends_on:
   - canonical_cutover_prep
+- id: canonical_cutover_impl
+  name: Canonical Hard-Cut Implementation
+  status: locked
+  gate: All hidden legacy compatibility removed and public outputs canonical-only
+  depends_on:
+  - canonical_cutover_readiness
