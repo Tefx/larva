@@ -331,12 +331,17 @@ class FilesystemComponentStore:
     def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
         """Load a toolset component by name.
 
+        Canonical boundary rule: ``capabilities`` is required. Legacy ``tools``
+        field is not admissible — component store fails closed (raises
+        ComponentStoreError) rather than falling back.
+
         Args:
             name: Component name (without .yaml extension).
 
         Returns:
-            Ok(ToolsetComponent) with posture mappings.
-            Err(ComponentStoreError) if not found or parse error.
+            Ok(ToolsetComponent) with capability posture mappings.
+            Err(ComponentStoreError) if not found, parse error, or missing
+            capabilities (legacy toolset content rejected at hard-cut boundary).
         """
         yaml_result = self._load_yaml_component(
             name=name,
@@ -348,13 +353,26 @@ class FilesystemComponentStore:
 
         data = yaml_result.unwrap()
         if not isinstance(data, dict):
-            data = {}
+            return Failure(
+                self._error(
+                    f"Toolset {name} is not a valid mapping",
+                    component_type="toolset",
+                    component_name=name,
+                )
+            )
 
-        # Read capabilities (canonical field). Legacy 'tools' field is not
-        # emitted at canonical boundary; normalize if present in source.
+        # Canonical boundary: capabilities is required. Legacy 'tools' field
+        # is not admissible at cutover — fail closed rather than falling back.
         capabilities = data.get("capabilities")
         if capabilities is None:
-            capabilities = data.get("tools", {})
+            return Failure(
+                self._error(
+                    f"Toolset {name} is missing 'capabilities' field. "
+                    f"Legacy toolset content is not admissible at canonical cutover.",
+                    component_type="toolset",
+                    component_name=name,
+                )
+            )
 
         return Success(ToolsetComponent(capabilities=capabilities))
 
