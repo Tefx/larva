@@ -74,6 +74,7 @@ class TestFacadeSeamProof:
         assert persisted_artifact["list"] == [
             {
                 "id": "facade-live",
+                "description": "Persona facade-live",
                 "model": "gpt-4o-mini",
                 "spec_digest": persisted_artifact["list"][0]["spec_digest"],
             }

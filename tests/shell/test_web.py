@@ -50,6 +50,7 @@ from larva.shell.python_api_components import LarvaApiError
 
 _MINIMAL_SPEC: PersonaSpec = {
     "id": "test-persona",
+    "description": "Test persona",
     "prompt": "You are a test assistant.",
     "model": "test-model",
     "capabilities": {},
@@ -125,7 +126,12 @@ class MockFacade:
 
     def list(self) -> list[dict[str, Any]]:
         return [
-            {"id": s["id"], "model": s.get("model", ""), "spec_digest": s.get("spec_digest", "")}
+            {
+                "id": s["id"],
+                "description": s.get("description", ""),
+                "model": s.get("model", ""),
+                "spec_digest": s.get("spec_digest", ""),
+            }
             for s in self._registry.list()
         ]
 
@@ -227,12 +233,26 @@ class TestWebSurfaceEndpoints:
         assert resp.text.strip().startswith("<!DOCTYPE") or resp.text.strip().startswith("<html")
 
     def test_get_api_personas_returns_data_envelope(
-        self, mock_facade: MockFacade, monkeypatch: pytest.MonkeyPatch
+        self,
+        mock_facade: MockFacade,
+        mock_registry: CallRecordingRegistry,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """GET /api/personas returns {data: PersonaSummary[]}.
 
         Contract: INTERFACES.md line 113
         """
+        mock_registry.list_result = [
+            {
+                "id": "alpha",
+                "description": "Persona alpha",
+                "prompt": "You are alpha.",
+                "model": "gpt-4o-mini",
+                "capabilities": {},
+                "spec_version": "0.1.0",
+                "spec_digest": "sha256:alpha",
+            }
+        ]
         client = TestClient(app)
         monkeypatch.setattr(web_module, "list_personas", lambda: mock_facade.list())
 
@@ -242,6 +262,7 @@ class TestWebSurfaceEndpoints:
         data = resp.json()
         assert "data" in data
         assert isinstance(data["data"], list)
+        assert data["data"][0]["description"] == "Persona alpha"
 
     def test_get_api_personas_by_id_returns_spec(
         self,

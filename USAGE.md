@@ -20,7 +20,7 @@ larva.validate(spec)              → ValidationReport
 larva.assemble(components)        → PersonaSpec
 larva.register(spec)              → {id, registered}
 larva.resolve(id, overrides?)     → PersonaSpec
-larva.list()                      → [{id, spec_digest, model}]
+larva.list()                      → [{id, description, spec_digest, model}]
 larva.delete(id)                  → {id, deleted}
 larva.clear(confirm)              → {cleared, count}
 larva.component_list()            → {prompts, toolsets, constraints, models}
@@ -194,7 +194,12 @@ Enumerate all registered personas.
 **Returns:**
 ```json
 [
-  { "id": "code-reviewer", "spec_digest": "sha256:e3b0c442...", "model": "claude-opus-4-20250514" }
+  {
+    "id": "code-reviewer",
+    "description": "Reviews code changes with read-focused tooling.",
+    "spec_digest": "sha256:e3b0c442...",
+    "model": "claude-opus-4-20250514"
+  }
 ]
 ```
 
@@ -458,7 +463,7 @@ All errors use a single envelope shape:
 ### Workflow D: Discover available personas
 
 ```
-1. larva.list() → [{id, spec_digest, model}, ...]
+1. larva.list() → [{id, description, spec_digest, model}, ...]
 2. larva.resolve(id) → full spec for chosen persona
 ```
 

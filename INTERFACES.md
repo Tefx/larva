@@ -142,6 +142,19 @@ surface:
 | `GET` | `/api/components` | Return available prompt/toolset/constraint/model names |
 | `GET` | `/api/components/{component_type}/{name}` | Return one component or a typed HTTP error |
 
+### PersonaSummary Shape
+
+`PersonaSummary` is returned by `GET /api/personas` (list operation):
+
+```json
+{
+  "id": "developer",
+  "description": "Local coding persona",
+  "spec_digest": "sha256:...",
+  "model": "claude-sonnet-4"
+}
+```
+
 Component-kind rule for public surfaces:
 
 - [Proven] Canonical `component_type` vocabulary is `prompts | toolsets | constraints | models`.

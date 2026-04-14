@@ -814,6 +814,8 @@ class TestListCommand:
         ids = [item["id"] for item in data]
         assert "persona-a" in ids
         assert "persona-b" in ids
+        assert data[0]["description"] == "Persona persona-a"
+        assert data[1]["description"] == "Persona persona-b"
 
     def test_list_empty_registry_returns_exit_ok_with_empty_list(self) -> None:
         """List with empty registry returns exit code 0 with empty list."""

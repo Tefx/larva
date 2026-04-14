@@ -424,12 +424,22 @@ class TestPythonApiList:
 
         # Verify delegation
         assert result == [
-            {"id": "alpha", "spec_digest": "sha256:a", "model": "gpt-4o-mini"},
-            {"id": "beta", "spec_digest": "sha256:b", "model": "gpt-4o-mini"},
+            {
+                "id": "alpha",
+                "description": "Persona alpha",
+                "spec_digest": "sha256:a",
+                "model": "gpt-4o-mini",
+            },
+            {
+                "id": "beta",
+                "description": "Persona beta",
+                "spec_digest": "sha256:b",
+                "model": "gpt-4o-mini",
+            },
         ]
 
     def test_list_returns_summaries(self, facade_fixture: FacadeFixture) -> None:
-        """list() must return list of PersonaSummary with id, spec_digest, model."""
+        """list() must return list of PersonaSummary with id, description, spec_digest, model."""
         specs = [
             _canonical_spec("test1", digest="sha256:abc"),
             _canonical_spec("test2", digest="sha256:def"),
@@ -438,6 +448,7 @@ class TestPythonApiList:
         result = python_api.list()
         assert len(result) == 2
         assert result[0]["id"] == "test1"
+        assert result[0]["description"] == "Persona test1"
         assert result[0]["spec_digest"] == "sha256:abc"
         assert result[0]["model"] == "gpt-4o-mini"
 

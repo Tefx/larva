@@ -587,6 +587,7 @@ class TestMCPListSuccessShape:
         assert len(summaries) == 2
         for summary in summaries:
             assert "id" in summary
+            assert "description" in summary
             assert "spec_digest" in summary
             assert "model" in summary
 
@@ -1297,7 +1298,9 @@ class TestMCPHandlersImplementation:
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["id"] == "alpha"
+        assert result[0]["description"] == "Persona alpha"
         assert result[1]["id"] == "beta"
+        assert result[1]["description"] == "Persona beta"
 
     def test_handle_list_failure_returns_error_envelope(self) -> None:
         """Test handle_list returns error envelope on failure."""

@@ -140,7 +140,7 @@ larva.validate(spec)              -> ValidationReport
 larva.assemble(components)        -> PersonaSpec
 larva.register(spec)              -> {id, registered}
 larva.resolve(id, overrides?)     -> PersonaSpec
-larva.list()                      -> [{id, spec_digest, model}]
+larva.list()                      -> [{id, description, spec_digest, model}]
 larva.update(id, patches)         -> PersonaSpec
 larva.clone(source_id, new_id)    -> PersonaSpec
 larva.delete(id)                  -> {id, deleted}

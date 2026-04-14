@@ -158,7 +158,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
 
         Returns:
             List of persona summaries on success:
-            [{"id": str, "spec_digest": str, "model": str}, ...]
+            [{"id": str, "description": str, "spec_digest": str, "model": str}, ...]
             Or error envelope on failure.
         """
         validated_params = self._validated_params("larva_list", params, allowed_keys=set())

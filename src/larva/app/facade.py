@@ -73,9 +73,17 @@ class RegisteredPersona(TypedDict):
 
 
 class PersonaSummary(TypedDict):
-    """List response shape for registered persona summaries."""
+    """List response shape for registered persona summaries.
+
+    Fields:
+        id: Persona identifier.
+        description: Human-readable persona description.
+        spec_digest: Canonical digest of the persona spec.
+        model: Model identifier used by the persona.
+    """
 
     id: str
+    description: str
     spec_digest: str
     model: str
 
@@ -355,17 +363,22 @@ class DefaultLarvaFacade(LarvaFacade):
 
     def _summary_from_spec(self, spec: PersonaSpec) -> Result[PersonaSummary, LarvaError]:
         persona_id = spec.get("id")
+        description = spec.get("description")
         spec_digest = spec.get("spec_digest")
         model = spec.get("model")
         if (
             not isinstance(persona_id, str)
+            or not isinstance(description, str)
             or not isinstance(spec_digest, str)
             or not isinstance(model, str)
         ):
             return Failure(
                 self._error(
                     code="PERSONA_INVALID",
-                    message="registry record is malformed: expected string id/spec_digest/model",
+                    message=(
+                        "registry record is malformed: expected string "
+                        "id/description/spec_digest/model"
+                    ),
                     details={
                         "record": dict(spec),
                     },
@@ -374,6 +387,7 @@ class DefaultLarvaFacade(LarvaFacade):
         return Success(
             {
                 "id": persona_id,
+                "description": description,
                 "spec_digest": spec_digest,
                 "model": model,
             }

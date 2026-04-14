@@ -35,8 +35,18 @@ class TestFacadeList:
 
         assert isinstance(result, Success)
         assert result.unwrap() == [
-            {"id": "alpha", "spec_digest": "sha256:a", "model": "gpt-4o-mini"},
-            {"id": "beta", "spec_digest": "sha256:b", "model": "gpt-4o-mini"},
+            {
+                "id": "alpha",
+                "description": "Persona alpha",
+                "spec_digest": "sha256:a",
+                "model": "gpt-4o-mini",
+            },
+            {
+                "id": "beta",
+                "description": "Persona beta",
+                "spec_digest": "sha256:b",
+                "model": "gpt-4o-mini",
+            },
         ]
 
     def test_list_returns_exactly_empty_list_for_empty_registry(self) -> None:
@@ -80,7 +90,14 @@ class TestFacadeList:
         assert error["details"]["path"] == "/tmp/index.json"
 
     def test_list_malformed_registry_record_returns_persona_invalid_without_keyerror(self) -> None:
-        malformed = cast("PersonaSpec", {"id": "alpha", "model": "gpt-4o-mini"})
+        malformed = cast(
+            "PersonaSpec",
+            {
+                "id": "alpha",
+                "spec_digest": "sha256:alpha",
+                "model": "gpt-4o-mini",
+            },
+        )
         registry = InMemoryRegistryStore(list_result=Success([malformed]))
         facade, _, _, _ = _facade(registry=registry)
 
@@ -90,4 +107,5 @@ class TestFacadeList:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert "malformed" in error["message"]
+        assert "description" in error["message"]
         assert "record" in error["details"]
