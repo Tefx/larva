@@ -45301,3 +45301,98 @@ phases:
     depends_on:
     - web_preset_redesign_followup.web-preset-projection
     agent: frontend-engineer-tacit
+  - id: web_preset_redesign_followup.web-compose-persona-reframe
+    name: Reframe Assemble Persona into an output-first compose persona flow plus
+      docs/tests sync
+    status: pending
+    description: 'Rework the web compose flow so the assemble modal becomes an output-first
+      compose-persona surface and sync the directly impacted tests/docs for the approved
+      terminology.
+
+
+      Scope:
+
+      - `src/larva/shell/web_ui.html`
+
+      - `tests/shell/test_web.py`
+
+      - minimal directly affected docs (`INTERFACES.md`, `README.md`, `USER_GUIDE.md`,
+      or `USAGE.md`) only where the web UI wording/behavior is described
+
+
+      Required outcomes:
+
+      - Rename the web flow from assembly-jargon-first wording toward compose-persona
+      / output-first copy
+
+      - `toolsets` are presented as capability presets in the compose flow
+
+      - `constraints` are no longer a top-level picker in the compose flow; instead
+      approved behavior preset affordances may prefill `can_spawn` / `compaction_prompt`,
+      with those fields remaining directly editable in the UI
+
+      - Canonical assemble submission still uses the unchanged backend fields expected
+      by `assemble()`
+
+      - Update focused web tests and the minimal web-facing docs so they describe
+      the new preset terminology and compose flow without rewriting canonical backend
+      docs as if the core API changed
+
+
+      Completion criteria:
+
+      - Compose flow preserves backend semantics but no longer exposes `constraints`
+      as a primary end-user assembly concept
+
+      - Tests and docs directly covering the web UI are updated in the same step
+
+      - Proof includes both main path and failure path coverage for any preset-prefill
+      behavior'
+    verification: '- Focused web tests cover compose-persona copy, preset-prefill
+      behavior, and direct editability of `can_spawn` / `compaction_prompt`
+
+      - Documentation diff is limited to web-facing terminology/behavior and explicitly
+      does not redefine canonical internal component categories
+
+      - Run changed-file verification with invar guard'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Add or update focused web tests that fail before the compose-flow changes
+
+      - Paste the failing output from the first run
+
+
+      ## Main Path Proof
+
+      - Compose flow labels/screens changed:
+
+      - Capability preset behavior:
+
+      - Direct edit surfaces for `can_spawn` / `compaction_prompt`:
+
+
+      ## Failure/Risk Path Proof
+
+      - Show the regression covering preset-prefill behavior or the absence of top-level
+      constraints picker
+
+
+      ## Green Verification
+
+      - Commands run:
+
+      - Output:
+
+      - Docs updated:
+
+      '
+    depends_on:
+    - web_preset_redesign_followup.web-preset-library-ui
+    agent: frontend-engineer-tacit
