@@ -45796,6 +45796,27 @@ phases:
   gate: All hidden legacy compatibility removed and public outputs canonical-only
   depends_on:
   - canonical_cutover_readiness
+  steps:
+  - id: canonical_cutover_impl.core_admission
+    name: Remove core legacy admission logic
+    status: pending
+    description: Delete hidden compatibility logic from core admission and merge paths.
+      Remove tools-era normalization, toolset fallback in core assembly, and tools
+      deep-merge behavior so forbidden fields are rejected instead of repaired or
+      merged.
+    verification: Focused core tests prove tools is rejected rather than normalized
+      or merged, and no deep-merge of legacy tools remains.
+    evidence_template: '## Core Admission
+
+      - Removed branches/paths:
+
+      - Tests run:
+
+      - Red before:
+
+      - Green after:
+
+      - Remaining legacy hits in core:'
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
