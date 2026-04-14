@@ -45226,3 +45226,78 @@ phases:
 
       '
     agent: python-executor
+  - id: web_preset_redesign_followup.web-preset-library-ui
+    name: Reframe the Components view as a preset library
+    status: pending
+    description: 'Update the packaged web UI component browser into a preset-library
+      view that uses user-facing terminology while preserving the internal component
+      kinds under the hood.
+
+
+      Scope:
+
+      - `src/larva/shell/web_ui.html`
+
+
+      Required outcomes:
+
+      - Components page presents `prompts`, `toolsets`, `constraints`, and `models`
+      with user-facing copy rather than leaking raw assembly jargon as the primary
+      headings
+
+      - `toolsets` are presented as capability presets
+
+      - `constraints` are described as behavioral/policy presets when shown in the
+      library, not as a required compose primitive
+
+      - The browser remains able to inspect the underlying component content/details
+      without changing the canonical component types sent to the backend
+
+      - If helpful, show a distinction between user-facing preset label and internal
+      source kind/name
+
+
+      Completion criteria:
+
+      - The Components page reads like a preset library rather than an internal registry
+      browser
+
+      - Rendering is complete in the real HTML surface; wording changes alone are
+      insufficient without visible layout/content updates'
+    verification: '- Focused HTML/web tests prove the preset-library wording/rendering
+      is present and raw internal terms are no longer the primary user-facing headings
+      for this surface
+
+      - Evidence includes actual rendered HTML snippets or DOM assertions, not only
+      prose'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Add or update a focused UI/HTML assertion that fails before the redesign
+
+      - Paste the failing output from the first run
+
+
+      ## Frontend Completion Criteria (rendering required)
+
+      - Show the rendered section headings / labels that changed
+
+      - Confirm visible preset-library treatment exists in the actual HTML
+
+
+      ## Green Verification
+
+      - Commands/tests run:
+
+      - Output or DOM evidence:
+
+      '
+    depends_on:
+    - web_preset_redesign_followup.web-preset-projection
+    agent: frontend-engineer-tacit
