@@ -45920,3 +45920,29 @@ phases:
       - Removed transition wording:
 
       - Remaining doc contradictions:'
+  - id: canonical_cutover_final.verify
+    name: Run final hard-cut verification
+    status: pending
+    description: 'Run the explicit hard-cut verification set: no-legacy scan, snake_case
+      scan, focused pytest gate, XPASS check, larva-legacy-field-rejections.jsonl
+      tally generation, and invar guard.'
+    verification: Required checks are green, larva-legacy-field-rejections.jsonl exists
+      with expected coverage, and no unreviewed XPASS remains in the focused verification
+      set.
+    evidence_template: '## Final Verification
+
+      - No-legacy scan:
+
+      - Snake_case scan:
+
+      - Focused pytest output:
+
+      - XPASS status:
+
+      - invar guard output:
+
+      - JSONL artifact path:
+
+      - JSONL sample lines:'
+    depends_on:
+    - canonical_cutover_final.docs_sync
