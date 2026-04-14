@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import webbrowser
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from larva.shell.python_api import (
     LarvaApiError,
@@ -52,6 +52,93 @@ from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 
 STATIC_DIR = Path(__file__).parent
+
+# -----------------------------------------------------------------------------
+# Web-Facing Component Projection
+# -----------------------------------------------------------------------------
+# Canonical inputs remain: prompts | toolsets | constraints | models
+# Web-facing UI layer uses: Prompts | Capability Presets | Constraints | Models
+#
+
+
+class ComponentTypeProjection(TypedDict):
+    """Web-facing projection for one canonical component kind.
+
+    Canonical inputs (prompts, toolsets, constraints, models) are preserved
+    as authoritative internal categories. This projection provides UI-only
+    display metadata so the web UI can render preset-library and compose-persona
+    wording without inventing new backend semantics.
+
+    Fields:
+        canonical_kind: Internal canonical name (e.g. 'toolsets'). MUST NOT be
+            changed by UI — this is the authoritative key for assemble requests.
+        display_label: User-facing singular name (e.g. 'Capability Preset').
+        plural_display_label: User-facing plural name (e.g. 'Capability Presets').
+        description: Human-readable description for UI tooltips and placeholders.
+        singular_alias: Accepted singular alias at ingress (e.g. 'toolset').
+        assemble_field: The field name used in /api/personas/assemble requests.
+        ui_hint: UI-specific routing hint (e.g. 'preset' for toolsets).
+    """
+
+    canonical_kind: str
+    display_label: str
+    plural_display_label: str
+    description: str
+    singular_alias: str
+    assemble_field: str
+    ui_hint: str
+
+
+# Canonical kind -> web projection (order matters for /api/components/projection)
+_CANONICAL_KIND_PROJECTIONS: dict[str, ComponentTypeProjection] = {
+    "prompts": {
+        "canonical_kind": "prompts",
+        "display_label": "Prompt",
+        "plural_display_label": "Prompts",
+        "description": "System prompt fragments that define persona behavior",
+        "singular_alias": "prompt",
+        "assemble_field": "prompts",
+        "ui_hint": "prompt",
+    },
+    "toolsets": {
+        "canonical_kind": "toolsets",
+        "display_label": "Capability Preset",
+        "plural_display_label": "Capability Presets",
+        "description": "Bundles of tool capability declarations (read, write, destructive)",
+        "singular_alias": "toolset",
+        "assemble_field": "toolsets",
+        "ui_hint": "preset",
+    },
+    "constraints": {
+        "canonical_kind": "constraints",
+        "display_label": "Constraint",
+        "plural_display_label": "Constraints",
+        "description": "Persona constraints (spawn policy, compaction prompts)",
+        "singular_alias": "constraint",
+        "assemble_field": "constraints",
+        "ui_hint": "constraint",
+    },
+    "models": {
+        "canonical_kind": "models",
+        "display_label": "Model",
+        "plural_display_label": "Models",
+        "description": "Model configuration and parameters",
+        "singular_alias": "model",
+        "assemble_field": "model",
+        "ui_hint": "model",
+    },
+}
+
+
+def get_component_projections() -> list[ComponentTypeProjection]:
+    """Return web-facing projections for all canonical component kinds.
+
+    This projection is UI-only metadata — it does not change canonical inputs.
+    The web UI uses display_label and plural_display_label for preset-library
+    and compose-persona wording. assemble_field is the authoritative key for
+    assemble requests.
+    """
+    return list(_CANONICAL_KIND_PROJECTIONS.values())
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +293,23 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
             return {"data": component_show(component_type, name)}
         except LarvaApiError as e:
             return _component_api_error_response(e)
+
+    @app.get("/api/components/projection")
+    def api_components_projection() -> Any:
+        """Return web-facing projection metadata for component kinds.
+
+        This endpoint provides UI-only display metadata (labels, descriptions)
+        for rendering the preset-library and compose-persona UI without
+        inventing new backend semantics.
+
+        Canonical component kind vocabulary (prompts, toolsets, constraints,
+        models) is preserved as the authoritative internal category. This
+        projection does NOT change any canonical input fields.
+
+        Contract: this endpoint is additive — existing /api/components behavior
+        is unchanged.
+        """
+        return {"data": get_component_projections()}
 
     @app.get("/")
     def serve_index() -> FileResponse:

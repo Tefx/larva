@@ -547,6 +547,73 @@ class TestWebSurfaceEndpoints:
         assert resp.status_code == 200
         assert "data" in resp.json()
 
+    def test_get_api_components_projection_returns_ui_metadata(self) -> None:
+        """GET /api/components/projection returns web-facing display metadata.
+
+        The projection endpoint provides UI-only display metadata (labels,
+        descriptions) for rendering the preset-library and compose-persona UI.
+
+        Canonical component kind vocabulary (prompts, toolsets, constraints,
+        models) is preserved as the authoritative internal category. The
+        projection does NOT change any canonical input fields.
+
+        Contract: this endpoint is additive — existing /api/components behavior
+        is unchanged.
+        """
+        client = TestClient(app)
+        resp = client.get("/api/components/projection")
+
+        assert resp.status_code == 200
+        data = resp.json()["data"]
+        assert isinstance(data, list)
+        assert len(data) == 4
+
+        # Verify projection structure for each canonical kind
+        for item in data:
+            assert "canonical_kind" in item
+            assert "display_label" in item
+            assert "plural_display_label" in item
+            assert "description" in item
+            assert "singular_alias" in item
+            assert "assemble_field" in item
+            assert "ui_hint" in item
+
+        # Verify toolsets projection uses "Capability Preset" wording
+        toolsets_proj = next(p for p in data if p["canonical_kind"] == "toolsets")
+        assert toolsets_proj["display_label"] == "Capability Preset"
+        assert toolsets_proj["plural_display_label"] == "Capability Presets"
+        assert toolsets_proj["assemble_field"] == "toolsets"
+        assert toolsets_proj["ui_hint"] == "preset"
+
+        # Verify prompts still use "Prompt" wording
+        prompts_proj = next(p for p in data if p["canonical_kind"] == "prompts")
+        assert prompts_proj["display_label"] == "Prompt"
+        assert prompts_proj["plural_display_label"] == "Prompts"
+        assert prompts_proj["ui_hint"] == "prompt"
+
+        # Verify constraints are still exposed (not hidden from UI)
+        constraints_proj = next(p for p in data if p["canonical_kind"] == "constraints")
+        assert constraints_proj["display_label"] == "Constraint"
+        assert constraints_proj["assemble_field"] == "constraints"
+
+    def test_get_api_components_projection_is_additive(self) -> None:
+        """The projection endpoint does not change existing /api/components behavior.
+
+        Both endpoints must continue to work independently.
+        """
+        client = TestClient(app)
+
+        # Original endpoint still works
+        resp_components = client.get("/api/components")
+        assert resp_components.status_code == 200
+        assert "prompts" in resp_components.json()["data"]
+        assert "toolsets" in resp_components.json()["data"]
+
+        # Projection endpoint is additive
+        resp_projection = client.get("/api/components/projection")
+        assert resp_projection.status_code == 200
+        assert len(resp_projection.json()["data"]) == 4
+
 
 # -----------------------------------------------------------------------------
 # Tests: Convenience-only UI behavior documentation
