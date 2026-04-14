@@ -46530,7 +46530,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: canonical_cutover_impl.assemble_cutover
     name: Remove assembly tools fallback
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for src/larva/core/assemble.py only. Remove
       any fallback or merge behavior that treats toolset tools content as admissible
       assembly input for canonical cutover behavior. Toolset assembly must be capability-only
@@ -46578,6 +46578,22 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-14T21:31:48.825680+00:00'
+    done_at: '2026-04-14T21:39:53.578545+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/assemble.py\
+      \ — `_merge_capabilities` removed `tools` fallback and now raises fail-closed\
+      \ error when `capabilities` missing.\n- tests/core/test_assemble.py — canonical-only\
+      \ behavior tests including `test_tools_only_toolset_fails_closed`.\n\n## Expected-Red\
+      \ Proof\n- Command: `uv run pytest tests/core/test_assemble.py::TestAssembleCandidateBehavior::test_tools_only_toolset_fails_closed\
+      \ -v`\n- Actual failing output before implementation:\n  `DID NOT RAISE AssemblyError`\
+      \ (tools-only toolsets were accepted pre-fix)\n\n## Green Proof\n- Command:\
+      \ `uv run pytest tests/core/test_assemble.py -v`\n- Actual passing output after\
+      \ implementation: `44 passed in 0.11s`\n\n## Changed files\n- src/larva/core/assemble.py\n\
+      - tests/core/test_assemble.py\n\n## Remaining legacy hits in assembly:\n- `_FORBIDDEN_OVERRIDE_FIELDS`\
+      \ includes `tools` intentionally for rejection path; no admissive fallback remains.\n\
+      \n## Git Proof\n- Commit hash(es): `3f50e38089af60e0db73f37db5373f8d41592e08`\n\
+      - `git status --short`: only cache dirs untracked (`.pytest_cache`, `.ruff_cache`,\
+      \ `hypothesis_database`)\n- `git show --pretty=oneline --name-only 3f50e38`:\n\
+      \  - src/larva/core/assemble.py\n  - tests/core/test_assemble.py"
   - id: canonical_cutover_impl.patch_cutover
     name: Remove patch-time tools merge semantics
     status: pending
