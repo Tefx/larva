@@ -45755,11 +45755,19 @@ phases:
   - id: canonical_cutover_prep.gate
     name: Prep completeness gate
     status: pending
-    description: Check that policy is pinned and the readiness harness is fully defined
-      before starting any implementation work.
+    description: phase-check gate. Confirm that policy is pinned and the readiness
+      harness is fully defined before any implementation work begins. This gate protects
+      the implementation phase from entering with unresolved authority questions.
     verification: Gate passes only if there is no remaining policy ambiguity and the
       red-first harness is complete enough to block bad implementation work.
-    evidence_template: '## Gate Verdict
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Verdict
 
       - Policy pin: PASS/FAIL
 
@@ -45775,6 +45783,7 @@ phases:
     depends_on:
     - canonical_cutover_prep.policy_pin
     - canonical_cutover_prep.harness_define_red
+    agent: gate-reviewer-tacit
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: locked
