@@ -45399,7 +45399,7 @@ phases:
   - id: web_preset_redesign_followup.web-compose-persona-reframe
     name: Reframe Assemble Persona into an output-first compose persona flow plus
       docs/tests sync
-    status: pending
+    status: claimed
     description: 'Rework the web compose flow so the assemble modal becomes an output-first
       compose-persona surface and sync the directly impacted tests/docs for the approved
       terminology.
@@ -45491,6 +45491,8 @@ phases:
     depends_on:
     - web_preset_redesign_followup.web-preset-library-ui
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-04-14T18:22:48.962414+00:00'
   - id: web_preset_redesign_followup.gate
     name: Gate the lean web preset redesign follow-up
     status: pending
