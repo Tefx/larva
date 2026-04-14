@@ -45273,7 +45273,7 @@ phases:
       - Result: web tests pass, contrib web tests pass, invar guard full scan passed'
   - id: web_preset_redesign_followup.web-preset-library-ui
     name: Reframe the Components view as a preset library
-    status: pending
+    status: claimed
     description: 'Update the packaged web UI component browser into a preset-library
       view that uses user-facing terminology while preserving the internal component
       kinds under the hood.
@@ -45346,6 +45346,8 @@ phases:
     depends_on:
     - web_preset_redesign_followup.web-preset-projection
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-04-14T18:16:14.814942+00:00'
   - id: web_preset_redesign_followup.web-compose-persona-reframe
     name: Reframe Assemble Persona into an output-first compose persona flow plus
       docs/tests sync
