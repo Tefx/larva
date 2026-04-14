@@ -45137,3 +45137,8 @@ phases:
 
       - Pre-existing lint/type warning debt only; non-blocking and not introduced
       by this remediation'
+- id: web_preset_redesign_followup
+  name: Web Preset Terminology Redesign Follow-up
+  status: pending
+  depends_on:
+  - post_sweep_review
