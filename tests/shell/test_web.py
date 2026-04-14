@@ -590,6 +590,40 @@ class TestWebUiHtmlContent:
             "Staged items should have visual indicator"
         )
 
+    def test_served_html_contains_three_state_spawn_policy_control(self) -> None:
+        """HTML exposes the approved three-state spawn policy affordance.
+
+        Source: user-approved web UI copy and INTERFACES.md convenience-only UI behavior.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "SPAWN POLICY" in content
+        assert 'aria-label="Spawn policy"' in content
+        assert ">None</button>" in content
+        assert ">Any</button>" in content
+        assert ">Specific</button>" in content
+        assert "Cannot spawn child personas" in content
+        assert "Can spawn any persona" in content
+        assert "Can spawn only listed personas" in content
+        assert "setSpawnPolicyMode('none')" in content
+        assert "setSpawnPolicyMode('any')" in content
+        assert "setSpawnPolicyMode('specific')" in content
+        assert "getSpawnSpecificTags" in content
+        assert "add persona id..." in content
+
+    def test_served_html_no_longer_uses_old_bool_shaped_spawn_toggle_copy(self) -> None:
+        """Spawn policy UI should not present the old bool-ish toggle wording as primary UX.
+
+        Source: user-approved replacement of the old can_spawn toggle/tag bifurcation.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert '<div class="meta-label">can_spawn</div>' not in content
+        assert "Set to true" not in content
+        assert "@click=\"stageChange('can_spawn', !getVal('can_spawn'))\"" not in content
+
     def test_html_contains_api_endpoint_references(self) -> None:
         """HTML UI references normative REST endpoints from contract.
 

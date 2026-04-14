@@ -200,6 +200,22 @@
     transition: left 0.2s;
   }
 
+  /* Spawn policy */
+  .spawn-policy-options {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .spawn-policy-option {
+    background: var(--bg-elevated); color: var(--text-secondary);
+    border: none; border-radius: 4px; padding: 6px 10px;
+    font-family: inherit; font-size: 12px; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .spawn-policy-option:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .spawn-policy-option:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--accent); }
+  .spawn-policy-option.active { background: var(--accent); color: white; }
+  .spawn-policy-help { color: var(--text-muted); font-size: 11px; margin-top: 8px; }
+  .spawn-policy-specific { margin-top: 10px; }
+
   /* Description clickable */
   .desc-display {
     background: var(--bg-surface); padding: 8px 12px;
@@ -510,30 +526,43 @@
               <input class="inline-input" x-model="editValue" @blur="commitEdit('model')" @keydown.enter="commitEdit('model')" @keydown.escape="editing = null" x-ref="editInput">
             </template>
           </div>
-          <!-- can_spawn -->
+          <!-- Convenience-only UI mapping per INTERFACES.md: can_spawn false|true|list[str] -> None|Any|Specific -->
           <div class="meta-chip" :class="{ staged: staged.can_spawn !== undefined }">
-            <div class="meta-label">can_spawn</div>
-            <template x-if="!isSpawnArray()">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <button class="toggle" :class="{ on: getVal('can_spawn') === true }" @click="stageChange('can_spawn', !getVal('can_spawn'))">
-                  <div class="toggle-knob" :style="{ left: getVal('can_spawn') === true ? '26px' : '2px' }"></div>
-                </button>
-                <span class="meta-value" x-text="getVal('can_spawn')"></span>
-              </div>
-            </template>
-            <template x-if="isSpawnArray()">
-              <div>
+            <div class="meta-label">SPAWN POLICY</div>
+            <div class="spawn-policy-options" role="radiogroup" aria-label="Spawn policy">
+              <button
+                class="spawn-policy-option"
+                :class="{ active: getSpawnPolicyMode() === 'none' }"
+                :aria-checked="getSpawnPolicyMode() === 'none'"
+                role="radio"
+                @click="setSpawnPolicyMode('none')"
+              >None</button>
+              <button
+                class="spawn-policy-option"
+                :class="{ active: getSpawnPolicyMode() === 'any' }"
+                :aria-checked="getSpawnPolicyMode() === 'any'"
+                role="radio"
+                @click="setSpawnPolicyMode('any')"
+              >Any</button>
+              <button
+                class="spawn-policy-option"
+                :class="{ active: getSpawnPolicyMode() === 'specific' }"
+                :aria-checked="getSpawnPolicyMode() === 'specific'"
+                role="radio"
+                @click="setSpawnPolicyMode('specific')"
+              >Specific</button>
+            </div>
+            <div class="spawn-policy-help" x-text="getSpawnPolicyHelp()"></div>
+            <template x-if="getSpawnPolicyMode() === 'specific'">
+              <div class="spawn-policy-specific">
                 <div class="tag-list">
-                  <template x-for="(tag, i) in getVal('can_spawn')" :key="i">
+                  <template x-for="(tag, i) in getSpawnSpecificTags()" :key="tag + ':' + i">
                     <span class="tag">
                       <span x-text="tag"></span>
-                      <button class="tag-remove" @click="removeSpawnTag(i)">&times;</button>
+                      <button class="tag-remove" @click="removeSpawnTag(i)" :aria-label="'Remove allowed persona ' + tag">&times;</button>
                     </span>
                   </template>
-                  <input class="tag-input" placeholder="add id..." @keydown.enter.prevent="addSpawnTag($event.target); $event.target.value = ''">
-                </div>
-                <div style="margin-top:4px;">
-                  <a href="#" style="color:var(--text-muted);font-size:10px;" @click.prevent="stageChange('can_spawn', true)">Set to true</a>
+                  <input class="tag-input" placeholder="add persona id..." aria-label="Add allowed persona id" @keydown.enter.prevent="addSpawnTag($event.target); $event.target.value = ''">
                 </div>
               </div>
             </template>
@@ -900,6 +929,7 @@ function larvaApp() {
     editingParams: false,
     capabilityEntries: [],
     paramEntries: [],
+    spawnSpecificDraft: [],
     deleteConfirm: false,
     deleteText: '',
     showRawJson: false,
@@ -999,6 +1029,7 @@ function larvaApp() {
         const resp = await fetch(`/api/personas/${id}`);
         const data = await resp.json();
         if (data.data) {
+          this.syncSpawnSpecificDraftFromValue(data.data.can_spawn);
           this.personaDetails = { ...this.personaDetails, [id]: data.data };
           this.personaErrors = Object.fromEntries(
             Object.entries(this.personaErrors).filter(([personaId]) => personaId !== id)
@@ -1044,6 +1075,7 @@ function larvaApp() {
       this.editingParams = false;
       this.showRawJson = false;
       await this.ensurePersonaDetail(id);
+      this.syncSpawnSpecificDraftFromValue(this.getVal('can_spawn'));
     },
 
     getVal(field) {
@@ -1053,6 +1085,9 @@ function larvaApp() {
 
     stageChange(field, value) {
       this.staged = { ...this.staged, [field]: value };
+      if (field === 'can_spawn' && Array.isArray(value)) {
+        this.spawnSpecificDraft = [...value];
+      }
     },
 
     startEdit(field, value) {
@@ -1138,21 +1173,54 @@ function larvaApp() {
     },
 
     // can_spawn helpers
+    syncSpawnSpecificDraftFromValue(value) {
+      this.spawnSpecificDraft = Array.isArray(value) ? [...value] : [];
+    },
+
     isSpawnArray() {
       const val = this.getVal('can_spawn');
       return Array.isArray(val);
     },
 
+    getSpawnPolicyMode() {
+      const val = this.getVal('can_spawn');
+      if (Array.isArray(val)) return 'specific';
+      return val === true ? 'any' : 'none';
+    },
+
+    getSpawnPolicyHelp() {
+      const mode = this.getSpawnPolicyMode();
+      if (mode === 'any') return 'Can spawn any persona';
+      if (mode === 'specific') return 'Can spawn only listed personas';
+      return 'Cannot spawn child personas';
+    },
+
+    getSpawnSpecificTags() {
+      const val = this.getVal('can_spawn');
+      if (Array.isArray(val)) return val;
+      return this.spawnSpecificDraft;
+    },
+
+    setSpawnPolicyMode(mode) {
+      if (mode === 'specific') {
+        this.stageChange('can_spawn', [...this.spawnSpecificDraft]);
+        return;
+      }
+      this.stageChange('can_spawn', mode === 'any');
+    },
+
     removeSpawnTag(i) {
-      const arr = [...this.getVal('can_spawn')];
+      const arr = [...this.getSpawnSpecificTags()];
       arr.splice(i, 1);
-      this.stageChange('can_spawn', arr.length ? arr : false);
+      this.spawnSpecificDraft = arr;
+      this.stageChange('can_spawn', arr);
     },
 
     addSpawnTag(input) {
       const val = input.value.trim();
       if (!val) return;
-      const arr = [...(this.getVal('can_spawn') || []), val];
+      const arr = [...this.getSpawnSpecificTags(), val];
+      this.spawnSpecificDraft = arr;
       this.stageChange('can_spawn', arr);
     },
 
@@ -1160,6 +1228,7 @@ function larvaApp() {
     async saveChanges() {
       if (!this.selected || !this.stagedCount) return;
       const savedId = this.selected;
+      const savedCanSpawn = this.staged.can_spawn;
       const patchBody = JSON.stringify(this.staged);
       console.log('[larva] Saving patches for', savedId, ':', patchBody);
       try {
@@ -1179,6 +1248,7 @@ function larvaApp() {
         this.editingParams = false;
         this.editingPrompt = false;
         this.editing = null;
+        this.syncSpawnSpecificDraftFromValue(savedCanSpawn);
         this.personaDetails = Object.fromEntries(
           Object.entries(this.personaDetails).filter(([personaId]) => personaId !== savedId)
         );
@@ -1205,6 +1275,7 @@ function larvaApp() {
       this.editingPrompt = false;
       this.editingCapabilities = false;
       this.editingParams = false;
+      this.syncSpawnSpecificDraftFromValue(this.selectedPersona?.can_spawn);
     },
 
     // Delete

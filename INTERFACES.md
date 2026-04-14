@@ -175,6 +175,12 @@ fidelity, not as separate normative API guarantees:
 - prompt copy affordance is present in the served HTML and uses the browser clipboard API
 - success icon feedback after copy is local UI state only
 - browser auto-open on startup is operator convenience only
+- the packaged single-page detail pane presents `can_spawn` as a three-state
+  `SPAWN POLICY` control that maps UI state to the unchanged canonical field:
+  `None -> false`, `Any -> true`, `Specific -> list[str]`
+- `Specific` mode shows the listed-persona tag editor and preserves list-mode
+  editing as convenience UI behavior over the canonical `bool | list[str]`
+  schema; this does not change the underlying PersonaSpec contract
 
 #### Contrib-only convenience surface
 
