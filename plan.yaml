@@ -45766,6 +45766,30 @@ phases:
       - Remaining work is implementation-only: YES/NO
 
       - Notes:'
+  - id: canonical_cutover_readiness.stop_go_gate
+    name: Stop/go readiness gate
+    status: pending
+    description: 'Explicit blocker step. Do not enter implementation unless readiness
+      is proven: no policy ambiguity, no undefined scan authority, no unresolved XPASS
+      rule, and no unclear legacy-record handling.'
+    verification: This step returns GO only when the repo is ready for deletion-style
+      implementation. If any blocker remains, the verdict must be STOP with an exact
+      blocker list.
+    evidence_template: '## Stop/Go Verdict
+
+      - Policy ambiguity remaining: YES/NO
+
+      - Scan authority pinned: YES/NO
+
+      - XPASS disposition pinned: YES/NO
+
+      - Legacy record policy pinned: YES/NO
+
+      - Verdict: GO/STOP
+
+      - Blockers if STOP:'
+    depends_on:
+    - canonical_cutover_readiness.rereview
 - id: canonical_cutover_impl
   name: Canonical Hard-Cut Implementation
   status: locked
