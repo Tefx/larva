@@ -46255,6 +46255,69 @@ phases:
     depends_on:
     - canonical_cutover_impl.transport_surfaces
     agent: python-executor
+  - id: canonical_cutover_impl.cli_web_surface
+    name: Cut over CLI and web public outputs
+    status: pending
+    description: 'Implement-and-verify step for CLI and web public surfaces only.
+      Remove mirrored legacy fields from CLI/web outputs and align operator-facing
+      wording to canonical-only snake_case MCP vocabulary where these surfaces describe
+      MCP tools.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. CLI or web outputs that still show tools or side_effect_policy as accepted
+      canonical fields
+
+      2. Repo-facing public wording that still presents dotted MCP names as the official
+      surface
+
+      3. Surface inconsistency between CLI, web, Python API, and MCP
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: CLI and web tests prove public outputs are canonical-only and no
+      longer contradict MCP snake_case or hard-cut field rules.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/web.py
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_web.py
+
+
+      ## Remaining legacy output hits in CLI/web:
+
+      '
+    depends_on:
+    - canonical_cutover_impl.python_api_surface
+    agent: python-executor
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
