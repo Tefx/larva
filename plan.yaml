@@ -45988,14 +45988,14 @@ phases:
       blocking_status: CLOSED\ngate_open_allowed: true"
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
-  status: pending
+  status: in_progress
   gate: Explicit stop/go gate before implementation
   depends_on:
   - canonical_cutover_prep
   steps:
   - id: canonical_cutover_readiness.rereview
     name: Re-review against canonical authority
-    status: pending
+    status: claimed
     description: spec-readiness re-review. Re-audit the repo against the latest canonical
       docs plus the pinned hard-cut policy. Confirm remaining work is implementation-only,
       not unresolved spec discovery, compatibility design, or hidden policy invention.
@@ -46020,6 +46020,8 @@ phases:
 
       - Notes:'
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-14T20:53:21.581020+00:00'
   - id: canonical_cutover_readiness.stop_go_gate
     name: Stop/go readiness gate
     status: pending
