@@ -45874,6 +45874,28 @@ phases:
       - Remaining dotted references in transport code/tests/docs:'
     depends_on:
     - canonical_cutover_impl.registry_policy
+  - id: canonical_cutover_impl.gate
+    name: Implementation completeness gate
+    status: pending
+    description: Confirm no hidden compatibility remains in scoped code paths before
+      final documentation sync and full verification.
+    verification: Gate passes only if scoped scans are clean and the targeted implementation
+      tests for core, components, facade, and public surfaces are green.
+    evidence_template: '## Implementation Gate
+
+      - Core legacy logic removed: PASS/FAIL
+
+      - Component loader canonical-only: PASS/FAIL
+
+      - Registry policy applied: PASS/FAIL
+
+      - Public outputs canonical-only: PASS/FAIL
+
+      - Remaining scoped legacy hits:
+
+      - Verdict:'
+    depends_on:
+    - canonical_cutover_impl.transport_surfaces
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
