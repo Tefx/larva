@@ -46088,25 +46088,48 @@ phases:
   - id: canonical_cutover_impl.gate
     name: Implementation completeness gate
     status: pending
-    description: Confirm no hidden compatibility remains in scoped code paths before
-      final documentation sync and full verification.
-    verification: Gate passes only if scoped scans are clean and the targeted implementation
-      tests for core, components, facade, and public surfaces are green.
-    evidence_template: '## Implementation Gate
+    description: phase-check gate. Confirm no hidden compatibility remains in scoped
+      code paths before final documentation sync and full verification. This gate
+      must review both spec-conformance and runnable-surface liveness evidence.
+    verification: Gate passes only if scoped scans are clean, targeted implementation
+      tests are green, spec conformance is clean, and runnable surfaces proved canonical
+      behavior.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - Core legacy logic removed: PASS/FAIL
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Gate
+
+      - Normalize legacy mapping removed: PASS/FAIL
+
+      - Assembly fallback removed: PASS/FAIL
+
+      - Patch merge semantics removed: PASS/FAIL
 
       - Component loader canonical-only: PASS/FAIL
 
       - Registry policy applied: PASS/FAIL
 
-      - Public outputs canonical-only: PASS/FAIL
+      - MCP surface canonical-only: PASS/FAIL
+
+      - Python API surface canonical-only: PASS/FAIL
+
+      - CLI/web surface canonical-only: PASS/FAIL
+
+      - Spec conformance: PASS/FAIL
+
+      - Liveness probe: PASS/FAIL
 
       - Remaining scoped legacy hits:
 
       - Verdict:'
     depends_on:
-    - canonical_cutover_impl.transport_surfaces
+    - canonical_cutover_impl.spec_conformance
+    - canonical_cutover_impl.liveness_probe
+    agent: gate-reviewer-tacit
   - id: canonical_cutover_impl.assemble_cutover
     name: Remove assembly tools fallback
     status: pending
