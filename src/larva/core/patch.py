@@ -18,13 +18,6 @@ Examples:
     ... )
     {'model_params': {'temperature': 0.7, 'top_p': 0.9}}
 
-    Deep merge (tools):
-    >>> apply_patches(
-    ...     {"tools": {"read": {"allowed": True}}},
-    ...     {"tools": {"write": {"allowed": False}}},
-    ... )
-    {'tools': {'read': {'allowed': True}, 'write': {'allowed': False}}}
-
     Deep merge (capabilities):
     >>> apply_patches(
     ...     {"capabilities": {"code_edit": {"allowed": True}}},
@@ -42,7 +35,7 @@ from typing import TypeGuard
 from deal import post, pre
 
 PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
-DEEP_MERGE_KEYS = frozenset({"model_params", "tools", "capabilities"})
+DEEP_MERGE_KEYS = frozenset({"model_params", "capabilities"})
 DOT_KEY_SEPARATOR = "."
 
 

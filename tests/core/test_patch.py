@@ -116,27 +116,30 @@ class TestDeepMergeModelParams:
 
 
 class TestDeepMergeTools:
-    """Test 4: tools uses deep merge semantics."""
+    """Test 4: tools uses shallow overwrite semantics (no deep merge)."""
 
-    def test_deep_merge_adds_tools(self) -> None:
-        """Deep merge adds new tools to tools dict."""
+    def test_tools_shallow_overwrite_adds(self) -> None:
+        """Tools dict NOT in DEEP_MERGE_KEYS: shallow replaces entire dict."""
         base = {"id": "test", "tools": {"read_file": "read_only"}}
         patches = {"tools": {"write_file": "read_write"}}
         result = apply_patches(base, patches)
-        assert result["tools"] == {"read_file": "read_only", "write_file": "read_write"}
+        # tools is not deep-merged: patch value replaces base entirely
+        assert result["tools"] == {"write_file": "read_write"}
 
-    def test_deep_merge_overwrites_tools(self) -> None:
-        """Deep merge overwrites existing tool policies."""
+    def test_tools_shallow_overwrite_replaces(self) -> None:
+        """Tools patch replaces existing tools dict entirely."""
         base = {"id": "test", "tools": {"read_file": "read_only"}}
         patches = {"tools": {"read_file": "read_write"}}
         result = apply_patches(base, patches)
+        # tools is not deep-merged: patch value replaces base entirely
         assert result["tools"] == {"read_file": "read_write"}
 
-    def test_deep_merge_empty_tools_base(self) -> None:
-        """Deep merge with empty base creates tools from patch."""
+    def test_tools_shallow_overwrite_from_empty_base(self) -> None:
+        """Tools patch creates tools from patch when base has none."""
         base = {"id": "test"}
         patches = {"tools": {"shell": "destructive"}}
         result = apply_patches(base, patches)
+        # tools is not deep-merged: patch value becomes result
         assert result["tools"] == {"shell": "destructive"}
 
 
@@ -303,7 +306,7 @@ class TestContractConstants:
 
     def test_deep_merge_keys(self) -> None:
         """DEEP_MERGE_KEYS contains fields that use deep merge semantics."""
-        assert DEEP_MERGE_KEYS == frozenset({"model_params", "tools", "capabilities"})
+        assert DEEP_MERGE_KEYS == frozenset({"model_params", "capabilities"})
 
     def test_dot_key_separator(self) -> None:
         """DOT_KEY_SEPARATOR is a single period."""
