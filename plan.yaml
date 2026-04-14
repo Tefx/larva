@@ -45643,14 +45643,14 @@ phases:
       \ (non-user-facing)"
 - id: canonical_cutover_prep
   name: Canonical Hard-Cut Prep
-  status: pending
+  status: in_progress
   gate: Policy pinned and red-first readiness harness defined
   depends_on:
   - web_preset_redesign_followup
   steps:
   - id: canonical_cutover_prep.policy_pin
     name: Pin hard-cut policy for legacy records
-    status: pending
+    status: claimed
     description: 'Authority-adjudication prep step. Pin one explicit hard-cut rule
       for registry-sourced legacy PersonaSpec records and legacy toolset components
       across resolve, export, clone, component_show, and related read paths. Canonical
@@ -45692,6 +45692,8 @@ phases:
 
       - [ ] registry-backed read paths'
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-14T19:44:14.077524+00:00'
   - id: canonical_cutover_prep.harness_define_red
     name: Define red-first readiness harness
     status: pending
