@@ -46304,7 +46304,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: canonical_cutover_impl.component_loader
     name: Make toolset loading capability-only
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for src/larva/shell/components.py and
       adjacent shell component query behavior. Remove shell-level tools fallback from
       component loading and fail closed on legacy toolset component content. Toolset
@@ -46352,6 +46352,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.patch_cutover
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-14T21:47:20.239846+00:00'
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
     status: pending
