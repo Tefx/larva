@@ -46304,7 +46304,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: canonical_cutover_impl.component_loader
     name: Make toolset loading capability-only
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for src/larva/shell/components.py and
       adjacent shell component query behavior. Remove shell-level tools fallback from
       component loading and fail closed on legacy toolset component content. Toolset
@@ -46354,6 +46354,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-14T21:47:20.239846+00:00'
+    done_at: '2026-04-14T21:53:05.380907+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/shell/components.py\
+      \ — load_toolset() now fails closed when `capabilities` missing; tools fallback\
+      \ removed.\n- tests/shell/test_components.py — rejection tests added for legacy\
+      \ toolset content.\n- tests/shell/fixture_taxonomy.py — reused existing canonical/transition\
+      \ fixtures.\n\n## Expected-Red Proof\n- Pre-fix behavior: tools-only toolset\
+      \ silently accepted via fallback.\n- Post-fix explicit rejection payload includes\
+      \ component type/name and failure code.\n\n## Green Proof\n- Command: `pytest\
+      \ tests/shell/test_components.py -v`\n- Output: `25 passed`\n- Canonical toolset\
+      \ success still returns capabilities-only payload.\n\n## Changed files\n- src/larva/shell/components.py\n\
+      - tests/shell/test_components.py\n- tests/shell/fixture_taxonomy.py (not modified)\n\
+      \n## Example rejection payload:\n`Toolset legacy is missing 'capabilities' field.\
+      \ Legacy toolset content is not admissible at canonical cutover. code=105 type=toolset\
+      \ name=legacy`\n\n## Git Proof\n- Commit hash: `6508993`\n- `git show --stat\
+      \ --oneline 6508993`:\n  - src/larva/shell/components.py\n  - tests/shell/test_components.py"
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
     status: pending
