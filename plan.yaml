@@ -46205,6 +46205,56 @@ phases:
     depends_on:
     - canonical_cutover_impl.assemble_cutover
     agent: python-executor
+  - id: canonical_cutover_impl.python_api_surface
+    name: Cut over Python API component and persona outputs
+    status: pending
+    description: 'Implement-and-verify step for Python API files only. Remove mirrored
+      legacy fields from Python API outputs, especially component_show and persona-returning
+      operations such as resolve/export/clone. Python API must surface canonical-only
+      output shapes.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: Python API tests prove component_show and persona-returning operations
+      no longer emit tools or side_effect_policy and follow the pinned hard-cut policy.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/shell/python_api.py
+
+      - src/larva/shell/python_api_components.py
+
+      - tests/shell/test_python_api.py
+
+
+      ## Remaining legacy output hits in Python API:
+
+      '
+    depends_on:
+    - canonical_cutover_impl.transport_surfaces
+    agent: python-executor
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
