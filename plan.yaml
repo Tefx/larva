@@ -46081,7 +46081,7 @@ phases:
       original_worker_status: FAIL\nreconciliation_reason: readiness_audit_objective_met_matrix_produced"
   - id: canonical_cutover_readiness.stop_go_gate
     name: Stop/go readiness gate
-    status: pending
+    status: claimed
     description: 'phase-check stop/go gate. This step must BLOCK implementation unless
       readiness is proven: no policy ambiguity, no undefined scan authority, no unresolved
       XPASS rule, and no unclear legacy-record handling.'
@@ -46111,6 +46111,8 @@ phases:
     depends_on:
     - canonical_cutover_readiness.rereview
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T21:09:15.102347+00:00'
 - id: canonical_cutover_impl
   name: Canonical Hard-Cut Implementation
   status: locked
