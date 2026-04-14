@@ -46369,6 +46369,53 @@ phases:
     - canonical_cutover_impl.python_api_surface
     - canonical_cutover_impl.cli_web_surface
     agent: spec-verifier-tacit
+  - id: canonical_cutover_impl.liveness_probe
+    name: Probe runnable CLI and MCP surfaces
+    status: pending
+    description: 'verification_scope: phase-check
+
+      step_type: verification
+
+      expected_result: green
+
+
+      Independent liveness probe for runnable surfaces touched by this phase. Actually
+      start the relevant entrypoints and prove at least one real operation succeeds
+      using the canonical snake_case surface.'
+    verification: Entry points start, stay alive long enough for one operation, and
+      expose canonical snake_case behavior with no mirrored legacy output.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Liveness Probe
+
+      - Entry point:
+
+      - Exact command:
+
+      - Operation exercised:
+
+      - Actual output:
+
+      - Legacy fields absent: YES/NO
+
+      - Snake_case surface proven: YES/NO
+
+      '
+    depends_on:
+    - canonical_cutover_impl.core_admission
+    - canonical_cutover_impl.assemble_cutover
+    - canonical_cutover_impl.patch_cutover
+    - canonical_cutover_impl.component_loader
+    - canonical_cutover_impl.registry_policy
+    - canonical_cutover_impl.transport_surfaces
+    - canonical_cutover_impl.python_api_surface
+    - canonical_cutover_impl.cli_web_surface
+    agent: blind-tester-tacit
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
