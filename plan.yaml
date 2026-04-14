@@ -46318,6 +46318,57 @@ phases:
     depends_on:
     - canonical_cutover_impl.python_api_surface
     agent: python-executor
+  - id: canonical_cutover_impl.spec_conformance
+    name: Verify spec conformance for hard-cut surfaces
+    status: pending
+    description: 'verification_scope: phase-check
+
+      step_type: verification
+
+      expected_result: green
+
+
+      Independent spec-conformance review for the implemented hard-cut surfaces. Verify
+      that implementation matches the latest canonical docs exactly and that removed
+      legacy fields/names are not reintroduced by local interpretation.'
+    verification: For each relevant requirement, the review cites the canonical source
+      and the implementation location. Any divergence is blocker-class until resolved
+      or explicitly shown to be non-intersecting.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Spec Conformance Report
+
+      - Requirement:
+
+      - Canonical source:
+
+      - Implementation location:
+
+      - Verdict: CONFORMS / DIVERGES / NEEDS_TEST
+
+      - Notes:
+
+
+      ## Coverage Summary
+
+      - Remaining divergences:
+
+      '
+    depends_on:
+    - canonical_cutover_impl.core_admission
+    - canonical_cutover_impl.assemble_cutover
+    - canonical_cutover_impl.patch_cutover
+    - canonical_cutover_impl.component_loader
+    - canonical_cutover_impl.registry_policy
+    - canonical_cutover_impl.transport_surfaces
+    - canonical_cutover_impl.python_api_surface
+    - canonical_cutover_impl.cli_web_surface
+    agent: spec-verifier-tacit
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
