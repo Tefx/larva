@@ -45817,6 +45817,25 @@ phases:
       - Green after:
 
       - Remaining legacy hits in core:'
+  - id: canonical_cutover_impl.component_loader
+    name: Make toolset loading capability-only
+    status: pending
+    description: Remove shell-level tools fallback from component loading and fail
+      closed on legacy toolset component content. Toolset components must be capability-only
+      at the hard-cut boundary.
+    verification: Component loader tests prove legacy toolset content fails explicitly
+      and canonical toolsets return capabilities only.
+    evidence_template: '## Component Loader
+
+      - Behavior on canonical toolset:
+
+      - Behavior on legacy toolset:
+
+      - Tests run:
+
+      - Example rejection payload:'
+    depends_on:
+    - canonical_cutover_impl.core_admission
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
