@@ -45396,3 +45396,62 @@ phases:
     depends_on:
     - web_preset_redesign_followup.web-preset-library-ui
     agent: frontend-engineer-tacit
+  - id: web_preset_redesign_followup.gate
+    name: Gate the lean web preset redesign follow-up
+    status: pending
+    description: 'Gate review: verify the web preset redesign follow-up is complete,
+      preserves canonical assembly semantics, and leaves the web surface in a clearer
+      user-facing state.
+
+
+      Review depth: STANDARD
+
+      Block if any of the following remain true:
+
+      - web UI still presents raw `toolsets` / `constraints` vocabulary as the primary
+      compose terminology
+
+      - compose flow removed direct editability for `can_spawn` or `compaction_prompt`
+
+      - docs imply the canonical backend component categories changed
+
+      - evidence lacks expected-red then green proof for the redesign steps'
+    verification: '- All three implementation steps provide expected-red and green
+      evidence
+
+      - Canonical backend semantics remain unchanged while web-facing terminology
+      is reframed
+
+      - Focused tests/docs updates are present and credible'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Step coverage reviewed:
+
+      - Evidence quality:
+
+      - Canonical semantics preserved: YES/NO
+
+      - Web wording leak removed: YES/NO
+
+      - Docs/tests sync reviewed: YES/NO
+
+
+      ## Gate Decision
+
+      - OPEN or BLOCKED
+
+      - Blocking issues (if any):
+
+      '
+    depends_on:
+    - web_preset_redesign_followup.web-preset-projection
+    - web_preset_redesign_followup.web-preset-library-ui
+    - web_preset_redesign_followup.web-compose-persona-reframe
+    agent: gate-reviewer-tacit
