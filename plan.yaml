@@ -46223,7 +46223,7 @@ phases:
   steps:
   - id: canonical_cutover_impl.core_admission
     name: Remove normalize-layer tools mapping
-    status: rejected
+    status: claimed
     description: 'Implement-and-verify step for src/larva/core/normalize.py only.
       Remove tools-era normalization behavior so tools is never mapped into capabilities
       during hard-cut operation. Canonical normalization may compute spec metadata,
@@ -46269,7 +46269,7 @@ phases:
       '
     agent: python-executor
     claimed_by: python-executor
-    claimed_at: '2026-04-14T21:12:49.471853+00:00'
+    claimed_at: '2026-04-14T21:28:25.301639+00:00'
     done_at: '2026-04-14T21:27:39.695430+00:00'
     rejection_reason: 'Evidence invalidated: worker branch contained no implementation
       commit/diff beyond claim commit; reported file changes and test outputs were
