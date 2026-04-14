@@ -45881,7 +45881,7 @@ phases:
       \ no"
   - id: canonical_cutover_prep.gate
     name: Prep completeness gate
-    status: pending
+    status: claimed
     description: phase-check gate. Confirm that policy is pinned and the readiness
       harness is fully defined before any implementation work begins. This gate protects
       the implementation phase from entering with unresolved authority questions.
@@ -45911,6 +45911,8 @@ phases:
     - canonical_cutover_prep.policy_pin
     - canonical_cutover_prep.harness_define_red
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-14T20:31:08.559370+00:00'
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: locked
