@@ -45765,7 +45765,7 @@ phases:
       - [x] registry-backed read paths — Validate at load time, reject legacy records"
   - id: canonical_cutover_prep.harness_define_red
     name: Define red-first readiness harness
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -45825,6 +45825,60 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-14T19:49:59.869878+00:00'
+    done_at: '2026-04-14T20:30:54.329376+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - src/larva/core/spec.py — Canonical PersonaSpec type definition; required fields:\
+      \ id, description, prompt, model, capabilities, spec_version; SideEffectPolicy\
+      \ type alias retained\n- src/larva/core/validate.py — CANONICAL_REQUIRED_FIELDS/CANONICAL_OPTIONAL_FIELDS/CANONICAL_FORBIDDEN_FIELDS\
+      \ partitions; FORBIDDEN_EXTRA_FIELD rejection for tools/side_effect_policy\n\
+      - src/larva/core/normalize.py — ADR-002 transition logic at lines 135-143: tools->capabilities\
+      \ fallback + tools/side_effect_policy stripping\n- src/larva/core/patch.py —\
+      \ DEEP_MERGE_KEYS = frozenset({\"model_params\", \"tools\", \"capabilities\"\
+      }) at line 45; includes forbidden \"tools\" key\n- src/larva/core/assemble.py\
+      \ — _merge_capabilities reads both \"capabilities\" and \"tools\" from toolsets;\
+      \ _FORBIDDEN_OVERRIDE_FIELDS rejects tools/side_effect_policy in overrides only\n\
+      - src/larva/shell/components.py — load_toolset has tools fallback at line 357:\
+      \ `capabilities = data.get(\"tools\", {})`\n- src/larva/shell/mcp_contract.py\
+      \ — 13 MCP tool definitions with snake_case naming convention (larva_validate,\
+      \ larva_assemble, etc.)\n- src/larva/app/facade.py — Facade docstrings describe\
+      \ what NOT to admit; resolve/clone/export paths validate via _normalize_and_validate\n\
+      - canonical_cutover_prep.policy_pin — Hard-cut policy matrix: reject legacy\
+      \ fields at resolve, export, clone, component_show, registry read paths\n\n\
+      ## Harness\n- Command list:\n  1. `python -m pytest tests/canonical_cutover/test_hard_cutover_readiness.py\
+      \ -v`\n  2. `python -m pytest tests/canonical_cutover/ -v`\n  3. (JSONL generation\
+      \ is automatic as part of test suite, or standalone via `generate_rejections_jsonl()`)\n\
+      - Expected red checks:\n  1. `test_deep_merge_keys_excludes_tools` — XFAIL (patch.py\
+      \ DEEP_MERGE_KEYS contains \"tools\")\n  2. `test_normalize_has_no_transition_logic`\
+      \ — XFAIL (normalize.py has 3 transition-era code lines)\n  3. `test_components_has_no_tools_fallback`\
+      \ — XFAIL (components.py load_toolset has tools fallback)\n- XPASS policy: Each\
+      \ xfail-marked test uses `strict=True`. When a legacy surface is removed, the\
+      \ test will XPASS(strict=True) → FAIL the gate, forcing harness update before\
+      \ green. No module-level xpass_strict mark; per-test strict=True is the authoritative\
+      \ mechanism.\n- JSONL artifact path: `artifacts/larva-legacy-field-rejections.jsonl`\n\
+      - JSONL line shape: `{\"scan\": str, \"file\": str | None, \"line\": int | None,\
+      \ \"field\": str | None, \"content\": str | None, \"reason\": str}`\n\n## Expected-Red\
+      \ Proof\n- Command: `python -m pytest tests/canonical_cutover/test_hard_cutover_readiness.py\
+      \ -v`\n- Actual failing output:\n  ```\n  tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_deep_merge_keys_excludes_tools\
+      \ XFAIL\n  tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_normalize_has_no_transition_logic\
+      \ XFAIL\n  tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_components_has_no_tools_fallback\
+      \ XFAIL\n  ========================= 7 passed, 3 xfailed in 0.14s =========================\n\
+      \  ```\n- Why failure is expected before implementation: The 3 XFAIL tests prove\
+      \ that legacy surfaces still exist in the codebase:\n  1. `patch.py` DEEP_MERGE_KEYS\
+      \ still includes \"tools\" as a deep-merge key\n  2. `normalize.py` still has\
+      \ `canonical_spec.get(\"tools\")`, `canonical_spec.pop(\"tools\")`, `canonical_spec.pop(\"\
+      side_effect_policy\")` — ADR-002 transition logic\n  3. `components.py` still\
+      \ has `data.get(\"tools\", {})` fallback in load_toolset\n\n## Proof\n- [x]\
+      \ no-legacy scan defined — `scan_legacy_fields()` + `_line_has_forbidden_field_reference()`\
+      \ with word-boundary-aware matching and exclusion list\n- [x] snake_case scan\
+      \ defined — `scan_mcp_tool_names()` verifies all 13 MCP tool names match `^[a-z][a-z0-9]*(_[a-z0-9]+)*$`\n\
+      - [x] focused pytest set defined — 10 tests across 4 classes: TestNoLegacyFieldScan\
+      \ (4), TestSnakeCaseMCPNameScan (1), TestJSONLTallyGeneration (3), TestFocusedPytestGate\
+      \ (2)\n- [x] XPASS handling defined — Per-test `@pytest.mark.xfail(strict=True)`\
+      \ ensures XPASS fails the gate\n- [x] tally artifact defined — `artifacts/larva-legacy-field-rejections.jsonl`\
+      \ with 5 records, validated by `test_jsonl_line_shape_is_valid`\n\nstep_intent:\
+      \ test_define_red\nexpected_result: red\nobserved_result: red_via_strict_xfail\n\
+      failure_alignment: expected_gap_reproduced\nproduct_implementation_files_modified:\
+      \ no"
   - id: canonical_cutover_prep.gate
     name: Prep completeness gate
     status: pending
