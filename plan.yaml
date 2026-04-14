@@ -45995,7 +45995,7 @@ phases:
   steps:
   - id: canonical_cutover_readiness.rereview
     name: Re-review against canonical authority
-    status: claimed
+    status: done
     description: spec-readiness re-review. Re-audit the repo against the latest canonical
       docs plus the pinned hard-cut policy. Confirm remaining work is implementation-only,
       not unresolved spec discovery, compatibility design, or hidden policy invention.
@@ -46022,6 +46022,63 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-14T20:53:21.581020+00:00'
+    done_at: '2026-04-14T21:08:50.346777+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- ADR-001-spec-version-boundary.md\
+      \ — spec_version pinned to \"0.1.0\"; clone preserves canonical schema version\n\
+      - ADR-002-capability-intent-without-runtime-policy.md — capabilities is the\
+      \ only tool-access declaration; runtime policy removed\n- ADR-003-canonical-requiredness-authority.md\
+      \ — required/forbidden field partitions; reject-immediate for tools/side_effect_policy\n\
+      - ADR-004-empty-capabilities-and-unrestricted-semantics.md — {} = no declared\
+      \ postures, not unrestricted\n- MIGRATION-002-capability-intent.md — migration\
+      \ COMPLETED but residual internal compat code remains\n- design/opifex-canonical-authority-basis.md\
+      \ — opifex is canonical authority; zero compatibility window; reject-immediate\n\
+      - design/legacy-personaspec-hard-cut-policy.md — 5-surface policy matrix: resolve/export/clone/component_show/registry-read\
+      \ must all reject legacy fields\n- design/hard-cutover-canonical-alignment.md\
+      \ — delete normalization, delete tools fallback, delete tools merge, tighten\
+      \ tests\n- contracts/persona_spec.schema.json — mirrors validate.py; additionalProperties:false;\
+      \ no tools/side_effect_policy\n- INTERFACES.md — capabilities is canonical;\
+      \ tools rejected; variables is optional field\n- ARCHITECTURE.md — layer model;\
+      \ opifex authority; no runtime policy in PersonaSpec\n- src/larva/core/validate.py\
+      \ — REQUIRED + FORBIDDEN field enforcement correct\n- src/larva/core/normalize.py\
+      \ — STILL HAS transition logic (lines 134-143): tools→capabilities mapping and\
+      \ silent pop\n- src/larva/core/assemble.py — STILL HAS tools fallback in _merge_capabilities\
+      \ (lines 176-180)\n- src/larva/core/patch.py — DEEP_MERGE_KEYS STILL INCLUDES\
+      \ \"tools\" (line 45)\n- src/larva/shell/components.py — load_toolset STILL\
+      \ FALLS BACK to tools key (lines 356-358)\n- src/larva/app/facade.py — _normalize_and_validate\
+      \ normalizes THEN validates, masking tools rejection; export surfaces have no\
+      \ legacy-field validation\n- src/larva/shell/registry_fs.py — read_spec_payload\
+      \ has NO legacy-field validation\n- src/larva/core/spec.py — PersonaSpec missing\
+      \ variables field; SideEffectPolicy still exported\n- tests/canonical_cutover/test_hard_cutover_readiness.py\
+      \ — correctly RED (xfail strict=True) for all known legacy surfaces\n\n## Readiness\
+      \ Matrix\n- Blocking issues:\n  - B1: normalize.py:134-143 still has ADR-002\
+      \ tools→capabilities transition logic → DELETE transition code; make normalization\
+      \ pass-through only\n  - B2: assemble.py:176-180 _merge_capabilities reads 'tools'\
+      \ fallback → REMOVE tools read from _merge_capabilities\n  - B3: patch.py:45\
+      \ DEEP_MERGE_KEYS includes 'tools' → REMOVE 'tools' from DEEP_MERGE_KEYS\n \
+      \ - B4: components.py:356-358 load_toolset falls back to 'tools' → REMOVE fallback;\
+      \ fail if capabilities absent\n  - B5: facade.py:237-246 normalize-then-validate\
+      \ ordering masks tools rejection → FIX ordering or ensure normalize cannot transform\
+      \ forbidden fields\n  - B6: facade.py:596-616 export_all/export_ids return raw\
+      \ data without legacy-field check → ADD validation check\n  - B7: registry_fs.py:77-102\
+      \ read_spec_payload has no forbidden-field check → ADD legacy-field rejection\
+      \ at read time\n- Non-blocking issues:\n  - NB1: spec.py:90-99 PersonaSpec TypedDict\
+      \ missing variables field → ADD variables: NotRequired[dict[str, str]]\n  -\
+      \ NB2: spec.py:46,157 SideEffectPolicy type alias still exported → REMOVE SideEffectPolicy\n\
+      \  - NB3: components.py docstrings still reference \"ADR-002 transition\" →\
+      \ UPDATE docstrings after blocking changes\n  - NB4: assemble.py docstrings\
+      \ still reference \"deprecated input\" for tools → UPDATE docstrings after blocking\
+      \ changes\n  - NB5: normalize.py docstrings describe transition behavior → UPDATE\
+      \ docstrings after blocking changes\n- Affected files:\n  - src/larva/core/normalize.py\
+      \ (BLOCKING)\n  - src/larva/core/assemble.py (BLOCKING)\n  - src/larva/core/patch.py\
+      \ (BLOCKING)\n  - src/larva/shell/components.py (BLOCKING)\n  - src/larva/app/facade.py\
+      \ (BLOCKING)\n  - src/larva/shell/registry_fs.py (BLOCKING)\n  - src/larva/core/spec.py\
+      \ (NON-BLOCKING)\n- Remaining work is implementation-only: YES\n- Notes: All\
+      \ spec/policy adjudication is complete. No unresolved spec discovery, no compatibility\
+      \ design ambiguity, no hidden policy invention remaining. The work is purely\
+      \ mechanical deletion of transition-era compatibility code and adding missing\
+      \ validation checks. The existing test harness is correctly RED and will go\
+      \ GREEN when all blocking items are resolved.\n\nsemantic_disposition: SUCCESS_WITH_BLOCKER_MAP\n\
+      original_worker_status: FAIL\nreconciliation_reason: readiness_audit_objective_met_matrix_produced"
   - id: canonical_cutover_readiness.stop_go_gate
     name: Stop/go readiness gate
     status: pending
