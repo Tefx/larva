@@ -45139,7 +45139,7 @@ phases:
       by this remediation'
 - id: web_preset_redesign_followup
   name: Web Preset Terminology Redesign Follow-up
-  status: in_progress
+  status: done
   depends_on:
   - post_sweep_review
   steps:
@@ -45560,7 +45560,7 @@ phases:
       - Canonical backend docs intentionally unchanged'
   - id: web_preset_redesign_followup.gate
     name: Gate the lean web preset redesign follow-up
-    status: claimed
+    status: done
     description: 'Gate review: verify the web preset redesign follow-up is complete,
       preserves canonical assembly semantics, and leaves the web surface in a clearer
       user-facing state.
@@ -45619,3 +45619,25 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-14T18:30:11.220661+00:00'
+    done_at: '2026-04-14T19:08:01.820611+00:00'
+    evidence: "## Gate Review Report\n- Step coverage reviewed: web-preset-projection,\
+      \ web-preset-library-ui, web-compose-persona-reframe plus current gate\n- Evidence\
+      \ quality: all three implementation steps contain expected-red proof and green\
+      \ verification with focused web tests\n- Canonical semantics preserved: YES\n\
+      - Web wording leak removed: YES\n- Docs/tests sync reviewed: YES\n\n## Wiring\
+      \ Audit (W1-W8 equivalent)\n- Web projection endpoint wiring present and exercised\n\
+      - Compose flow wiring preserves canonical assemble payload fields\n- No orphaned\
+      \ handler/stub indicators found for introduced compose/preset behaviors\n\n\
+      ## Escape Hatch Audit\n- No new escape hatch annotations introduced by this\
+      \ phase\n\n## Behavioral Proof Register\n- headline: PASS\n- proof_gap_status:\
+      \ NONE\n- blocking_status: CLOSED\n- gate_open_allowed: true\n- uncertainty\
+      \ sources: none blocking\n\n## Independent Liveness/Black-Box Check (blind-tester-tacit\
+      \ Mode D)\n- Served-HTML + API behavior checks passed for all objective areas:\n\
+      \  1) output-first compose terminology,\n  2) capability preset presentation\
+      \ with constraints no longer top-level compose picker,\n  3) direct editability\
+      \ of can_spawn/compaction_prompt,\n  4) canonical assemble semantics unchanged,\n\
+      \  5) failure-path behavior covered for preset-prefill errors\n- Residual risk\
+      \ noted as non-blocking: absence of browser-runtime automation beyond HTTP +\
+      \ served-HTML assertions\n\n## Gate Decision\n- OPEN\n- Blocking issues: none\n\
+      - Suggestion only: one internal HTML comment could use updated wording for consistency\
+      \ (non-user-facing)"
