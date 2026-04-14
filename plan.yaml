@@ -45142,3 +45142,87 @@ phases:
   status: pending
   depends_on:
   - post_sweep_review
+  steps:
+  - id: web_preset_redesign_followup.web-preset-projection
+    name: Add web-facing preset projection without changing canonical assembly inputs
+    status: pending
+    description: 'Implement the web-only projection surface that translates internal
+      assembly/component terms into user-facing preset language while preserving canonical
+      backend semantics.
+
+
+      Scope:
+
+      - `src/larva/shell/web.py`
+
+      - `contrib/web/server.py` only if packaged/contrib parity needs the same projection
+      helper or response shape
+
+
+      Required outcomes:
+
+      - Keep canonical PersonaSpec, component storage, and Python/MCP/CLI inputs unchanged
+      (`prompts`, `toolsets`, `constraints`, `models` remain the authoritative internal
+      categories)
+
+      - Add a web-facing projection for component browsing and assemble-form hydration
+      so the UI can describe `toolsets` as capability presets and avoid exposing `constraints`
+      as a first-class compose concept
+
+      - Preserve current `/api/components` and `/api/personas/assemble` compatibility
+      unless an additive web-only convenience field is needed; do not break existing
+      test/runtime parity
+
+      - If projection metadata is added, make clear which fields are canonical inputs
+      vs UI-only display/help text
+
+
+      Completion criteria:
+
+      - Projection data is sufficient for downstream UI steps to render preset-library
+      and compose-persona wording without inventing new backend semantics
+
+      - Packaged and contrib web surfaces stay aligned where they share runtime/helpers
+
+      - Stub exclusion: this step must land working projection logic, not comments
+      or placeholder payloads'
+    verification: '- Focused web API tests cover any new projection/helper shape and
+      prove existing canonical request fields still work
+
+      - Evidence must show packaged/contrib parity decision and whether contrib needed
+      any change
+
+      - Run changed-file verification with invar guard'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Add or update a focused test that fails before projection changes
+
+      - Paste the failing output from the first run
+
+
+      ## Implementation Proof
+
+      - Files changed:
+
+      - Canonical fields preserved:
+
+      - UI-only projection fields added (if any):
+
+      - Packaged/contrib parity note:
+
+
+      ## Green Verification
+
+      - Commands run:
+
+      - Output:
+
+      '
+    agent: python-executor
