@@ -45139,13 +45139,13 @@ phases:
       by this remediation'
 - id: web_preset_redesign_followup
   name: Web Preset Terminology Redesign Follow-up
-  status: pending
+  status: in_progress
   depends_on:
   - post_sweep_review
   steps:
   - id: web_preset_redesign_followup.web-preset-projection
     name: Add web-facing preset projection without changing canonical assembly inputs
-    status: pending
+    status: claimed
     description: 'Implement the web-only projection surface that translates internal
       assembly/component terms into user-facing preset language while preserving canonical
       backend semantics.
@@ -45226,6 +45226,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-14T18:01:24.467974+00:00'
   - id: web_preset_redesign_followup.web-preset-library-ui
     name: Reframe the Components view as a preset library
     status: pending
