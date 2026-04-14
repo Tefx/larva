@@ -46223,7 +46223,7 @@ phases:
   steps:
   - id: canonical_cutover_impl.core_admission
     name: Remove normalize-layer tools mapping
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for src/larva/core/normalize.py only.
       Remove tools-era normalization behavior so tools is never mapped into capabilities
       during hard-cut operation. Canonical normalization may compute spec metadata,
@@ -46270,7 +46270,29 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-14T21:28:25.301639+00:00'
-    done_at: '2026-04-14T21:27:39.695430+00:00'
+    done_at: '2026-04-14T21:31:29.492805+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/core/normalize.py\
+      \ — Forbidden-field stripping at lines 112-114; `@post(lambda result: \"tools\"\
+      \ not in result)` confirms tools is banned from output; no tools→capabilities\
+      \ mapping remains.\n- tests/core/test_normalize.py — TestNormalizeSpecCapabilitiesTransition\
+      \ verifies hard-cut semantics.\n\n## Expected-Red Proof\n- Command: `uv run\
+      \ pytest tests/core/test_normalize.py::TestNormalizeSpecCapabilitiesTransition\
+      \ -v`\n- Actual failing output before implementation: N/A in this retry run\
+      \ because commit `57308353c4dc5f74464174c2584592b6cbe1c560` already landed on\
+      \ branch history and state is already hard-cut compliant.\n\nBehavioral probe:\n\
+      - Command: `.venv/bin/python -c \"from larva.core.normalize import normalize_spec;\
+      \ r=normalize_spec({'id':'test','tools':{'fs':'read_only'}}); print('capabilities:',\
+      \ r.get('capabilities'))\"`\n- Output: `capabilities: None`\n\n## Green Proof\n\
+      - Command: `uv run pytest tests/core/test_normalize.py -v --tb=short`\n- Actual\
+      \ output: `21 passed in 0.09s`\n- Command: `.venv/bin/python -m doctest src/larva/core/normalize.py\
+      \ -v`\n- Actual output: `8 passed`\n\n## Changed files\n- Source of implementation\
+      \ commit: `57308353c4dc5f74464174c2584592b6cbe1c560`\n  - src/larva/core/normalize.py\n\
+      \  - tests/core/test_normalize.py\n\n## Remaining legacy hits in normalize:\n\
+      - No transition mapping logic remains; only clarifying comment on hard-cut behavior.\n\
+      \n## Git Proof (MANDATORY)\n- Commit hash(es): `57308353c4dc5f74464174c2584592b6cbe1c560`\
+      \ (existing implementation commit in branch/main history)\n- `git status --short`:\
+      \ empty\n- `git show --name-only --oneline 5730835`:\n  - src/larva/core/normalize.py\n\
+      \  - tests/core/test_normalize.py\n\nverification_disposition: step_satisfied_by_existing_commit_history"
     rejection_reason: 'Evidence invalidated: worker branch contained no implementation
       commit/diff beyond claim commit; reported file changes and test outputs were
       not verifiable from branch state.'
