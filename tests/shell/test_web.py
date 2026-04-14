@@ -602,6 +602,41 @@ class TestWebUiHtmlContent:
         assert "/api/personas" in content, "HTML should reference /api/personas endpoint"
         assert "/api/components" in content, "HTML should reference /api/components endpoint"
 
+    def test_html_preserves_summary_library_when_detail_fetch_fails(self) -> None:
+        """HTML keeps list summaries visible even when per-persona resolve fails.
+
+        Source: src/larva/shell/web_ui.html summary/detail loading logic
+        Regression target: legacy registry entries should remain visible in the library.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "this.personas = summaries" in content, (
+            "Library should keep summary results instead of replacing them with resolved details"
+        )
+        assert "ensurePersonaDetail" in content, (
+            "Detail loading should be a separate step from summary listing"
+        )
+        assert "Full persona details unavailable" in content, (
+            "UI should explain unresolved detail failures instead of hiding the entry"
+        )
+        assert "full.filter(Boolean)" not in content, (
+            "UI must not drop personas solely because full-detail loading failed"
+        )
+
+    def test_html_omits_deprecated_tools_and_side_effect_policy_sections(self) -> None:
+        """HTML should not render deprecated persona fields as first-class UI sections.
+
+        Source: canonical PersonaSpec excludes tools and side_effect_policy.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "TOOLS (deprecated)" not in content
+        assert "SIDE EFFECT POLICY (deprecated)" not in content
+        assert "toggleToolsEdit" not in content
+        assert "syncTools" not in content
+
 
 # -----------------------------------------------------------------------------
 # Tests: Startup contract

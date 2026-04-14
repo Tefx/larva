@@ -431,9 +431,9 @@
             <div class="sidebar-item" :class="{ active: selected === p.id }" @click="selectPersona(p.id)">
               <div class="sidebar-item-id" x-text="p.id"></div>
               <div class="sidebar-item-meta">
-                <span x-text="p.model"></span> &middot; <span x-text="Object.keys(p.capabilities || {}).length + ' caps'"></span><span x-show="p.side_effect_policy"> &middot; <span x-text="p.side_effect_policy" style="text-decoration:line-through;opacity:0.6;" title="Deprecated: use capabilities"></span></span>
+                <span x-text="p.model"></span>
               </div>
-              <div class="sidebar-item-digest" x-text="(p.spec_digest || '').slice(0, 24) + '...'"></div>
+              <div class="sidebar-item-digest" x-text="p.description || ((p.spec_digest || '').slice(0, 24) + '...')"></div>
             </div>
           </template>
         <div x-show="filteredPersonas.length === 0" style="padding:16px;text-align:center;color:var(--text-muted);">
@@ -460,6 +460,43 @@
             </div>
           </template>
         </div>
+
+        <template x-if="selectedPersonaLoading">
+          <div class="section" style="margin-bottom:24px;">
+            <div class="meta-chip readonly" style="max-width:420px;">
+              <div class="meta-label">status</div>
+              <div class="meta-value">Loading full persona details...</div>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="!selectedPersonaResolved && selectedPersonaError">
+          <div class="section" style="margin-bottom:24px;">
+            <div class="error-badge">Full persona details unavailable</div>
+            <ul class="error-list">
+              <li x-text="selectedPersonaError"></li>
+              <li>This entry still appears in the library because its summary loaded successfully.</li>
+            </ul>
+
+            <div class="meta-strip" style="margin-top:16px;">
+              <div class="meta-chip readonly">
+                <div class="meta-label">model</div>
+                <div class="meta-value" x-text="selectedPersona?.model || 'Unknown'"></div>
+              </div>
+              <div class="meta-chip readonly">
+                <div class="meta-label">description</div>
+                <div class="meta-value" x-text="selectedPersona?.description || 'No description'"></div>
+              </div>
+              <div class="meta-chip readonly">
+                <div class="meta-label">digest</div>
+                <div class="meta-value" x-text="selectedPersona?.spec_digest || 'Unavailable'"></div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template x-if="selectedPersonaResolved">
+        <div>
 
         <!-- Metadata Strip -->
         <div class="meta-strip">
@@ -548,56 +585,6 @@
               <button class="btn btn-sm" style="margin-top:4px;" @click="capabilityEntries.push({key:'',val:'read_only'})">+ Add Capability</button>
             </div>
           </template>
-        </div>
-
-        <!-- Tools (DEPRECATED) -->
-        <div class="section" style="opacity:0.7;">
-          <div class="section-header">
-            <div class="section-label" style="text-decoration:line-through;" title="Deprecated: use capabilities. tools mirrors capabilities for backward compatibility.">TOOLS (deprecated)</div>
-            <button class="btn btn-sm" @click="toggleToolsEdit()" x-text="editingTools ? 'Done' : 'Edit'"></button>
-          </div>
-          <template x-if="!editingTools">
-            <div class="pills" :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
-              <template x-for="[k, v] in Object.entries(getVal('tools') || {})" :key="k">
-                <div class="pill">
-                  <span class="pill-key" x-text="k"></span>
-                  <span class="pill-sep">:</span>
-                  <span class="pill-val" x-text="v"></span>
-                </div>
-              </template>
-              <template x-if="Object.keys(getVal('tools') || {}).length === 0 && Object.keys(getVal('capabilities') || {}).length === 0">
-                <span style="color:var(--text-muted);font-style:italic;">No tools defined</span>
-              </template>
-            </div>
-          </template>
-          <template x-if="editingTools">
-            <div :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
-              <template x-for="(entry, i) in toolEntries" :key="i">
-                <div class="kv-row">
-                  <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncTools()" style="width:180px;" placeholder="tool name">
-                  <select :value="entry.val" @change="entry.val = $event.target.value; syncTools()">
-                    <option value="read_only">read_only</option>
-                    <option value="read_write">read_write</option>
-                    <option value="enabled">enabled</option>
-                    <option value="disabled">disabled</option>
-                  </select>
-                  <button class="pill-remove" @click="toolEntries.splice(i, 1); syncTools()">&times;</button>
-                </div>
-              </template>
-              <button class="btn btn-sm" style="margin-top:4px;" @click="toolEntries.push({key:'',val:'read_only'})">+ Add Tool</button>
-            </div>
-          </template>
-        </div>
-
-        <!-- side_effect_policy (DEPRECATED - read-only display only) -->
-        <div class="section" style="opacity:0.5;">
-          <div class="section-label" style="text-decoration:line-through;" title="Deprecated per ADR-002: runtime policy moved out of persona spec">SIDE EFFECT POLICY (deprecated)</div>
-          <div class="meta-chip readonly" style="margin-top:8px;">
-            <div class="meta-value" style="display:flex;align-items:center;gap:8px;">
-              <span x-text="getVal('side_effect_policy') || 'not set'"></span>
-              <span style="color:var(--warning);font-size:11px;">⚠ Use capabilities instead</span>
-            </div>
-          </div>
         </div>
 
         <!-- Model Params -->
@@ -707,17 +694,18 @@
         <div class="digest-footer">
           DIGEST <span class="meta-auto">[auto]</span> <span x-text="selectedPersona?.spec_digest"></span>
         </div>
-      </div>
+        </div>
+        </template>
 
       <!-- Save Bar -->
-      <div class="save-bar" x-show="stagedCount > 0" x-cloak>
-        <div class="save-bar-text" x-text="stagedCount + ' unsaved change' + (stagedCount > 1 ? 's' : '')"></div>
-        <div class="save-bar-actions">
-          <button class="btn" @click="discardChanges()">Discard</button>
-          <button class="btn btn-save" @click="saveChanges()">Save</button>
+        <div class="save-bar" x-show="selectedPersonaResolved && stagedCount > 0" x-cloak>
+          <div class="save-bar-text" x-text="stagedCount + ' unsaved change' + (stagedCount > 1 ? 's' : '')"></div>
+          <div class="save-bar-actions">
+            <button class="btn" @click="discardChanges()">Discard</button>
+            <button class="btn btn-save" @click="saveChanges()">Save</button>
+          </div>
         </div>
       </div>
-    </div>
 
     <!-- EMPTY STATE: no persona selected -->
     <div class="empty-state" x-show="view === 'detail' && !selectedPersona && personas.length > 0" style="display:none;">
@@ -732,6 +720,8 @@
         <button class="btn" @click="modals.import = true">Import JSON</button>
         <button class="btn btn-accent" @click="modals.assemble = true">Assemble New</button>
       </div>
+    </div>
+
     </div>
 
     <!-- COMPONENT BROWSER -->
@@ -896,6 +886,9 @@ function larvaApp() {
   return {
     // State
     personas: [],
+    personaDetails: {},
+    personaErrors: {},
+    loadingPersonaId: null,
     selected: null,
     search: '',
     view: 'detail',
@@ -904,10 +897,8 @@ function larvaApp() {
     editValue: '',
     editingPrompt: false,
     editingCapabilities: false,
-    editingTools: false,
     editingParams: false,
     capabilityEntries: [],
-    toolEntries: [],
     paramEntries: [],
     deleteConfirm: false,
     deleteText: '',
@@ -922,8 +913,23 @@ function larvaApp() {
     importValidation: null,
     assembleForm: { id: '', prompts: [], toolsets: [], constraints: [], model: '' },
 
-    get selectedPersona() {
+    get selectedPersonaSummary() {
       return this.personas.find(p => p.id === this.selected) || null;
+    },
+    get selectedPersonaDetail() {
+      return this.selected ? (this.personaDetails[this.selected] || null) : null;
+    },
+    get selectedPersona() {
+      return this.selectedPersonaDetail || this.selectedPersonaSummary || null;
+    },
+    get selectedPersonaResolved() {
+      return this.selectedPersonaDetail !== null;
+    },
+    get selectedPersonaError() {
+      return this.selected ? (this.personaErrors[this.selected] || null) : null;
+    },
+    get selectedPersonaLoading() {
+      return this.loadingPersonaId === this.selected;
     },
     get filteredPersonas() {
       if (!this.search) return this.personas;
@@ -964,15 +970,59 @@ function larvaApp() {
       const resp = await fetch('/api/personas');
       const data = await resp.json();
       const summaries = data.data || [];
-      // Load full specs
-      const full = await Promise.all(summaries.map(async s => {
-        const r = await fetch(`/api/personas/${s.id}`);
-        const d = await r.json();
-        return d.data;
-      }));
-      this.personas = full.filter(Boolean);
-      if (!this.selected && this.personas.length) {
-        this.selected = this.personas[0].id;
+      this.personas = summaries;
+
+      const availableIds = new Set(summaries.map(s => s.id));
+      this.personaDetails = Object.fromEntries(
+        Object.entries(this.personaDetails).filter(([id]) => availableIds.has(id))
+      );
+      this.personaErrors = Object.fromEntries(
+        Object.entries(this.personaErrors).filter(([id]) => availableIds.has(id))
+      );
+
+      if (!this.selected || !availableIds.has(this.selected)) {
+        this.selected = this.personas.length ? this.personas[0].id : null;
+      }
+      if (this.selected) {
+        await this.ensurePersonaDetail(this.selected);
+      }
+    },
+
+    async ensurePersonaDetail(id, force = false) {
+      if (!id) return null;
+      if (!force && this.personaDetails[id]) {
+        return this.personaDetails[id];
+      }
+
+      this.loadingPersonaId = id;
+      try {
+        const resp = await fetch(`/api/personas/${id}`);
+        const data = await resp.json();
+        if (data.data) {
+          this.personaDetails = { ...this.personaDetails, [id]: data.data };
+          this.personaErrors = Object.fromEntries(
+            Object.entries(this.personaErrors).filter(([personaId]) => personaId !== id)
+          );
+          return data.data;
+        }
+
+        const message = data.error?.message || 'Failed to load full persona details';
+        this.personaErrors = { ...this.personaErrors, [id]: message };
+        this.personaDetails = Object.fromEntries(
+          Object.entries(this.personaDetails).filter(([personaId]) => personaId !== id)
+        );
+        return null;
+      } catch (e) {
+        const message = e?.message || 'Failed to load full persona details';
+        this.personaErrors = { ...this.personaErrors, [id]: message };
+        this.personaDetails = Object.fromEntries(
+          Object.entries(this.personaDetails).filter(([personaId]) => personaId !== id)
+        );
+        return null;
+      } finally {
+        if (this.loadingPersonaId === id) {
+          this.loadingPersonaId = null;
+        }
       }
     },
 
@@ -984,16 +1034,16 @@ function larvaApp() {
       } catch { this.components = { prompts: [], toolsets: [], constraints: [], models: [] }; }
     },
 
-    selectPersona(id) {
+    async selectPersona(id) {
       this.selected = id;
       this.view = 'detail';
       this.discardChanges();
       this.deleteConfirm = false;
       this.deleteText = '';
       this.editingPrompt = false;
-      this.editingTools = false;
       this.editingParams = false;
       this.showRawJson = false;
+      await this.ensurePersonaDetail(id);
     },
 
     getVal(field) {
@@ -1052,27 +1102,6 @@ function larvaApp() {
         if (e.key.trim()) obj[e.key.trim()] = e.val;
       }
       this.stageChange('capabilities', obj);
-    },
-
-    // Tools editing (deprecated - mirrors capabilities)
-    toggleToolsEdit() {
-      if (this.editingTools) {
-        this.syncTools();
-        this.editingTools = false;
-      } else {
-        const tools = this.getVal('tools') || {};
-        this.toolEntries = Object.entries(tools).map(([key, val]) => ({ key, val }));
-        this.editingTools = true;
-      }
-    },
-
-    syncTools() {
-      const obj = {};
-      for (const e of this.toolEntries) {
-        if (e.key.trim()) obj[e.key.trim()] = e.val;
-      }
-      // Note: 'tools' is deprecated; changes here also sync to 'capabilities' during normalization
-      this.stageChange('tools', obj);
     },
 
     // Params editing
@@ -1147,10 +1176,12 @@ function larvaApp() {
         }
         this.staged = {};
         this.editingCapabilities = false;
-        this.editingTools = false;
         this.editingParams = false;
         this.editingPrompt = false;
         this.editing = null;
+        this.personaDetails = Object.fromEntries(
+          Object.entries(this.personaDetails).filter(([personaId]) => personaId !== savedId)
+        );
         await this.loadPersonas();
         this.selected = savedId;
         this.showToast('Saved successfully');
@@ -1173,7 +1204,6 @@ function larvaApp() {
       this.editing = null;
       this.editingPrompt = false;
       this.editingCapabilities = false;
-      this.editingTools = false;
       this.editingParams = false;
     },
 
@@ -1206,11 +1236,14 @@ function larvaApp() {
           return;
         }
         this.modals.import = false;
+        const parsed = JSON.parse(this.importJson);
         this.importJson = '';
         this.importValidation = null;
         await this.loadPersonas();
-        const parsed = JSON.parse(this.importJson || '{}');
-        if (parsed.id) this.selected = parsed.id;
+        if (parsed.id) {
+          this.selected = parsed.id;
+          await this.ensurePersonaDetail(parsed.id, true);
+        }
       } catch (e) {
         alert('Import failed: ' + e.message);
       }
@@ -1244,6 +1277,7 @@ function larvaApp() {
         this.assembleForm = { id: '', prompts: [], toolsets: [], constraints: [], model: '' };
         await this.loadPersonas();
         this.selected = data.data.id;
+        await this.ensurePersonaDetail(data.data.id, true);
       } catch (e) {
         alert('Assemble failed: ' + e.message);
       }
