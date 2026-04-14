@@ -304,6 +304,29 @@
     padding: 16px; border-top: 1px solid var(--border);
     display: flex; justify-content: flex-end; gap: 8px;
   }
+  .compose-intro {
+    background: var(--bg-primary); border: 1px solid var(--border);
+    border-radius: 6px; padding: 16px; margin-bottom: 16px;
+  }
+  .compose-kicker {
+    color: var(--accent); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 8px;
+  }
+  .compose-copy {
+    color: var(--text-secondary); font-size: 13px; line-height: 1.5;
+  }
+  .compose-copy strong { color: var(--text-primary); font-weight: 500; }
+  .compose-preset-status {
+    margin-top: 8px; font-size: 12px; color: var(--text-muted);
+  }
+  .compose-preset-status.error { color: var(--warning); }
+  .compose-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+  }
+  .compose-grid-full { grid-column: 1 / -1; }
+  .compose-inline-note {
+    color: var(--text-muted); font-size: 12px; margin-top: 8px; line-height: 1.4;
+  }
 
   /* Textarea for modals */
   .modal-textarea {
@@ -484,7 +507,7 @@
     <div class="header-actions">
       <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Preset Library</button>
       <button class="btn" @click="modals.import = true">Import</button>
-      <button class="btn btn-accent" @click="modals.assemble = true" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
+      <button class="btn btn-accent" @click="openComposeModal()" title="Compose persona" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
     </div>
   </header>
 
@@ -805,7 +828,7 @@
       <p>Register your first persona to get started</p>
       <div class="empty-state-actions">
         <button class="btn" @click="modals.import = true">Import JSON</button>
-        <button class="btn btn-accent" @click="modals.assemble = true">Assemble New</button>
+        <button class="btn btn-accent" @click="openComposeModal()">Compose Persona</button>
       </div>
     </div>
 
@@ -923,14 +946,24 @@
   <!-- ASSEMBLE MODAL -->
   <div class="modal-overlay" x-show="modals.assemble" @click.self="modals.assemble = false" @keydown.escape.window="modals.assemble = false" x-cloak>
     <div class="modal">
-      <div class="modal-header">
-        <div class="modal-title">Assemble Persona</div>
-        <button class="modal-close" @click="modals.assemble = false">&times;</button>
-      </div>
+        <div class="modal-header">
+          <div class="modal-title">Compose Persona</div>
+          <button class="modal-close" @click="modals.assemble = false">&times;</button>
+        </div>
       <div class="modal-body">
+        <div class="compose-intro">
+          <div class="compose-kicker">Output-first compose flow</div>
+          <div class="compose-copy">
+            Start with the persona output you want, then layer in <strong>prompt presets</strong>,
+            <strong>capability presets</strong>, and an optional <strong>behavior preset</strong>.
+            Behavior presets prefill spawn policy and compaction prompt, but both fields stay directly editable before submit.
+          </div>
+        </div>
+
+        <div class="compose-grid">
         <!-- ID -->
         <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Persona ID</div>
+          <div class="section-label">Output Persona ID</div>
           <input class="inline-input" x-model="assembleForm.id" placeholder="e.g., my-custom-agent"
             :style="assembleForm.id && !isValidId(assembleForm.id) ? 'box-shadow:0 0 0 1px var(--danger)' : ''">
           <div x-show="assembleForm.id && !isValidId(assembleForm.id)" style="color:var(--danger);font-size:11px;margin-top:4px;">
@@ -940,7 +973,7 @@
 
         <!-- Prompts -->
         <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Prompts</div>
+          <div class="section-label">Prompt Presets</div>
           <template x-for="name in (components?.prompts || [])" :key="name">
             <label class="option-item">
               <input type="checkbox" :value="name" x-model="assembleForm.prompts">
@@ -952,31 +985,41 @@
 
         <!-- Toolsets -->
         <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Toolsets</div>
+          <div class="section-label">Capability Presets</div>
           <template x-for="name in (components?.toolsets || [])" :key="name">
             <label class="option-item">
               <input type="checkbox" :value="name" x-model="assembleForm.toolsets">
               <span x-text="name"></span>
             </label>
           </template>
-          <div x-show="!components?.toolsets?.length" style="color:var(--text-muted);font-size:12px;">No toolset components found</div>
+          <div x-show="!components?.toolsets?.length" style="color:var(--text-muted);font-size:12px;">No capability presets found</div>
         </div>
 
-        <!-- Constraints -->
+        <!-- Behavior preset -->
         <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Constraints</div>
+          <div class="section-label">Behavior Preset</div>
+          <label class="option-item">
+            <input type="radio" name="asm-behavior" value="" :checked="!getAssembleBehaviorPreset()" @change="applyAssembleBehaviorPreset('')">
+            <span>Custom only</span>
+          </label>
           <template x-for="name in (components?.constraints || [])" :key="name">
             <label class="option-item">
-              <input type="checkbox" :value="name" x-model="assembleForm.constraints">
+              <input type="radio" name="asm-behavior" :value="name" :checked="getAssembleBehaviorPreset() === name" @change="applyAssembleBehaviorPreset(name)">
               <span x-text="name"></span>
             </label>
           </template>
-          <div x-show="!components?.constraints?.length" style="color:var(--text-muted);font-size:12px;">No constraint components found</div>
+          <div x-show="!components?.constraints?.length" style="color:var(--text-muted);font-size:12px;">No behavior presets found</div>
+          <div class="compose-inline-note">Behavior presets still submit through the canonical <code>constraints</code> backend field.</div>
+          <div class="compose-preset-status" x-show="assemblePresetStatus === 'loading'">Loading behavior preset preview…</div>
+          <div class="compose-preset-status error" x-show="assemblePresetStatus === 'error'">
+            Behavior preset preview unavailable. You can still edit spawn policy and compaction prompt directly.
+          </div>
+          <div class="compose-inline-note" x-show="assemblePresetError" x-text="assemblePresetError"></div>
         </div>
 
         <!-- Models -->
         <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Model</div>
+          <div class="section-label">Output Model</div>
           <template x-for="name in (components?.models || [])" :key="name">
             <label class="option-item">
               <input type="radio" name="asm-model" :value="name" x-model="assembleForm.model">
@@ -985,10 +1028,37 @@
           </template>
           <div x-show="!components?.models?.length" style="color:var(--text-muted);font-size:12px;">No model components found</div>
         </div>
+
+        <div class="section compose-grid-full" style="margin-bottom:16px;">
+          <div class="section-label">Spawn Policy</div>
+          <div class="spawn-policy-options" aria-label="Compose spawn policy">
+            <button class="spawn-policy-option" :class="{ 'active': getComposeSpawnMode() === 'none' }" @click="setComposeSpawnMode('none')">None</button>
+            <button class="spawn-policy-option" :class="{ 'active': getComposeSpawnMode() === 'any' }" @click="setComposeSpawnMode('any')">Any</button>
+            <button class="spawn-policy-option" :class="{ 'active': getComposeSpawnMode() === 'specific' }" @click="setComposeSpawnMode('specific')">Specific</button>
+          </div>
+          <div class="spawn-policy-help" x-text="getComposeSpawnHelp()"></div>
+          <div class="spawn-policy-specific" x-show="getComposeSpawnMode() === 'specific'">
+            <div class="tag-list">
+              <template x-for="(tag, i) in getComposeSpawnSpecificTags()" :key="tag + i">
+                <span class="tag">
+                  <span x-text="tag"></span>
+                  <button class="tag-remove" @click="removeComposeSpawnTag(i)">&times;</button>
+                </span>
+              </template>
+              <input class="tag-input" placeholder="add persona id..." aria-label="Add compose allowed persona id" @keydown.enter.prevent="addComposeSpawnTag($event.target); $event.target.value = ''">
+            </div>
+          </div>
+        </div>
+
+        <div class="section compose-grid-full" style="margin-bottom:16px;">
+          <div class="section-label">Compaction Prompt</div>
+          <textarea class="modal-textarea" style="height:160px;" x-model="assembleForm.overrides.compaction_prompt" placeholder="Optional handoff / compaction instruction for this composed persona"></textarea>
+        </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn" @click="modals.assemble = false">Cancel</button>
-        <button class="btn btn-accent" :disabled="!assembleForm.id || !isValidId(assembleForm.id)" @click="doAssemble()">Assemble</button>
+        <button class="btn btn-accent" :disabled="!assembleForm.id || !isValidId(assembleForm.id)" @click="doAssemble()">Compose Persona</button>
       </div>
     </div>
   </div>
@@ -1048,7 +1118,17 @@ function larvaApp() {
     modals: { import: false, assemble: false },
     importJson: '',
     importValidation: null,
-    assembleForm: { id: '', prompts: [], toolsets: [], constraints: [], model: '' },
+    assembleForm: {
+      id: '',
+      prompts: [],
+      toolsets: [],
+      constraints: [],
+      model: '',
+      overrides: { can_spawn: false, compaction_prompt: '' },
+    },
+    composeSpawnSpecificDraft: [],
+    assemblePresetStatus: 'idle',
+    assemblePresetError: '',
 
     get selectedPersonaSummary() {
       return this.personas.find(p => p.id === this.selected) || null;
@@ -1190,6 +1270,102 @@ function larvaApp() {
 
     getComponentItemLabel(type) {
       return this.getComponentLibraryCopy(type).itemLabel;
+    },
+
+    getDefaultAssembleForm() {
+      return {
+        id: '',
+        prompts: [],
+        toolsets: [],
+        constraints: [],
+        model: '',
+        overrides: { can_spawn: false, compaction_prompt: '' },
+      };
+    },
+
+    openComposeModal() {
+      this.assembleForm = this.getDefaultAssembleForm();
+      this.composeSpawnSpecificDraft = [];
+      this.assemblePresetStatus = 'idle';
+      this.assemblePresetError = '';
+      this.modals.assemble = true;
+    },
+
+    getAssembleBehaviorPreset() {
+      return this.assembleForm.constraints[0] || '';
+    },
+
+    syncComposeSpawnSpecificDraftFromValue(value) {
+      this.composeSpawnSpecificDraft = Array.isArray(value) ? [...value] : [];
+    },
+
+    getComposeSpawnMode() {
+      const val = this.assembleForm.overrides.can_spawn;
+      if (Array.isArray(val)) return 'specific';
+      return val === true ? 'any' : 'none';
+    },
+
+    getComposeSpawnHelp() {
+      const mode = this.getComposeSpawnMode();
+      if (mode === 'any') return 'Can spawn any persona';
+      if (mode === 'specific') return 'Can spawn only listed personas';
+      return 'Cannot spawn child personas';
+    },
+
+    getComposeSpawnSpecificTags() {
+      const val = this.assembleForm.overrides.can_spawn;
+      if (Array.isArray(val)) return val;
+      return this.composeSpawnSpecificDraft;
+    },
+
+    setComposeSpawnMode(mode) {
+      if (mode === 'specific') {
+        this.assembleForm.overrides.can_spawn = [...this.composeSpawnSpecificDraft];
+        return;
+      }
+      this.assembleForm.overrides.can_spawn = mode === 'any';
+    },
+
+    removeComposeSpawnTag(i) {
+      const arr = [...this.getComposeSpawnSpecificTags()];
+      arr.splice(i, 1);
+      this.composeSpawnSpecificDraft = arr;
+      this.assembleForm.overrides.can_spawn = arr;
+    },
+
+    addComposeSpawnTag(input) {
+      const val = input.value.trim();
+      if (!val) return;
+      const arr = [...this.getComposeSpawnSpecificTags(), val];
+      this.composeSpawnSpecificDraft = arr;
+      this.assembleForm.overrides.can_spawn = arr;
+    },
+
+    async applyAssembleBehaviorPreset(name) {
+      this.assembleForm.constraints = name ? [name] : [];
+      this.assemblePresetStatus = 'idle';
+      this.assemblePresetError = '';
+      if (!name) return;
+      this.assemblePresetStatus = 'loading';
+      try {
+        const resp = await fetch(`/api/components/constraints/${name}`);
+        const data = await resp.json();
+        if (data.error) {
+          throw new Error(data.error.message || 'Failed to load behavior preset preview');
+        }
+        const preset = typeof data.data === 'object' && data.data ? data.data : {};
+        if (Object.prototype.hasOwnProperty.call(preset, 'can_spawn')) {
+          this.assembleForm.overrides.can_spawn = preset.can_spawn;
+          this.syncComposeSpawnSpecificDraftFromValue(preset.can_spawn);
+        }
+        if (Object.prototype.hasOwnProperty.call(preset, 'compaction_prompt')) {
+          this.assembleForm.overrides.compaction_prompt = preset.compaction_prompt || '';
+        }
+        this.assemblePresetStatus = 'ready';
+      } catch (e) {
+        this.assemblePresetStatus = 'error';
+        this.assemblePresetError = e?.message || 'Failed to load behavior preset preview';
+      }
     },
 
     async selectPersona(id) {
@@ -1461,7 +1637,7 @@ function larvaApp() {
         });
         const data = await resp.json();
         if (data.error) {
-          alert('Assemble failed: ' + (data.error.message || JSON.stringify(data.error)));
+          alert('Compose failed: ' + (data.error.message || JSON.stringify(data.error)));
           return;
         }
         // Register the assembled spec
@@ -1476,12 +1652,15 @@ function larvaApp() {
           return;
         }
         this.modals.assemble = false;
-        this.assembleForm = { id: '', prompts: [], toolsets: [], constraints: [], model: '' };
+        this.assembleForm = this.getDefaultAssembleForm();
+        this.composeSpawnSpecificDraft = [];
+        this.assemblePresetStatus = 'idle';
+        this.assemblePresetError = '';
         await this.loadPersonas();
         this.selected = data.data.id;
         await this.ensurePersonaDetail(data.data.id, true);
       } catch (e) {
-        alert('Assemble failed: ' + e.message);
+        alert('Compose failed: ' + e.message);
       }
     },
 

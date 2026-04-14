@@ -111,6 +111,7 @@ class MockFacade:
 
     _registry: CallRecordingRegistry
     _report_map: dict[str, ValidationReport] = field(default_factory=dict)
+    assemble_inputs: list[dict[str, Any]] = field(default_factory=list)
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         return self._report_map.get(str(spec.get("id", "")), _valid_report())
@@ -168,6 +169,17 @@ class MockFacade:
         overrides: dict[str, Any] | None = None,
         variables: dict[str, str] | None = None,
     ) -> PersonaSpec:
+        self.assemble_inputs.append(
+            {
+                "id": id,
+                "prompts": prompts,
+                "toolsets": toolsets,
+                "constraints": constraints,
+                "model": model,
+                "overrides": overrides,
+                "variables": variables,
+            }
+        )
         spec: PersonaSpec = {
             "id": id,
             "prompt": "\n\n".join(prompts) if prompts else "",
@@ -499,11 +511,32 @@ class TestWebSurfaceEndpoints:
             json={
                 "id": "assembled-persona",
                 "prompts": ["You are X.", "Be careful."],
+                "toolsets": ["filesystem"],
+                "constraints": ["guardrails"],
+                "model": "gpt-5.4",
+                "overrides": {
+                    "can_spawn": ["child-analyst"],
+                    "compaction_prompt": "Summarize the active worktree before handoff.",
+                },
             },
         )
 
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == "assembled-persona"
+        assert mock_facade.assemble_inputs == [
+            {
+                "id": "assembled-persona",
+                "prompts": ["You are X.", "Be careful."],
+                "toolsets": ["filesystem"],
+                "constraints": ["guardrails"],
+                "model": "gpt-5.4",
+                "overrides": {
+                    "can_spawn": ["child-analyst"],
+                    "compaction_prompt": "Summarize the active worktree before handoff.",
+                },
+                "variables": None,
+            }
+        ]
 
     def test_get_api_components_lists_names(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """GET /api/components returns component names.
@@ -682,6 +715,65 @@ class TestWebUiHtmlContent:
         assert "Component Library" not in html
         assert ">Components</button>" not in html
         assert "type.toUpperCase()" not in html
+
+    def test_compose_persona_modal_uses_output_first_copy_and_hides_constraints_picker(
+        self,
+    ) -> None:
+        """Compose modal should lead with output copy and capability presets.
+
+        Source: user task web_preset_redesign_followup.web-compose-persona-reframe
+        Required outcome: output-first compose wording replaces assembly-first
+        copy, toolsets are shown as capability presets, and constraints are not
+        exposed as a top-level picker.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "Compose Persona" in content
+        assert "Start with the persona output you want" in content
+        assert '<div class="section-label">Output Persona ID</div>' in content
+        assert '<div class="section-label">Capability Presets</div>' in content
+        assert '<div class="section-label">Behavior Preset</div>' in content
+        assert '<div class="section-label">Constraints</div>' not in content
+        assert "Assemble Persona" not in content
+
+    def test_compose_persona_modal_prefills_behavior_presets_but_keeps_fields_editable(
+        self,
+    ) -> None:
+        """Compose modal should prefill editable behavior fields from presets.
+
+        Source: user task web_preset_redesign_followup.web-compose-persona-reframe
+        Completion criteria: behavior presets may prefill can_spawn /
+        compaction_prompt while both fields remain directly editable before
+        submission.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "applyAssembleBehaviorPreset" in content
+        assert "fetch(`/api/components/constraints/${name}`)" in content
+        assert "assembleForm.overrides.can_spawn" in content
+        assert "assembleForm.overrides.compaction_prompt" in content
+        assert "setComposeSpawnMode('specific')" in content
+        assert "removeComposeSpawnTag(i)" in content
+
+    def test_compose_persona_modal_handles_behavior_preset_prefill_failures(self) -> None:
+        """Compose modal should surface preset-prefill failures without re-exposing constraints.
+
+        Source: user task web_preset_redesign_followup.web-compose-persona-reframe
+        Failure coverage: behavior preset fetch failures leave direct-edit
+        fields available and surface inline feedback.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "assemblePresetStatus" in content
+        assert "assemblePresetError" in content
+        assert "Failed to load behavior preset preview" in content
+        assert (
+            "Behavior preset preview unavailable. You can still edit spawn policy and compaction prompt directly."
+            in content
+        )
 
     def test_served_html_uses_sidebar_description_fallback_without_digest_noise(self) -> None:
         """Sidebar summary rows should prefer description and show empty fallback copy.

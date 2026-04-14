@@ -176,6 +176,15 @@ fidelity, not as separate normative API guarantees:
 - prompt copy affordance is present in the served HTML and uses the browser clipboard API
 - success icon feedback after copy is local UI state only
 - browser auto-open on startup is operator convenience only
+- the packaged single-page compose flow uses output-first copy (`Compose Persona`,
+  `Output Persona ID`) while still submitting the unchanged canonical assemble
+  request body to `POST /api/personas/assemble`
+- toolsets are presented in that compose flow as capability presets; this is UI
+  terminology only and does not rename the canonical `toolsets` backend field
+- constraints are not exposed as a top-level picker in the compose flow;
+  instead, behavior-preset affordances may prefill `can_spawn` and
+  `compaction_prompt` while keeping both fields directly editable before submit
+  and preserving the unchanged canonical `constraints` input on the request body
 - the packaged single-page detail pane presents `can_spawn` as a three-state
   `SPAWN POLICY` control that maps UI state to the unchanged canonical field:
   `None -> false`, `Any -> true`, `Specific -> list[str]`
