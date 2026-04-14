@@ -284,6 +284,7 @@ If you are just getting started, read `README.md` then `USER_GUIDE.md`.
 - `ARCHITECTURE.md` - module boundaries and dependency design
 - `ADR-001-spec-version-boundary.md` - `spec_version` design decision
 - `ADR-002-capability-intent-without-runtime-policy.md` - capability intent model
+- `ADR-004-empty-capabilities-and-unrestricted-semantics.md` - empty capability semantics and unrestricted boundary
 
 ## License
 

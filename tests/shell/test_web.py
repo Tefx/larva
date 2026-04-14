@@ -579,16 +579,75 @@ class TestWebUiHtmlContent:
     def test_served_html_contains_staged_state_visual_indicators(self) -> None:
         """HTML UI displays staged changes visual feedback.
 
-        Source: UI contract for edit-then-save workflow
+        Source: INTERFACES.md convenience-only UI behavior requires one shared
+        staged-change treatment for editable sections.
         """
         html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
         content = html_path.read_text()
 
         # Verify staged state indicators exist
         assert "staged" in content, "HTML should track staged changes"
-        assert "warning" in content or "border-left" in content, (
-            "Staged items should have visual indicator"
+        assert ".staged-border" in content, "Shared staged border utility should exist"
+        assert ".staged-section" in content, "Shared staged section utility should exist"
+        assert "border-left:2px solid var(--warning);padding-left:8px" not in content, (
+            "Repeated inline staged section styling should be removed"
         )
+
+    def test_served_html_uses_sidebar_description_fallback_without_digest_noise(self) -> None:
+        """Sidebar summary rows should prefer description and show empty fallback copy.
+
+        Source: INTERFACES.md convenience-only UI behavior for sidebar summary rows.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "x-text=\"p.description || 'No description'\"" in content
+        assert "((p.spec_digest || '').slice(0, 24) + '...')" not in content
+        assert ":title=\"p.spec_digest || ''\"" in content
+
+    def test_served_html_uses_multiline_editors_for_description_and_compaction(self) -> None:
+        """Description and compaction prompt should use multi-line editing surfaces.
+
+        Source: INTERFACES.md convenience-only UI behavior for multi-line text fields.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert '<textarea class="inline-input inline-textarea"' in content
+        assert "commitEdit('description')" in content
+        assert (
+            '<textarea class="prompt-editor" :class="{ \'staged-border\': staged.compaction_prompt !== undefined }"'
+            in content
+        )
+
+    def test_served_html_uses_prompt_toggle_wording_and_non_interrupting_full_json_view(
+        self,
+    ) -> None:
+        """Prompt controls should use approved wording and not interrupt editing.
+
+        Source: INTERFACES.md convenience-only UI behavior for prompt detail toggles.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "showRawJson ? 'Detail' : 'Full JSON'" in content
+        assert "showRawJson ? 'Detail' : 'Raw JSON'" not in content
+        assert "editingPrompt ? 'Close' : 'Edit'" in content
+        assert ':disabled="editingPrompt"' in content
+        assert "this.showRawJson = false;" in content
+
+    def test_served_html_uses_close_wording_for_non_persisting_section_toggles(self) -> None:
+        """Section mode toggles should use Close wording when save remains staged.
+
+        Source: INTERFACES.md convenience-only UI behavior and user-approved staged-save model.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "editingCapabilities ? 'Close' : 'Edit'" in content
+        assert "editingParams ? 'Close' : 'Edit'" in content
+        assert "editingCapabilities ? 'Done' : 'Edit'" not in content
+        assert "editingParams ? 'Done' : 'Edit'" not in content
 
     def test_served_html_contains_three_state_spawn_policy_control(self) -> None:
         """HTML exposes the approved three-state spawn policy affordance.

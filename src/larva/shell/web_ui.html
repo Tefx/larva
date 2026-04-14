@@ -129,10 +129,14 @@
   /* Metadata Strip */
   .meta-strip { display: flex; gap: 8px; margin-bottom: 24px; }
   .meta-chip {
-    flex: 1; background: var(--bg-surface); padding: 12px;
-    border-radius: 4px; border-left: 2px solid transparent;
+     flex: 1; background: var(--bg-surface); padding: 12px;
+     border-radius: 4px; border-left: 2px solid transparent;
+   }
+  .staged-border { border-left-color: var(--warning) !important; }
+  .staged-section {
+    border-left: 2px solid var(--warning);
+    padding-left: 8px;
   }
-  .meta-chip.staged { border-left-color: var(--warning); }
   .meta-chip.readonly { opacity: 0.7; }
   .meta-label { color: var(--text-muted); font-size: 10px; text-transform: uppercase; margin-bottom: 4px; }
   .meta-value { color: var(--text-primary); font-size: 13px; }
@@ -178,6 +182,10 @@
     font-family: inherit; font-size: 13px; outline: none;
   }
   .inline-input:focus { box-shadow: 0 0 0 1px var(--accent); }
+  .inline-textarea {
+    min-height: 88px;
+    resize: vertical;
+  }
 
   /* Select */
   .inline-select {
@@ -221,9 +229,9 @@
     background: var(--bg-surface); padding: 8px 12px;
     border-radius: 4px; cursor: pointer; border-left: 2px solid transparent;
     transition: background 0.15s;
+    white-space: pre-wrap;
   }
   .desc-display:hover { background: var(--bg-elevated); }
-  .desc-display.staged { border-left-color: var(--warning); }
 
   /* Prompt */
   .prompt-display {
@@ -231,19 +239,17 @@
     border-radius: 4px;
     font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
     line-height: 1.45;
-    border-left: 2px solid transparent; min-height: 200px;
-  }
-  .prompt-display.staged { border-left-color: var(--warning); }
+     border-left: 2px solid transparent; min-height: 200px;
+   }
   .prompt-editor {
     width: 100%; min-height: 400px;
     background: var(--bg-surface); color: var(--text-primary);
     padding: 16px; border: none; border-radius: 4px;
     font-family: 'Maple Mono NF CN', monospace; font-size: 13px;
     line-height: 1.45;
-    resize: none; outline: none;
-    border-left: 2px solid transparent;
-  }
-  .prompt-editor.staged { border-left-color: var(--warning); }
+     resize: none; outline: none;
+     border-left: 2px solid transparent;
+   }
 
   /* Compaction prompt */
   .collapsible-header {
@@ -449,7 +455,12 @@
               <div class="sidebar-item-meta">
                 <span x-text="p.model"></span>
               </div>
-              <div class="sidebar-item-digest" x-text="p.description || ((p.spec_digest || '').slice(0, 24) + '...')"></div>
+              <div
+                class="sidebar-item-digest"
+                :title="p.spec_digest || ''"
+                x-text="p.description || 'No description'"
+                :style="p.description ? '' : 'color:var(--text-muted);font-style:italic'"
+              ></div>
             </div>
           </template>
         <div x-show="filteredPersonas.length === 0" style="padding:16px;text-align:center;color:var(--text-muted);">
@@ -517,7 +528,7 @@
         <!-- Metadata Strip -->
         <div class="meta-strip">
           <!-- Model -->
-          <div class="meta-chip" :class="{ staged: staged.model !== undefined }">
+          <div class="meta-chip" :class="{ 'staged-border': staged.model !== undefined }">
             <div class="meta-label">model</div>
             <template x-if="editing !== 'model'">
               <div class="meta-value" style="cursor:pointer" @click="startEdit('model', getVal('model'))" x-text="getVal('model')"></div>
@@ -527,7 +538,7 @@
             </template>
           </div>
           <!-- Convenience-only UI mapping per INTERFACES.md: can_spawn false|true|list[str] -> None|Any|Specific -->
-          <div class="meta-chip" :class="{ staged: staged.can_spawn !== undefined }">
+          <div class="meta-chip" :class="{ 'staged-border': staged.can_spawn !== undefined }">
             <div class="meta-label">SPAWN POLICY</div>
             <div class="spawn-policy-options" role="radiogroup" aria-label="Spawn policy">
               <button
@@ -581,10 +592,10 @@
         <div class="section">
           <div class="section-header">
             <div class="section-label">CAPABILITIES</div>
-            <button class="btn btn-sm" @click="toggleCapabilitiesEdit()" x-text="editingCapabilities ? 'Done' : 'Edit'"></button>
+            <button class="btn btn-sm" @click="toggleCapabilitiesEdit()" x-text="editingCapabilities ? 'Close' : 'Edit'"></button>
           </div>
           <template x-if="!editingCapabilities">
-            <div class="pills" :style="staged.capabilities !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+            <div class="pills" :class="{ 'staged-section': staged.capabilities !== undefined }">
               <template x-for="[k, v] in Object.entries(getVal('capabilities') || {})" :key="k">
                 <div class="pill">
                   <span class="pill-key" x-text="k"></span>
@@ -598,7 +609,7 @@
             </div>
           </template>
           <template x-if="editingCapabilities">
-            <div :style="staged.capabilities !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+            <div :class="{ 'staged-section': staged.capabilities !== undefined }">
               <template x-for="(entry, i) in capabilityEntries" :key="i">
                 <div class="kv-row">
                   <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncCapabilities()" style="width:180px;" placeholder="capability name">
@@ -620,10 +631,10 @@
         <div class="section">
           <div class="section-header">
             <div class="section-label">MODEL PARAMETERS</div>
-            <button class="btn btn-sm" @click="toggleParamsEdit()" x-text="editingParams ? 'Done' : 'Edit'"></button>
+            <button class="btn btn-sm" @click="toggleParamsEdit()" x-text="editingParams ? 'Close' : 'Edit'"></button>
           </div>
           <template x-if="!editingParams">
-            <div class="pills" :style="staged.model_params !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+            <div class="pills" :class="{ 'staged-section': staged.model_params !== undefined }">
               <template x-for="[k, v] in Object.entries(getVal('model_params') || {})" :key="k">
                 <div class="pill">
                   <span class="pill-key" x-text="k"></span>
@@ -634,7 +645,7 @@
             </div>
           </template>
           <template x-if="editingParams">
-            <div :style="staged.model_params !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
+            <div :class="{ 'staged-section': staged.model_params !== undefined }">
               <template x-for="(entry, i) in paramEntries" :key="i">
                 <div class="kv-row">
                   <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncParams()" style="width:180px;" placeholder="param name">
@@ -651,11 +662,11 @@
         <div class="section">
           <div class="section-label">DESCRIPTION</div>
           <template x-if="editing !== 'description'">
-            <div class="desc-display" :class="{ staged: staged.description !== undefined }"
-              @click="startEdit('description', getVal('description'))" x-text="getVal('description')"></div>
+            <div class="desc-display" :class="{ 'staged-border': staged.description !== undefined }"
+              @click="startEdit('description', getVal('description'))" x-text="getVal('description') || 'No description'"></div>
           </template>
           <template x-if="editing === 'description'">
-            <input class="inline-input" x-model="editValue" @blur="commitEdit('description')" @keydown.enter="commitEdit('description')" @keydown.escape="editing = null">
+            <textarea class="inline-input inline-textarea" :class="{ 'staged-border': staged.description !== undefined }" x-model="editValue" @blur="commitEdit('description')" @keydown.escape="editing = null"></textarea>
           </template>
         </div>
 
@@ -677,17 +688,17 @@
                   </svg>
                 </template>
               </button>
-              <button class="btn btn-sm" @click="togglePromptEdit()" x-text="editingPrompt ? 'Done' : 'Edit'"></button>
-              <button class="btn btn-sm" @click="showRawJson = !showRawJson" x-text="showRawJson ? 'Detail' : 'Raw JSON'"></button>
+              <button class="btn btn-sm" @click="togglePromptEdit()" x-text="editingPrompt ? 'Close' : 'Edit'"></button>
+              <button class="btn btn-sm" :disabled="editingPrompt" @click="showRawJson = !showRawJson" x-text="showRawJson ? 'Detail' : 'Full JSON'"></button>
             </div>
           </div>
           <template x-if="!showRawJson">
             <div>
               <template x-if="!editingPrompt">
-                <div class="prompt-display prompt-md" :class="{ staged: staged.prompt !== undefined }" x-html="renderMarkdown(getVal('prompt'))"></div>
+                <div class="prompt-display prompt-md" :class="{ 'staged-border': staged.prompt !== undefined }" x-html="renderMarkdown(getVal('prompt'))"></div>
               </template>
               <template x-if="editingPrompt">
-                <textarea class="prompt-editor" :class="{ staged: promptValue !== selectedPersona.prompt }"
+                <textarea class="prompt-editor" :class="{ 'staged-border': promptValue !== selectedPersona.prompt }"
                   x-model="promptValue"
                   x-effect="if(editingPrompt) { $el.style.height = 'auto'; $el.style.height = Math.max(400, $el.scrollHeight) + 'px'; }"></textarea>
               </template>
@@ -707,12 +718,12 @@
           <template x-if="showCompaction">
             <div>
               <template x-if="editing !== 'compaction_prompt'">
-                <div class="desc-display" :class="{ staged: staged.compaction_prompt !== undefined }"
+                <div class="desc-display" :class="{ 'staged-border': staged.compaction_prompt !== undefined }"
                   @click="startEdit('compaction_prompt', getVal('compaction_prompt') || '')"
                   x-text="getVal('compaction_prompt') || 'Not set'" :style="!getVal('compaction_prompt') ? 'color:var(--text-muted);font-style:italic' : ''"></div>
               </template>
               <template x-if="editing === 'compaction_prompt'">
-                <textarea class="prompt-editor" style="min-height:150px;" x-model="editValue"
+                <textarea class="prompt-editor" :class="{ 'staged-border': staged.compaction_prompt !== undefined }" style="min-height:150px;" x-model="editValue"
                   @blur="commitEdit('compaction_prompt')" @keydown.escape="editing = null"></textarea>
               </template>
             </div>
@@ -1091,6 +1102,9 @@ function larvaApp() {
     },
 
     startEdit(field, value) {
+      if (field === 'prompt' && this.showRawJson) {
+        this.showRawJson = false;
+      }
       this.editing = field;
       this.editValue = value || '';
       this.$nextTick(() => {
@@ -1108,12 +1122,13 @@ function larvaApp() {
 
     togglePromptEdit() {
       if (this.editingPrompt) {
-        // Done editing - stage if changed
+        // Close editor - stage local changes if they differ
         if (this.promptValue !== this.selectedPersona?.prompt) {
           this.stageChange('prompt', this.promptValue);
         }
         this.editingPrompt = false;
       } else {
+        this.showRawJson = false;
         this.promptValue = this.getVal('prompt') || '';
         this.editingPrompt = true;
       }

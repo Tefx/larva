@@ -38,7 +38,7 @@ Normative shape:
 | `description` | string | Required. Human-readable description of the persona |
 | `prompt` | string | Required. System prompt defining persona behavior |
 | `model` | string | Required. Model identifier (e.g., "claude-sonnet-4") |
-| `capabilities` | dict[str, ToolPosture] | Required. **Canonical** capability declaration: tool family -> posture |
+| `capabilities` | dict[str, ToolPosture] | Required. **Canonical** capability declaration: tool family -> posture. Empty `{}` means no declared capability postures, not unrestricted capability access. |
 | `tools` | dict[str, ToolPosture] | **Rejected** at admission boundary — never accepted as canonical input |
 | `model_params` | dict | Additional model parameters (temperature, top_p, etc.) |
 | `side_effect_policy` | string | **Rejected** at admission boundary — not a PersonaSpec field |
@@ -57,6 +57,7 @@ Valid capability posture values (from `ToolPosture` in `spec.py`):
 
 ### Key Rules
 - `capabilities` is `family -> posture` (canonical field, defined by opifex)
+- `capabilities: {}` means the persona declares no capability postures; it must not be interpreted as "all capabilities" or unrestricted runtime access
 - `tools` is rejected at admission boundary — not part of canonical PersonaSpec
 - `side_effect_policy` is rejected at admission boundary — belongs to runtime controls
 - runtime controls are not PersonaSpec fields
@@ -181,6 +182,18 @@ fidelity, not as separate normative API guarantees:
 - `Specific` mode shows the listed-persona tag editor and preserves list-mode
   editing as convenience UI behavior over the canonical `bool | list[str]`
   schema; this does not change the underlying PersonaSpec contract
+- sidebar summary rows prefer persona description as the secondary line; when a
+  description is absent the UI shows a muted empty-description fallback instead
+  of substituting digest text into the list view
+- multi-line text fields in the detail pane (`description`,
+  `compaction_prompt`, and the prompt body) use multi-line editing surfaces;
+  staged edits remain local until the shared save bar is used
+- prompt detail toggles use `Edit/Close` and `Full JSON/Detail` wording; the
+  `Full JSON` view is a convenience inspection mode for the entire resolved
+  persona document and should not interrupt active prompt editing
+- staged-change highlighting for editable chips and sections uses one shared
+  visual treatment rather than field-specific inline styling, so local edits are
+  recognizable without implying immediate persistence
 
 #### Contrib-only convenience surface
 
