@@ -46449,12 +46449,20 @@ phases:
   - id: canonical_cutover_final.docs_sync
     name: Remove transition semantics from docs and examples
     status: pending
-    description: Update repo-facing docs and examples to canonical-only language.
-      Remove dotted MCP naming, transition-era acceptance wording, and contradictory
-      migration-complete claims that depend on hidden compatibility code.
+    description: Documentation sync step. Update repo-facing docs and examples to
+      canonical-only language. Remove dotted MCP naming, transition-era acceptance
+      wording, and contradictory migration-complete claims that depend on hidden compatibility
+      code.
     verification: Docs and examples no longer advertise dotted MCP names, accepted
       tools fields, or transition compatibility semantics.
-    evidence_template: '## Docs Sync
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Docs Sync
 
       - Updated files:
 
@@ -46462,7 +46470,10 @@ phases:
 
       - Removed transition wording:
 
-      - Remaining doc contradictions:'
+      - Remaining doc contradictions:
+
+      '
+    agent: doc-reviewer-tacit
   - id: canonical_cutover_final.verify
     name: Run final hard-cut verification
     status: pending
