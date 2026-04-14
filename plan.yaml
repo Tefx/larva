@@ -45902,3 +45902,21 @@ phases:
   gate: Docs, examples, scans, tests, and guard all prove canonical alignment
   depends_on:
   - canonical_cutover_impl
+  steps:
+  - id: canonical_cutover_final.docs_sync
+    name: Remove transition semantics from docs and examples
+    status: pending
+    description: Update repo-facing docs and examples to canonical-only language.
+      Remove dotted MCP naming, transition-era acceptance wording, and contradictory
+      migration-complete claims that depend on hidden compatibility code.
+    verification: Docs and examples no longer advertise dotted MCP names, accepted
+      tools fields, or transition compatibility semantics.
+    evidence_template: '## Docs Sync
+
+      - Updated files:
+
+      - Removed dotted names:
+
+      - Removed transition wording:
+
+      - Remaining doc contradictions:'
