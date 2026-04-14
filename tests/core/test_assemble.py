@@ -115,12 +115,26 @@ class TestAssembleCandidateBehavior:
         result = assemble_candidate({"id": "persona", "description": "persona description"})
         assert result["description"] == "persona description"
 
-    def test_raises_component_conflict_for_contradictory_tool_posture(self):
-        """Conflicting tool postures should raise AssemblyError with conflict code.
+    def test_tools_only_toolset_fails_closed(self):
+        """Toolset with only 'tools' (no capabilities) must fail closed.
 
-        Note: This test uses 'tools' key in assembly INPUT, which is transition-era
-        backward compat (INTENTIONAL TRANSITION SUPPORT). The input is accepted but
-        the output will only contain 'capabilities'.
+        Per canonical cutover: toolsets must provide 'capabilities' field.
+        'tools'-only toolsets are legacy content and must be rejected.
+        """
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [{"tools": {"read": "read_only"}}],
+                }
+            )
+        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+
+    def test_raises_component_conflict_for_contradictory_tool_posture(self):
+        """Tools-only toolsets are rejected at canonical cutover.
+
+        Per canonical cutover: toolsets must provide 'capabilities' field.
+        'tools'-only toolsets are legacy content and must be rejected.
         """
         with pytest.raises(AssemblyError) as exc_info:
             assemble_candidate(
@@ -132,8 +146,7 @@ class TestAssembleCandidateBehavior:
                     ],
                 }
             )
-        assert exc_info.value.code == "COMPONENT_CONFLICT"
-        assert "Contradictory posture" in exc_info.value.message
+        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
 
     def test_capabilities_input_canonical(self):
         """Capabilities field should be canonical input for toolsets."""
@@ -147,19 +160,19 @@ class TestAssembleCandidateBehavior:
         assert "tools" not in result
 
     def test_tools_input_backward_compat(self):
-        """Tools field (deprecated) should still work for backward compat.
+        """Tools field is legacy content and must be rejected at canonical cutover.
 
-        INTENTIONAL TRANSITION SUPPORT: 'tools' in assembly input is accepted
-        but the output contains only 'capabilities'.
+        Per canonical cutover: 'tools' in assembly input is NOT admissible.
+        Toolset must provide 'capabilities' field.
         """
-        result = assemble_candidate(
-            {
-                "id": "persona",
-                "toolsets": [{"tools": {"read": "read_only", "write": "read_write"}}],
-            }
-        )
-        assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
-        assert "tools" not in result
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [{"tools": {"read": "read_only", "write": "read_write"}}],
+                }
+            )
+        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
 
     def test_capabilities_preferred_over_tools(self):
         """Capabilities should be preferred over tools when both present."""
@@ -176,22 +189,22 @@ class TestAssembleCandidateBehavior:
         assert "tools" not in result
 
     def test_capabilities_merges_with_tools_across_toolsets(self):
-        """Capabilities from one toolset should merge with tools from another.
+        """Tools-only toolsets are rejected at canonical cutover.
 
-        INTENTIONAL TRANSITION SUPPORT: 'tools' in one toolset is read as
-        transition-era input and merged into 'capabilities' in output.
+        Per canonical cutover: 'tools' in assembly input is NOT admissible.
+        All toolsets must provide 'capabilities' field.
         """
-        result = assemble_candidate(
-            {
-                "id": "persona",
-                "toolsets": [
-                    {"capabilities": {"read": "read_only"}},
-                    {"tools": {"write": "read_write"}},
-                ],
-            }
-        )
-        assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
-        assert "tools" not in result
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"capabilities": {"read": "read_only"}},
+                        {"tools": {"write": "read_write"}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
 
     def test_raises_component_conflict_for_contradictory_capability_posture(self):
         """Conflicting capability postures should raise AssemblyError."""
@@ -209,7 +222,11 @@ class TestAssembleCandidateBehavior:
         assert "Contradictory posture" in exc_info.value.message
 
     def test_raises_component_conflict_for_mixed_capability_tools_conflict(self):
-        """Conflicting capabilities vs tools postures should raise AssemblyError."""
+        """Tools-only toolsets are rejected at canonical cutover.
+
+        Per canonical cutover: 'tools' in assembly input is NOT admissible.
+        All toolsets must provide 'capabilities' field.
+        """
         with pytest.raises(AssemblyError) as exc_info:
             assemble_candidate(
                 {
@@ -220,23 +237,23 @@ class TestAssembleCandidateBehavior:
                     ],
                 }
             )
-        assert exc_info.value.code == "COMPONENT_CONFLICT"
-        assert "Contradictory posture" in exc_info.value.message
+        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
 
     def test_output_never_contains_tools_key(self):
         """Assembly output must never contain 'tools' — ADR-002.
 
-        Even when tools is provided as input, the output only contains 'capabilities'.
+        With canonical capabilities input, output contains only 'capabilities'.
         """
         result = assemble_candidate(
             {
                 "id": "persona",
-                "toolsets": [{"tools": {"read": "read_only"}}],
+                "toolsets": [{"capabilities": {"read": "read_only"}}],
             }
         )
         assert "tools" not in result, (
             "Assembly output must not contain 'tools'; forbidden at canonical admission per ADR-002"
         )
+        assert "capabilities" in result
 
     def test_output_never_contains_side_effect_policy(self):
         """Assembly output must never contain 'side_effect_policy' — ADR-002."""

@@ -157,33 +157,35 @@ def _collect_scalar(
 def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
     """Merge capabilities from multiple toolset components.
 
-    Per ADR-002 transition:
-    - Reads 'capabilities' field first (canonical)
-    - Falls back to 'tools' field (deprecated)
-    - Returns merged capability mapping
+    Per ADR-002 canonical cutover:
+    - Only 'capabilities' field is accepted (canonical)
+    - 'tools' field is legacy content and NOT admissible
+    - Missing 'capabilities' in a toolset raises AssemblyError
 
     >>> _merge_capabilities([{"capabilities": {"read": "read_only"}}])
     {'read': 'read_only'}
-    >>> _merge_capabilities([{"tools": {"write": "read_write"}}])
-    {'write': 'read_write'}
-    >>> _merge_capabilities([{"capabilities": {"read": "read_only"}}, {"tools": {"write": "read_write"}}])
-    {'read': 'read_only', 'write': 'read_write'}
+    >>> _merge_capabilities([])
+    {}
     """
     merged: dict[str, str] = {}
 
     for toolset in toolsets:
-        # Prefer 'capabilities' (canonical), fall back to 'tools' (deprecated)
         caps_obj = toolset.get("capabilities")
-        tools_obj = toolset.get("tools")
 
-        # Use capabilities if present, otherwise use tools
-        source_obj = caps_obj if caps_obj is not None else tools_obj
-        if source_obj is None:
-            continue
-        if not isinstance(source_obj, dict):
+        # 'tools' is legacy content - not admissible at canonical cutover
+        if caps_obj is None:
+            raise _assembly_error(
+                code="TOOLSET_MISSING_CAPABILITIES",
+                message=(
+                    "Toolset is missing 'capabilities' field. "
+                    "Toolset tools content is not admissible at canonical cutover."
+                ),
+                details={"toolset": toolset},
+            )
+        if not isinstance(caps_obj, dict):
             continue
 
-        source = cast("Mapping[object, object]", source_obj)
+        source = cast("Mapping[object, object]", caps_obj)
         for cap_name, posture in _safe_items(source):
             if not isinstance(cap_name, str) or not isinstance(posture, str):
                 continue
@@ -379,7 +381,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         {'read': 'read_only'}
         >>> # Tools input (deprecated, still works)
         >>> result = assemble_candidate(
-        ...     {"id": "p", "toolsets": [{"tools": {"write": "read_write"}}]}
+        ...     {"id": "p", "toolsets": [{"capabilities": {"write": "read_write"}}]}
         ... )
         >>> result["capabilities"]
         {'write': 'read_write'}
