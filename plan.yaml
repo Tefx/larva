@@ -46530,7 +46530,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: canonical_cutover_impl.assemble_cutover
     name: Remove assembly tools fallback
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for src/larva/core/assemble.py only. Remove
       any fallback or merge behavior that treats toolset tools content as admissible
       assembly input for canonical cutover behavior. Toolset assembly must be capability-only
@@ -46576,6 +46576,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.core_admission
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-14T21:31:48.825680+00:00'
   - id: canonical_cutover_impl.patch_cutover
     name: Remove patch-time tools merge semantics
     status: pending
