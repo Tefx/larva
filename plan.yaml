@@ -45858,25 +45858,52 @@ phases:
   - canonical_cutover_readiness
   steps:
   - id: canonical_cutover_impl.core_admission
-    name: Remove core legacy admission logic
+    name: Remove normalize-layer tools mapping
     status: pending
-    description: Delete hidden compatibility logic from core admission and merge paths.
-      Remove tools-era normalization, toolset fallback in core assembly, and tools
-      deep-merge behavior so forbidden fields are rejected instead of repaired or
-      merged.
-    verification: Focused core tests prove tools is rejected rather than normalized
-      or merged, and no deep-merge of legacy tools remains.
-    evidence_template: '## Core Admission
+    description: 'Implement-and-verify step for src/larva/core/normalize.py only.
+      Remove tools-era normalization behavior so tools is never mapped into capabilities
+      during hard-cut operation. Canonical normalization may compute spec metadata,
+      but it must not repair forbidden fields or silently reinterpret legacy vocabulary.
 
-      - Removed branches/paths:
 
-      - Tests run:
+      ## Completion Criteria (stub exclusion)
 
-      - Red before:
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: Focused normalize tests prove tools is rejected rather than normalized
+      or repaired, and normalize output no longer depends on transition-era mapping
+      semantics.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - Green after:
+      For each ref in this step:
 
-      - Remaining legacy hits in core:'
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/core/normalize.py
+
+      - tests/core/test_normalize.py
+
+
+      ## Remaining legacy hits in normalize:
+
+      '
+    agent: python-executor
   - id: canonical_cutover_impl.component_loader
     name: Make toolset loading capability-only
     status: pending
