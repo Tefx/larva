@@ -46031,6 +46031,56 @@ phases:
     depends_on:
     - canonical_cutover_impl.core_admission
     agent: python-executor
+  - id: canonical_cutover_impl.patch_cutover
+    name: Remove patch-time tools merge semantics
+    status: pending
+    description: 'Implement-and-verify step for src/larva/core/patch.py only. Remove
+      legacy tools deep-merge semantics so patch/update paths do not accept or merge
+      tools during hard cut behavior. Patches that introduce forbidden legacy fields
+      must fail via canonical revalidation path, not survive patch application.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.'
+    verification: Focused patch tests prove tools is no longer a deep-merge key and
+      update-related checks surface rejection rather than preserved legacy state.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command:
+
+      - Actual failing output before implementation:
+
+
+      ## Green Proof
+
+      - Command:
+
+      - Actual passing output after implementation:
+
+
+      ## Changed files
+
+      - src/larva/core/patch.py
+
+      - tests/core/test_patch.py
+
+      - tests/app/test_facade/test_update.py
+
+
+      ## Remaining legacy hits in patch/update:
+
+      '
+    depends_on:
+    - canonical_cutover_impl.assemble_cutover
+    agent: python-executor
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
