@@ -45717,6 +45717,29 @@ phases:
       - [ ] tally artifact defined'
     depends_on:
     - canonical_cutover_prep.policy_pin
+  - id: canonical_cutover_prep.gate
+    name: Prep completeness gate
+    status: pending
+    description: Check that policy is pinned and the readiness harness is fully defined
+      before starting any implementation work.
+    verification: Gate passes only if there is no remaining policy ambiguity and the
+      red-first harness is complete enough to block bad implementation work.
+    evidence_template: '## Gate Verdict
+
+      - Policy pin: PASS/FAIL
+
+      - Harness definition: PASS/FAIL
+
+      - XPASS disposition pinned: PASS/FAIL
+
+      - JSONL tally plan pinned: PASS/FAIL
+
+      - Remaining ambiguity:
+
+      - Verdict:'
+    depends_on:
+    - canonical_cutover_prep.policy_pin
+    - canonical_cutover_prep.harness_define_red
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: locked
