@@ -46932,7 +46932,7 @@ phases:
     claimed_at: '2026-04-15T05:26:13.656983+00:00'
   - id: canonical_cutover_impl.liveness_probe
     name: Probe runnable CLI and MCP surfaces
-    status: claimed
+    status: done
     description: 'verification_scope: phase-check
 
       step_type: verification
@@ -46979,6 +46979,86 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-15T05:26:29.129577+00:00'
+    done_at: '2026-04-15T05:39:05.841360+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- `design/hard-cutover-canonical-alignment.md`\
+      \ — Read in full. Key: \"larva accepts, stores, resolves, updates, exports,\
+      \ and assembles only capabilities, spec_version, spec_digest. It rejects tools,\
+      \ side_effect_policy.\"\n- `design/legacy-personaspec-hard-cut-policy.md` —\
+      \ Read in full. Key: \"If a PersonaSpec or toolset component contains legacy\
+      \ fields (tools, side_effect_policy) or conflicts with canonical requiredness,\
+      \ the operation MUST reject with a structured error.\"\n- `INTERFACES.md` —\
+      \ Read in full. Key: canonical field table with tools=Rejected, side_effect_policy=Rejected,\
+      \ capabilities=Required canonical field.\n- `src/larva/app/facade.py` — Read\
+      \ signatures only (blind constraint). Key signatures: LarvaFacade.validate,\
+      \ LarvaFacade.resolve, LarvaFacade.register, LarvaFacade.assemble, LarvaFacade.export_all,\
+      \ LarvaFacade.clone.\n- `src/larva/shell/mcp_contract.py` — Read signatures\
+      \ only. Key: LARVA_MCP_TOOLS list of MCPToolDefinition entries.\n- `src/larva/cli_entrypoint.py`\
+      \ — Read signatures only. Key: main(argv) -> int.\n- `src/larva/cli_facade.py`\
+      \ — Read signatures only. Key: build_default_facade() -> LarvaFacade.\n\n##\
+      \ Liveness Probe\n\n### Probe 1: CLI `larva validate` — rejects `tools` and\
+      \ `side_effect_policy`\n- Entry point: `larva validate <spec.json> --json`\n\
+      - Operation: Validate a spec containing `\"tools\": {\"filesystem\": \"read_only\"\
+      }` and `\"side_effect_policy\": \"full\"`\n- Actual output: `{\"error\":{\"\
+      code\":\"PERSONA_INVALID\",\"numeric_code\":101,\"message\":\"'tools' is not\
+      \ permitted at canonical admission boundary\",\"details\":{\"report\":{\"valid\"\
+      :false,\"errors\":[{\"code\":\"FORBIDDEN_EXTRA_FIELD\",\"field\":\"tools\"}]}}}}`\
+      \  and same for `side_effect_policy`\n- Legacy fields absent: YES (both rejected\
+      \ with FORBIDDEN_EXTRA_FIELD)\n- Snake_case surface proven: YES (`larva validate`\
+      \ is snake_case)\n\n### Probe 2: CLI `larva register` — rejects `tools`\n- Entry\
+      \ point: `larva register <spec.json> --json`\n- Operation: Register a spec containing\
+      \ `\"tools\": {\"filesystem\": \"read_only\"}`\n- Actual output: `PERSONA_INVALID`\
+      \ error with message containing \"tools is not permitted\"\n- Legacy fields\
+      \ absent: YES\n- Snake_case surface proven: YES\n\n### Probe 3: CLI `larva resolve`\
+      \ — canonical-only output\n- Entry point: `larva resolve general --json`\n-\
+      \ Operation: Resolve a registered persona\n- Actual output: keys = `can_spawn,\
+      \ capabilities, description, id, model, prompt, spec_digest, spec_version`\n\
+      - Legacy fields absent: YES (no `tools`, no `side_effect_policy`)\n- Snake_case\
+      \ surface proven: YES (`larva resolve` is snake_case)\n\n### Probe 4: CLI `larva\
+      \ export` — canonical-only output\n- Entry point: `larva export general archimedes\
+      \ --json`\n- Operation: Export specific personas\n- Actual output: All exported\
+      \ personas have `capabilities` field; none have `tools` or `side_effect_policy`\n\
+      - Legacy fields absent: YES\n- Snake_case surface proven: YES\n\n### Probe 5:\
+      \ Python API `facade.validate()` — rejects legacy fields\n- Entry point: `from\
+      \ larva.cli_facade import build_default_facade; facade.validate(spec)`\n- Operation:\
+      \ Validate spec with `tools` and `side_effect_policy`\n- Actual output: `valid=False`,\
+      \ errors contain `FORBIDDEN_EXTRA_FIELD` for both fields\n- Legacy fields absent:\
+      \ YES\n- Snake_case surface proven: YES (method names are snake_case)\n\n###\
+      \ Probe 6: Python API `facade.resolve()` — canonical-only output\n- Entry point:\
+      \ `facade.resolve(\"general\", None).unwrap()`\n- Operation: Resolve a registered\
+      \ persona\n- Actual output: dict with keys `can_spawn, capabilities, description,\
+      \ id, model, prompt, spec_digest, spec_version`\n- Legacy fields absent: YES\n\
+      - Snake_case surface proven: YES\n\n### Probe 7: MCP tool names — all snake_case\n\
+      - Entry point: `from larva.shell.mcp_contract import LARVA_MCP_TOOLS`\n- Operation:\
+      \ Inspect all 13 tool names\n- Actual output: `larva_validate, larva_assemble,\
+      \ larva_resolve, larva_register, larva_list, larva_component_list, larva_component_show,\
+      \ larva_delete, larva_clear, larva_clone, larva_export, larva_update, larva_update_batch`\n\
+      - Legacy dotted aliases absent: YES (no `larva.validate`, etc.)\n- Snake_case\
+      \ surface proven: YES (all 13 use underscores)\n\n### Probe 8: Web API `larva\
+      \ serve` — alive and canonical\n- Entry point: `larva serve --port 17429 --no-open`\n\
+      - Exact command: subprocess launch → `curl http://localhost:17429/api/personas`\n\
+      - Operation: List personas, then fetch /api/personas/general, then POST /api/personas/validate\
+      \ with `tools`\n- Actual output:\n  - GET /api/personas → 76 personas, summary\
+      \ keys: `description, id, model, spec_digest` (no `tools`)\n  - GET /api/personas/general\
+      \ → keys: `can_spawn, capabilities, description, id, model, prompt, spec_digest,\
+      \ spec_version` (no `tools`)\n  - POST /api/personas/validate → `valid=false`,\
+      \ error `FORBIDDEN_EXTRA_FIELD` for `tools`\n- Legacy fields absent: YES\n-\
+      \ Snake_case surface proven: YES (URL paths use snake_case)\n- Network-level\
+      \ verification: Port 17429 confirmed bound via lsof\n\n### Probe 9: CLI `larva\
+      \ validate` — accepts valid canonical spec\n- Entry point: `larva validate <valid_spec.json>\
+      \ --json`\n- Operation: Validate a spec with `capabilities: {\"filesystem\"\
+      : \"read_only\"}` and no legacy fields\n- Actual output: `{\"data\":{\"valid\"\
+      :true,\"errors\":[],\"warnings\":[]}}`\n- Legacy fields absent: YES\n- Snake_case\
+      \ surface proven: YES\n\n### Probe 10: Full repro script\n- Entry point: `python\
+      \ tests/repro/issue_canonical_cutover_liveness.py`\n- Operation: All 10 liveness\
+      \ probes\n- Actual output: `Results: 10/10 passed. ALL LIVENESS PROBES PASSED`\n\
+      - Legacy fields absent: YES\n- Snake_case surface proven: YES\n\n## Additional\
+      \ Verification\n- Cutover-related test suite: `pytest tests/core/test_validate.py\
+      \ tests/core/test_assemble.py tests/core/test_patch.py tests/shell/test_components.py\
+      \ tests/app/test_facade/test_register.py tests/app/test_facade/test_update.py\
+      \ tests/shell/test_canonical_boundary_gaps.py` → 135 passed, 32 xpassed\n- No\
+      \ checked-in `toolsets/*.yaml` fixture files with legacy `tools:` keys\n- Source\
+      \ code references to `side_effect_policy` are in rejection/validation logic\
+      \ and documentation, not in acceptance paths"
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
