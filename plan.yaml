@@ -48064,3 +48064,68 @@ phases:
     - post_cutover_debt_remediation.docstring_cleanup
     - post_cutover_debt_remediation.normalize_reject_semantics_fix
     agent: integration-verifier-tacit
+  - id: post_cutover_debt_remediation.gate
+    name: Gate post-cutover debt remediation
+    status: pending
+    description: 'step_type: gate
+
+      agent: gate-reviewer-tacit
+
+      review_depth: STANDARD
+
+
+      Gate review for post-cutover debt remediation.
+
+
+      Gate decision basis MUST confirm:
+
+      - all four remediation steps landed with adequate evidence
+
+      - focused tests are green
+
+      - no-legacy scanner is clean
+
+      - invar guard is green
+
+      - no remaining issue in this phase intersects downstream completion expectations'
+    verification: '- Review evidence for all remediation steps
+
+      - Verify focused tests are green
+
+      - Verify scanner clean proof is present
+
+      - Verify invar guard green proof is present
+
+      - OPEN only if no blocker-class residual debt remains'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Gate Review Report
+
+      - Step-by-step evidence disposition:
+
+      - Focused tests green: yes|no
+
+      - Scanner clean proof present: yes|no
+
+      - Invar guard green: yes|no
+
+      - Residual debt intersecting downstream gates: none|list
+
+      - Gate decision: OPEN|BLOCKED
+
+      - Required actions if blocked:'
+    depends_on:
+    - post_cutover_debt_remediation.scanner_false_positive_fix
+    - post_cutover_debt_remediation.patch_xfail_fix
+    - post_cutover_debt_remediation.docstring_cleanup
+    - post_cutover_debt_remediation.normalize_reject_semantics_fix
+    - post_cutover_debt_remediation.verify
+    agent: gate-reviewer-tacit
