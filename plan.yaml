@@ -47624,3 +47624,86 @@ phases:
     scanner behavior, and green invar guard evidence.
   depends_on:
   - canonical_cutover_final
+  steps:
+  - id: post_cutover_debt_remediation.scanner_false_positive_fix
+    name: Tighten no-legacy scanner handling for defensive stripping patterns
+    status: pending
+    description: 'step_type: implementation
+
+      agent: python-executor
+
+      work_type: technical_debt_remediation
+
+
+      Issue: no-legacy scanner false positives on defensive stripping patterns.
+
+
+      spec_refs:
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py :: TestNoLegacyFieldScan
+
+
+      touch_paths:
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py
+
+
+      Scope:
+
+      - Narrow the scanner''s legitimate-reference handling so explicit defensive
+      stripping / reject-semantics lines stop producing false positives.
+
+      - Preserve the scanner''s ability to catch real compatibility reads/writes of
+      forbidden fields.
+
+      - Do not widen exclusions beyond the minimum rule change needed for defensive
+      stripping patterns.
+
+
+      Completion criteria:
+
+      - Scanner cleanly distinguishes reject/strip semantics from compatibility behavior.
+
+      - The focused no-legacy scan test stays green.
+
+      - Evidence shows at least one before/after false-positive example and why true
+      legacy reads remain detectable.'
+    verification: '- pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_scan_finds_no_new_legacy_field_references
+      -q
+
+      - pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_known_legacy_surfaces_are_documented
+      -q'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Scanner Remediation Evidence
+
+      - Changed files:
+
+      - Before/after false-positive example:
+
+      - Why real compatibility reads/writes are still caught:
+
+      - Commands run:
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      - Actual output:
+
+      ```text
+
+      <paste exact output>
+
+      ```'
+    agent: python-executor
