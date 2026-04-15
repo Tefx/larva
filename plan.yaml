@@ -46469,7 +46469,7 @@ phases:
       \  - tests/shell/test_python_api.py\n  - artifacts/larva-legacy-field-rejections.jsonl"
   - id: canonical_cutover_impl.transport_surfaces
     name: Cut over MCP surface to canonical-only vocabulary
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for MCP transport files only. Make the
       MCP runtime and MCP-facing tests use canonical-only snake_case naming and canonical-only
       payload/output vocabulary. No dotted aliases and no mirrored tools fields in
@@ -46533,6 +46533,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.registry_policy
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T03:53:40.926525+00:00'
   - id: canonical_cutover_impl.gate
     name: Implementation completeness gate
     status: pending
