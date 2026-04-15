@@ -99,6 +99,16 @@ _LEGITIMATE_REFERENCE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"not in result", re.IGNORECASE),
     # Docstring references in facade.py describing what must NOT be admitted
     re.compile(r"widen admission", re.IGNORECASE),
+    # Defensive stripping patterns: filter/comprehension removing forbidden fields
+    # These are NOT compatibility reads — they explicitly reject/strip the fields
+    re.compile(r"if k [!]= [\"\'](?:tools|side_effect_policy)"),
+    re.compile(r"if k not in", re.IGNORECASE),
+    # Membership checks before rejection — defensive, not compatibility
+    re.compile(r"[\"\'](?:tools|side_effect_policy)[\"\'] in \w+", re.IGNORECASE),
+    # Set literals containing only forbidden field names (rejection/filtering sets)
+    re.compile(
+        r"\{[\"\'](?:tools|side_effect_policy)[\"\']\s*,\s*[\"\'](?:tools|side_effect_policy)[\"\']\}"
+    ),
 ]
 
 
