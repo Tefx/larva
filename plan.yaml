@@ -46719,7 +46719,7 @@ phases:
       \ --name-only 39715f6`:\n  - src/larva/core/patch.py\n  - tests/core/test_patch.py"
   - id: canonical_cutover_impl.python_api_surface
     name: Cut over Python API component and persona outputs
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for Python API files only. Remove mirrored
       legacy fields from Python API outputs, especially component_show and persona-returning
       operations such as resolve/export/clone. Python API must surface canonical-only
@@ -46767,6 +46767,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.transport_surfaces
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T04:43:58.321769+00:00'
   - id: canonical_cutover_impl.cli_web_surface
     name: Cut over CLI and web public outputs
     status: pending
