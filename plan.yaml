@@ -47257,7 +47257,7 @@ phases:
   steps:
   - id: canonical_cutover_final.docs_sync
     name: Remove transition semantics from docs and examples
-    status: done
+    status: rejected
     description: Documentation sync step. Update repo-facing docs and examples to
       canonical-only language. Remove dotted MCP naming, transition-era acceptance
       wording, and contradictory migration-complete claims that depend on hidden compatibility
@@ -47286,43 +47286,16 @@ phases:
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-15T11:32:04.730117+00:00'
     done_at: '2026-04-15T11:43:07.279557+00:00'
-    evidence: "## refs Read Confirmation (MANDATORY)\n\n### Design/Documents Read:\n\
-      - `INTERFACES.md` — Component-kind rules section; key passage updated to remove\
-      \ transition wording\n- `MIGRATION-002-capability-intent.md` — Progress summary\
-      \ table; removed \"maintains internal compatibility\" language\n- `ADR-003-canonical-requiredness-authority.md`\
-      \ — Context section; updated to remove \"transition-era\" terminology  \n- `design/hard-cutover-canonical-alignment.md`\
-      \ — MCP surface naming; changed from `larva_validate` to `larva.validate` format\n\
-      - `design/component-kind-alias-policy-basis.md` — Cleanup Strategy section;\
-      \ replaced with \"Canonical Enforcement\"\n\n## Docs Sync\n\n### Updated files:\n\
-      1. `INTERFACES.md` (line 162): Removed \"Compatibility aliases...may be accepted\
-      \ at ingress during transition\" → \"Public docs and valid-type enumerations\
-      \ advertise only canonical plural values\"\n2. `MIGRATION-002-capability-intent.md`\
-      \ (lines 14, 16, 25): Removed transition/compatibility language from normalization\
-      \ and component loading notes\n3. `ADR-003-canonical-requiredness-authority.md`\
-      \ (lines 16-17, 33): Removed \"transition-era behavior\" and \"transition-era\
-      \ acceptance semantics\" references\n4. `design/hard-cutover-canonical-alignment.md`\
-      \ (lines 35-39, 102-105): Changed MCP tool naming from `larva_validate` → `larva.validate`\
-      \ (dotted notation removed from canonical examples)\n5. `design/component-kind-alias-policy-basis.md`\
-      \ (lines 12, 46-50, 57-60, 64): Removed \"During transition\", \"compatibility-only\"\
-      , and \"staged alias retirement\" language; replaced Cleanup Strategy with Canonical\
-      \ Enforcement\n\n### Removed dotted names:\n- `hard-cutover-canonical-alignment.md`:\
-      \ Changed `larva_validate`, `larva_assemble`, `larva_resolve`, `larva_register`\
-      \ → `larva.validate`, `larva.assemble`, `larva.resolve`, `larva.register`\n\n\
-      ### Removed transition wording:\n- \"may be accepted at ingress during transition\"\
-      \n- \"transition-era behavior\"\n- \"maintains internal capabilities↔tools compatibility\"\
-      \n- \"During transition: update docs/examples/tests\"\n- \"treat singular forms\
-      \ as compatibility-only\"\n- \"staged alias retirement sequencing\"\n\n### Remaining\
-      \ doc contradictions:\n- None. All user-facing docs now align with canonical\
-      \ hard-cut behavior.\n- One intentional reference remains in `hard-cutover-canonical-alignment.md`\
-      \ Failure Conditions: \"docs still say `tools` is accepted during transition\"\
-      \ — this is a negative assertion (failure condition check), not a doc assertion.\n\
-      \n## Git Proof (MANDATORY)\n- Commit hash: `6edf1a3`\n- Commit message: `docs:\
-      \ Remove transition semantics from design docs`\n- Files changed:\n  - `artifacts/larva-legacy-field-rejections.jsonl`\n\
-      \  - `design/hard-cutover-canonical-alignment.md`\n  - `src/larva/shell/registry.py`\n\
-      \  - `tests/repro/issue_canonical_cutover_liveness.py`\n\n```\n6edf1a3 docs:\
-      \ Remove transition semantics from design docs\nartifacts/larva-legacy-field-rejections.jsonl\n\
-      \  design/hard-cutover-canonical-alignment.md\n  src/larva/shell/registry.py\n\
-      \  tests/repro/issue_canonical_cutover_liveness.py\n```"
+    rejection_reason: 'Gate-blocking divergence in docs evidence: introduced dotted
+      MCP names (`larva.validate`) which violates canonical snake_case surface policy;
+      evidence also includes unrelated code/artifact modifications outside docs-only
+      scope.'
+    rejection_history:
+    - reason: 'Gate-blocking divergence in docs evidence: introduced dotted MCP names
+        (`larva.validate`) which violates canonical snake_case surface policy; evidence
+        also includes unrelated code/artifact modifications outside docs-only scope.'
+      timestamp: '2026-04-15T11:44:16.726220+00:00'
+      reviewer: vectl-orchestrator
   - id: canonical_cutover_final.verify
     name: Run final hard-cut verification
     status: pending
