@@ -48250,7 +48250,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: post_cutover_debt_remediation.harness_maintenance_fix
     name: Fix hard-cut readiness harness stale assertions
-    status: pending
+    status: claimed
     description: 'Implement harness-maintenance fixes identified by gate: remove stale
       strict-xfail marker for normalize transition test and update JSONL tally assertion
       to accept clean-state zero findings while preserving regression detection semantics.'
@@ -48267,3 +48267,5 @@ phases:
     depends_on:
     - post_cutover_debt_remediation.verify
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T17:14:00.079506+00:00'
