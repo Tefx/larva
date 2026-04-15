@@ -48250,7 +48250,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: post_cutover_debt_remediation.harness_maintenance_fix
     name: Fix hard-cut readiness harness stale assertions
-    status: claimed
+    status: done
     description: 'Implement harness-maintenance fixes identified by gate: remove stale
       strict-xfail marker for normalize transition test and update JSONL tally assertion
       to accept clean-state zero findings while preserving regression detection semantics.'
@@ -48269,3 +48269,13 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T17:14:00.079506+00:00'
+    done_at: '2026-04-15T17:16:30.314449+00:00'
+    evidence: "## Harness maintenance fix\n- Changes made:\n  - Removed stale strict-xfail\
+      \ marker from normalize transition test.\n  - Updated JSONL tally assertion\
+      \ for clean-state zero findings while keeping scanner regression detection semantics.\n\
+      - Why regression detection is preserved:\n  - no-legacy scan + known legacy\
+      \ surfaces tests still detect reintroduction paths.\n- Focused test output:\n\
+      ```text\npytest tests/canonical_cutover/test_hard_cutover_readiness.py -q\n\
+      10 passed in 0.17s\n```\n- Residual debt:\n  - none\n\n## Git Proof\n- Commit\
+      \ hash: 80c806810f9fb983b043716cfd0ac84660b974d8 (present on main)\n- git show\
+      \ --name-only --oneline 80c8068:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py"
