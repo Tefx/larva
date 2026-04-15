@@ -47907,7 +47907,7 @@ phases:
       \ src/larva/shell/components.py\n  - src/larva/core/assemble.py"
   - id: post_cutover_debt_remediation.normalize_reject_semantics_fix
     name: Align normalize forbidden-field handling with reject semantics
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent: python-senior-tacit
@@ -48019,6 +48019,22 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T16:36:38.360863+00:00'
+    done_at: '2026-04-15T16:54:01.285686+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Reject-Semantics Remediation Evidence\n- Changed files:\n  - src/larva/core/normalize.py\n\
+      \  - tests/core/test_normalize.py\n  - tests/shell/test_canonical_boundary_gaps.py\n\
+      \  - tests/repro/spec_verify_black_box_surfaces.py\n  - tests/app/test_facade/test_update.py\n\
+      - Admission semantics chosen:\n  - normalize now preserves forbidden fields\
+      \ for downstream validation rejection semantics (no silent strip-as-success\
+      \ assumptions).\n- Patch/read-flow impact and disposition:\n  - update/read\
+      \ boundary tests now assert rejection behavior for forbidden legacy fields.\n\
+      - Tests updated to remove silent-strip assumptions: yes\n- Commands run:\n```text\n\
+      pytest tests/core/test_normalize.py tests/shell/test_canonical_boundary_gaps.py\
+      \ tests/repro/spec_verify_black_box_surfaces.py tests/app/test_facade/test_update.py\
+      \ -q\n```\n- Actual output:\n```text\n53 passed in 0.27s\n```\n\n## Git Proof\n\
+      - Commit hash: 758ebe1\n- git show --name-only --oneline 758ebe1 includes:\n\
+      \  - src/larva/core/normalize.py\n  - tests/core/test_normalize.py\n  - tests/shell/test_canonical_boundary_gaps.py\n\
+      \  - tests/repro/spec_verify_black_box_surfaces.py\n  - tests/app/test_facade/test_update.py"
   - id: post_cutover_debt_remediation.verify
     name: Run focused remediation verification set
     status: pending
