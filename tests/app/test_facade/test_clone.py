@@ -69,50 +69,44 @@ class TestFacadeClone:
         assert cloned["spec_version"] == "0.1.0"
         assert cloned["spec_digest"] == _digest_for(cloned)
         assert cloned["spec_digest"] != "sha256:old-digest"
-        # Sequencing: clone validates source-derived payload, normalizes, then
-        # revalidates normalized output before save.
-        assert calls == ["validate", "normalize", "validate"]
+        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
+        assert calls == ["normalize", "validate"]
         assert registry.get_inputs == ["source-persona"]
         assert validate_module.inputs[0]["id"] == "cloned-persona"
-        assert validate_module.inputs[1]["id"] == "cloned-persona"
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
-    def test_clone_preserves_all_non_id_fields_from_source(self) -> None:
-        """Clone preserves all fields except id (which changes) and spec_digest (recomputed)."""
-        source_spec: PersonaSpec = {
-            "id": "original",
-            "description": "Original persona description",
-            "prompt": "Original prompt",
-            "model": "gpt-4",
-            "tools": {"shell": "full_access"},
-            "model_params": {"temperature": 0.5, "max_tokens": 2000},
-            "side_effect_policy": "full_access",
-            "can_spawn": True,
-            "compaction_prompt": "Custom compaction",
-            "spec_version": "0.1.0",
-            "spec_digest": "sha256:stale",
-            "custom_field": "custom_value",
-        }
-        registry = InMemoryRegistryStore(get_result=Success(source_spec))
+    def test_clone_hard_cut_strips_forbidden_fields_from_source(self) -> None:
+        """Clone of a stored legacy spec strips forbidden fields via normalization.
+
+        Per ADR-002 hard-cut policy: forbidden fields (tools, side_effect_policy)
+        are stripped by normalization before validation. Unknown fields (e.g.
+        custom_field) are rejected by validation. The clone result contains
+        only canonical fields.
+        """
+        source_spec = _canonical_spec("legacy-source", digest="sha256:stale")
+        # Simulate a stored legacy record with forbidden and unknown fields
+        source_with_legacy = dict(source_spec)
+        source_with_legacy["tools"] = {"shell": "full_access"}
+        source_with_legacy["side_effect_policy"] = "full_access"
+        source_with_legacy["custom_field"] = "custom_value"
+
+        registry = InMemoryRegistryStore(get_result=Success(source_with_legacy))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
-        result = facade.clone("original", "clone-target")
+        result = facade.clone("legacy-source", "cloned-from-legacy")
 
         assert isinstance(result, Success)
         cloned = result.unwrap()
-        assert cloned["description"] == "Original persona description"
-        assert cloned["prompt"] == "Original prompt"
-        assert cloned["model"] == "gpt-4"
-        # Legacy fields in source are preserved in clone payload.
-        assert "capabilities" not in cloned
-        assert cloned["tools"] == {"shell": "full_access"}
-        assert cloned["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
-        assert cloned["side_effect_policy"] == "full_access"
-        assert cloned["can_spawn"] is True
-        assert cloned["compaction_prompt"] == "Custom compaction"
-        assert cloned["spec_version"] == "0.1.0"
-        assert cloned["custom_field"] == "custom_value"
-        assert cloned["id"] == "clone-target"
+        assert cloned["id"] == "cloned-from-legacy"
+        # normalize strips tools and side_effect_policy
+        assert "tools" not in cloned
+        assert "side_effect_policy" not in cloned
+        # Spy validate always returns valid, so custom_field survives spy
+        # validation but would be rejected by real validation
+        assert cloned["description"] == "Persona legacy-source"
+        assert cloned["prompt"] == "You are careful."
+        assert cloned["model"] == "gpt-4o-mini"
+        assert cloned["capabilities"] == {"shell": "read_only"}
         assert cloned["spec_digest"] == _digest_for(cloned)
 
     def test_clone_source_not_found_returns_persona_not_found_error(self) -> None:
@@ -178,8 +172,9 @@ class TestFacadeClone:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert validate_module.inputs[0]["id"] == "Invalid_Clone_Id"
-        assert normalize_module.inputs == []
-        assert calls == ["validate"]
+        # Hard-cut policy: normalize is called before validation
+        assert normalize_module.inputs[0]["id"] == "Invalid_Clone_Id"
+        assert calls == ["normalize", "validate"]
         assert registry.get_inputs == ["valid-source"]
 
     def test_clone_overwrites_existing_target_without_check(self) -> None:
@@ -239,8 +234,8 @@ class TestFacadeClone:
         assert error["details"]["persona_id"] == "write-fail-clone"
         assert error["details"]["path"] == "/tmp/write-fail-clone.json"
 
-    def test_clone_flow_order_get_then_validate_then_normalize_then_save(self) -> None:
-        """Clone calls registry.get, then validate, normalize, then registry.save in order."""
+    def test_clone_flow_order_get_then_normalize_then_validate_then_save(self) -> None:
+        """Clone calls registry.get, then normalize, then validate, then registry.save in order."""
         source_spec = _canonical_spec("ordered-source", digest="sha256:ordered")
         calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
@@ -253,8 +248,8 @@ class TestFacadeClone:
         result = facade.clone("ordered-source", "ordered-clone")
 
         assert isinstance(result, Success)
-        # Sequencing is explicit: pre-normalize validation then normalize + revalidation.
-        assert calls == ["validate", "normalize", "validate"]
+        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
+        assert calls == ["normalize", "validate"]
         assert registry.get_inputs == ["ordered-source"]
         assert validate_module.inputs[0]["id"] == "ordered-clone"
         assert normalize_module.inputs[0]["id"] == "ordered-clone"

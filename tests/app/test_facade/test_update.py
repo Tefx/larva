@@ -25,7 +25,7 @@ from .conftest import (
 
 
 class TestFacadeUpdate:
-    def test_update_reads_patches_validates_normalizes_saves_and_returns_spec(self) -> None:
+    def test_update_reads_patches_normalizes_validates_saves_and_returns_spec(self) -> None:
         calls: list[str] = []
         existing = _canonical_spec("update-me", digest="sha256:canonical-old")
         registry = InMemoryRegistryStore(get_result=Success(existing))
@@ -46,8 +46,9 @@ class TestFacadeUpdate:
         assert isinstance(result, Success)
         updated = result.unwrap()
         assert registry.get_inputs == ["update-me"]
-        assert calls == ["validate", "normalize", "validate"]
-        assert len(validate_module.inputs) == 2
+        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
+        assert calls == ["normalize", "validate"]
+        assert len(validate_module.inputs) == 1
         assert validate_module.inputs[0]["description"] == "Updated description"
         assert validate_module.inputs[0]["model_params"] == {"temperature": 0}
         assert normalize_module.inputs[0]["description"] == "Updated description"
@@ -82,7 +83,7 @@ class TestFacadeUpdate:
         calls: list[str] = []
         existing = _canonical_spec("update-invalid", digest="sha256:canonical-old")
         registry = InMemoryRegistryStore(get_result=Success(existing))
-        facade, _, _, normalize_module = _facade(
+        facade, _, validate_module, normalize_module = _facade(
             report=_invalid_report("INVALID_SPEC_VERSION"),
             registry=registry,
             calls=calls,
@@ -94,6 +95,7 @@ class TestFacadeUpdate:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_VERSION"
-        assert calls == ["validate"]
-        assert normalize_module.inputs == []
+        # Hard-cut policy: normalize is called before validation
+        assert calls == ["normalize", "validate"]
+        assert len(normalize_module.inputs) == 1
         assert registry.save_inputs == []

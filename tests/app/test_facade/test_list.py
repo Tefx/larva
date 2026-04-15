@@ -29,25 +29,21 @@ class TestFacadeList:
             _canonical_spec("beta", digest="sha256:b"),
         ]
         registry = InMemoryRegistryStore(list_result=Success(specs))
-        facade, _, _, _ = _facade(registry=registry)
+        facade, _, _, normalize_module = _facade(registry=registry)
 
         result = facade.list()
 
         assert isinstance(result, Success)
-        assert result.unwrap() == [
-            {
-                "id": "alpha",
-                "description": "Persona alpha",
-                "spec_digest": "sha256:a",
-                "model": "gpt-4o-mini",
-            },
-            {
-                "id": "beta",
-                "description": "Persona beta",
-                "spec_digest": "sha256:b",
-                "model": "gpt-4o-mini",
-            },
-        ]
+        summaries = result.unwrap()
+        # Hard-cut policy: list normalizes specs before building summaries
+        # spec_digest values are recomputed by normalization
+        assert len(summaries) == 2
+        assert summaries[0]["id"] == "alpha"
+        assert summaries[0]["description"] == "Persona alpha"
+        assert summaries[1]["id"] == "beta"
+        assert summaries[1]["description"] == "Persona beta"
+        # Verify normalization was called for both specs
+        assert len(normalize_module.inputs) == 2
 
     def test_list_returns_exactly_empty_list_for_empty_registry(self) -> None:
         """Verify empty registry returns exactly [] not wrapped in transport envelope."""

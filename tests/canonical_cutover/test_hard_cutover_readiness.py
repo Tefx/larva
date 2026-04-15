@@ -485,11 +485,6 @@ class TestNoLegacyFieldScan:
             )
         )
 
-    @pytest.mark.xfail(
-        reason="RED: DEEP_MERGE_KEYS in patch.py still contains 'tools' — "
-        "must be removed for canonical cutover",
-        strict=True,
-    )
     def test_deep_merge_keys_excludes_tools(self) -> None:
         """DEEP_MERGE_KEYS must not contain 'tools' after hard cutover."""
         findings = scan_deep_merge_keys()
@@ -510,11 +505,6 @@ class TestNoLegacyFieldScan:
             + "\n".join(f"  L{f['line']}: {f['content']}" for f in findings)
         )
 
-    @pytest.mark.xfail(
-        reason="RED: components.py load_toolset still has tools fallback — "
-        "must be removed for canonical cutover",
-        strict=True,
-    )
     def test_components_has_no_tools_fallback(self) -> None:
         """load_toolset must not fall back to 'tools' key after hard cutover."""
         findings = scan_components_tools_fallback()

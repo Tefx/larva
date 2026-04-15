@@ -17,6 +17,7 @@ from larva.shell.registry import RegistryError
 from .conftest import (
     InMemoryRegistryStore,
     _canonical_spec,
+    _digest_for,
     _facade,
     _failure,
 )
@@ -29,7 +30,7 @@ class TestFacadeExportAll:
     """
 
     def test_export_all_returns_full_canonical_specs_from_registry(self) -> None:
-        """Success export_all returns complete PersonaSpec records, not summaries."""
+        """Success export_all returns complete canonical PersonaSpec records after normalization."""
         spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha-digest")
         spec_beta = _canonical_spec("export-beta", digest="sha256:beta-digest")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
@@ -40,8 +41,6 @@ class TestFacadeExportAll:
         assert isinstance(result, Success)
         exported_specs = result.unwrap()
         assert len(exported_specs) == 2
-        assert exported_specs[0] == spec_alpha
-        assert exported_specs[1] == spec_beta
         for spec in exported_specs:
             assert "id" in spec
             assert "description" in spec
@@ -54,6 +53,11 @@ class TestFacadeExportAll:
             assert "compaction_prompt" in spec
             assert "spec_version" in spec
             assert "spec_digest" in spec
+            # Hard-cut policy: export normalizes, so spec_digests are recomputed
+            assert spec["spec_digest"] == _digest_for(spec)
+            # Hard-cut policy: no forbidden fields in exported output
+            assert "tools" not in spec
+            assert "side_effect_policy" not in spec
 
     def test_export_all_returns_exactly_empty_list_for_empty_registry(self) -> None:
         """Verify empty registry returns exactly Success([]), no transport envelope."""
@@ -99,7 +103,7 @@ class TestFacadeExportIds:
     """
 
     def test_export_ids_returns_full_canonical_specs_in_input_order(self) -> None:
-        """Success export_ids returns complete PersonaSpec records preserving order."""
+        """Success export_ids returns complete canonical PersonaSpec records preserving order."""
         spec_one = _canonical_spec("export-one", digest="sha256:one-digest")
         spec_two = _canonical_spec("export-two", digest="sha256:two-digest")
         spec_three = _canonical_spec("export-three", digest="sha256:three-digest")
@@ -122,9 +126,7 @@ class TestFacadeExportIds:
         assert isinstance(result, Success)
         exported_specs = result.unwrap()
         assert len(exported_specs) == 3
-        assert exported_specs[0] == spec_two
-        assert exported_specs[1] == spec_one
-        assert exported_specs[2] == spec_three
+        # Hard-cut policy: export normalizes, so spec_digests may differ from stored
         for spec in exported_specs:
             assert "id" in spec
             assert "description" in spec
@@ -136,6 +138,12 @@ class TestFacadeExportIds:
             assert "compaction_prompt" in spec
             assert "spec_version" in spec
             assert "spec_digest" in spec
+            assert spec["spec_digest"] == _digest_for(spec)
+            assert "tools" not in spec
+            assert "side_effect_policy" not in spec
+        assert exported_specs[0]["id"] == "export-two"
+        assert exported_specs[1]["id"] == "export-one"
+        assert exported_specs[2]["id"] == "export-three"
 
     def test_export_ids_returns_empty_list_for_empty_ids_immediately(self) -> None:
         """Empty ids list returns Success([]) immediately with no registry calls."""
@@ -207,7 +215,7 @@ class TestFacadeExportIds:
         assert error["details"]["path"] == "/tmp/registry/broken-spec.json"
 
     def test_export_ids_single_id_returns_single_element_list(self) -> None:
-        """Single id returns list with one spec, not the spec directly."""
+        """Single id returns list with one canonical spec after normalization."""
         spec_single = _canonical_spec("export-single", digest="sha256:single")
         registry = InMemoryRegistryStore(get_result=Success(spec_single))
         facade, _, _, _ = _facade(registry=registry)
@@ -218,4 +226,8 @@ class TestFacadeExportIds:
         exported = result.unwrap()
         assert isinstance(exported, list)
         assert len(exported) == 1
-        assert exported[0] == spec_single
+        # Hard-cut policy: export normalizes, verify canonical shape
+        assert exported[0]["id"] == "export-single"
+        assert "tools" not in exported[0]
+        assert "side_effect_policy" not in exported[0]
+        assert exported[0]["spec_digest"] == _digest_for(exported[0])

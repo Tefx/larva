@@ -191,18 +191,25 @@ class TestSpecFixtureSemantics:
 
 
 class TestWebApiCanonicalSemantics:
-    """Verify web API patch flow preserves canonical rejection semantics."""
+    """Verify web API patch flow preserves canonical normalization semantics.
 
-    def test_web_patch_rejects_tools_in_canonical_boundary(self) -> None:
-        """Web PATCH endpoint should reject `tools` field at canonical boundary.
+    Hard-cut policy (ADR-002): on registry-read surfaces (resolve, export, clone,
+    update, list, export_all, export_ids), normalization strips forbidden fields
+    (tools, side_effect_policy) before validation. For PATCH input, the same
+    normalize-then-validate flow applies: forbidden fields in patches are stripped
+    by normalization, and the result is a canonical spec without those fields.
+    """
 
-        The endpoint must not special-case `tools`; forbidden fields should fall
-        through to revalidation and be rejected. This is verified through the
-        public web surface via TestClient, not by inspecting private internals.
+    def test_web_patch_normalizes_tools_out_of_canonical_boundary(self) -> None:
+        """Web PATCH endpoint normalizes `tools` field out at canonical boundary.
+
+        Under hard-cut policy, forbidden fields in patch input are stripped by
+        normalization before validation. The patched record returns as canonical
+        (no `tools` field), not as a rejection.
         """
         from starlette.testclient import TestClient
 
-        # Use the public web surface (FastAPI app) to verify canonical rejection
+        # Use the public web surface (FastAPI app) to verify canonical normalization
         client = TestClient(web_module.app, raise_server_exceptions=False)
 
         # Create a canonical persona first
@@ -221,20 +228,22 @@ class TestWebApiCanonicalSemantics:
             json={"tools": {"shell": "read_write"}},  # forbidden field
         )
 
-        # Canonical boundary: web PATCH must reject `tools` via revalidation
-        assert patch_response.status_code == 400, (
-            f"Web PATCH should reject `tools` field at canonical boundary. "
-            f"Expected 400, got {patch_response.status_code}. "
+        # Hard-cut policy: normalize strips `tools`, the patched spec is canonical
+        assert patch_response.status_code == 200, (
+            f"Web PATCH should normalize `tools` out of canonical boundary. "
+            f"Expected 200, got {patch_response.status_code}. "
             f"Response: {patch_response.json()}"
         )
-        error_data = patch_response.json()
-        assert "error" in error_data
-        # Verify the rejection is due to FORBIDDEN_EXTRA_FIELD, not some other issue
-        error_code = error_data["error"].get("code", "")
-        # Could be PERSONA_INVALID (from revalidation) or FORBIDDEN_OVERRIDE_FIELD (from assemble overrides)
-        assert error_code in ("PERSONA_INVALID", "FORBIDDEN_OVERRIDE_FIELD"), (
-            f"Expected canonical rejection code, got: {error_code}"
+        response_data = patch_response.json()
+        patched_spec = response_data["data"]
+        # Verify the `tools` field is NOT present in the response (normalized out)
+        assert "tools" not in patched_spec, (
+            f"After patch, `tools` should be normalized out. "
+            f"Got tools in response: {patched_spec.get('tools')}"
         )
+        # Verify canonical fields are preserved
+        assert patched_spec["id"] == "patch-target"
+        assert "capabilities" in patched_spec
 
 
 # -----------------------------------------------------------------------------

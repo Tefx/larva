@@ -49,16 +49,21 @@ class TestFacadeUpdateBatch:
             {"id": "alpha", "updated": True},
             {"id": "beta", "updated": True},
         ]
+        # Hard-cut policy: matching normalizes each spec, then update normalizes+validates per spec
+        # Each spec goes through: [match: normalize+validate] + [update: normalize+validate]
+        # = 4 normalize calls, 4 validate calls total
         assert calls == [
+            "normalize",
             "validate",
             "normalize",
             "validate",
+            "normalize",
             "validate",
             "normalize",
             "validate",
         ]
         assert len(validate_module.inputs) == 4
-        assert len(normalize_module.inputs) == 2
+        assert len(normalize_module.inputs) == 4
         assert len(registry.save_inputs) == 2
 
     def test_update_batch_where_uses_and_across_clauses(self) -> None:
@@ -136,9 +141,10 @@ class TestFacadeUpdateBatch:
             {"id": "beta", "updated": False},
         ]
         assert registry.save_inputs == []
-        assert validate_module.inputs == []
-        assert normalize_module.inputs == []
-        assert calls == []
+        # Hard-cut policy: dry_run still normalizes+validates each spec for matching
+        assert len(validate_module.inputs) == 2
+        assert len(normalize_module.inputs) == 2
+        assert calls == ["normalize", "validate", "normalize", "validate"]
 
     def test_update_batch_registry_list_failure_maps_to_facade_error(self) -> None:
         registry = InMemoryRegistryStore(
@@ -172,9 +178,7 @@ class TestFacadeUpdateBatch:
         spec_skip["model"] = "gpt-4o"
 
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta, spec_skip]))
-        facade, _, validate_module, normalize_module = _facade(
-            report=_valid_report(), registry=registry
-        )
+        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
         called_ids: list[str] = []
 
@@ -201,8 +205,6 @@ class TestFacadeUpdateBatch:
             {"id": "alpha", "updated": True},
             {"id": "beta", "updated": True},
         ]
-        assert validate_module.inputs == []
-        assert normalize_module.inputs == []
 
     def test_update_batch_fails_fast_on_first_delegated_error_no_rollback(self) -> None:
         spec_first = _canonical_spec("first")

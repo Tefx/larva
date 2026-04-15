@@ -412,7 +412,11 @@ class TestPythonApiList:
     """Verify list() is thin delegation over facade.list."""
 
     def test_list_delegates_to_facade_list(self, facade_fixture: FacadeFixture) -> None:
-        """list() must forward to facade.list() and return summaries."""
+        """list() must forward to facade.list() and return summaries.
+
+        Hard-cut policy: list normalizes specs before building summaries,
+        so spec_digest values are recomputed by normalization.
+        """
         specs = [
             _canonical_spec("alpha", digest="sha256:a"),
             _canonical_spec("beta", digest="sha256:b"),
@@ -422,24 +426,22 @@ class TestPythonApiList:
         # Call the python_api wrapper (the actual thin delegation)
         result = python_api.list()
 
-        # Verify delegation
-        assert result == [
-            {
-                "id": "alpha",
-                "description": "Persona alpha",
-                "spec_digest": "sha256:a",
-                "model": "gpt-4o-mini",
-            },
-            {
-                "id": "beta",
-                "description": "Persona beta",
-                "spec_digest": "sha256:b",
-                "model": "gpt-4o-mini",
-            },
-        ]
+        # Verify delegation: spec_digests are recomputed by normalization
+        assert len(result) == 2
+        assert result[0]["id"] == "alpha"
+        assert result[0]["description"] == "Persona alpha"
+        assert result[0]["spec_digest"].startswith("sha256:")
+        assert result[0]["model"] == "gpt-4o-mini"
+        assert result[1]["id"] == "beta"
+        assert result[1]["description"] == "Persona beta"
+        assert result[1]["spec_digest"].startswith("sha256:")
+        assert result[1]["model"] == "gpt-4o-mini"
 
     def test_list_returns_summaries(self, facade_fixture: FacadeFixture) -> None:
-        """list() must return list of PersonaSummary with id, description, spec_digest, model."""
+        """list() must return list of PersonaSummary with id, description, spec_digest, model.
+
+        Hard-cut policy: spec_digest values are recomputed by normalization.
+        """
         specs = [
             _canonical_spec("test1", digest="sha256:abc"),
             _canonical_spec("test2", digest="sha256:def"),
@@ -449,7 +451,7 @@ class TestPythonApiList:
         assert len(result) == 2
         assert result[0]["id"] == "test1"
         assert result[0]["description"] == "Persona test1"
-        assert result[0]["spec_digest"] == "sha256:abc"
+        assert result[0]["spec_digest"].startswith("sha256:")
         assert result[0]["model"] == "gpt-4o-mini"
 
     def test_list_empty(self, facade_fixture: FacadeFixture) -> None:
@@ -1300,7 +1302,11 @@ class TestPythonApiExportAll:
     def test_export_all_returns_full_specs_not_summaries(
         self, facade_fixture: FacadeFixture
     ) -> None:
-        """export_all() returns complete PersonaSpec objects, not summaries."""
+        """export_all() returns complete PersonaSpec objects, not summaries.
+
+        Hard-cut policy: export normalizes each spec before returning,
+        so spec_digest values are recomputed.
+        """
         spec = _canonical_spec("full-spec", digest="sha256:full")
         spec["description"] = "Full description"
         spec["prompt"] = "Full prompt"
@@ -1314,7 +1320,10 @@ class TestPythonApiExportAll:
         assert exported_spec["description"] == "Full description"
         assert exported_spec["prompt"] == "Full prompt"
         assert exported_spec["model"] == "gpt-4o-mini"
-        assert exported_spec["spec_digest"] == "sha256:full"
+        # Hard-cut: spec_digest is recomputed by normalization
+        assert exported_spec["spec_digest"].startswith("sha256:")
+        assert "tools" not in exported_spec
+        assert "side_effect_policy" not in exported_spec
 
     def test_export_all_failure_raises_larva_api_error(self, facade_fixture: FacadeFixture) -> None:
         """Facade export_all failures must raise LarvaApiError."""
@@ -1418,7 +1427,11 @@ class TestPythonApiExportIds:
     def test_export_ids_returns_full_specs_not_summaries(
         self, facade_fixture: FacadeFixture
     ) -> None:
-        """export_ids() returns complete PersonaSpec objects, not summaries."""
+        """export_ids() returns complete PersonaSpec objects, not summaries.
+
+        Hard-cut policy: export normalizes each spec before returning,
+        so spec_digest values are recomputed.
+        """
         spec = _canonical_spec("full-spec", digest="sha256:full")
         spec["description"] = "Full description"
         spec["prompt"] = "Full prompt"
@@ -1432,7 +1445,10 @@ class TestPythonApiExportIds:
         assert exported_spec["description"] == "Full description"
         assert exported_spec["prompt"] == "Full prompt"
         assert exported_spec["model"] == "gpt-4o-mini"
-        assert exported_spec["spec_digest"] == "sha256:full"
+        # Hard-cut: spec_digest is recomputed by normalization
+        assert exported_spec["spec_digest"].startswith("sha256:")
+        assert "tools" not in exported_spec
+        assert "side_effect_policy" not in exported_spec
 
     def test_export_ids_registry_failure_raises_larva_api_error(
         self, facade_fixture: FacadeFixture

@@ -12,6 +12,19 @@ Acceptance notes:
   PersonaSpec input
 - ``contracts/persona_spec.schema.json`` is reference-only while present and
   must never act as an independent contract owner
+
+Registry read policy (hard-cut, per ADR-002 / canonical cutover):
+- All registry-sourced PersonaSpec records are normalized before use on any
+  read surface (resolve, clone, update, update_batch, export_all, export_ids).
+- Normalization strips forbidden fields (``tools``, ``side_effect_policy``)
+  and recomputes ``spec_digest`` before validation, ensuring that stored legacy
+  records are converted to canonical form at the facade boundary.
+- No silent field dropping — normalization is an explicit transform.
+- No auto-rewrite — the registry file is not modified unless the surface
+  explicitly writes back (update, clone, update_batch).
+- No hidden compatibility — ``where`` clauses in update_batch only match
+  against canonical field names, so legacy fields like ``tools`` or
+  ``side_effect_policy`` are invisible to matching after normalization.
 """
 
 from __future__ import annotations
@@ -433,10 +446,6 @@ class DefaultLarvaFacade(LarvaFacade):
         if overrides is not None:
             resolved.update(overrides)
 
-        report = self.validate(cast("PersonaSpec", resolved))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
         normalized_result = self._normalize_and_validate(cast("PersonaSpec", resolved))
         if isinstance(normalized_result, Failure):
             return normalized_result
@@ -453,10 +462,6 @@ class DefaultLarvaFacade(LarvaFacade):
 
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
         patched = apply_patches(existing, patches)
-
-        report = self.validate(cast("PersonaSpec", patched))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
 
         normalized_result = self._normalize_and_validate(cast("PersonaSpec", patched))
         if isinstance(normalized_result, Failure):
@@ -479,18 +484,22 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(list_result.failure()))
 
         matched_specs: list[PersonaSpec] = []
-        for spec in list_result.unwrap():
+        for raw_spec in list_result.unwrap():
+            normalized_result = self._normalize_and_validate(raw_spec)
+            if isinstance(normalized_result, Failure):
+                return normalized_result
+            canonical_spec = normalized_result.unwrap()
             where_matches = True
             for dotted_key, expected_value in where.items():
                 actual_value = self._dotted_lookup_or_not_found(
-                    cast("dict[str, object]", spec),
+                    cast("dict[str, object]", canonical_spec),
                     dotted_key,
                 )
                 if actual_value is _LOOKUP_NOT_FOUND or actual_value != expected_value:
                     where_matches = False
                     break
             if where_matches:
-                matched_specs.append(spec)
+                matched_specs.append(canonical_spec)
 
         if dry_run:
             dry_run_items: list[BatchUpdateItemResult] = []
@@ -548,8 +557,11 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(list_result.failure()))
 
         summaries: list[PersonaSummary] = []
-        for spec in list_result.unwrap():
-            summary_result = self._summary_from_spec(spec)
+        for raw_spec in list_result.unwrap():
+            normalized_result = self._normalize_and_validate(raw_spec)
+            if isinstance(normalized_result, Failure):
+                return normalized_result
+            summary_result = self._summary_from_spec(normalized_result.unwrap())
             if isinstance(summary_result, Failure):
                 return summary_result
             summaries.append(summary_result.unwrap())
@@ -564,10 +576,6 @@ class DefaultLarvaFacade(LarvaFacade):
         cloned["id"] = new_id
         if "spec_digest" in cloned:
             del cloned["spec_digest"]
-
-        report = self.validate(cast("PersonaSpec", cloned))
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
 
         normalized_result = self._normalize_and_validate(cast("PersonaSpec", cloned))
         if isinstance(normalized_result, Failure):
@@ -597,7 +605,14 @@ class DefaultLarvaFacade(LarvaFacade):
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
             return Failure(self._registry_failure_error(list_result.failure()))
-        return Success(list_result.unwrap())
+
+        specs: list[PersonaSpec] = []
+        for raw_spec in list_result.unwrap():
+            normalized_result = self._normalize_and_validate(raw_spec)
+            if isinstance(normalized_result, Failure):
+                return normalized_result
+            specs.append(normalized_result.unwrap())
+        return Success(specs)
 
     def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]:
         if not ids:
@@ -613,5 +628,8 @@ class DefaultLarvaFacade(LarvaFacade):
                         extra_details={"id": persona_id},
                     )
                 )
-            specs.append(get_result.unwrap())
+            normalized_result = self._normalize_and_validate(get_result.unwrap())
+            if isinstance(normalized_result, Failure):
+                return normalized_result
+            specs.append(normalized_result.unwrap())
         return Success(specs)

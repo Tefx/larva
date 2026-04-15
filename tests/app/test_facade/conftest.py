@@ -111,8 +111,12 @@ class SpyNormalizeModule:
 
     def normalize_spec(self, spec: PersonaSpec) -> PersonaSpec:
         self.calls.append("normalize")
-        normalized = dict(spec)
-        normalized["spec_digest"] = _digest_for(normalized)
+        # Hard-cut policy: delegate to real normalize_spec to strip forbidden
+        # fields (tools, side_effect_policy) and recompute spec_digest.
+        # This ensures tests see canonical behavior, not spy pass-through.
+        from larva.core.normalize import normalize_spec as real_normalize
+
+        normalized = real_normalize(dict(spec))
         self.inputs.append(normalized)
         return normalized
 
