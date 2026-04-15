@@ -47868,7 +47868,7 @@ phases:
     claimed_at: '2026-04-15T16:36:31.583406+00:00'
   - id: post_cutover_debt_remediation.normalize_reject_semantics_fix
     name: Align normalize forbidden-field handling with reject semantics
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent: python-senior-tacit
@@ -47978,6 +47978,8 @@ phases:
 
       ```'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-15T16:36:38.360863+00:00'
   - id: post_cutover_debt_remediation.verify
     name: Run focused remediation verification set
     status: pending
