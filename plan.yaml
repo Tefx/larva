@@ -47619,7 +47619,7 @@ phases:
       \ pass."
 - id: post_cutover_debt_remediation
   name: Post-Cutover Debt Remediation
-  status: pending
+  status: in_progress
   gate: Close remaining non-blocking hard-cut debt with focused green tests, clean
     scanner behavior, and green invar guard evidence.
   depends_on:
@@ -47784,7 +47784,7 @@ phases:
     agent: python-executor
   - id: post_cutover_debt_remediation.docstring_cleanup
     name: Remove stale transition-era docstrings from components and assemble
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent: python-executor
@@ -47864,6 +47864,8 @@ phases:
 
       ```'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T16:36:31.583406+00:00'
   - id: post_cutover_debt_remediation.normalize_reject_semantics_fix
     name: Align normalize forbidden-field handling with reject semantics
     status: pending
