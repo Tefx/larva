@@ -47864,3 +47864,115 @@ phases:
 
       ```'
     agent: python-executor
+  - id: post_cutover_debt_remediation.normalize_reject_semantics_fix
+    name: Align normalize forbidden-field handling with reject semantics
+    status: pending
+    description: 'step_type: implementation
+
+      agent: python-senior-tacit
+
+      work_type: technical_debt_remediation
+
+
+      Issue: normalize.py silently pop() strips forbidden fields instead of aligning
+      with reject semantics.
+
+
+      spec_refs:
+
+      - src/larva/core/normalize.py :: normalize_spec contract
+
+      - tests/shell/test_canonical_boundary_gaps.py :: TestWebApiCanonicalSemantics
+      / TestCanonicalBoundaryRejection
+
+      - tests/repro/spec_verify_black_box_surfaces.py :: forbidden-field boundary
+      checks
+
+
+      touch_paths:
+
+      - src/larva/core/normalize.py
+
+      - tests/core/test_normalize.py
+
+      - tests/shell/test_canonical_boundary_gaps.py
+
+      - tests/repro/spec_verify_black_box_surfaces.py
+
+      - tests/app/test_facade/test_update.py
+
+
+      State semantics:
+
+      - Forbidden fields must not be silently treated as acceptable canonical input.
+
+      - If any stripping remains valid on non-admission read/patch flows, ownership
+      must be explicit outside canonical admission semantics.
+
+      - Backward-compatible transition behavior is NOT the default unless the downstream
+      surface explicitly owns it.
+
+
+      Failure-mode checklist:
+
+      - direct normalize_spec admission path with tools
+
+      - direct normalize_spec admission path with side_effect_policy
+
+      - downstream patch/update flow expectations after the semantic change
+
+      - stale tests that currently encode silent-strip assumptions
+
+
+      Out-of-scope guardrail:
+
+      - Do not widen canonical admission.
+
+      - Do not preserve silent pop() behavior just to keep transition-era tests green.
+
+
+      Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs.'
+    verification: '- pytest tests/core/test_normalize.py tests/shell/test_canonical_boundary_gaps.py
+      tests/repro/spec_verify_black_box_surfaces.py tests/app/test_facade/test_update.py
+      -q'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Reject-Semantics Remediation Evidence
+
+      - Changed files:
+
+      - Admission semantics chosen:
+
+      - Patch/read-flow impact and disposition:
+
+      - Tests updated to remove silent-strip assumptions:
+
+      - Commands run:
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      - Actual output:
+
+      ```text
+
+      <paste exact output>
+
+      ```'
+    agent: python-senior-tacit
