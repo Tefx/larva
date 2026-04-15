@@ -94,7 +94,6 @@ class MCPHandlers(MCPHandlerOpsMixin):
         Args:
             facade: The app-layer facade to delegate operations to.
             components: Optional component store for component operations.
-                Defaults to None for backward compatibility.
         """
         self._facade = facade
         self._components = components

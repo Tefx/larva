@@ -55,8 +55,8 @@ _PERSONA_SPEC_INPUT_SCHEMA = cast(
         "required": list(validate_contract.CANONICAL_REQUIRED_FIELDS),
         "additionalProperties": False,
         "description": (
-            "Canonical PersonaSpec object. Unknown top-level fields and forbidden legacy "
-            "fields are rejected at the MCP admission boundary."
+            "Canonical PersonaSpec object. Unknown top-level fields are rejected "
+            "at the MCP admission boundary."
         ),
     },
 )
