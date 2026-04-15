@@ -48037,7 +48037,7 @@ phases:
       \  - tests/repro/spec_verify_black_box_surfaces.py\n  - tests/app/test_facade/test_update.py"
   - id: post_cutover_debt_remediation.verify
     name: Run focused remediation verification set
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       agent: integration-verifier-tacit
@@ -48125,6 +48125,67 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-15T16:54:15.061613+00:00'
+    done_at: '2026-04-15T17:05:47.340723+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - No refs for this step.
+
+
+      ## Verification Report
+
+      - Commands executed:
+
+      ```text
+
+      pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_scan_finds_no_new_legacy_field_references
+      -q
+
+      pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestFocusedPytestGate::test_known_legacy_surfaces_are_documented
+      -q
+
+      pytest tests/core/test_patch.py -q
+
+      pytest tests/core/test_normalize.py tests/shell/test_canonical_boundary_gaps.py
+      tests/repro/spec_verify_black_box_surfaces.py tests/app/test_facade/test_update.py
+      -q
+
+      rg -n ''backward compatibility|transition compatibility|ADR-002 Transition|falls
+      back to deprecated `tools`|retained for transition compatibility'' src/larva/shell/components.py
+      src/larva/core/assemble.py
+
+      invar guard
+
+      ```
+
+      - Actual outputs:
+
+      ```text
+
+      1 passed
+
+      1 passed
+
+      32 passed
+
+      53 passed
+
+      0 matches
+
+      invar guard passed (0 errors, 0 warnings)
+
+      ```
+
+      - Scanner status: clean
+
+      - Patch suite XPASS/XFAIL noise: none
+
+      - Normalize semantics suite status: green
+
+      - Docstring grep result summary: clean
+
+      - Invar guard result: green
+
+      - Findings (blocker|should_fix|suggestion|tech_debt): none'
   - id: post_cutover_debt_remediation.gate
     name: Gate post-cutover debt remediation
     status: pending
