@@ -28,9 +28,6 @@ from larva.core.patch import (
     apply_patches,
 )
 
-# Contract tests: behavior tests are expected to fail until implementation
-pytestmark = pytest.mark.xfail(reason="Contract only: implementation pending")
-
 
 class TestScalarOverwrite:
     """Test 1: Scalar values in patches overwrite base values."""
