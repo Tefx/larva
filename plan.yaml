@@ -46538,7 +46538,7 @@ phases:
     skipped_reason: absorbed
   - id: canonical_cutover_impl.gate
     name: Implementation completeness gate
-    status: pending
+    status: claimed
     description: phase-check gate. Confirm no hidden compatibility remains in scoped
       code paths before final documentation sync and full verification. This gate
       must review both spec-conformance and runnable-surface liveness evidence.
@@ -46581,6 +46581,8 @@ phases:
     - canonical_cutover_impl.spec_conformance
     - canonical_cutover_impl.liveness_probe
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T05:51:24.488894+00:00'
   - id: canonical_cutover_impl.assemble_cutover
     name: Remove assembly tools fallback
     status: done
