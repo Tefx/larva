@@ -46719,7 +46719,7 @@ phases:
       \ --name-only 39715f6`:\n  - src/larva/core/patch.py\n  - tests/core/test_patch.py"
   - id: canonical_cutover_impl.python_api_surface
     name: Cut over Python API component and persona outputs
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for Python API files only. Remove mirrored
       legacy fields from Python API outputs, especially component_show and persona-returning
       operations such as resolve/export/clone. Python API must surface canonical-only
@@ -46769,6 +46769,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T04:43:58.321769+00:00'
+    done_at: '2026-04-15T04:51:20.875400+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/shell/python_api.py\
+      \ — thin delegation surface; no direct mirrored-field emission logic.\n- src/larva/shell/python_api_components.py\
+      \ — `_component_show_result` updated to strip mirrored legacy fields from returned\
+      \ payload.\n- tests/shell/test_python_api.py — assertions updated to canonical-only\
+      \ output shape.\n\n## Expected-Red Proof\n- Command: `uv run pytest tests/shell/test_python_api.py::TestPythonApiComponentShow\
+      \ -v --tb=short`\n- Before implementation, tests expecting old mirrored fields\
+      \ failed under canonical-only expectation.\n\n## Green Proof\n- Command: `uv\
+      \ run pytest tests/shell/test_python_api.py -v --tb=short`\n- Output: `95 passed`\n\
+      \n## Changed files\n- src/larva/shell/python_api_components.py\n- tests/shell/test_python_api.py\n\
+      \n## Remaining legacy output hits in Python API:\n- none on output path; tests\
+      \ assert absence of `tools` and `side_effect_policy` in canonical outputs.\n\
+      \n## Git Proof\n- Commit hash(es): `efa4a114d8d8c304aca5c21c9cdd902ec11c86c9`\n\
+      - `git status --short`: clean\n- `git show --name-only --oneline efa4a11`:\n\
+      \  - src/larva/shell/python_api_components.py\n  - tests/shell/test_python_api.py"
   - id: canonical_cutover_impl.cli_web_surface
     name: Cut over CLI and web public outputs
     status: pending
