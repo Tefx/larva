@@ -47627,7 +47627,7 @@ phases:
   steps:
   - id: post_cutover_debt_remediation.scanner_false_positive_fix
     name: Tighten no-legacy scanner handling for defensive stripping patterns
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent: python-executor
@@ -47707,6 +47707,8 @@ phases:
 
       ```'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T16:36:52.852024+00:00'
   - id: post_cutover_debt_remediation.patch_xfail_fix
     name: Remove module-level xfail debt from tests/core/test_patch.py
     status: claimed
