@@ -7,9 +7,9 @@ Original request: define the internal canonical component-kind vocabulary and th
 ## Decision
 
 - [Proven] **Canonical routing vocabulary:** `prompts | toolsets | constraints | models`.
-- [Proven] **Compatibility aliases at public ingress only:** `prompt -> prompts`, `toolset -> toolsets`, `constraint -> constraints`, `model -> models`.
-- [Proven] **Normalization rule:** any public-surface `component_type` input must normalize to the canonical plural vocabulary before loader selection, error classification, or downstream dispatch.
-- [Likely] **Documentation/output rule:** docs, enumerated valid-types lists, and success payload keys should speak only in canonical plural vocabulary once normalization is in place.
+- [Proven] **Public ingress:** Only canonical plural values are accepted. Singular aliases are rejected.
+- [Proven] **Normalization:** Public-surface `component_type` input must be canonical plural vocabulary before loader selection, error classification, or downstream dispatch.
+- [Proven] **Documentation/output rule:** Docs, enumerated valid-types lists, and success payload keys speak only in canonical plural vocabulary.
 
 ## Why this vocabulary
 
@@ -25,30 +25,31 @@ Vibe check: introducing a separate registry object, enum translation service, or
 - [Proven] **Component kind** means the externally supplied family selector used for routing to the correct component loader.
 - [Likely] Loader method names may remain singular (`load_prompt`, `load_toolset`, etc.) because they operate on one member of a canonical plural family. Those method names do not redefine the public component-kind vocabulary.
 
-## Compatibility Alias Policy
+## Canonical Component-Kind Policy
 
-### Accepted aliases
+### Accepted values at public ingress
 
-| Canonical kind | Accepted compatibility alias | Acceptance scope |
-|---|---|---|
-| `prompts` | `prompt` | public request/command parameter only |
-| `toolsets` | `toolset` | public request/command parameter only |
-| `constraints` | `constraint` | public request/command parameter only |
-| `models` | `model` | public request/command parameter only |
+| Canonical kind | Accepted values |
+|---|---|
+| `prompts` | `prompts` |
+| `toolsets` | `toolsets` |
+| `constraints` | `constraints` |
+| `models` | `models` |
 
 ### Acceptance boundaries
 
-- [Proven] Alias acceptance belongs only at transport or shell ingress where a caller supplies a component kind string.
-- [Likely] Internal modules should receive only canonical plural kinds after normalization.
-- [Likely] Stored payloads, docs, list responses, and typed `valid_types` metadata should emit canonical plural kinds only.
-- [Likely] Invalid-kind failures should report canonical valid values even if the caller used a legacy singular alias family elsewhere.
+- [Proven] Only canonical plural values are accepted at public ingress.
+- [Proven] Internal modules receive only canonical plural kinds.
+- [Proven] Stored payloads, docs, list responses, and typed `valid_types` metadata emit canonical plural kinds only.
+- [Proven] Invalid-kind failures report only canonical plural valid values.
 
-## Cleanup Strategy
+## Final State (Post-Cutover)
 
-1. [Likely] First remediation release: accept both singular and plural at public ingress, but normalize immediately and document plural as canonical.
-2. [Likely] During transition: update docs/examples/tests so new material uses only plural kinds; treat singular forms as compatibility-only.
-3. [Likely] After downstream callers and tests no longer rely on singular input forms, remove singular alias acceptance from ingress validation.
-4. [Likely] Final state: only `prompts | toolsets | constraints | models` remain accepted anywhere a public component kind is enumerated.
+Only canonical plural values are accepted at all public surfaces:
+- `prompts | toolsets | constraints | models`
+
+Singular aliases (`prompt`, `toolset`, `constraint`, `model`) are rejected at ingress.
+Docs, examples, and valid-type enumerations use only the canonical plural vocabulary.
 
 ## Failure Conditions
 
@@ -58,9 +59,7 @@ Vibe check: introducing a separate registry object, enum translation service, or
 ## Trade-offs
 
 - Gain: one routing vocabulary across filesystem layout, inventory keys, MCP, and web.
-- Gain: compatibility preserved for singular callers during migration.
-- Give up: short-term dual acceptance at ingress adds a small amount of boundary logic.
-- Give up: error/details payloads that currently expose singular loader labels may need tightening to avoid mixed terminology.
+- Give up: invalid-kind errors now return only canonical plural values in details.
 
 ## Open Questions
 

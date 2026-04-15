@@ -366,13 +366,10 @@ Assembly inputs may include:
 
 - [Proven] The canonical internal routing vocabulary is the plural family set
   `prompts | toolsets | constraints | models`.
-- [Proven] Compatibility aliases for public ingress are the singular forms
-  `prompt | toolset | constraint | model`.
-- [Likely] Public surfaces may accept those singular aliases only as boundary
-  compatibility shims and must normalize them to the canonical plural family
-  before dispatch.
-- [Likely] New docs, examples, and enumerated valid-type metadata should use
-  only the canonical plural vocabulary so cleanup has a single destination.
+- [Proven] Public surfaces accept only canonical plural values at ingress;
+  singular aliases are rejected.
+- [Proven] Docs, examples, and enumerated valid-type metadata use only the
+  canonical plural vocabulary.
 
 ## Component Root Boundary
 
