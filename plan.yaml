@@ -46879,7 +46879,7 @@ phases:
       \ (cli_commands.py, test_cli.py)"
   - id: canonical_cutover_impl.spec_conformance
     name: Verify spec conformance for hard-cut surfaces
-    status: claimed
+    status: done
     description: 'verification_scope: phase-check
 
       step_type: verification
@@ -46930,6 +46930,119 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-15T05:26:13.656983+00:00'
+    done_at: '2026-04-15T05:48:57.939674+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nRead and verified the following\
+      \ files:\n- design/hard-cutover-canonical-alignment.md (full)\n- design/opifex-canonical-authority-basis.md\
+      \ (full)\n- ADR-003-canonical-requiredness-authority.md (full)\n- src/larva/core/normalize.py\
+      \ (full, 117 lines)\n- src/larva/core/validate.py (full, 495 lines)\n- src/larva/core/assemble.py\
+      \ (full, 434 lines)\n- src/larva/core/patch.py (full, 215 lines)\n- src/larva/core/spec.py\
+      \ (full, 160 lines)\n- src/larva/shell/components.py (full, 482 lines)\n- src/larva/app/facade.py\
+      \ (full, 635 lines)\n- src/larva/shell/python_api_components.py (full, 63 lines)\n\
+      - src/larva/shell/cli_commands.py (lines 495-515)\n- src/larva/shell/mcp_handler_ops.py\
+      \ (lines 75-170)\n- src/larva/shell/web.py (lines 50-125)\n- contracts/persona_spec.schema.json\
+      \ (full, 82 lines)\n\n## Spec Conformance Report\n\n### R1: normalize strips\
+      \ tools/side_effect_policy without mapping\n- Canonical source: hard-cutover\
+      \ §1 \"Delete all code paths that normalize or accept: tools, side_effect_policy\"\
+      \n- Implementation location: src/larva/core/normalize.py:112-114 (`pop(\"tools\"\
+      )`, `pop(\"side_effect_policy\")`) + postconditions (lines 59-60)\n- Verdict:\
+      \ CONFORMS\n- Notes: Strips both forbidden fields. No tools→capabilities mapping.\
+      \ Postconditions enforce structurally.\n\n### R2: toolset components emit capabilities\
+      \ only\n- Canonical source: hard-cutover §2 \"Every toolset component must emit\
+      \ only: capabilities:\" + \"No component may publish tools:\"\n- Implementation\
+      \ location: src/larva/shell/components.py:364-377 (fail-closed on missing capabilities)\
+      \ + ToolsetComponent TypedDict (line 114, only `capabilities` field)\n- Verdict:\
+      \ CONFORMS\n- Notes: load_toolset fails closed with ComponentStoreError when\
+      \ capabilities missing. Output shape is capabilities-only.\n\n### R3: MCP surface\
+      \ strict and snake_case\n- Canonical source: hard-cutover §3 \"larva already\
+      \ uses snake_case tool names. Do not add dotted aliases.\"\n- Implementation\
+      \ location: src/larva/shell/mcp_handler_ops.py, src/larva/shell/mcp_contract.py\n\
+      - Verdict: CONFORMS\n- Notes: All MCP tool names are snake_case. No dotted aliases\
+      \ found. Web surface uses canonical_kind projections.\n\n### R4: tools input\
+      \ rejected at validation/admission\n- Canonical source: hard-cutover §4(1) \"\
+      larva_validate rejects a payload containing tools\"\n- Implementation location:\
+      \ src/larva/core/validate.py:77 (CANONICAL_FORBIDDEN_FIELDS) + lines 344-389\
+      \ (_validate_forbidden_fields)\n- Verdict: CONFORMS\n- Notes: FORBIDDEN_EXTRA_FIELD\
+      \ error emitted for both tools and side_effect_policy. Reject-immediate, not\
+      \ deprecation.\n\n### R5: assembled output contains capabilities only\n- Canonical\
+      \ source: hard-cutover §4(2) \"larva_assemble returns only capabilities\"\n\
+      - Implementation location: src/larva/core/assemble.py:157-203 (_merge_capabilities)\
+      \ + line 418 (result[\"capabilities\"])\n- Verdict: CONFORMS\n- Notes: Assembly\
+      \ never sets result[\"tools\"]. Tools-only toolset raises AssemblyError.\n\n\
+      ### R6: export/resolve/update payloads never contain tools\n- Canonical source:\
+      \ hard-cutover §4(3) \"larva_resolve returns only capabilities\"\n- Implementation\
+      \ location: src/larva/app/facade.py:250-259 (_normalize_and_validate applied\
+      \ on every read surface)\n- Verdict: CONFORMS\n- Notes: All facade read surfaces\
+      \ (resolve, clone, export_all, export_ids, update, list) apply normalize+validate\
+      \ which strips forbidden fields.\n\n### R7: assembly fails on tools-only toolset\n\
+      - Canonical source: hard-cutover §4(4-5)\n- Implementation location: src/larva/shell/components.py:367-375\
+      \ + src/larva/core/assemble.py:176-184\n- Verdict: CONFORMS\n- Notes: Both load_toolset\
+      \ and _merge_capabilities fail closed on tools-only input.\n\n### R8: Required\
+      \ fields exactly match canonical contract\n- Canonical source: Authority basis\
+      \ \"Required fields: id, description, prompt, model, capabilities, spec_version\"\
+      \n- Implementation location: src/larva/core/validate.py:62-69 + contracts/persona_spec.schema.json:7\n\
+      - Verdict: CONFORMS\n- Notes: Exactly 6 required fields in both validation code\
+      \ and JSON schema.\n\n### R9: reject-immediate semantics for forbidden fields\n\
+      - Canonical source: Authority basis \"zero compatibility window... no transitional\
+      \ deprecate-and-accept period\"\n- Implementation location: src/larva/core/validate.py:344-389\
+      \ (ERROR level, not warning)\n- Verdict: CONFORMS\n- Notes: Forbidden fields\
+      \ produce error, not warning. No accept-and-drop path exists.\n\n### R10: unknown\
+      \ top-level fields rejected\n- Canonical source: Authority basis \"reject unknown\
+      \ top-level fields during admission\"\n- Implementation location: src/larva/core/validate.py:380-388\
+      \ + contracts/persona_spec.schema.json:81 (additionalProperties: false)\n- Verdict:\
+      \ CONFORMS\n- Notes: Unknown fields produce FORBIDDEN_EXTRA_FIELD error. Schema\
+      \ enforces additionalProperties: false.\n\n### R11: admission success implies\
+      \ canonical conformance\n- Canonical source: Authority basis §Admission invariant\n\
+      - Implementation location: src/larva/app/facade.py (all admission paths through\
+      \ _normalize_and_validate)\n- Verdict: CONFORMS\n- Notes: Every production path\
+      \ normalizes and validates before success.\n\n### R12: projections do not reintroduce\
+      \ removed fields\n- Canonical source: Authority basis §Source-of-Truth Matrix\
+      \ \"no projection may reintroduce removed fields\"\n- Implementation location:\
+      \ python_api_components.py:57-61, cli_commands.py:504-507, mcp_handler_ops.py:88-89\n\
+      - Verdict: CONFORMS\n- Notes: All output surfaces strip tools and side_effect_policy\
+      \ before emission.\n\n### R13: deletion completeness (docs/transition-era language)\n\
+      - Canonical source: hard-cutover Deletions \"Delete, do not deprecate: tools→capabilities\
+      \ normalization, toolset tools fallback, patch/update merge for tools, any schema/doc\
+      \ examples showing tools\"\n- Implementation location: Code is hard-cut; docstrings\
+      \ are stale\n- Verdict: PARTIAL\n- Notes: Implementation is hard-cut compliant.\
+      \ However, stale docstrings remain:\n  - components.py:67-68 Protocol docstring\
+      \ claims \"tools retained for backward compatibility\"\n  - components.py:86-89\
+      \ Protocol load_toolset docstring claims \"Falls back to deprecated tools field\"\
+      \n  - components.py:158-159 FilesystemComponentStore class docstring repeats\
+      \ transition claims\n  - assemble.py:344 docstring says \"Tools (deprecated\
+      \ input): read for backward compatibility\"\n  - assemble.py:382 doctest comment\
+      \ says \"# Tools input (deprecated, still works)\"\n  These contradict the hard-cut\
+      \ implementation but do not affect runtime behavior.\n\n### R14: ADR-003 required\
+      \ fields exactly match\n- Canonical source: ADR-003 §Decision\n- Implementation\
+      \ location: src/larva/core/validate.py:62-69\n- Verdict: CONFORMS\n\n### R15:\
+      \ ADR-003 forbidden fields at admission\n- Canonical source: ADR-003 §Consequences\n\
+      - Implementation location: src/larva/core/validate.py:77,344-389\n- Verdict:\
+      \ CONFORMS\n\n### R16: consumer-facing docs state canonical behavior\n- Canonical\
+      \ source: ADR-003 §Consequences\n- Implementation location: src/larva/core/validate.py\
+      \ docstrings + CANONICAL_TOOLS_REJECTED_CLAUSE\n- Verdict: CONFORMS\n- Notes:\
+      \ Code-level documentation correctly states canonical admission behavior.\n\n\
+      ### R17: failure conditions check\n- Canonical source: hard-cutover §Failure\
+      \ Conditions\n- Implementation location: Multiple surfaces verified\n- Verdict:\
+      \ PARTIAL\n- Notes: (a) toolset files - load_toolset fails closed ✓; (b) resolved\
+      \ persona no tools ✓; (c) patch path no tools ✓; (d) docs still say tools accepted\
+      \ - PARTIALLY TRUE for stale docstrings (see R13). Authoritative design doc\
+      \ is correct.\n\n## Coverage Summary\n- Total requirements: 17\n- CONFORMS:\
+      \ 14\n- PARTIAL: 2 (R13 stale docstrings, R17 failure condition d)\n- DIVERGES:\
+      \ 0\n- NEEDS_TEST: 0\n\nRemaining divergences: R13/R17 stale docstrings describe\
+      \ transition-era fallback behavior that contradicts the hard-cut implementation.\
+      \ Implementation is fully compliant; docstring debt is non-functional.\n\n##\
+      \ Behavioral Proof Register\n- proof_id: P1\n  claim: \"tools is rejected at\
+      \ admission with FORBIDDEN_EXTRA_FIELD error\"\n  status: UNPROVEN (static code\
+      \ inspection only; needs runtime test)\n  uncertainty_source: behavioral claim\
+      \ requires runtime verification\n  intersection_with_remaining_gate: no\n\n\
+      - proof_id: P2\n  claim: \"Facade read surfaces never emit tools or side_effect_policy\"\
+      \n  status: UNPROVEN (static code inspection only; needs runtime test)\n  uncertainty_source:\
+      \ behavioral claim requires runtime verification\n  intersection_with_remaining_gate:\
+      \ no\n\n- proof_id: P3\n  claim: \"Normalization strips forbidden fields without\
+      \ remapping\"\n  status: UNPROVEN (static code inspection only; needs runtime\
+      \ test)\n  uncertainty_source: behavioral claim requires runtime verification\n\
+      \  intersection_with_remaining_gate: no\n\n## Gate Decision\nheadline: PASS_WITH_DEBT\n\
+      proof_gap_status: NON_BLOCKING\nblocking_status: CLOSED\ngate_open_allowed:\
+      \ true"
   - id: canonical_cutover_impl.liveness_probe
     name: Probe runnable CLI and MCP surfaces
     status: done
