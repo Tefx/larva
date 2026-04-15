@@ -47976,3 +47976,91 @@ phases:
 
       ```'
     agent: python-senior-tacit
+  - id: post_cutover_debt_remediation.verify
+    name: Run focused remediation verification set
+    status: pending
+    description: 'step_type: verification
+
+      agent: integration-verifier-tacit
+
+      verification_scope: phase-check
+
+
+      Run the post-cutover debt remediation verification set from an independent perspective.
+
+
+      Protects downstream gate:
+
+      - post_cutover_debt_remediation.gate
+
+
+      Required proofs:
+
+      - focused scanner harness green
+
+      - patch contract suite green with no XPASS noise
+
+      - normalize/reject-semantics focused suites green
+
+      - stale docstring grep shows no transition-era wording in the targeted files
+
+      - invar guard green for the repo after these focused remediations'
+    verification: '- pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_scan_finds_no_new_legacy_field_references
+      -q
+
+      - pytest tests/core/test_patch.py -q
+
+      - pytest tests/core/test_normalize.py tests/shell/test_canonical_boundary_gaps.py
+      tests/repro/spec_verify_black_box_surfaces.py tests/app/test_facade/test_update.py
+      -q
+
+      - rg -n "backward compatibility|transition compatibility|ADR-002 Transition|falls
+      back to deprecated `tools`|retained for transition compatibility" src/larva/shell/components.py
+      src/larva/core/assemble.py
+
+      - invar guard'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      - Commands executed:
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      - Actual outputs:
+
+      ```text
+
+      <paste exact outputs>
+
+      ```
+
+      - Scanner status: clean|not clean
+
+      - Patch suite XPASS/XFAIL noise: none|present
+
+      - Normalize semantics suite status: green|not green
+
+      - Docstring grep result summary:
+
+      - Invar guard result: green|not green
+
+      - Findings (blocker|should_fix|suggestion|tech_debt):'
+    depends_on:
+    - post_cutover_debt_remediation.scanner_false_positive_fix
+    - post_cutover_debt_remediation.patch_xfail_fix
+    - post_cutover_debt_remediation.docstring_cleanup
+    - post_cutover_debt_remediation.normalize_reject_semantics_fix
+    agent: integration-verifier-tacit
