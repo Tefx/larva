@@ -47340,7 +47340,7 @@ phases:
       reviewer: vectl-orchestrator
   - id: canonical_cutover_final.verify
     name: Run final hard-cut verification
-    status: pending
+    status: claimed
     description: 'verification_scope: full-plan-check
 
       step_type: verification
@@ -47381,6 +47381,8 @@ phases:
     depends_on:
     - canonical_cutover_final.docs_sync
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T11:57:54.215038+00:00'
   - id: canonical_cutover_final.gate
     name: Final canonical alignment gate
     status: pending
