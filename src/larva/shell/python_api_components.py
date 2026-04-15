@@ -37,7 +37,12 @@ def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
 
 
 def _component_show_result(component_type: str, name: str) -> Result[dict[str, object], LarvaError]:
-    """Return one component as Result with LarvaError failures."""
+    """Return one component as Result with LarvaError failures.
+
+    Canonical-only policy: strips mirrored legacy fields before returning.
+    - toolsets: removes deprecated 'tools' field (canonical 'capabilities' retained)
+    - constraints: removes deprecated 'side_effect_policy' field
+    """
     result = query_component(
         _component_store,
         component_type=component_type,
@@ -46,4 +51,13 @@ def _component_show_result(component_type: str, name: str) -> Result[dict[str, o
     )
     if isinstance(result, Failure):
         return Failure(result.failure())
-    return Success(cast("dict[str, object]", result.unwrap()))
+
+    data = cast("dict[str, object]", result.unwrap())
+
+    # Strip mirrored legacy fields per canonical cutover policy
+    if component_type in ("toolset", "toolsets"):
+        data = {k: v for k, v in data.items() if k != "tools"}
+    elif component_type in ("constraint", "constraints"):
+        data = {k: v for k, v in data.items() if k != "side_effect_policy"}
+
+    return Success(data)

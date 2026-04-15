@@ -831,10 +831,7 @@ class TestPythonApiComponentShow:
             def load_toolset(
                 self, name: str
             ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-                # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
-                return Success(
-                    {"capabilities": {"shell": "read_write"}, "tools": {"shell": "read_write"}}
-                )
+                return Success({"capabilities": {"shell": "read_write"}})
 
             def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
@@ -844,8 +841,8 @@ class TestPythonApiComponentShow:
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
         result = python_api.component_show("toolset", "default")
-        # Per ADR-002: both capabilities (canonical) and tools (mirrored) are present
-        assert result == {"capabilities": {"shell": "read_write"}, "tools": {"shell": "read_write"}}
+        # Canonical cutover: only capabilities (canonical) is returned, tools (mirrored) stripped
+        assert result == {"capabilities": {"shell": "read_write"}}
 
     def test_component_show_constraint_delegates_to_load_constraint(
         self, monkeypatch: pytest.MonkeyPatch
@@ -862,14 +859,15 @@ class TestPythonApiComponentShow:
                 return Success({})
 
             def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
-                return Success({"side_effect_policy": "read_only"})
+                return Success({})
 
             def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
                 return Success({})
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
         result = python_api.component_show("constraint", "strict")
-        assert result == {"side_effect_policy": "read_only"}
+        # Canonical cutover: side_effect_policy (mirrored) is stripped from constraint output
+        assert result == {}
 
     def test_component_show_model_delegates_to_load_model(
         self, monkeypatch: pytest.MonkeyPatch
@@ -999,10 +997,8 @@ class TestPythonApiClone:
             "description": "Original description",
             "prompt": "You are careful.",
             "model": "gpt-4",
-            "capabilities": {"shell": "full_access"},  # ADR-002: canonical capability field
-            "tools": {"shell": "full_access"},  # ADR-002: mirrored during transition
+            "capabilities": {"shell": "full_access"},  # canonical field
             "model_params": {"temperature": 0.5, "max_tokens": 2000},
-            "side_effect_policy": "full_access",
             "can_spawn": True,
             "compaction_prompt": "Summarize everything.",
             "spec_version": "0.1.0",
@@ -1016,11 +1012,11 @@ class TestPythonApiClone:
         assert result["description"] == "Original description"
         assert result["prompt"] == "You are careful."
         assert result["model"] == "gpt-4"
-        # ADR-002: both capabilities (canonical) and tools (mirrored) are preserved
+        # Canonical cutover: tools and side_effect_policy (mirrored legacy) are stripped
         assert result["capabilities"] == {"shell": "full_access"}
-        assert result["tools"] == {"shell": "full_access"}
+        assert "tools" not in result
         assert result["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
-        assert result["side_effect_policy"] == "full_access"
+        assert "side_effect_policy" not in result
         assert result["can_spawn"] is True
         assert result["compaction_prompt"] == "Summarize everything."
         assert result["spec_version"] == "0.1.0"
