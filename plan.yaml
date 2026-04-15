@@ -46371,7 +46371,7 @@ phases:
       \ --oneline 6508993`:\n  - src/larva/shell/components.py\n  - tests/shell/test_components.py"
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for registry/facade read semantics. Apply
       the pinned hard-cut policy to registry-sourced legacy records across resolve,
       export, clone, update-related reads, and any other facade path that can surface
@@ -46436,6 +46436,37 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-15T03:13:50.759879+00:00'
+    done_at: '2026-04-15T03:53:05.228691+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- src/larva/app/facade.py —\
+      \ `_normalize_and_validate`, and resolve/update/clone/export/list/update_batch\
+      \ paths now apply hard-cut normalization consistently before emission/use.\n\
+      - src/larva/core/normalize.py — strips forbidden `tools` and `side_effect_policy`;\
+      \ recomputes digest.\n- src/larva/core/validate.py — canonical forbidden-field\
+      \ rejection remains authoritative.\n- src/larva/core/spec.py — canonical PersonaSpec\
+      \ vocabulary only.\n- src/larva/shell/registry.py — registry remains raw storage\
+      \ layer; hard-cut enforcement moved to facade read/update emission surfaces.\n\
+      \n## Expected-Red Proof\n- Before: clone/export/read paths preserved or surfaced\
+      \ legacy fields in some flows.\n- Command (historical failing behavior assertion):\
+      \ clone legacy-preservation test prior to refactor expected tools/side_effect_policy\
+      \ pass-through.\n\n## Green Proof\n- Command: `.venv/bin/python -m pytest tests/\
+      \ -q`\n- Output: `812 passed, 1 xfailed, 32 xpassed`\n- Command: `invar guard`\n\
+      - Output: pass (no blocking errors)\n\n## Surfaces checked\n- resolve: normalize+validate\
+      \ applied, legacy fields not surfaced\n- export: export_all/export_ids normalize\
+      \ emitted specs, no legacy field output\n- clone: normalized canonical output;\
+      \ legacy forbidden fields removed\n- update-related reads: update/update_batch/list\
+      \ consume normalized canonical shape for read/match/summary surfaces\n\n## Result\
+      \ for legacy stored record on each surface:\n- resolve: now canonicalized before\
+      \ validation/output\n- export: now canonicalized before return\n- clone: legacy\
+      \ forbidden fields stripped from clone result\n- update-related reads: normalization\
+      \ applied before read/match/summary logic\n\n## Git Proof (MANDATORY)\n- Commit\
+      \ hash(es): `c329328befca09134155e0cbc9109ff1752e32b2`\n- `git status --short`:\
+      \ clean\n- `git show --name-only --oneline c329328befca09134155e0cbc9109ff1752e32b2`\
+      \ includes:\n  - src/larva/app/facade.py\n  - tests/app/test_facade/conftest.py\n\
+      \  - tests/app/test_facade/test_batch.py\n  - tests/app/test_facade/test_clone.py\n\
+      \  - tests/app/test_facade/test_export.py\n  - tests/app/test_facade/test_list.py\n\
+      \  - tests/app/test_facade/test_resolve.py\n  - tests/app/test_facade/test_update.py\n\
+      \  - tests/canonical_cutover/test_hard_cutover_readiness.py\n  - tests/shell/test_canonical_boundary_gaps.py\n\
+      \  - tests/shell/test_python_api.py\n  - artifacts/larva-legacy-field-rejections.jsonl"
   - id: canonical_cutover_impl.transport_surfaces
     name: Cut over MCP surface to canonical-only vocabulary
     status: pending
