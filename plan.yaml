@@ -48245,11 +48245,8 @@ phases:
 
       - Required actions if blocked:'
     depends_on:
-    - post_cutover_debt_remediation.scanner_false_positive_fix
-    - post_cutover_debt_remediation.patch_xfail_fix
-    - post_cutover_debt_remediation.docstring_cleanup
-    - post_cutover_debt_remediation.normalize_reject_semantics_fix
     - post_cutover_debt_remediation.verify
+    - post_cutover_debt_remediation.harness_maintenance_fix
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T17:05:54.849092+00:00'
