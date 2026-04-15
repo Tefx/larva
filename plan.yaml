@@ -46786,7 +46786,7 @@ phases:
       \  - src/larva/shell/python_api_components.py\n  - tests/shell/test_python_api.py"
   - id: canonical_cutover_impl.cli_web_surface
     name: Cut over CLI and web public outputs
-    status: claimed
+    status: done
     description: 'Implement-and-verify step for CLI and web public surfaces only.
       Remove mirrored legacy fields from CLI/web outputs and align operator-facing
       wording to canonical-only snake_case MCP vocabulary where these surfaces describe
@@ -46849,6 +46849,34 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T04:51:52.171916+00:00'
+    done_at: '2026-04-15T05:24:15.864045+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - `src/larva/shell/cli.py` — Imported and delegates to cli_commands.py; no direct\
+      \ output handling\n- `src/larva/shell/web.py` — Uses python_api_components._component_show_result\
+      \ which already strips legacy fields\n- `tests/shell/test_cli.py` — Full test\
+      \ suite for CLI commands including component_show_command\n- `tests/shell/test_web.py`\
+      \ — Full test suite for web endpoints\n\n## Implementation\n\n### Changed: `src/larva/shell/cli_commands.py`\n\
+      Added legacy field stripping to `component_show_command` (lines 502-507):\n\
+      ```python\n# Strip mirrored legacy fields per canonical cutover policy\n# ADR-002:\
+      \ toolsets strip 'tools', constraints strip 'side_effect_policy'\nif component_type\
+      \ in (\"toolset\", \"toolsets\"):\n    payload = {k: v for k, v in payload.items()\
+      \ if k != \"tools\"}\nelif component_type in (\"constraint\", \"constraints\"\
+      ):\n    payload = {k: v for k, v in payload.items() if k != \"side_effect_policy\"\
+      }\n```\n\n### Changed: `tests/shell/test_cli.py`\nUpdated test `test_component_show_toolset_success_json_mode_returns_json_payload`:\n\
+      - Changed assertion from `assert \"tools\" in cli_result[\"json\"][\"data\"\
+      ]` to `assert \"tools\" not in cli_result[\"json\"][\"data\"]`\n- Updated comment\
+      \ to reflect canonical cutover\n\n## Green Proof\n- Command: `.venv/bin/python\
+      \ -m pytest tests/shell/test_cli.py tests/shell/test_web.py -x --tb=short`\n\
+      - Actual passing output: 222 passed in 0.46s\n\n## Changed files\n- `src/larva/shell/cli_commands.py`\
+      \ — Added legacy field stripping\n- `tests/shell/test_cli.py` — Updated test\
+      \ assertion\n\n## Remaining legacy output hits in CLI/web:\nNone in component_show_command\
+      \ outputs. Python API (python_api_components.py) and Web (web.py via python_api)\
+      \ already had the stripping logic.\n\n## Git Proof\n- Commit hash: `96c43de`\n\
+      - `git status --short` output:\n  ```\n  M artifacts/larva-legacy-field-rejections.jsonl\n\
+      \  M design/hard-cutover-canonical-alignment.md\n   src/larva/shell/registry.py\n\
+      \  ```\n  (Note: registry.py changes are from a prior phase and unrelated to\
+      \ this step)\n- `git show --name-only --oneline HEAD` output: 2 files changed\
+      \ (cli_commands.py, test_cli.py)"
   - id: canonical_cutover_impl.spec_conformance
     name: Verify spec conformance for hard-cut surfaces
     status: pending
