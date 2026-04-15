@@ -46371,7 +46371,7 @@ phases:
       \ --oneline 6508993`:\n  - src/larva/shell/components.py\n  - tests/shell/test_components.py"
   - id: canonical_cutover_impl.registry_policy
     name: Apply hard-cut policy to registry and facade reads
-    status: claimed
+    status: pending
     description: 'Implement-and-verify step for registry/facade read semantics. Apply
       the pinned hard-cut policy to registry-sourced legacy records across resolve,
       export, clone, update-related reads, and any other facade path that can surface
@@ -46434,8 +46434,6 @@ phases:
     depends_on:
     - canonical_cutover_impl.component_loader
     agent: python-senior-tacit
-    claimed_by: python-senior-tacit
-    claimed_at: '2026-04-14T21:53:20.817257+00:00'
   - id: canonical_cutover_impl.transport_surfaces
     name: Cut over MCP surface to canonical-only vocabulary
     status: pending
