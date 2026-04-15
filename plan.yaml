@@ -47619,7 +47619,7 @@ phases:
       \ pass."
 - id: post_cutover_debt_remediation
   name: Post-Cutover Debt Remediation
-  status: in_progress
+  status: done
   gate: Close remaining non-blocking hard-cut debt with focused green tests, clean
     scanner behavior, and green invar guard evidence.
   depends_on:
@@ -48188,7 +48188,7 @@ phases:
       - Findings (blocker|should_fix|suggestion|tech_debt): none'
   - id: post_cutover_debt_remediation.gate
     name: Gate post-cutover debt remediation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent: gate-reviewer-tacit
@@ -48250,6 +48250,49 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T17:16:41.132955+00:00'
+    done_at: '2026-04-15T17:20:32.281296+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Gate Review Report\n\n### Step-by-step evidence disposition\n\nAll six remediation\
+      \ steps have landed with adequate evidence:\n\n1. **scanner_false_positive_fix**\
+      \ (7e2c9d7): Tightened no-legacy scanner. Defensive strip/reject patterns no\
+      \ longer produce false positives; real compatibility reads still flagged. 2/2\
+      \ scanner tests green.\n2. **patch_xfail_fix** (b3d565f): Module-level xfail\
+      \ removed entirely. 32 patch tests pass with zero XPASS/XFAIL noise.\n3. **docstring_cleanup**\
+      \ (758ebe1): Stale transition/backward-compatibility language removed from components.py\
+      \ and assemble.py. Targeted grep returns 0 matches.\n4. **normalize_reject_semantics_fix**\
+      \ (758ebe1): normalize now preserves forbidden fields for downstream reject\
+      \ semantics instead of silent pop(). 53 focused tests green.\n5. **verify**\
+      \ (integration-verifier-tacit): Independent verification passed all proofs.\n\
+      6. **harness_maintenance_fix** (80c8068): Stale strict-xfail marker removed;\
+      \ JSONL tally assertion updated for clean-state zero findings. 10 hard-cutover\
+      \ readiness tests green.\n\n### Independent re-verification (fresh run)\n\n\
+      ```\npytest tests/canonical_cutover/test_hard_cutover_readiness.py -q → 10 passed\
+      \ in 0.12s\npytest tests/core/test_patch.py -q → 32 passed in 0.13s (0 XPASS,\
+      \ 0 XFAIL)\npytest tests/core/test_normalize.py tests/core/test_validate.py\
+      \ tests/shell/test_canonical_boundary_gaps.py tests/repro/spec_verify_black_box_surfaces.py\
+      \ tests/app/test_facade/test_update.py -q → 96 passed in 0.32s\n```\n\n- Focused\
+      \ tests green: **yes**\n- Scanner clean proof present: **yes** (0 stale phrase\
+      \ matches in targeted files; 1 legitimate \"transition-era shapes\" descriptive\
+      \ reference in spec.py TypedDict docstring confirming narrower canonical shape)\n\
+      - Invar guard green: **yes** (0 errors, 0 warnings, 0 infos)\n- Residual debt\
+      \ intersecting downstream gates: **none**\n\n### Gate decision: OPEN (all criteria\
+      \ met)\n\n## Behavioral Proof Register\n\n- proof_id: scanner-clean\n  claim:\
+      \ No-legacy scanner has no false positives and catches real compatibility reads\n\
+      \  status: PROVEN\n  uncertainty_source: none\n  intersection_with_remaining_gate:\
+      \ no\n\n- proof_id: patch-xfail-eliminated\n  claim: test_patch.py has no module-level\
+      \ or per-test xfail markers and no XPASS/XFAIL noise\n  status: PROVEN\n  uncertainty_source:\
+      \ none\n  intersection_with_remaining_gate: no\n\n- proof_id: docstrings-canonical\n\
+      \  claim: No stale transition-era wording in components.py or assemble.py\n\
+      \  status: PROVEN\n  uncertainty_source: none\n  intersection_with_remaining_gate:\
+      \ no\n\n- proof_id: normalize-reject-semantics\n  claim: normalize preserves\
+      \ forbidden fields for reject semantics, no silent strip-as-success\n  status:\
+      \ PROVEN\n  uncertainty_source: none\n  intersection_with_remaining_gate: no\n\
+      \n- proof_id: harness-green\n  claim: Hard-cutover readiness harness clean with\
+      \ updated assertions\n  status: PROVEN\n  uncertainty_source: none\n  intersection_with_remaining_gate:\
+      \ no\n\n- proof_id: invar-guard-green\n  claim: Invar guard passes with zero\
+      \ errors and zero warnings\n  status: PROVEN\n  uncertainty_source: none\n \
+      \ intersection_with_remaining_gate: no\n\n## Gate Decision\nheadline: PASS\n\
+      proof_gap_status: NONE\nblocking_status: CLOSED\ngate_open_allowed: true"
   - id: post_cutover_debt_remediation.harness_maintenance_fix
     name: Fix hard-cut readiness harness stale assertions
     status: done
