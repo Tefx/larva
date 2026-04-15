@@ -47250,14 +47250,14 @@ phases:
       \ and documentation, not in acceptance paths"
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
-  status: pending
+  status: in_progress
   gate: Docs, examples, scans, tests, and guard all prove canonical alignment
   depends_on:
   - canonical_cutover_impl
   steps:
   - id: canonical_cutover_final.docs_sync
     name: Remove transition semantics from docs and examples
-    status: pending
+    status: claimed
     description: Documentation sync step. Update repo-facing docs and examples to
       canonical-only language. Remove dotted MCP naming, transition-era acceptance
       wording, and contradictory migration-complete claims that depend on hidden compatibility
@@ -47283,6 +47283,8 @@ phases:
 
       '
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-15T11:32:04.730117+00:00'
   - id: canonical_cutover_final.verify
     name: Run final hard-cut verification
     status: pending
