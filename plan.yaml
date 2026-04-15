@@ -47707,3 +47707,78 @@ phases:
 
       ```'
     agent: python-executor
+  - id: post_cutover_debt_remediation.patch_xfail_fix
+    name: Remove module-level xfail debt from tests/core/test_patch.py
+    status: pending
+    description: 'step_type: implementation
+
+      agent: python-executor
+
+      work_type: technical_debt_remediation
+
+
+      Issue: module-level xfail debt in tests/core/test_patch.py causing XPASS noise.
+
+
+      spec_refs:
+
+      - tests/core/test_patch.py :: contract-driven patch behavior suite
+
+
+      touch_paths:
+
+      - tests/core/test_patch.py
+
+
+      Scope:
+
+      - Remove the module-level xfail marker.
+
+      - Convert the file to an ordinary focused green suite, or to narrowly scoped
+      per-test marks only if a real still-open gap is demonstrated.
+
+      - Eliminate XPASS noise from the patch contract suite.
+
+
+      Completion criteria:
+
+      - No module-level xfail remains in tests/core/test_patch.py.
+
+      - Focused patch suite runs green without XPASS/XFAIL noise.
+
+      - Evidence states whether any per-test expectation markers remain and why.'
+    verification: '- pytest tests/core/test_patch.py -q'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Patch Test Debt Evidence
+
+      - Changed files:
+
+      - Module-level xfail removed: yes|no
+
+      - Remaining per-test xfail markers (if any) and justification:
+
+      - Commands run:
+
+      ```text
+
+      <paste exact commands>
+
+      ```
+
+      - Actual output showing no XPASS/XFAIL noise:
+
+      ```text
+
+      <paste exact output>
+
+      ```'
+    agent: python-executor
