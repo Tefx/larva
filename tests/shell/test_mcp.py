@@ -1566,14 +1566,16 @@ class TestMCPComponentShowAcceptance:
     def test_handle_component_show_success_for_toolset(self) -> None:
         """Test handle_component_show success path for toolsets.
 
-        Per ADR-002: toolsets should include both capabilities (canonical) and
-        tools (mirrored) for backward compatibility during transition.
+        Per ADR-002: toolsets output must be canonical-only. The mirrored
+        `tools` field must NOT appear in MCP output.
         """
         components = InMemoryComponentStore(
             toolsets_by_name={
                 "readonly": {
                     "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
-                    "tools": {"shell": "read_only"},  # mirrored for backward compat
+                    "tools": {
+                        "shell": "read_only"
+                    },  # mirrored for backward compat - must be filtered
                 }
             }
         )
@@ -1586,8 +1588,8 @@ class TestMCPComponentShowAcceptance:
         assert "error" not in result
         # Per ADR-002: canonical field is primary
         assert "capabilities" in result
-        # Mirrored backward-compat field should also be present
-        assert "tools" in result
+        # Canonical-only output: mirrored backward-compat field must NOT be present
+        assert "tools" not in result
 
     def test_handle_component_show_success_for_constraint(self) -> None:
         """Test handle_component_show success path for constraints.

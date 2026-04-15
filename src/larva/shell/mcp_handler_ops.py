@@ -82,7 +82,13 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
         if isinstance(result, Failure):
             return result.failure()
 
-        return cast("dict[str, object]", result.unwrap())
+        component_data = result.unwrap()
+        # Canonical boundary: toolsets output must be canonical-only (ADR-002).
+        # Filter out mirrored `tools` field if present, keeping only `capabilities`.
+        if component_type == "toolsets" and "tools" in component_data:
+            component_data = {k: v for k, v in component_data.items() if k != "tools"}
+
+        return cast("dict[str, object]", component_data)
 
     def _handle_assemble_impl(self, params: object) -> PersonaSpec | LarvaError:
         validated_params = self._validated_params(
