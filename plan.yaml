@@ -46786,7 +46786,7 @@ phases:
       \  - src/larva/shell/python_api_components.py\n  - tests/shell/test_python_api.py"
   - id: canonical_cutover_impl.cli_web_surface
     name: Cut over CLI and web public outputs
-    status: pending
+    status: claimed
     description: 'Implement-and-verify step for CLI and web public surfaces only.
       Remove mirrored legacy fields from CLI/web outputs and align operator-facing
       wording to canonical-only snake_case MCP vocabulary where these surfaces describe
@@ -46847,6 +46847,8 @@ phases:
     depends_on:
     - canonical_cutover_impl.python_api_surface
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-15T04:51:52.171916+00:00'
   - id: canonical_cutover_impl.spec_conformance
     name: Verify spec conformance for hard-cut surfaces
     status: pending
