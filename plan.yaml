@@ -47257,7 +47257,7 @@ phases:
   steps:
   - id: canonical_cutover_final.docs_sync
     name: Remove transition semantics from docs and examples
-    status: rejected
+    status: claimed
     description: Documentation sync step. Update repo-facing docs and examples to
       canonical-only language. Remove dotted MCP naming, transition-era acceptance
       wording, and contradictory migration-complete claims that depend on hidden compatibility
@@ -47284,7 +47284,7 @@ phases:
       '
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
-    claimed_at: '2026-04-15T11:32:04.730117+00:00'
+    claimed_at: '2026-04-15T11:44:49.963764+00:00'
     done_at: '2026-04-15T11:43:07.279557+00:00'
     rejection_reason: 'Gate-blocking divergence in docs evidence: introduced dotted
       MCP names (`larva.validate`) which violates canonical snake_case surface policy;
