@@ -47617,3 +47617,10 @@ phases:
       \ != \"tools\"}` as legitimate canonical enforcement. Adding this pattern would\
       \ eliminate the 8 false positives and make test_scan_finds_no_new_legacy_field_references\
       \ pass."
+- id: post_cutover_debt_remediation
+  name: Post-Cutover Debt Remediation
+  status: pending
+  gate: Close remaining non-blocking hard-cut debt with focused green tests, clean
+    scanner behavior, and green invar guard evidence.
+  depends_on:
+  - canonical_cutover_final
