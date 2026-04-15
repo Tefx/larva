@@ -48037,7 +48037,7 @@ phases:
       \  - tests/repro/spec_verify_black_box_surfaces.py\n  - tests/app/test_facade/test_update.py"
   - id: post_cutover_debt_remediation.verify
     name: Run focused remediation verification set
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent: integration-verifier-tacit
@@ -48123,6 +48123,8 @@ phases:
     - post_cutover_debt_remediation.docstring_cleanup
     - post_cutover_debt_remediation.normalize_reject_semantics_fix
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-15T16:54:15.061613+00:00'
   - id: post_cutover_debt_remediation.gate
     name: Gate post-cutover debt remediation
     status: pending
