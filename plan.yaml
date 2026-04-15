@@ -46216,7 +46216,7 @@ phases:
       gate_open_allowed: true'
 - id: canonical_cutover_impl
   name: Canonical Hard-Cut Implementation
-  status: in_progress
+  status: done
   gate: All hidden legacy compatibility removed and public outputs canonical-only
   depends_on:
   - canonical_cutover_readiness
@@ -46538,7 +46538,7 @@ phases:
     skipped_reason: absorbed
   - id: canonical_cutover_impl.gate
     name: Implementation completeness gate
-    status: claimed
+    status: done
     description: phase-check gate. Confirm no hidden compatibility remains in scoped
       code paths before final documentation sync and full verification. This gate
       must review both spec-conformance and runnable-surface liveness evidence.
@@ -46583,6 +46583,80 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-15T05:51:24.488894+00:00'
+    done_at: '2026-04-15T11:31:45.993061+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - core normalize/validate/assemble/patch modules
+
+      - shell components/python_api/cli/mcp transport modules
+
+      - app facade hard-cut paths
+
+      - canonical design docs and ADR authority docs
+
+      - hard-cut readiness tests and liveness artifacts
+
+
+      ## Implementation Gate
+
+      - Normalize legacy mapping removed: PASS
+
+      - Assembly fallback removed: PASS
+
+      - Patch merge semantics removed: PASS
+
+      - Component loader canonical-only: PASS
+
+      - Registry policy applied: PASS
+
+      - MCP surface canonical-only: PASS
+
+      - Python API surface canonical-only: PASS
+
+      - CLI/web surface canonical-only: PASS
+
+      - Spec conformance: PASS_WITH_DEBT
+
+      - Liveness probe: PASS
+
+      - Remaining scoped legacy hits: defensive stripping references + stale transition-era
+      docstrings (non-functional)
+
+      - Verdict: PASS_WITH_DEBT
+
+
+      ## Behavioral Proof Register
+
+      - P1 tools reject-immediate at admission: PROVEN
+
+      - P2 facade read surfaces emit canonical-only: PROVEN
+
+      - P3 normalization strips forbidden fields without remap: PROVEN
+
+      - P4 assembly fails closed on tools-only toolset: PROVEN
+
+      - P5/P6/P7 transport surfaces canonical snake_case, no mirrored legacy output:
+      PROVEN
+
+      - P8 stale docstrings exist (documentation debt): PROVEN, non-blocking
+
+
+      ## Gate Decision
+
+      headline: PASS_WITH_DEBT
+
+      proof_gap_status: NON_BLOCKING
+
+      blocking_status: CLOSED
+
+      gate_open_allowed: true
+
+
+      ## SHOULD_FIX debt (non-blocking)
+
+      - stale transition-era docstrings in components.py/assemble.py
+
+      - legacy-field scanner false-positive pattern gap in hard-cut readiness test'
   - id: canonical_cutover_impl.assemble_cutover
     name: Remove assembly tools fallback
     status: done
@@ -47176,7 +47250,7 @@ phases:
       \ and documentation, not in acceptance paths"
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
-  status: locked
+  status: pending
   gate: Docs, examples, scans, tests, and guard all prove canonical alignment
   depends_on:
   - canonical_cutover_impl
