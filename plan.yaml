@@ -46932,7 +46932,7 @@ phases:
     claimed_at: '2026-04-15T05:26:13.656983+00:00'
   - id: canonical_cutover_impl.liveness_probe
     name: Probe runnable CLI and MCP surfaces
-    status: pending
+    status: claimed
     description: 'verification_scope: phase-check
 
       step_type: verification
@@ -46977,6 +46977,8 @@ phases:
     - canonical_cutover_impl.python_api_surface
     - canonical_cutover_impl.cli_web_surface
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-15T05:26:29.129577+00:00'
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
   status: locked
