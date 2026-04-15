@@ -47472,7 +47472,7 @@ phases:
       \ at admission, and the defensive stripping is correct behavior."
   - id: canonical_cutover_final.gate
     name: Final canonical alignment gate
-    status: pending
+    status: claimed
     description: full-plan gate. Final re-review against the latest canonical docs.
       Declare cutover ready only if code, tests, docs, and published surfaces all
       match the current canonical contract exactly.
@@ -47499,3 +47499,5 @@ phases:
     depends_on:
     - canonical_cutover_final.verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T12:15:43.549501+00:00'
