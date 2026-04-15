@@ -47627,7 +47627,7 @@ phases:
   steps:
   - id: post_cutover_debt_remediation.scanner_false_positive_fix
     name: Tighten no-legacy scanner handling for defensive stripping patterns
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent: python-executor
@@ -47709,6 +47709,19 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T16:36:52.852024+00:00'
+    done_at: '2026-04-15T16:53:45.707826+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Scanner Remediation Evidence\n- Changed files:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py\n\
+      - Before/after false-positive example:\n  - Before: defensive strip patterns\
+      \ (`{k: v for ... if k != \"tools\"}` etc.) were flagged as non-legitimate.\n\
+      \  - After: these defensive strip/reject patterns are accepted as legitimate\
+      \ while compatibility reads/writes remain flagged.\n- Why real compatibility\
+      \ reads/writes are still caught:\n  - scanner still checks explicit forbidden-key\
+      \ access paths and non-defensive references.\n- Commands run:\n```text\npytest\
+      \ tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_scan_finds_no_new_legacy_field_references\
+      \ -q\npytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestFocusedPytestGate::test_known_legacy_surfaces_are_documented\
+      \ -q\n```\n- Actual output:\n```text\n1 passed\n1 passed\n```\n\n## Git Proof\n\
+      - Commit hash: 7e2c9d7\n- git show --name-only --oneline 7e2c9d7:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py"
   - id: post_cutover_debt_remediation.patch_xfail_fix
     name: Remove module-level xfail debt from tests/core/test_patch.py
     status: done
