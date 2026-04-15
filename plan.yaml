@@ -48188,7 +48188,7 @@ phases:
       - Findings (blocker|should_fix|suggestion|tech_debt): none'
   - id: post_cutover_debt_remediation.gate
     name: Gate post-cutover debt remediation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent: gate-reviewer-tacit
@@ -48248,6 +48248,8 @@ phases:
     - post_cutover_debt_remediation.verify
     - post_cutover_debt_remediation.harness_maintenance_fix
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-15T17:16:41.132955+00:00'
   - id: post_cutover_debt_remediation.harness_maintenance_fix
     name: Fix hard-cut readiness harness stale assertions
     status: done
