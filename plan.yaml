@@ -47711,7 +47711,7 @@ phases:
     claimed_at: '2026-04-15T16:36:52.852024+00:00'
   - id: post_cutover_debt_remediation.patch_xfail_fix
     name: Remove module-level xfail debt from tests/core/test_patch.py
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent: python-executor
@@ -47786,6 +47786,13 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T16:36:45.839139+00:00'
+    done_at: '2026-04-15T16:53:28.401019+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Patch Test Debt Evidence\n- Changed files:\n  - tests/core/test_patch.py\n\
+      - Module-level xfail removed: yes\n- Remaining per-test xfail markers (if any)\
+      \ and justification: none\n- Commands run:\n```text\npytest tests/core/test_patch.py\
+      \ -q\n```\n- Actual output:\n```text\n32 passed in 0.10s\n```\n\n## Git Proof\n\
+      - Commit hash: b3d565f\n- git show --name-only --oneline b3d565f:\n  - tests/core/test_patch.py"
   - id: post_cutover_debt_remediation.docstring_cleanup
     name: Remove stale transition-era docstrings from components and assemble
     status: done
