@@ -47788,7 +47788,7 @@ phases:
     claimed_at: '2026-04-15T16:36:45.839139+00:00'
   - id: post_cutover_debt_remediation.docstring_cleanup
     name: Remove stale transition-era docstrings from components and assemble
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent: python-executor
@@ -47870,6 +47870,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-15T16:36:31.583406+00:00'
+    done_at: '2026-04-15T16:53:10.423427+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- No refs for this step.\n\n\
+      ## Docstring Cleanup Evidence\n- Changed files:\n  - src/larva/shell/components.py\n\
+      \  - src/larva/core/assemble.py\n- Stale phrases removed:\n  - backward compatibility\
+      \ / transition compatibility / ADR-002 transition phrasing in protocol/class/function\
+      \ docstrings\n  - deprecated-tools fallback wording in assemble candidate docs\n\
+      - Canonical replacement wording:\n  - canonical boundary rules: capabilities\
+      \ required, tools not admissible, fail-closed semantics\n- Commands run:\n```text\n\
+      pytest tests/core/test_normalize.py tests/shell/test_canonical_boundary_gaps.py\
+      \ tests/repro/spec_verify_black_box_surfaces.py tests/app/test_facade/test_update.py\
+      \ -q\nrg -n 'backward compatibility|transition compatibility|ADR-002 Transition|falls\
+      \ back to deprecated `tools`|retained for transition compatibility' src/larva/shell/components.py\
+      \ src/larva/core/assemble.py\n```\n- Actual output:\n```text\n53 passed\n0 matches\n\
+      ```\n\n## Git Proof\n- Commit hash: 758ebe1\n- Files in commit include:\n  -\
+      \ src/larva/shell/components.py\n  - src/larva/core/assemble.py"
   - id: post_cutover_debt_remediation.normalize_reject_semantics_fix
     name: Align normalize forbidden-field handling with reject semantics
     status: claimed
