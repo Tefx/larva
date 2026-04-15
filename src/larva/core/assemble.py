@@ -341,7 +341,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
     - Scalars (model, can_spawn, compaction_prompt):
       Multiple sources for same field -> error (COMPONENT_CONFLICT)
     - Capabilities (canonical): Merged from 'capabilities' field in toolsets
-    - Tools (deprecated input): read for backward compatibility but NOT emitted
+    - Tools (legacy input): not admitted at canonical cutover
     - model_params: Deep-merged from model component, overrides can patch keys
 
     Acceptance notes:

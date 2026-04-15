@@ -6,7 +6,7 @@ Expected: All four public surfaces enforce canonical admission:
   - Validate rejects forbidden-field fixtures
   - Update rejects forbidden fields in patches
   - Resolve rejects forbidden fields in overrides
-  - Normalize strips forbidden fields from output
+  - Normalize preserves forbidden fields for downstream rejection; it never maps them into canonical acceptance
   - Assemble rejects forbidden override fields
 
 Actual: To be determined by running this script.
@@ -150,38 +150,34 @@ def test_validate_invalid_spec_version():
     print("PASS: invalid spec_version is rejected")
 
 
-def test_normalize_strips_forbidden_fields():
-    """normalize_spec strips 'tools' and 'side_effect_policy' from output."""
+def test_normalize_preserves_forbidden_fields_for_rejection():
+    """normalize_spec preserves forbidden fields and never maps them to capabilities."""
     from larva.core.normalize import normalize_spec
 
-    # ADR-002: tools -> capabilities transition (when capabilities ABSENT)
+    # ADR-002 hard-cut: tools remains forbidden input and is not mapped.
     spec_tools_only = {"id": "test", "tools": {"shell": "read_write"}}
     result = normalize_spec(spec_tools_only)
-    assert "tools" not in result, "Issue: normalize must not preserve 'tools' in output."
-    assert "capabilities" in result, (
-        "Issue: normalize must map tools to capabilities when capabilities absent."
+    assert dict(result).get("tools") == {"shell": "read_write"}, (
+        "Issue: normalize must preserve forbidden `tools` so validation can reject it explicitly."
     )
-    assert result["capabilities"] == {"shell": "read_write"}, (
-        f"Issue: expected capabilities mapped from tools, got: {result['capabilities']}"
-    )
+    assert "capabilities" not in result, "Issue: normalize must not map tools to capabilities."
 
-    # ADR-002: when both present, capabilities wins (tools is dropped)
+    # ADR-002 hard-cut: canonical capabilities stay intact, forbidden tools remains visible.
     result2 = normalize_spec(dict(CANONICAL_SUCCESS, tools={"shell": "read_write"}))
-    assert "tools" not in result2, (
-        "Issue: normalize must not preserve 'tools' when capabilities present."
+    assert dict(result2).get("tools") == {"shell": "read_write"}, (
+        "Issue: normalize must preserve forbidden `tools` for downstream rejection."
     )
     assert result2["capabilities"] == CANONICAL_SUCCESS["capabilities"], (
-        f"Issue: when both tools and capabilities present, capabilities must win. "
-        f"Got: {result2['capabilities']}"
+        f"Issue: canonical capabilities must remain unchanged. Got: {result2['capabilities']}"
     )
 
-    # side_effect_policy is stripped
+    # side_effect_policy remains visible for rejection.
     result3 = normalize_spec(dict(CANONICAL_SUCCESS, side_effect_policy="read_only"))
-    assert "side_effect_policy" not in result3, (
-        "Issue: normalize must not preserve 'side_effect_policy' in output."
+    assert dict(result3).get("side_effect_policy") == "read_only", (
+        "Issue: normalize must preserve forbidden `side_effect_policy` for explicit rejection."
     )
 
-    print("PASS: normalize strips forbidden fields from output")
+    print("PASS: normalize preserves forbidden fields without canonicalizing them")
 
 
 def test_normalize_computes_spec_digest():
@@ -383,7 +379,7 @@ if __name__ == "__main__":
         test_validate_unknown_field,
         test_validate_missing_capabilities,
         test_validate_invalid_spec_version,
-        test_normalize_strips_forbidden_fields,
+        test_normalize_preserves_forbidden_fields_for_rejection,
         test_normalize_computes_spec_digest,
         test_normalize_deterministic,
         test_python_api_register_accepts_canonical,

@@ -193,20 +193,14 @@ class TestSpecFixtureSemantics:
 class TestWebApiCanonicalSemantics:
     """Verify web API patch flow preserves canonical normalization semantics.
 
-    Hard-cut policy (ADR-002): on registry-read surfaces (resolve, export, clone,
-    update, list, export_all, export_ids), normalization strips forbidden fields
-    (tools, side_effect_policy) before validation. For PATCH input, the same
-    normalize-then-validate flow applies: forbidden fields in patches are stripped
-    by normalization, and the result is a canonical spec without those fields.
+    Hard-cut policy (ADR-002): normalize may still run before validation on
+    registry-read surfaces, but forbidden fields must remain rejectable at the
+    canonical boundary. PATCH input must not be silently repaired into canonical
+    success when it carries forbidden fields.
     """
 
-    def test_web_patch_normalizes_tools_out_of_canonical_boundary(self) -> None:
-        """Web PATCH endpoint normalizes `tools` field out at canonical boundary.
-
-        Under hard-cut policy, forbidden fields in patch input are stripped by
-        normalization before validation. The patched record returns as canonical
-        (no `tools` field), not as a rejection.
-        """
+    def test_web_patch_rejects_tools_at_canonical_boundary(self) -> None:
+        """Web PATCH endpoint must reject forbidden `tools` input."""
         from starlette.testclient import TestClient
 
         # Use the public web surface (FastAPI app) to verify canonical normalization
@@ -228,22 +222,19 @@ class TestWebApiCanonicalSemantics:
             json={"tools": {"shell": "read_write"}},  # forbidden field
         )
 
-        # Hard-cut policy: normalize strips `tools`, the patched spec is canonical
-        assert patch_response.status_code == 200, (
-            f"Web PATCH should normalize `tools` out of canonical boundary. "
-            f"Expected 200, got {patch_response.status_code}. "
+        assert patch_response.status_code == 400, (
+            f"Web PATCH should reject forbidden `tools` input. "
+            f"Expected 400, got {patch_response.status_code}. "
             f"Response: {patch_response.json()}"
         )
         response_data = patch_response.json()
-        patched_spec = response_data["data"]
-        # Verify the `tools` field is NOT present in the response (normalized out)
-        assert "tools" not in patched_spec, (
-            f"After patch, `tools` should be normalized out. "
-            f"Got tools in response: {patched_spec.get('tools')}"
+        assert response_data["error"]["code"] == "PERSONA_INVALID"
+        errors = response_data["error"]["details"]["report"]["errors"]
+        assert any(
+            issue["code"] == "FORBIDDEN_EXTRA_FIELD"
+            and issue.get("details", {}).get("field") == "tools"
+            for issue in errors
         )
-        # Verify canonical fields are preserved
-        assert patched_spec["id"] == "patch-target"
-        assert "capabilities" in patched_spec
 
 
 # -----------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 """Contract-only normalize module for PersonaSpec normalization.
 
 This module defines the canonical normalization contract for PersonaSpec
-transformation. All behavior is acceptance-only - expressing what normalization
-does without implementing business logic.
+transformation. Normalization canonicalizes digest/default fields, but it does
+not convert forbidden legacy fields into acceptable canonical input.
 
 See:
 - INTERFACES.md :: E. PersonaSpec Output Format :: Normalization
@@ -56,8 +56,6 @@ def _compute_spec_digest(spec: dict[str, object]) -> str:
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
 @post(lambda result: "spec_version" in result and "spec_digest" in result)
 @post(lambda result: "capabilities" not in result or isinstance(result.get("capabilities"), dict))
-@post(lambda result: "tools" not in result)
-@post(lambda result: "side_effect_policy" not in result)
 def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     """Normalize a PersonaSpec candidate into canonical form.
 
@@ -68,24 +66,26 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     - Preserve flat self-contained output.
 
     Forbidden-Field Handling (hard-cut per ADR-002):
-    - `tools` is forbidden at canonical admission and must not survive
-      normalization. It is NOT mapped to capabilities.
-    - `side_effect_policy` is forbidden at canonical admission and must
-      not survive normalization.
+    - `tools` is forbidden at canonical admission and is NOT mapped to
+      capabilities.
+    - `side_effect_policy` is forbidden at canonical admission.
+    - Normalization preserves forbidden fields so downstream validation can
+      reject them explicitly instead of silently treating them as canonical.
 
     spec_digest Behavior:
-    - Digest is computed AFTER canonicalization and forbidden-field stripping.
+    - Digest is computed AFTER canonicalization.
     - Input `spec_digest` is always overwritten with fresh computation.
     - Digest excludes the `spec_digest` field itself from canonical JSON.
-    - Canonical output fields (including `capabilities` when present) are
-      included in digest computation.
+    - All remaining output fields (including forbidden fields when present)
+      are included in digest computation.
 
     Args:
         spec: Input PersonaSpec candidate (possibly incomplete).
 
     Returns:
-        Canonical PersonaSpec with spec_version defaulted, forbidden fields
-        stripped, and spec_digest computed.
+        PersonaSpec-shaped dict with spec_version defaulted and spec_digest
+        computed. Forbidden fields, when present, are preserved for explicit
+        downstream rejection.
 
     Examples:
         >>> normalize_spec({"id": "test"})["spec_version"]
@@ -100,18 +100,14 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         >>> normalize_spec({"spec_digest": "stale_digest"})["spec_digest"] != "stale_digest"
         True
         >>> result = normalize_spec({"id": "test", "side_effect_policy": "read_only"})
-        >>> "side_effect_policy" in result
-        False
+        >>> result["side_effect_policy"]
+        'read_only'
     """
     canonical_spec = dict(spec)
 
     # Apply defaults
     if "spec_version" not in canonical_spec:
         canonical_spec["spec_version"] = "0.1.0"
-
-    # Forbidden fields stripped — tools is NOT mapped to capabilities (hard-cut).
-    canonical_spec.pop("tools", None)
-    canonical_spec.pop("side_effect_policy", None)
 
     digest = _compute_spec_digest(canonical_spec)
     return cast("PersonaSpec", {**canonical_spec, "spec_digest": digest})

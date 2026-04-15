@@ -63,9 +63,9 @@ class ComponentStore(Protocol):
     - constraints/<name>.yaml -> ConstraintComponent with policy values
     - models/<name>.yaml   -> ModelComponent with model config
 
-    ADR-002 Transition:
-        - Toolsets: `capabilities` is canonical, `tools` retained for backward compatibility
-        - Constraints: `side_effect_policy` deprecated, retained for transition compatibility
+    Canonical boundary rules:
+        - Toolsets: ``capabilities`` is required; ``tools`` is not admissible (fail closed)
+        - Constraints: ``side_effect_policy`` is not admitted; runtime policy is external
     """
 
     def load_prompt(self, name: str) -> Result[PromptComponent, ComponentStoreError]:
@@ -83,27 +83,25 @@ class ComponentStore(Protocol):
     def load_toolset(self, name: str) -> Result[ToolsetComponent, ComponentStoreError]:
         """Load a toolset component by name.
 
-        Per ADR-002 transition, reads capability posture mappings:
-        - Prefers canonical `capabilities` field
-        - Falls back to deprecated `tools` field for backward compatibility
-        - Returns component with both `capabilities` (canonical) and `tools` (mirrored)
+        Canonical boundary rule: ``capabilities`` is required. Legacy ``tools``
+        field is not admissible — component store fails closed (raises
+        ComponentStoreError) rather than falling back.
 
         Args:
             name: Component name (without .yaml extension).
 
         Returns:
             Ok(ToolsetComponent) with capability posture mappings.
-            Err(ComponentStoreError) if not found or parse error.
+            Err(ComponentStoreError) if not found, parse error, or missing
+            capabilities (legacy toolset content rejected at hard-cut boundary).
         """
         ...
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
 
-        Note:
-            `side_effect_policy` is deprecated per ADR-002 and retained for
-            transition compatibility only. Runtime policy ownership has moved
-            out of PersonaSpec.
+        Canonical boundary rule: ``side_effect_policy`` is not admitted.
+        Runtime policy ownership is external to PersonaSpec.
 
         Args:
             name: Component name (without .yaml extension).
@@ -154,9 +152,9 @@ class FilesystemComponentStore:
     - constraints/<name>.yaml -> ConstraintComponent with policy values
     - models/<name>.yaml   -> ModelComponent with model config
 
-    ADR-002 Transition:
-        - Toolsets: `capabilities` is canonical, `tools` retained for backward compatibility
-        - Constraints: `side_effect_policy` deprecated, retained for transition compatibility
+    Canonical boundary rules:
+        - Toolsets: ``capabilities`` is required; ``tools`` is not admissible (fail closed)
+        - Constraints: ``side_effect_policy`` is not admitted; runtime policy is external
 
     Trust boundary:
         - `~/.larva/components/` is user-managed shell input, not canonical domain state.
