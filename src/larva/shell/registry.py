@@ -450,6 +450,10 @@ class FileSystemRegistryStore(RegistryStore):
 
         return Success(index)
 
+    _CANONICAL_FORBIDDEN_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"tools", "side_effect_policy"}
+    )
+
     def _read_spec(
         self, persona_id: str, expected_digest: str | None
     ) -> Result[PersonaSpec, RegistryError]:
@@ -466,7 +470,23 @@ class FileSystemRegistryStore(RegistryStore):
         )
         if isinstance(payload_result, Failure):
             return Failure(self._spec_read_failed(persona_id, spec_path, payload_result.failure()))
-        return Success(cast("PersonaSpec", payload_result.unwrap()))
+
+        payload = payload_result.unwrap()
+
+        # Hard-cut canonical boundary: reject stored records containing
+        # forbidden legacy fields. No silent field dropping, no auto-rewrite.
+        for field in self._CANONICAL_FORBIDDEN_FIELDS:
+            if field in payload:
+                return Failure(
+                    self._spec_read_failed(
+                        persona_id,
+                        spec_path,
+                        f"spec contains legacy field '{field}' which is not "
+                        f"permitted at canonical boundary",
+                    )
+                )
+
+        return Success(cast("PersonaSpec", payload))
 
     def _require_non_empty_digest(self, digest: object) -> str | None:
         if isinstance(digest, str) and digest.strip():
