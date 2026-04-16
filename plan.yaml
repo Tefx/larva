@@ -48658,7 +48658,7 @@ phases:
       \ canonical validator semantics`"
   - id: hard_cut_finish_20260416_core.normalize_assemble_patch
     name: Move rejection earlier in normalize assemble and patch paths
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -48808,6 +48808,52 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T12:25:25.551262+00:00'
+    done_at: '2026-04-16T12:50:54.267250+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n\
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md — “Delete\
+      \ all code paths that normalize or accept: `tools`, `side_effect_policy`” and\
+      \ “toolset assembly fails if a component still declares `tools`”\n- /Users/tefx/Projects/opifex/design/final-canonical-contract.md\
+      \ — “There is exactly one shared persona capability field: `capabilities`”\n\
+      - /Users/tefx/Projects/opifex/design/personaspec-v1.md — “`assemble` may merge\
+      \ multiple capability bundles only when they do not conflict; conflicts require\
+      \ explicit override”\n\n## Expected-Red Proof (MANDATORY)\n- New tests/contracts\
+      \ written first:\n  - Added Hypothesis-backed normalize tests for forbidden\
+      \ legacy fields and missing `spec_version`\n  - Added Hypothesis-backed assemble\
+      \ tests for unresolved placeholders, `variables`, and mixed `capabilities`+`tools`\n\
+      \  - Added Hypothesis-backed patch tests for forbidden root and dot-path patch\
+      \ keys\n  - Added new core doctests/contracts for early rejection helpers\n\
+      - Exact command(s) run before implementation:\n  - `.venv/bin/pytest tests/core/test_normalize.py\
+      \ tests/core/test_assemble.py tests/core/test_patch.py`\n- Failing output:\n\
+      \  - `20 failed, 83 passed`\n  - Missing spec_version and forbidden legacy field\
+      \ acceptance surfaced red failures across normalize/assemble/patch.\n\n## Root\
+      \ Cause vs Symptom\n- Root cause of deferred rejection behavior:\n  - `normalize_spec`\
+      \ inserted missing `spec_version` and preserved forbidden legacy fields.\n \
+      \ - `assemble_candidate` retained prompt-variable injection path and tolerated\
+      \ mixed legacy toolset payloads.\n  - `apply_patches` treated legacy fields\
+      \ as ordinary patchable keys.\n- Why previous transition-era approach was wrong\
+      \ for hard cut:\n  - Hard-cut requires fail-closed rejection at the first responsible\
+      \ seam; accept-and-clean preserved forbidden vocabulary and violated canonical\
+      \ `capabilities` authority.\n\n## Green Proof\n- Exact command(s) run after\
+      \ implementation:\n  - `.venv/bin/pytest tests/core/test_normalize.py tests/core/test_assemble.py\
+      \ tests/core/test_patch.py`\n  - `uv run invar guard`\n  - Final combined rerun:\
+      \ `.venv/bin/pytest tests/core/test_normalize.py tests/core/test_assemble.py\
+      \ tests/core/test_patch.py && uv run invar guard`\n- Passing output:\n  - `103\
+      \ passed in 0.17s`\n- Fresh-run invar_guard output:\n  - status: passed\n  -\
+      \ errors: 0\n  - warnings: 1\n  - infos: 1\n  - doctest: passed\n  - crosshair:\
+      \ verified/cached, no counterexamples\n  - property_tests: passed (7/7 functions)\n\
+      \  - exact required command family used: `uv run invar guard`\n\n## Failure-Path\
+      \ Proof\n- Missing spec_version case:\n  - `normalize_spec({\"id\": \"test\"\
+      })` raises `NormalizeError` code `MISSING_SPEC_VERSION`\n- variables-on-assemble\
+      \ case:\n  - assemble input with `variables` now raises `AssemblyError` code\
+      \ `VARIABLES_NOT_ALLOWED`\n  - prompt injection helper path removed\n- mixed\
+      \ toolset payload case:\n  - mixed `capabilities` + `tools` now raises `AssemblyError`\
+      \ code `FORBIDDEN_TOOLSET_FIELD`\n- forbidden patch/update field case:\n  -\
+      \ `apply_patches` now raises `PatchError` code `FORBIDDEN_PATCH_FIELD` for `tools`,\
+      \ `variables`, `side_effect_policy` and dot-path forms\n\n## Residual Risk\n\
+      - Non-blocking invar warnings/info remain in `src/larva/core/assemble.py` (size\
+      \ and redundant type-only contract).\n- Shell/app surfaces outside touched core/test\
+      \ files were intentionally not modified.\n- Commit: `8cc6e52 harden canonical\
+      \ core rejection seams`"
   - id: hard_cut_finish_20260416_core.gate
     name: Gate core hard-cut admission closure
     status: pending
