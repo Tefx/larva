@@ -50527,7 +50527,7 @@ phases:
       \ non-blocking item: facade file-size warning from invar.\n\ncommit_hash: ebfabcf928ccd029ea0d022d5bbea179633ff117"
   - id: hard_cut_finish_20260416_finalization.batched_retest
     name: Authoritative full-plan + spec-conformance retest
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -50603,3 +50603,5 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.batched_blocker_fix
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-16T16:50:46.049442+00:00'
