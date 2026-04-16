@@ -49071,7 +49071,7 @@ phases:
       gate and expected for hard_cut_finish_20260416_surfaces phase.'
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
-  status: pending
+  status: in_progress
   gate: All shared assemble/request/projection surfaces reject legacy vocabulary immediately
     and no shell/app surface preserves or sanitizes legacy fields.
   depends_on:
@@ -49079,7 +49079,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260416_surfaces.components_fail_closed
     name: Make component loading fail closed on legacy fields
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -49183,6 +49183,8 @@ phases:
 
       - Remaining ambiguity or "none"'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T13:10:58.267851+00:00'
   - id: hard_cut_finish_20260416_surfaces.facade_mcp_contract
     name: Delete variables from facade and MCP assemble contracts
     status: pending
