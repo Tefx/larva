@@ -49079,7 +49079,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260416_surfaces.components_fail_closed
     name: Make component loading fail closed on legacy fields
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -49185,6 +49185,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T13:10:58.267851+00:00'
+    done_at: '2026-04-16T13:16:00.782202+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md\
+      \ §2 — no component may publish `tools`; tests must fail on `tools`.\n- /Users/tefx/Projects/opifex/design/final-canonical-contract.md\
+      \ forbidden legacy vocabulary — `tools` and `side_effect_policy` invalid on\
+      \ shared surfaces.\n\n## Expected-Red Proof (MANDATORY)\n- New failing loader\
+      \ tests written first for:\n  - mixed toolset payload\n  - tools-only toolset\
+      \ payload\n  - constraint payload with side_effect_policy\n  - property-style\
+      \ malformed payload containing `tools`\n- Pre-implementation command:\n  - `./.venv/bin/pytest\
+      \ tests/shell/test_components.py -q`\n- Failing output:\n  - `5 failed, 25 passed\
+      \ in 0.66s`\n  - failures showed legacy toolset/constraint payloads still tolerated/sanitized\n\
+      \n## Green Proof\n- Post-implementation command:\n  - `./.venv/bin/pytest tests/shell/test_components.py\
+      \ -q`\n- Passing output:\n  - `30 passed in 0.29s`\n- invar_guard output:\n\
+      \  - status: passed\n  - files_checked: 1\n  - errors: 0\n  - warnings: 0\n\
+      \  - crosshair/property tests skipped (no core files)\n- Additional:\n  - `src/larva/shell/components.py`\
+      \ no strip/sanitize path remains\n  - commit: `f50c2af fix(shell): fail closed\
+      \ on legacy component payloads`\n\n## Fail-Closed Cases\n- mixed toolset payload:\
+      \ `load_toolset()` now returns `Failure(ComponentStoreError)` if `tools` present\
+      \ even with `capabilities`.\n- legacy tools-only payload: `load_toolset()` now\
+      \ returns `Failure(ComponentStoreError)`.\n- constraint side_effect_policy payload:\
+      \ `load_constraint()` now returns `Failure(ComponentStoreError)` instead of\
+      \ stripping.\n\n## Residual Risk\n- Out-of-scope sanitize code may still exist\
+      \ elsewhere; this step enforces early fail-closed at filesystem-backed component\
+      \ loading seam."
   - id: hard_cut_finish_20260416_surfaces.facade_mcp_contract
     name: Delete variables from facade and MCP assemble contracts
     status: pending
