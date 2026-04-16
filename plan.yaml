@@ -50717,7 +50717,7 @@ phases:
       \ `3788bee8cc37dcf5b18207a42c159ca73cf01882`"
   - id: hard_cut_finish_20260416_finalization.bf1_bf4_retest
     name: Retest BF1-BF4 closure after alignment-only remediation
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -50756,3 +50756,12 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-16T17:32:50.933913+00:00'
+    done_at: '2026-04-16T17:41:02.095105+00:00'
+    evidence: "- commands:\n  - targeted facade tests for BF1/BF2/BF3\n  - facade\
+      \ docstring wording check for BF4\n  - full suite smoke (`uv run pytest tests/\
+      \ -x`)\n- outputs:\n  - BF1 initially exposed nondeterministic forbidden-field\
+      \ order; fixed by ordering `_FORBIDDEN_NORMALIZE_FIELDS` deterministically in\
+      \ `src/larva/core/normalize.py`\n  - BF1/BF2/BF3 tests pass after alignment+ordering\
+      \ fix\n  - BF4 docstring confirmed uses reject semantics (no strip wording)\n\
+      \  - full suite: `870 passed in 4.06s`\n- blocker_status:\n  - BF1 CLOSED\n\
+      \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
