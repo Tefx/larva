@@ -30,13 +30,74 @@ Examples:
     {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
 """
 
-from typing import TypeGuard
+from typing import Any, TypeGuard
 
 from deal import post, pre
 
 PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
 DEEP_MERGE_KEYS = frozenset({"model_params", "capabilities"})
 DOT_KEY_SEPARATOR = "."
+FORBIDDEN_PATCH_FIELDS = frozenset({"tools", "side_effect_policy", "variables"})
+
+
+class PatchError(Exception):
+    """Patch contract failure."""
+
+    code: str
+    message: str
+    details: dict[str, Any]
+
+
+@pre(
+    lambda code, message, details=None: (
+        isinstance(code, str)
+        and len(code) > 0
+        and isinstance(message, str)
+        and len(message) > 0
+        and (details is None or isinstance(details, dict))
+    )
+)
+@post(
+    lambda result: (
+        isinstance(result, PatchError)
+        and isinstance(result.code, str)
+        and len(result.code) > 0
+        and isinstance(result.message, str)
+        and len(result.message) > 0
+        and isinstance(result.details, dict)
+    )
+)
+def _patch_error(code: str, message: str, details: dict[str, Any] | None = None) -> PatchError:
+    error = PatchError(f"{code}: {message}")
+    error.code = code
+    error.message = message
+    error.details = {} if details is None else details
+    return error
+
+
+@post(lambda result: result is None)
+@pre(lambda patches: all(isinstance(key, str) for key in patches))
+def _reject_forbidden_patch_fields(patches: dict[str, object]) -> None:
+    """Reject forbidden legacy patch roots before merge semantics.
+
+    >>> _reject_forbidden_patch_fields({"prompt": "ok"})
+    >>> _reject_forbidden_patch_fields({"tools": {"shell": "read_only"}})
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted at canonical update boundary
+    >>> _reject_forbidden_patch_fields({"variables.role": "assistant"})
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'variables' is not permitted at canonical update boundary
+    """
+    for key in patches:
+        root = key.split(DOT_KEY_SEPARATOR, 1)[0]
+        if root in FORBIDDEN_PATCH_FIELDS:
+            raise _patch_error(
+                code="FORBIDDEN_PATCH_FIELD",
+                message=f"patch field '{root}' is not permitted at canonical update boundary",
+                details={"field": root, "key": key},
+            )
 
 
 @post(lambda result: isinstance(result, bool))
@@ -184,7 +245,12 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
         ...     {"model_params.temperature": 0.4},
         ... )
         {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
+        >>> apply_patches({"id": "p"}, {"tools": {"shell": "read_only"}})
+        Traceback (most recent call last):
+        ...
+        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted at canonical update boundary
     """
+    _reject_forbidden_patch_fields(patches)
     sanitized = _strip_protected_keys(patches)
     expanded = _expand_dot_keys(sanitized)
 
@@ -210,6 +276,8 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
 __all__ = [
     "DEEP_MERGE_KEYS",
     "DOT_KEY_SEPARATOR",
+    "FORBIDDEN_PATCH_FIELDS",
+    "PatchError",
     "PROTECTED_KEYS",
     "apply_patches",
 ]

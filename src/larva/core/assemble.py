@@ -13,11 +13,15 @@ Acceptance notes for this module boundary:
   the canonical authority basis
 """
 
+import re
 from typing import Any, Mapping, cast
 
 from deal import post, pre, raises
 
 from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
+
+
+_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 
 class AssemblyError(Exception):
@@ -170,6 +174,13 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
     merged: dict[str, str] = {}
 
     for toolset in toolsets:
+        if "tools" in toolset:
+            raise _assembly_error(
+                code="FORBIDDEN_TOOLSET_FIELD",
+                message="toolset field 'tools' is not permitted at canonical assembly boundary",
+                details={"field": "tools", "toolset": toolset},
+            )
+
         caps_obj = toolset.get("capabilities")
 
         # 'tools' is legacy content - not admissible at canonical cutover
@@ -221,50 +232,25 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-@pre(
-    lambda prompt, variables: (
-        isinstance(prompt, str)
-        and isinstance(variables, dict)
-        and all(
-            isinstance(key, str) and isinstance(value, str) for key, value in _safe_items(variables)
-        )
-    )
-)
-@raises(AssemblyError)
-def _inject_variables(prompt: str, variables: dict[str, str]) -> str:
-    """Inject variables into prompt text using str.format_map."""
-    try:
-        return prompt.format_map(variables)
-    except KeyError as error:
-        missing = list(error.args)
-        raise _assembly_error(
-            code="VARIABLE_UNRESOLVED",
-            message=f"Missing required variable(s): {missing}",
-            details={"missing_variables": missing},
-        ) from error
-    except ValueError as error:
-        raise _assembly_error(
-            code="INVALID_PROMPT_TEMPLATE",
-            message=f"Prompt template is malformed: {error}",
-            details={"prompt": prompt},
-        ) from error
+@pre(lambda prompt: isinstance(prompt, str))
+@post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
+def _find_unresolved_placeholders(prompt: str) -> list[str]:
+    """Return unresolved placeholder names in prompt text.
+
+    >>> _find_unresolved_placeholders("You are {role}.")
+    ['role']
+    >>> _find_unresolved_placeholders("Use {{literal}} braces.")
+    []
+    """
+    return sorted(set(_PROMPT_PLACEHOLDER_PATTERN.findall(prompt)))
 
 
 @pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
+@raises(AssemblyError)
 def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompts_obj = data.get("prompts", [])
     prompts = prompts_obj if isinstance(prompts_obj, list) else []
-    variables_obj = data.get("variables", {})
-    variables = (
-        {
-            key: value
-            for key, value in _safe_items(cast("Mapping[Any, Any]", variables_obj))
-            if isinstance(key, str) and isinstance(value, str)
-        }
-        if isinstance(variables_obj, dict)
-        else {}
-    )
 
     prompt_texts: list[str] = []
     for prompt_component in prompts:
@@ -273,8 +259,13 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
         text = prompt_component.get("text", "")
         if not isinstance(text, str):
             text = ""
-        if variables and "{" in text:
-            text = _inject_variables(text, variables)
+        placeholders = _find_unresolved_placeholders(text)
+        if placeholders:
+            raise _assembly_error(
+                code="UNRESOLVED_PROMPT_TEXT",
+                message="prompt text contains unresolved placeholders and must already be fully composed",
+                details={"placeholders": placeholders, "prompt": text},
+            )
         prompt_texts.append(text)
     return prompt_texts
 
@@ -296,11 +287,32 @@ def _collect_constraint_sources(data: dict[str, object]) -> list[dict[str, Any]]
     return constraint_sources
 
 
-_FORBIDDEN_OVERRIDE_FIELDS = frozenset({"tools", "side_effect_policy"})
+_FORBIDDEN_OVERRIDE_FIELDS = frozenset({"tools", "side_effect_policy", "variables"})
+
+
+@pre(lambda data: all(isinstance(key, str) for key in data))
+@post(lambda result: result is None)
+@raises(AssemblyError)
+def _reject_noncanonical_assembly_input(data: dict[str, object]) -> None:
+    """Reject legacy assembly inputs before composition.
+
+    >>> _reject_noncanonical_assembly_input({"id": "p"})
+    >>> _reject_noncanonical_assembly_input({"id": "p", "variables": {"role": "assistant"}})
+    Traceback (most recent call last):
+    ...
+    assemble.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
+    """
+    if "variables" in data:
+        raise _assembly_error(
+            code="VARIABLES_NOT_ALLOWED",
+            message="variables are not permitted at canonical assembly boundary",
+            details={"field": "variables"},
+        )
 
 
 @pre(lambda result, overrides: isinstance(result, dict) and isinstance(overrides, dict))
 @post(lambda result: isinstance(result, dict))
+@raises(AssemblyError)
 def _apply_overrides(result: Mapping[str, object], overrides: dict[str, Any]) -> dict[str, object]:
     updated = dict(result)
 
@@ -359,33 +371,25 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         PersonaSpec candidate (not yet normalized/validated)
 
     Raises:
-        AssemblyError: On component conflicts or unresolved variables.
+        AssemblyError: On component conflicts or non-canonical assembly input.
 
     Examples:
-        >>> result = assemble_candidate(
-        ...     {
-        ...         "id": "p",
-        ...         "prompts": [{"text": "You are {role}"}],
-        ...         "variables": {"role": "assistant"},
-        ...     }
-        ... )
-        >>> result["id"]
-        'p'
-        >>> result["prompt"]
-        'You are assistant'
+        >>> assemble_candidate({"id": "p", "prompts": [{"text": "You are {role}"}]})
+        Traceback (most recent call last):
+        ...
+        assemble.AssemblyError: UNRESOLVED_PROMPT_TEXT: prompt text contains unresolved placeholders and must already be fully composed
         >>> # Capabilities input (canonical)
         >>> result = assemble_candidate(
         ...     {"id": "p", "toolsets": [{"capabilities": {"read": "read_only"}}]}
         ... )
         >>> result["capabilities"]
         {'read': 'read_only'}
-        >>> # Tools input (deprecated, still works)
-        >>> result = assemble_candidate(
-        ...     {"id": "p", "toolsets": [{"capabilities": {"write": "read_write"}}]}
-        ... )
-        >>> result["capabilities"]
-        {'write': 'read_write'}
+        >>> assemble_candidate({"id": "p", "variables": {"role": "assistant"}})
+        Traceback (most recent call last):
+        ...
+        assemble.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
     """
+    _reject_noncanonical_assembly_input(data)
     persona_id = cast("str", data.get("id"))
     result: dict[str, object] = {"id": persona_id}
 

@@ -11,6 +11,8 @@ and the opifex canonical authority basis:
 
 import deal
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from inspect import signature
 
 from larva.core.assemble import AssemblyError, assemble_candidate
@@ -94,10 +96,10 @@ class TestAssembleCandidateContracts:
 class TestAssembleCandidateBehavior:
     """Test concrete assemble behavior — canonical output contract.
 
-    Per ADR-002 authority decision:
+    Per hard-cut authority decision:
     - Assembly output is capabilities-only; no 'tools' in output
-    - Assembly input may use 'tools' in ToolsetComponent for backward compat
-    - 'tools' input is read and normalized to 'capabilities' in output
+    - Assembly input must not accept 'tools' in ToolsetComponent
+    - Prompt text must already be fully composed; no variables path remains
     """
 
     def test_concatenates_prompts_in_order(self):
@@ -128,7 +130,7 @@ class TestAssembleCandidateBehavior:
                     "toolsets": [{"tools": {"read": "read_only"}}],
                 }
             )
-        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
     def test_raises_component_conflict_for_contradictory_tool_posture(self):
         """Tools-only toolsets are rejected at canonical cutover.
@@ -146,7 +148,7 @@ class TestAssembleCandidateBehavior:
                     ],
                 }
             )
-        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
     def test_capabilities_input_canonical(self):
         """Capabilities field should be canonical input for toolsets."""
@@ -159,12 +161,8 @@ class TestAssembleCandidateBehavior:
         assert result["capabilities"] == {"read": "read_only", "write": "read_write"}
         assert "tools" not in result
 
-    def test_tools_input_backward_compat(self):
-        """Tools field is legacy content and must be rejected at canonical cutover.
-
-        Per canonical cutover: 'tools' in assembly input is NOT admissible.
-        Toolset must provide 'capabilities' field.
-        """
+    def test_tools_input_rejected(self):
+        """Tools field is legacy content and must be rejected at canonical cutover."""
         with pytest.raises(AssemblyError) as exc_info:
             assemble_candidate(
                 {
@@ -172,21 +170,20 @@ class TestAssembleCandidateBehavior:
                     "toolsets": [{"tools": {"read": "read_only", "write": "read_write"}}],
                 }
             )
-        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
-    def test_capabilities_preferred_over_tools(self):
-        """Capabilities should be preferred over tools when both present."""
-        result = assemble_candidate(
-            {
-                "id": "persona",
-                "toolsets": [
-                    {"capabilities": {"read": "read_only"}, "tools": {"read": "read_write"}},
-                ],
-            }
-        )
-        # capabilities takes precedence
-        assert result["capabilities"] == {"read": "read_only"}
-        assert "tools" not in result
+    def test_mixed_capabilities_and_tools_payload_rejected(self):
+        """Mixed canonical and legacy toolset payload must fail closed."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"capabilities": {"read": "read_only"}, "tools": {"read": "read_write"}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
     def test_capabilities_merges_with_tools_across_toolsets(self):
         """Tools-only toolsets are rejected at canonical cutover.
@@ -204,7 +201,7 @@ class TestAssembleCandidateBehavior:
                     ],
                 }
             )
-        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
     def test_raises_component_conflict_for_contradictory_capability_posture(self):
         """Conflicting capability postures should raise AssemblyError."""
@@ -237,7 +234,45 @@ class TestAssembleCandidateBehavior:
                     ],
                 }
             )
-        assert exc_info.value.code == "TOOLSET_MISSING_CAPABILITIES"
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
+
+    def test_variables_input_rejected(self):
+        """Assemble input must reject variables outright at hard cut."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "prompts": [{"text": "You are {role}."}],
+                    "variables": {"role": "assistant"},
+                }
+            )
+        assert exc_info.value.code == "VARIABLES_NOT_ALLOWED"
+
+    @given(name=st.sampled_from(("role", "target", "agent_name")))
+    def test_unresolved_prompt_placeholders_rejected(self, name: str):
+        """Prompt text must already be composed before assembly output."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "prompts": [{"text": f"You are {{{name}}}."}],
+                }
+            )
+        assert exc_info.value.code == "UNRESOLVED_PROMPT_TEXT"
+
+    @given(posture=st.sampled_from(("read_only", "read_write", "destructive")))
+    def test_mixed_legacy_toolset_payload_fails_closed(self, posture: str):
+        """Any toolset payload that still contains tools must be rejected."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {"capabilities": {"read": "read_only"}, "tools": {"write": posture}},
+                    ],
+                }
+            )
+        assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
     def test_output_never_contains_tools_key(self):
         """Assembly output must never contain 'tools' — ADR-002.
@@ -411,13 +446,9 @@ class TestTypedDictShapes:
         }
         assert data["overrides"]["temperature"] == 0.7
 
-    def test_assembly_input_supports_variables(self):
-        """AssemblyInput should support 'variables' field as dict[str, str]."""
-        data: AssemblyInput = {
-            "id": "test",
-            "variables": {"name": "Alice"},
-        }
-        assert data["variables"]["name"] == "Alice"
+    def test_assembly_input_annotations_exclude_variables(self):
+        """AssemblyInput annotations must not admit legacy variables input."""
+        assert "variables" not in AssemblyInput.__annotations__
 
     def test_assembly_input_full_example(self):
         """AssemblyInput should accept a complete example per spec — canonical shape."""
@@ -428,7 +459,6 @@ class TestTypedDictShapes:
             "constraints": [{"can_spawn": True}],
             "model": {"model": "gpt-4", "model_params": {"temperature": 0.5}},
             "overrides": {"temperature": 0.7},
-            "variables": {"agent_name": "TestBot"},
         }
 
         assert data["id"] == "full-test-persona"
@@ -437,7 +467,6 @@ class TestTypedDictShapes:
         assert len(data["constraints"]) == 1
         assert data["model"]["model"] == "gpt-4"
         assert data["overrides"]["temperature"] == 0.7
-        assert data["variables"]["agent_name"] == "TestBot"
 
 
 class TestContractExports:

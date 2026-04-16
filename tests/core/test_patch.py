@@ -20,6 +20,8 @@ All behavior tests are marked xfail until implementation step.
 import copy
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from larva.core.patch import (
     DEEP_MERGE_KEYS,
@@ -112,32 +114,42 @@ class TestDeepMergeModelParams:
         assert result["model_params"] == {"temperature": 0.8}
 
 
-class TestDeepMergeTools:
-    """Test 4: tools uses shallow overwrite semantics (no deep merge)."""
+class TestForbiddenLegacyPatches:
+    """Forbidden legacy fields must be rejected before patch application."""
 
-    def test_tools_shallow_overwrite_adds(self) -> None:
-        """Tools dict NOT in DEEP_MERGE_KEYS: shallow replaces entire dict."""
-        base = {"id": "test", "tools": {"read_file": "read_only"}}
-        patches = {"tools": {"write_file": "read_write"}}
-        result = apply_patches(base, patches)
-        # tools is not deep-merged: patch value replaces base entirely
-        assert result["tools"] == {"write_file": "read_write"}
+    def test_tools_patch_rejected(self) -> None:
+        """tools patches must fail closed instead of applying."""
+        with pytest.raises(Exception):
+            apply_patches({"id": "test"}, {"tools": {"shell": "destructive"}})
 
-    def test_tools_shallow_overwrite_replaces(self) -> None:
-        """Tools patch replaces existing tools dict entirely."""
-        base = {"id": "test", "tools": {"read_file": "read_only"}}
-        patches = {"tools": {"read_file": "read_write"}}
-        result = apply_patches(base, patches)
-        # tools is not deep-merged: patch value replaces base entirely
-        assert result["tools"] == {"read_file": "read_write"}
+    def test_variables_patch_rejected(self) -> None:
+        """variables patches must fail closed instead of applying."""
+        with pytest.raises(Exception):
+            apply_patches({"id": "test"}, {"variables": {"role": "assistant"}})
 
-    def test_tools_shallow_overwrite_from_empty_base(self) -> None:
-        """Tools patch creates tools from patch when base has none."""
-        base = {"id": "test"}
-        patches = {"tools": {"shell": "destructive"}}
-        result = apply_patches(base, patches)
-        # tools is not deep-merged: patch value becomes result
-        assert result["tools"] == {"shell": "destructive"}
+    def test_side_effect_policy_patch_rejected(self) -> None:
+        """side_effect_policy patches must fail closed instead of applying."""
+        with pytest.raises(Exception):
+            apply_patches({"id": "test"}, {"side_effect_policy": "allow"})
+
+    @given(field=st.sampled_from(("tools", "variables", "side_effect_policy")))
+    def test_forbidden_root_patch_keys_rejected(self, field: str) -> None:
+        """Forbidden legacy patch roots must be rejected before merge semantics."""
+        value: object = (
+            "allow"
+            if field == "side_effect_policy"
+            else {"shell": "read_only"}
+            if field == "tools"
+            else {"role": "assistant"}
+        )
+        with pytest.raises(Exception):
+            apply_patches({"id": "test"}, {field: value})
+
+    @given(field=st.sampled_from(("tools", "variables", "side_effect_policy")))
+    def test_forbidden_dot_patch_roots_rejected(self, field: str) -> None:
+        """Forbidden legacy patch roots must be rejected before dot expansion."""
+        with pytest.raises(Exception):
+            apply_patches({"id": "test"}, {f"{field}.nested": "value"})
 
 
 class TestShallowOverwriteOtherDicts:
@@ -147,8 +159,8 @@ class TestShallowOverwriteOtherDicts:
         """Dict fields NOT in DEEP_MERGE_KEYS shallow replace entire dict."""
         base = {"id": "test", "variables": {"VAR1": "value1", "VAR2": "value2"}}
         patches = {"variables": {"VAR3": "value3"}}
-        result = apply_patches(base, patches)
-        assert result["variables"] == {"VAR3": "value3"}
+        with pytest.raises(Exception):
+            apply_patches(base, patches)
 
     def test_unknown_dict_key_shallow_replace(self) -> None:
         """Unknown dict keys are shallow replaced."""

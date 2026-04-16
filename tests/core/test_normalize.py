@@ -9,6 +9,8 @@ and ADR-003:
 - Digest is deterministic and excludes spec_digest from input
 """
 
+from hypothesis import given
+from hypothesis import strategies as st
 from larva.core.spec import PersonaSpec
 
 import pytest
@@ -169,18 +171,18 @@ class TestNormalizeSpecContractAnnotations:
 class TestNormalizeSpecBehavior:
     """Test normalize_spec runtime behavior — canonical contract."""
 
-    def test_defaults_spec_version_when_absent(self) -> None:
-        """normalize_spec should add default spec_version when missing."""
+    def test_missing_spec_version_rejected(self) -> None:
+        """normalize_spec must reject missing spec_version at hard cut."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test"})
-        assert result["spec_version"] == "0.1.0"
+        with pytest.raises(Exception):
+            normalize_spec({"id": "test"})
 
     def test_overwrites_stale_digest(self) -> None:
         """normalize_spec should compute a fresh digest and ignore stale input digest."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "spec_digest": "stale"})
+        result = normalize_spec({"id": "test", "spec_version": "0.1.0", "spec_digest": "stale"})
         digest = result.get("spec_digest")
         assert digest != "stale"
         assert isinstance(digest, str)
@@ -190,8 +192,8 @@ class TestNormalizeSpecBehavior:
         """normalize_spec should produce deterministic digest for same input."""
         from larva.core.normalize import normalize_spec
 
-        left = normalize_spec({"id": "test", "model": "gpt-4"})
-        right = normalize_spec({"model": "gpt-4", "id": "test"})
+        left = normalize_spec({"id": "test", "model": "gpt-4", "spec_version": "0.1.0"})
+        right = normalize_spec({"model": "gpt-4", "id": "test", "spec_version": "0.1.0"})
         assert left.get("spec_digest") == right.get("spec_digest")
 
     def test_canonical_minimal_fixture_passes_through(self) -> None:
@@ -222,12 +224,14 @@ class TestNormalizeSpecCapabilitiesTransition:
     - validation, not normalize_spec, is responsible for rejecting forbidden input
     """
 
-    def test_tools_preserved_for_downstream_rejection(self) -> None:
-        """normalize_spec must not silently accept tools as canonical input."""
+    def test_tools_rejected_at_normalize_boundary(self) -> None:
+        """normalize_spec must reject tools immediately at hard cut."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "tools": {"shell": "read_write"}})
-        assert dict(result).get("tools") == {"shell": "read_write"}
+        with pytest.raises(Exception):
+            normalize_spec(
+                {"id": "test", "spec_version": "0.1.0", "tools": {"shell": "read_write"}}
+            )
 
     def test_tools_not_mapped_to_capabilities(self) -> None:
         """tools in input must NOT result in capabilities being added — hard-cut.
@@ -236,15 +240,18 @@ class TestNormalizeSpecCapabilitiesTransition:
         """
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "tools": {"filesystem": "read_only"}})
-        assert dict(result).get("tools") == {"filesystem": "read_only"}
-        assert "capabilities" not in result or result.get("capabilities") is None
+        with pytest.raises(Exception):
+            normalize_spec(
+                {"id": "test", "spec_version": "0.1.0", "tools": {"filesystem": "read_only"}}
+            )
 
     def test_capabilities_only_passes_through(self) -> None:
         """When only capabilities present, use as-is and no tools in output."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "capabilities": {"git": "read_write"}})
+        result = normalize_spec(
+            {"id": "test", "capabilities": {"git": "read_write"}, "spec_version": "0.1.0"}
+        )
         assert result.get("capabilities") == {"git": "read_write"}
         assert "tools" not in result
 
@@ -252,42 +259,57 @@ class TestNormalizeSpecCapabilitiesTransition:
         """When neither tools nor capabilities present, neither is added."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec({"id": "test", "model": "gpt-4"})
+        result = normalize_spec({"id": "test", "model": "gpt-4", "spec_version": "0.1.0"})
         assert "capabilities" not in result or result.get("capabilities") is None
         assert "tools" not in result
 
-    def test_side_effect_policy_preserved_for_downstream_rejection(self) -> None:
-        """normalize_spec must preserve side_effect_policy for explicit rejection."""
+    def test_side_effect_policy_rejected_at_normalize_boundary(self) -> None:
+        """normalize_spec must reject side_effect_policy immediately at hard cut."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec(
-            {"id": "test", "capabilities": {"git": "read_only"}, "side_effect_policy": "allow"}
-        )
-        assert dict(result).get("side_effect_policy") == "allow"
+        with pytest.raises(Exception):
+            normalize_spec(
+                {
+                    "id": "test",
+                    "capabilities": {"git": "read_only"},
+                    "side_effect_policy": "allow",
+                    "spec_version": "0.1.0",
+                }
+            )
 
-    def test_tools_and_capabilities_both_preserved_without_mapping(self) -> None:
-        """When both tools and capabilities are present, capabilities are not rewritten."""
+    def test_tools_and_capabilities_both_rejected(self) -> None:
+        """Mixed canonical and legacy top-level capability fields must fail closed."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec(
-            {
-                "id": "test",
-                "tools": {"filesystem": "read_only"},
-                "capabilities": {"git": "read_write"},
-            }
-        )
-        assert dict(result).get("tools") == {"filesystem": "read_only"}
-        assert result.get("capabilities") == {"git": "read_write"}
+        with pytest.raises(Exception):
+            normalize_spec(
+                {
+                    "id": "test",
+                    "tools": {"filesystem": "read_only"},
+                    "capabilities": {"git": "read_write"},
+                    "spec_version": "0.1.0",
+                }
+            )
 
-    def test_transition_fixture_with_side_effect_policy_normalizes_correctly(
-        self,
-    ) -> None:
-        """Assert forbidden transition field survives normalize for later rejection."""
+    def test_transition_fixture_with_side_effect_policy_is_rejected(self) -> None:
+        """Transition fixture must now fail at normalize boundary."""
         from larva.core.normalize import normalize_spec
 
-        result = normalize_spec(CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY)
-        assert dict(result).get("side_effect_policy") == "allow"
-        assert result["capabilities"] == {"shell": "read_only"}
+        with pytest.raises(Exception):
+            normalize_spec(CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY)
+
+    @given(field=st.sampled_from(("tools", "side_effect_policy")))
+    def test_forbidden_legacy_fields_rejected_before_digest(self, field: str) -> None:
+        """Forbidden legacy fields must fail closed during normalization."""
+        from larva.core.normalize import normalize_spec
+
+        payload: dict[str, object] = {
+            "id": "test-persona",
+            "spec_version": "0.1.0",
+            field: {"shell": "read_only"} if field == "tools" else "allow",
+        }
+        with pytest.raises(Exception):
+            normalize_spec(payload)
 
 
 if __name__ == "__main__":
