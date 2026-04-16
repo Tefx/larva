@@ -50376,6 +50376,7 @@ phases:
     - hard_cut_finish_20260416_finalization.tests_fixtures
     - hard_cut_finish_20260416_finalization.docs_sync
     - hard_cut_finish_20260416_finalization.batched_retest
+    - hard_cut_finish_20260416_finalization.bf1_bf4_retest
     agent: gate-reviewer-tacit
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
