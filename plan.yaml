@@ -48816,6 +48816,113 @@ phases:
     and no shell/app surface preserves or sanitizes legacy fields.
   depends_on:
   - hard_cut_finish_20260416_core
+  steps:
+  - id: hard_cut_finish_20260416_surfaces.components_fail_closed
+    name: Make component loading fail closed on legacy fields
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify fail-closed component loading.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#2-make-toolset-components-capability-only
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary
+
+
+      touch_paths:
+
+      - src/larva/shell/components.py
+
+      - tests/shell/test_components.py
+
+      - tests/shell/fixture_taxonomy.py
+
+
+      authoritative_interface:
+
+      - toolset components recognize only canonical capabilities payloads
+
+      - constraint components reject side_effect_policy instead of stripping it
+
+
+      Scope:
+
+      - Delete accept-and-clean logic in load_toolset and load_constraint.
+
+      - Fail immediately on mixed payloads or legacy fields.
+
+      - Update checked-in fixtures so tests teach fail-closed behavior, not transition
+      tolerance.
+
+
+      Expected-red requirement:
+
+      - First add failing tests proving mixed toolset payloads and side_effect_policy
+      are still tolerated or sanitized.
+
+      - Use fixture-driven negative tests plus at least one property-style malformed-payload
+      test.
+
+
+      Completion Criteria (stub exclusion):
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Loader
+      behavior must reject legacy content before facade/transport projection occurs.'
+    verification: 'local-check protecting facade and transport surfaces.
+
+      - Expected red: component loader tests fail before implementation.
+
+      - Green: targeted component tests pass after implementation.
+
+      - Green: invar_guard on changed files passes.
+
+      - Green: evidence shows no strip/sanitize path remains for tools or side_effect_policy.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New failing loader tests written first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - invar_guard output pasted here:
+
+
+      ## Fail-Closed Cases
+
+      - mixed toolset payload:
+
+      - legacy tools-only payload:
+
+      - constraint side_effect_policy payload:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    agent: python-senior-tacit
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
