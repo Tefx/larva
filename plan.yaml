@@ -49804,3 +49804,75 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: integration-verifier-tacit
+  - id: hard_cut_finish_20260416_finalization.spec_conformance
+    name: Audit final conformance against opifex canonical contract
+    status: pending
+    description: 'step_type: verification
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+
+      Independent spec conformance audit.
+
+
+      Protects downstream gate:
+
+      - hard_cut_finish_20260416_finalization.gate
+
+
+      Audit only the hard-cut requirements touched by this plan:
+
+      - no variables anywhere on canonical/shared or assemble request surfaces
+
+      - no tools / side_effect_policy acceptance, sanitation, or output leakage
+
+      - validator semantics match schema plus personaspec-v1 behavioral rules
+
+      - docs/examples/fixtures teach canonical-only behavior
+
+
+      Behavioral precedence claims must be marked NEEDS_TEST if evidence is not concrete.'
+    verification: 'full-plan-check protecting final gate.
+
+      - Produce requirement-by-requirement conformance table with implementation evidence
+      refs.
+
+      - Flag any remaining transition-era wording, behavior, or omitted rejection
+      path.
+
+      - Do not mark behavioral claims conformant without code/test evidence.'
+    evidence_template: '## Spec Conformance Report
+
+      **Phase**: hard_cut_finish_20260416_finalization
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Requirements Register
+
+      - requirement_ref | implementation_ref | verdict | notes
+
+
+      ## Top Risks
+
+      - <list>
+
+
+      ## Decision Basis
+
+      - PROVEN / NEEDS_TEST / DIVERGES / NOT_FOUND
+
+
+      ## Recommended Gate Disposition
+
+      - OPEN or BLOCK'
+    depends_on:
+    - hard_cut_finish_20260416_finalization.docs_sync
+    agent: spec-verifier-tacit
