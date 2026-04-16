@@ -11,9 +11,9 @@
 |-------|--------|-------|
 | Core type migration | ✓ Done | `spec.py` uses `capabilities` as canonical; `tools` is historical migration terminology only and is now rejected at admission |
 | Validation updates | ✓ Done | `validate.py` rejects `side_effect_policy` and `tools` at admission (forbidden fields) |
-| Normalization | ✓ Done | `normalize.py` maintains internal `capabilities`↔`tools` compatibility (not at admission) |
+| Normalization | ✓ Done | `normalize.py` performs canonical validation; `tools` is rejected at admission |
 | Assembly updates | ✓ Done | `assemble.py` merges capabilities from toolsets |
-| Component loading | ✓ Done | `components.py` prefers `capabilities`, falls back to `tools` |
+| Component loading | ✓ Done | `components.py` requires `capabilities`; `tools` is rejected at admission |
 | Python API | ✓ Done | All facade operations use canonical `capabilities` field |
 | MCP contract | ✓ Done | Tool descriptions reference `capabilities` as canonical |
 | CLI | ✓ Done | All commands work with `capabilities` |
@@ -23,9 +23,7 @@
 ### Residual Follow-ups
 
 - **None blocking** — Migration is functionally complete
-- `tools` and `side_effect_policy` are rejected at the larva admission boundary
-- These fields are not canonical PersonaSpec fields (owned by opifex, not larva)
-- Future major version may remove any internal compatibility code entirely (tracked as future cleanup)
+- `tools` and `side_effect_policy` are rejected at the larva admission boundary — not canonical PersonaSpec fields (owned by opifex, not larva)
 
 ---
 
