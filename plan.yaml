@@ -49876,3 +49876,88 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: spec-verifier-tacit
+  - id: hard_cut_finish_20260416_finalization.gate
+    name: Gate final hard-cut alignment
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+
+      Independent final gate for canonical hard-cut closure.
+
+
+      Gate must stay CLOSED unless all of the following are true:
+
+      - variables is absent from canonical/shared and assemble request surfaces
+
+      - tools / side_effect_policy are rejected early and never cleaned for convenience
+
+      - resolve/export/assemble outputs leak no legacy vocabulary
+
+      - validator semantics align with schema and personaspec-v1
+
+      - docs/tests/fixtures no longer teach transition behavior
+
+
+      review_depth: THOROUGH
+
+      cross_cutting_focus:
+
+      - fail-closed admission over accept-and-clean
+
+      - prompt fully composed / unresolved placeholders fail
+
+      - cross-surface semantic consistency'
+    verification: 'full-plan-check final gate.
+
+      - Review full_plan_check and spec_conformance outputs together.
+
+      - Block on any blocker-class divergence or unclosed NEEDS_TEST item intersecting
+      the final hard-cut acceptance criteria.
+
+      - Open only with explicit decision basis for every requirement family.'
+    evidence_template: '## Gate Review Report
+
+      **Phase**: hard_cut_finish_20260416_finalization
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ### Reviewed Evidence
+
+      - tests_fixtures:
+
+      - docs_sync:
+
+      - full_plan_check:
+
+      - spec_conformance:
+
+
+      ### Gate Decision Basis
+
+      - requirement_ref -> evidence_ref -> status -> closure_path -> gate_decision_basis
+
+
+      ### Blocking Findings
+
+      - <list or none>
+
+
+      ### Final Decision
+
+      - OPEN or BLOCKED'
+    depends_on:
+    - hard_cut_finish_20260416_finalization.tests_fixtures
+    - hard_cut_finish_20260416_finalization.docs_sync
+    - hard_cut_finish_20260416_finalization.full_plan_check
+    - hard_cut_finish_20260416_finalization.spec_conformance
+    agent: gate-reviewer-tacit
