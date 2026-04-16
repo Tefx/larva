@@ -48335,7 +48335,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260416_core.spec_schema_boundary
     name: Delete variables from canonical spec/schema boundary
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -48454,6 +48454,46 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T12:03:18.307822+00:00'
+    done_at: '2026-04-16T12:12:04.709383+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#target-end-state\
+      \ — larva must accept/store/resolve/update/export/assemble only canonical PersonaSpec\
+      \ vocabulary; reject `tools` and `side_effect_policy`.\n- /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#detailed-change-plan\
+      \ — delete canonical alias handling; tighten tests; cutover must not preserve\
+      \ transition behavior.\n- /Users/tefx/Projects/opifex/design/final-canonical-contract.md#2-personaspec\
+      \ — canonical PersonaSpec requires `capabilities`; `tools` and `side_effect_policy`\
+      \ are invalid at the canonical boundary.\n- /Users/tefx/Projects/opifex/design/personaspec-v1.md#final-personaspec-v1-field-set\
+      \ — canonical field set is required `id, description, prompt, model, capabilities,\
+      \ spec_version` with optional `model_params, can_spawn, compaction_prompt, spec_digest`;\
+      \ `can_spawn` string array max is 100.\n- /Users/tefx/Projects/opifex/contracts/persona_spec.schema.json\
+      \ — authoritative schema includes `top_k`, enforces `can_spawn.maxItems: 100`,\
+      \ and has `additionalProperties: false`.\n\n## Expected-Red Proof (MANDATORY)\n\
+      - Property-based or schema-driven tests added first:\n  - Hypothesis test: `test_non_canonical_extra_fields_are_rejected_by_schema`\
+      \ over `variables|tools|side_effect_policy`\n  - Typing surface tests asserting:\n\
+      \    - `AssemblyInput` does not advertise `variables`\n    - canonical typing\
+      \ module does not export `SideEffectPolicy`\n    - schema parity matches opifex\
+      \ field set\n- Exact command(s) run before implementation:\n  - `.venv/bin/pytest\
+      \ tests/core/test_schema_validation.py -q`\n- Failing output:\n  - 4 failed,\
+      \ 18 passed in 1.21s\n  - failures showed schema/type layer still admitted `variables`\
+      \ and exported `SideEffectPolicy` before fix\n\n## Implementation Delta\n- Files\
+      \ changed:\n  - `contracts/persona_spec.schema.json`\n  - `src/larva/core/spec.py`\n\
+      \  - `src/larva/core/validate.py`\n  - `src/larva/shell/mcp_contract.py`\n \
+      \ - `tests/core/test_schema_validation.py`\n- Exact canonical fields now admitted:\n\
+      \  - Required: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`\n\
+      \  - Optional: `model_params`, `can_spawn`, `compaction_prompt`, `spec_digest`\n\
+      - Exact fields now rejected earlier:\n  - `variables`, `tools`, `side_effect_policy`,\
+      \ and any unknown top-level extra field\n- Commit:\n  - `d1330f6 fix(core):\
+      \ hard-cut canonical spec schema boundary`\n\n## Green Proof\n- Exact command(s)\
+      \ run after implementation:\n  - `.venv/bin/pytest tests/core/test_schema_validation.py\
+      \ -q`\n  - `rtk rg -n '^\\s*\"(variables|tools|side_effect_policy)\"\\s*:|^\\\
+      s*(variables|tools|side_effect_policy):\\s|^SideEffectPolicy\\b' contracts/persona_spec.schema.json\
+      \ src/larva/core/spec.py src/larva/core/validate.py src/larva/shell/mcp_contract.py`\n\
+      \  - `invar_guard(path=/Users/tefx/Projects/larva/.vectl/worktrees/hard_cut_finish_20260416_core.spec_schema_boundary,\
+      \ changed=true, strict=false, coverage=false, contracts_only=false)`\n- Passing\
+      \ output:\n  - `24 passed in 0.19s`\n  - legacy field-definition scan returned\
+      \ no matches\n- invar_guard:\n  - status: passed\n  - errors: 0\n  - warnings:\
+      \ 2 (`validate.py` size warnings only)\n\n## Residual Risk\n- Low: runtime assembly/prompt-substitution\
+      \ behavior outside this schema/type boundary remains for downstream steps; not\
+      \ modified here."
   - id: hard_cut_finish_20260416_core.validator_semantics
     name: Strengthen validator semantics to canonical fail-closed rules
     status: pending
