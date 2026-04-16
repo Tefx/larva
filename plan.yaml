@@ -48324,3 +48324,11 @@ phases:
       10 passed in 0.17s\n```\n- Residual debt:\n  - none\n\n## Git Proof\n- Commit\
       \ hash: 80c806810f9fb983b043716cfd0ac84660b974d8 (present on main)\n- git show\
       \ --name-only --oneline 80c8068:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py"
+- id: hard_cut_finish_20260416_core
+  name: Final Hard-Cut Core Boundary Alignment
+  status: pending
+  gate: Core canonical admission is fail-closed with no variables path, no deferred
+    legacy rejection, and core schema/validator semantics aligned to opifex canonical
+    PersonaSpec.
+  depends_on:
+  - post_cutover_debt_remediation
