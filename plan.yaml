@@ -49496,7 +49496,7 @@ phases:
       \ remove tools filtering — fail-closed upstream not sanitize-continue`"
   - id: hard_cut_finish_20260416_surfaces.cli_hard_cut
     name: Remove variables and legacy projection cleanup from CLI surfaces
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -49619,6 +49619,27 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-16T13:41:39.566253+00:00'
+    done_at: '2026-04-16T13:55:02.516891+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- hard-cutover-canonical-alignment.md:\
+      \ remove variables parsing/forwarding from CLI assemble and remove CLI sanitization\
+      \ of legacy keys.\n- final-canonical-contract forbidden legacy vocabulary: `tools`\
+      \ and `side_effect_policy` forbidden.\n\n## Expected-Red Proof (MANDATORY)\n\
+      - Added/used red tests showing old behavior existed:\n  - parser accepted `--var`\n\
+      \  - assemble request still carried `variables`\n  - component show filtered\
+      \ legacy keys\n- Pre-implementation command example:\n  - `uv run python -c\
+      \ \"from larva.shell.cli_parser import build_cli_parser; parser = build_cli_parser().unwrap();\
+      \ args = parser.parse_args(['assemble','--id','test','--var','foo=bar']); print(args.variables)\"\
+      `\n  - output showed variables accepted\n- Red failures captured in canonical\
+      \ boundary tests for parser/request/projection behavior.\n\n## Integration Evidence\n\
+      - Full-path test:\n  - `tests/shell/test_canonical_boundary_gaps.py::TestRealCLIAssembleOutput::test_cli_assemble_produces_capabilities_not_tools`\n\
+      - Path exercised:\n  - cli parser -> cli command -> facade\n- Output:\n  - PASS\
+      \ after implementation\n\n## Green Proof\n- Command:\n  - `uv run pytest tests/shell/test_canonical_boundary_gaps.py::TestCLIAssembleSurface\
+      \ tests/shell/test_canonical_boundary_gaps.py::TestCLIComponentProjection tests/shell/test_canonical_boundary_gaps.py::TestRealCLIAssembleOutput\
+      \ -v`\n- Output:\n  - 5 passed\n- CLI help check:\n  - `uv run larva assemble\
+      \ --help` no `--var` flag present\n- invar_guard changed-files:\n  - status\
+      \ passed, 0 errors, 0 warnings\n\n## Residual Risk\n- Pre-existing unrelated\
+      \ web test failure remains outside CLI scope.\n\nCommit: `9bc59bfd14d37856d43b93db40cb3bb696e7f8f6\
+      \ impl(shell): remove variables parsing and legacy filtering from CLI surfaces`"
   - id: hard_cut_finish_20260416_surfaces.python_web_hard_cut
     name: Remove variables and legacy projection cleanup from Python API and web surfaces
     status: pending
