@@ -50703,3 +50703,42 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.batched_retest
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_finalization.bf1_bf4_retest
+    name: Retest BF1-BF4 closure after alignment-only remediation
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: default
+
+      verification_scope: targeted-retest
+
+
+      Focused verification step for the residual final gate blockers BF1-BF4 after
+      the alignment-only remediation.
+
+
+      Required coverage:
+
+      1. Re-run the targeted facade tests touched by BF1-BF3.
+
+      2. Confirm the updated facade docstring no longer claims forbidden fields are
+      stripped.
+
+      3. Explicitly state that the remediation path changed expectations/documentation
+      only and did not widen canonical semantics.
+
+      4. Produce a concise blocker closure register for BF1-BF4 suitable for the final
+      gate decision basis.'
+    verification: '- Run targeted BF1-BF4 verification commands/artifact review.
+
+      - Report PASS or FAIL for each blocker BF1-BF4.
+
+      - Provide gate-consumable evidence that residual stale expectations/docstring
+      drift are closed.'
+    depends_on:
+    - hard_cut_finish_20260416_finalization.bf1_bf4_alignment
+    agent: integration-verifier-tacit
