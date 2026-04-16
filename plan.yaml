@@ -50288,7 +50288,7 @@ phases:
       \ scope.\n\ncommit_hash: b07cf30813550e6f962c71cfab80cd7bd463b611"
   - id: hard_cut_finish_20260416_finalization.full_plan_check
     name: Run full independent hard-cut verification
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -50378,6 +50378,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-16T16:02:46.626073+00:00'
   - id: hard_cut_finish_20260416_finalization.spec_conformance
     name: Audit final conformance against opifex canonical contract
     status: pending
