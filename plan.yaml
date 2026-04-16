@@ -50171,7 +50171,7 @@ phases:
       my changes'
   - id: hard_cut_finish_20260416_finalization.docs_sync
     name: Sync docs and migration notes to the hard cut
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -50268,6 +50268,24 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: python-executor
     claimed_at: '2026-04-16T15:56:24.221023+00:00'
+    done_at: '2026-04-16T16:02:20.362643+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- INTERFACES.md, USAGE.md, USER_GUIDE.md\
+      \ reviewed for canonical admission wording.\n- design/contract-metadata-single-source-basis.md\
+      \ and design/opifex-canonical-authority-basis.md reviewed for canonical authority\
+      \ basis.\n- MIGRATION-002-capability-intent.md reviewed and updated to remove\
+      \ transition-era fallback semantics.\n\n## Documentation Delta\n- Docs updated:\n\
+      \  - `MIGRATION-002-capability-intent.md`\n- Transition-era statements removed:\n\
+      \  - normalize/component rows no longer describe capabilities↔tools compatibility/fallback\
+      \ behavior\n  - removed future compatibility-cleanup note that implied transitional\
+      \ acceptance\n- Canonical-only statements added/retained:\n  - explicit admission-time\
+      \ rejection for `tools` and `side_effect_policy`\n  - component loading requires\
+      \ canonical `capabilities`\n\n## Proof\n- `git diff --stat` showed only migration\
+      \ doc changed in this step.\n- grep proof in touched docs showed no acceptance/fallback\
+      \ guidance for legacy keys and confirmed rejection language in canonical docs.\n\
+      - Commit created in isolated worktree:\n  - `b07cf30813550e6f962c71cfab80cd7bd463b611`\n\
+      \n## Residual Risk\n- No blocking residual risk in touched docs.\n- `design/legacy-personaspec-hard-cut-policy.md`\
+      \ contains fallback wording as historical policy context, outside this step\
+      \ scope.\n\ncommit_hash: b07cf30813550e6f962c71cfab80cd7bd463b611"
   - id: hard_cut_finish_20260416_finalization.full_plan_check
     name: Run full independent hard-cut verification
     status: pending
