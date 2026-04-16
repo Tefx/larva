@@ -50661,7 +50661,7 @@ phases:
       - gate_open_allowed: true'
   - id: hard_cut_finish_20260416_finalization.bf1_bf4_alignment
     name: Align stale facade tests and docstring with reject-immediate semantics
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -50706,6 +50706,15 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T17:29:18.158707+00:00'
+    done_at: '2026-04-16T17:32:28.833376+00:00'
+    evidence: "- commands: `uv run pytest tests/app/test_facade/test_clone.py tests/app/test_facade/test_register.py\
+      \ tests/app/test_facade/test_list.py -q`\n- outputs: `22 passed in 0.09s`\n\
+      - blocker_closure:\n  - BF1 `tests/app/test_facade/test_clone.py` aligned to\
+      \ reject-immediate `FORBIDDEN_FIELD`\n  - BF2 `tests/app/test_facade/test_register.py`\
+      \ tools expectation aligned to `Failure/FORBIDDEN_FIELD`\n  - BF3 `tests/app/test_facade/test_list.py`\
+      \ expectation aligned to `MISSING_SPEC_VERSION` precedence\n  - BF4 `src/larva/app/facade.py`\
+      \ docstring updated from strip semantics to reject semantics\n- commit_hash:\
+      \ `3788bee8cc37dcf5b18207a42c159ca73cf01882`"
   - id: hard_cut_finish_20260416_finalization.bf1_bf4_retest
     name: Retest BF1-BF4 closure after alignment-only remediation
     status: pending
