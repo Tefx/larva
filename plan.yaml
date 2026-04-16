@@ -48856,7 +48856,7 @@ phases:
       \ core rejection seams`"
   - id: hard_cut_finish_20260416_core.gate
     name: Gate core hard-cut admission closure
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -48937,6 +48937,8 @@ phases:
     - hard_cut_finish_20260416_core.validator_semantics
     - hard_cut_finish_20260416_core.normalize_assemble_patch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-16T12:55:38.372880+00:00'
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: locked
