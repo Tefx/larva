@@ -48726,6 +48726,89 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_core.validator_semantics
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_core.gate
+    name: Gate core hard-cut admission closure
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+
+      Independent gate review for the core hard-cut phase.
+
+
+      Gate decision basis must confirm:
+
+      - variables is deleted from canonical core typing/admission paths
+
+      - validator semantics match canonical schema plus personaspec-v1 behavioral
+      requirements
+
+      - normalize/assemble/patch reject legacy fields at the earliest responsible
+      seam
+
+      - no core output path leaks legacy vocabulary
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Core admission truth changed across schema, validator, and assembly pipeline
+
+      - Semantic fail-closed behavior is blocker-class debt for every downstream surface
+
+      - Prior repo history includes deferred-rejection and accept-and-clean patterns'
+    verification: 'phase-check protecting all downstream surface and finalization
+      gates.
+
+      - Review expected-red proof exists for each implementation step.
+
+      - Review green proof exists for targeted tests and invar_guard.
+
+      - Block if any core seam still preserves variables/tools/side_effect_policy
+      for later cleanup.'
+    evidence_template: '## Gate Review Report
+
+      **Phase**: hard_cut_finish_20260416_core
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ### Step Review Matrix
+
+      - spec_schema_boundary:
+
+      - validator_semantics:
+
+      - normalize_assemble_patch:
+
+
+      ### Gate Decision Basis
+
+      - requirement_ref -> evidence_ref -> status -> closure_path
+
+
+      ### Blocking Findings
+
+      - <list or none>
+
+
+      ### Decision
+
+      - OPEN or BLOCKED'
+    depends_on:
+    - hard_cut_finish_20260416_core.spec_schema_boundary
+    - hard_cut_finish_20260416_core.validator_semantics
+    - hard_cut_finish_20260416_core.normalize_assemble_patch
+    agent: gate-reviewer-tacit
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: locked
