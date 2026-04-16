@@ -48576,6 +48576,156 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_core.spec_schema_boundary
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_core.normalize_assemble_patch
+    name: Move rejection earlier in normalize assemble and patch paths
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+      symbolic_testing: true
+
+
+      Implement-and-verify the remaining core pipeline hard cut across normalize,
+      assemble, and patch/update semantics.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#detailed-change-plan
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#hard-invariants
+
+      - /Users/tefx/Projects/opifex/design/personaspec-v1.md#final-decisions
+
+
+      touch_paths:
+
+      - src/larva/core/normalize.py
+
+      - src/larva/core/assemble.py
+
+      - src/larva/core/patch.py
+
+      - tests/core/test_normalize.py
+
+      - tests/core/test_assemble.py
+
+      - tests/core/test_patch.py
+
+
+      authoritative_interface:
+
+      - normalize must not default missing spec_version or preserve forbidden fields
+      for later rejection.
+
+      - assemble must require fully composed prompt text and must not accept variables
+      or mixed legacy toolset payloads.
+
+      - patch/update path must reject forbidden fields at the earliest admission point.
+
+
+      Failure-mode checklist:
+
+      - missing spec_version is rejected, not repaired
+
+      - variables is rejected on assemble input and no prompt injection remains
+
+      - mixed capabilities+tools toolset payload fails closed
+
+      - tools / side_effect_policy / variables patches are rejected before deferred
+      normalization
+
+      - resolve/export/assemble output path does not leak legacy vocabulary from these
+      core helpers
+
+
+      State semantics:
+
+      - last-writer-wins does not apply to forbidden legacy fields; they must be rejected
+      outright
+
+      - canonical prompt text is already fully composed text; unresolved placeholders
+      remaining in prompt are invalid
+
+      - backward compatibility is out of scope for this step; no accept-and-clean
+      path may survive
+
+
+      Expected-red requirement:
+
+      - First write failing tests/contracts proving deferred rejection still exists
+      in normalize/assemble/patch.
+
+      - Use property-based tests or symbolic contracts where possible; pure example-only
+      testing is insufficient.
+
+
+      Completion Criteria (stub exclusion):
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      pipeline must fail closed at the first responsible seam.'
+    verification: 'phase-check protecting all shell/app surfaces.
+
+      - Expected red: targeted normalize/assemble/patch tests fail before implementation.
+
+      - Green: targeted core pipeline tests pass after implementation.
+
+      - Green: invar_guard on changed files passes in a fresh run.
+
+      - Green: evidence shows earlier rejection for variables/tools/side_effect_policy
+      and no prompt variable injection path remains.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New tests/contracts written first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause of deferred rejection behavior:
+
+      - Why previous transition-era approach was wrong for hard cut:
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - Fresh-run invar_guard output pasted here:
+
+
+      ## Failure-Path Proof
+
+      - Missing spec_version case:
+
+      - variables-on-assemble case:
+
+      - mixed toolset payload case:
+
+      - forbidden patch/update field case:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_core.validator_semantics
+    agent: python-senior-tacit
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: locked
