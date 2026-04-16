@@ -50379,7 +50379,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -50500,6 +50500,8 @@ phases:
     - hard_cut_finish_20260416_finalization.tests_fixtures
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T16:36:03.675984+00:00'
   - id: hard_cut_finish_20260416_finalization.batched_retest
     name: Authoritative full-plan + spec-conformance retest
     status: pending
