@@ -49496,7 +49496,7 @@ phases:
       \ remove tools filtering — fail-closed upstream not sanitize-continue`"
   - id: hard_cut_finish_20260416_surfaces.cli_hard_cut
     name: Remove variables and legacy projection cleanup from CLI surfaces
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -49617,6 +49617,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-16T13:41:39.566253+00:00'
   - id: hard_cut_finish_20260416_surfaces.python_web_hard_cut
     name: Remove variables and legacy projection cleanup from Python API and web surfaces
     status: pending
