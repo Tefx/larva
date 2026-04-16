@@ -49360,7 +49360,7 @@ phases:
       \ assemble request variables`"
   - id: hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
     name: Make MCP handlers reject legacy assemble and projection payloads
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -49472,6 +49472,28 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-16T13:25:15.430926+00:00'
+    done_at: '2026-04-16T13:40:51.834928+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- hard-cutover-canonical-alignment\
+      \ verification/failure-conditions and target-end-state sections reviewed.\n\
+      - final-canonical-contract forbidden legacy vocabulary + hard invariants reviewed.\n\
+      \n## Expected-Red Proof (MANDATORY)\n- Pre-existing red behavior verification\
+      \ used:\n  - MCP assemble boundary rejects `variables`.\n  - handler toolset\
+      \ projection path previously filtered `tools`.\n- Targeted commands and evidence\
+      \ included under Green Proof; step removes sanitize path and preserves fail-closed\
+      \ upstream rejection.\n\n## Green Proof\n- Command:\n  - `uv run pytest tests/shell/test_mcp.py::TestMCPHandlersImplementation::test_handle_assemble_rejects_variables_at_mcp_boundary\
+      \ tests/shell/test_mcp.py::TestMCPComponentShowAcceptance::test_handle_component_show_success_for_toolset\
+      \ tests/shell/test_canonical_boundary_gaps.py::TestMCPToolDescriptionSemantics::test_assemble_tool_schema_excludes_variables\
+      \ -v`\n- Output:\n  - `3 passed in 0.20s`\n- Broader command:\n  - `uv run pytest\
+      \ tests/shell/test_mcp.py tests/shell/test_canonical_boundary_gaps.py --tb=no`\n\
+      \  - `153 passed, 1 failed` (web-layer unrelated pre-existing failure)\n- invar_guard:\n\
+      \  - status: passed\n  - errors/warnings: 0/0\n\n## Handler Path Exercised\n\
+      - request input -> parsing -> facade call -> response validated in targeted\
+      \ MCP tests\n- proof no sanitize/filter fallback required:\n  - removed handler-side\
+      \ `tools` filtering in `_handle_component_show_impl`\n  - handler now returns\
+      \ upstream payload directly\n  - upstream `FilesystemComponentStore.load_toolset`\
+      \ fails closed when `tools` present\n\n## Residual Risk\n- One unrelated web-layer\
+      \ failure remains out-of-scope for this MCP step.\n\nCommit: `99ad63a mcp_handler_ops:\
+      \ remove tools filtering — fail-closed upstream not sanitize-continue`"
   - id: hard_cut_finish_20260416_surfaces.cli_hard_cut
     name: Remove variables and legacy projection cleanup from CLI surfaces
     status: pending
