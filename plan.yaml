@@ -50382,7 +50382,7 @@ phases:
     claimed_at: '2026-04-16T16:21:06.245662+00:00'
   - id: hard_cut_finish_20260416_finalization.spec_conformance
     name: Audit final conformance against opifex canonical contract
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       agent_source: default
@@ -50452,6 +50452,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-16T16:21:14.326741+00:00'
   - id: hard_cut_finish_20260416_finalization.gate
     name: Gate final hard-cut alignment
     status: pending
