@@ -534,6 +534,43 @@ class TestWebSurfaceEndpoints:
             }
         ]
 
+    def test_post_api_personas_assemble_rejects_variables_input(
+        self, mock_facade: MockFacade, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """POST /api/personas/assemble must reject variables at canonical boundary.
+
+        Hard-cut policy: variables are not permitted at canonical assembly boundary.
+        The web endpoint must reject JSON bodies containing 'variables' field.
+        """
+        monkeypatch.setattr(
+            web_module,
+            "assemble",
+            lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None: (
+                mock_facade.assemble(
+                    id=id,
+                    prompts=prompts,
+                    toolsets=toolsets,
+                    constraints=constraints,
+                    model=model,
+                    overrides=overrides,
+                )
+            ),
+        )
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/personas/assemble",
+            json={
+                "id": "test-vars",
+                "prompts": ["You are X."],
+                "variables": {"role": "assistant"},  # forbidden legacy field at root
+            },
+        )
+
+        # Should reject - variables is not a valid assemble input
+        assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.json()}"
+        assert "error" in resp.json()
+
     def test_get_api_components_lists_names(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """GET /api/components returns component names.
 

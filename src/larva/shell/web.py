@@ -263,10 +263,29 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     async def api_assemble_persona(request: Request) -> Any:
         """Assemble a persona spec from components."""
         body = await request.json()
+
+        # Validate: reject unknown fields at canonical boundary
+        allowed_fields = frozenset(
+            {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
+        )
+        unknown_fields = sorted(set(body.keys()) - allowed_fields)
+        if unknown_fields:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_INPUT",
+                        "numeric_code": 1,
+                        "message": f"assemble request field '{unknown_fields[0]}' is not permitted at canonical boundary",
+                        "details": {"field": unknown_fields[0], "unknown_fields": unknown_fields},
+                    }
+                },
+            )
+
         try:
             spec = assemble(
                 body["id"],
-                None,
+                body.get("description"),
                 body.get("prompts"),
                 body.get("toolsets"),
                 body.get("constraints"),

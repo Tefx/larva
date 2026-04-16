@@ -316,6 +316,30 @@ class TestPythonApiAssemble:
         assert exc_info.value.error["details"]["component_type"] == "prompt"
         assert exc_info.value.error["details"]["component_name"] == "missing"
 
+    def test_assemble_rejects_variables_in_overrides(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Assemble must reject variables in overrides at canonical boundary.
+
+        Hard-cut policy: variables are not permitted at canonical assembly boundary.
+        This test verifies the actual facade rejects variables in overrides.
+        """
+        # Use real facade to get actual validation behavior
+        from larva.shell.shared import facade_factory
+
+        # Clear any cached facade and get fresh one
+        facade_factory._default_facade = None
+        facade = facade_factory.build_default_facade()
+        monkeypatch.setattr(python_api, "_get_facade", lambda: facade)
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.assemble(
+                id="test-vars",
+                overrides={"variables": {"role": "assistant"}},
+            )
+
+        assert exc_info.value.error["code"] == "FORBIDDEN_OVERRIDE_FIELD"
+        assert exc_info.value.error["numeric_code"] == 113
+        assert exc_info.value.error["details"]["field"] == "variables"
+
 
 class TestPythonApiRegister:
     """Verify register() is thin delegation over facade.register."""
