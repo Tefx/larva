@@ -49642,7 +49642,7 @@ phases:
       \ impl(shell): remove variables parsing and legacy filtering from CLI surfaces`"
   - id: hard_cut_finish_20260416_surfaces.python_web_hard_cut
     name: Remove variables and legacy projection cleanup from Python API and web surfaces
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -49756,6 +49756,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.cli_hard_cut
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-16T13:55:24.556605+00:00'
   - id: hard_cut_finish_20260416_surfaces.gate
     name: Gate surface hard-cut closure
     status: pending
