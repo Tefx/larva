@@ -1,63 +1,25 @@
-"""Contract-only validate module for PersonaSpec validation.
+"""Canonical PersonaSpec validation.
 
-This module defines the canonical larva admission contract for PersonaSpec
-candidates as a downstream enforcement layer of the opifex-owned PersonaSpec
-authority. Validation applies deterministic rules and produces a structured
-validation report.
-
-Single-source metadata seam:
-- this module is the local owner of canonical admission metadata used by larva
-  projections
-- owned here: required / optional / forbidden field partitions,
-  ``ValidationIssue`` / ``ValidationReport`` shapes, and canonical validation
-  phrase stems
-- derived downstream from this seam: ``contracts/persona_spec.schema.json``
-  (reference snapshot) and ``larva.shell.mcp_contract`` (transport projection)
-- those projections must not redefine canonical requiredness, issue structure,
-  or failure wording
-
-Admission notes:
-- required PersonaSpec fields at the canonical boundary are ``id``,
-  ``description``, ``prompt``, ``model``, ``capabilities``, and
-  ``spec_version``
-- ``tools`` and ``side_effect_policy`` are forbidden at the canonical
-  admission boundary and belong in rejection errors, not deprecation warnings
-- unknown top-level fields are forbidden at the canonical admission boundary
-- ``contracts/persona_spec.schema.json`` is reference-only while present and
-  must not own independent acceptance semantics
-
-Files that must stop widening the contract are ``larva.core.spec``,
-``larva.core.validate``, ``larva.core.assemble``, and ``larva.app.facade``.
-
-Responsibility (from ARCHITECTURE.md):
-- Apply deterministic validation rules to PersonaSpec candidates
-- Produce a validation report
-
-Non-Responsibility (from ARCHITECTURE.md):
-- No filesystem access
-- No registry persistence
-- No component lookup
-- No CLI/MCP error formatting
-
-See:
-- INTERFACES.md :: A. MCP Server Interface :: larva.validate(spec)
-- ARCHITECTURE.md :: Module: larva.core.validate
-- Depends on: larva.core.spec (PersonaSpec type)
+Owns larva's admission metadata seam and enforces fail-closed canonical rules
+for required fields, extra fields, prompt composition, capabilities, and
+spawn semantics.
 """
 
 import re
 from types import MappingProxyType
-from typing import TypedDict, cast
+from typing import TypedDict
 
 from deal import post, pre
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_PROMPT_VARIABLE_PATTERN = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
+_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 
 # Valid postures for capabilities/tools (from ToolPosture in spec.py)
 _VALID_POSTURES: set[str] = {"none", "read_only", "read_write", "destructive"}
+_REQUIRED_STRING_FIELDS: tuple[str, ...] = ("id", "description", "prompt", "model", "spec_version")
+_MAX_CAN_SPAWN_TARGETS = 100
 
 CANONICAL_REQUIRED_FIELDS: tuple[str, ...] = (
     "id",
@@ -135,19 +97,7 @@ def _is_json_safe_dict(d: object) -> bool:
 
 
 class ValidationIssue(TypedDict):
-    """Single structured validation issue for a PersonaSpec candidate.
-
-    Fields:
-        code: Machine-readable issue code (e.g., "INVALID_SPEC_VERSION")
-        message: Human-readable issue message
-        details: Extra context for machine handling and diagnostics
-
-    Error-shape expectation:
-        Validation issues are the fine-grained error vocabulary emitted by the
-        canonical validator. Facade-level surfaces may wrap these into
-        ``PERSONA_INVALID``, but they must preserve the underlying report in
-        error details for reviewable mapping.
-    """
+    """Structured validation issue."""
 
     code: str
     message: str
@@ -155,18 +105,7 @@ class ValidationIssue(TypedDict):
 
 
 class ValidationReport(TypedDict):
-    """Structured validation result for a PersonaSpec candidate.
-
-    Fields:
-        valid: True if the spec passes all validation rules
-        errors: List of structured validation issues (empty if valid)
-        warnings: List of warning messages (always present, may be empty)
-
-    Admission-success invariant:
-        If ``valid`` is ``True`` for a spec accepted through larva production
-        paths, that success must mean the candidate conforms to the opifex
-        canonical PersonaSpec contract rather than a wider local larva shape.
-    """
+    """Structured validation result."""
 
     valid: bool
     errors: list[ValidationIssue]
@@ -184,29 +123,19 @@ def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIss
 @pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, list))
 def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
-    """Validate identity field values (id format, spec_version).
-
-    Note: Required/forbidden field validation is delegated to separate functions.
-    This function validates field content, not field presence.
-
-    Args:
-        spec: A PersonaSpec candidate to validate.
-
-    Returns:
-        List of validation errors for field value issues.
-    """
+    """Validate id format and spec_version value."""
     errors: list[ValidationIssue] = []
 
     persona_id = spec.get("id")
-    if persona_id is not None and (
-        not isinstance(persona_id, str)
-        or persona_id == ""
-        or not _PERSONA_ID_PATTERN.fullmatch(persona_id)
+    if (
+        persona_id is not None
+        and not (isinstance(persona_id, str) and persona_id.strip() == "")
+        and (not isinstance(persona_id, str) or not _PERSONA_ID_PATTERN.fullmatch(persona_id))
     ):
         errors.append(
             _issue(
-                "INVALID_PERSONA_ID",
-                "id is required and must match ^[a-z0-9]+(-[a-z0-9]+)*$",
+                "INVALID_ID_FORMAT",
+                "id must match canonical kebab-case syntax ^[a-z0-9]+(-[a-z0-9]+)*$",
                 {"field": "id", "value": persona_id},
             )
         )
@@ -225,14 +154,46 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))
-@post(lambda result: isinstance(result, dict) and "errors" in result and "warnings" in result)
-def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
+@post(lambda result: isinstance(result, list))
+def _validate_required_string_fields(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate whitespace-only required string fields.
+
+    >>> _validate_required_string_fields({"id": " ", "description": "ok", "prompt": "ok", "model": "ok", "spec_version": "0.1.0"})[0]["code"]
+    'EMPTY_REQUIRED_FIELD'
+    >>> _validate_required_string_fields({"description": "ok"})
+    []
+    """
     errors: list[ValidationIssue] = []
-    warnings: list[str] = []
+
+    for field in _REQUIRED_STRING_FIELDS:
+        value = spec.get(field)
+        if isinstance(value, str) and value.strip() == "":
+            errors.append(
+                _issue(
+                    "EMPTY_REQUIRED_FIELD",
+                    f"required string field '{field}' must not be empty or whitespace-only",
+                    {"field": field, "value": value},
+                )
+            )
+
+    return errors
+
+
+@pre(lambda spec: _is_json_safe_dict(spec))
+@post(lambda result: isinstance(result, list))
+def _validate_prompt_semantics(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate canonical prompt semantics.
+
+    >>> _validate_prompt_semantics({"prompt": "You are {role}."})[0]["code"]
+    'UNRESOLVED_PLACEHOLDER'
+    >>> _validate_prompt_semantics({"prompt": "Use {{literal}} braces."})
+    []
+    """
+    errors: list[ValidationIssue] = []
 
     prompt_obj = spec.get("prompt")
     if prompt_obj is None:
-        return {"errors": errors, "warnings": warnings}
+        return errors
 
     if not isinstance(prompt_obj, str):
         errors.append(
@@ -242,41 +203,19 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
                 {"field": "prompt", "value": prompt_obj},
             )
         )
-        return {"errors": errors, "warnings": warnings}
-    # Variable checking: only run when `variables` is explicitly provided.
-    # Prompts commonly contain literal {braces} (code examples, templates)
-    # that are NOT variable placeholders. Without explicit `variables`,
-    # these should not be flagged as errors.
-    provided_vars_obj = spec.get("variables")
-    if provided_vars_obj is not None and isinstance(provided_vars_obj, dict):
-        provided_vars: dict[str, str] = {}
-        try:
-            for key, value in provided_vars_obj.items():
-                if isinstance(key, str) and isinstance(value, str):
-                    provided_vars[key] = value
-        except KeyError:
-            provided_vars = {}
+        return errors
 
-        found_vars = set(_PROMPT_VARIABLE_PATTERN.findall(prompt_obj))
-
-        unresolved = found_vars - set(provided_vars.keys())
-        if unresolved:
-            errors.append(
-                _issue(
-                    "VARIABLE_UNRESOLVED",
-                    f"prompt contains unresolved variables: {', '.join(sorted(unresolved))}",
-                    {"field": "prompt", "unresolved_variables": sorted(unresolved)},
-                )
+    placeholders = sorted(set(_PROMPT_PLACEHOLDER_PATTERN.findall(prompt_obj)))
+    if placeholders:
+        errors.append(
+            _issue(
+                "UNRESOLVED_PLACEHOLDER",
+                "prompt contains unresolved placeholders and must be fully composed before admission",
+                {"field": "prompt", "placeholders": placeholders},
             )
+        )
 
-        unused_vars = set(provided_vars.keys()) - found_vars
-        if unused_vars:
-            warnings.append(
-                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
-                + ", ".join(sorted(unused_vars))
-            )
-
-    return {"errors": errors, "warnings": warnings}
+    return errors
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))
@@ -284,33 +223,13 @@ def _validate_prompt_variables(spec: dict[str, object]) -> dict[str, object]:
 def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
     """Validate canonical capabilities field.
 
-    Contract (from INTERFACES.md):
-    - capabilities is the canonical capability declaration surface
-    - tools and side_effect_policy are rejected at canonical admission
-
-    Validation rules:
-    - capabilities is required
-    - capabilities must be dict[str, str]
-    - capability values must be valid ToolPosture values
-
-    Args:
-        spec: A PersonaSpec candidate to validate.
-
-    Returns:
-        List of validation errors (warnings are added to parent warnings list).
-
-    >>> _validate_capabilities({"id": "test"})
-    []
-    >>> _validate_capabilities({"id": "test", "capabilities": {"git": "read_only"}})
-    []
     >>> _validate_capabilities({"id": "test", "capabilities": {"git": "invalid"}})[0]["code"]
-    'INVALID_CAPABILITY_POSTURE'
+    'INVALID_POSTURE'
     >>> _validate_capabilities({"id": "test", "capabilities": "not-a-dict"})[0]["code"]
-    'INVALID_CAPABILITIES_TYPE'
+    'INVALID_CAPABILITIES_SHAPE'
     """
     errors: list[ValidationIssue] = []
 
-    # Validate capabilities field
     capabilities = spec.get("capabilities")
     if capabilities is None:
         return errors
@@ -318,18 +237,28 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
     if not isinstance(capabilities, dict):
         errors.append(
             _issue(
-                "INVALID_CAPABILITIES_TYPE",
-                "capabilities must be a dict mapping tool names to postures",
+                "INVALID_CAPABILITIES_SHAPE",
+                "capabilities must be a dict mapping tool-family names to posture values",
                 {"field": "capabilities", "value": capabilities},
             )
         )
         return errors
 
     for tool_name, posture in capabilities.items():
+        if not isinstance(tool_name, str):
+            errors.append(
+                _issue(
+                    "INVALID_CAPABILITIES_SHAPE",
+                    "capabilities keys must be strings",
+                    {"field": "capabilities", "tool": tool_name},
+                )
+            )
+            continue
+
         if not isinstance(posture, str) or posture not in _VALID_POSTURES:
             errors.append(
                 _issue(
-                    "INVALID_CAPABILITY_POSTURE",
+                    "INVALID_POSTURE",
                     f"capability posture must be one of {', '.join(sorted(_VALID_POSTURES))}",
                     {"field": "capabilities", "tool": tool_name, "value": posture},
                 )
@@ -341,29 +270,10 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 @pre(lambda spec: all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list))
 def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]:
-    """Reject forbidden fields at canonical admission boundary.
+    """Reject forbidden and unknown top-level fields.
 
-    Contract (from INTERFACES.md, narrowed by opifex authority):
-    - ``tools`` is forbidden at canonical admission boundary
-    - ``side_effect_policy`` is forbidden at canonical admission boundary
-    - unknown top-level fields are forbidden at canonical admission boundary
-
-    These are rejection errors, not deprecation warnings.
-
-    Args:
-        spec: A PersonaSpec candidate to validate.
-
-    Returns:
-        List of validation errors for forbidden fields.
-
-    >>> _validate_forbidden_fields({"id": "test"})
-    []
     >>> _validate_forbidden_fields({"id": "test", "tools": {"git": "read_only"}})[0]["code"]
-    'FORBIDDEN_EXTRA_FIELD'
-    >>> _validate_forbidden_fields({"id": "test", "side_effect_policy": "allow"})[0]["code"]
-    'FORBIDDEN_EXTRA_FIELD'
-    >>> _validate_forbidden_fields({"id": "test", "unknown_field": "value"})[0]["code"]
-    'FORBIDDEN_EXTRA_FIELD'
+    'EXTRA_FIELD_NOT_ALLOWED'
     """
     errors: list[ValidationIssue] = []
 
@@ -371,7 +281,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
         if key in _CANONICAL_FORBIDDEN_FIELDS:
             errors.append(
                 _issue(
-                    "FORBIDDEN_EXTRA_FIELD",
+                    "EXTRA_FIELD_NOT_ALLOWED",
                     CANONICAL_FORBIDDEN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
                 )
@@ -379,7 +289,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
         elif key not in _CANONICAL_ALLOWED_FIELDS:
             errors.append(
                 _issue(
-                    "FORBIDDEN_EXTRA_FIELD",
+                    "EXTRA_FIELD_NOT_ALLOWED",
                     CANONICAL_UNKNOWN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
                 )
@@ -388,22 +298,74 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
     return errors
 
 
+@pre(lambda spec: _is_json_safe_dict(spec))
+@post(lambda result: isinstance(result, list))
+def _validate_can_spawn(spec: dict[str, object]) -> list[ValidationIssue]:
+    """Validate canonical can_spawn semantics.
+
+    >>> _validate_can_spawn({"can_spawn": ["alpha", "beta"]})
+    []
+    >>> _validate_can_spawn({"can_spawn": [""]})[0]["code"]
+    'INVALID_CAN_SPAWN'
+    """
+    can_spawn = spec.get("can_spawn")
+    if can_spawn is None or isinstance(can_spawn, bool):
+        return []
+
+    if not isinstance(can_spawn, list):
+        return [
+            _issue(
+                "INVALID_CAN_SPAWN",
+                "can_spawn must be false, true, or a list of canonical persona ids",
+                {"field": "can_spawn", "value": can_spawn},
+            )
+        ]
+
+    if len(can_spawn) > _MAX_CAN_SPAWN_TARGETS:
+        return [
+            _issue(
+                "INVALID_CAN_SPAWN",
+                f"can_spawn list must contain at most {_MAX_CAN_SPAWN_TARGETS} persona ids",
+                {"field": "can_spawn", "count": len(can_spawn)},
+            )
+        ]
+
+    seen: set[str] = set()
+    invalid_targets: list[object] = []
+    duplicates: list[str] = []
+    for target in can_spawn:
+        if not isinstance(target, str) or target.strip() == "":
+            invalid_targets.append(target)
+            continue
+        if not _PERSONA_ID_PATTERN.fullmatch(target):
+            invalid_targets.append(target)
+            continue
+        if target in seen:
+            duplicates.append(target)
+            continue
+        seen.add(target)
+
+    if invalid_targets or duplicates:
+        return [
+            _issue(
+                "INVALID_CAN_SPAWN",
+                "can_spawn list members must be unique non-empty canonical persona ids",
+                {
+                    "field": "can_spawn",
+                    "invalid_targets": invalid_targets,
+                    "duplicate_targets": sorted(set(duplicates)),
+                },
+            )
+        ]
+
+    return []
+
+
 @pre(lambda spec: all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list))
 def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
-    """Validate that required canonical fields are present.
+    """Validate presence of required canonical fields.
 
-    Contract (from INTERFACES.md, narrowed by opifex authority):
-    - ``capabilities`` is required at canonical admission boundary
-
-    Args:
-        spec: A PersonaSpec candidate to validate.
-
-    Returns:
-        List of validation errors for missing required fields.
-
-    >>> _validate_required_fields({"id": "test", "description": "Test", "prompt": "Help", "model": "gpt-4o", "capabilities": {"git": "read_only"}, "spec_version": "0.1.0"})
-    []
     >>> _validate_required_fields({"id": "test"})[0]["code"]
     'MISSING_REQUIRED_FIELD'
     """
@@ -425,62 +387,21 @@ def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
 @pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
 def validate_spec(spec: dict[str, object]) -> ValidationReport:
-    """Validate a PersonaSpec candidate and return structured results.
+    """Validate a PersonaSpec candidate.
 
-        Contract (from INTERFACES.md, narrowed by the opifex authority basis):
-        - validates field types and allowed values for the canonical PersonaSpec
-          contract
-        - produces structured errors with code, message, and details
-        - facade mapping may collapse report failures to ``PERSONA_INVALID`` but
-          must preserve the report in error details
-        - ``tools``, ``side_effect_policy``, and unknown top-level fields are
-          rejection cases at canonical admission, not admissible deprecated inputs
-
-        Args:
-            spec: A PersonaSpec candidate to validate.
-
-        Returns:
-            ValidationReport with valid=True/False, errors list, and warnings list.
-
-        Note:
-            This implementation handles:
-            - Type validation for all fields
-            - Allowed value validation for canonical fields
-            - Field-specific validation rules
-            - Deterministic, pure validation (no I/O side effects)
-
-            Canonical authority remains external to this module. While the
-            repo-local schema artifact exists, it is reference-only and may not be
-            treated as an independent owner of requiredness, field removal, or
-            extra-field policy.
-
-        Acceptance:
-            @pre(lambda spec: _is_json_safe_dict(spec))
-            @post(
-                lambda result: (
-                    isinstance(result, dict)
-                    and "valid" in result
-                    and "errors" in result
-                    and "warnings" in result
-                )
-            )
-
-    Examples:
-        >>> validate_spec({"id": "code-reviewer", "description": "Reviews code", "prompt": "You review code", "model": "gpt-4o-mini", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
-        True
-        >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
-        'MISSING_REQUIRED_FIELD'
+    >>> validate_spec({"id": "code-reviewer", "description": "Reviews code", "prompt": "You review code", "model": "gpt-4o-mini", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
+    True
+    >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
+    'MISSING_REQUIRED_FIELD'
     """
     errors = _validate_identity_fields(spec)
-    variable_result = _validate_prompt_variables(spec)
-    errors.extend(cast("list[ValidationIssue]", variable_result["errors"]))
-    warnings = cast("list[str]", variable_result["warnings"])
+    errors.extend(_validate_required_string_fields(spec))
+    errors.extend(_validate_prompt_semantics(spec))
 
-    # Validate capabilities field
     capabilities_errors = _validate_capabilities(spec)
     errors.extend(capabilities_errors)
+    errors.extend(_validate_can_spawn(spec))
 
-    # Validate canonical admission requirements (forbidden fields, required fields)
     forbidden_errors = _validate_forbidden_fields(spec)
     errors.extend(forbidden_errors)
 
@@ -490,5 +411,5 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     return {
         "valid": len(errors) == 0,
         "errors": errors,
-        "warnings": warnings,
+        "warnings": [],
     }

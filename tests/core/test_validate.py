@@ -16,6 +16,8 @@ Non-Responsibility:
 """
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from typing import get_type_hints
 
 from larva.core import validate as validate_module
@@ -109,7 +111,7 @@ class TestValidateSpecBehavior:
         assert report["errors"][0]["code"] == "INVALID_SPEC_VERSION"
 
     def test_side_effect_policy_forbidden_field_rejected(self):
-        """validate_spec should report FORBIDDEN_EXTRA_FIELD for side_effect_policy.
+        """validate_spec should report EXTRA_FIELD_NOT_ALLOWED for side_effect_policy.
 
         Per canonical authority (opifex-canonical-authority-basis.md):
         side_effect_policy is a removed/forbidden field - reject-immediate on admission.
@@ -127,10 +129,10 @@ class TestValidateSpecBehavior:
             }
         )
         assert report["valid"] is False
-        assert report["errors"][0]["code"] == "FORBIDDEN_EXTRA_FIELD"
+        assert report["errors"][0]["code"] == "EXTRA_FIELD_NOT_ALLOWED"
 
-    def test_unresolved_prompt_variables_produce_variable_unresolved_code(self):
-        """validate_spec should use canonical VARIABLE_UNRESOLVED code for unresolved vars."""
+    def test_unresolved_prompt_placeholders_produce_canonical_error(self):
+        """validate_spec should fail closed on unresolved placeholders in prompt."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -138,12 +140,11 @@ class TestValidateSpecBehavior:
                 "prompt": "You are {role} speaking to {target}",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
-                "variables": {"role": "assistant"},
                 "spec_version": "0.1.0",
             }
         )
         assert report["valid"] is False
-        assert any(e["code"] == "VARIABLE_UNRESOLVED" for e in report["errors"])
+        assert any(e["code"] == "UNRESOLVED_PLACEHOLDER" for e in report["errors"])
 
 
 class TestValidationIssueTypedDict:
@@ -223,7 +224,7 @@ class TestValidationReportShapes:
         report: validate_module.ValidationReport = {
             "valid": False,
             "errors": [issue],
-            "warnings": ["UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"],
+            "warnings": ["unknown model identifier: custom-model"],
         }
         assert report["valid"] is False
         assert len(report["errors"]) == 1
@@ -233,148 +234,65 @@ class TestValidationReportShapes:
         assert isinstance(report["warnings"][0], str)
 
 
-class TestUnusedVariablesWarning:
-    """Test UNUSED_VARIABLES warning contract from INTERFACES.md.
+class TestCanonicalFieldRejections:
+    """Canonical validator rejects removed transition-era fields."""
 
-    Authoritative warning semantics for v1:
-    - `warnings` is reserved for the deterministic `UNUSED_VARIABLES` family.
-    - Emit a warning when `spec.variables` provides one or more keys that are not
-      referenced by any `{name}` placeholder in `spec.prompt`.
-    - Warning strings use this canonical format:
-      `UNUSED_VARIABLES: supplied variables are not referenced by prompt: <sorted comma-separated keys>`.
-    - Missing variables remain validation errors via `VARIABLE_UNRESOLVED`; they are
-      not warnings.
-    """
-
-    def test_unused_variables_produces_warning(self):
-        """validate_spec should emit UNUSED_VARIABLES warning when variables are not used."""
+    def test_variables_field_rejected_as_extra(self):
+        """variables is not part of canonical PersonaSpec v1."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "You are a helpful assistant.",  # No variables used
+                "description": "Test persona used for extra-field rejection coverage",
+                "prompt": "Hello.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
-                "variables": {"role": "assistant", "project": "demo"},
+                "variables": {"role": "assistant"},
             }
         )
-        # Spec is valid (no errors), but has warnings
-        assert report["valid"] is True
-        assert report["errors"] == []
-        assert len(report["warnings"]) == 1
-
-    def test_unused_variables_warning_format(self):
-        """UNUSED_VARIABLES warning should use canonical format with sorted keys."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "Hello.",  # No variables used
-                "model": "gpt-4o-mini",
-                "capabilities": {"shell": "read_only"},
-                "spec_version": "0.1.0",
-                "variables": {"zebra": "a", "apple": "b", "mango": "c"},
-            }
-        )
-        warning = report["warnings"][0]
-        # Should start with the canonical prefix
-        assert warning.startswith(
-            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: "
-        )
-        # Keys should be sorted (alphabetically)
-        assert "apple, mango, zebra" in warning
-
-    def test_multiple_unused_variables_sorted(self):
-        """Multiple unused variables should appear in sorted order in warning."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "Hello.",  # No variables used
-                "model": "gpt-4o-mini",
-                "capabilities": {"shell": "read_only"},
-                "spec_version": "0.1.0",
-                "variables": {"z": "1", "a": "2", "m": "3"},
-            }
-        )
-        warning = report["warnings"][0]
-        # Sorted order: a, m, z
-        assert "a, m, z" in warning
-
-    def test_unused_variables_with_used_variables(self):
-        """Should emit warning for unused variables even when some are used."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "You are {role}.",  # 'role' is used
-                "model": "gpt-4o-mini",
-                "capabilities": {"shell": "read_only"},
-                "spec_version": "0.1.0",
-                "variables": {"role": "assistant", "unused_key": "value"},
-            }
-        )
-        assert report["valid"] is True
-        assert report["errors"] == []
-        assert len(report["warnings"]) == 1
-        assert "unused_key" in report["warnings"][0]
-        assert "role" not in report["warnings"][0]  # role is used, not unused
-
-    def test_unused_variables_with_unresolved_variables(self):
-        """Should have both VARIABLE_UNRESOLVED error and UNUSED_VARIABLES warning."""
-        report = validate_module.validate_spec(
-            {
-                "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "You are {role} talking to {target}.",  # target is unresolved
-                "model": "gpt-4o-mini",
-                "capabilities": {"shell": "read_only"},
-                "spec_version": "0.1.0",
-                "variables": {
-                    "role": "assistant",
-                    "unused": "value",
-                },  # unused is provided but not referenced
-            }
-        )
-        # Should have error for unresolved variable
         assert report["valid"] is False
-        assert any(e["code"] == "VARIABLE_UNRESOLVED" for e in report["errors"])
-        # Should have warning for unused variable
-        assert len(report["warnings"]) == 1
-        assert "UNUSED_VARIABLES" in report["warnings"][0]
-        assert "unused" in report["warnings"][0]
+        assert report["warnings"] == []
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
-    def test_empty_variables_no_warning(self):
-        """Empty variables dict should not produce warnings."""
+    @given(extra_field=st.sampled_from(("variables", "tools", "side_effect_policy")))
+    def test_extra_fields_use_canonical_extra_field_error(self, extra_field: str):
+        """Every forbidden legacy extra field should map to EXTRA_FIELD_NOT_ALLOWED."""
+        extra_value = (
+            {"shell": "read_only"} if extra_field in {"variables", "tools"} else "read_only"
+        )
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "Hello.",
+                "description": "Test persona used for canonical extra-field taxonomy",
+                "prompt": "You are a helpful assistant.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
-                "variables": {},
+                extra_field: extra_value,
             }
         )
-        assert report["valid"] is True
-        assert report["warnings"] == []
+        assert report["valid"] is False
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
-    def test_no_variables_key_no_warning(self):
-        """Missing variables key should not produce warnings."""
+
+class TestPlaceholderSemantics:
+    """Canonical prompt validation is fail-closed for unresolved placeholders."""
+
+    @given(name=st.sampled_from(("role", "target", "agent_name")))
+    def test_placeholder_like_tokens_are_rejected_without_variables(self, name: str):
+        """Fully composed canonical prompts must not retain placeholder tokens."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "description": "Test persona",
-                "prompt": "Hello.",
+                "description": "Prompt placeholder rejection coverage for canonical validation",
+                "prompt": f"You are {{{name}}}.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
             }
         )
-        assert report["valid"] is True
-        assert report["warnings"] == []
+        assert report["valid"] is False
+        assert any(e["code"] == "UNRESOLVED_PLACEHOLDER" for e in report["errors"])
 
 
 class TestCapabilitiesValidation:
@@ -411,7 +329,7 @@ class TestCapabilitiesValidation:
             }
         )
         assert report["valid"] is False
-        assert any(e["code"] == "INVALID_CAPABILITY_POSTURE" for e in report["errors"])
+        assert any(e["code"] == "INVALID_POSTURE" for e in report["errors"])
 
     def test_capabilities_not_dict(self):
         """Non-dict capabilities should produce error."""
@@ -426,7 +344,7 @@ class TestCapabilitiesValidation:
             }
         )
         assert report["valid"] is False
-        assert any(e["code"] == "INVALID_CAPABILITIES_TYPE" for e in report["errors"])
+        assert any(e["code"] == "INVALID_CAPABILITIES_SHAPE" for e in report["errors"])
 
     def test_all_valid_postures(self):
         """All valid ToolPosture values should be accepted."""
@@ -443,6 +361,37 @@ class TestCapabilitiesValidation:
             )
             assert report["valid"] is True, f"{posture} should be valid"
 
+    def test_whitespace_only_required_string_is_rejected(self):
+        """Whitespace-only required strings should fail with EMPTY_REQUIRED_FIELD."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "description": "   ",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"git": "read_only"},
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "EMPTY_REQUIRED_FIELD" for e in report["errors"])
+
+    def test_invalid_can_spawn_member_is_rejected(self):
+        """can_spawn string lists must contain canonical persona ids only."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "spec_version": "0.1.0",
+                "description": "Test persona",
+                "prompt": "You are a test assistant.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"git": "read_only"},
+                "can_spawn": ["child-persona", " ", "child-persona"],
+            }
+        )
+        assert report["valid"] is False
+        assert any(e["code"] == "INVALID_CAN_SPAWN" for e in report["errors"])
+
 
 class TestCanonicalAdmissionRejection:
     """Tests exposing gaps between current implementation and canonical admission contract.
@@ -457,8 +406,8 @@ class TestCanonicalAdmissionRejection:
     the implementation is corrected to match the canonical contract.
 
     Gap coverage:
-    - gap_1: tools currently emits warning but should be rejected (FORBIDDEN_EXTRA_FIELD)
-    - gap_2: side_effect_policy currently emits warning but should be rejected (FORBIDDEN_EXTRA_FIELD)
+    - gap_1: tools currently emits legacy taxonomy instead of EXTRA_FIELD_NOT_ALLOWED
+    - gap_2: side_effect_policy currently emits legacy taxonomy instead of EXTRA_FIELD_NOT_ALLOWED
     - gap_3: extra unknown fields currently not checked (extra fields silently accepted)
     - gap_4: capabilities not enforced as required (spec without capabilities currently passes)
     """
@@ -467,7 +416,7 @@ class TestCanonicalAdmissionRejection:
         """tools is forbidden at canonical admission, not a deprecation warning.
 
         Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
-        Expected: Should produce FORBIDDEN_EXTRA_FIELD error and mark spec invalid.
+        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error and mark spec invalid.
         Downstream step: canonical_core_admission.implementation
         """
         report = validate_module.validate_spec(
@@ -481,15 +430,15 @@ class TestCanonicalAdmissionRejection:
         assert report["valid"] is False, (
             "tools is forbidden at canonical admission boundary; got valid=True with warnings only"
         )
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
-            f"Expected FORBIDDEN_EXTRA_FIELD error for 'tools', got: {[e['code'] for e in report['errors']]}"
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"]), (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED error for 'tools', got: {[e['code'] for e in report['errors']]}"
         )
 
     def test_side_effect_policy_field_rejected_at_canonical_boundary(self):
         """side_effect_policy is forbidden at canonical admission boundary.
 
         Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
-        Expected: Should produce FORBIDDEN_EXTRA_FIELD error and mark spec invalid.
+        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error and mark spec invalid.
         Downstream step: canonical_core_admission.implementation
         """
         report = validate_module.validate_spec(
@@ -504,8 +453,8 @@ class TestCanonicalAdmissionRejection:
             "side_effect_policy is forbidden at canonical admission boundary; "
             "got valid=True with warnings only"
         )
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
-            f"Expected FORBIDDEN_EXTRA_FIELD error for 'side_effect_policy', "
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"]), (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED error for 'side_effect_policy', "
             f"got: {[e['code'] for e in report['errors']]}"
         )
 
@@ -513,7 +462,7 @@ class TestCanonicalAdmissionRejection:
         """Unknown top-level fields are forbidden at canonical admission.
 
         Gap: Extra fields are silently accepted currently.
-        Expected: Should produce FORBIDDEN_EXTRA_FIELD error.
+        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error.
         Downstream step: canonical_core_admission.implementation
         """
         report = validate_module.validate_spec(
@@ -524,8 +473,8 @@ class TestCanonicalAdmissionRejection:
             }
         )
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
-            f"Expected FORBIDDEN_EXTRA_FIELD for unknown field, got: {[e['code'] for e in report['errors']]}"
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"]), (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED for unknown field, got: {[e['code'] for e in report['errors']]}"
         )
 
     def test_capabilities_required_at_canonical_boundary(self):
@@ -566,7 +515,7 @@ class TestCanonicalAdmissionRejection:
             }
         )
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
 
 class TestCanonicalRequiredOnlyFixture:
@@ -645,7 +594,7 @@ class TestCanonicalRequiredOnlyFixture:
         assert report["warnings"] == []
 
     def test_tools_field_in_canonical_fixture_produces_rejection(self):
-        """Fixture variation: tools present = FORBIDDEN_EXTRA_FIELD.
+        """Fixture variation: tools present = EXTRA_FIELD_NOT_ALLOWED.
 
         This test exposes gap_1: tools should be rejected, not warned.
         """
@@ -660,10 +609,10 @@ class TestCanonicalRequiredOnlyFixture:
         }
         report = validate_module.validate_spec(spec)
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
     def test_side_effect_policy_in_canonical_fixture_produces_rejection(self):
-        """Fixture variation: side_effect_policy present = FORBIDDEN_EXTRA_FIELD.
+        """Fixture variation: side_effect_policy present = EXTRA_FIELD_NOT_ALLOWED.
 
         This test exposes gap_2: side_effect_policy should be rejected, not warned.
         """
@@ -678,10 +627,10 @@ class TestCanonicalRequiredOnlyFixture:
         }
         report = validate_module.validate_spec(spec)
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
     def test_extra_forbidden_field_produces_rejection(self):
-        """Fixture variation: extra unknown field produces FORBIDDEN_EXTRA_FIELD.
+        """Fixture variation: extra unknown field produces EXTRA_FIELD_NOT_ALLOWED.
 
         This test exposes gap_3: unknown fields should be rejected.
         """
@@ -696,7 +645,7 @@ class TestCanonicalRequiredOnlyFixture:
         }
         report = validate_module.validate_spec(spec)
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
 
 class TestAdmissionSuccessImpliesConformance:

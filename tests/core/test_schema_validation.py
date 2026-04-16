@@ -186,6 +186,18 @@ class TestSchemaAcceptanceRejection:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(invalid_spec, SCHEMA)
 
+    @given(extra_field=st.sampled_from(NON_CANONICAL_EXTRA_FIELDS))
+    def test_validator_uses_canonical_extra_field_error(self, extra_field: str) -> None:
+        """Core validator taxonomy must match PersonaSpec v1 extra-field vocabulary."""
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec[extra_field] = (
+            {"shell": "read_only"} if extra_field in {"variables", "tools"} else "allow"
+        )
+        report = validate_module.validate_spec(invalid_spec)
+
+        assert report["valid"] is False
+        assert any(issue["code"] == "EXTRA_FIELD_NOT_ALLOWED" for issue in report["errors"])
+
     def test_missing_capabilities_rejected_by_schema(self) -> None:
         """Assert spec without 'capabilities' is rejected — required field."""
         invalid_spec = {
