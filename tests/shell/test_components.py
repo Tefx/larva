@@ -5,8 +5,11 @@ temporary filesystem fixtures for success, list, and typed error paths.
 """
 
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from returns.result import Failure, Result, Success
 
 from larva.shell.components import (
@@ -14,6 +17,12 @@ from larva.shell.components import (
     ComponentStore,
     ComponentStoreError,
     FilesystemComponentStore,
+)
+from tests.shell.fixture_taxonomy import (
+    canonical_constraint_fixture,
+    legacy_toolset_fixture,
+    transition_constraint_fixture,
+    transition_toolset_fixture,
 )
 
 
@@ -36,12 +45,8 @@ def temp_component_store(tmp_path: Path) -> FilesystemComponentStore:
         encoding="utf-8",
     )
     (toolsets_dir / "test_toolset.yaml").write_text(
-        """# Per ADR-002: toolsets use capabilities (canonical) with tools mirrored for backward compat
+        """# Canonical hard-cut fixture: toolsets expose capabilities only
 capabilities:
-  filesystem: read_write
-  shell: read_only
-  http: none
-tools:  # DEPRECATED: mirrored from capabilities (ADR-002)
   filesystem: read_write
   shell: read_only
   http: none
@@ -49,10 +54,7 @@ tools:  # DEPRECATED: mirrored from capabilities (ADR-002)
         encoding="utf-8",
     )
     (constraints_dir / "test_constraint.yaml").write_text(
-        """# Note: side_effect_policy is deprecated in constraints (ADR-002)
-# Runtime concerns like approval policy don't belong in persona artifacts
-can_spawn: true
-side_effect_policy: approval_required  # DEPRECATED
+        """can_spawn: true
 compaction_prompt: Compact the state.
 """,
         encoding="utf-8",
@@ -107,19 +109,19 @@ class TestFilesystemComponentStoreIntegration:
 
         assert isinstance(result, Success)
         constraint = result.unwrap()
-        assert constraint["can_spawn"] is True
-        # Canonical: side_effect_policy is stripped, not returned
-        assert "side_effect_policy" not in constraint
-        assert constraint["compaction_prompt"] == "Compact the state."
+        assert constraint.get("can_spawn") is True
+        assert constraint.get("compaction_prompt") == "Compact the state."
 
     def test_load_model_parses_yaml(self, temp_component_store: FilesystemComponentStore) -> None:
         result = temp_component_store.load_model("test_model")
 
         assert isinstance(result, Success)
         model = result.unwrap()
-        assert model["model"] == "gpt-4"
-        assert model["model_params"]["temperature"] == 0.7
-        assert model["model_params"]["top_p"] == 0.9
+        assert model.get("model") == "gpt-4"
+        model_params = model.get("model_params")
+        assert isinstance(model_params, dict)
+        assert model_params["temperature"] == 0.7
+        assert model_params["top_p"] == 0.9
 
     def test_list_components_returns_sorted_inventory(
         self, temp_component_store: FilesystemComponentStore
@@ -242,7 +244,7 @@ tools:
         assert error.code == COMPONENT_NOT_FOUND_CODE
         assert error.component_type == "toolset"
         assert error.component_name == "legacy_toolset"
-        assert "capabilities" in str(error)
+        assert "tools" in str(error).lower()
         assert "legacy" in str(error).lower()
 
     def test_load_toolset_missing_both_capabilities_and_tools_is_rejected(
@@ -296,13 +298,7 @@ some_other_field: value
         assert "tools" not in toolset
 
     def test_load_toolset_rejects_toolset_with_mirrored_tools(self, tmp_path: Path) -> None:
-        """Prove toolset with mirrored tools field (transition artifact) fails closed.
-
-        At canonical hard-cut boundary, even a toolset that has BOTH capabilities
-        AND tools must strip to capabilities-only. This test verifies that a toolset
-        containing the deprecated tools field (mirrored from capabilities) is still
-        accepted but only returns the capabilities portion.
-        """
+        """Prove toolset with mirrored tools field (transition artifact) fails closed."""
         components_dir = tmp_path / "components"
         toolsets_dir = components_dir / "toolsets"
         toolsets_dir.mkdir(parents=True)
@@ -322,13 +318,12 @@ tools:
         store = FilesystemComponentStore(components_dir)
         result = store.load_toolset("transition_toolset")
 
-        # Transition toolset with capabilities is still valid
-        assert isinstance(result, Success)
-        toolset = result.unwrap()
-        # But only capabilities are returned (tools mirrored content stripped)
-        assert toolset["capabilities"]["filesystem"] == "read_write"
-        assert toolset["capabilities"]["shell"] == "read_only"
-        assert "tools" not in toolset
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert error.component_type == "toolset"
+        assert error.component_name == "transition_toolset"
+        assert "tools" in str(error).lower()
 
     def test_component_store_error_carries_component_name_and_type(self, tmp_path: Path) -> None:
         """Prove ComponentStoreError carries name and type for debugging."""
@@ -366,7 +361,7 @@ class TestLegacyToolsetRejectionAtCutover:
         assert isinstance(result, Failure)
         error = result.failure()
         assert isinstance(error, ComponentStoreError)
-        assert "capabilities" in str(error).lower()
+        assert "tools" in str(error).lower()
 
     def test_canonical_toolset_with_capabilities_succeeds(self, tmp_path: Path) -> None:
         """Canonical toolsets (capabilities-only) load successfully."""
@@ -390,8 +385,8 @@ class TestLegacyToolsetRejectionAtCutover:
         assert toolset["capabilities"]["shell"] == "read_only"
         assert toolset["capabilities"]["filesystem"] == "read_write"
 
-    def test_toolset_with_mixed_content_returns_capabilities_only(self, tmp_path: Path) -> None:
-        """Toolset with both capabilities and tools returns capabilities only."""
+    def test_toolset_with_mixed_content_is_rejected(self, tmp_path: Path) -> None:
+        """Toolset with both capabilities and tools is rejected."""
         components_dir = tmp_path / "components"
         toolsets_dir = components_dir / "toolsets"
         toolsets_dir.mkdir(parents=True)
@@ -408,9 +403,137 @@ tools:
         store = FilesystemComponentStore(components_dir)
         result = store.load_toolset("mixed")
 
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert error.component_type == "toolset"
+        assert error.component_name == "mixed"
+        assert "tools" in str(error).lower()
+
+
+class TestFailClosedLegacyPayloads:
+    """Negative tests for hard-cut fail-closed component loading."""
+
+    @pytest.mark.parametrize(
+        ("fixture_name", "payload"),
+        [
+            ("legacy_only", legacy_toolset_fixture({"shell": "read_only"})),
+            (
+                "mixed_payload",
+                transition_toolset_fixture({"filesystem": "read_write", "shell": "read_only"}),
+            ),
+        ],
+    )
+    def test_toolset_payloads_with_legacy_tools_field_are_rejected(
+        self,
+        tmp_path: Path,
+        fixture_name: str,
+        payload: dict[str, dict[str, str]],
+    ) -> None:
+        """Fail closed when toolset payload contains forbidden legacy tools field."""
+        components_dir = tmp_path / "components"
+        toolsets_dir = components_dir / "toolsets"
+        toolsets_dir.mkdir(parents=True)
+        (toolsets_dir / f"{fixture_name}.yaml").write_text(
+            _dump_yaml(payload),
+            encoding="utf-8",
+        )
+
+        store = FilesystemComponentStore(components_dir)
+        result = store.load_toolset(fixture_name)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert error.component_type == "toolset"
+        assert error.component_name == fixture_name
+        assert "tools" in str(error).lower()
+
+    def test_constraint_payload_with_side_effect_policy_is_rejected(self, tmp_path: Path) -> None:
+        """Fail closed when constraint payload contains forbidden side_effect_policy."""
+        components_dir = tmp_path / "components"
+        constraints_dir = components_dir / "constraints"
+        constraints_dir.mkdir(parents=True)
+        (constraints_dir / "legacy_constraint.yaml").write_text(
+            _dump_yaml(transition_constraint_fixture("approval_required")),
+            encoding="utf-8",
+        )
+
+        store = FilesystemComponentStore(components_dir)
+        result = store.load_constraint("legacy_constraint")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert error.component_type == "constraint"
+        assert error.component_name == "legacy_constraint"
+        assert "side_effect_policy" in str(error)
+
+    def test_canonical_constraint_payload_is_still_accepted(self, tmp_path: Path) -> None:
+        """Canonical constraint payload remains loadable after hard cut."""
+        components_dir = tmp_path / "components"
+        constraints_dir = components_dir / "constraints"
+        constraints_dir.mkdir(parents=True)
+        (constraints_dir / "canonical_constraint.yaml").write_text(
+            _dump_yaml(
+                canonical_constraint_fixture(
+                    can_spawn=True,
+                    compaction_prompt="Compact the state.",
+                )
+            ),
+            encoding="utf-8",
+        )
+
+        store = FilesystemComponentStore(components_dir)
+        result = store.load_constraint("canonical_constraint")
+
         assert isinstance(result, Success)
-        toolset = result.unwrap()
-        # Only capabilities returned
-        assert toolset["capabilities"]["shell"] == "read_only"
-        # tools stripped
-        assert "tools" not in toolset
+        constraint = result.unwrap()
+        assert constraint == {
+            "can_spawn": True,
+            "compaction_prompt": "Compact the state.",
+        }
+
+    @given(
+        include_capabilities=st.booleans(),
+        tools_payload=st.dictionaries(
+            keys=st.sampled_from(("filesystem", "shell", "http")),
+            values=st.sampled_from(("none", "read_only", "read_write", "destructive")),
+            min_size=1,
+            max_size=3,
+        ),
+    )
+    def test_toolset_loader_rejects_any_mapping_that_contains_tools(
+        self,
+        include_capabilities: bool,
+        tools_payload: dict[str, str],
+    ) -> None:
+        """Property-style proof that any mapping containing tools fails closed."""
+        payload: dict[str, object] = {"tools": tools_payload}
+        if include_capabilities:
+            payload["capabilities"] = dict(tools_payload)
+
+        with TemporaryDirectory() as temp_dir:
+            components_dir = Path(temp_dir) / "components"
+            toolsets_dir = components_dir / "toolsets"
+            toolsets_dir.mkdir(parents=True)
+            (toolsets_dir / "property_toolset.yaml").write_text(
+                _dump_yaml(payload),
+                encoding="utf-8",
+            )
+
+            store = FilesystemComponentStore(components_dir)
+            result = store.load_toolset("property_toolset")
+
+            assert isinstance(result, Failure)
+            error = result.failure()
+            assert isinstance(error, ComponentStoreError)
+            assert error.component_type == "toolset"
+            assert error.component_name == "property_toolset"
+            assert "tools" in str(error).lower()
+
+
+def _dump_yaml(payload: object) -> str:
+    import yaml
+
+    return yaml.safe_dump(payload, sort_keys=True)

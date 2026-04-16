@@ -359,8 +359,16 @@ class FilesystemComponentStore:
                 )
             )
 
-        # Canonical boundary: capabilities is required. Legacy 'tools' field
-        # is not admissible at cutover — fail closed rather than falling back.
+        if "tools" in data:
+            return Failure(
+                self._error(
+                    f"Toolset {name} contains forbidden legacy field 'tools'. "
+                    f"Mixed or legacy toolset payloads are not admissible at canonical cutover.",
+                    component_type="toolset",
+                    component_name=name,
+                )
+            )
+
         capabilities = data.get("capabilities")
         if capabilities is None:
             return Failure(
@@ -396,7 +404,15 @@ class FilesystemComponentStore:
         if not isinstance(data, dict):
             data = {}
 
-        # Build canonical constraint, stripping deprecated side_effect_policy.
+        if "side_effect_policy" in data:
+            return Failure(
+                self._error(
+                    f"Constraint {name} contains forbidden legacy field 'side_effect_policy'.",
+                    component_type="constraint",
+                    component_name=name,
+                )
+            )
+
         constraint: ConstraintComponent = {}
         if "can_spawn" in data:
             constraint["can_spawn"] = data["can_spawn"]

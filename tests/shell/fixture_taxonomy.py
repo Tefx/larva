@@ -39,6 +39,14 @@ def transition_toolset_fixture(
     return {"capabilities": dict(resolved), "tools": dict(resolved)}
 
 
+def legacy_toolset_fixture(
+    tools: dict[str, str] | None = None,
+) -> dict[str, dict[str, str]]:
+    """Return explicit non-canonical toolset payload for fail-closed tests."""
+    resolved = tools or {"shell": "read_only"}
+    return {"tools": dict(resolved)}
+
+
 def transition_constraint_fixture(
     side_effect_policy: str = "read_only",
 ) -> dict[str, object]:
@@ -46,12 +54,22 @@ def transition_constraint_fixture(
     return {"side_effect_policy": side_effect_policy}
 
 
+def canonical_constraint_fixture(
+    *, can_spawn: bool = False, compaction_prompt: str = "Summarize facts."
+) -> dict[str, object]:
+    """Return canonical constraint payload for shell component fixtures."""
+    return {
+        "can_spawn": can_spawn,
+        "compaction_prompt": compaction_prompt,
+    }
+
+
 def transition_persona_spec_with_legacy_fields(
     persona_id: str,
     digest: str = "sha256:transition",
     model: str = "gpt-4o-mini",
     side_effect_policy: str = "read_only",
-) -> PersonaSpec:
+) -> dict[str, object]:
     """Return PersonaSpec fixture with non-canonical fields for rejection testing.
 
     Per ADR-002/opifex authority basis: tools and side_effect_policy are
