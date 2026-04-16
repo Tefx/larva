@@ -49783,7 +49783,7 @@ phases:
       - tests/shell/test_web.py\n\nCommit: `1ec0ba23c46c37bc166ccfabcb18423b3c5f3edf`"
   - id: hard_cut_finish_20260416_surfaces.gate
     name: Gate surface hard-cut closure
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -49867,6 +49867,8 @@ phases:
     - hard_cut_finish_20260416_surfaces.cli_hard_cut
     - hard_cut_finish_20260416_surfaces.python_web_hard_cut
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-16T14:15:58.597937+00:00'
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
