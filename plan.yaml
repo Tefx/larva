@@ -49391,6 +49391,92 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.cli_hard_cut
     agent: python-executor
+  - id: hard_cut_finish_20260416_surfaces.gate
+    name: Gate surface hard-cut closure
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: default
+
+      verification_scope: phase-check
+
+
+      Independent gate review for shell/app boundary closure.
+
+
+      Gate decision basis must confirm:
+
+      - component loading is fail-closed on tools/side_effect_policy
+
+      - facade and MCP contracts no longer expose variables
+
+      - MCP/CLI/Python/Web handlers reject legacy request fields instead of cleaning
+      them
+
+      - no projection path relies on stripping legacy keys to appear canonical
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase touches every public/shared surface named in the hard-cut finishing
+      brief
+
+      - Cross-surface drift would poison final full-plan verification'
+    verification: 'phase-check protecting finalization.
+
+      - Review expected-red proof exists for every implementation step.
+
+      - Review at least one real transport evidence path exists where requested.
+
+      - Block if any shared surface preserves variables/tools/side_effect_policy by
+      cleanup instead of rejection.'
+    evidence_template: '## Gate Review Report
+
+      **Phase**: hard_cut_finish_20260416_surfaces
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ### Step Review Matrix
+
+      - components_fail_closed:
+
+      - facade_mcp_contract:
+
+      - mcp_handler_fail_closed:
+
+      - cli_hard_cut:
+
+      - python_web_hard_cut:
+
+
+      ### Gate Decision Basis
+
+      - requirement_ref -> evidence_ref -> status -> closure_path
+
+
+      ### Blocking Findings
+
+      - <list or none>
+
+
+      ### Decision
+
+      - OPEN or BLOCKED'
+    depends_on:
+    - hard_cut_finish_20260416_surfaces.components_fail_closed
+    - hard_cut_finish_20260416_surfaces.facade_mcp_contract
+    - hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
+    - hard_cut_finish_20260416_surfaces.cli_hard_cut
+    - hard_cut_finish_20260416_surfaces.python_web_hard_cut
+    agent: gate-reviewer-tacit
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
