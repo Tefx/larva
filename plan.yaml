@@ -49902,7 +49902,7 @@ phases:
       \ mismatch in pre-existing core tests.\n\n### Decision\n- OPEN"
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
-  status: in_progress
+  status: done
   gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
     PersonaSpec semantics with no transition-era behavior remaining.
   depends_on:
@@ -50288,7 +50288,7 @@ phases:
       \ scope.\n\ncommit_hash: b07cf30813550e6f962c71cfab80cd7bd463b611"
   - id: hard_cut_finish_20260416_finalization.gate
     name: Gate final hard-cut alignment
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -50380,6 +50380,11 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-16T17:41:33.426956+00:00'
+    done_at: '2026-04-16T17:54:33.029199+00:00'
+    evidence: 'Final gate OPEN: canonical/shared surfaces exclude variables; tools/side_effect_policy
+      rejected early with no convenience cleanup; outputs leak no legacy vocabulary;
+      validator/docs/tests/fixtures aligned; BF1-BF5 closures explicit; no blocking
+      findings.'
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
     status: done
