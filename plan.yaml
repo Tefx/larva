@@ -49210,7 +49210,7 @@ phases:
       \ loading seam."
   - id: hard_cut_finish_20260416_surfaces.facade_mcp_contract
     name: Delete variables from facade and MCP assemble contracts
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -49325,6 +49325,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.components_fail_closed
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T13:16:17.256235+00:00'
   - id: hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
     name: Make MCP handlers reject legacy assemble and projection payloads
     status: pending
