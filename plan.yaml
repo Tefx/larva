@@ -49152,6 +49152,129 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.facade_mcp_contract
     agent: python-executor
+  - id: hard_cut_finish_20260416_surfaces.cli_hard_cut
+    name: Remove variables and legacy projection cleanup from CLI surfaces
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify CLI hard-cut behavior.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#verification
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary
+
+
+      touch_paths:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_parser.py
+
+      - src/larva/shell/cli_commands.py
+
+      - tests/shell/test_canonical_boundary_gaps.py
+
+
+      authoritative_interface:
+
+      - CLI assemble path no longer accepts --var / variables payloads
+
+      - CLI component projection does not hide legacy keys by filtering them out
+
+
+      Scope:
+
+      - Delete variables parsing and forwarding from CLI assemble surfaces.
+
+      - Delete CLI-side component payload sanitization for tools/side_effect_policy.
+
+      - Ensure CLI help/examples and tests move to fail-closed semantics in downstream
+      convergence phase; this step owns runtime behavior.
+
+
+      Expected-red requirement:
+
+      - First add failing CLI tests or parser-level assertions showing variables/legacy
+      cleanup still exists.
+
+      - Include one red case for request admission and one for projection behavior.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any --var or equivalent variable authoring convenience surviving on canonical
+      CLI assemble path
+
+      2. Any CLI component output cleaned by filtering legacy fields instead of rejecting
+      the source
+
+      3. Any green claim without actual command/output evidence'
+    verification: 'phase-check protecting CLI/public transport conformance.
+
+      - Expected red: CLI parser/runtime tests fail before implementation.
+
+      - Green: targeted CLI tests pass after implementation.
+
+      - Green: invar_guard on changed files passes.
+
+      - Green: evidence includes at least one real CLI command/output path proving
+      the request surface is canonical-only.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New failing CLI tests written first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Integration Evidence
+
+      **Command or test exercising the full path**:
+
+      <exact CLI command or test name>
+
+
+      **Actual output**:
+
+      <paste stdout/stderr or test runner output>
+
+
+      **Path exercised**:
+
+      cli parser -> cli command -> facade
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - invar_guard output pasted here:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
+    agent: python-executor
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
