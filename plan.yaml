@@ -48452,6 +48452,130 @@ phases:
 
       - Remaining ambiguity or "none"'
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_core.validator_semantics
+    name: Strengthen validator semantics to canonical fail-closed rules
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify canonical validator semantics.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/opifex/design/personaspec-v1.md#validation-model
+
+      - /Users/tefx/Projects/opifex/design/personaspec-v1.md#final-personaspec-v1-field-set
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#verification
+
+
+      touch_paths:
+
+      - src/larva/core/validate.py
+
+      - tests/core/test_validate.py
+
+      - tests/core/test_schema_validation.py
+
+
+      authoritative_interface:
+
+      - Validator rejects unresolved placeholders in prompt.
+
+      - Validator rejects extra fields, including variables/tools/side_effect_policy.
+
+      - Warning/defer behavior remains only where personaspec-v1 explicitly allows
+      it.
+
+
+      Scope:
+
+      - Delete VARIABLE_UNRESOLVED / UNUSED_VARIABLES transition logic tied to explicit
+      variables input.
+
+      - Add semantic checks that schema alone does not fully prove: whitespace-only
+      required strings, unresolved placeholders in fully composed prompt, canonical
+      can_spawn semantics, and other required personaspec-v1 error outcomes.
+
+      - Keep fail-closed posture: unresolved placeholders remaining in prompt must
+      fail, not warn or defer.
+
+
+      Expected-red requirement:
+
+      - Write Hypothesis-backed or contract-backed tests that demonstrate current
+      validator weakness before changing implementation.
+
+      - Include at least one falsifiable unresolved-placeholder red case and one extra-field
+      red case.
+
+
+      Completion Criteria (stub exclusion):
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      validator must produce concrete canonical error outcomes rather than leaving
+      legacy behavior for later stages.'
+    verification: 'local-check protecting normalize/assemble/patch and every shared
+      admission surface.
+
+      - Expected red: new validator tests fail before implementation.
+
+      - Green: targeted validator tests pass after implementation.
+
+      - Green: invar_guard on changed files passes.
+
+      - Green: evidence shows unresolved placeholders and extra fields fail at validation,
+      not later.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New property/contracts/tests added first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause of prior validator weakness:
+
+      - Why the new checks are canonical semantics, not transition cleanup:
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - invar_guard output pasted here:
+
+
+      ## Canonical Error Register
+
+      - Errors now emitted for unresolved placeholder / extra field / invalid can_spawn:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_core.spec_schema_boundary
+    agent: python-senior-tacit
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: locked
