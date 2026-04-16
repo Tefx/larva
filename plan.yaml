@@ -49902,7 +49902,7 @@ phases:
       \ mismatch in pre-existing core tests.\n\n### Decision\n- OPEN"
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
-  status: pending
+  status: in_progress
   gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
     PersonaSpec semantics with no transition-era behavior remaining.
   depends_on:
@@ -49910,7 +49910,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260416_finalization.tests_fixtures
     name: Converge tests and fixtures on canonical-only behavior
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -50038,6 +50038,8 @@ phases:
 
       - Remaining ambiguity or "none"'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-16T14:36:57.507986+00:00'
   - id: hard_cut_finish_20260416_finalization.docs_sync
     name: Sync docs and migration notes to the hard cut
     status: pending
