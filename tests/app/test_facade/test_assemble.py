@@ -7,11 +7,14 @@ Sources:
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import validate as validate_module
 from larva.core import spec as spec_module
 
 from .conftest import (
@@ -41,7 +44,6 @@ class TestFacadeAssemble:
                 "toolsets": ["default-tools"],
                 "constraints": ["strict"],
                 "model": "default-model",
-                "variables": {"role": "analyst"},
                 "overrides": {"description": "runtime description"},
             }
         )
@@ -56,11 +58,38 @@ class TestFacadeAssemble:
         ]
         assert assemble_input["constraints"] == [{"side_effect_policy": "read_only"}]
         assert assemble_input["model"] == {"model": "gpt-4o-mini"}
-        assert assemble_input["variables"] == {"role": "analyst"}
+        assert "variables" not in assemble_input
         assert assemble_input["overrides"] == {"description": "runtime description"}
         # validate receives normalized spec, not the original candidate
         assert validate_module.inputs[0] == normalize_module.inputs[0]
         assert normalize_module.inputs[0]["id"] == "assembled"
+
+    def test_assemble_rejects_unresolved_placeholder_without_variables_escape_hatch(self) -> None:
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=cast("Any", assemble_module),
+            validate=cast("Any", validate_module),
+            normalize=cast("Any", normalize_module),
+            components=cast(
+                "Any", InMemoryComponentStore(prompts_by_name={"templated": "You are {role}."})
+            ),
+            registry=InMemoryRegistryStore(),
+        )
+
+        result = facade.assemble({"id": "persona-a", "prompts": ["templated"]})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "UNRESOLVED_PROMPT_TEXT"
+        assert cast("dict[str, object]", error["details"])["placeholders"] == ["role"]
+
+    def test_assemble_rejects_variables_at_facade_request_boundary(self) -> None:
+        facade, _, _, _ = _facade()
+
+        result = facade.assemble({"id": "persona-a", "variables": {"role": "analyst"}})  # type: ignore[typeddict-unknown-key] # runtime boundary rejection coverage
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_INPUT"
+        assert cast("dict[str, object]", error["details"])["field"] == "variables"
 
     def test_assemble_component_miss_maps_to_app_error(self) -> None:
         components = InMemoryComponentStore(fail_prompt=True)
@@ -145,6 +174,3 @@ class TestFacadeAssemble:
         # normalize receives the assembled candidate (default "assembled" id from SpyAssembleModule)
         assert normalize_module.inputs[0]["id"] == "assembled"
         assert calls == ["assemble", "normalize", "validate"]
-
-
-from larva.app.facade import DefaultLarvaFacade

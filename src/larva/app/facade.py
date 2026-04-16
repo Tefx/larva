@@ -75,7 +75,11 @@ class AssembleRequest(TypedDict, total=False):
     constraints: list[str]
     model: str
     overrides: dict[str, object]
-    variables: dict[str, str]
+
+
+_ASSEMBLE_REQUEST_ALLOWED_FIELDS = frozenset(
+    {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
+)
 
 
 class RegisteredPersona(TypedDict):
@@ -258,13 +262,28 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._validation_error(report))
         return Success(normalized)
 
+    def _validate_assemble_request(self, request: AssembleRequest) -> Result[None, LarvaError]:
+        unknown_fields = sorted(set(request) - _ASSEMBLE_REQUEST_ALLOWED_FIELDS)
+        if unknown_fields:
+            field = unknown_fields[0]
+            return Failure(
+                self._error(
+                    code="INVALID_INPUT",
+                    message=f"assemble request field '{field}' is not permitted at canonical boundary",
+                    details={"field": field, "unknown_fields": unknown_fields},
+                )
+            )
+        return Success(None)
+
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
+        request_validation = self._validate_assemble_request(request)
+        if isinstance(request_validation, Failure):
+            return request_validation
         assemble_input: AssemblyInput = {
             "id": cast("str", request.get("id", "")),
             "prompts": [],
             "toolsets": [],
             "constraints": [],
-            "variables": request.get("variables", {}),
             "overrides": request.get("overrides", {}),
         }
         description = request.get("description")

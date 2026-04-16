@@ -78,6 +78,12 @@ class TestMCPToolDescriptionSemantics:
             f"Current: {assemble_tool['description']}"
         )
 
+    def test_assemble_tool_schema_excludes_variables(self) -> None:
+        """Shared assemble schema must not advertise removed variables input."""
+        assemble_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
+
+        assert "variables" not in assemble_tool["input_schema"]["properties"]
+
     def test_register_tool_description_states_tools_rejected(self) -> None:
         """MCP register tool description must explicitly state tools rejection."""
         register_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_register")

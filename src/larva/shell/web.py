@@ -272,7 +272,6 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
                 body.get("constraints"),
                 body.get("model"),
                 body.get("overrides"),
-                body.get("variables"),
             )
             return {"data": spec}
         except LarvaApiError as e:

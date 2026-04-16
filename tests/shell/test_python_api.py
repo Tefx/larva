@@ -289,7 +289,6 @@ class TestPythonApiAssemble:
             toolsets=["default"],
             constraints=["strict"],
             model="gpt-4o",
-            variables={"role": "analyst"},
             overrides={"description": "runtime override"},
         )
 

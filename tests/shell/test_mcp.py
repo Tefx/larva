@@ -325,7 +325,7 @@ class TestMCPToolDefinitions:
         assert "constraints" in props
         assert "model" in props
         assert "overrides" in props
-        assert "variables" in props
+        assert "variables" not in props
         assert "id" in assemble_tool["input_schema"]["required"]
 
     def test_resolve_tool_is_defined(self) -> None:
@@ -953,7 +953,6 @@ class TestMCPToolsRoundTrip:
             "toolsets": ["readonly-tools"],
             "constraints": ["no-spawn"],
             "model": "default-model",
-            "variables": {"role": "analyst"},
             "overrides": {"temperature": 0.7},
         }
 
@@ -1030,8 +1029,8 @@ class TestMCPHandlersImplementation:
         assert result["errors"] == []
         assert result["warnings"] == []
 
-    def test_handle_validate_preserves_canonical_unused_variables_warning(self) -> None:
-        """MCP validate path should preserve canonical UNUSED_VARIABLES warning text."""
+    def test_handle_validate_rejects_variables_as_extra_field(self) -> None:
+        """MCP validate path must preserve canonical extra-field rejection."""
         facade = DefaultLarvaFacade(
             spec=spec_module,
             assemble=assemble_module,
@@ -1056,11 +1055,9 @@ class TestMCPHandlersImplementation:
             }
         )
 
-        assert result["valid"] is True
-        assert result["errors"] == []
-        assert result["warnings"] == [
-            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
-        ]
+        assert result["valid"] is False
+        assert result["warnings"] == []
+        assert any(issue["code"] == "EXTRA_FIELD_NOT_ALLOWED" for issue in result["errors"])
 
     def test_handle_validate_missing_spec_raises(self) -> None:
         """Test handle_validate returns malformed-params envelope for missing spec."""
@@ -1116,6 +1113,19 @@ class TestMCPHandlersImplementation:
         assert "message" in result
         assert "details" in result
         assert result["code"] == "COMPONENT_NOT_FOUND"
+
+    def test_handle_assemble_rejects_variables_at_mcp_boundary(self) -> None:
+        facade = _make_facade(validate_report=_valid_report())
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_assemble({"id": "assembled", "variables": {"role": "analyst"}})
+
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva_assemble",
+            reason="unknown parameter(s)",
+        )
 
     def test_handle_assemble_missing_id_raises(self) -> None:
         """Test handle_assemble returns malformed-params envelope for missing id."""

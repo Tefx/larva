@@ -93,7 +93,8 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_assemble",
         "description": (
-            "Assemble a PersonaSpec from named components (prompts, toolsets, constraints, model). "
+            "Assemble a PersonaSpec from named canonical components and already-composed prompt inputs "
+            "(prompts, toolsets, constraints, model). "
             f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_TOOLS_REJECTED_CLAUSE}."
         ),
         "input_schema": {
@@ -132,6 +133,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["id"],
+            "additionalProperties": False,
         },
     },
     {

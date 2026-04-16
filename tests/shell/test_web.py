@@ -167,7 +167,6 @@ class MockFacade:
         constraints: list[str] | None = None,
         model: str | None = None,
         overrides: dict[str, Any] | None = None,
-        variables: dict[str, str] | None = None,
     ) -> PersonaSpec:
         self.assemble_inputs.append(
             {
@@ -177,7 +176,6 @@ class MockFacade:
                 "constraints": constraints,
                 "model": model,
                 "overrides": overrides,
-                "variables": variables,
             }
         )
         spec: PersonaSpec = {
@@ -492,7 +490,7 @@ class TestWebSurfaceEndpoints:
         monkeypatch.setattr(
             web_module,
             "assemble",
-            lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None, variables=None: (
+            lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None: (
                 mock_facade.assemble(
                     id=id,
                     prompts=prompts,
@@ -500,7 +498,6 @@ class TestWebSurfaceEndpoints:
                     constraints=constraints,
                     model=model,
                     overrides=overrides,
-                    variables=variables,
                 )
             ),
         )
@@ -534,7 +531,6 @@ class TestWebSurfaceEndpoints:
                     "can_spawn": ["child-analyst"],
                     "compaction_prompt": "Summarize the active worktree before handoff.",
                 },
-                "variables": None,
             }
         ]
 

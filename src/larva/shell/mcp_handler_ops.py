@@ -102,7 +102,6 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
                 "constraints",
                 "model",
                 "overrides",
-                "variables",
             },
             required_keys=("id",),
             typed_keys=(
@@ -110,7 +109,6 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
                 ("description", str, "string"),
                 ("model", str, "string"),
                 ("overrides", dict, "object"),
-                ("variables", dict, "object"),
             ),
             list_string_keys=("prompts", "toolsets", "constraints"),
         )
@@ -125,7 +123,6 @@ class MCPHandlerOpsMixin(MCPParamValidationMixin):
             "constraints": checked_params.get("constraints", []),
             "model": checked_params.get("model", ""),
             "overrides": checked_params.get("overrides", {}),
-            "variables": checked_params.get("variables", {}),
         }
         if "description" in checked_params:
             request["description"] = checked_params["description"]
