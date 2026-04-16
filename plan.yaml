@@ -49210,7 +49210,7 @@ phases:
       \ loading seam."
   - id: hard_cut_finish_20260416_surfaces.facade_mcp_contract
     name: Delete variables from facade and MCP assemble contracts
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -49327,6 +49327,37 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T13:16:17.256235+00:00'
+    done_at: '2026-04-16T13:24:50.275061+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md\
+      \ — shared surfaces accept only canonical capabilities/spec_version/spec_digest\
+      \ vocabulary.\n- /Users/tefx/Projects/opifex/design/final-canonical-contract.md\
+      \ hard invariants — one shared capability field (`capabilities`), no alias payload\
+      \ keys on shared MCP surfaces.\n- /Users/tefx/Projects/opifex/design/personaspec-v1.md\
+      \ — prompt must be fully composed text; unresolved placeholders are invalid.\n\
+      \n## Expected-Red Proof (MANDATORY)\n- Added failing request-contract tests\
+      \ first:\n  - unresolved placeholder without variables escape hatch\n  - MCP\
+      \ assemble tool/handler variables boundary rejection\n- Pre-implementation command:\n\
+      \  - `./.venv/bin/pytest tests/app/test_facade/test_assemble.py tests/shell/test_mcp.py\
+      \ -k \"variables or placeholder or assemble_tool_is_defined\"`\n- Failing output:\n\
+      \  - 3 failed, 1 passed (variables/placeholder behavior mismatch and missing\
+      \ handler error code field)\n\n## Green Proof\n- Post-implementation commands:\n\
+      \  - `./.venv/bin/pytest tests/app/test_facade/test_assemble.py tests/shell/test_mcp.py\
+      \ tests/shell/test_canonical_boundary_gaps.py tests/shell/test_python_api.py\
+      \ tests/shell/test_web.py -k \"assemble or variables or placeholder or schema_excludes\"\
+      `\n  - `invar_guard(path=\"/Users/tefx/Projects/larva/.vectl/worktrees/hard_cut_finish_20260416_surfaces.facade_mcp_contract\"\
+      , changed=true)`\n- Passing output:\n  - `32 passed, 260 deselected in 0.29s`\n\
+      - invar_guard output:\n  - status: passed\n  - files_checked: 4\n  - errors:\
+      \ 0\n  - warnings: 1 (`src/larva/app/facade.py` size warning)\n  - doctest:\
+      \ passed\n\n## Contract Delta\n- Facade request fields now accepted:\n  - `id`,\
+      \ `description`, `prompts`, `toolsets`, `constraints`, `model`, `overrides`\n\
+      - MCP contract fields now accepted:\n  - same canonical assemble request fields\
+      \ with `additionalProperties: false`\n- Fields now rejected immediately:\n \
+      \ - `variables` at facade request boundary (`INVALID_INPUT`)\n  - `variables`\
+      \ at MCP assemble boundary (unknown parameter)\n  - unresolved placeholders\
+      \ without variables escape hatch (`UNRESOLVED_PROMPT_TEXT`)\n- Schema/description\
+      \ confirmation:\n  - no `variables` in facade/MCP assemble contract files after\
+      \ change\n\n## Residual Risk\n- none\n\nCommit: `6fdabf9 fix(shell): hard cut\
+      \ assemble request variables`"
   - id: hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
     name: Make MCP handlers reject legacy assemble and projection payloads
     status: pending
