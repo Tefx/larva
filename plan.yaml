@@ -50535,3 +50535,126 @@ phases:
     - hard_cut_finish_20260416_finalization.full_plan_check
     - hard_cut_finish_20260416_finalization.spec_conformance
     agent: gate-reviewer-tacit
+  - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
+    name: Batched blocker remediation for final hard-cut failures
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: default
+
+
+      Batched remediation step for the blocker families surfaced by the parallel finalization
+      verifiers.
+
+
+      OWNERSHIP SCOPE (ALL blocker families in one step):
+
+      1. Stale test expectations still asserting SideEffectPolicy export from core/spec.
+
+      2. Stale test expectations still asserting FORBIDDEN_EXTRA_FIELD where runtime
+      now emits EXTRA_FIELD_NOT_ALLOWED.
+
+      3. Public rejection-path gap: facade/web PATCH handling leaves NormalizeError/PatchError
+      unprojected, causing structured-400 obligations to leak as PATCH 500.
+
+      4. Documentation/examples still advertising variables-era behavior.
+
+      5. Validator-v1 warning / model_params semantics lack explicit final disposition
+      in docs/examples/runtime-facing guidance.
+
+      6. Same rejection-path gap must be closed consistently in both runtime behavior
+      and conformance-facing artifacts.
+
+
+      Required remediation shape:
+
+      - Update runtime/code/tests/docs together so there is one canonical public story.
+
+      - Preserve canonical-only PersonaSpec semantics; do NOT reintroduce transition-era
+      aliases or variables-era examples.
+
+      - Close the facade rejection path by projecting NormalizeError/PatchError into
+      the structured 400 family rather than generic 500 behavior.
+
+      - Make validator-v1 warning/model_params disposition explicit: either documented
+      supported behavior with precise semantics or explicit rejection/deprecation
+      language aligned with runtime.
+
+
+      ## Blocker Closure Mapping
+
+      - BF1 stale SideEffectPolicy export expectations -> update affected tests/fixtures
+      to canonical surface ownership.
+
+      - BF2 stale FORBIDDEN_EXTRA_FIELD expectation -> align affected tests/fixtures/docs
+      to EXTRA_FIELD_NOT_ALLOWED.
+
+      - BF3 facade PATCH 500 gap -> implement structured rejection projection for
+      NormalizeError/PatchError and add regression coverage.
+
+      - BF4 variables-era docs/examples -> remove or rewrite to canonical-only behavior.
+
+      - BF5 validator-v1 warning/model_params ambiguity -> add explicit disposition
+      in runtime-facing docs/examples/tests where acceptance semantics are asserted.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+      Each deliverable MUST contain substantive logic or artifact updates that close
+      the blocker families above and produce observable changed behavior/evidence.
+
+
+      ## Out-of-scope guardrail
+
+      - Do NOT create new transition compatibility shims.
+
+      - Do NOT widen accepted public payloads beyond canonical hard-cut semantics.
+
+      - Do NOT split this into sibling fixes; this step owns the full blocker batch.
+
+
+      ## Known risks / gate preview
+
+      - Gate will reject any remaining variables-era wording or examples.
+
+      - Gate will reject any public rejection path that still returns PATCH 500 for
+      NormalizeError/PatchError.
+
+      - Gate will reject mixed error vocabulary (FORBIDDEN_EXTRA_FIELD vs EXTRA_FIELD_NOT_ALLOWED).
+
+      - Gate will reject unresolved validator-v1/model_params ambiguity without explicit
+      disposition.'
+    verification: '- Targeted regressions added/updated for rejection-path projection
+      and canonical error vocabulary.
+
+      - Runtime/public docs/tests tell one canonical story for variables removal and
+      validator-v1/model_params semantics.
+
+      - Evidence must map every blocker family BF1-BF5 to concrete changed files and
+      closure proof.
+
+      - No remaining transition-era wording or stale assertion should intersect the
+      final gate.'
+    evidence_template: "## Batched Blocker Remediation Evidence\n\n### refs Read Confirmation\
+      \ (MANDATORY)\nNo refs for this step.\n\n### Commands run\n```text\n<paste exact\
+      \ targeted test/doc-audit commands used during remediation>\n```\n\n### Outputs\n\
+      ```text\n<paste key stdout/stderr excerpts>\n```\n\n### Blocker Closure Mapping\n\
+      - BF1 stale SideEffectPolicy export expectations:\n  - changed_files: [...]\n\
+      \  - closure: <how tests/fixtures now align>\n- BF2 stale FORBIDDEN_EXTRA_FIELD\
+      \ expectation:\n  - changed_files: [...]\n  - closure: <how vocabulary now aligns>\n\
+      - BF3 facade PATCH 500 gap:\n  - changed_files: [...]\n  - closure: <structured\
+      \ 400 projection + regression proof>\n- BF4 variables-era docs/examples:\n \
+      \ - changed_files: [...]\n  - closure: <what wording/examples changed>\n- BF5\
+      \ validator-v1/model_params disposition:\n  - changed_files: [...]\n  - closure:\
+      \ <explicit disposition adopted>\n\n### Residual Ambiguity Check\n- unresolved_items:\
+      \ <none or list>\n- gate_intersection: <why none remain or what still blocks>\n\
+      \n### File Inventory\n- runtime/code: [...]\n- tests/fixtures: [...]\n- docs/examples:\
+      \ [...]"
+    depends_on:
+    - hard_cut_finish_20260416_finalization.tests_fixtures
+    - hard_cut_finish_20260416_finalization.docs_sync
+    agent: python-senior-tacit
