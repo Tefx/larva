@@ -48496,7 +48496,7 @@ phases:
       \ modified here."
   - id: hard_cut_finish_20260416_core.validator_semantics
     name: Strengthen validator semantics to canonical fail-closed rules
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -48618,6 +48618,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_core.spec_schema_boundary
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T12:13:10.049113+00:00'
   - id: hard_cut_finish_20260416_core.normalize_assemble_patch
     name: Move rejection earlier in normalize assemble and patch paths
     status: pending
