@@ -50171,7 +50171,7 @@ phases:
       my changes'
   - id: hard_cut_finish_20260416_finalization.docs_sync
     name: Sync docs and migration notes to the hard cut
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -50266,6 +50266,8 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.tests_fixtures
     agent: doc-reviewer-tacit
+    claimed_by: python-executor
+    claimed_at: '2026-04-16T15:56:24.221023+00:00'
   - id: hard_cut_finish_20260416_finalization.full_plan_check
     name: Run full independent hard-cut verification
     status: pending
