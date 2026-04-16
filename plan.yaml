@@ -48326,7 +48326,7 @@ phases:
       \ --name-only --oneline 80c8068:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py"
 - id: hard_cut_finish_20260416_core
   name: Final Hard-Cut Core Boundary Alignment
-  status: pending
+  status: in_progress
   gate: Core canonical admission is fail-closed with no variables path, no deferred
     legacy rejection, and core schema/validator semantics aligned to opifex canonical
     PersonaSpec.
@@ -48335,7 +48335,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260416_core.spec_schema_boundary
     name: Delete variables from canonical spec/schema boundary
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -48452,6 +48452,8 @@ phases:
 
       - Remaining ambiguity or "none"'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-16T12:03:18.307822+00:00'
   - id: hard_cut_finish_20260416_core.validator_semantics
     name: Strengthen validator semantics to canonical fail-closed rules
     status: pending
