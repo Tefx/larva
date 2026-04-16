@@ -18,12 +18,17 @@ from typing import Any, get_type_hints
 
 import jsonschema
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
+from larva.core import spec as spec_module
 from larva.core import validate as validate_module
 from larva.shell import mcp_contract
 
 SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "persona_spec.schema.json"
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
+OPIFEX_SCHEMA_PATH = Path("/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json")
+OPIFEX_SCHEMA = json.loads(OPIFEX_SCHEMA_PATH.read_text())
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -51,24 +56,23 @@ CANONICAL_SCHEMA_INSTANCE_FULL: dict = {
     "compaction_prompt": "Summarise the conversation.",
     "spec_version": "0.1.0",
     "spec_digest": "sha256:" + "a" * 64,
-    "variables": {"agent_name": "TestBot"},
 }
 """Canonical shape with every optional field present."""
+
+NON_CANONICAL_EXTRA_FIELDS = ("variables", "tools", "side_effect_policy")
 
 
 def _schema_parity_violations(schema: dict[str, Any]) -> list[str]:
     violations: list[str] = []
 
-    expected_required = list(validate_module.CANONICAL_REQUIRED_FIELDS)
+    expected_required = list(OPIFEX_SCHEMA["required"])
     actual_required = list(schema.get("required", []))
     if actual_required != expected_required:
         violations.append(
             f"required mismatch: expected={expected_required}, actual={actual_required}"
         )
 
-    expected_allowed = set(validate_module.CANONICAL_REQUIRED_FIELDS) | set(
-        validate_module.CANONICAL_OPTIONAL_FIELDS
-    )
+    expected_allowed = set(OPIFEX_SCHEMA["properties"].keys())
     actual_properties = set(schema.get("properties", {}).keys())
     if actual_properties != expected_allowed:
         violations.append(
@@ -76,7 +80,7 @@ def _schema_parity_violations(schema: dict[str, Any]) -> list[str]:
             f"actual={sorted(actual_properties)}"
         )
 
-    forbidden = set(validate_module.CANONICAL_FORBIDDEN_FIELDS)
+    forbidden = set(NON_CANONICAL_EXTRA_FIELDS)
     leaked_forbidden = sorted(forbidden & actual_properties)
     if leaked_forbidden:
         violations.append(f"forbidden fields present in schema properties: {leaked_forbidden}")
@@ -100,7 +104,7 @@ def _tool_phrase_violations(*, text: str, require_capabilities_term: bool) -> li
     return violations
 
 
-def _tool_definition(name: str) -> dict[str, Any]:
+def _tool_definition(name: str) -> Any:
     return next(tool for tool in mcp_contract.LARVA_MCP_TOOLS if tool["name"] == name)
 
 
@@ -150,6 +154,16 @@ class TestSchemaAcceptanceRejection:
         Includes all optional canonical fields.
         """
         jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_FULL, SCHEMA)
+
+    @given(extra_field=st.sampled_from(NON_CANONICAL_EXTRA_FIELDS))
+    def test_non_canonical_extra_fields_are_rejected_by_schema(self, extra_field: str) -> None:
+        """Schema must reject every legacy extra field, not just one example."""
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec[extra_field] = (
+            {"shell": "read_only"} if extra_field in {"variables", "tools"} else "allow"
+        )
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
 
     def test_tools_field_rejected_by_schema(self) -> None:
         """Assert spec with 'tools' field is rejected by schema — ADR-002."""
@@ -264,3 +278,28 @@ class TestFailurePathDriftDetection:
 
         violations = _schema_parity_violations(drifted_schema)
         assert any("forbidden fields present" in v for v in violations)
+
+
+class TestCanonicalTypingSurface:
+    def test_validator_metadata_does_not_advertise_variables(self) -> None:
+        assert "variables" not in validate_module.CANONICAL_OPTIONAL_FIELDS
+
+    def test_persona_spec_typed_dict_matches_canonical_schema_fields(self) -> None:
+        persona_spec_fields = set(get_type_hints(spec_module.PersonaSpec).keys())
+        assert persona_spec_fields == set(OPIFEX_SCHEMA["properties"].keys())
+
+    def test_assembly_input_does_not_advertise_variables(self) -> None:
+        assembly_input_fields = set(get_type_hints(spec_module.AssemblyInput).keys())
+        assert "variables" not in assembly_input_fields
+
+    def test_mcp_contract_does_not_advertise_variables(self) -> None:
+        persona_spec_properties = mcp_contract._PERSONA_SPEC_INPUT_SCHEMA["properties"]
+        assert "variables" not in persona_spec_properties
+
+        assemble_definition = _tool_definition("larva_assemble")
+        assemble_properties = assemble_definition["input_schema"]["properties"]
+        assert "variables" not in assemble_properties
+
+    def test_transition_alias_is_not_exported_from_canonical_typing_module(self) -> None:
+        assert "SideEffectPolicy" not in spec_module.__all__
+        assert not hasattr(spec_module, "SideEffectPolicy")

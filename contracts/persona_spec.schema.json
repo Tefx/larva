@@ -38,6 +38,7 @@
       "properties": {
         "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
         "top_p": { "type": "number", "minimum": 0, "maximum": 1 },
+        "top_k": { "type": "integer", "minimum": 1 },
         "max_tokens": {
           "type": "integer",
           "minimum": 1,
@@ -53,6 +54,7 @@
         {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
+          "maxItems": 100,
           "uniqueItems": true
         }
       ],
@@ -71,11 +73,6 @@
     "spec_digest": {
       "type": "string",
       "description": "SHA-256 of canonical JSON (sorted keys, no whitespace, spec_digest excluded from input). Computed by larva; optional in raw input, always present in larva output."
-    },
-    "variables": {
-      "type": "object",
-      "additionalProperties": { "type": "string" },
-      "description": "Optional prompt variable map used for deterministic placeholder resolution and unresolved-variable checks."
     }
   },
   "additionalProperties": false

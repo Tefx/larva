@@ -41,17 +41,6 @@ ToolPosture: TypeAlias = Literal["none", "read_only", "read_write", "destructive
 - "destructive": Tools that may cause irreversible side effects
 """
 
-# REJECTED per ADR-002 at the PersonaSpec admission boundary; retained only
-# as an internal compatibility type alias outside canonical admission.
-SideEffectPolicy: TypeAlias = Literal["allow", "approval_required", "read_only"]
-"""Policy governing side-effectful operations.
-
-- "allow": Side effects permitted without restriction
-- "approval_required": Side effects require explicit approval
-- "read_only": Only read operations permitted (no side effects)
-"""
-
-
 # -----------------------------------------------------------------------------
 # Domain Types
 # -----------------------------------------------------------------------------
@@ -141,7 +130,6 @@ class AssemblyInput(TypedDict, total=False):
     constraints: list[ConstraintComponent]
     model: ModelComponent | str
     overrides: dict[str, object]
-    variables: dict[str, str]
 
 
 # -----------------------------------------------------------------------------
@@ -154,7 +142,6 @@ __all__ = [
     "ModelComponent",
     "PersonaSpec",
     "PromptComponent",
-    "SideEffectPolicy",
     "ToolsetComponent",
     "ToolPosture",
 ]

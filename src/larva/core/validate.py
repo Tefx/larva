@@ -72,7 +72,6 @@ CANONICAL_OPTIONAL_FIELDS: tuple[str, ...] = (
     "can_spawn",
     "compaction_prompt",
     "spec_digest",
-    "variables",
 )
 CANONICAL_FORBIDDEN_FIELDS: tuple[str, ...] = ("tools", "side_effect_policy")
 

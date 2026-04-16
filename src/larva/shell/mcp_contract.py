@@ -40,7 +40,6 @@ _PERSONA_SPEC_FIELD_TYPES: dict[str, dict[str, object]] = {
     "can_spawn": {},
     "compaction_prompt": {"type": "string"},
     "spec_digest": {"type": "string"},
-    "variables": {"type": "object"},
 }
 _PERSONA_SPEC_ALLOWED_FIELDS = (
     validate_contract.CANONICAL_REQUIRED_FIELDS + validate_contract.CANONICAL_OPTIONAL_FIELDS
@@ -130,10 +129,6 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                         "Field overrides (wins over components). "
                         f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
                     ),
-                },
-                "variables": {
-                    "type": "object",
-                    "description": "Variable substitution in prompt text",
                 },
             },
             "required": ["id"],
