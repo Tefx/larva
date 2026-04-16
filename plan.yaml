@@ -48496,7 +48496,7 @@ phases:
       \ modified here."
   - id: hard_cut_finish_20260416_core.validator_semantics
     name: Strengthen validator semantics to canonical fail-closed rules
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -48620,6 +48620,42 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T12:13:10.049113+00:00'
+    done_at: '2026-04-16T12:24:10.090895+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- /Users/tefx/Projects/opifex/design/personaspec-v1.md#validation-model\
+      \ — canonical error taxonomy includes EMPTY_REQUIRED_FIELD, INVALID_ID_FORMAT,\
+      \ UNRESOLVED_PLACEHOLDER, INVALID_CAN_SPAWN, EXTRA_FIELD_NOT_ALLOWED.\n- /Users/tefx/Projects/opifex/design/personaspec-v1.md#final-personaspec-v1-field-set\
+      \ — required fields: id, description, prompt, model, capabilities, spec_version;\
+      \ can_spawn supports bool|string[] with max 100.\n- /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary\
+      \ — tools and side_effect_policy are forbidden legacy fields.\n- /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#verification\
+      \ — canonical rejection and local-check expectations reviewed.\n\n## Expected-Red\
+      \ Proof (MANDATORY)\n- New tests first:\n  - Hypothesis extra-field taxonomy\
+      \ test\n  - Hypothesis unresolved-placeholder fail-closed test\n  - canonical\
+      \ extra-field parity test\n- Pre-implementation command:\n  - `.venv/bin/pytest\
+      \ tests/core/test_validate.py -k \"placeholder_like_tokens_are_rejected_without_variables\
+      \ or extra_fields_use_canonical_extra_field_error or unresolved_prompt_placeholders_produce_canonical_error\"\
+      \ -vv`\n- Red output:\n  - unresolved placeholders accepted when variables absent\n\
+      \  - extra fields emitted legacy taxonomy\n  - placeholder semantics test failed\n\
+      \n## Root Cause vs Symptom\n- Root cause:\n  - transition-era logic in `validate.py`\
+      \ keyed unresolved placeholder handling on explicit `variables`\n  - legacy\
+      \ error code path (`FORBIDDEN_EXTRA_FIELD`) remained\n  - missing canonical\
+      \ semantic checks for whitespace required strings and can_spawn constraints\n\
+      - Canonical basis:\n  - checks are directly required by PersonaSpec v1 validation\
+      \ model and final field-set\n\n## Green Proof\n- Post-implementation commands:\n\
+      \  - `.venv/bin/pytest tests/core/test_validate.py tests/core/test_schema_validation.py\
+      \ -vv`\n  - `invar_guard(path=/Users/tefx/Projects/larva/.vectl/worktrees/hard_cut_finish_20260416_core.validator_semantics,\
+      \ changed=true, strict=false, coverage=false, contracts_only=false)`\n- Passing\
+      \ output:\n  - `66 passed in 0.21s`\n- invar_guard:\n  - status: passed\n  -\
+      \ files_checked: 1\n  - errors: 0\n  - warnings: 1 (non-blocking size warning)\n\
+      \  - doctest: passed\n  - crosshair: verified for `src/larva/core/validate.py`\n\
+      \n## Canonical Error Register\n- unresolved placeholder -> `UNRESOLVED_PLACEHOLDER`\n\
+      - extra field (`variables`/`tools`/`side_effect_policy`/unknown) -> `EXTRA_FIELD_NOT_ALLOWED`\n\
+      - invalid can_spawn -> `INVALID_CAN_SPAWN`\n- whitespace-only required field\
+      \ -> `EMPTY_REQUIRED_FIELD`\n- invalid id -> `INVALID_ID_FORMAT`\n- invalid\
+      \ capabilities shape -> `INVALID_CAPABILITIES_SHAPE`\n- invalid posture -> `INVALID_POSTURE`\n\
+      \n## Residual Risk\n- Out-of-scope stale expectation exists in shell test (`tests/shell/test_canonical_boundary_gaps.py`)\
+      \ expecting legacy FORBIDDEN_EXTRA_FIELD on web PATCH surface; this step did\
+      \ not modify shell files by scope.\n- Commit: `b1f7968 fix(validate): enforce\
+      \ canonical validator semantics`"
   - id: hard_cut_finish_20260416_core.normalize_assemble_patch
     name: Move rejection earlier in normalize assemble and patch paths
     status: pending
