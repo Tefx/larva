@@ -48332,3 +48332,10 @@ phases:
     PersonaSpec.
   depends_on:
   - post_cutover_debt_remediation
+- id: hard_cut_finish_20260416_surfaces
+  name: Final Hard-Cut Surface Boundary Alignment
+  status: locked
+  gate: All shared assemble/request/projection surfaces reject legacy vocabulary immediately
+    and no shell/app surface preserves or sanitizes legacy fields.
+  depends_on:
+  - hard_cut_finish_20260416_core
