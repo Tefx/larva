@@ -50288,7 +50288,7 @@ phases:
       \ scope.\n\ncommit_hash: b07cf30813550e6f962c71cfab80cd7bd463b611"
   - id: hard_cut_finish_20260416_finalization.gate
     name: Gate final hard-cut alignment
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: default
@@ -50377,6 +50377,8 @@ phases:
     - hard_cut_finish_20260416_finalization.docs_sync
     - hard_cut_finish_20260416_finalization.batched_retest
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-16T17:15:50.822985+00:00'
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
     status: done
