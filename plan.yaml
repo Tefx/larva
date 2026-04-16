@@ -49071,7 +49071,7 @@ phases:
       gate and expected for hard_cut_finish_20260416_surfaces phase.'
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
-  status: in_progress
+  status: done
   gate: All shared assemble/request/projection surfaces reject legacy vocabulary immediately
     and no shell/app surface preserves or sanitizes legacy fields.
   depends_on:
@@ -49783,7 +49783,7 @@ phases:
       - tests/shell/test_web.py\n\nCommit: `1ec0ba23c46c37bc166ccfabcb18423b3c5f3edf`"
   - id: hard_cut_finish_20260416_surfaces.gate
     name: Gate surface hard-cut closure
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: default
@@ -49869,9 +49869,40 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-16T14:15:58.597937+00:00'
+    done_at: '2026-04-16T14:36:17.282138+00:00'
+    evidence: "## Gate Review Report\n**Phase**: hard_cut_finish_20260416_surfaces\n\
+      \n### refs Read Confirmation (MANDATORY)\n- components_fail_closed refs verified\
+      \ in `src/larva/shell/components.py`\n- facade_mcp_contract refs verified in\
+      \ `src/larva/app/facade.py` and `src/larva/shell/mcp_contract.py`\n- mcp_handler_fail_closed\
+      \ refs verified in `src/larva/shell/mcp_handler_ops.py`\n- cli_hard_cut refs\
+      \ verified in `src/larva/shell/cli.py`, `cli_parser.py`, `cli_commands.py`\n\
+      - python_web_hard_cut refs verified in `src/larva/shell/python_api.py`, `python_api_components.py`,\
+      \ `web.py`\n\n### Step Review Matrix\n- components_fail_closed: PASS — loader\
+      \ rejects `tools`/`side_effect_policy` at component boundary\n- facade_mcp_contract:\
+      \ PASS — facade/MCP assemble contracts exclude `variables`\n- mcp_handler_fail_closed:\
+      \ PASS — MCP allowed keys exclude `variables`, unknown keys rejected\n- cli_hard_cut:\
+      \ PASS — no `--var`, no CLI-side projection sanitization\n- python_web_hard_cut:\
+      \ PASS — Python API/web reject legacy request fields, no projection cleanup\n\
+      \n### Wiring Audit (W1-W8)\n- W1 PASS (public exports have callers)\n- W2 PASS\
+      \ (CLI registration intact)\n- W3 N/A (no config changes)\n- W4 PASS (no NotImplemented\
+      \ stubs)\n- W5 PASS (no write-only fields)\n- W6 PASS (MCP schemas align with\
+      \ handlers)\n- W7 PASS (web endpoints wired)\n- W8 PASS (facade request shape\
+      \ consistent across CLI/MCP/Python API/Web)\n\n### Escape Hatch Audit\n- No\
+      \ stale/phantom escape hatch issues found; verdict PASS.\n\n### Behavioral Proof\
+      \ Register\n- headline: PASS_WITH_DEBT\n- proof_gap_status: NON_BLOCKING\n-\
+      \ blocking_status: CLOSED\n- gate_open_allowed: true\n- uncertainty_sources:\n\
+      \  - pre-existing web PATCH forbidden-field handling issue\n  - pre-existing\
+      \ SideEffectPolicy export/test mismatch from earlier phase\n\n### Gate Decision\
+      \ Basis\n- All target surfaces now reject legacy vocabulary directly and no\
+      \ longer rely on sanitize-and-continue behavior.\n- Cross-cut scans found no\
+      \ remaining projection key-filter cleanup patterns.\n- Expected-red and transport\
+      \ path evidence present for CLI/Python API/Web.\n\n### Blocking Findings\n-\
+      \ none\n\n### Non-blocking debt (pre-existing)\n- Web PATCH forbidden-field\
+      \ path returns 500 instead of expected 400.\n- Legacy SideEffectPolicy expectation\
+      \ mismatch in pre-existing core tests.\n\n### Decision\n- OPEN"
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
-  status: locked
+  status: pending
   gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
     PersonaSpec semantics with no transition-era behavior remaining.
   depends_on:
