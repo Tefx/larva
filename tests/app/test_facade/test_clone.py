@@ -75,14 +75,8 @@ class TestFacadeClone:
         assert validate_module.inputs[0]["id"] == "cloned-persona"
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
-    def test_clone_hard_cut_strips_forbidden_fields_from_source(self) -> None:
-        """Clone of a stored legacy spec strips forbidden fields via normalization.
-
-        Per ADR-002 hard-cut policy: forbidden fields (tools, side_effect_policy)
-        are stripped by normalization before validation. Unknown fields (e.g.
-        custom_field) are rejected by validation. The clone result contains
-        only canonical fields.
-        """
+    def test_clone_hard_cut_rejects_forbidden_fields_from_source(self) -> None:
+        """Clone of a stored legacy spec rejects forbidden fields immediately."""
         source_spec = _canonical_spec("legacy-source", digest="sha256:stale")
         # Simulate a stored legacy record with forbidden and unknown fields
         source_with_legacy = dict(source_spec)
@@ -95,19 +89,11 @@ class TestFacadeClone:
 
         result = facade.clone("legacy-source", "cloned-from-legacy")
 
-        assert isinstance(result, Success)
-        cloned = result.unwrap()
-        assert cloned["id"] == "cloned-from-legacy"
-        # normalize strips tools and side_effect_policy
-        assert "tools" not in cloned
-        assert "side_effect_policy" not in cloned
-        # Spy validate always returns valid, so custom_field survives spy
-        # validation but would be rejected by real validation
-        assert cloned["description"] == "Persona legacy-source"
-        assert cloned["prompt"] == "You are careful."
-        assert cloned["model"] == "gpt-4o-mini"
-        assert cloned["capabilities"] == {"shell": "read_only"}
-        assert cloned["spec_digest"] == _digest_for(cloned)
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_FIELD"
+        assert error["numeric_code"] == 115
+        assert error["details"]["field"] == "tools"
+        assert registry.save_inputs == []
 
     def test_clone_source_not_found_returns_persona_not_found_error(self) -> None:
         """Clone when source does not exist returns PERSONA_NOT_FOUND error."""

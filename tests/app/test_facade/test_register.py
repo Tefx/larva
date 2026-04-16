@@ -215,12 +215,11 @@ class TestFacadeRegisterExposesCanonicalGaps:
 
         result = facade.register(spec_with_tools)
 
-        # Currently this succeeds because _valid_report() returns valid=True
-        # Gap: The spec has tools which should produce EXTRA_FIELD_NOT_ALLOWED error
-        assert isinstance(result, Success), (
-            "Currently register accepts spec with tools - "
-            "this should be rejected after canonical enforcement"
-        )
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_FIELD"
+        assert error["numeric_code"] == 115
+        assert error["details"]["field"] == "tools"
+        assert registry.save_inputs == []
 
     def test_register_rejects_spec_with_side_effect_policy(self):
         """Register should reject specs with side_effect_policy (EXTRA_FIELD_NOT_ALLOWED).

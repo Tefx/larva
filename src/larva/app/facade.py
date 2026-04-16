@@ -16,7 +16,7 @@ Acceptance notes:
 Registry read policy (hard-cut, per ADR-002 / canonical cutover):
 - All registry-sourced PersonaSpec records are normalized before use on any
   read surface (resolve, clone, update, update_batch, export_all, export_ids).
-- Normalization strips forbidden fields (``tools``, ``side_effect_policy``)
+- Normalization rejects forbidden fields (``tools``, ``side_effect_policy``)
   and recomputes ``spec_digest`` before validation, ensuring that stored legacy
   records are converted to canonical form at the facade boundary.
 - No silent field dropping — normalization is an explicit transform.

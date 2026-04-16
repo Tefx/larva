@@ -85,7 +85,9 @@ class TestFacadeList:
         assert error["numeric_code"] == 107
         assert error["details"]["path"] == "/tmp/index.json"
 
-    def test_list_malformed_registry_record_returns_persona_invalid_without_keyerror(self) -> None:
+    def test_list_malformed_registry_record_returns_missing_spec_version_without_keyerror(
+        self,
+    ) -> None:
         malformed = cast(
             "PersonaSpec",
             {
@@ -100,8 +102,7 @@ class TestFacadeList:
         result = facade.list()
 
         error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "PERSONA_INVALID"
-        assert error["numeric_code"] == 101
-        assert "malformed" in error["message"]
-        assert "description" in error["message"]
-        assert "record" in error["details"]
+        assert error["code"] == "MISSING_SPEC_VERSION"
+        assert error["numeric_code"] == 116
+        assert "spec_version" in error["message"]
+        assert error["details"]["field"] == "spec_version"
