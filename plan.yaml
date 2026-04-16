@@ -50475,6 +50475,9 @@ phases:
 
       - docs/tests/fixtures no longer teach transition behavior
 
+      - batched finalization blocker families BF1-BF5 are explicitly closed by the
+      consolidated retest artifact
+
 
       review_depth: THOROUGH
 
@@ -50484,15 +50487,19 @@ phases:
 
       - prompt fully composed / unresolved placeholders fail
 
-      - cross-surface semantic consistency'
+      - cross-surface semantic consistency
+
+      - consolidated blocker closure evidence for finalization remediation path'
     verification: 'full-plan-check final gate.
 
-      - Review full_plan_check and spec_conformance outputs together.
+      - Review the consolidated batched_retest artifact as the authoritative replacement
+      for the prior split verification path.
 
       - Block on any blocker-class divergence or unclosed NEEDS_TEST item intersecting
       the final hard-cut acceptance criteria.
 
-      - Open only with explicit decision basis for every requirement family.'
+      - Open only with explicit decision basis for every requirement family, including
+      BF1-BF5.'
     evidence_template: '## Gate Review Report
 
       **Phase**: hard_cut_finish_20260416_finalization
@@ -50532,8 +50539,7 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.tests_fixtures
     - hard_cut_finish_20260416_finalization.docs_sync
-    - hard_cut_finish_20260416_finalization.full_plan_check
-    - hard_cut_finish_20260416_finalization.spec_conformance
+    - hard_cut_finish_20260416_finalization.batched_retest
     agent: gate-reviewer-tacit
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
