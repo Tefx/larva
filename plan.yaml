@@ -49040,6 +49040,118 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.components_fail_closed
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
+    name: Make MCP handlers reject legacy assemble and projection payloads
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify fail-closed MCP handler behavior.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#verification
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary
+
+
+      touch_paths:
+
+      - src/larva/shell/mcp_handler_ops.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_canonical_boundary_gaps.py
+
+
+      authoritative_interface:
+
+      - MCP assemble path does not accept variables
+
+      - MCP component/projection paths do not sanitize away legacy keys; they fail
+      or never emit them
+
+
+      Scope:
+
+      - Delete variables handling from MCP assemble request parsing.
+
+      - Delete legacy projection cleanup that silently strips tools.
+
+      - Ensure component/toolset responses are canonical because upstream data is
+      canonical, not because handlers scrub it.
+
+
+      Expected-red requirement:
+
+      - First add failing MCP tests showing variables or legacy component payload
+      cleanup is still tolerated.
+
+      - Include one red case for handler-level rejection and one red case for projection
+      leak prevention.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any MCP request schema still mentioning variables
+
+      2. Any handler path that fixes legacy payloads by filtering keys instead of
+      rejecting upstream
+
+      3. Any response proof that depends on sanitation rather than canonical source
+      data'
+    verification: 'local-check protecting MCP surface and final full-plan-check.
+
+      - Expected red: MCP handler tests fail before implementation.
+
+      - Green: targeted MCP tests pass after implementation.
+
+      - Green: invar_guard on changed files passes.
+
+      - Green: evidence shows handler behavior is fail-closed, not sanitize-and-continue.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New failing MCP tests written first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - invar_guard output pasted here:
+
+
+      ## Handler Path Exercised
+
+      - request input -> parsing -> facade call -> response
+
+      - proof no sanitize/filter fallback was required
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_surfaces.facade_mcp_contract
+    agent: python-executor
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
