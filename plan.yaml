@@ -50658,3 +50658,81 @@ phases:
     - hard_cut_finish_20260416_finalization.tests_fixtures
     - hard_cut_finish_20260416_finalization.docs_sync
     agent: python-senior-tacit
+  - id: hard_cut_finish_20260416_finalization.batched_retest
+    name: Authoritative full-plan + spec-conformance retest
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: default
+
+      verification_scope: full-plan-check
+
+
+      Single authoritative retest step for the finalization blocker batch.
+
+
+      This step supersedes the prior parallel verification split by combining:
+
+      - full_plan_check command-family rerun
+
+      - spec_conformance closure audit
+
+
+      Retest goals:
+
+      - prove the blocker families from batched_blocker_fix are closed
+
+      - rerun the authoritative suite/command family used for final hard-cut verification
+
+      - produce one consolidated decision basis for both test failures and spec-conformance
+      drift
+
+
+      Required coverage:
+
+      1. Repo/local test evidence for the previously failing families.
+
+      2. Explicit confirmation that public rejection paths now return structured 400
+      behavior for NormalizeError/PatchError rather than PATCH 500.
+
+      3. Explicit confirmation that docs/examples no longer teach variables-era behavior.
+
+      4. Explicit disposition check for validator-v1 warning/model_params semantics.
+
+      5. Vocabulary consistency check proving EXTRA_FIELD_NOT_ALLOWED is the public
+      rejection path and stale FORBIDDEN_EXTRA_FIELD expectations are gone.
+
+
+      Finding blocker regressions is still a successful verification outcome; however
+      this retest may only support gate-open if all blocker families are closed.'
+    verification: '- Run the authoritative full-plan-check suite/command family plus
+      the final spec-conformance review criteria.
+
+      - expected_result: green.
+
+      - Provide one blocker-closure register covering BF1-BF5 and explicitly state
+      PASS | PASS_WITH_DEBT | FAIL.
+
+      - Gate-protecting proof must include commands, outputs, and conformance findings
+      in one artifact.'
+    evidence_template: "## Finalization Retest Report\n\n**Tester**: integration-verifier-tacit\
+      \ (independent)\n**Intent**: retest_green\n**Expected result**: green\n\n###\
+      \ refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n### Authoritative\
+      \ Commands\n```text\n<paste exact full_plan_check and spec-conformance commands>\n\
+      ```\n\n### Raw Outputs\n```text\n<paste key stdout/stderr or audit excerpts>\n\
+      ```\n\n### Blocker Closure Register\n- BF1 stale SideEffectPolicy export expectations:\
+      \ CLOSED | OPEN\n  - proof: <test/audit output>\n- BF2 stale FORBIDDEN_EXTRA_FIELD\
+      \ expectation: CLOSED | OPEN\n  - proof: <test/audit output>\n- BF3 facade PATCH\
+      \ 500 gap: CLOSED | OPEN\n  - proof: <structured 400 evidence>\n- BF4 variables-era\
+      \ docs/examples: CLOSED | OPEN\n  - proof: <conformance evidence>\n- BF5 validator-v1/model_params\
+      \ disposition: CLOSED | OPEN\n  - proof: <conformance evidence>\n\n### Conformance\
+      \ Decision Basis\n- requirements_reviewed: [...]\n- unresolved_statuses: [...]\n\
+      - non_intersection_or_blocking_basis: <explicit>\n\n### Headline\n- PASS\n-\
+      \ PASS_WITH_DEBT\n- FAIL"
+    depends_on:
+    - hard_cut_finish_20260416_finalization.batched_blocker_fix
+    agent: integration-verifier-tacit
