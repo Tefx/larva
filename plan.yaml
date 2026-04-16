@@ -49275,6 +49275,122 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_surfaces.mcp_handler_fail_closed
     agent: python-executor
+  - id: hard_cut_finish_20260416_surfaces.python_web_hard_cut
+    name: Remove variables and legacy projection cleanup from Python API and web surfaces
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify Python API and web hard-cut behavior.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#verification
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#forbidden-legacy-vocabulary
+
+
+      touch_paths:
+
+      - src/larva/shell/python_api.py
+
+      - src/larva/shell/python_api_components.py
+
+      - src/larva/shell/web.py
+
+      - tests/shell/test_python_api.py
+
+      - tests/shell/test_web.py
+
+
+      authoritative_interface:
+
+      - Python API assemble no longer accepts variables
+
+      - Python API/web component projections never sanitize legacy keys for convenience
+
+
+      Scope:
+
+      - Delete variables from Python API assemble kwargs and forwarding.
+
+      - Delete projection cleanup in python_api_components.
+
+      - Delete web assemble-path variables admission.
+
+      - Keep behavior aligned with MCP/CLI hard cut rather than reintroducing a private
+      compatibility path.
+
+
+      Expected-red requirement:
+
+      - First add failing Python API/web tests that prove variables or sanitize-and-continue
+      behavior still exists.
+
+      - Include at least one red case for Python API assemble input and one red case
+      for web request input.
+
+
+      Completion Criteria (stub exclusion):
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Shared
+      consumer surfaces must interpret the same canonical facts without private compatibility
+      logic.'
+    verification: 'phase-check protecting cross-surface conformance and final gate.
+
+      - Expected red: Python API/web tests fail before implementation.
+
+      - Green: targeted Python API/web tests pass after implementation.
+
+      - Green: invar_guard on changed files passes.
+
+      - Green: evidence shows Python API, web, CLI, and MCP now share the same canonical
+      request semantics.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - New failing Python API/web tests written first:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Conformance Proof
+
+      - Python API request case:
+
+      - Web request case:
+
+      - Projection case:
+
+
+      ## Green Proof
+
+      - Exact command(s) run after implementation:
+
+      - Passing output pasted here:
+
+      - invar_guard output pasted here:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_surfaces.cli_hard_cut
+    agent: python-executor
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
   status: locked
