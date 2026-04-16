@@ -49615,3 +49615,100 @@ phases:
 
       - Remaining ambiguity or "none"'
     agent: python-executor
+  - id: hard_cut_finish_20260416_finalization.docs_sync
+    name: Sync docs and migration notes to the hard cut
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: technical_debt_remediation
+
+
+      Implement-and-verify documentation convergence for the hard cut.
+
+
+      spec_refs:
+
+      - /Users/tefx/Projects/larva/design/hard-cutover-canonical-alignment.md#target-end-state
+
+      - /Users/tefx/Projects/opifex/design/final-canonical-contract.md#acceptance-criteria
+
+      - /Users/tefx/Projects/opifex/design/personaspec-v1.md#final-decisions
+
+
+      touch_paths:
+
+      - INTERFACES.md
+
+      - USAGE.md
+
+      - USER_GUIDE.md
+
+      - design/contract-metadata-single-source-basis.md
+
+      - design/opifex-canonical-authority-basis.md
+
+      - MIGRATION-002-capability-intent.md
+
+
+      authoritative_interface:
+
+      - docs no longer teach variables, tools, side_effect_policy, transition tolerance,
+      or accept-and-clean behavior
+
+      - docs state prompt is fully composed text and unresolved placeholders fail
+
+
+      Scope:
+
+      - Remove transition-era guidance and compatibility wording.
+
+      - Align examples, tables, and migration notes to canonical-only PersonaSpec.
+
+      - Make failure-closed semantics explicit for component/toolset and patch/update
+      paths.
+
+
+      Completion Criteria:
+
+      - Every touched doc speaks canonical-only vocabulary.
+
+      - No examples or prose teach variables or legacy alias acceptance.'
+    verification: 'phase-check protecting final conformance and gate.
+
+      - Grep or document evidence shows no transition-era guidance remains in touched
+      docs.
+
+      - Examples match canonical-only PersonaSpec semantics.
+
+      - No doc still advertises variables/tools/side_effect_policy as accepted input.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Documentation Delta
+
+      - Docs updated:
+
+      - Transition-era statements removed:
+
+      - Canonical-only statements added:
+
+
+      ## Proof
+
+      - Exact search or review commands used:
+
+      - Output pasted here:
+
+
+      ## Residual Risk
+
+      - Remaining ambiguity or "none"'
+    depends_on:
+    - hard_cut_finish_20260416_finalization.tests_fixtures
+    agent: doc-reviewer-tacit
