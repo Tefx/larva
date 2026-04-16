@@ -50717,7 +50717,7 @@ phases:
       \ `3788bee8cc37dcf5b18207a42c159ca73cf01882`"
   - id: hard_cut_finish_20260416_finalization.bf1_bf4_retest
     name: Retest BF1-BF4 closure after alignment-only remediation
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -50754,3 +50754,5 @@ phases:
     depends_on:
     - hard_cut_finish_20260416_finalization.bf1_bf4_alignment
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-16T17:32:50.933913+00:00'
