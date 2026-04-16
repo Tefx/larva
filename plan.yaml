@@ -50379,7 +50379,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: hard_cut_finish_20260416_finalization.batched_blocker_fix
     name: Batched blocker remediation for final hard-cut failures
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -50502,6 +50502,29 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-16T16:36:03.675984+00:00'
+    done_at: '2026-04-16T16:50:25.210721+00:00'
+    evidence: "## Batched Blocker Remediation Evidence\n\n### Commands run\n- Targeted\
+      \ regression suites across core/facade/shell/repro/canonical-cutover surfaces\n\
+      - invar_guard changed-files run\n- commit and verification status checks\n\n\
+      ### Outputs\n- Pytest: `622 passed in 0.66s`\n- invar_guard: passed (0 errors,\
+      \ 1 non-blocking file-size warning)\n- Commit: `ebfabcf928ccd029ea0d022d5bbea179633ff117`\
+      \ (`fix: align canonical rejection surfaces`)\n\n### Blocker Closure Mapping\n\
+      - BF1 stale SideEffectPolicy export expectations\n  - changed_files: `tests/core/test_spec.py`,\
+      \ `tests/canonical_cutover/test_hard_cutover_readiness.py`\n  - closure: removed\
+      \ stale export expectations; canonical non-export asserted\n- BF2 stale FORBIDDEN_EXTRA_FIELD\
+      \ expectations\n  - changed_files: facade/shell/repro test files and conformance\
+      \ notes\n  - closure: aligned expectations to runtime `EXTRA_FIELD_NOT_ALLOWED`\n\
+      - BF3 facade/web PATCH rejection path gap\n  - changed_files: `src/larva/app/facade.py`\
+      \ + regression tests in facade/python_api/web/mcp/cli paths\n  - closure: NormalizeError/PatchError\
+      \ now projected as structured Larva errors; PATCH forbidden roots no longer\
+      \ leak generic 500 path\n- BF4 variables-era docs/examples\n  - changed_files:\
+      \ `README.md`, `USAGE.md`, `INTERFACES.md`\n  - closure: removed variables-era\
+      \ examples/flags and canonicalized prompt policy\n- BF5 validator-v1/model_params\
+      \ disposition\n  - changed_files: docs + tests/repro updates\n  - closure: documented\
+      \ current runtime warning/model_params disposition explicitly; tests updated\
+      \ to canonical semantics\n\n### Residual Ambiguity Check\n- Canonical rejection\
+      \ vocabulary now consistent across updated runtime/tests/docs.\n- Remaining\
+      \ non-blocking item: facade file-size warning from invar.\n\ncommit_hash: ebfabcf928ccd029ea0d022d5bbea179633ff117"
   - id: hard_cut_finish_20260416_finalization.batched_retest
     name: Authoritative full-plan + spec-conformance retest
     status: pending
