@@ -48339,3 +48339,10 @@ phases:
     and no shell/app surface preserves or sanitizes legacy fields.
   depends_on:
   - hard_cut_finish_20260416_core
+- id: hard_cut_finish_20260416_finalization
+  name: Final Hard-Cut Convergence and Verification
+  status: locked
+  gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
+    PersonaSpec semantics with no transition-era behavior remaining.
+  depends_on:
+  - hard_cut_finish_20260416_surfaces
