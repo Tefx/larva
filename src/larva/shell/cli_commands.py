@@ -499,13 +499,6 @@ def component_show_command(
 
     payload = cast("dict[str, object]", dict(query_result.unwrap()))
 
-    # Strip mirrored legacy fields per canonical cutover policy
-    # ADR-002: toolsets strip 'tools', constraints strip 'side_effect_policy'
-    if component_type in ("toolset", "toolsets"):
-        payload = {k: v for k, v in payload.items() if k != "tools"}
-    elif component_type in ("constraint", "constraints"):
-        payload = {k: v for k, v in payload.items() if k != "side_effect_policy"}
-
     cli_result: CliCommandResult = {
         "exit_code": EXIT_OK,
         "stdout": _render_payload_for_text("component show", payload).unwrap(),

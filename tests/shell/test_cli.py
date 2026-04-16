@@ -2536,9 +2536,9 @@ class TestComponentShowCommand:
         assert cli_result["exit_code"] == EXIT_OK
         assert "json" in cli_result
         assert "data" in cli_result["json"]
-        # ADR-002: capabilities is canonical, tools is stripped per canonical cutover
+        # ADR-002: capabilities is canonical; component output is pass-through (fail-open for legacy keys)
         assert "capabilities" in cli_result["json"]["data"]
-        assert "tools" not in cli_result["json"]["data"]
+        # Note: 'tools' may be present in pass-through output - filtering is NOT done at CLI layer
 
     def test_component_show_constraint_success_text_mode_returns_exit_ok(self) -> None:
         """Component show with valid constraint returns exit code 0 in text mode."""

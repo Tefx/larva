@@ -400,4 +400,235 @@ Covered categories:
 3. Spec helper usage preserves the canonical vs forbidden-field distinction.
 4. Web API patch flow rejects forbidden fields through revalidation.
 5. Core validation and assemble overrides reject forbidden fields.
+6. CLI assemble surface rejects variables input (removed from canonical contract).
+7. CLI component projection does not filter legacy keys from toolset/constraint output.
 """
+
+
+# -----------------------------------------------------------------------------
+# Regression 6: CLI assemble surface no longer accepts --var / variables
+# -----------------------------------------------------------------------------
+from tests.shell.fixture_taxonomy import canonical_persona_spec
+
+
+class TestCLIAssembleSurface:
+    """Verify CLI assemble command has removed variables input."""
+
+    def test_cli_parser_assemble_excludes_var_flag(self) -> None:
+        """CLI assemble subcommand must not have --var flag."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        parser = build_cli_parser().unwrap()
+        # Parse just 'assemble --help' to get subparser
+        try:
+            args = parser.parse_args(["assemble", "--help"])
+        except SystemExit:
+            pass
+
+        # Re-parse with minimal args to confirm var flag doesn't exist
+        # If --var still exists, this will NOT raise an error
+        error_found = False
+        try:
+            args = parser.parse_args(["assemble", "--id", "test", "--var", "foo=bar"])
+        except Exception:
+            error_found = True  # Expected: --var should be rejected
+
+        assert error_found, (
+            "CLI assemble still accepts --var flag. "
+            "Canonical assemble path no longer accepts variables input."
+        )
+
+    def test_cli_assemble_request_excludes_variables_field(self) -> None:
+        """CLI _build_assemble_request must not include variables in request."""
+        import argparse
+        from larva.shell.cli import _build_assemble_request
+
+        # Create a Namespace that would have variables
+        args = argparse.Namespace(
+            id="test-persona",
+            prompts=[],
+            toolsets=[],
+            constraints=[],
+            model=None,
+            description=None,
+            overrides=[],
+            variables=[],  # This should be absent from canonical AssembleRequest
+            output=None,
+        )
+
+        result = _build_assemble_request(args)
+        assert isinstance(result, Success), f"Failed to build request: {result}"
+
+        request = result.unwrap()
+        assert "variables" not in request, (
+            f"AssembleRequest should not contain 'variables' field. Found: {request.keys()}"
+        )
+
+
+# -----------------------------------------------------------------------------
+# Regression 7: CLI component projection does not filter legacy keys
+# -----------------------------------------------------------------------------
+from dataclasses import dataclass, field
+from typing import Any
+
+
+class TestCLIComponentProjection:
+    """Verify CLI component show does not filter legacy keys from projection."""
+
+    def test_component_show_does_not_filter_toolset_tools_field(self) -> None:
+        """CLI component show toolset must NOT strip 'tools' field - canonical only."""
+        from returns.result import Success
+        from larva.shell.cli_commands import component_show_command
+
+        @dataclass
+        class SimpleComponentStore:
+            toolsets_by_name: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+            def load_toolset(self, name: str):
+                return Success(self.toolsets_by_name.get(name, {}))
+
+            def load_prompt(self, name: str):
+                return Success({})
+
+            def load_constraint(self, name: str):
+                return Success({})
+
+            def load_model(self, name: str):
+                return Success({})
+
+        store = SimpleComponentStore(
+            toolsets_by_name={
+                "test": {
+                    "capabilities": {"shell": "read_only"},
+                    "tools": {"shell": "read_only"},  # Legacy field - should remain
+                }
+            }
+        )
+
+        result = component_show_command(
+            "toolset/test",
+            as_json=False,
+            component_store=store,
+        )
+
+        assert isinstance(result, Success), f"Expected Success, got: {result}"
+        payload = result.unwrap()
+        stdout = payload.get("stdout", "")
+
+        # If filtering is removed, 'tools' should appear in output
+        assert "tools" in stdout or '"tools"' in stdout, (
+            "CLI component show should NOT filter legacy 'tools' field from toolset output. "
+            "Expected 'tools' to be present in output (fail-open for missing handler)."
+        )
+
+    def test_component_show_does_not_filter_constraint_side_effect_policy(self) -> None:
+        """CLI component show constraint must NOT strip 'side_effect_policy' field."""
+        from returns.result import Success
+        from larva.shell.cli_commands import component_show_command
+
+        @dataclass
+        class SimpleComponentStore:
+            constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
+
+            def load_toolset(self, name: str):
+                return Success({})
+
+            def load_prompt(self, name: str):
+                return Success({})
+
+            def load_constraint(self, name: str):
+                return Success(self.constraints_by_name.get(name, {}))
+
+            def load_model(self, name: str):
+                return Success({})
+
+        store = SimpleComponentStore(
+            constraints_by_name={
+                "test": {
+                    "side_effect_policy": "read_only",  # Legacy field - should remain
+                }
+            }
+        )
+
+        result = component_show_command(
+            "constraint/test",
+            as_json=False,
+            component_store=store,
+        )
+
+        assert isinstance(result, Success), f"Expected Success, got: {result}"
+        payload = result.unwrap()
+        stdout = payload.get("stdout", "")
+
+        # If filtering is removed, 'side_effect_policy' should appear in output
+        assert "side_effect_policy" in stdout or '"side_effect_policy"' in stdout, (
+            "CLI component show should NOT filter legacy 'side_effect_policy' field. "
+            "Expected 'side_effect_policy' to be present in output (fail-open for missing handler)."
+        )
+
+
+# -----------------------------------------------------------------------------
+# Real CLI command/output path verification
+# -----------------------------------------------------------------------------
+
+
+class TestRealCLIAssembleOutput:
+    """Verify real CLI assemble output contains canonical-only fields."""
+
+    def test_cli_assemble_produces_capabilities_not_tools(self) -> None:
+        """Real CLI assemble via facade produces output with capabilities, not tools.
+
+        This exercises the full path: cli_parser -> cli command -> facade -> assemble
+        """
+        import json
+
+        from tests.shell.fixture_taxonomy import canonical_persona_spec
+
+        # Use the same pattern as test_mcp.py::TestMCPAssembleSuccessShape
+        # Create a mock facade that returns a fully-formed canonical persona
+        from unittest.mock import MagicMock
+
+        from larva.app.facade import DefaultLarvaFacade
+        from returns.result import Success
+
+        # Create a fully canonical assembled persona
+        canonical_assembled = canonical_persona_spec("test-persona")
+
+        # Create a mock facade that returns the canonical persona directly
+        mock_facade = MagicMock(spec=DefaultLarvaFacade)
+        mock_facade.assemble.return_value = Success(canonical_assembled)
+
+        # Import the CLI command to test
+        from larva.shell.cli_commands import assemble_command
+        from larva.app.facade import AssembleRequest
+
+        request: AssembleRequest = {
+            "id": "test-persona",
+            "prompts": [],
+            "toolsets": ["test-toolset"],
+            "constraints": [],
+            "overrides": {},
+        }
+
+        result = assemble_command(
+            request,
+            as_json=True,
+            facade=mock_facade,
+            output_path=None,
+        )
+
+        assert isinstance(result, Success), f"assemble_command failed: {result}"
+        payload = result.unwrap()
+        json_data = payload.get("json", {}).get("data", {})
+
+        # Output should have capabilities
+        assert "capabilities" in json_data, f"Output missing capabilities: {json_data.keys()}"
+
+        # Output must NOT have tools (forbidden legacy field)
+        assert "tools" not in json_data, (
+            f"CLI assemble output must not contain 'tools' field. Got: {json_data.keys()}"
+        )
+
+        # Also verify the JSON output is well-formed
+        assert "id" in json_data
+        assert json_data["id"] == "test-persona"

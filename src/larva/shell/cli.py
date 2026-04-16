@@ -99,9 +99,6 @@ def _build_assemble_request(
     overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
     if isinstance(overrides, Failure):
         return Failure(overrides.failure())
-    variables = _parse_key_value_pairs(cast("list[str]", args.variables), flag="--var")
-    if isinstance(variables, Failure):
-        return Failure(variables.failure())
 
     request: AssembleRequest = {
         "id": cast("str", args.id),
@@ -109,7 +106,6 @@ def _build_assemble_request(
         "toolsets": cast("list[str]", args.toolsets),
         "constraints": cast("list[str]", args.constraints),
         "overrides": overrides.unwrap(),
-        "variables": cast("dict[str, str]", variables.unwrap()),
     }
     description = cast("str | None", args.description)
     if description is not None:

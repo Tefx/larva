@@ -87,14 +87,6 @@ def _add_persona_read_commands(
         help="override a field in the assembled persona (repeatable)",
     )
     assemble_parser.add_argument(
-        "--var",
-        dest="variables",
-        action="append",
-        default=[],
-        metavar="KEY=VALUE",
-        help="set a template variable (repeatable)",
-    )
-    assemble_parser.add_argument(
         "-o",
         "--output",
         metavar="FILE",
