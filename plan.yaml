@@ -50658,3 +50658,48 @@ phases:
       - PASS_WITH_DEBT
 
       - gate_open_allowed: true'
+  - id: hard_cut_finish_20260416_finalization.bf1_bf4_alignment
+    name: Align stale facade tests and docstring with reject-immediate semantics
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: default
+
+
+      Minimal remediation for the remaining final gate blockers BF1-BF4.
+
+
+      Scope is intentionally narrow and MUST stay tests+docstring only:
+
+      - BF1: update `tests/app/test_facade/test_clone.py` so clone-path assertions
+      match reject-immediate behavior rather than strip/success behavior.
+
+      - BF2: update `tests/app/test_facade/test_register.py` so forbidden `tools`
+      expectations match canonical rejection semantics instead of Success.
+
+      - BF3: update `tests/app/test_facade/test_list.py` so the public error expectation
+      matches `MISSING_SPEC_VERSION` rather than stale `PERSONA_INVALID`.
+
+      - BF4: update the relevant `facade.py` docstring language so it states forbidden
+      fields are rejected, not stripped.
+
+
+      Guardrails:
+
+      - Do NOT widen acceptance semantics.
+
+      - Do NOT change runtime behavior except docstring wording.
+
+      - Do NOT reopen prior batched blocker scope; this step only closes the residual
+      stale assertions/docstring mismatch reported by the final gate.'
+    verification: '- Change set is limited to stale tests and docstring alignment
+      for BF1-BF4.
+
+      - No semantic widening or runtime acceptance changes beyond documentation wording.
+
+      - Evidence must map each blocker BF1-BF4 to the exact updated artifact(s).'
+    depends_on:
+    - hard_cut_finish_20260416_finalization.batched_retest
+    agent: python-senior-tacit
