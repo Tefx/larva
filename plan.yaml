@@ -49642,7 +49642,7 @@ phases:
       \ impl(shell): remove variables parsing and legacy filtering from CLI surfaces`"
   - id: hard_cut_finish_20260416_surfaces.python_web_hard_cut
     name: Remove variables and legacy projection cleanup from Python API and web surfaces
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -49758,6 +49758,29 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-16T13:55:24.556605+00:00'
+    done_at: '2026-04-16T14:15:33.857063+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- final-canonical-contract forbidden\
+      \ legacy vocabulary reviewed (`tools`, `side_effect_policy` forbidden on shared\
+      \ surfaces).\n- hard-cutover-canonical-alignment target state reviewed (canonical-only\
+      \ request vocabulary).\n\n## Expected-Red Proof (MANDATORY)\n- Added failing\
+      \ tests first:\n  - web assemble rejects `variables` root input\n  - python\
+      \ API rejects `variables` in overrides\n- Pre-implementation command:\n  - `uv\
+      \ run pytest tests/shell/test_web.py::TestWebSurfaceEndpoints::test_post_api_personas_assemble_rejects_variables_input\
+      \ -v --tb=short`\n- Failing output:\n  - expected 400, got 200 (variables silently\
+      \ ignored pre-fix)\n\n## Conformance Proof\n- Python API request case:\n  -\
+      \ `_invoke()` request_dict includes only canonical kwargs\n  - `_apply_overrides()`\
+      \ rejects `variables` via `FORBIDDEN_OVERRIDE_FIELD` (numeric_code=113)\n- Web\
+      \ request case:\n  - `api_assemble_persona()` validates input keys against canonical\
+      \ allowed_fields and returns 400 INVALID_INPUT on unknown fields (`variables`)\n\
+      - Projection case:\n  - `python_api_components._component_show_result()` no\
+      \ longer sanitizes legacy keys; upstream load boundary is authoritative for\
+      \ rejection\n\n## Green Proof\n- Commands:\n  - `uv run pytest tests/shell/test_python_api.py\
+      \ tests/shell/test_web.py -q`\n  - `uv run invar guard --changed`\n- Output:\n\
+      \  - `133 passed in 0.31s`\n  - invar: passed, errors=0, warnings=0\n\n## Residual\
+      \ Risk\n- Pre-existing unrelated failure: `test_web_patch_rejects_tools_at_canonical_boundary`\
+      \ in canonical boundary gaps remains outside this step scope.\n\nFiles changed:\n\
+      - src/larva/shell/web.py\n- src/larva/shell/python_api_components.py\n- tests/shell/test_python_api.py\n\
+      - tests/shell/test_web.py\n\nCommit: `1ec0ba23c46c37bc166ccfabcb18423b3c5f3edf`"
   - id: hard_cut_finish_20260416_surfaces.gate
     name: Gate surface hard-cut closure
     status: pending
