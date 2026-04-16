@@ -34,8 +34,9 @@ from typing import Any, Protocol, TypedDict, cast
 from returns.result import Failure, Result, Success
 
 from larva.core.component_error_projection import project_component_store_error
+from larva.core.normalize import NormalizeError
 from larva.core.assemble import AssemblyError
-from larva.core.patch import apply_patches
+from larva.core.patch import PatchError, apply_patches
 from larva.core.spec import AssemblyInput, PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStore
@@ -59,6 +60,9 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
     "REGISTRY_DELETE_FAILED": 111,
     "INVALID_CONFIRMATION_TOKEN": 112,
     "FORBIDDEN_OVERRIDE_FIELD": 113,
+    "FORBIDDEN_PATCH_FIELD": 114,
+    "FORBIDDEN_FIELD": 115,
+    "MISSING_SPEC_VERSION": 116,
 }
 
 
@@ -256,11 +260,28 @@ class DefaultLarvaFacade(LarvaFacade):
         spec: PersonaSpec,
     ) -> Result[PersonaSpec, LarvaError]:
         """Normalize then verify canonical admission contract conformance."""
-        normalized = self._normalize.normalize_spec(spec)
+        try:
+            normalized = self._normalize.normalize_spec(spec)
+        except NormalizeError as error:
+            return Failure(self._normalize_error(error))
         report = self.validate(normalized)
         if not report["valid"]:
             return Failure(self._validation_error(report))
         return Success(normalized)
+
+    def _normalize_error(self, error: NormalizeError) -> LarvaError:
+        return self._error(
+            code=error.code,
+            message=error.message,
+            details=cast("dict[str, object]", dict(error.details)),
+        )
+
+    def _patch_error(self, error: PatchError) -> LarvaError:
+        return self._error(
+            code=error.code,
+            message=error.message,
+            details=cast("dict[str, object]", dict(error.details)),
+        )
 
     def _validate_assemble_request(self, request: AssembleRequest) -> Result[None, LarvaError]:
         unknown_fields = sorted(set(request) - _ASSEMBLE_REQUEST_ALLOWED_FIELDS)
@@ -480,7 +501,10 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
-        patched = apply_patches(existing, patches)
+        try:
+            patched = apply_patches(existing, patches)
+        except PatchError as error:
+            return Failure(self._patch_error(error))
 
         normalized_result = self._normalize_and_validate(cast("PersonaSpec", patched))
         if isinstance(normalized_result, Failure):

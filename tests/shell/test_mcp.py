@@ -440,6 +440,9 @@ class TestMCPErrorCodes:
             "REGISTRY_DELETE_FAILED",
             "INVALID_CONFIRMATION_TOKEN",
             "FORBIDDEN_OVERRIDE_FIELD",
+            "FORBIDDEN_PATCH_FIELD",
+            "FORBIDDEN_FIELD",
+            "MISSING_SPEC_VERSION",
         }
         assert set(mcp_module.LARVA_ERROR_CODES.keys()) == required_codes
 
@@ -473,7 +476,7 @@ class TestMCPValidateSuccessShape:
         report = {
             "valid": True,
             "errors": [],
-            "warnings": ["UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"],
+            "warnings": ["FUTURE_WARNING: reserved validation warning channel"],
         }
         facade = _make_facade(validate_report=report)
         spec = _canonical_spec("test")
@@ -481,9 +484,7 @@ class TestMCPValidateSuccessShape:
         result = facade.validate(spec)
 
         assert result["valid"] is True
-        assert result["warnings"] == [
-            "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"
-        ]
+        assert result["warnings"] == ["FUTURE_WARNING: reserved validation warning channel"]
 
 
 class TestMCPAssembleSuccessShape:

@@ -70,7 +70,7 @@ _SCAN_EXCLUDE_RELATIVE: list[str] = [
     "core/validate.py",
     # Normalize explicitly references forbidden fields for transition stripping
     "core/normalize.py",
-    # Spec.py has SideEffectPolicy type alias (retired but still typed)
+    # Spec.py may mention forbidden fields in contract docs, but must not export legacy aliases
     "core/spec.py",
     # Assemble has _FORBIDDEN_OVERRIDE_FIELDS and _merge_capabilities legacy read
     "core/assemble.py",

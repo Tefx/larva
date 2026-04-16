@@ -86,11 +86,11 @@ def test_validate_forbidden_tools():
         "Issue: spec with 'tools' field must be rejected at canonical admission."
     )
     error_codes = [e["code"] for e in report["errors"]]
-    assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-        f"Expected FORBIDDEN_EXTRA_FIELD error for 'tools', got: {error_codes}"
+    assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+        f"Expected EXTRA_FIELD_NOT_ALLOWED error for 'tools', got: {error_codes}"
     )
     forbidden_messages = [
-        e["message"] for e in report["errors"] if e["code"] == "FORBIDDEN_EXTRA_FIELD"
+        e["message"] for e in report["errors"] if e["code"] == "EXTRA_FIELD_NOT_ALLOWED"
     ]
     assert any("tools" in m.lower() for m in forbidden_messages), (
         f"Expected 'tools' in forbidden field message, got: {forbidden_messages}"
@@ -105,8 +105,8 @@ def test_validate_forbidden_side_effect_policy():
     report = validate_spec(FORBIDDEN_SIDE_EFFECT)
     assert report["valid"] is False, "Issue: spec with 'side_effect_policy' must be rejected."
     error_codes = [e["code"] for e in report["errors"]]
-    assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-        f"Expected FORBIDDEN_EXTRA_FIELD for 'side_effect_policy', got: {error_codes}"
+    assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+        f"Expected EXTRA_FIELD_NOT_ALLOWED for 'side_effect_policy', got: {error_codes}"
     )
     print("PASS: 'side_effect_policy' is rejected at canonical admission")
 
@@ -118,8 +118,8 @@ def test_validate_unknown_field():
     report = validate_spec(FORBIDDEN_UNKNOWN_FIELD)
     assert report["valid"] is False, "Issue: spec with unknown top-level field must be rejected."
     error_codes = [e["code"] for e in report["errors"]]
-    assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-        f"Expected FORBIDDEN_EXTRA_FIELD for unknown field, got: {error_codes}"
+    assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+        f"Expected EXTRA_FIELD_NOT_ALLOWED for unknown field, got: {error_codes}"
     )
     print("PASS: unknown top-level field is rejected at canonical admission")
 
@@ -151,37 +151,26 @@ def test_validate_invalid_spec_version():
 
 
 def test_normalize_preserves_forbidden_fields_for_rejection():
-    """normalize_spec preserves forbidden fields and never maps them to capabilities."""
-    from larva.core.normalize import normalize_spec
+    """normalize_spec rejects forbidden fields instead of preserving compatibility."""
+    import pytest
 
-    # ADR-002 hard-cut: tools remains forbidden input and is not mapped.
-    spec_tools_only = {"id": "test", "tools": {"shell": "read_write"}}
-    result = normalize_spec(spec_tools_only)
-    assert dict(result).get("tools") == {"shell": "read_write"}, (
-        "Issue: normalize must preserve forbidden `tools` so validation can reject it explicitly."
-    )
-    assert "capabilities" not in result, "Issue: normalize must not map tools to capabilities."
+    from larva.core.normalize import NormalizeError, normalize_spec
 
-    # ADR-002 hard-cut: canonical capabilities stay intact, forbidden tools remains visible.
-    result2 = normalize_spec(dict(CANONICAL_SUCCESS, tools={"shell": "read_write"}))
-    assert dict(result2).get("tools") == {"shell": "read_write"}, (
-        "Issue: normalize must preserve forbidden `tools` for downstream rejection."
-    )
-    assert result2["capabilities"] == CANONICAL_SUCCESS["capabilities"], (
-        f"Issue: canonical capabilities must remain unchanged. Got: {result2['capabilities']}"
-    )
+    with pytest.raises(NormalizeError) as tools_error:
+        normalize_spec({"id": "test", "spec_version": "0.1.0", "tools": {"shell": "read_write"}})
+    assert tools_error.value.code == "FORBIDDEN_FIELD"
+    assert tools_error.value.details == {"field": "tools"}
 
-    # side_effect_policy remains visible for rejection.
-    result3 = normalize_spec(dict(CANONICAL_SUCCESS, side_effect_policy="read_only"))
-    assert dict(result3).get("side_effect_policy") == "read_only", (
-        "Issue: normalize must preserve forbidden `side_effect_policy` for explicit rejection."
-    )
+    with pytest.raises(NormalizeError) as side_effect_error:
+        normalize_spec(dict(CANONICAL_SUCCESS, side_effect_policy="read_only"))
+    assert side_effect_error.value.code == "FORBIDDEN_FIELD"
+    assert side_effect_error.value.details == {"field": "side_effect_policy"}
 
-    print("PASS: normalize preserves forbidden fields without canonicalizing them")
+    print("PASS: normalize rejects forbidden fields without canonicalizing them")
 
 
 def test_normalize_computes_spec_digest():
-    """normalize_spec computes spec_digest and defaults spec_version."""
+    """normalize_spec computes spec_digest while preserving required spec_version."""
     from larva.core.normalize import normalize_spec
 
     result = normalize_spec(dict(CANONICAL_SUCCESS))
@@ -190,9 +179,9 @@ def test_normalize_computes_spec_digest():
         f"Issue: spec_digest must start with 'sha256:', got: {result['spec_digest']}"
     )
     assert result["spec_version"] == "0.1.0", (
-        f"Issue: spec_version must default to '0.1.0', got: {result['spec_version']}"
+        f"Issue: spec_version must stay pinned to '0.1.0', got: {result['spec_version']}"
     )
-    print("PASS: normalize computes spec_digest and defaults spec_version")
+    print("PASS: normalize computes spec_digest and preserves required spec_version")
 
 
 def test_normalize_deterministic():
@@ -287,8 +276,8 @@ def test_python_api_update_rejects_tools_patch():
         print(f"Update result type: {type(result)}, value: {result}")
     except LarvaApiError as e:
         error = e.error
-        assert error.get("code") == "PERSONA_INVALID", (
-            f"Expected PERSONA_INVALID error, got: {error.get('code')}"
+        assert error.get("code") == "FORBIDDEN_PATCH_FIELD", (
+            f"Expected FORBIDDEN_PATCH_FIELD error, got: {error.get('code')}"
         )
         print("PASS: Python API update rejects 'tools' in patches")
 
@@ -309,8 +298,8 @@ def test_python_api_resolve_rejects_tools_override():
         print(f"Resolve result: {result}")
     except LarvaApiError as e:
         error = e.error
-        assert error.get("code") == "PERSONA_INVALID", (
-            f"Expected PERSONA_INVALID error, got: {error.get('code')}"
+        assert error.get("code") == "FORBIDDEN_FIELD", (
+            f"Expected FORBIDDEN_FIELD error, got: {error.get('code')}"
         )
         print("PASS: Python API resolve rejects 'tools' in overrides")
 

@@ -36,9 +36,14 @@ from httpx import AsyncClient
 from starlette.testclient import TestClient
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import web as web_module
+from larva.shell import python_api
 from larva.shell.web import app
 from larva.shell.python_api_components import LarvaApiError
 
@@ -570,6 +575,75 @@ class TestWebSurfaceEndpoints:
         # Should reject - variables is not a valid assemble input
         assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.json()}"
         assert "error" in resp.json()
+
+    def test_patch_api_personas_projects_forbidden_patch_field_as_structured_400(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PATCH /api/personas/{id} must not leak PatchError as a generic 500."""
+
+        class _Registry:
+            def __init__(self, spec: PersonaSpec) -> None:
+                self._spec = spec
+
+            def save(self, spec: PersonaSpec) -> Result[None, Any]:
+                self._spec = spec
+                return Success(None)
+
+            def get(self, persona_id: str) -> Result[PersonaSpec, Any]:
+                if persona_id != self._spec["id"]:
+                    return Failure(
+                        {
+                            "code": "PERSONA_NOT_FOUND",
+                            "message": "missing",
+                            "persona_id": persona_id,
+                        }
+                    )
+                return Success(dict(self._spec))
+
+            def list(self) -> Result[list[PersonaSpec], Any]:
+                return Success([dict(self._spec)])
+
+            def delete(self, persona_id: str) -> Result[None, Any]:
+                return Success(None)
+
+            def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[int, Any]:
+                return Success(1)
+
+        class _Components:
+            def load_prompt(self, name: str) -> Result[dict[str, str], Any]:
+                return Success({"text": name})
+
+            def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], Any]:
+                return Success({"capabilities": {}})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], Any]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], Any]:
+                return Success({"model": name})
+
+            def list_components(self) -> Result[dict[str, list[str]], Any]:
+                return Success({"prompts": [], "toolsets": [], "constraints": [], "models": []})
+
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=_Components(),
+            registry=_Registry(_MINIMAL_SPEC),
+        )
+        monkeypatch.setattr(python_api, "_get_facade", lambda: facade)
+
+        client = TestClient(app)
+        resp = client.patch(
+            "/api/personas/test-persona",
+            json={"tools": {"shell": "read_write"}},
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert resp.json()["error"]["details"] == {"field": "tools", "key": "tools"}
 
     def test_get_api_components_lists_names(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """GET /api/components returns component names.

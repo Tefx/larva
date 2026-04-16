@@ -297,8 +297,8 @@ class TestForbiddenFieldRejectionParity:
         errors = data["data"].get("errors", [])
         assert len(errors) > 0, f"Expected at least one error, got {data}"
         error_codes = [e.get("code") for e in errors]
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-            f"Expected FORBIDDEN_EXTRA_FIELD, got {error_codes}"
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED, got {error_codes}"
         )
         # Error should mention 'tools'
         error_msg = errors[0].get("message", "") + str(errors[0].get("details", {}))
@@ -329,8 +329,8 @@ class TestForbiddenFieldRejectionParity:
         errors = data["data"].get("errors", [])
         assert len(errors) > 0, f"Contrib expected at least one error, got {data}"
         error_codes = [e.get("code") for e in errors]
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-            f"Contrib expected FORBIDDEN_EXTRA_FIELD, got {error_codes}"
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+            f"Contrib expected EXTRA_FIELD_NOT_ALLOWED, got {error_codes}"
         )
         error_msg = errors[0].get("message", "") + str(errors[0].get("details", {}))
         assert "tools" in error_msg.lower(), f"Contrib error should mention 'tools': {data}"

@@ -100,12 +100,12 @@ class TestFacadeUpdate:
         assert len(normalize_module.inputs) == 1
         assert registry.save_inputs == []
 
-    def test_update_does_not_silently_strip_forbidden_patch_fields_before_validation(self) -> None:
+    def test_update_rejects_forbidden_patch_fields_before_normalization(self) -> None:
         calls: list[str] = []
         existing = _canonical_spec("update-tools", digest="sha256:canonical-old")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade, _, validate_module, normalize_module = _facade(
-            report=_invalid_report("FORBIDDEN_EXTRA_FIELD"),
+            report=_invalid_report("EXTRA_FIELD_NOT_ALLOWED"),
             registry=registry,
             calls=calls,
         )
@@ -113,8 +113,10 @@ class TestFacadeUpdate:
         result = facade.update("update-tools", patches={"tools": {"shell": "read_write"}})
 
         error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "PERSONA_INVALID"
-        assert calls == ["normalize", "validate"]
-        assert dict(normalize_module.inputs[0]).get("tools") == {"shell": "read_write"}
-        assert dict(validate_module.inputs[0]).get("tools") == {"shell": "read_write"}
+        assert error["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert error["numeric_code"] == 114
+        assert error["details"] == {"field": "tools", "key": "tools"}
+        assert calls == []
+        assert normalize_module.inputs == []
+        assert validate_module.inputs == []
         assert registry.save_inputs == []

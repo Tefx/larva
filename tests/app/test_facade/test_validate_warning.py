@@ -46,7 +46,7 @@ class TestValidateCanonicalRejection:
         report = validate_spec(spec)
 
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"]), (
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"]), (
             f"Expected forbidden-field rejection for side_effect_policy, got: {report['errors']}"
         )
 
@@ -60,7 +60,7 @@ class TestValidateCanonicalRejection:
 
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
         assert "MISSING_REQUIRED_FIELD" in error_codes
 
     def test_tools_with_capabilities_is_rejected_without_migration_note(self) -> None:
@@ -71,7 +71,7 @@ class TestValidateCanonicalRejection:
         report = validate_spec(spec)
 
         assert report["valid"] is False
-        assert any(e["code"] == "FORBIDDEN_EXTRA_FIELD" for e in report["errors"])
+        assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
         warnings_text = " ".join(report["warnings"])
         assert "DEPRECATED_FIELD" not in warnings_text
         assert "MIGRATION_NOTE" not in warnings_text
@@ -85,5 +85,5 @@ class TestValidateCanonicalRejection:
         assert report["valid"] is True
         assert report["errors"] == []
         warnings_text = " ".join(report["warnings"])
-        assert "FORBIDDEN_EXTRA_FIELD" not in warnings_text
+        assert "EXTRA_FIELD_NOT_ALLOWED" not in warnings_text
         assert "DEPRECATED_FIELD" not in warnings_text

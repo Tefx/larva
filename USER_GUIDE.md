@@ -111,6 +111,7 @@ The canonical larva artifact is `PersonaSpec`.
 
 - `id` must match `^[a-z0-9]+(-[a-z0-9]+)*$`
 - `capabilities` is required; `capabilities: {}` means no declared capability postures, not unrestricted access
+- `model_params` is an optional canonical field; nested `model_params.*` update patches deep-merge instead of replacing the whole object
 - `side_effect_policy` is **not a PersonaSpec field** — runtime approval policy belongs to anima runtime controls, not larva
 - `can_spawn` is either `false`, `true`, or a list of persona ids
 - `spec_digest` is computed by larva and should not be authored manually
@@ -127,7 +128,8 @@ cat <<'EOF' > code-reviewer.json
   "prompt": "You are a senior code reviewer.",
   "model": "openai/gpt-5.4",
   "capabilities": {"shell": "read_only"},
-  "can_spawn": false
+  "can_spawn": false,
+  "spec_version": "0.1.0"
 }
 EOF
 ```

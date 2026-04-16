@@ -234,13 +234,8 @@ class TestWebApiCanonicalSemantics:
             f"Response: {patch_response.json()}"
         )
         response_data = patch_response.json()
-        assert response_data["error"]["code"] == "PERSONA_INVALID"
-        errors = response_data["error"]["details"]["report"]["errors"]
-        assert any(
-            issue["code"] == "FORBIDDEN_EXTRA_FIELD"
-            and issue.get("details", {}).get("field") == "tools"
-            for issue in errors
-        )
+        assert response_data["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert response_data["error"]["details"] == {"field": "tools", "key": "tools"}
 
 
 # -----------------------------------------------------------------------------

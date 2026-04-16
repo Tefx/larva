@@ -7,7 +7,7 @@ and the opifex canonical authority basis.
 
 Canonical contract (per validate.py CANONICAL_*_FIELDS):
 - Required: id, description, prompt, model, capabilities, spec_version
-- Optional: model_params, can_spawn, compaction_prompt, spec_digest, variables
+- Optional: model_params, can_spawn, compaction_prompt, spec_digest
 - Forbidden: tools, side_effect_policy
 - Unknown top-level fields: forbidden at canonical admission
 
@@ -91,46 +91,6 @@ class TestToolPostureLiteralDomain:
         """Assert ToolPosture has exactly 4 literal values."""
         domain = ("none", "read_only", "read_write", "destructive")
         assert len(domain) == 4
-
-
-# ---------------------------------------------------------------------------
-# SideEffectPolicy — retained as compatibility type alias, NOT a PersonaSpec field
-# ---------------------------------------------------------------------------
-
-
-class TestSideEffectPolicyLiteralDomain:
-    """Tests for SideEffectPolicy type alias literal domain.
-
-    SideEffectPolicy is retained as a compatibility type alias outside canonical
-    PersonaSpec admission.  It is NOT a PersonaSpec field; it is forbidden at
-    the canonical boundary per ADR-002 / ADR-003.
-    """
-
-    def test_side_effect_policy_accepts_allow(self) -> None:
-        """Assert 'allow' is a valid SideEffectPolicy value."""
-        policy: str = "allow"
-        assert policy in ("allow", "approval_required", "read_only")
-
-    def test_side_effect_policy_accepts_approval_required(self) -> None:
-        """Assert 'approval_required' is a valid SideEffectPolicy value."""
-        policy: str = "approval_required"
-        assert policy in ("allow", "approval_required", "read_only")
-
-    def test_side_effect_policy_accepts_read_only(self) -> None:
-        """Assert 'read_only' is a valid SideEffectPolicy value."""
-        policy: str = "read_only"
-        assert policy in ("allow", "approval_required", "read_only")
-
-    def test_side_effect_policy_excludes_invalid_values(self) -> None:
-        """Assert invalid values are rejected from the domain."""
-        invalid_values = ["Allow", "ALLOW", "approval", "readonly", "none"]
-        for invalid in invalid_values:
-            assert invalid not in ("allow", "approval_required", "read_only")
-
-    def test_side_effect_policy_domain_size(self) -> None:
-        """Assert SideEffectPolicy has exactly 3 literal values."""
-        domain = ("allow", "approval_required", "read_only")
-        assert len(domain) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -278,12 +238,10 @@ class TestImportConsumability:
         """Assert canonical symbols are importable from larva.core.spec."""
         from larva.core.spec import (
             PersonaSpec,
-            SideEffectPolicy,
             ToolPosture,
         )
 
         assert ToolPosture is not None
-        assert SideEffectPolicy is not None
         assert PersonaSpec is not None
 
     def test_import_via_module(self) -> None:
@@ -291,7 +249,6 @@ class TestImportConsumability:
         import larva.core.spec as spec_module
 
         assert hasattr(spec_module, "ToolPosture")
-        assert hasattr(spec_module, "SideEffectPolicy")
         assert hasattr(spec_module, "PersonaSpec")
 
     def test_all_exports_in_public_api(self) -> None:
@@ -304,7 +261,6 @@ class TestImportConsumability:
             "ModelComponent",
             "PersonaSpec",
             "PromptComponent",
-            "SideEffectPolicy",
             "ToolsetComponent",
             "ToolPosture",
         }

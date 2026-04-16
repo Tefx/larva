@@ -31,7 +31,7 @@ larva.component_show(type, name)  → component content
 
 ```bash
 larva validate <spec.json> [--json]
-larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [--var key=value]... [-o output.json]
+larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [-o output.json]
 larva register <spec.json> [--json]
 larva resolve <id> [--override key=value]... [--json]
 larva list [--json]
@@ -82,7 +82,7 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
 
 **Field constraints:**
 - `id`: required, must match `^[a-z0-9]+(-[a-z0-9]+)*$` (flat kebab-case, no namespaces)
-- `spec_version`: must be `"0.1.0"` if present; larva sets it automatically if absent
+- `spec_version`: required on canonical input and must be `"0.1.0"`
 - `spec_digest`: computed by larva during normalization (SHA-256 of canonical JSON, sorted keys, no whitespace, excluding spec_digest itself). Do not set manually.
 - `capabilities`: required canonical capability map. `capabilities: {}` means no declared capability postures, not unrestricted access.
 - `can_spawn`: boolean or list of persona ids the persona may spawn
@@ -107,15 +107,16 @@ Check a PersonaSpec for schema conformance and semantic validity.
 {
   "valid": true,
   "errors": [],
-  "warnings": ["UNUSED_VARIABLES: supplied variables are not referenced by prompt: role"]
+  "warnings": []
 }
 ```
 
 - `errors` is always present (empty list when valid).
-- `warnings` is always present (only `UNUSED_VARIABLES` family in v1).
-- Missing `{variable}` placeholders → `VARIABLE_UNRESOLVED` error (not a warning).
+- `warnings` is always present; current canonical runtime returns `[]`.
+- Prompt placeholders are not a variables feature: unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
+- `model_params` is an optional canonical field and remains valid across validate/register/resolve/update flows.
 
-**Decision:** Use `valid` field to gate next action. `valid: true` with warnings is still valid.
+**Decision:** Use `valid` field to gate next action.
 
 ---
 
@@ -131,8 +132,7 @@ Compose a PersonaSpec from named components stored in `~/.larva/components/`.
   "toolsets": ["code-tools"],
   "constraints": ["strict"],
   "model": "claude-opus-4",
-  "overrides": { "description": "Custom description" },
-  "variables": { "role": "reviewer" }
+  "overrides": { "description": "Custom description" }
 }
 ```
 
@@ -143,6 +143,7 @@ All fields except `id` are optional.
 **Error triggers:**
 - `COMPONENT_NOT_FOUND` — named component does not exist in `~/.larva/components/`
 - `COMPONENT_CONFLICT` — two components set the same scalar field without an `overrides` key resolving it
+- `VARIABLES_NOT_ALLOWED` — `variables` is rejected at the canonical assembly boundary
 
 **Conflict resolution:** Use `overrides` to explicitly win over conflicting component values.
 
@@ -351,27 +352,14 @@ larva component show --json prompts/base      # machine-readable
 
 ---
 
-## 5. Variable Injection
+## 5. Placeholder policy
 
-Prompt text may contain `{variable_name}` placeholders (Python `str.format_map` compatible).
+Canonical larva does not support a `variables` input on PersonaSpec or assembly requests.
 
-**MCP assemble:**
-```json
-{
-  "id": "project-agent",
-  "prompts": ["my-prompt"],
-  "variables": { "role": "reviewer", "project_name": "myapp" }
-}
-```
-
-**CLI assemble:**
-```bash
-larva assemble --id project-agent --prompt my-prompt --var role=reviewer --var project_name=myapp
-```
-
-**Enforcement:**
-- All `{variable}` placeholders in prompt text must be supplied → missing = `VARIABLE_UNRESOLVED` error
-- Extra variables (provided but not referenced) → `UNUSED_VARIABLES` warning, not an error
+- `variables` at validate/register/assemble/update boundaries is rejected as an extra or forbidden field.
+- Prompt text must already be fully composed before admission.
+- Literal braces should be escaped in prompt authoring (`{{literal}}`).
+- Unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
 
 ---
 

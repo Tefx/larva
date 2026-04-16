@@ -464,8 +464,8 @@ class TestValidateCommand:
             "valid": False,
             "errors": [
                 {
-                    "code": "FORBIDDEN_EXTRA_FIELD",
-                    "message": "unknown top-level field: tools",
+                    "code": "EXTRA_FIELD_NOT_ALLOWED",
+                    "message": "unknown top-level field 'tools' is not permitted at canonical admission boundary",
                     "details": {"field": "tools"},
                 }
             ],
@@ -492,8 +492,8 @@ class TestValidateCommand:
             "valid": True,
             "errors": [],
             "warnings": [
-                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role",
-                "TRANSITION: deprecated compatibility alias accepted at ingress",
+                "FUTURE_WARNING: reserved validation warning channel",
+                "SECONDARY_WARNING: projection preserves ordered warning text",
             ],
         }
         facade = _make_facade(report=report)
@@ -1525,8 +1525,8 @@ class TestCliSharedProjectionAuthority:
             "valid": False,
             "errors": [
                 {
-                    "code": "FORBIDDEN_EXTRA_FIELD",
-                    "message": "unknown top-level field: tools",
+                    "code": "EXTRA_FIELD_NOT_ALLOWED",
+                    "message": "unknown top-level field 'tools' is not permitted at canonical admission boundary",
                     "details": {"field": "tools"},
                 }
             ],
@@ -1535,11 +1535,14 @@ class TestCliSharedProjectionAuthority:
 
         projection = project_validation_report(report).unwrap()
 
-        assert projection["primary_message"] == "unknown top-level field: tools"
+        assert (
+            projection["primary_message"]
+            == "unknown top-level field 'tools' is not permitted at canonical admission boundary"
+        )
         assert projection["report"] == report
         assert (
             render_validation_report_text(report).unwrap()
-            == "invalid: unknown top-level field: tools\n"
+            == "invalid: unknown top-level field 'tools' is not permitted at canonical admission boundary\n"
         )
 
     def test_validation_report_projection_preserves_warning_parity_facts(self) -> None:
@@ -1547,8 +1550,8 @@ class TestCliSharedProjectionAuthority:
             "valid": True,
             "errors": [],
             "warnings": [
-                "UNUSED_VARIABLES: supplied variables are not referenced by prompt: role",
-                "TRANSITION: deprecated compatibility alias accepted at ingress",
+                "FUTURE_WARNING: reserved validation warning channel",
+                "SECONDARY_WARNING: projection preserves ordered warning text",
             ],
         }
 

@@ -45,7 +45,8 @@ cat <<'EOF' > code-reviewer.json
   "description": "Reviews code for correctness and style",
   "prompt": "You are a senior code reviewer.",
   "model": "openai/gpt-5.4",
-  "capabilities": {"shell": "read_only"}
+  "capabilities": {"shell": "read_only"},
+  "spec_version": "0.1.0"
 }
 EOF
 ```
@@ -187,7 +188,7 @@ larva delete <id> [--json]
 larva clear --confirm "CLEAR REGISTRY" [--json]
 larva export --all [--json]
 larva export --id <id> [--id <id>]... [--json]
-larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [--var key=value]... [-o output.json]
+larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [-o output.json]
 larva component list [--json]
 larva component show <type>/<name> [--json]
 ```

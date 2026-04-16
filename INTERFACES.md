@@ -234,7 +234,7 @@ Validation enforces strict canonical admission semantics against the opifex
 PersonaSpec contract:
 
 - Required fields: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
-- Optional fields: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`, `variables`
+- Optional fields: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`
 - Rejected fields: `tools`, `side_effect_policy` — these are not canonical PersonaSpec fields
 - Unknown top-level fields are rejected
 

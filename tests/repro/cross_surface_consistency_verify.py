@@ -332,30 +332,30 @@ class TestCanonicalValidationGroundTruth:
         )
 
     def test_forbidden_tools_is_rejected(self) -> None:
-        """Spec with 'tools' produces FORBIDDEN_EXTRA_FIELD."""
+        """Spec with 'tools' produces EXTRA_FIELD_NOT_ALLOWED."""
         report = validate_spec(spec_with_forbidden_tools())
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-            f"Expected FORBIDDEN_EXTRA_FIELD for tools, got: {report['errors']}"
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED for tools, got: {report['errors']}"
         )
 
     def test_forbidden_side_effect_policy_is_rejected(self) -> None:
-        """Spec with 'side_effect_policy' produces FORBIDDEN_EXTRA_FIELD."""
+        """Spec with 'side_effect_policy' produces EXTRA_FIELD_NOT_ALLOWED."""
         report = validate_spec(spec_with_forbidden_side_effect_policy())
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-            f"Expected FORBIDDEN_EXTRA_FIELD for side_effect_policy, got: {report['errors']}"
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED for side_effect_policy, got: {report['errors']}"
         )
 
     def test_unknown_extra_field_is_rejected(self) -> None:
-        """Spec with unknown extra field produces FORBIDDEN_EXTRA_FIELD."""
+        """Spec with unknown extra field produces EXTRA_FIELD_NOT_ALLOWED."""
         report = validate_spec(spec_with_unknown_extra_field())
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes, (
-            f"Expected FORBIDDEN_EXTRA_FIELD for unknown field, got: {report['errors']}"
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes, (
+            f"Expected EXTRA_FIELD_NOT_ALLOWED for unknown field, got: {report['errors']}"
         )
 
     def test_missing_capabilities_is_rejected(self) -> None:
@@ -368,12 +368,12 @@ class TestCanonicalValidationGroundTruth:
         )
 
     def test_invalid_capability_posture_is_rejected(self) -> None:
-        """Spec with invalid capability posture produces INVALID_CAPABILITY_POSTURE."""
+        """Spec with invalid capability posture produces INVALID_POSTURE."""
         report = validate_spec(spec_with_invalid_capability_posture())
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "INVALID_CAPABILITY_POSTURE" in error_codes, (
-            f"Expected INVALID_CAPABILITY_POSTURE, got: {report['errors']}"
+        assert "INVALID_POSTURE" in error_codes, (
+            f"Expected INVALID_POSTURE, got: {report['errors']}"
         )
 
     def test_canonical_spec_is_valid(self) -> None:
@@ -847,7 +847,7 @@ class TestCrossSurfaceCanonicalValidationConsistency:
     """Verify that forbidden-field validation behavior is consistent.
 
     When a spec contains 'tools', 'side_effect_policy', or unknown fields,
-    the core validator rejects them with FORBIDDEN_EXTRA_FIELD. All surfaces
+    the core validator rejects them with EXTRA_FIELD_NOT_ALLOWED. All surfaces
     must propagate this verdict consistently.
     """
 
@@ -888,24 +888,24 @@ class TestCrossSurfaceCanonicalValidationConsistency:
         )
 
     def test_tools_field_rejected_consistently(self) -> None:
-        """Forbidden 'tools' field is consistently rejected as FORBIDDEN_EXTRA_FIELD."""
+        """Forbidden 'tools' field is consistently rejected as EXTRA_FIELD_NOT_ALLOWED."""
         self._verify_invalid_spec_on_all_surfaces(
-            spec_with_forbidden_tools(), "FORBIDDEN_EXTRA_FIELD", "tools field spec"
+            spec_with_forbidden_tools(), "EXTRA_FIELD_NOT_ALLOWED", "tools field spec"
         )
 
     def test_side_effect_policy_rejected_consistently(self) -> None:
-        """Forbidden 'side_effect_policy' is consistently rejected as FORBIDDEN_EXTRA_FIELD."""
+        """Forbidden 'side_effect_policy' is consistently rejected as EXTRA_FIELD_NOT_ALLOWED."""
         self._verify_invalid_spec_on_all_surfaces(
             spec_with_forbidden_side_effect_policy(),
-            "FORBIDDEN_EXTRA_FIELD",
+            "EXTRA_FIELD_NOT_ALLOWED",
             "side_effect_policy spec",
         )
 
     def test_unknown_extra_field_rejected_consistently(self) -> None:
-        """Unknown extra field is consistently rejected as FORBIDDEN_EXTRA_FIELD."""
+        """Unknown extra field is consistently rejected as EXTRA_FIELD_NOT_ALLOWED."""
         self._verify_invalid_spec_on_all_surfaces(
             spec_with_unknown_extra_field(),
-            "FORBIDDEN_EXTRA_FIELD",
+            "EXTRA_FIELD_NOT_ALLOWED",
             "unknown field spec",
         )
 
@@ -921,7 +921,7 @@ class TestCrossSurfaceCanonicalValidationConsistency:
         """Invalid capability posture is consistently rejected."""
         self._verify_invalid_spec_on_all_surfaces(
             spec_with_invalid_capability_posture(),
-            "INVALID_CAPABILITY_POSTURE",
+            "INVALID_POSTURE",
             "invalid posture spec",
         )
 
@@ -957,7 +957,7 @@ class TestRealFacadeValidationConsistency:
         report = facade.validate(spec)
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
 
     def test_real_facade_rejects_forbidden_side_effect_policy(self) -> None:
         """Real facade rejects spec with 'side_effect_policy' field."""
@@ -967,7 +967,7 @@ class TestRealFacadeValidationConsistency:
         report = facade.validate(spec)
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
 
     def test_real_facade_rejects_missing_id(self) -> None:
         """Real facade rejects spec missing 'id' field."""
@@ -987,7 +987,7 @@ class TestRealFacadeValidationConsistency:
         report = facade.validate(spec)
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
-        assert "FORBIDDEN_EXTRA_FIELD" in error_codes
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
 
     def test_real_facade_rejects_missing_capabilities(self) -> None:
         """Real facade rejects spec missing 'capabilities' field."""
@@ -1009,20 +1009,17 @@ class TestRealFacadeValidationConsistency:
             f"Canonical spec should be valid, got: errors={report['errors']}, warnings={report['warnings']}"
         )
 
-    def test_real_facade_validate_produces_warnings_for_unused_variables(self) -> None:
-        """Real facade produces UNUSED_VARIABLES warning when variables are not referenced."""
+    def test_real_facade_rejects_variables_as_extra_field(self) -> None:
+        """Real facade treats variables as non-canonical extra input."""
         facade = self._make_real_facade()
         spec = dict(canonical_spec("vars-unused"))
         spec["variables"] = {"role": "analyst"}
-        # The prompt doesn't reference {role}
 
         report = facade.validate(spec)
-        # Should still be valid but with a warning
-        assert report["valid"] is True
-        warning_texts = " ".join(report["warnings"])
-        assert "UNUSED_VARIABLES" in warning_texts, (
-            f"Expected UNUSED_VARIABLES warning for unreferenced variables, got: {report['warnings']}"
-        )
+        assert report["valid"] is False
+        error_codes = {e["code"] for e in report["errors"]}
+        assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
+        assert report["warnings"] == []
 
 
 # ===========================================================================

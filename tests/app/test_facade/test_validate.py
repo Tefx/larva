@@ -37,9 +37,9 @@ class TestFacadeValidateExposesCanonicalGaps:
     current validation behavior and canonical contract requirements.
 
     Gap coverage:
-    - gap_1: tools field should produce FORBIDDEN_EXTRA_FIELD error
-    - gap_2: side_effect_policy should produce FORBIDDEN_EXTRA_FIELD error
-    - gap_3: extra unknown fields should produce FORBIDDEN_EXTRA_FIELD error
+    - gap_1: tools field should produce EXTRA_FIELD_NOT_ALLOWED error
+    - gap_2: side_effect_policy should produce EXTRA_FIELD_NOT_ALLOWED error
+    - gap_3: extra unknown fields should produce EXTRA_FIELD_NOT_ALLOWED error
     - gap_4: missing capabilities should produce MISSING_REQUIRED_FIELD error
     - gap_5: admission success should imply canonical conformance
 
@@ -47,7 +47,7 @@ class TestFacadeValidateExposesCanonicalGaps:
     """
 
     def test_facade_validate_rejects_tools_field(self):
-        """Facade validate should expose FORBIDDEN_EXTRA_FIELD for tools.
+        """Facade validate should expose EXTRA_FIELD_NOT_ALLOWED for tools.
 
         Gap: transition fixtures include tools, which should be rejected.
         """
@@ -65,7 +65,7 @@ class TestFacadeValidateExposesCanonicalGaps:
         assert "tools" in spec, "Test setup: spec should contain tools to expose gap"
 
     def test_facade_validate_rejects_side_effect_policy(self):
-        """Facade validate should expose FORBIDDEN_EXTRA_FIELD for side_effect_policy.
+        """Facade validate should expose EXTRA_FIELD_NOT_ALLOWED for side_effect_policy.
 
         Gap: transition fixtures include side_effect_policy, which should be rejected.
         """
@@ -108,7 +108,7 @@ class TestFacadeValidateExposesCanonicalGaps:
 
         # Currently facade just passes through whatever validate returns
         # The gap is that core validate marks this as valid (with warnings)
-        # Canonical contract says this should be invalid with FORBIDDEN_EXTRA_FIELD errors
+        # Canonical contract says this should be invalid with EXTRA_FIELD_NOT_ALLOWED errors
 
     def test_facade_validate_missing_capabilities(self):
         """Test that spec without capabilities is rejected.

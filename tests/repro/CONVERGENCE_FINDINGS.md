@@ -35,9 +35,9 @@ Both runtimes reject forbidden fields identically with HTTP 200 + `valid: false`
 
 | Forbidden Field | Packaged HTTP | Packaged Response | Contrib HTTP | Contrib Response | Parity |
 |----------------|---------------|-------------------|--------------|------------------|--------|
-| `tools` | 200 | `{"valid": false, "errors": [{"code": "FORBIDDEN_EXTRA_FIELD", "message": ...}]}` | 200 | Same structure | ✅ |
-| `side_effect_policy` | 200 | `{"valid": false, "errors": [{"code": "FORBIDDEN_EXTRA_FIELD", "message": ...}]}` | 200 | Same structure | ✅ |
-| `unknown_field` | 200 | `{"valid": false, "errors": [{"code": "FORBIDDEN_EXTRA_FIELD", "message": ...}]}` | 200 | Same structure | ✅ |
+| `tools` | 200 | `{"valid": false, "errors": [{"code": "EXTRA_FIELD_NOT_ALLOWED", "message": ...}]}` | 200 | Same structure | ✅ |
+| `side_effect_policy` | 200 | `{"valid": false, "errors": [{"code": "EXTRA_FIELD_NOT_ALLOWED", "message": ...}]}` | 200 | Same structure | ✅ |
+| `unknown_field` | 200 | `{"valid": false, "errors": [{"code": "EXTRA_FIELD_NOT_ALLOWED", "message": ...}]}` | 200 | Same structure | ✅ |
 
 **Key Finding**: The `/api/personas/validate` endpoint correctly returns HTTP 200 with error details in the response body - this is a validation report pattern, not an HTTP error. Both runtimes agree on this pattern.
 
@@ -49,7 +49,7 @@ Response: {
   'data': {
     'valid': False,
     'errors': [{
-      'code': 'FORBIDDEN_EXTRA_FIELD',
+      'code': 'EXTRA_FIELD_NOT_ALLOWED',
       'message': "'tools' is not permitted at canonical admission boundary",
       'details': {'field': 'tools', 'value': {'shell': 'read_only'}}
     }],
@@ -63,7 +63,7 @@ Response: {
   'data': {
     'valid': False,
     'errors': [{
-      'code': 'FORBIDDEN_EXTRA_FIELD', 
+      'code': 'EXTRA_FIELD_NOT_ALLOWED', 
       'message': "unknown top-level field 'unknown_field' is not permitted",
       'details': {'field': 'unknown_field', 'value': 'some_value'}
     }],

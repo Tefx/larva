@@ -190,7 +190,7 @@ class TestFacadeRegisterExposesCanonicalGaps:
     """
 
     def test_register_rejects_spec_with_tools_field(self):
-        """Register should reject specs with tools field (FORBIDDEN_EXTRA_FIELD).
+        """Register should reject specs with tools field (EXTRA_FIELD_NOT_ALLOWED).
 
         Gap: _canonical_spec includes tools, but register doesn't check for it.
         Downstream: canonical_core_admission.implementation
@@ -216,14 +216,14 @@ class TestFacadeRegisterExposesCanonicalGaps:
         result = facade.register(spec_with_tools)
 
         # Currently this succeeds because _valid_report() returns valid=True
-        # Gap: The spec has tools which should produce FORBIDDEN_EXTRA_FIELD error
+        # Gap: The spec has tools which should produce EXTRA_FIELD_NOT_ALLOWED error
         assert isinstance(result, Success), (
             "Currently register accepts spec with tools - "
             "this should be rejected after canonical enforcement"
         )
 
     def test_register_rejects_spec_with_side_effect_policy(self):
-        """Register should reject specs with side_effect_policy (FORBIDDEN_EXTRA_FIELD).
+        """Register should reject specs with side_effect_policy (EXTRA_FIELD_NOT_ALLOWED).
 
         Gap: _canonical_spec includes side_effect_policy, but register doesn't check.
         Downstream: canonical_core_admission.implementation

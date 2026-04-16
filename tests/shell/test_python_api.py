@@ -1215,6 +1215,20 @@ class TestPythonApiUpdate:
         assert exc_info.value.error["code"] == "PERSONA_INVALID"
         assert exc_info.value.error["numeric_code"] == 101
 
+    def test_update_forbidden_patch_field_propagates_structured_error(
+        self, facade_fixture: FacadeFixture
+    ) -> None:
+        """update() must surface forbidden patch fields as structured domain errors."""
+        existing = _canonical_spec("update-tools")
+        facade_fixture.registry.get_result = Success(existing)
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update("update-tools", patches={"tools": {"shell": "read_write"}})
+
+        assert exc_info.value.error["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert exc_info.value.error["numeric_code"] == 114
+        assert exc_info.value.error["details"] == {"field": "tools", "key": "tools"}
+
     def test_update_in_all(self) -> None:
         """update must be in __all__."""
         assert "update" in python_api.__all__
