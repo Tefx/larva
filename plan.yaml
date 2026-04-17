@@ -52199,3 +52199,89 @@ phases:
   status: locked
   depends_on:
   - final_zeroing_20260418_parity_cleanup
+  steps:
+  - id: final_zeroing_20260418.full_plan_check
+    name: Run strict zeroing full-plan verification
+    status: pending
+    description: 'Independent full-plan-check for the final strict zeroing pass.
+
+
+      This step is authoritative for final closure. It must verify the nine closure
+      targets as one combined release barrier:
+
+      1. malformed toolset fail-closed
+
+      2. component-show-style paths do not sanitize legacy fields
+
+      3. MCP schema exact canonical
+
+      4. malformed digest fail-closed
+
+      5. export boolean semantics correct
+
+      6. component-type ingress canonical only
+
+      7. web assemble structured reject
+
+      8. docs/tests parity clean
+
+      9. residual risk none
+
+
+      Execution rules:
+
+      - Run the authoritative broad verifier and the focused targeted suites needed
+      to prove the closure targets above.
+
+      - Review evidence as a proof register, not a narrative.
+
+      - PASS_WITH_DEBT is not allowed. Any remaining open issue is FAIL.
+
+
+      This check protects the final gate.'
+    verification: 'full-plan-check: run the authoritative full-project verification
+      command family plus focused regression commands for each closure target. Record
+      exact outputs. Any unresolved issue intersects the final gate and blocks completion.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Full-Plan Commands
+
+      - Exact broad verifier command(s):
+
+      - Exact focused regression command(s):
+
+      - Actual output:
+
+
+      ## Closure Register
+
+      - malformed toolset fail-closed: PROVEN/FAIL
+
+      - component-show paths reject forbidden legacy fields: PROVEN/FAIL
+
+      - MCP schema exact canonical: PROVEN/FAIL
+
+      - malformed digest fail-closed: PROVEN/FAIL
+
+      - export boolean semantics correct: PROVEN/FAIL
+
+      - component-type ingress canonical only: PROVEN/FAIL
+
+      - web assemble structured reject: PROVEN/FAIL
+
+      - docs/tests parity clean: PROVEN/FAIL
+
+      - residual risk none: PROVEN/FAIL
+
+
+      ## Decision
+
+      Only PASS if every line above is PROVEN.
+
+      '
+    agent: integration-verifier-tacit
