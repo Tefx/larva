@@ -51714,7 +51714,7 @@ phases:
       \ no out-of-scope implementation bypass accepted."
   - id: final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
     name: Reject legacy read-path fields and canonicalize public ingress
-    status: pending
+    status: claimed
     description: 'Implement and verify strict rejection on component-show/helper read
       paths plus canonical-only public ingress behavior.
 
@@ -51818,6 +51818,8 @@ phases:
     depends_on:
     - final_zeroing_20260418.fail_closed_toolset_and_digest
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-17T20:58:07.985171+00:00'
   - id: final_zeroing_20260418_fail_closed_admission.gate
     name: Gate fail-closed admission and read-path closure
     status: pending
