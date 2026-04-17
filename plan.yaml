@@ -52393,13 +52393,13 @@ phases:
       \ cleanup completed for gate step."
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
-  status: pending
+  status: in_progress
   depends_on:
   - final_zeroing_20260418_mcp_contract
   steps:
   - id: final_zeroing_20260418.tests_transition_parity_cleanup
     name: Remove transition-era legacy wording from tests
-    status: pending
+    status: claimed
     description: 'Implement and verify test-suite parity cleanup so test names, fixtures,
       and assertions no longer encode transition-era normalize/legacy wording.
 
@@ -52464,6 +52464,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-17T21:54:07.870889+00:00'
   - id: final_zeroing_20260418.docs_transition_parity_cleanup
     name: Remove transition-era legacy wording from docs
     status: pending
