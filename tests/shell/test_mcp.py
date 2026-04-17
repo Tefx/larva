@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
@@ -167,15 +168,19 @@ class InMemoryRegistryStore:
     save_inputs: list[PersonaSpec] = field(default_factory=list)
     delete_result: Result[None, LarvaError] = field(default_factory=lambda: Success(None))
     clear_result: Result[int, LarvaError] = field(default_factory=lambda: Success(0))
+    get_calls: list[str] = field(default_factory=list)
+    list_calls: int = 0
 
     def save(self, spec: PersonaSpec) -> Result[None, LarvaError]:
         self.save_inputs.append(dict(spec))
         return self.save_result
 
     def get(self, persona_id: str) -> Result[PersonaSpec, LarvaError]:
+        self.get_calls.append(persona_id)
         return self.get_result
 
     def list(self) -> Result[list[PersonaSpec], LarvaError]:
+        self.list_calls += 1
         return self.list_result
 
     def delete(self, persona_id: str) -> Result[None, LarvaError]:
@@ -260,7 +265,7 @@ def _make_facade(
     assemble_candidate: PersonaSpec | None = None,
     components: InMemoryComponentStore | None = None,
     registry: InMemoryRegistryStore | None = None,
-) -> DefaultLarvaFacade:
+    ) -> DefaultLarvaFacade:
     """Create a facade with test doubles for core modules."""
     validate_module_dbl = MockValidateModule(validate_report or _valid_report())
     assemble_module_dbl = MockAssembleModule(assemble_candidate or _canonical_spec("assembled"))
@@ -274,6 +279,16 @@ def _make_facade(
         components=components or InMemoryComponentStore(),
         registry=registry or InMemoryRegistryStore(),
     )
+
+
+_CANONICAL_SCHEMA_AUTHORITY = Path(
+    "/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json"
+)
+
+
+def _canonical_schema_properties() -> dict[str, object]:
+    payload = json.loads(_CANONICAL_SCHEMA_AUTHORITY.read_text(encoding="utf-8"))
+    return cast("dict[str, object]", payload["properties"])
 
 
 # -----------------------------------------------------------------------------
@@ -341,6 +356,24 @@ class TestMCPToolDefinitions:
         assert spec_schema["additionalProperties"] is False
         assert "tools" not in spec_schema["properties"]
         assert "side_effect_policy" not in spec_schema["properties"]
+
+    @pytest.mark.parametrize("tool_name", ["larva_validate", "larva_register"])
+    def test_persona_spec_targeted_fields_match_canonical_schema_authority(
+        self, tool_name: str
+    ) -> None:
+        tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == tool_name)
+        spec_schema = tool["input_schema"]["properties"]["spec"]
+        properties = cast("dict[str, object]", spec_schema["properties"])
+        canonical_properties = _canonical_schema_properties()
+
+        assert properties["capabilities"] == canonical_properties["capabilities"]
+        assert properties["can_spawn"] == canonical_properties["can_spawn"]
+        assert properties["spec_version"] == canonical_properties["spec_version"]
+        assert properties["spec_digest"] == canonical_properties["spec_digest"]
+        assert "capabilities" in spec_schema["required"]
+        assert "spec_version" in spec_schema["required"]
+        assert "can_spawn" not in spec_schema["required"]
+        assert "spec_digest" not in spec_schema["required"]
 
     def test_list_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
@@ -2665,6 +2698,17 @@ class TestMCPHandleExport:
             tool="larva_export",
             reason="params must be an object",
         )
+
+    def test_handle_export_all_false_does_not_route_to_export_all(self) -> None:
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": False})
+
+        assert result == []
+        assert registry.list_calls == 0
+        assert registry.get_calls == []
 
 
 class TestMCPUpdateToolDefinition:

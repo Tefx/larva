@@ -36,12 +36,50 @@ _PERSONA_SPEC_FIELD_TYPES: dict[str, dict[str, object]] = {
     "description": {"type": "string"},
     "prompt": {"type": "string"},
     "model": {"type": "string"},
-    "capabilities": {"type": "object"},
-    "spec_version": {"type": "string"},
+    "capabilities": {
+        "type": "object",
+        "additionalProperties": {
+            "type": "string",
+            "enum": ["none", "read_only", "read_write", "destructive"],
+        },
+        "description": (
+            "Map of family -> posture. Each key is a stable, provider-agnostic "
+            "capability family identifier. Each value is the maximum intended posture "
+            "for that family. Empty map is valid but triggers a warning."
+        ),
+    },
+    "spec_version": {
+        "type": "string",
+        "const": "0.1.0",
+        "description": "Schema version envelope (semver). All consumers must reject unknown versions.",
+    },
     "model_params": {"type": "object"},
-    "can_spawn": {},
+    "can_spawn": {
+        "oneOf": [
+            {"type": "boolean"},
+            {
+                "type": "array",
+                "items": {"type": "string", "minLength": 1},
+                "maxItems": 100,
+                "uniqueItems": True,
+            },
+        ],
+        "default": False,
+        "description": (
+            "Spawn capability boundary. false/omitted = no spawn. true = spawn allowed, "
+            "targets are a runtime concern. string[] = spawn restricted to listed canonical "
+            "persona ids."
+        ),
+    },
     "compaction_prompt": {"type": "string"},
-    "spec_digest": {"type": "string"},
+    "spec_digest": {
+        "type": "string",
+        "description": (
+            "SHA-256 of canonical JSON (sorted keys, no whitespace, spec_digest excluded "
+            "from input). Computed by larva; optional in raw input, always present in larva "
+            "output."
+        ),
+    },
 }
 _PERSONA_SPEC_ALLOWED_FIELDS = (
     validate_contract.CANONICAL_REQUIRED_FIELDS + validate_contract.CANONICAL_OPTIONAL_FIELDS

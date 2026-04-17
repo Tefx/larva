@@ -108,7 +108,7 @@ def _validate_export_target(
         if isinstance(type_result, Failure):
             issue = type_result.failure()
             return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
-        return Success((True, []))
+        return Success((cast("bool", checked_params["all"]), []))
 
     list_result = require_list_of_strings(checked_params, "ids")
     if isinstance(list_result, Failure):
