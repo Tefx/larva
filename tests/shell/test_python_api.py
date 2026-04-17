@@ -1099,7 +1099,7 @@ class TestPythonApiComponentShow:
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
 
         with pytest.raises(python_api.LarvaApiError) as exc_info:
-            python_api.component_show("prompt", "missing-prompt")
+            python_api.component_show("prompts", "missing-prompt")
 
         assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
         assert exc_info.value.error["numeric_code"] == 105

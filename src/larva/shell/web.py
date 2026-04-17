@@ -30,7 +30,14 @@ from __future__ import annotations
 
 import webbrowser
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
+
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+
+if TYPE_CHECKING:
+    from larva.core.validate import ValidationReport
 
 from larva.shell.python_api import (
     LarvaApiError,
@@ -39,17 +46,14 @@ from larva.shell.python_api import (
     component_list,
     component_show,
     delete,
-    list as list_personas,
     register,
     resolve,
     update,
     validate,
 )
-from larva.core.validate import ValidationReport
-
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
-import uvicorn
+from larva.shell.python_api import (
+    list as list_personas,
+)
 
 STATIC_DIR = Path(__file__).parent
 
@@ -267,7 +271,15 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
 
         # Validate: reject unknown fields at canonical boundary
         allowed_fields = frozenset(
-            {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
+            {
+                "id",
+                "description",
+                "prompts",
+                "toolsets",
+                "constraints",
+                "model",
+                "overrides",
+            }
         )
         unknown_fields = sorted(set(body.keys()) - allowed_fields)
         if unknown_fields:
@@ -277,7 +289,10 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
                     "error": {
                         "code": "INVALID_INPUT",
                         "numeric_code": 1,
-                        "message": f"assemble request field '{unknown_fields[0]}' is not permitted at canonical boundary",
+                        "message": (
+                            f"assemble request field '{unknown_fields[0]}' is not permitted "
+                            "at canonical boundary"
+                        ),
                         "details": {"field": unknown_fields[0], "unknown_fields": unknown_fields},
                     }
                 },

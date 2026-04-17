@@ -576,7 +576,7 @@ class TestCLIComponentProjection:
         )
 
         result = component_show_command(
-            "toolset/test",
+            "toolsets/test",
             as_json=True,
             component_store=store,
         )
@@ -617,7 +617,7 @@ class TestCLIComponentProjection:
         )
 
         result = component_show_command(
-            "constraint/test",
+            "constraints/test",
             as_json=True,
             component_store=store,
         )
