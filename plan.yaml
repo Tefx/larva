@@ -52507,7 +52507,7 @@ phases:
       Worktree/branch cleaned; no merge changes required.'
   - id: final_zeroing_20260418.docs_transition_parity_cleanup
     name: Remove transition-era legacy wording from docs
-    status: pending
+    status: claimed
     description: 'Implement and verify documentation parity cleanup so repository
       docs state the final hard-cut contract without normalize/legacy transition wording.
 
@@ -52575,6 +52575,8 @@ phases:
     depends_on:
     - final_zeroing_20260418.tests_transition_parity_cleanup
     agent: doc-reviewer-tacit
+    claimed_by: doc-reviewer-tacit
+    claimed_at: '2026-04-17T22:01:27.108050+00:00'
   - id: final_zeroing_20260418_parity_cleanup.gate
     name: Gate test and documentation parity cleanup
     status: pending
