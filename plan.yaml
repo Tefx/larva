@@ -50925,7 +50925,7 @@ phases:
       - invar guard on changed files: passed (0 errors)'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     name: Web registry error state cleanup
-    status: pending
+    status: claimed
     description: 'Implement-and-verify the larva serve web UX for `/api/personas`
       hard-cut failures without changing canonical registry semantics.
 
@@ -51031,6 +51031,8 @@ phases:
 
       '
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-04-17T09:11:41.287457+00:00'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
     name: Registry UX cleanup verification
     status: pending
