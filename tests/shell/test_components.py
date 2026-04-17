@@ -534,6 +534,87 @@ class TestFailClosedLegacyPayloads:
             assert error.component_name == "property_toolset"
             assert "tools" in str(error).lower()
 
+    @given(
+        malformed_capabilities=st.one_of(
+            st.none(),
+            st.integers(),
+            st.text(),
+            st.lists(st.text(), max_size=3),
+            st.dictionaries(
+                keys=st.one_of(st.text(), st.integers()),
+                values=st.one_of(
+                    st.none(),
+                    st.integers(),
+                    st.lists(st.text(), max_size=2),
+                    st.sampled_from(["invalid", "READ_ONLY", ""]),
+                ),
+                max_size=3,
+            ).filter(
+                lambda payload: not (
+                    all(isinstance(key, str) for key in payload)
+                    and all(
+                        isinstance(value, str)
+                        and value in {"none", "read_only", "read_write", "destructive"}
+                        for value in payload.values()
+                    )
+                )
+            ),
+        )
+    )
+    def test_toolset_loader_rejects_malformed_capabilities_content(
+        self,
+        malformed_capabilities: object,
+    ) -> None:
+        """Malformed capabilities content must fail at component boundary."""
+        with TemporaryDirectory() as temp_dir:
+            components_dir = Path(temp_dir) / "components"
+            toolsets_dir = components_dir / "toolsets"
+            toolsets_dir.mkdir(parents=True)
+            (toolsets_dir / "malformed.yaml").write_text(
+                _dump_yaml({"capabilities": malformed_capabilities}),
+                encoding="utf-8",
+            )
+
+            store = FilesystemComponentStore(components_dir)
+            result = store.load_toolset("malformed")
+
+            assert isinstance(result, Failure)
+            error = result.failure()
+            assert isinstance(error, ComponentStoreError)
+            assert error.component_type == "toolset"
+            assert error.component_name == "malformed"
+            assert "capabilities" in str(error).lower()
+
+    @pytest.mark.parametrize(
+        ("loader_name", "subdirectory", "filename", "payload"),
+        [
+            ("load_constraint", "constraints", "broken_constraint.yaml", ["not", "a", "mapping"]),
+            ("load_model", "models", "broken_model.yaml", ["not", "a", "mapping"]),
+        ],
+    )
+    def test_non_mapping_component_yaml_fails_closed(
+        self,
+        tmp_path: Path,
+        loader_name: str,
+        subdirectory: str,
+        filename: str,
+        payload: object,
+    ) -> None:
+        """Malformed non-mapping component content must not succeed as {}."""
+        components_dir = tmp_path / "components"
+        target_dir = components_dir / subdirectory
+        target_dir.mkdir(parents=True)
+        (target_dir / filename).write_text(_dump_yaml(payload), encoding="utf-8")
+
+        store = FilesystemComponentStore(components_dir)
+        loader = getattr(store, loader_name)
+        result = loader(Path(filename).stem)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert "mapping" in str(error).lower()
+
 
 def _dump_yaml(payload: object) -> str:
     import yaml

@@ -49,20 +49,23 @@ class TestFacadeUpdateBatch:
             {"id": "alpha", "updated": True},
             {"id": "beta", "updated": True},
         ]
-        # Hard-cut policy: matching normalizes each spec, then update normalizes+validates per spec
-        # Each spec goes through: [match: normalize+validate] + [update: normalize+validate]
-        # = 4 normalize calls, 4 validate calls total
+        # Each spec goes through raw-validate + normalize + validate during matching,
+        # then the same sequence again during update.
         assert calls == [
-            "normalize",
             "validate",
             "normalize",
             "validate",
+            "validate",
             "normalize",
+            "validate",
+            "validate",
+            "normalize",
+            "validate",
             "validate",
             "normalize",
             "validate",
         ]
-        assert len(validate_module.inputs) == 4
+        assert len(validate_module.inputs) == 8
         assert len(normalize_module.inputs) == 4
         assert len(registry.save_inputs) == 2
 
@@ -141,10 +144,16 @@ class TestFacadeUpdateBatch:
             {"id": "beta", "updated": False},
         ]
         assert registry.save_inputs == []
-        # Hard-cut policy: dry_run still normalizes+validates each spec for matching
-        assert len(validate_module.inputs) == 2
+        assert len(validate_module.inputs) == 4
         assert len(normalize_module.inputs) == 2
-        assert calls == ["normalize", "validate", "normalize", "validate"]
+        assert calls == [
+            "validate",
+            "normalize",
+            "validate",
+            "validate",
+            "normalize",
+            "validate",
+        ]
 
     def test_update_batch_registry_list_failure_maps_to_facade_error(self) -> None:
         registry = InMemoryRegistryStore(

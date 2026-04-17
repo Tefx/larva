@@ -12,10 +12,15 @@ from typing import cast
 import pytest
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 
 from .conftest import (
+    InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
     _digest_for,
@@ -44,7 +49,7 @@ class TestFacadeClone:
         self,
     ) -> None:
         """Success clone returns PersonaSpec with new id and recomputed spec_digest."""
-        source_spec = _canonical_spec("source-persona", digest="sha256:old-digest")
+        source_spec = _canonical_spec("source-persona")
         calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, validate_module, normalize_module = _facade(
@@ -69,15 +74,15 @@ class TestFacadeClone:
         assert cloned["spec_version"] == "0.1.0"
         assert cloned["spec_digest"] == _digest_for(cloned)
         assert cloned["spec_digest"] != "sha256:old-digest"
-        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
-        assert calls == ["normalize", "validate"]
+        assert calls == ["validate", "normalize", "validate"]
         assert registry.get_inputs == ["source-persona"]
         assert validate_module.inputs[0]["id"] == "cloned-persona"
+        assert validate_module.inputs[1]["id"] == "cloned-persona"
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
     def test_clone_hard_cut_rejects_forbidden_fields_from_source(self) -> None:
         """Clone of a stored historical non-canonical spec rejects forbidden fields."""
-        source_spec = _canonical_spec("historical-source", digest="sha256:stale")
+        source_spec = _canonical_spec("historical-source")
         # Simulate a stored historical record with forbidden and unknown fields.
         source_with_legacy = dict(source_spec)
         source_with_legacy["tools"] = {"shell": "full_access"}
@@ -143,7 +148,7 @@ class TestFacadeClone:
 
         Returns PERSONA_INVALID on failure.
         """
-        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        source_spec = _canonical_spec("valid-source")
         calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, validate_module, normalize_module = _facade(
@@ -158,14 +163,32 @@ class TestFacadeClone:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert validate_module.inputs[0]["id"] == "Invalid_Clone_Id"
-        # Hard-cut policy: normalize is called before validation
-        assert normalize_module.inputs[0]["id"] == "Invalid_Clone_Id"
-        assert calls == ["normalize", "validate"]
+        assert normalize_module.inputs == []
+        assert calls == ["validate"]
         assert registry.get_inputs == ["valid-source"]
+
+    def test_clone_rejects_invalid_optional_field_type_from_source(self) -> None:
+        source_spec = dict(_canonical_spec("clone-bad-shape"))
+        source_spec["model_params"] = "invalid"
+        registry = InMemoryRegistryStore(get_result=Success(cast("dict[str, object]", source_spec)))
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.clone("clone-bad-shape", "clone-bad-shape-copy")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_MODEL_PARAMS"
 
     def test_clone_overwrites_existing_target_without_check(self) -> None:
         """Clone overwrites target persona when new_id already exists (no existence check)."""
-        source_spec = _canonical_spec("source-clone", digest="sha256:source")
+        source_spec = _canonical_spec("source-clone")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
@@ -179,7 +202,7 @@ class TestFacadeClone:
 
     def test_clone_spec_digest_recomputed_not_copied(self) -> None:
         """Clone recomputes spec_digest based on cloned content, not copied from source."""
-        source_spec = _canonical_spec("digest-source", digest="sha256:source-digest")
+        source_spec = _canonical_spec("digest-source")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
@@ -194,11 +217,10 @@ class TestFacadeClone:
             }
         )
         assert cloned["spec_digest"] == expected_digest
-        assert cloned["spec_digest"] != "sha256:source-digest"
 
     def test_clone_maps_registry_write_failure_to_app_error(self) -> None:
         """Clone maps registry save failure to REGISTRY_WRITE_FAILED error."""
-        source_spec = _canonical_spec("write-fail-source", digest="sha256:write-fail")
+        source_spec = _canonical_spec("write-fail-source")
         registry = InMemoryRegistryStore(
             get_result=Success(source_spec),
             save_result=Failure(
@@ -222,7 +244,7 @@ class TestFacadeClone:
 
     def test_clone_flow_order_get_then_normalize_then_validate_then_save(self) -> None:
         """Clone calls registry.get, then normalize, then validate, then registry.save in order."""
-        source_spec = _canonical_spec("ordered-source", digest="sha256:ordered")
+        source_spec = _canonical_spec("ordered-source")
         calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade, _, validate_module, normalize_module = _facade(
@@ -234,8 +256,7 @@ class TestFacadeClone:
         result = facade.clone("ordered-source", "ordered-clone")
 
         assert isinstance(result, Success)
-        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
-        assert calls == ["normalize", "validate"]
+        assert calls == ["validate", "normalize", "validate"]
         assert registry.get_inputs == ["ordered-source"]
         assert validate_module.inputs[0]["id"] == "ordered-clone"
         assert normalize_module.inputs[0]["id"] == "ordered-clone"

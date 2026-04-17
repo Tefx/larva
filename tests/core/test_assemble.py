@@ -185,6 +185,48 @@ class TestAssembleCandidateBehavior:
             )
         assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
+    @given(
+        malformed_capabilities=st.one_of(
+            st.none(),
+            st.integers(),
+            st.text(),
+            st.lists(st.text(), max_size=3),
+            st.dictionaries(
+                keys=st.one_of(st.text(), st.integers()),
+                values=st.one_of(
+                    st.none(),
+                    st.integers(),
+                    st.lists(st.text(), max_size=2),
+                    st.sampled_from(["invalid", "READ_ONLY", ""]),
+                ),
+                max_size=3,
+            ).filter(
+                lambda payload: not (
+                    all(isinstance(key, str) for key in payload)
+                    and all(
+                        isinstance(value, str)
+                        and value in {"none", "read_only", "read_write", "destructive"}
+                        for value in payload.values()
+                    )
+                )
+            ),
+        )
+    )
+    def test_malformed_capabilities_payload_fails_closed(self, malformed_capabilities: object):
+        """Malformed capabilities content must raise instead of degrading to {}."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [{"capabilities": malformed_capabilities}],
+                }
+            )
+
+        assert exc_info.value.code in {
+            "INVALID_TOOLSET_CAPABILITIES_SHAPE",
+            "INVALID_TOOLSET_CAPABILITY_ENTRY",
+        }
+
     def test_capabilities_merges_with_tools_across_toolsets(self):
         """Tools-only toolsets are rejected at canonical cutover.
 

@@ -21,6 +21,8 @@ from larva.core.spec import (
     ToolsetComponent,
 )
 
+_VALID_TOOL_POSTURES = frozenset({"none", "read_only", "read_write", "destructive"})
+
 # -----------------------------------------------------------------------------
 # Shell Error Types
 # -----------------------------------------------------------------------------
@@ -369,8 +371,7 @@ class FilesystemComponentStore:
                 )
             )
 
-        capabilities = data.get("capabilities")
-        if capabilities is None:
+        if "capabilities" not in data:
             return Failure(
                 self._error(
                     f"Toolset {name} is missing 'capabilities' field. "
@@ -379,6 +380,35 @@ class FilesystemComponentStore:
                     component_name=name,
                 )
             )
+
+        capabilities = data.get("capabilities")
+
+        if not isinstance(capabilities, dict):
+            return Failure(
+                self._error(
+                    f"Toolset {name} capabilities must be a mapping of strings to canonical postures.",
+                    component_type="toolset",
+                    component_name=name,
+                )
+            )
+
+        for capability_name, posture in capabilities.items():
+            if not isinstance(capability_name, str) or not isinstance(posture, str):
+                return Failure(
+                    self._error(
+                        f"Toolset {name} capabilities entries must use string keys and posture values.",
+                        component_type="toolset",
+                        component_name=name,
+                    )
+                )
+            if posture not in _VALID_TOOL_POSTURES:
+                return Failure(
+                    self._error(
+                        f"Toolset {name} capabilities entry '{capability_name}' uses invalid posture '{posture}'.",
+                        component_type="toolset",
+                        component_name=name,
+                    )
+                )
 
         return Success(ToolsetComponent(capabilities=capabilities))
 
@@ -402,7 +432,13 @@ class FilesystemComponentStore:
 
         data = yaml_result.unwrap()
         if not isinstance(data, dict):
-            data = {}
+            return Failure(
+                self._error(
+                    f"Constraint {name} is not a valid mapping",
+                    component_type="constraint",
+                    component_name=name,
+                )
+            )
 
         if "side_effect_policy" in data:
             return Failure(
@@ -441,7 +477,13 @@ class FilesystemComponentStore:
 
         data = yaml_result.unwrap()
         if not isinstance(data, dict):
-            data = {}
+            return Failure(
+                self._error(
+                    f"Model {name} is not a valid mapping",
+                    component_type="model",
+                    component_name=name,
+                )
+            )
         return Success(ModelComponent(**data))
 
     def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:

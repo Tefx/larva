@@ -326,7 +326,7 @@ class TestPythonApiAssemble:
         # Verify delegation
         assert result is not None
         assert result["id"] == "assemble-test"
-        assert facade_fixture.call_record == ["assemble", "normalize", "validate"]
+        assert facade_fixture.call_record == ["assemble", "validate", "normalize", "validate"]
         assert facade_fixture.assemble_module.inputs[0]["id"] == "assemble-test"
 
     def test_assemble_with_only_id(self, facade_fixture: FacadeFixture) -> None:

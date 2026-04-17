@@ -11,10 +11,15 @@ from typing import cast
 
 from returns.result import Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 
 from .conftest import (
+    InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
     _digest_for,
@@ -261,3 +266,23 @@ class TestFacadeRegisterCanonicalRejections:
         assert payload["id"] == "warn-register"
         assert payload["registered"] is True
         assert len(registry.save_inputs) == 1
+
+    def test_register_rejects_invalid_optional_field_type(self) -> None:
+        registry = InMemoryRegistryStore()
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+        spec = _canonical_spec("register-bad-shape")
+        spec["model_params"] = "invalid"
+
+        result = facade.register(spec)
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_MODEL_PARAMS"
+        assert registry.save_inputs == []

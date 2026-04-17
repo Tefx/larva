@@ -56,15 +56,14 @@ if TYPE_CHECKING:
 class TestMCPToolDescriptionSemantics:
     """Verify MCP tool descriptions preserve explicit rejection semantics."""
 
-    def test_validate_tool_description_rejects_tools_at_canonical_admission(self) -> None:
-        """MCP validate tool description must explicitly state tools is rejected."""
+    def test_validate_tool_description_rejects_forbidden_legacy_vocabulary(self) -> None:
+        """MCP validate tool description must explicitly reject tools and side_effect_policy."""
         validate_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_validate")
         description = validate_tool["description"].lower()
 
-        # The description should explicitly state that tools causes rejection.
-        assert "tools is rejected" in description or "tools field causes error" in description, (
-            f"validate tool description must explicitly state tools is rejected at "
-            f"canonical admission. Current: {validate_tool['description']}"
+        assert "tools is rejected" in description and "side_effect_policy is rejected" in description, (
+            f"validate tool description must explicitly reject forbidden legacy vocabulary. "
+            f"Current: {validate_tool['description']}"
         )
 
     def test_assemble_tool_description_requires_capabilities_not_tools(self) -> None:

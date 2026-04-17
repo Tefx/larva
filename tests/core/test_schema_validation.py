@@ -29,6 +29,10 @@ SCHEMA_PATH = Path(__file__).parent.parent.parent / "contracts" / "persona_spec.
 SCHEMA = json.loads(SCHEMA_PATH.read_text())
 OPIFEX_SCHEMA_PATH = Path("/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json")
 OPIFEX_SCHEMA = json.loads(OPIFEX_SCHEMA_PATH.read_text())
+README_PATH = Path(__file__).parent.parent.parent / "README.md"
+USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "USER_GUIDE.md"
+USAGE_PATH = Path(__file__).parent.parent.parent / "USAGE.md"
+INTERFACES_PATH = Path(__file__).parent.parent.parent / "INTERFACES.md"
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -95,13 +99,17 @@ def _tool_phrase_violations(*, text: str, require_capabilities_term: bool) -> li
     violations: list[str] = []
     lowered = text.lower()
 
-    if validate_module.CANONICAL_TOOLS_REJECTED_CLAUSE not in lowered:
-        violations.append("missing canonical tools-rejected clause")
+    if validate_module.CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE not in lowered:
+        violations.append("missing canonical forbidden-legacy-vocabulary clause")
 
     if require_capabilities_term and "requires capabilities" not in lowered:
         violations.append("missing canonical capabilities-required clause")
 
     return violations
+
+
+def _doc_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
 
 
 def _tool_definition(name: str) -> Any:
@@ -154,6 +162,31 @@ class TestSchemaAcceptanceRejection:
         Includes all optional canonical fields.
         """
         jsonschema.validate(CANONICAL_SCHEMA_INSTANCE_FULL, SCHEMA)
+
+    @pytest.mark.parametrize(
+        ("field", "value", "expected_code"),
+        [
+            ("model_params", "invalid", "INVALID_MODEL_PARAMS"),
+            ("model_params", {"temperature": "hot"}, "INVALID_MODEL_PARAMS"),
+            ("compaction_prompt", ["invalid"], "INVALID_FIELD_TYPE"),
+            ("spec_digest", 123, "INVALID_FIELD_TYPE"),
+        ],
+    )
+    def test_schema_and_validator_reject_invalid_optional_field_shapes(
+        self,
+        field: str,
+        value: object,
+        expected_code: str,
+    ) -> None:
+        invalid_spec = dict(CANONICAL_SCHEMA_INSTANCE_MINIMAL)
+        invalid_spec[field] = value
+
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(invalid_spec, SCHEMA)
+
+        report = validate_module.validate_spec(invalid_spec)
+        assert report["valid"] is False
+        assert any(issue["code"] == expected_code for issue in report["errors"])
 
     @given(extra_field=st.sampled_from(NON_CANONICAL_EXTRA_FIELDS))
     def test_non_canonical_extra_fields_are_rejected_by_schema(self, extra_field: str) -> None:
@@ -241,7 +274,7 @@ class TestMCPProjectionParity:
             text=drifted_text,
             require_capabilities_term=False,
         )
-        assert "missing canonical tools-rejected clause" in violations
+        assert "missing canonical forbidden-legacy-vocabulary clause" in violations
 
     def test_capabilities_required_tool_projections_include_both_terms(self) -> None:
         for tool_name in (
@@ -270,6 +303,13 @@ class TestMCPProjectionParity:
             require_capabilities_term=True,
         )
         assert "missing canonical capabilities-required clause" in violations
+
+    def test_repo_docs_list_the_full_mcp_tool_inventory(self) -> None:
+        tool_names = [tool["name"] for tool in mcp_contract.LARVA_MCP_TOOLS]
+        for path in (README_PATH, USER_GUIDE_PATH, USAGE_PATH, INTERFACES_PATH):
+            text = _doc_text(path)
+            for tool_name in tool_names:
+                assert tool_name in text, f"{path.name} is missing MCP tool {tool_name}"
 
 
 class TestFailurePathDriftDetection:

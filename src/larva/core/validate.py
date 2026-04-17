@@ -1,13 +1,6 @@
 """Canonical PersonaSpec validation.
 
-Owns larva's admission metadata seam and enforces fail-closed canonical rules
-for required fields, extra fields, prompt composition, capabilities, and
-spawn semantics.
-
-Validation report semantics:
-- ``errors`` block admission (``valid == False``)
-- ``warnings`` are non-blocking canonical guidance signals (``valid`` may stay
-  ``True``)
+Errors block admission; warnings stay non-blocking.
 """
 
 import re
@@ -16,6 +9,7 @@ from deal import post, pre
 from larva.core.validation_contract import (
     CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
     CANONICAL_CONTRACT_METADATA,
+    CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE,
     CANONICAL_FORBIDDEN_FIELDS,
     CANONICAL_FORBIDDEN_FIELD_MESSAGE,
     CANONICAL_OPTIONAL_FIELDS,
@@ -28,6 +22,7 @@ from larva.core.validation_contract import (
     ValidationIssue,
     ValidationReport,
 )
+from larva.core.validation_field_shapes import validate_field_shapes
 from larva.core.validation_warnings import collect_non_blocking_warnings
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -378,6 +373,7 @@ def validate_spec(
     errors = _validate_identity_fields(spec)
     errors.extend(_validate_required_string_fields(spec))
     errors.extend(_validate_prompt_semantics(spec))
+    errors.extend(validate_field_shapes(spec))
 
     capabilities_errors = _validate_capabilities(spec)
     errors.extend(capabilities_errors)

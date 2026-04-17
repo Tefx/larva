@@ -152,6 +152,9 @@ larva_component_list()                  -> {prompts, toolsets, constraints, mode
 larva_component_show(type, name)        -> component content
 ```
 
+For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
+`side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
+
 Start larva as an MCP server over stdio:
 
 ```bash

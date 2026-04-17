@@ -10,11 +10,16 @@ from __future__ import annotations
 from typing import cast
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.shell.registry import RegistryError
 
 from .conftest import (
+    InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
     _digest_for,
@@ -94,6 +99,27 @@ class TestFacadeExportAll:
         assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
         assert error["numeric_code"] == 107
         assert error["details"]["path"] == "/tmp/registry/index.json"
+
+    def test_export_all_rejects_invalid_optional_field_type_from_registry(self) -> None:
+        bad_spec = dict(_canonical_spec("export-bad-shape"))
+        bad_spec["model_params"] = "invalid"
+        registry = InMemoryRegistryStore(
+            list_result=Success([cast("PersonaSpec", bad_spec)]),
+        )
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.export_all()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_MODEL_PARAMS"
 
 
 class TestFacadeExportIds:

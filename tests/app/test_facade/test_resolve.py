@@ -11,9 +11,14 @@ from typing import cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 
 from .conftest import (
+    InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
     _digest_for,
@@ -27,7 +32,7 @@ from .conftest import (
 class TestFacadeResolve:
     def test_resolve_reads_registry_then_normalizes_then_validates(self) -> None:
         calls: list[str] = []
-        canonical = _canonical_spec("resolve-me", digest="sha256:canonical-old")
+        canonical = _canonical_spec("resolve-me")
         registry = InMemoryRegistryStore(get_result=Success(canonical))
         facade, _, validate_module, normalize_module = _facade(
             report=_valid_report(),
@@ -39,17 +44,16 @@ class TestFacadeResolve:
 
         assert isinstance(result, Success)
         assert registry.get_inputs == ["resolve-me"]
-        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
-        assert calls == ["normalize", "validate"]
-        assert len(validate_module.inputs) == 1
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
         assert validate_module.inputs[0]["id"] == "resolve-me"
+        assert validate_module.inputs[1]["id"] == "resolve-me"
         assert normalize_module.inputs[0]["id"] == "resolve-me"
         assert result.unwrap()["spec_digest"] == _digest_for(result.unwrap())
-        assert result.unwrap()["spec_digest"] != "sha256:canonical-old"
 
     def test_resolve_applies_falsey_overrides_exactly_and_recomputes_digest(self) -> None:
         calls: list[str] = []
-        canonical = _canonical_spec("resolve-overrides", digest="sha256:canonical-old")
+        canonical = _canonical_spec("resolve-overrides")
         registry = InMemoryRegistryStore(get_result=Success(canonical))
         facade, _, validate_module, normalize_module = _facade(
             report=_valid_report(),
@@ -69,13 +73,13 @@ class TestFacadeResolve:
 
         assert isinstance(result, Success)
         resolved = result.unwrap()
-        # Hard-cut policy: normalize-then-validate replaces validate-then-normalize-then-validate
-        assert calls == ["normalize", "validate"]
-        assert len(validate_module.inputs) == 1
+        assert calls == ["validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 2
         assert validate_module.inputs[0]["description"] is None
         assert validate_module.inputs[0]["can_spawn"] is False
         assert validate_module.inputs[0]["compaction_prompt"] == ""
         assert validate_module.inputs[0]["model_params"] == {"temperature": 0}
+        assert validate_module.inputs[1]["compaction_prompt"] == ""
         assert normalize_module.inputs[0]["description"] is None
         assert normalize_module.inputs[0]["can_spawn"] is False
         assert normalize_module.inputs[0]["compaction_prompt"] == ""
@@ -85,7 +89,6 @@ class TestFacadeResolve:
         assert resolved["compaction_prompt"] == ""
         assert resolved["model_params"] == {"temperature": 0}
         assert resolved["spec_digest"] == _digest_for(resolved)
-        assert resolved["spec_digest"] != "sha256:canonical-old"
 
     def test_resolve_validation_failure_returns_persona_invalid(self) -> None:
         calls: list[str] = []
@@ -102,9 +105,28 @@ class TestFacadeResolve:
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_VERSION"
-        # Hard-cut policy: normalize is called before validation
-        assert normalize_module.inputs[0]["id"] == "resolve-invalid"
-        assert calls == ["normalize", "validate"]
+        assert normalize_module.inputs == []
+        assert calls == ["validate"]
+
+    def test_resolve_rejects_invalid_optional_field_type_from_registry(self) -> None:
+        stored = dict(_canonical_spec("resolve-bad-shape"))
+        stored["compaction_prompt"] = ["bad"]
+        registry = InMemoryRegistryStore(get_result=Success(cast("dict[str, object]", stored)))
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.resolve("resolve-bad-shape")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        assert error["details"]["report"]["errors"][0]["code"] == "INVALID_FIELD_TYPE"
+        assert error["details"]["report"]["errors"][0]["details"]["field"] == "compaction_prompt"
 
     def test_resolve_maps_persona_not_found_to_app_error(self) -> None:
         registry = InMemoryRegistryStore(

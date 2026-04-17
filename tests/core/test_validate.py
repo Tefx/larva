@@ -687,6 +687,106 @@ class TestCanonicalRequiredOnlyFixture:
         assert report["valid"] is True
         assert report["warnings"] == []
 
+    def test_required_description_and_model_reject_non_string_values(self):
+        spec = {
+            "id": "bad-required-types",
+            "description": 123,
+            "prompt": "You are a test assistant.",
+            "model": ["gpt-4o-mini"],
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+
+        report = validate_module.validate_spec(spec)
+
+        assert report["valid"] is False
+        assert {issue["details"]["field"] for issue in report["errors"] if issue["code"] == "INVALID_FIELD_TYPE"} == {
+            "description",
+            "model",
+        }
+
+    def test_model_params_rejects_non_object_type(self):
+        spec = {
+            "id": "bad-model-params-shape",
+            "description": "A persona with invalid model params.",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "model_params": "invalid",
+            "spec_version": "0.1.0",
+        }
+
+        report = validate_module.validate_spec(spec)
+
+        assert report["valid"] is False
+        assert any(issue["code"] == "INVALID_MODEL_PARAMS" for issue in report["errors"])
+
+    def test_model_params_rejects_invalid_common_schema_supported_values(self):
+        spec = {
+            "id": "bad-model-params-values",
+            "description": "A persona with structurally invalid model params.",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "model_params": {"temperature": "high", "top_p": 2, "top_k": 0, "max_tokens": 0},
+            "spec_version": "0.1.0",
+        }
+
+        report = validate_module.validate_spec(spec)
+
+        assert report["valid"] is False
+        invalid_fields = {
+            issue["details"]["field"]
+            for issue in report["errors"]
+            if issue["code"] == "INVALID_MODEL_PARAMS"
+        }
+        assert invalid_fields == {
+            "model_params.temperature",
+            "model_params.top_p",
+            "model_params.top_k",
+            "model_params.max_tokens",
+        }
+
+    def test_compaction_prompt_rejects_non_string_type(self):
+        spec = {
+            "id": "bad-compaction-prompt-type",
+            "description": "A persona with invalid compaction prompt type.",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "compaction_prompt": ["bad"],
+            "spec_version": "0.1.0",
+        }
+
+        report = validate_module.validate_spec(spec)
+
+        assert report["valid"] is False
+        assert any(
+            issue["code"] == "INVALID_FIELD_TYPE"
+            and issue["details"]["field"] == "compaction_prompt"
+            for issue in report["errors"]
+        )
+
+    def test_spec_digest_rejects_non_string_type(self):
+        spec = {
+            "id": "bad-spec-digest-type",
+            "description": "A persona with invalid spec digest type.",
+            "prompt": "You are a test assistant.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            "spec_digest": 123,
+            "spec_version": "0.1.0",
+        }
+
+        report = validate_module.validate_spec(spec)
+
+        assert report["valid"] is False
+        assert any(
+            issue["code"] == "INVALID_FIELD_TYPE"
+            and issue["details"]["field"] == "spec_digest"
+            for issue in report["errors"]
+        )
+
     def test_tools_field_in_canonical_fixture_produces_rejection(self):
         """Fixture variation: tools present = EXTRA_FIELD_NOT_ALLOWED."""
         spec = {

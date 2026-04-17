@@ -1,13 +1,6 @@
 """Application facade contracts and implementation.
 
-This is larva's admission seam for production PersonaSpec paths. It applies the
-canonical contract enforced by ``larva.core.validate`` and must not widen
-admission for ``tools``, ``side_effect_policy``, or unknown top-level fields.
-
-Registry-sourced specs are normalized before use on read surfaces so forbidden
-fields are rejected and ``spec_digest`` is recomputed before validation. This
-is explicit transformation, not silent field dropping or hidden compatibility.
-Update-batch ``where`` clauses are checked against canonical field names only.
+This is larva's admission seam for canonical PersonaSpec production paths.
 """
 
 from __future__ import annotations
@@ -16,6 +9,7 @@ from typing import Any, cast
 
 from returns.result import Failure, Result, Success
 
+from larva.app.facade_strictness import spec_digest_issues
 from larva.app.update_batch_where import validate_update_batch_where
 from larva.app.facade_types import (
     AssembleModule,
@@ -106,11 +100,28 @@ class DefaultLarvaFacade(LarvaFacade):
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         return self._validate.validate_spec(spec, self._registry_persona_ids_for_warnings())
 
+    def _validate_raw_spec(self, spec: PersonaSpec) -> Result[None, LarvaError]:
+        report = self.validate(spec)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+        return Success(None)
+
+    def _validate_stripped_spec_digest(self, spec: PersonaSpec) -> Result[None, LarvaError]:
+        issues = spec_digest_issues(spec)
+        if not issues:
+            return Success(None)
+        return Failure(
+            self._validation_error({"valid": False, "errors": issues, "warnings": []})
+        )
+
     def _normalize_and_validate(
         self,
         spec: PersonaSpec,
     ) -> Result[PersonaSpec, LarvaError]:
-        """Normalize then verify canonical admission contract conformance."""
+        """Validate raw input, normalize it, then re-validate canonical output."""
+        raw_validation = self._validate_raw_spec(spec)
+        if isinstance(raw_validation, Failure):
+            return raw_validation
         try:
             normalized = self._normalize.normalize_spec(spec)
         except NormalizeError as error:
@@ -309,10 +320,6 @@ class DefaultLarvaFacade(LarvaFacade):
         return current
 
     def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
-        report = self.validate(spec)
-        if not report["valid"]:
-            return Failure(self._validation_error(report))
-
         normalized_result = self._normalize_and_validate(spec)
         if isinstance(normalized_result, Failure):
             return normalized_result
@@ -352,6 +359,9 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
+        digest_validation = self._validate_stripped_spec_digest(cast("PersonaSpec", existing))
+        if isinstance(digest_validation, Failure):
+            return digest_validation
         try:
             patched = apply_patches(existing, patches)
         except PatchError as error:
@@ -480,6 +490,9 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         cloned = dict(get_result.unwrap())
+        digest_validation = self._validate_stripped_spec_digest(cast("PersonaSpec", cloned))
+        if isinstance(digest_validation, Failure):
+            return digest_validation
         cloned["id"] = new_id
         if "spec_digest" in cloned:
             del cloned["spec_digest"]

@@ -81,6 +81,10 @@ Primary MCP tools:
 - `larva_component_list()`
 - `larva_component_show(type, name)`
 
+All MCP PersonaSpec-bearing tools reject forbidden legacy vocabulary:
+`tools`, `side_effect_policy`. Unknown top-level fields such as `variables`
+are also rejected.
+
 ## CLI Surface
 
 Representative CLI operations:

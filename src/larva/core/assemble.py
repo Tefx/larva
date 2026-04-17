@@ -9,6 +9,7 @@ from larva.core.assembly_error import AssemblyError, assembly_error
 from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
 
 _assembly_error = assembly_error
+_VALID_TOOL_POSTURES = frozenset({"none", "read_only", "read_write", "destructive"})
 
 
 _PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
@@ -126,10 +127,7 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
                 details={"field": "tools", "toolset": toolset},
             )
 
-        caps_obj = toolset.get("capabilities")
-
-        # 'tools' is legacy content - not admissible at canonical cutover
-        if caps_obj is None:
+        if "capabilities" not in toolset:
             raise assembly_error(
                 code="TOOLSET_MISSING_CAPABILITIES",
                 message=(
@@ -138,13 +136,35 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
                 ),
                 details={"toolset": toolset},
             )
+
+        caps_obj = toolset.get("capabilities")
         if not isinstance(caps_obj, dict):
-            continue
+            raise assembly_error(
+                code="INVALID_TOOLSET_CAPABILITIES_SHAPE",
+                message="toolset capabilities must be a mapping of capability names to posture strings",
+                details={"toolset": toolset, "capabilities": caps_obj},
+            )
 
         source = cast("Mapping[object, object]", caps_obj)
         for cap_name, posture in _safe_items(source):
             if not isinstance(cap_name, str) or not isinstance(posture, str):
-                continue
+                raise assembly_error(
+                    code="INVALID_TOOLSET_CAPABILITY_ENTRY",
+                    message=(
+                        "toolset capabilities entries must use string capability names "
+                        "and posture strings"
+                    ),
+                    details={"toolset": toolset, "capability": cap_name, "posture": posture},
+                )
+            if posture not in _VALID_TOOL_POSTURES:
+                raise assembly_error(
+                    code="INVALID_TOOLSET_CAPABILITY_ENTRY",
+                    message=(
+                        "toolset capability posture must be one of none, read_only, "
+                        "read_write, destructive"
+                    ),
+                    details={"toolset": toolset, "capability": cap_name, "posture": posture},
+                )
             if cap_name in merged and merged[cap_name] != posture:
                 raise assembly_error(
                     code="COMPONENT_CONFLICT",

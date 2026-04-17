@@ -27,7 +27,9 @@ ValidationIssue = validate_contract.ValidationIssue
 ValidationReport = validate_contract.ValidationReport
 
 _CAPABILITIES_REQUIRED_CLAUSE = validate_contract.CANONICAL_CAPABILITIES_REQUIRED_CLAUSE
-_TOOLS_REJECTED_CLAUSE = validate_contract.CANONICAL_TOOLS_REJECTED_CLAUSE
+_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE = (
+    validate_contract.CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE
+)
 
 _PERSONA_SPEC_FIELD_TYPES: dict[str, dict[str, object]] = {
     "id": {"type": "string"},
@@ -74,7 +76,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_validate",
         "description": (
             "Validate a PersonaSpec JSON object against the canonical schema and semantic rules. "
-            f"Use the capabilities field; {_TOOLS_REJECTED_CLAUSE}."
+            f"Use the capabilities field; {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -82,7 +84,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "description": (
                         "PersonaSpec JSON to validate. "
-                        f"Use capabilities field; {_TOOLS_REJECTED_CLAUSE}."
+                        f"Use capabilities field; {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                     **_PERSONA_SPEC_INPUT_SCHEMA,
                 }
@@ -95,7 +97,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "description": (
             "Assemble a PersonaSpec from named canonical components and already-composed prompt inputs "
             "(prompts, toolsets, constraints, model). "
-            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_TOOLS_REJECTED_CLAUSE}."
+            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -128,7 +130,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "Field overrides (wins over components). "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                 },
             },
@@ -140,7 +142,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_resolve",
         "description": (
             "Resolve a pre-registered persona by id, optionally with runtime overrides. "
-            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_TOOLS_REJECTED_CLAUSE}."
+            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -150,7 +152,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "Field overrides applied to the resolved spec. Canonical admission "
-                        f"requires capabilities and {_TOOLS_REJECTED_CLAUSE}."
+                        f"requires capabilities and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                 },
             },
@@ -161,7 +163,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "name": "larva_register",
         "description": (
             "Register a PersonaSpec in the global registry. "
-            f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
+            f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -169,7 +171,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "description": (
                         "PersonaSpec JSON (must pass validation). "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                     **_PERSONA_SPEC_INPUT_SCHEMA,
                 }
@@ -289,7 +291,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "description": (
             "Update a registered persona by applying JSON merge patches to selected fields. "
             f"Patches may update canonical capabilities field; {_CAPABILITIES_REQUIRED_CLAUSE}; "
-            f"{_TOOLS_REJECTED_CLAUSE}."
+            f"{_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -302,7 +304,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "JSON merge patches to apply to the persona. "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_TOOLS_REJECTED_CLAUSE}."
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                 },
             },
@@ -314,7 +316,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "description": (
             "Batch-update all personas matching 'where' clauses by applying JSON merge patches. "
             f"Patches may update canonical capabilities field; {_CAPABILITIES_REQUIRED_CLAUSE}; "
-            f"{_TOOLS_REJECTED_CLAUSE}."
+            f"{_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {
             "type": "object",
@@ -331,7 +333,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "JSON merge patches to apply to each matched persona. Canonical admission "
-                        f"requires capabilities and {_TOOLS_REJECTED_CLAUSE}."
+                        f"requires capabilities and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                 },
                 "dry_run": {

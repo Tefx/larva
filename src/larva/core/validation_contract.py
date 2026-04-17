@@ -35,6 +35,9 @@ CANONICAL_UNKNOWN_FIELD_MESSAGE = (
 
 CANONICAL_CAPABILITIES_REQUIRED_CLAUSE = "canonical admission requires capabilities"
 CANONICAL_TOOLS_REJECTED_CLAUSE = "tools is rejected at canonical admission"
+CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE = (
+    "tools is rejected and side_effect_policy is rejected at canonical admission"
+)
 
 CANONICAL_CONTRACT_METADATA = MappingProxyType(
     {
@@ -48,6 +51,7 @@ CANONICAL_CONTRACT_METADATA = MappingProxyType(
         "unknown_field_message": CANONICAL_UNKNOWN_FIELD_MESSAGE,
         "capabilities_required_clause": CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
         "tools_rejected_clause": CANONICAL_TOOLS_REJECTED_CLAUSE,
+        "forbidden_legacy_vocabulary_clause": CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE,
     }
 )
 

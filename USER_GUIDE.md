@@ -112,6 +112,7 @@ The canonical larva artifact is `PersonaSpec`.
 - `id` must match `^[a-z0-9]+(-[a-z0-9]+)*$`
 - `capabilities` is required; `capabilities: {}` means no declared capability postures, not unrestricted access
 - `model_params` is an optional canonical field; nested `model_params.*` update patches deep-merge instead of replacing the whole object
+- `tools` and `side_effect_policy` are forbidden legacy PersonaSpec vocabulary at every canonical admission surface
 - `side_effect_policy` is **not a PersonaSpec field** — runtime approval policy belongs to anima runtime controls, not larva
 - `can_spawn` is either `false`, `true`, or a list of persona ids
 - `spec_digest` is computed by larva and should not be authored manually
@@ -382,6 +383,9 @@ larva_export(all?, ids?)
 larva_component_list()
 larva_component_show(type, name)
 ```
+
+For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
+`side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
 
 If you need exact parameter and return contracts, read `INTERFACES.md`.
 
