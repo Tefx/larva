@@ -51578,7 +51578,7 @@ phases:
   steps:
   - id: final_zeroing_20260418.fail_closed_toolset_and_digest
     name: Fail-closed toolset admission and malformed digest handling
-    status: claimed
+    status: done
     description: 'Implement and verify the final strict fail-closed admission behavior
       for malformed toolset content and malformed spec_digest across read/update/clone
       flows.
@@ -51683,6 +51683,35 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-17T20:28:18.701478+00:00'
+    done_at: '2026-04-17T20:57:57.248492+00:00'
+    evidence: "Subagent python-senior-tacit completed expected-red -> implementation\
+      \ -> verification for strict fail-closed admission on malformed toolset/component\
+      \ content and malformed spec_digest across resolve/update/clone.\n\nKey evidence:\n\
+      - Expected-red reproduced before implementation: malformed source spec_digest\
+      \ was accepted and laundered into recomputed digest (`tests/app/test_facade/test_clone.py::test_clone_rejects_malformed_source_spec_digest_before_recomputing`\
+      \ failed with Success result).\n- Implementation touched:\n  - src/larva/core/assemble.py\
+      \ (fail-closed merge_capabilities checks)\n  - src/larva/shell/components.py\
+      \ (fail-closed non-mapping/malformed component content)\n  - src/larva/app/facade.py\
+      \ and src/larva/app/facade_strictness.py (strict malformed spec_digest blocking\
+      \ before normalize on resolve/update/clone)\n  - targeted tests under tests/core,\
+      \ tests/shell, tests/app/test_facade.\n- Post-implementation verification passed:\n\
+      \  - `.venv/bin/python -m pytest tests/core/test_assemble.py tests/shell/test_components.py\
+      \ tests/app/test_facade/test_resolve.py tests/app/test_facade/test_update.py\
+      \ tests/app/test_facade/test_clone.py` => `102 passed`\n  - invar_guard(changed=true)\
+      \ => passed.\n\nMerge/reconciliation details:\n- Initial merge blocked by pre-existing\
+      \ local uncommitted changes in main.\n- conflict-resolver performed safe stash+restore,\
+      \ resolved merge conflicts conservatively preserving evolved local strictness,\
+      \ and committed merged result.\n- Final merged commit on main: `c03e5a5`.\n\
+      - Step worktree/branch cleaned:\n  - removed `.vectl/worktrees/final_zeroing_20260418.fail_closed_toolset_and_digest`\n\
+      \  - deleted `vectl/step-final_zeroing_20260418.fail_closed_toolset_and_digest`.\n\
+      \nrefs confirmation from execution evidence:\n- Read: src/larva/core/assemble.py,\
+      \ src/larva/core/validate.py, src/larva/shell/components.py, src/larva/app/facade.py\n\
+      - NOT READ with reason: src/larva/core/validation_field_shapes.py (missing in\
+      \ dispatched worktree), src/larva/app/facade_strictness.py (created during implementation).\n\
+      \nSemantic report:\n- step_intent: enforce fail-closed handling for malformed\
+      \ toolset/component content and malformed spec_digest.\n- expected_result: expected-red\
+      \ before implementation then green on focused suite.\n- observed_result: aligned;\
+      \ no out-of-scope implementation bypass accepted."
   - id: final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
     name: Reject legacy read-path fields and canonicalize public ingress
     status: pending
