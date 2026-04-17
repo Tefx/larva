@@ -52662,6 +52662,113 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T22:04:54.471285+00:00'
+  - id: final_zeroing_20260418_parity_cleanup.fix_batched
+    name: Batched stale transition-era wording cleanup
+    status: pending
+    description: 'Fix ALL stale transition-era wording blockers found by final_zeroing_20260418_parity_cleanup.gate.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      This is a reduction-and-closure cleanup for the reported blocker family: stale
+      parity wording that still certifies transition-era acceptance semantics after
+      final hard-cut closure.
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause: residual test/repro wording still describes preserve/validation-era
+      behavior instead of final strict zeroing semantics.
+
+      - Symptom: parity and black-box reproduction artifacts continue to mention forbidden-field
+      preservation and stale helper naming, weakening the gate''s final contract.
+
+      - Why this fix is not surface-level: search and update the full named offender
+      set plus sibling references to the stale wording/function name family, not only
+      one docstring.
+
+
+      ### B1: tests/core/test_normalize.py stale preserve/validation wording
+
+      Locations: tests/core/test_normalize.py:~220, tests/core/test_normalize.py:~222
+
+      Remediation: update the affected docstrings so they describe final strict zeroing
+      semantics and no longer imply forbidden fields are preserved or that the behavior
+      belongs to a later validation pass.
+
+      Grep hint: rg -n "preserves forbidden fields|validation, not normalize_spec|forbidden
+      fields|normalize_spec" tests/core/test_normalize.py
+
+      IMPORTANT: Search for sibling transition-era wording in nearby normalize parity
+      tests beyond the two cited lines.
+
+
+      ### B2: tests/repro/spec_verify_black_box_surfaces.py stale preserve wording
+
+      Locations: tests/repro/spec_verify_black_box_surfaces.py:~9, ~153
+
+      Remediation: update the module docstring and function name/docstring so they
+      reflect final strict zeroing wording instead of preserve-era semantics.
+
+      Grep hint: rg -n "preserve|preserves|forbidden fields|transition-era|stale function
+      name" tests/repro/spec_verify_black_box_surfaces.py
+
+      IMPORTANT: Rename wording consistently so function names, docstrings, and surrounding
+      commentary agree.
+
+
+      ### B3: tests/repro/spec_verify_black_box_surfaces.py stale function-name reference
+
+      Locations: tests/repro/spec_verify_black_box_surfaces.py:~371
+
+      Remediation: update the reference so it matches the renamed/current function
+      wording and preserves internal consistency across the file.
+
+      Grep hint: rg -n "spec_verify_black_box_surfaces|preserve|stale function name"
+      tests/repro/spec_verify_black_box_surfaces.py
+
+      IMPORTANT: Confirm no remaining references point at the stale function name
+      after the rename.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - tests/core/test_normalize.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/spec_verify_black_box_surfaces.py — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Completion Criteria
+
+      - ALL 5 listed locations updated
+
+      - Sibling search completed for the preserve/validation-era wording family
+
+      - Test/repro wording now aligns with final strict zeroing semantics
+
+      - No stale reference to the renamed function remains in the touched files
+
+      '
+    verification: 'local-check protecting the final full-plan-check: update the five
+      named stale-wording locations, verify sibling-search output shows no remaining
+      preserve/validation-era wording in the targeted files, and document the exact
+      renamed function/reference alignment.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n\nFor each ref in this\
+      \ step:\n- tests/core/test_normalize.py — key passage or \"NOT READ: <reason>\"\
+      \n- tests/repro/spec_verify_black_box_surfaces.py — key passage or \"NOT READ:\
+      \ <reason>\"\n\n## Batched blocker cleanup evidence\n- Updated locations:\n\
+      \  - tests/core/test_normalize.py:~220\n  - tests/core/test_normalize.py:~222\n\
+      \  - tests/repro/spec_verify_black_box_surfaces.py:~9\n  - tests/repro/spec_verify_black_box_surfaces.py:~153\n\
+      \  - tests/repro/spec_verify_black_box_surfaces.py:~371\n- Sibling search commands\
+      \ run:\n  ```\n  <paste rg commands>\n  ```\n- Remaining matches after cleanup:\n\
+      \  ```\n  <paste output or \"none\">\n  ```\n- Renamed/current function alignment\
+      \ note:\n  <describe updated function name and reference consistency>\n"
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.gate
+    agent: python-executor
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
