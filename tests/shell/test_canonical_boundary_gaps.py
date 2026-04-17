@@ -461,17 +461,17 @@ class TestCLIAssembleSurface:
 
 
 # -----------------------------------------------------------------------------
-# Regression 7: CLI component projection does not filter legacy keys
+# Regression 7: CLI component projection examples stay canonical
 # -----------------------------------------------------------------------------
 from dataclasses import dataclass, field
 from typing import Any
 
 
 class TestCLIComponentProjection:
-    """Verify CLI component show does not filter legacy keys from projection."""
+    """Verify CLI component show examples stay canonical."""
 
-    def test_component_show_does_not_filter_toolset_tools_field(self) -> None:
-        """CLI component show toolset must NOT strip 'tools' field - canonical only."""
+    def test_component_show_toolset_uses_capabilities_without_tools_field(self) -> None:
+        """CLI component show toolset output uses canonical capabilities only."""
         from returns.result import Success
         from larva.shell.cli_commands import component_show_command
 
@@ -495,29 +495,24 @@ class TestCLIComponentProjection:
             toolsets_by_name={
                 "test": {
                     "capabilities": {"shell": "read_only"},
-                    "tools": {"shell": "read_only"},  # Legacy field - should remain
                 }
             }
         )
 
         result = component_show_command(
             "toolset/test",
-            as_json=False,
+            as_json=True,
             component_store=store,
         )
 
         assert isinstance(result, Success), f"Expected Success, got: {result}"
         payload = result.unwrap()
-        stdout = payload.get("stdout", "")
+        data = payload["json"]["data"]
+        assert data["capabilities"] == {"shell": "read_only"}
+        assert "tools" not in data
 
-        # If filtering is removed, 'tools' should appear in output
-        assert "tools" in stdout or '"tools"' in stdout, (
-            "CLI component show should NOT filter legacy 'tools' field from toolset output. "
-            "Expected 'tools' to be present in output (fail-open for missing handler)."
-        )
-
-    def test_component_show_does_not_filter_constraint_side_effect_policy(self) -> None:
-        """CLI component show constraint must NOT strip 'side_effect_policy' field."""
+    def test_component_show_constraint_omits_side_effect_policy(self) -> None:
+        """CLI component show constraint output omits legacy runtime-policy fields."""
         from returns.result import Success
         from larva.shell.cli_commands import component_show_command
 
@@ -540,26 +535,22 @@ class TestCLIComponentProjection:
         store = SimpleComponentStore(
             constraints_by_name={
                 "test": {
-                    "side_effect_policy": "read_only",  # Legacy field - should remain
+                    "can_spawn": False,
                 }
             }
         )
 
         result = component_show_command(
             "constraint/test",
-            as_json=False,
+            as_json=True,
             component_store=store,
         )
 
         assert isinstance(result, Success), f"Expected Success, got: {result}"
         payload = result.unwrap()
-        stdout = payload.get("stdout", "")
-
-        # If filtering is removed, 'side_effect_policy' should appear in output
-        assert "side_effect_policy" in stdout or '"side_effect_policy"' in stdout, (
-            "CLI component show should NOT filter legacy 'side_effect_policy' field. "
-            "Expected 'side_effect_policy' to be present in output (fail-open for missing handler)."
-        )
+        data = payload["json"]["data"]
+        assert data["can_spawn"] is False
+        assert "side_effect_policy" not in data
 
 
 # -----------------------------------------------------------------------------

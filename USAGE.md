@@ -16,15 +16,17 @@ Prefer MCP for all programmatic access.
 
 Available tools:
 ```
-larva.validate(spec)              → ValidationReport
-larva.assemble(components)        → PersonaSpec
-larva.register(spec)              → {id, registered}
-larva.resolve(id, overrides?)     → PersonaSpec
-larva.list()                      → [{id, description, spec_digest, model}]
-larva.delete(id)                  → {id, deleted}
-larva.clear(confirm)              → {cleared, count}
-larva.component_list()            → {prompts, toolsets, constraints, models}
-larva.component_show(type, name)  → component content
+larva_validate(spec)                    → ValidationReport
+larva_assemble(components)              → PersonaSpec
+larva_register(spec)                    → {id, registered}
+larva_resolve(id, overrides?)           → PersonaSpec
+larva_list()                            → [{id, description, spec_digest, model}]
+larva_update(id, patches)               → PersonaSpec
+larva_update_batch(where, patches, dry_run?) → {items, matched, updated}
+larva_delete(id)                        → {id, deleted}
+larva_clear(confirm)                    → {cleared, count}
+larva_component_list()                  → {prompts, toolsets, constraints, models}
+larva_component_show(type, name)        → component content
 ```
 
 ### Fallback: CLI
@@ -426,46 +428,46 @@ All errors use a single envelope shape:
 
 ```
 1. Build PersonaSpec JSON (LLM-generated or hand-written)
-2. larva.validate(spec) → check valid=true
-3. larva.register(spec) → get id back
-4. larva.resolve(id) → confirm round-trip
+2. larva_validate(spec) → check valid=true
+3. larva_register(spec) → get id back
+4. larva_resolve(id) → confirm round-trip
 ```
 
 ### Workflow B: Compose from components
 
 ```
-1. larva.component_list() → discover available components
-2. larva.assemble({id, prompts, toolsets, constraints, model}) → PersonaSpec
+1. larva_component_list() → discover available components
+2. larva_assemble({id, prompts, toolsets, constraints, model}) → PersonaSpec
 3. Inspect returned spec; adjust overrides if COMPONENT_CONFLICT
-4. larva.register(spec)
+4. larva_register(spec)
 ```
 
 ### Workflow C: Load for agent execution
 
 ```
-1. larva.resolve(id) → PersonaSpec
+1. larva_resolve(id) → PersonaSpec
    OR
-   larva.resolve(id, overrides={model: "..."}) → PersonaSpec with runtime patch
+   larva_resolve(id, overrides={model: "..."}) → PersonaSpec with runtime patch
 2. Pass spec to anima or agent runner
 ```
 
 ### Workflow D: Discover available personas
 
 ```
-1. larva.list() → [{id, description, spec_digest, model}, ...]
-2. larva.resolve(id) → full spec for chosen persona
+1. larva_list() → [{id, description, spec_digest, model}, ...]
+2. larva_resolve(id) → full spec for chosen persona
 ```
 
 ### Workflow E: Remove a persona
 
 ```
-1. larva.delete(id) → {id, deleted: true}
+1. larva_delete(id) → {id, deleted: true}
 ```
 
 ### Workflow F: Reset registry
 
 ```
-1. larva.clear(confirm="CLEAR REGISTRY") → {cleared: true, count: N}
+1. larva_clear(confirm="CLEAR REGISTRY") → {cleared: true, count: N}
 ```
 
 ---

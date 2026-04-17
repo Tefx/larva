@@ -229,7 +229,10 @@ def _add_registry_commands(subparsers: argparse._SubParsersAction[_CliParser]) -
     update_batch_parser = subparsers.add_parser(
         "update-batch",
         help="Batch-update personas matching a filter",
-        description="Update multiple personas at once. Use --where to filter and --set to apply changes.",
+        description=(
+            "Update multiple personas at once. Use --where with canonical PersonaSpec "
+            "fields only, and use --set to apply changes."
+        ),
     )
     update_batch_parser.add_argument(
         "--where",
@@ -238,7 +241,10 @@ def _add_registry_commands(subparsers: argparse._SubParsersAction[_CliParser]) -
         default=[],
         required=True,
         metavar="KEY=VALUE",
-        help="filter condition (repeatable, e.g. --where model=gpt-3.5)",
+        help=(
+            "canonical filter condition (repeatable, e.g. --where model=gpt-4o-mini; "
+            "legacy roots like tools.* are rejected)"
+        ),
     )
     update_batch_parser.add_argument(
         "--set",

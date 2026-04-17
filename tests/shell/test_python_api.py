@@ -1011,10 +1011,10 @@ class TestPythonApiClone:
         # Digest should differ from source because content changed
         assert result["spec_digest"] != "sha256:old"
 
-    def test_clone_preserves_all_fields_without_id_and_digest(
+    def test_clone_preserves_canonical_fields_without_id_and_digest(
         self, facade_fixture: FacadeFixture
     ) -> None:
-        """clone() must preserve all fields from source except id and spec_digest."""
+        """clone() must preserve canonical source fields except id and spec_digest."""
         source_spec: PersonaSpec = {
             "id": "source-preserves",
             "description": "Original description",
@@ -1026,7 +1026,6 @@ class TestPythonApiClone:
             "compaction_prompt": "Summarize everything.",
             "spec_version": "0.1.0",
             "spec_digest": "sha256:source-digest",
-            "custom_field": "custom_value",
         }
         facade_fixture.registry.get_result = Success(source_spec)
 
@@ -1035,7 +1034,6 @@ class TestPythonApiClone:
         assert result["description"] == "Original description"
         assert result["prompt"] == "You are careful."
         assert result["model"] == "gpt-4"
-        # Canonical cutover: tools and side_effect_policy (mirrored legacy) are stripped
         assert result["capabilities"] == {"shell": "full_access"}
         assert "tools" not in result
         assert result["model_params"] == {"temperature": 0.5, "max_tokens": 2000}
@@ -1043,7 +1041,6 @@ class TestPythonApiClone:
         assert result["can_spawn"] is True
         assert result["compaction_prompt"] == "Summarize everything."
         assert result["spec_version"] == "0.1.0"
-        assert result["custom_field"] == "custom_value"
         assert result["id"] == "target-preserves"
         # spec_digest is recomputed, not copied from source
         assert result["spec_digest"] != "sha256:source-digest"
@@ -1611,6 +1608,36 @@ class TestPythonApiUpdateBatch:
         assert result["matched"] == 0
         assert result["updated"] == 0
         assert result["items"] == []
+
+    @pytest.mark.parametrize(
+        ("where_key", "expected_field", "expected_value"),
+        [
+            ("tools.shell", "tools", "read_only"),
+            ("side_effect_policy", "side_effect_policy", "read_only"),
+        ],
+    )
+    def test_update_batch_rejects_legacy_where_fields(
+        self,
+        facade_fixture: FacadeFixture,
+        where_key: str,
+        expected_field: str,
+        expected_value: object,
+    ) -> None:
+        """update_batch() must fail closed on non-canonical where vocabulary."""
+        facade_fixture.registry.list_result = Success([_canonical_spec("alpha")])
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.update_batch(
+                where={where_key: expected_value},
+                patches={"description": "Updated"},
+            )
+
+        assert exc_info.value.error["code"] == "INVALID_INPUT"
+        assert exc_info.value.error["numeric_code"] == 1
+        assert expected_field in exc_info.value.error["message"]
+        assert exc_info.value.error["details"]["field"] == expected_field
+        assert exc_info.value.error["details"]["where_key"] == where_key
+        assert facade_fixture.registry.save_inputs == []
 
     def test_update_batch_empty_where_matches_all(self, facade_fixture: FacadeFixture) -> None:
         """update_batch() with empty where clause matches all personas."""

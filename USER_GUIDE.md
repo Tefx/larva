@@ -366,18 +366,19 @@ larva's primary programmatic interface is MCP.
 Available tools:
 
 ```text
-larva.validate(spec)
-larva.assemble(components)
-larva.register(spec)
-larva.resolve(id, overrides?)
-larva.list()
-larva.update(id, patches)
-larva.clone(source_id, new_id)
-larva.delete(id)
-larva.clear(confirm)
-larva.export(all?, ids?)
-larva.component_list()
-larva.component_show(type, name)
+larva_validate(spec)
+larva_assemble(components)
+larva_register(spec)
+larva_resolve(id, overrides?)
+larva_list()
+larva_update(id, patches)
+larva_update_batch(where, patches, dry_run?)
+larva_clone(source_id, new_id)
+larva_delete(id)
+larva_clear(confirm)
+larva_export(all?, ids?)
+larva_component_list()
+larva_component_show(type, name)
 ```
 
 If you need exact parameter and return contracts, read `INTERFACES.md`.

@@ -137,18 +137,19 @@ only the assembled and validated `PersonaSpec` is authoritative at runtime.
 Primary programmatic surface:
 
 ```text
-larva.validate(spec)              -> ValidationReport
-larva.assemble(components)        -> PersonaSpec
-larva.register(spec)              -> {id, registered}
-larva.resolve(id, overrides?)     -> PersonaSpec
-larva.list()                      -> [{id, description, spec_digest, model}]
-larva.update(id, patches)         -> PersonaSpec
-larva.clone(source_id, new_id)    -> PersonaSpec
-larva.delete(id)                  -> {id, deleted}
-larva.clear(confirm)              -> {cleared, count}
-larva.export(all?, ids?)          -> [PersonaSpec, ...]
-larva.component_list()            -> {prompts, toolsets, constraints, models}
-larva.component_show(type, name)  -> component content
+larva_validate(spec)                    -> ValidationReport
+larva_assemble(components)              -> PersonaSpec
+larva_register(spec)                    -> {id, registered}
+larva_resolve(id, overrides?)           -> PersonaSpec
+larva_list()                            -> [{id, description, spec_digest, model}]
+larva_update(id, patches)               -> PersonaSpec
+larva_update_batch(where, patches, dry_run?) -> {items, matched, updated}
+larva_clone(source_id, new_id)          -> PersonaSpec
+larva_delete(id)                        -> {id, deleted}
+larva_clear(confirm)                    -> {cleared, count}
+larva_export(all?, ids?)                -> [PersonaSpec, ...]
+larva_component_list()                  -> {prompts, toolsets, constraints, models}
+larva_component_show(type, name)        -> component content
 ```
 
 Start larva as an MCP server over stdio:

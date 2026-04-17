@@ -51,7 +51,7 @@ class TestMCPStdioIntegration:
         anyio.run(_run)
 
     def test_validate_tool_call(self) -> None:
-        """Call larva.validate with a minimal valid spec."""
+        """Call larva_validate with a minimal valid spec."""
 
         async def _run() -> None:
             async with stdio_client(LARVA_MCP_CMD) as (read, write):
@@ -62,10 +62,11 @@ class TestMCPStdioIntegration:
                         arguments={
                             "spec": {
                                 "id": "test-persona",
-                                "version": "1.0.0",
-                                "name": "Test",
+                                "description": "Test persona",
+                                "prompt": "You are a careful tester.",
                                 "model": "claude-sonnet-4-5-20250514",
-                                "prompts": ["default"],
+                                "capabilities": {"shell": "read_only"},
+                                "spec_version": "0.1.0",
                             }
                         },
                     )
@@ -76,7 +77,7 @@ class TestMCPStdioIntegration:
         anyio.run(_run)
 
     def test_list_tool_call(self) -> None:
-        """Call larva.list — returns empty or populated registry."""
+        """Call larva_list — returns empty or populated registry."""
 
         async def _run() -> None:
             async with stdio_client(LARVA_MCP_CMD) as (read, write):
@@ -88,32 +89,32 @@ class TestMCPStdioIntegration:
         anyio.run(_run)
 
     def test_component_list_tool_call(self) -> None:
-        """Call larva.component_list — returns available components."""
+        """Call larva_component_list — returns available components."""
 
         async def _run() -> None:
             async with stdio_client(LARVA_MCP_CMD) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    result = await session.call_tool(
-                        "larva_component_list", arguments={}
-                    )
+                    result = await session.call_tool("larva_component_list", arguments={})
                     assert len(result.content) > 0
 
         anyio.run(_run)
 
     def test_error_envelope_on_invalid_call(self) -> None:
-        """Call larva.resolve with missing id returns error envelope."""
+        """Call larva_resolve with missing id returns error envelope."""
 
         async def _run() -> None:
             async with stdio_client(LARVA_MCP_CMD) as (read, write):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
-                    result = await session.call_tool(
-                        "larva_resolve", arguments={}
-                    )
+                    result = await session.call_tool("larva_resolve", arguments={})
                     assert len(result.content) > 0
                     text = result.content[0].text
                     # Should contain error info (missing required param)
-                    assert "error" in text.lower() or "required" in text.lower() or "MISSING_PARAM" in text
+                    assert (
+                        "error" in text.lower()
+                        or "required" in text.lower()
+                        or "MISSING_PARAM" in text
+                    )
 
         anyio.run(_run)

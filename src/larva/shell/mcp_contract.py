@@ -322,7 +322,9 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "where": {
                     "type": "object",
                     "description": (
-                        "WHERE clauses: all personas matching all key=value pairs are updated"
+                        "WHERE clauses on canonical PersonaSpec fields only; all personas "
+                        "matching all key=value pairs are updated. Legacy roots like tools.* "
+                        "or side_effect_policy are rejected."
                     ),
                 },
                 "patches": {

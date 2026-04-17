@@ -1143,22 +1143,19 @@ class TestCloneCommand:
         assert failure["exit_code"] == EXIT_ERROR
         assert "Clone failed" in failure.get("stderr", "")
 
-    def test_clone_preserves_all_fields_except_id_and_digest(self) -> None:
-        """Clone preserves all source fields except id and spec_digest."""
+    def test_clone_preserves_canonical_fields_except_id_and_digest(self) -> None:
+        """Clone preserves canonical source fields except id and spec_digest."""
         source_spec: PersonaSpec = {
             "id": "original-persona",
             "description": "Original description",
             "prompt": "Original prompt text",
             "model": "gpt-4",
-            "capabilities": {"shell": "full_access"},  # canonical (ADR-002)
-            "tools": {"shell": "full_access"},  # DEPRECATED: mirrored
+            "capabilities": {"shell": "full_access"},
             "model_params": {"temperature": 0.7, "max_tokens": 4000},
-            "side_effect_policy": "full_access",
             "can_spawn": True,
             "compaction_prompt": "Custom compaction",
             "spec_version": "0.1.0",
             "spec_digest": "sha256:stale",
-            "custom_field": "custom_value",
         }
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(report=_valid_report(), registry=registry)
@@ -1174,14 +1171,13 @@ class TestCloneCommand:
         assert cloned["description"] == "Original description"
         assert cloned["prompt"] == "Original prompt text"
         assert cloned["model"] == "gpt-4"
-        assert cloned["capabilities"] == {"shell": "full_access"}  # canonical (ADR-002)
-        assert cloned["tools"] == {"shell": "full_access"}  # DEPRECATED: mirrored
+        assert cloned["capabilities"] == {"shell": "full_access"}
+        assert "tools" not in cloned
         assert cloned["model_params"] == {"temperature": 0.7, "max_tokens": 4000}
-        assert cloned["side_effect_policy"] == "full_access"
+        assert "side_effect_policy" not in cloned
         assert cloned["can_spawn"] is True
         assert cloned["compaction_prompt"] == "Custom compaction"
         assert cloned["spec_version"] == "0.1.0"
-        assert cloned["custom_field"] == "custom_value"
         # Digest must be recomputed
         assert cloned["spec_digest"] != "sha256:stale"
 
@@ -2539,9 +2535,8 @@ class TestComponentShowCommand:
         assert cli_result["exit_code"] == EXIT_OK
         assert "json" in cli_result
         assert "data" in cli_result["json"]
-        # ADR-002: capabilities is canonical; component output is pass-through (fail-open for legacy keys)
         assert "capabilities" in cli_result["json"]["data"]
-        # Note: 'tools' may be present in pass-through output - filtering is NOT done at CLI layer
+        assert "tools" not in cli_result["json"]["data"]
 
     def test_component_show_constraint_success_text_mode_returns_exit_ok(self) -> None:
         """Component show with valid constraint returns exit code 0 in text mode."""
@@ -3649,6 +3644,44 @@ class TestUpdateBatchCommand:
         assert data["matched"] == 0
         assert data["updated"] == 0
         assert data["items"] == []
+
+    @pytest.mark.parametrize(
+        ("where_key", "expected_field", "expected_value"),
+        [
+            ("tools.shell", "tools", "read_only"),
+            ("side_effect_policy", "side_effect_policy", "read_only"),
+        ],
+    )
+    def test_update_batch_rejects_legacy_where_fields(
+        self,
+        where_key: str,
+        expected_field: str,
+        expected_value: object,
+    ) -> None:
+        """Update batch must fail closed on non-canonical where vocabulary."""
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
+        facade = _make_facade(report=_valid_report(), registry=registry)
+
+        from larva.shell.cli_commands import update_batch_command
+
+        result = update_batch_command(
+            where_clauses={where_key: expected_value},
+            set_clauses={"description": "Updated"},
+            dry_run=False,
+            as_json=True,
+            facade=facade,
+        )
+
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        error = failure["error"]
+        assert error["code"] == "INVALID_INPUT"
+        assert error["numeric_code"] == 1
+        assert expected_field in error["message"]
+        assert error["details"]["field"] == expected_field
+        assert error["details"]["where_key"] == where_key
+        assert registry.save_inputs == []
 
     def test_update_batch_failure_returns_exit_error(self) -> None:
         """Registry failure returns exit code 1."""

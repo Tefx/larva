@@ -22,9 +22,9 @@ Registry read policy (hard-cut, per ADR-002 / canonical cutover):
 - No silent field dropping — normalization is an explicit transform.
 - No auto-rewrite — the registry file is not modified unless the surface
   explicitly writes back (update, clone, update_batch).
-- No hidden compatibility — ``where`` clauses in update_batch only match
-  against canonical field names, so legacy fields like ``tools`` or
-  ``side_effect_policy`` are invisible to matching after normalization.
+- No hidden compatibility — ``where`` clauses in update_batch are validated
+  against canonical field names before matching. Legacy or non-canonical roots
+  like ``tools.*`` or ``side_effect_policy`` fail closed.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from larva.core.assemble import AssemblyError
 from larva.core.patch import PatchError, apply_patches
 from larva.core.spec import AssemblyInput, PersonaSpec
 from larva.core.validate import ValidationReport
+from larva.app.update_batch_where import validate_update_batch_where
 from larva.shell.components import ComponentStore
 from larva.shell.registry import RegistryError, RegistryStore
 
@@ -522,6 +523,19 @@ class DefaultLarvaFacade(LarvaFacade):
         patches: dict[str, object],
         dry_run: bool = False,
     ) -> Result[BatchUpdateResult, LarvaError]:
+        where_issue = validate_update_batch_where(
+            persona_fields=self._spec.PersonaSpec.__annotations__,
+            where=where,
+        )
+        if where_issue is not None:
+            return Failure(
+                self._error(
+                    code="INVALID_INPUT",
+                    message=where_issue["message"],
+                    details=where_issue["details"],
+                )
+            )
+
         list_result = self._registry.list()
         if isinstance(list_result, Failure):
             return Failure(self._registry_failure_error(list_result.failure()))

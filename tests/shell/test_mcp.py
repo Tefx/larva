@@ -362,7 +362,7 @@ class TestMCPToolDefinitions:
         )
 
     def test_component_list_tool_is_defined(self) -> None:
-        """Verify larva.component_list is defined in LARVA_MCP_TOOLS."""
+        """Verify larva_component_list is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
         assert "larva_component_list" in tool_names
 
@@ -377,7 +377,7 @@ class TestMCPToolDefinitions:
         )
 
     def test_component_show_tool_is_defined(self) -> None:
-        """Verify larva.component_show is defined in LARVA_MCP_TOOLS."""
+        """Verify larva_component_show is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
         assert "larva_component_show" in tool_names
 
@@ -391,7 +391,7 @@ class TestMCPToolDefinitions:
         assert "name" in component_show_tool["input_schema"]["required"]
 
     def test_delete_tool_is_defined(self) -> None:
-        """Verify larva.delete is defined in LARVA_MCP_TOOLS."""
+        """Verify larva_delete is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
         assert "larva_delete" in tool_names
 
@@ -401,7 +401,7 @@ class TestMCPToolDefinitions:
         assert "id" in delete_tool["input_schema"]["required"]
 
     def test_clear_tool_is_defined(self) -> None:
-        """Verify larva.clear is defined in LARVA_MCP_TOOLS."""
+        """Verify larva_clear is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
         assert "larva_clear" in tool_names
 
@@ -457,7 +457,7 @@ class TestMCPErrorCodes:
 
 
 class TestMCPValidateSuccessShape:
-    """Test larva.validate success response shape."""
+    """Test larva_validate success response shape."""
 
     def test_validate_returns_validation_report_shape(self) -> None:
         facade = _make_facade(validate_report=_valid_report())
@@ -488,7 +488,7 @@ class TestMCPValidateSuccessShape:
 
 
 class TestMCPAssembleSuccessShape:
-    """Test larva.assemble success response shape."""
+    """Test larva_assemble success response shape."""
 
     def test_assemble_returns_persona_spec_shape(self) -> None:
         candidate = _canonical_spec("assembled", digest="sha256:assembled")
@@ -507,7 +507,7 @@ class TestMCPAssembleSuccessShape:
         assert "prompt" in spec
 
     def test_assemble_includes_all_required_fields(self) -> None:
-        candidate = _transition_spec("full-spec", digest="sha256:full")
+        candidate = _canonical_spec("full-spec", digest="sha256:full")
         facade = _make_facade(
             validate_report=_valid_report(),
             assemble_candidate=candidate,
@@ -522,10 +522,8 @@ class TestMCPAssembleSuccessShape:
             "description",
             "prompt",
             "model",
-            "capabilities",  # canonical (ADR-002)
-            "tools",  # REJECTED at canonical admission; mirrored here only for transition coverage
+            "capabilities",
             "model_params",
-            "side_effect_policy",  # REJECTED at canonical admission; runtime concern in transition coverage only
             "can_spawn",
             "compaction_prompt",
             "spec_version",
@@ -533,10 +531,12 @@ class TestMCPAssembleSuccessShape:
         ]
         for field in required_fields:
             assert field in spec, f"Missing required field: {field}"
+        assert "tools" not in spec
+        assert "side_effect_policy" not in spec
 
 
 class TestMCPResolveSuccessShape:
-    """Test larva.resolve success response shape."""
+    """Test larva_resolve success response shape."""
 
     def test_resolve_returns_persona_spec_shape(self) -> None:
         stored = _canonical_spec("stored", digest="sha256:stored")
@@ -552,7 +552,7 @@ class TestMCPResolveSuccessShape:
 
 
 class TestMCPRegisterSuccessShape:
-    """Test larva.register success response shape."""
+    """Test larva_register success response shape."""
 
     def test_register_returns_registered_persona_shape(self) -> None:
         registry = InMemoryRegistryStore()
@@ -570,7 +570,7 @@ class TestMCPRegisterSuccessShape:
 
 
 class TestMCPListSuccessShape:
-    """Test larva.list success response shape."""
+    """Test larva_list success response shape."""
 
     def test_list_returns_list_of_summaries(self) -> None:
         specs = [
@@ -1366,7 +1366,7 @@ class TestMCPHandlersImplementation:
 
 
 class TestMCPComponentListAcceptance:
-    """Acceptance tests for larva.component_list MCP tool."""
+    """Acceptance tests for larva_component_list MCP tool."""
 
     def test_handle_component_list_accepts_empty_params(self) -> None:
         """Test handle_component_list accepts empty params {}."""
@@ -1416,7 +1416,7 @@ class TestMCPComponentListAcceptance:
 
 
 class TestMCPComponentShowAcceptance:
-    """Acceptance tests for larva.component_show MCP tool."""
+    """Acceptance tests for larva_component_show MCP tool."""
 
     def test_handle_component_show_unknown_param_returns_malformed_envelope(self) -> None:
         """Test handle_component_show rejects unknown params with INTERNAL error."""
@@ -1602,13 +1602,9 @@ class TestMCPComponentShowAcceptance:
         assert "tools" not in result
 
     def test_handle_component_show_success_for_constraint(self) -> None:
-        """Test handle_component_show success path for constraints.
-
-        Note: ADR-002 deprecates side_effect_policy in constraints. Tests
-        retain backward-compat coverage until runtime policy is fully removed.
-        """
+        """Test handle_component_show success path for canonical constraints."""
         components = InMemoryComponentStore(
-            constraints_by_name={"safe-default": {"side_effect_policy": "read_only"}}
+            constraints_by_name={"safe-default": {"can_spawn": False}}
         )
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1619,8 +1615,8 @@ class TestMCPComponentShowAcceptance:
 
         assert isinstance(result, dict)
         assert "error" not in result
-        # Historical compatibility expectation only: side_effect_policy is rejected at canonical admission (ADR-002)
-        assert "side_effect_policy" in result
+        assert result["can_spawn"] is False
+        assert "side_effect_policy" not in result
 
     def test_handle_component_show_success_for_model(self) -> None:
         """Test handle_component_show success path for models."""
@@ -2038,6 +2034,35 @@ class TestMCPHandleUpdateBatch:
             tool="larva_update_batch",
             reason="params must be an object",
         )
+
+    @pytest.mark.parametrize(
+        ("where_key", "expected_field", "expected_value"),
+        [
+            ("tools.shell", "tools", "read_only"),
+            ("side_effect_policy", "side_effect_policy", "read_only"),
+        ],
+    )
+    def test_handle_update_batch_rejects_legacy_where_fields(
+        self,
+        where_key: str,
+        expected_field: str,
+        expected_value: object,
+    ) -> None:
+        """Test handle_update_batch fails closed on legacy where vocabulary."""
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
+        facade = _make_facade(registry=registry)
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_update_batch(
+            {"where": {where_key: expected_value}, "patches": {"description": "Updated"}}
+        )
+
+        assert isinstance(result, dict)
+        assert result["code"] == "INVALID_INPUT"
+        assert result["numeric_code"] == 1
+        assert expected_field in result["message"]
+        assert result["details"]["field"] == expected_field
+        assert result["details"]["where_key"] == where_key
 
     def test_handle_update_batch_failure_returns_error_envelope(self) -> None:
         """Test handle_update_batch returns error envelope on facade failure."""
@@ -2584,10 +2609,10 @@ class TestMCPHandleExport:
 
 
 class TestMCPUpdateToolDefinition:
-    """Verify larva.update is defined in MCP tools."""
+    """Verify larva_update is defined in MCP tools."""
 
     def test_update_tool_is_defined(self) -> None:
-        """Verify larva.update is defined in LARVA_MCP_TOOLS."""
+        """Verify larva_update is defined in LARVA_MCP_TOOLS."""
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
         assert "larva_update" in tool_names
 
