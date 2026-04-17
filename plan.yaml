@@ -52145,6 +52145,55 @@ phases:
     depends_on:
     - final_zeroing_20260418.tests_transition_parity_cleanup
     agent: doc-reviewer-tacit
+  - id: final_zeroing_20260418_parity_cleanup.gate
+    name: Gate test and documentation parity cleanup
+    status: pending
+    description: 'Independent gate review for parity cleanup.
+
+
+      review_depth: STANDARD
+
+      focus:
+
+      - tests no longer certify transition-era acceptance behavior
+
+      - docs no longer describe sanitize/compatibility/later-pass posture
+
+
+      Gate rule: any stale wording that weakens the final hard-cut contract is FAIL.'
+    verification: 'phase-check: independently review parity cleanup evidence and confirm
+      repository wording aligns with final strict closure. This gate protects the
+      final full-plan-check.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Reviewed evidence:
+
+      - Residual stale wording found:
+
+
+      ## Decision Basis
+
+      - tests parity clean: PASS/FAIL
+
+      - docs parity clean: PASS/FAIL
+
+
+      ## Gate Decision
+
+      PASS only if both lines above are PASS. Any open item = FAIL.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.tests_transition_parity_cleanup
+    - final_zeroing_20260418.docs_transition_parity_cleanup
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
