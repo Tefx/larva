@@ -51141,7 +51141,7 @@ phases:
       \ no longer uses error->empty fallback\n\n### Headline\n- PASS"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.gate
     name: Registry UX cleanup gate
-    status: pending
+    status: claimed
     description: 'Gate review for the final registry UX cleanup.
 
 
@@ -51196,3 +51196,5 @@ phases:
     depends_on:
     - hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-17T09:28:05.829334+00:00'
