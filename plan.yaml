@@ -51571,14 +51571,14 @@ phases:
       Residual risk: none (blocking risk closed).'
 - id: final_zeroing_20260418_fail_closed_admission
   name: Final Strict Zeroing — Fail-Closed Admission and Read Paths
-  status: pending
+  status: in_progress
   depends_on:
   - fresh_deep_reaudit_20260417
   - meta.gate
   steps:
   - id: final_zeroing_20260418.fail_closed_toolset_and_digest
     name: Fail-closed toolset admission and malformed digest handling
-    status: pending
+    status: claimed
     description: 'Implement and verify the final strict fail-closed admission behavior
       for malformed toolset content and malformed spec_digest across read/update/clone
       flows.
@@ -51681,6 +51681,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-17T20:28:18.701478+00:00'
   - id: final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
     name: Reject legacy read-path fields and canonicalize public ingress
     status: pending
