@@ -51569,3 +51569,9 @@ phases:
 
 
       Residual risk: none (blocking risk closed).'
+- id: final_zeroing_20260418_fail_closed_admission
+  name: Final Strict Zeroing — Fail-Closed Admission and Read Paths
+  status: pending
+  depends_on:
+  - fresh_deep_reaudit_20260417
+  - meta.gate
