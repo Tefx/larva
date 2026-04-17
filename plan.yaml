@@ -52071,7 +52071,7 @@ phases:
       \ merged to main and worktree/branch cleaned."
   - id: final_zeroing_20260418_fail_closed_admission.retest
     name: Retest gate criteria after batched admission remediation
-    status: pending
+    status: claimed
     description: 'Independent retest/review after final_zeroing_20260418_fail_closed_admission.fix_batched.
 
 
@@ -52147,6 +52147,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_fail_closed_admission.fix_batched
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-17T21:33:51.344412+00:00'
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
