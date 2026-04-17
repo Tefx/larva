@@ -38,6 +38,8 @@ from tests.shell.fixture_taxonomy import (
     canonical_constraint_fixture,
     canonical_persona_spec,
     canonical_toolset_fixture,
+    historical_constraint_fixture_with_legacy_field,
+    historical_toolset_fixture_with_legacy_fields,
 )
 
 if TYPE_CHECKING:
@@ -807,12 +809,12 @@ class TestPythonApiComponentShow:
         monkeypatch.setattr(python_api_components, "_component_store", store)
         monkeypatch.setattr(python_api_components, "query_component", _fake_query_component)
 
-        result = python_api.component_show("prompt", "test-prompt")
+        result = python_api.component_show("prompts", "test-prompt")
 
         assert result == {"text": "Shared query payload"}
         assert recorded == {
             "component_store": store,
-            "component_type": "prompt",
+            "component_type": "prompts",
             "component_name": "test-prompt",
             "operation": "python_api.component_show",
         }
@@ -820,7 +822,7 @@ class TestPythonApiComponentShow:
     def test_component_show_prompt_delegates_to_load_prompt(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """component_show('prompt', name) must forward to load_prompt()."""
+        """component_show('prompts', name) must forward to load_prompt()."""
         call_record: list[str] = []
 
         class MockComponentStore:
@@ -840,7 +842,7 @@ class TestPythonApiComponentShow:
                 return Success({})
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
-        result = python_api.component_show("prompt", "test-prompt")
+        result = python_api.component_show("prompts", "test-prompt")
 
         assert call_record == ["load_prompt:test-prompt"]
         assert result == {"text": "Prompt test-prompt content"}
@@ -873,10 +875,10 @@ class TestPythonApiComponentShow:
         assert call_record == ["load_prompt:test-prompt"]
         assert result == {"text": "Prompt test-prompt content"}
 
-    def test_component_show_toolset_delegates_to_load_toolset(
+    def test_component_show_toolsets_delegates_to_load_toolset(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """component_show('toolset', name) must forward to load_toolset()."""
+        """component_show('toolsets', name) must forward to load_toolset()."""
 
         class MockComponentStore:
             def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
@@ -894,14 +896,14 @@ class TestPythonApiComponentShow:
                 return Success({})
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
-        result = python_api.component_show("toolset", "default")
+        result = python_api.component_show("toolsets", "default")
         # Canonical cutover: component output stays capabilities-only.
         assert result == {"capabilities": {"shell": "read_write"}}
 
-    def test_component_show_constraint_delegates_to_load_constraint(
+    def test_component_show_constraints_delegates_to_load_constraint(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """component_show('constraint', name) must forward to load_constraint()."""
+        """component_show('constraints', name) must forward to load_constraint()."""
 
         class MockComponentStore:
             def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
@@ -919,14 +921,14 @@ class TestPythonApiComponentShow:
                 return Success({})
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
-        result = python_api.component_show("constraint", "strict")
+        result = python_api.component_show("constraints", "strict")
         # Canonical cutover: constraint output omits forbidden runtime-policy fields.
         assert result == {}
 
-    def test_component_show_model_delegates_to_load_model(
+    def test_component_show_models_delegates_to_load_model(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """component_show('model', name) must forward to load_model()."""
+        """component_show('models', name) must forward to load_model()."""
 
         class MockComponentStore:
             def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
@@ -944,8 +946,98 @@ class TestPythonApiComponentShow:
                 return Success({"model": "gpt-4o-mini"})
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
-        result = python_api.component_show("model", "gpt-4")
+        result = python_api.component_show("models", "gpt-4")
         assert result == {"model": "gpt-4o-mini"}
+
+    @pytest.mark.parametrize("component_type", ["prompt", "toolset", "constraint", "model"])
+    def test_component_show_singular_alias_rejected_as_invalid_input(
+        self, monkeypatch: pytest.MonkeyPatch, component_type: str
+    ) -> None:
+        """component_show() must reject singular component type aliases at public ingress."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({"text": name})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({"capabilities": {"shell": "read_only"}})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({"can_spawn": False})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({"model": name})
+
+        monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_show(component_type, "legacy-alias")
+
+        assert exc_info.value.error["code"] == "INVALID_INPUT"
+        assert exc_info.value.error["numeric_code"] == 1
+        assert exc_info.value.error["details"]["reason"] == "invalid_kind"
+
+    def test_component_show_toolsets_rejects_legacy_tools_field(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show() must fail closed on toolsets that still expose legacy tools."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                del name
+                return Success(historical_toolset_fixture_with_legacy_fields())
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_show("toolsets", "readonly")
+
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+        assert "tools" in exc_info.value.error["message"]
+
+    def test_component_show_constraints_rejects_legacy_side_effect_policy(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """component_show() must fail closed on constraints that still expose side_effect_policy."""
+
+        class MockComponentStore:
+            def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
+                return Success({})
+
+            def load_toolset(
+                self, name: str
+            ) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                del name
+                return Success(historical_constraint_fixture_with_legacy_field())
+
+            def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
+                return Success({})
+
+        monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
+
+        with pytest.raises(python_api.LarvaApiError) as exc_info:
+            python_api.component_show("constraints", "safe")
+
+        assert exc_info.value.error["code"] == "COMPONENT_NOT_FOUND"
+        assert exc_info.value.error["numeric_code"] == 105
+        assert "side_effect_policy" in exc_info.value.error["message"]
 
     def test_component_show_invalid_type_raises_invalid_input(
         self, monkeypatch: pytest.MonkeyPatch

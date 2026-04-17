@@ -13,6 +13,7 @@ from returns.result import Failure, Result, Success
 
 from larva.core.component_error_projection import (
     component_invalid_kind_error,
+    component_not_found_error,
     project_component_store_error,
 )
 from larva.core.component_kind import (
@@ -40,7 +41,7 @@ def query_component(
 
     Args:
         component_store: Shell component store implementation.
-        component_type: Canonical or compatibility alias component kind.
+        component_type: Canonical plural component kind.
         component_name: Requested component name.
         operation: Transport-local operation name for projected error details.
 
@@ -81,8 +82,18 @@ def query_component(
         "toolsets": "tools",
         "constraints": "side_effect_policy",
     }.get(normalized_type)
-    if forbidden_field is not None:
-        payload.pop(forbidden_field, None)
+    if forbidden_field is not None and forbidden_field in payload:
+        return Failure(
+            component_not_found_error(
+                operation=operation,
+                component_type=normalized_type,
+                component_name=component_name,
+                message=(
+                    f"Component '{component_name}' in '{normalized_type}' still contains "
+                    f"forbidden legacy field '{forbidden_field}'"
+                ),
+            )
+        )
     return Success(payload)
 
 

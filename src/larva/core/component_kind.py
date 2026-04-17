@@ -1,7 +1,7 @@
-"""Canonical component-kind vocabulary and alias normalization helpers.
+"""Canonical component-kind vocabulary and canonical-only normalization helpers.
 
->>> normalize_component_kind("prompt")
-'prompts'
+>>> normalize_component_kind("prompt") is None
+True
 >>> normalize_component_kind("models")
 'models'
 >>> normalize_component_kind("invalid") is None
@@ -19,32 +19,28 @@ CANONICAL_COMPONENT_KINDS: tuple[str, ...] = (
     "models",
 )
 
-_COMPONENT_KIND_ALIASES: dict[str, str] = {
+_CANONICAL_COMPONENT_KIND_INDEX: dict[str, str] = {
     "prompts": "prompts",
-    "prompt": "prompts",
     "toolsets": "toolsets",
-    "toolset": "toolsets",
     "constraints": "constraints",
-    "constraint": "constraints",
     "models": "models",
-    "model": "models",
 }
 
 
 @pre(lambda kind: "\x00" not in kind)
 @post(lambda result: result is None or result in CANONICAL_COMPONENT_KINDS)
 def normalize_component_kind(kind: str) -> str | None:
-    """Normalize component kind aliases to canonical plural values.
+    """Return the canonical component kind when already expressed canonically.
 
-    >>> normalize_component_kind("prompt")
-    'prompts'
+    >>> normalize_component_kind("prompt") is None
+    True
     >>> normalize_component_kind("constraints")
     'constraints'
     >>> normalize_component_kind("invalid") is None
     True
     """
 
-    return _COMPONENT_KIND_ALIASES.get(kind)
+    return _CANONICAL_COMPONENT_KIND_INDEX.get(kind)
 
 
 @pre(lambda kind: "\x00" not in kind)

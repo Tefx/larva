@@ -1614,13 +1614,13 @@ class TestCliSharedProjectionAuthority:
         store = InMemoryComponentStore()
         monkeypatch.setattr("larva.shell.cli_commands.query_component", _fake_query_component)
 
-        result = component_show_command("prompt/test-prompt", as_json=True, component_store=store)
+        result = component_show_command("prompts/test-prompt", as_json=True, component_store=store)
 
         assert isinstance(result, Success)
         assert result.unwrap()["json"]["data"] == {"text": "Shared query payload"}
         assert recorded == {
             "component_store": store,
-            "component_type": "prompt",
+            "component_type": "prompts",
             "component_name": "test-prompt",
             "operation": "cli.component_show",
         }
@@ -2525,20 +2525,19 @@ class TestComponentShowCommand:
         assert "data" in cli_result["json"]
         assert "text" in cli_result["json"]["data"]
 
-    def test_component_show_prompt_singular_alias_success_json_mode_returns_payload(self) -> None:
-        """Component show accepts singular alias by normalizing to canonical loader."""
+    def test_component_show_prompt_singular_alias_returns_invalid_input(self) -> None:
+        """Component show must reject singular aliases at public ingress."""
         components = InMemoryComponentStore()
 
         result = component_show_command(
             "prompt/test-prompt", as_json=True, component_store=components
         )
 
-        assert isinstance(result, Success)
-        cli_result = result.unwrap()
-        assert cli_result["exit_code"] == EXIT_OK
-        assert "json" in cli_result
-        assert "data" in cli_result["json"]
-        assert "text" in cli_result["json"]["data"]
+        assert isinstance(result, Failure)
+        failure = result.failure()
+        assert failure["exit_code"] == EXIT_ERROR
+        assert failure["error"]["code"] == "INVALID_INPUT"
+        assert failure["error"]["details"]["reason"] == "invalid_kind"
 
     def test_component_show_toolset_success_text_mode_returns_exit_ok(self) -> None:
         """Component show with valid toolset returns exit code 0 in text mode."""

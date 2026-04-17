@@ -75,7 +75,8 @@ class ComponentTypeProjection(TypedDict):
         display_label: User-facing singular name (e.g. 'Capability Preset').
         plural_display_label: User-facing plural name (e.g. 'Capability Presets').
         description: Human-readable description for UI tooltips and placeholders.
-        singular_alias: Accepted singular alias at ingress (e.g. 'toolset').
+        singular_alias: Legacy singular alias metadata for UI copy only. Public
+            ingress rejects this alias and requires canonical plural kinds.
         assemble_field: The field name used in /api/personas/assemble requests.
         ui_hint: UI-specific routing hint (e.g. 'preset' for toolsets).
     """
@@ -278,6 +279,19 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
                         "numeric_code": 1,
                         "message": f"assemble request field '{unknown_fields[0]}' is not permitted at canonical boundary",
                         "details": {"field": unknown_fields[0], "unknown_fields": unknown_fields},
+                    }
+                },
+            )
+
+        if "id" not in body:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "INVALID_INPUT",
+                        "numeric_code": 1,
+                        "message": "assemble request missing required field 'id'",
+                        "details": {"field": "id", "reason": "missing_required_field"},
                     }
                 },
             )

@@ -34,6 +34,8 @@ from larva.shell.mcp_update_batch import handle_update_batch as handle_update_ba
 from larva.shell.shared import request_validation
 from tests.shell.fixture_taxonomy import (
     canonical_persona_spec,
+    historical_constraint_fixture_with_legacy_field,
+    historical_toolset_fixture_with_legacy_fields,
 )
 
 if TYPE_CHECKING:
@@ -1547,8 +1549,8 @@ class TestMCPComponentShowAcceptance:
         assert result["details"]["reason"] == "invalid_kind"
         assert "prompts | toolsets | constraints | models" in result["message"]
 
-    def test_handle_component_show_singular_alias_normalizes_to_plural_loader(self) -> None:
-        """component_type singular aliases must resolve via canonical plural loaders."""
+    def test_handle_component_show_singular_alias_returns_invalid_input(self) -> None:
+        """component_type singular aliases must be rejected at public ingress."""
         components = InMemoryComponentStore(
             prompts_by_name={"test-prompt": {"text": "You are a helpful assistant."}}
         )
@@ -1558,8 +1560,9 @@ class TestMCPComponentShowAcceptance:
         result = handlers.handle_component_show({"component_type": "prompt", "name": "test-prompt"})
 
         assert isinstance(result, dict)
-        assert "error" not in result
-        assert result["text"] == "You are a helpful assistant."
+        assert result["code"] == "INVALID_INPUT"
+        assert result["numeric_code"] == 1
+        assert result["details"]["reason"] == "invalid_kind"
 
     def test_handle_component_show_missing_component_returns_component_not_found(self) -> None:
         """Test handle_component_show returns COMPONENT_NOT_FOUND for missing component."""
@@ -1623,6 +1626,21 @@ class TestMCPComponentShowAcceptance:
         # Handler passes through canonical toolset data unchanged (no sanitization)
         assert "tools" not in result
 
+    def test_handle_component_show_rejects_toolset_payload_with_legacy_tools(self) -> None:
+        """component_show must fail closed when toolset payload still contains tools."""
+        components = InMemoryComponentStore(
+            toolsets_by_name={"readonly": historical_toolset_fixture_with_legacy_fields()}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": "toolsets", "name": "readonly"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+        assert result["numeric_code"] == 105
+        assert "tools" in result["message"]
+
     def test_handle_component_show_success_for_constraint(self) -> None:
         """Test handle_component_show success path for canonical constraints."""
         components = InMemoryComponentStore(
@@ -1639,6 +1657,25 @@ class TestMCPComponentShowAcceptance:
         assert "error" not in result
         assert result["can_spawn"] is False
         assert "side_effect_policy" not in result
+
+    def test_handle_component_show_rejects_constraint_payload_with_legacy_side_effect_policy(
+        self,
+    ) -> None:
+        """component_show must fail closed when constraint payload still contains side_effect_policy."""
+        components = InMemoryComponentStore(
+            constraints_by_name={"safe-default": historical_constraint_fixture_with_legacy_field()}
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show(
+            {"component_type": "constraints", "name": "safe-default"}
+        )
+
+        assert isinstance(result, dict)
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+        assert result["numeric_code"] == 105
+        assert "side_effect_policy" in result["message"]
 
     def test_handle_component_show_success_for_model(self) -> None:
         """Test handle_component_show success path for models."""

@@ -36,6 +36,7 @@ from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
 from larva.shell import web as web_module
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS
+from larva.shell.shared.component_queries import query_component
 from tests.shell.fixture_taxonomy import (
     HistoricalComponentStoreDouble,
     canonical_persona_spec,
@@ -146,6 +147,84 @@ class TestComponentFixtureSemantics:
             "Historical invalid fixture should keep `side_effect_policy` explicit so canonical "
             "fixtures remain clean."
         )
+
+
+class TestSharedComponentQueryRejection:
+    """Shared component query helper must fail closed on legacy payload fields."""
+
+    def test_query_component_rejects_toolset_payload_with_legacy_tools(self) -> None:
+        @dataclass
+        class ComponentStoreDouble:
+            toolsets_by_name: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+            def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
+                del name
+                return Success({})
+
+            def load_toolset(self, name: str) -> Result[dict[str, Any], Exception]:
+                return Success(self.toolsets_by_name[name])
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
+                del name
+                return Success({})
+
+            def load_model(self, name: str) -> Result[dict[str, object], Exception]:
+                del name
+                return Success({})
+
+        store = ComponentStoreDouble(
+            toolsets_by_name={"readonly": historical_toolset_fixture_with_legacy_fields()}
+        )
+
+        result = query_component(
+            store,
+            component_type="toolsets",
+            component_name="readonly",
+            operation="test.component_show",
+        )
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "COMPONENT_NOT_FOUND"
+        assert error["numeric_code"] == 105
+        assert "tools" in error["message"]
+
+    def test_query_component_rejects_constraint_payload_with_legacy_side_effect_policy(self) -> None:
+        @dataclass
+        class ComponentStoreDouble:
+            constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
+
+            def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
+                del name
+                return Success({})
+
+            def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], Exception]:
+                del name
+                return Success({})
+
+            def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
+                return Success(self.constraints_by_name[name])
+
+            def load_model(self, name: str) -> Result[dict[str, object], Exception]:
+                del name
+                return Success({})
+
+        store = ComponentStoreDouble(
+            constraints_by_name={"safe": historical_constraint_fixture_with_legacy_field()}
+        )
+
+        result = query_component(
+            store,
+            component_type="constraints",
+            component_name="safe",
+            operation="test.component_show",
+        )
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "COMPONENT_NOT_FOUND"
+        assert error["numeric_code"] == 105
+        assert "side_effect_policy" in error["message"]
 
 
 # -----------------------------------------------------------------------------

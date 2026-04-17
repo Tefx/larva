@@ -672,20 +672,35 @@ class TestWebSurfaceEndpoints:
         assert "Invalid component type" in resp.text
         assert "prompts | toolsets | constraints | models" in resp.text
 
-    def test_get_api_components_by_type_name_accepts_singular_alias(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """GET /api/components/{type}/{name} accepts singular type aliases."""
-        monkeypatch.setattr(
-            web_module,
-            "component_show",
-            lambda component_type, name: {"text": f"Prompt {name}", "type": component_type},
-        )
+    def test_get_api_components_by_type_name_rejects_singular_alias(self) -> None:
+        """GET /api/components/{type}/{name} rejects singular type aliases."""
         client = TestClient(app)
         resp = client.get("/api/components/prompt/test")
 
-        assert resp.status_code == 200
-        assert "data" in resp.json()
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_INPUT"
+        assert resp.json()["error"]["details"]["reason"] == "invalid_kind"
+
+    def test_post_api_personas_assemble_missing_id_returns_structured_invalid_input(self) -> None:
+        """POST /api/personas/assemble must fail closed when id is omitted."""
+        client = TestClient(app)
+
+        resp = client.post(
+            "/api/personas/assemble",
+            json={
+                "prompts": ["base-prompt"],
+                "toolsets": ["filesystem"],
+                "constraints": ["safe"],
+                "model": "gpt-4o-mini",
+            },
+        )
+
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["error"]["code"] == "INVALID_INPUT"
+        assert body["error"]["numeric_code"] == 1
+        assert "id" in body["error"]["message"]
+        assert body["error"]["details"] == {"field": "id", "reason": "missing_required_field"}
 
     def test_get_api_components_projection_returns_ui_metadata(self) -> None:
         """GET /api/components/projection returns web-facing display metadata.
