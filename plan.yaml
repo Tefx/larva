@@ -52360,3 +52360,58 @@ phases:
     depends_on:
     - final_zeroing_20260418.full_plan_check
     agent: spec-verifier-tacit
+  - id: final_zeroing_20260418_finalization.gate
+    name: Final gate for strict zeroing closure
+    status: pending
+    description: 'Independent final gate for the strict zeroing pass.
+
+
+      review_depth: THOROUGH
+
+      focus:
+
+      - every closure target proven
+
+      - every authoritative-source audit conformed
+
+      - no residual risk, no open issue, no downgrade to PASS_WITH_DEBT
+
+
+      Gate rule: the outcome is PASS only when full-plan proof and spec-conformance
+      proof are both complete and clean. Otherwise FAIL.'
+    verification: 'full-plan-check: review the final proof register and conformance
+      audit together. This is the terminal release barrier for the appended plan.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Final Gate Review
+
+      - Reviewed full-plan proof:
+
+      - Reviewed spec-conformance audit:
+
+      - Residual issues found:
+
+
+      ## Final Decision Basis
+
+      - closure register fully proven: PASS/FAIL
+
+      - canonical-authority audit fully conforming: PASS/FAIL
+
+      - residual risk none: PASS/FAIL
+
+
+      ## Gate Decision
+
+      PASS only if every line above is PASS. Any open issue = FAIL.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.full_plan_check
+    - final_zeroing_20260418.spec_conformance_audit
+    agent: gate-reviewer-tacit
