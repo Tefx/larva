@@ -52199,13 +52199,13 @@ phases:
       Phase unblock criteria satisfied.'
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
-  status: pending
+  status: in_progress
   depends_on:
   - final_zeroing_20260418_fail_closed_admission
   steps:
   - id: final_zeroing_20260418.mcp_schema_and_export_semantics
     name: Align MCP schema exactly and enforce export boolean semantics
-    status: pending
+    status: claimed
     description: 'Implement and verify exact canonical MCP contract behavior.
 
 
@@ -52295,6 +52295,8 @@ phases:
 
       '
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-17T21:44:01.418255+00:00'
   - id: final_zeroing_20260418_mcp_contract.gate
     name: Gate MCP contract exactness
     status: pending
