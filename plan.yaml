@@ -52285,3 +52285,78 @@ phases:
 
       '
     agent: integration-verifier-tacit
+  - id: final_zeroing_20260418.spec_conformance_audit
+    name: Audit final strict zeroing against canonical authorities
+    status: pending
+    description: 'Independent spec-conformance audit for the final strict zeroing
+      pass.
+
+
+      Review only the authoritative sources for closure:
+
+      - final-canonical-contract.md
+
+      - persona_spec.schema.json
+
+      - personaspec-v1.md
+
+      - larva-clean-architecture.md
+
+
+      Audit obligations:
+
+      - verify the implemented public contract is not looser than the canonical schema
+
+      - verify no public surface still documents or exhibits accept-and-clean behavior
+
+      - verify no malformed metadata is laundered into canonical success
+
+      - verify no residual mismatch remains between canonical docs/schema and runtime-advertised
+      MCP contract
+
+
+      Any divergence is FAIL.'
+    verification: 'full-plan-check: adversarial spec-conformance review with exact
+      requirement-to-evidence mapping. This step protects the final gate and blocks
+      completion on any remaining divergence.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Requirements Register
+
+      - Requirement ref:
+
+      - Behavior claim:
+
+      - Evidence ref:
+
+      - Status: CONFORMS/DIVERGES
+
+
+      ## Strict-Zeroing Audit
+
+      - fail-closed admission requirements: CONFORMS/DIVERGES
+
+      - canonical-only read/ingress requirements: CONFORMS/DIVERGES
+
+      - MCP schema exactness requirements: CONFORMS/DIVERGES
+
+      - digest anti-laundering requirements: CONFORMS/DIVERGES
+
+      - export selector requirements: CONFORMS/DIVERGES
+
+      - docs/tests parity requirements: CONFORMS/DIVERGES
+
+
+      ## Decision
+
+      Only PASS if every audited requirement CONFORMS.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.full_plan_check
+    agent: spec-verifier-tacit
