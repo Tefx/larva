@@ -1,9 +1,4 @@
-"""Contract surface for shell-side persona registry storage.
-
-Boundary citations:
-- ARCHITECTURE.md :: Module: ``larva.shell.registry``
-- INTERFACES.md :: D. Global Registry
-"""
+"""Shell-side PersonaSpec registry storage."""
 
 from __future__ import annotations
 
@@ -159,14 +154,7 @@ class RegistryStore(Protocol):
 
 
 class FileSystemRegistryStore(RegistryStore):
-    """Filesystem-backed registry adapter contract.
-
-    Root location is ``~/.larva/registry/`` by default.
-    - Persona records: ``<id>.json``
-    - Digest index: ``index.json``
-
-    This class is intentionally contract-only in this step.
-    """
+    """Filesystem-backed registry adapter rooted at ``~/.larva/registry/``."""
 
     def __init__(self, root: Path = DEFAULT_REGISTRY_ROOT) -> None:
         self._root = root.expanduser().resolve()

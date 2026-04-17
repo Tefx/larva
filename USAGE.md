@@ -110,14 +110,16 @@ Check a PersonaSpec for schema conformance and semantic validity.
   "valid": true,
   "errors": [],
   "warnings": [
-    "unknown model identifier 'custom-model-x' is outside the known-model snapshot"
+    "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
+    "description looks like prompt text instead of a short operational summary",
+    "can_spawn references ids outside the current registry snapshot: missing-child"
   ]
 }
 ```
 
 - `errors` is always present (empty list when valid).
 - `warnings` is always present and is non-blocking.
-- Example warning conditions: unknown model identifier, empty/all-`none` capability posture, description outside guidance range.
+- Canonical warning conditions include: unknown model identifiers; empty/all-`none` capability posture; descriptions outside the guidance range; prompt-like descriptions; unknown capability-family identifiers; read-focused reviewer/auditor identities paired with `read_write`/`destructive` capability postures; and `can_spawn` targets missing from the current registry snapshot.
 - Prompt placeholders are not resolved at admission time: unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
 - `model_params` is an optional canonical field and remains valid across validate/register/resolve/update flows.
 

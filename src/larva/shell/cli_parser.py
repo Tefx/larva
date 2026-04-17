@@ -31,6 +31,37 @@ def _add_json_flag(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true", dest="as_json", help="output result as JSON")
 
 
+# @shell_orchestration: helper keeps update-batch parser wiring inside the shell transport layer
+def _add_update_batch_arguments(parser: _CliParser) -> None:
+    parser.add_argument(
+        "--where",
+        dest="where_clauses",
+        action="append",
+        default=[],
+        required=True,
+        metavar="KEY=VALUE",
+        help=(
+            "canonical filter condition (repeatable, e.g. --where model=gpt-4o-mini; "
+            "legacy roots like tools.* are rejected)"
+        ),
+    )
+    parser.add_argument(
+        "--set",
+        dest="set_values",
+        action="append",
+        default=[],
+        required=True,
+        metavar="KEY=VALUE",
+        help="field to set on matched personas (repeatable)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="preview which personas would be updated without applying changes",
+    )
+
+
 # @shell_orchestration: groups argparse command wiring into focused sections
 def _add_persona_read_commands(
     subparsers: argparse._SubParsersAction[_CliParser],
@@ -234,33 +265,7 @@ def _add_registry_commands(subparsers: argparse._SubParsersAction[_CliParser]) -
             "fields only, and use --set to apply changes."
         ),
     )
-    update_batch_parser.add_argument(
-        "--where",
-        dest="where_clauses",
-        action="append",
-        default=[],
-        required=True,
-        metavar="KEY=VALUE",
-        help=(
-            "canonical filter condition (repeatable, e.g. --where model=gpt-4o-mini; "
-            "legacy roots like tools.* are rejected)"
-        ),
-    )
-    update_batch_parser.add_argument(
-        "--set",
-        dest="set_values",
-        action="append",
-        default=[],
-        required=True,
-        metavar="KEY=VALUE",
-        help="field to set on matched personas (repeatable)",
-    )
-    update_batch_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        dest="dry_run",
-        help="preview which personas would be updated without applying changes",
-    )
+    _add_update_batch_arguments(update_batch_parser)
     _add_json_flag(update_batch_parser)
 
 

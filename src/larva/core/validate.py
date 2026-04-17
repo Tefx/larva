@@ -11,10 +11,23 @@ Validation report semantics:
 """
 
 import re
-from types import MappingProxyType
-from typing import TypedDict
 
 from deal import post, pre
+from larva.core.validation_contract import (
+    CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
+    CANONICAL_CONTRACT_METADATA,
+    CANONICAL_FORBIDDEN_FIELDS,
+    CANONICAL_FORBIDDEN_FIELD_MESSAGE,
+    CANONICAL_OPTIONAL_FIELDS,
+    CANONICAL_REQUIRED_FIELDS,
+    CANONICAL_REQUIRED_FIELD_MESSAGE,
+    CANONICAL_TOOLS_REJECTED_CLAUSE,
+    CANONICAL_UNKNOWN_FIELD_MESSAGE,
+    VALIDATION_ISSUE_KEYS,
+    VALIDATION_REPORT_KEYS,
+    ValidationIssue,
+    ValidationReport,
+)
 from larva.core.validation_warnings import collect_non_blocking_warnings
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -26,51 +39,6 @@ _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 _VALID_POSTURES: set[str] = {"none", "read_only", "read_write", "destructive"}
 _REQUIRED_STRING_FIELDS: tuple[str, ...] = ("id", "description", "prompt", "model", "spec_version")
 _MAX_CAN_SPAWN_TARGETS = 100
-
-CANONICAL_REQUIRED_FIELDS: tuple[str, ...] = (
-    "id",
-    "description",
-    "prompt",
-    "model",
-    "capabilities",
-    "spec_version",
-)
-CANONICAL_OPTIONAL_FIELDS: tuple[str, ...] = (
-    "model_params",
-    "can_spawn",
-    "compaction_prompt",
-    "spec_digest",
-)
-CANONICAL_FORBIDDEN_FIELDS: tuple[str, ...] = ("tools", "side_effect_policy")
-
-VALIDATION_ISSUE_KEYS: tuple[str, ...] = ("code", "message", "details")
-VALIDATION_REPORT_KEYS: tuple[str, ...] = ("valid", "errors", "warnings")
-
-CANONICAL_REQUIRED_FIELD_MESSAGE = (
-    "required field '{field}' is missing at canonical admission boundary"
-)
-CANONICAL_FORBIDDEN_FIELD_MESSAGE = "'{field}' is not permitted at canonical admission boundary"
-CANONICAL_UNKNOWN_FIELD_MESSAGE = (
-    "unknown top-level field '{field}' is not permitted at canonical admission boundary"
-)
-
-CANONICAL_CAPABILITIES_REQUIRED_CLAUSE = "canonical admission requires capabilities"
-CANONICAL_TOOLS_REJECTED_CLAUSE = "tools is rejected at canonical admission"
-
-CANONICAL_CONTRACT_METADATA = MappingProxyType(
-    {
-        "required_fields": CANONICAL_REQUIRED_FIELDS,
-        "optional_fields": CANONICAL_OPTIONAL_FIELDS,
-        "forbidden_fields": CANONICAL_FORBIDDEN_FIELDS,
-        "validation_issue_keys": VALIDATION_ISSUE_KEYS,
-        "validation_report_keys": VALIDATION_REPORT_KEYS,
-        "required_field_message": CANONICAL_REQUIRED_FIELD_MESSAGE,
-        "forbidden_field_message": CANONICAL_FORBIDDEN_FIELD_MESSAGE,
-        "unknown_field_message": CANONICAL_UNKNOWN_FIELD_MESSAGE,
-        "capabilities_required_clause": CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
-        "tools_rejected_clause": CANONICAL_TOOLS_REJECTED_CLAUSE,
-    }
-)
 
 _CANONICAL_REQUIRED_FIELDS: set[str] = set(CANONICAL_REQUIRED_FIELDS)
 _CANONICAL_ALLOWED_FIELDS: set[str] = _CANONICAL_REQUIRED_FIELDS | set(CANONICAL_OPTIONAL_FIELDS)
@@ -100,22 +68,6 @@ def _is_json_safe_dict(d: object) -> bool:
     except Exception:
         return False
     return all(isinstance(v, _JSON_SAFE_TYPES) for v in values)
-
-
-class ValidationIssue(TypedDict):
-    """Structured validation issue."""
-
-    code: str
-    message: str
-    details: dict[str, object]
-
-
-class ValidationReport(TypedDict):
-    """Structured validation result."""
-
-    valid: bool
-    errors: list[ValidationIssue]
-    warnings: list[str]
 
 
 @pre(
@@ -390,15 +342,38 @@ def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     return errors
 
 
-@pre(lambda spec: _is_json_safe_dict(spec))
+@pre(
+    lambda spec, registry_persona_ids=None: _is_json_safe_dict(spec)
+    and (registry_persona_ids is None or isinstance(registry_persona_ids, frozenset))
+)
 @post(lambda result: "valid" in result and "errors" in result and "warnings" in result)
-def validate_spec(spec: dict[str, object]) -> ValidationReport:
+def validate_spec(
+    spec: dict[str, object],
+    registry_persona_ids: frozenset[str] | None = None,
+) -> ValidationReport:
     """Validate a PersonaSpec candidate.
 
-    >>> validate_spec({"id": "code-reviewer", "description": "Reviews code", "prompt": "You review code", "model": "gpt-4o-mini", "capabilities": {"shell": "read_only"}, "spec_version": "0.1.0"})["valid"]
+    >>> validate_spec({
+    ...     "id": "code-reviewer",
+    ...     "description": "Reviews code",
+    ...     "prompt": "You review code",
+    ...     "model": "gpt-4o-mini",
+    ...     "capabilities": {"shell": "read_only"},
+    ...     "spec_version": "0.1.0",
+    ... })["valid"]
     True
     >>> validate_spec({"spec_version": "0.1.0"})["errors"][0]["code"]
     'MISSING_REQUIRED_FIELD'
+    >>> validate_spec({
+    ...     "id": "spawn-check",
+    ...     "description": "Coordinates child personas with explicit scope.",
+    ...     "prompt": "Keep work bounded.",
+    ...     "model": "gpt-4o-mini",
+    ...     "capabilities": {"shell": "read_only"},
+    ...     "can_spawn": ["known-child", "missing-child"],
+    ...     "spec_version": "0.1.0",
+    ... }, frozenset({"known-child"}))["warnings"][-1]
+    'can_spawn references ids outside the current registry snapshot: missing-child'
     """
     errors = _validate_identity_fields(spec)
     errors.extend(_validate_required_string_fields(spec))
@@ -414,7 +389,7 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     required_errors = _validate_required_fields(spec)
     errors.extend(required_errors)
 
-    warnings = collect_non_blocking_warnings(spec)
+    warnings = collect_non_blocking_warnings(spec, registry_persona_ids)
 
     return {
         "valid": len(errors) == 0,

@@ -32,7 +32,8 @@ class TestValidateSpecExists:
 
         sig = inspect.signature(validate_module.validate_spec)
         params = list(sig.parameters.keys())
-        assert params == ["spec"]
+        assert params == ["spec", "registry_persona_ids"]
+        assert sig.parameters["registry_persona_ids"].default is None
 
     def test_function_return_type(self):
         """validate_spec return type should be ValidationReport."""
@@ -221,6 +222,64 @@ class TestCanonicalWarningSemantics:
         assert report["valid"] is True
         assert report["errors"] == []
         assert any("description length is outside guidance range" in w for w in report["warnings"])
+
+    def test_prompt_like_description_emits_warning_but_is_valid(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-prompt-like-description",
+                "description": "You are a meticulous reviewer.\nAlways cite exact lines before concluding.",
+                "prompt": "Review code carefully.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "description looks like prompt text instead of a short operational summary"
+            in report["warnings"]
+        )
+
+    def test_read_focused_persona_with_mutating_capability_emits_warning(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "reviewer-runtime-mismatch",
+                "description": "Reviews code changes with read-only expectations.",
+                "prompt": "Review code carefully.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"filesystem": "read_write", "shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any(
+            "read-focused persona identity conflicts with mutating/destructive capabilities"
+            in warning
+            and "filesystem=read_write" in warning
+            for warning in report["warnings"]
+        )
+
+    def test_unknown_can_spawn_target_emits_warning_when_registry_snapshot_is_provided(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-unknown-can-spawn",
+                "description": "Coordinates child personas with explicit scope.",
+                "prompt": "Stay within the assigned child set.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "can_spawn": ["known-child", "missing-child"],
+                "spec_version": "0.1.0",
+            },
+            frozenset({"known-child"}),
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "can_spawn references ids outside the current registry snapshot: missing-child"
+            in report["warnings"]
+        )
 
 
 class TestValidationIssueTypedDict:

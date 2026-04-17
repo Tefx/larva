@@ -176,7 +176,11 @@ class SpyValidateModule:
     calls: list[str] = field(default_factory=list)
     inputs: list[PersonaSpec] = field(default_factory=list)
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+    def validate_spec(
+        self,
+        spec: PersonaSpec,
+        registry_persona_ids: frozenset[str] | None = None,
+    ) -> ValidationReport:
         self.calls.append("validate")
         self.inputs.append(dict(spec))
         return self.report
@@ -839,12 +843,12 @@ class TestCrossSurfaceMalformedParams:
 
 
 # ===========================================================================
-# TEST 4: Canonical validation warning consistency
+# TEST 4: Canonical validation verdict consistency
 # ===========================================================================
 
 
 class TestCrossSurfaceCanonicalValidationConsistency:
-    """Verify that forbidden-field validation behavior is consistent.
+    """Verify that canonical validation verdicts are consistent.
 
     When a spec contains 'tools', 'side_effect_policy', or unknown fields,
     the core validator rejects them with EXTRA_FIELD_NOT_ALLOWED. All surfaces
@@ -1009,6 +1013,30 @@ class TestRealFacadeValidationConsistency:
             f"Canonical spec should be valid, got: errors={report['errors']}, warnings={report['warnings']}"
         )
 
+    def test_real_facade_surfaces_registry_snapshot_warning(self) -> None:
+        """Real facade emits canonical warnings when the current snapshot warrants them."""
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(
+                list_result=Success([canonical_spec("known-child")]),
+            ),
+        )
+        spec = canonical_spec("warning-real")
+        spec["can_spawn"] = ["known-child", "missing-child"]
+
+        report = facade.validate(spec)
+
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "can_spawn references ids outside the current registry snapshot: missing-child"
+            in report["warnings"]
+        )
+
     def test_real_facade_rejects_variables_as_extra_field(self) -> None:
         """Real facade treats variables as non-canonical extra input."""
         facade = self._make_real_facade()
@@ -1019,7 +1047,7 @@ class TestRealFacadeValidationConsistency:
         assert report["valid"] is False
         error_codes = {e["code"] for e in report["errors"]}
         assert "EXTRA_FIELD_NOT_ALLOWED" in error_codes
-        assert report["warnings"] == []
+        assert not any("variables" in warning for warning in report["warnings"])
 
 
 # ===========================================================================

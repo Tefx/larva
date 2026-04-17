@@ -97,7 +97,11 @@ class SpyValidateModule:
     calls: list[str]
     inputs: list[PersonaSpec] = field(default_factory=list)
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+    def validate_spec(
+        self,
+        spec: PersonaSpec,
+        registry_persona_ids: frozenset[str] | None = None,
+    ) -> ValidationReport:
         self.calls.append("validate")
         self.inputs.append(dict(spec))
         return self.report

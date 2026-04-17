@@ -29,18 +29,6 @@ ComponentPayload: TypeAlias = dict[str, object]
 _ComponentLoader: TypeAlias = Callable[[str], Result[ComponentPayload, ComponentStoreError]]
 
 
-# @invar:allow shell_result: internal loader table supports query_component Result flow
-# @shell_orchestration: shared shell query service selects store loaders for adapters
-def _loader_map(component_store: ComponentStore) -> dict[str, _ComponentLoader]:
-    """Build the canonical loader map keyed by normalized component kind."""
-    return {
-        "prompts": cast("_ComponentLoader", component_store.load_prompt),
-        "toolsets": cast("_ComponentLoader", component_store.load_toolset),
-        "constraints": cast("_ComponentLoader", component_store.load_constraint),
-        "models": cast("_ComponentLoader", component_store.load_model),
-    }
-
-
 def query_component(
     component_store: ComponentStore,
     *,
@@ -71,7 +59,13 @@ def query_component(
         error["message"] = invalid_component_kind_message(component_type)
         return Failure(error)
 
-    load_result = _loader_map(component_store)[normalized_type](component_name)
+    loader_map = {
+        "prompts": cast("_ComponentLoader", component_store.load_prompt),
+        "toolsets": cast("_ComponentLoader", component_store.load_toolset),
+        "constraints": cast("_ComponentLoader", component_store.load_constraint),
+        "models": cast("_ComponentLoader", component_store.load_model),
+    }
+    load_result = loader_map[normalized_type](component_name)
     if isinstance(load_result, Failure):
         return Failure(
             project_component_store_error(
@@ -83,10 +77,12 @@ def query_component(
         )
 
     payload = dict(cast("ComponentPayload", load_result.unwrap()))
-    if normalized_type == "toolsets":
-        payload.pop("tools", None)
-    if normalized_type == "constraints":
-        payload.pop("side_effect_policy", None)
+    forbidden_field = {
+        "toolsets": "tools",
+        "constraints": "side_effect_policy",
+    }.get(normalized_type)
+    if forbidden_field is not None:
+        payload.pop(forbidden_field, None)
     return Success(payload)
 
 

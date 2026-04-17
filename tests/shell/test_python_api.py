@@ -94,7 +94,11 @@ class SpyValidateModule:
     calls: list[str]
     inputs: list[PersonaSpec] = field(default_factory=list)
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+    def validate_spec(
+        self,
+        spec: PersonaSpec,
+        registry_persona_ids: frozenset[str] | None = None,
+    ) -> ValidationReport:
         self.calls.append("validate")
         self.inputs.append(dict(spec))
         return self.report
@@ -274,6 +278,34 @@ class TestPythonApiValidate:
         assert result["valid"] is False
         assert len(result["errors"]) == 1
         assert result["errors"][0]["code"] == "TEST_ERROR"
+
+    def test_validate_real_facade_surfaces_registry_snapshot_warning(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Real python_api.validate must preserve canonical warning facts from the runtime path."""
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=SpyAssembleModule(_canonical_spec("assembled-unused"), []),
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(
+                list_result=Success([_canonical_spec("known-child")]),
+            ),
+        )
+        monkeypatch.setattr(python_api, "_get_facade", lambda: facade)
+        spec = _canonical_spec("warning-runtime")
+        spec["can_spawn"] = ["known-child", "missing-child"]
+
+        result = python_api.validate(spec)
+
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert (
+            "can_spawn references ids outside the current registry snapshot: missing-child"
+            in result["warnings"]
+        )
 
 
 class TestPythonApiAssemble:

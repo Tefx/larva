@@ -91,7 +91,11 @@ class TestFacadeRegister:
                 self.inputs: list[PersonaSpec] = []
                 self._index = 0
 
-            def validate_spec(self, spec: PersonaSpec) -> dict[str, object]:
+            def validate_spec(
+                self,
+                spec: PersonaSpec,
+                registry_persona_ids: frozenset[str] | None = None,
+            ) -> dict[str, object]:
                 self._calls.append("validate")
                 self.inputs.append(dict(spec))
                 report = self._reports[min(self._index, len(self._reports) - 1)]

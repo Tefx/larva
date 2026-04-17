@@ -1,72 +1,17 @@
-"""Contracted PersonaSpec assembly from in-memory components.
-
-Assembly is an upstream candidate-construction step, not the canonical
-PersonaSpec authority. opifex owns the canonical contract; larva assembly must
-stay subordinate to that authority and must not widen canonical admission.
-
-Acceptance notes for this module boundary:
-- assembly may construct a candidate for later validation
-- assembly must not redefine required PersonaSpec fields
-- assembly must not justify re-admitting ``tools`` or ``side_effect_policy`` at
-  canonical larva admission
-- any repo-local schema artifact remains reference-only and does not override
-  the canonical authority basis
-"""
+"""Contracted PersonaSpec assembly from in-memory components."""
 
 import re
 from typing import Any, Mapping, cast
 
 from deal import post, pre, raises
 
+from larva.core.assembly_error import AssemblyError, assembly_error
 from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
+
+_assembly_error = assembly_error
 
 
 _PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
-
-
-class AssemblyError(Exception):
-    """Base exception for assembly errors.
-
-    Error-shape expectation:
-        Assembly errors are lower-level contract failures surfaced before or
-        during candidate construction. Facade mapping should preserve the
-        assembly ``code`` when it already aligns with the shared taxonomy.
-    """
-
-    code: str
-    message: str
-    details: dict[str, Any]
-
-
-@pre(
-    lambda code, message, details=None: (
-        isinstance(code, str)
-        and len(code) > 0
-        and isinstance(message, str)
-        and len(message) > 0
-        and (details is None or isinstance(details, dict))
-    )
-)
-@post(
-    lambda result: (
-        isinstance(result, AssemblyError)
-        and isinstance(result.code, str)
-        and len(result.code) > 0
-        and isinstance(result.message, str)
-        and len(result.message) > 0
-        and isinstance(result.details, dict)
-    )
-)
-def _assembly_error(
-    code: str,
-    message: str,
-    details: dict[str, Any] | None = None,
-) -> AssemblyError:
-    error = AssemblyError(f"{code}: {message}")
-    error.code = code
-    error.message = message
-    error.details = {} if details is None else details
-    return error
 
 
 @pre(lambda mapping: not isinstance(mapping, dict) or all(key is not None for key in mapping))
@@ -145,7 +90,7 @@ def _collect_scalar(
     if not allow_multiple and len(values) > 1:
         first = values[0]
         if any(value != first for value in values):
-            raise _assembly_error(
+            raise assembly_error(
                 code="COMPONENT_CONFLICT",
                 message=f"Multiple sources provide different values for '{field}': {values}",
                 details={"field": field, "values": values},
@@ -175,7 +120,7 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
 
     for toolset in toolsets:
         if "tools" in toolset:
-            raise _assembly_error(
+            raise assembly_error(
                 code="FORBIDDEN_TOOLSET_FIELD",
                 message="toolset field 'tools' is not permitted at canonical assembly boundary",
                 details={"field": "tools", "toolset": toolset},
@@ -185,7 +130,7 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
 
         # 'tools' is legacy content - not admissible at canonical cutover
         if caps_obj is None:
-            raise _assembly_error(
+            raise assembly_error(
                 code="TOOLSET_MISSING_CAPABILITIES",
                 message=(
                     "Toolset is missing 'capabilities' field. "
@@ -201,7 +146,7 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
             if not isinstance(cap_name, str) or not isinstance(posture, str):
                 continue
             if cap_name in merged and merged[cap_name] != posture:
-                raise _assembly_error(
+                raise assembly_error(
                     code="COMPONENT_CONFLICT",
                     message=(
                         f"Contradictory posture for capability '{cap_name}': "
@@ -232,7 +177,7 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-@pre(lambda prompt: isinstance(prompt, str))
+@pre(lambda prompt: isinstance(prompt, str) and "\x00" not in prompt)
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
 def _find_unresolved_placeholders(prompt: str) -> list[str]:
     """Return unresolved placeholder names in prompt text.
@@ -261,7 +206,7 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
             text = ""
         placeholders = _find_unresolved_placeholders(text)
         if placeholders:
-            raise _assembly_error(
+            raise assembly_error(
                 code="UNRESOLVED_PROMPT_TEXT",
                 message="prompt text contains unresolved placeholders and must already be fully composed",
                 details={"placeholders": placeholders, "prompt": text},
@@ -300,10 +245,10 @@ def _reject_noncanonical_assembly_input(data: dict[str, object]) -> None:
     >>> _reject_noncanonical_assembly_input({"id": "p", "variables": {"role": "assistant"}})
     Traceback (most recent call last):
     ...
-    assemble.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
+    larva.core.assembly_error.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
     """
     if "variables" in data:
-        raise _assembly_error(
+        raise assembly_error(
             code="VARIABLES_NOT_ALLOWED",
             message="variables are not permitted at canonical assembly boundary",
             details={"field": "variables"},
@@ -321,7 +266,7 @@ def _apply_overrides(result: Mapping[str, object], overrides: dict[str, Any]) ->
         if not isinstance(key, str):
             continue
         if key in _FORBIDDEN_OVERRIDE_FIELDS:
-            raise _assembly_error(
+            raise assembly_error(
                 code="FORBIDDEN_OVERRIDE_FIELD",
                 message=f"Override field '{key}' is not permitted at canonical admission boundary",
                 details={"field": key},
@@ -377,7 +322,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         >>> assemble_candidate({"id": "p", "prompts": [{"text": "You are {role}"}]})
         Traceback (most recent call last):
         ...
-        assemble.AssemblyError: UNRESOLVED_PROMPT_TEXT: prompt text contains unresolved placeholders and must already be fully composed
+        larva.core.assembly_error.AssemblyError: UNRESOLVED_PROMPT_TEXT: prompt text contains unresolved placeholders and must already be fully composed
         >>> # Capabilities input (canonical)
         >>> result = assemble_candidate(
         ...     {"id": "p", "toolsets": [{"capabilities": {"read": "read_only"}}]}
@@ -387,7 +332,7 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         >>> assemble_candidate({"id": "p", "variables": {"role": "assistant"}})
         Traceback (most recent call last):
         ...
-        assemble.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
+        larva.core.assembly_error.AssemblyError: VARIABLES_NOT_ALLOWED: variables are not permitted at canonical assembly boundary
     """
     _reject_noncanonical_assembly_input(data)
     persona_id = cast("str", data.get("id"))

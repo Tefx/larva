@@ -185,27 +185,29 @@ larva validate code-reviewer.json --json
 Typical outcomes:
 
 - `valid: true` and no warnings
-- `valid: true` with warnings, such as unknown model ids or empty/all-`none` capabilities
+- `valid: true` with warnings, such as:
+  - unknown model ids
+  - empty/all-`none` capabilities
+  - read-focused reviewer/auditor personas that still declare `read_write`/`destructive` capability postures
+  - `can_spawn` targets missing from the current registry snapshot
+  - descriptions that read like prompt text instead of short operational summaries
+  - unknown capability-family identifiers outside the local vocabulary snapshot
 - `valid: false` with one or more structured errors
 
 Example validation response:
 
 ```json
 {
-  "valid": false,
-  "errors": [
-    {
-      "code": "INVALID_SPEC_VERSION",
-      "message": "spec_version must be '0.1.0'",
-      "details": {
-        "field": "spec_version",
-        "value": "0.2.0"
-      }
-    }
-  ],
-  "warnings": []
+  "valid": true,
+  "errors": [],
+  "warnings": [
+    "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
+    "can_spawn references ids outside the current registry snapshot: missing-child"
+  ]
 }
 ```
+
+Warnings are advisory only; they do not relax canonical admission.
 
 ## 8. Register and resolve
 

@@ -1,45 +1,42 @@
 """Application facade contracts and implementation.
 
-This module is the larva admission consolidation seam for PersonaSpec-bearing
-production paths. It does not own PersonaSpec semantics; it applies and maps
-the canonical opifex-aligned contract enforced by ``larva.core.validate``.
+This is larva's admission seam for production PersonaSpec paths. It applies the
+canonical contract enforced by ``larva.core.validate`` and must not widen
+admission for ``tools``, ``side_effect_policy``, or unknown top-level fields.
 
-Acceptance notes:
-- success on larva production paths must imply conformance to the opifex
-  canonical PersonaSpec contract
-- this facade must not widen admission by treating ``tools``,
-  ``side_effect_policy``, or unknown top-level fields as acceptable canonical
-  PersonaSpec input
-- ``contracts/persona_spec.schema.json`` is reference-only while present and
-  must never act as an independent contract owner
-
-Registry read policy (hard-cut, per ADR-002 / canonical cutover):
-- All registry-sourced PersonaSpec records are normalized before use on any
-  read surface (resolve, clone, update, update_batch, export_all, export_ids).
-- Normalization rejects forbidden fields (``tools``, ``side_effect_policy``)
-  and recomputes ``spec_digest`` before validation, ensuring that stored legacy
-  records are converted to canonical form at the facade boundary.
-- No silent field dropping — normalization is an explicit transform.
-- No auto-rewrite — the registry file is not modified unless the surface
-  explicitly writes back (update, clone, update_batch).
-- No hidden compatibility — ``where`` clauses in update_batch are validated
-  against canonical field names before matching. Legacy or non-canonical roots
-  like ``tools.*`` or ``side_effect_policy`` fail closed.
+Registry-sourced specs are normalized before use on read surfaces so forbidden
+fields are rejected and ``spec_digest`` is recomputed before validation. This
+is explicit transformation, not silent field dropping or hidden compatibility.
+Update-batch ``where`` clauses are checked against canonical field names only.
 """
 
 from __future__ import annotations
 
-from typing import Any, Protocol, TypedDict, cast
+from typing import Any, cast
 
 from returns.result import Failure, Result, Success
 
+from larva.app.update_batch_where import validate_update_batch_where
+from larva.app.facade_types import (
+    AssembleModule,
+    AssembleRequest,
+    BatchUpdateResult,
+    ClearedRegistry,
+    DeletedPersona,
+    LarvaError,
+    LarvaFacade,
+    NormalizeModule,
+    PersonaSummary,
+    RegisteredPersona,
+    SpecModule,
+    ValidateModule,
+)
+from larva.core.assemble import AssemblyError
 from larva.core.component_error_projection import project_component_store_error
 from larva.core.normalize import NormalizeError
-from larva.core.assemble import AssemblyError
 from larva.core.patch import PatchError, apply_patches
-from larva.core.spec import AssemblyInput, PersonaSpec
+from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.app.update_batch_where import validate_update_batch_where
 from larva.shell.components import ComponentStore
 from larva.shell.registry import RegistryError, RegistryStore
 
@@ -70,167 +67,9 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
 _LOOKUP_NOT_FOUND = object()
 
 
-class AssembleRequest(TypedDict, total=False):
-    """App-layer request shape for assembling a PersonaSpec."""
-
-    id: str
-    description: str
-    prompts: list[str]
-    toolsets: list[str]
-    constraints: list[str]
-    model: str
-    overrides: dict[str, object]
-
-
 _ASSEMBLE_REQUEST_ALLOWED_FIELDS = frozenset(
     {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
 )
-
-
-class RegisteredPersona(TypedDict):
-    """Result shape for a successful registration operation."""
-
-    id: str
-    registered: bool
-
-
-class PersonaSummary(TypedDict):
-    """List response shape for registered persona summaries.
-
-    Fields:
-        id: Persona identifier.
-        description: Human-readable persona description.
-        spec_digest: Canonical digest of the persona spec.
-        model: Model identifier used by the persona.
-    """
-
-    id: str
-    description: str
-    spec_digest: str
-    model: str
-
-
-class DeletedPersona(TypedDict):
-    """Result shape for a successful delete operation."""
-
-    id: str
-    deleted: bool
-
-
-class ClearedRegistry(TypedDict):
-    """Result shape for a successful clear operation."""
-
-    cleared: bool
-    count: int
-
-
-class BatchUpdateItemResult(TypedDict):
-    """Per-persona batch-update item (`id`, `updated`)."""
-
-    id: str
-    updated: bool
-
-
-class BatchUpdateResult(TypedDict):
-    """Aggregate batch-update result (`items`, `matched`, `updated`)."""
-
-    items: list[BatchUpdateItemResult]
-    matched: int
-    updated: int
-
-
-class LarvaError(TypedDict):
-    """Transport-neutral app-level error shape.
-
-    Codes align with INTERFACES.md error-code definitions.
-
-    Error-shape expectation:
-        - validation failures map to ``PERSONA_INVALID`` at facade level
-        - detailed validator output is preserved under ``details[\"report\"]``
-        - assembly failures preserve their specific code when aligned with the
-          shared taxonomy
-    """
-
-    code: str
-    numeric_code: int
-    message: str
-    details: dict[str, object]
-
-
-class SpecModule(Protocol):
-    """DI shape for the ``larva.core.spec`` module boundary."""
-
-    PersonaSpec: type[PersonaSpec]
-    AssemblyInput: type[AssemblyInput]
-
-
-class AssembleModule(Protocol):
-    """DI shape for the ``larva.core.assemble`` module boundary."""
-
-    def assemble_candidate(self, data: AssemblyInput) -> PersonaSpec:
-        """Assemble a candidate without redefining canonical admission."""
-        ...
-
-
-class ValidateModule(Protocol):
-    """DI shape for the ``larva.core.validate`` module boundary."""
-
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
-        """Return the canonical admission verdict for a PersonaSpec candidate."""
-        ...
-
-
-class NormalizeModule(Protocol):
-    """DI shape for the ``larva.core.normalize`` module boundary."""
-
-    def normalize_spec(self, spec: PersonaSpec) -> PersonaSpec: ...
-
-
-class LarvaFacade(Protocol):
-    """App-layer contract consumed by CLI, MCP, and Python adapters."""
-
-    def validate(self, spec: PersonaSpec) -> ValidationReport:
-        """Validate against the opifex-aligned canonical admission contract."""
-        ...
-
-    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
-        """Assemble then validate so success implies canonical conformance."""
-        ...
-
-    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
-        """Register only canonically admissible PersonaSpec inputs."""
-        ...
-
-    def resolve(
-        self,
-        id: str,
-        overrides: dict[str, object] | None = None,
-    ) -> Result[PersonaSpec, LarvaError]: ...
-
-    def update(
-        self,
-        persona_id: str,
-        patches: dict[str, object],
-    ) -> Result[PersonaSpec, LarvaError]: ...
-
-    def update_batch(
-        self,
-        where: dict[str, object],
-        patches: dict[str, object],
-        dry_run: bool = False,
-    ) -> Result[BatchUpdateResult, LarvaError]: ...
-
-    def list(self) -> Result[list[PersonaSummary], LarvaError]: ...
-
-    def clone(self, source_id: str, new_id: str) -> Result[PersonaSpec, LarvaError]: ...
-
-    def delete(self, persona_id: str) -> Result[DeletedPersona, LarvaError]: ...
-
-    def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]: ...
-
-    def export_all(self) -> Result[list[PersonaSpec], LarvaError]: ...
-
-    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]: ...
 
 
 class DefaultLarvaFacade(LarvaFacade):
@@ -253,8 +92,19 @@ class DefaultLarvaFacade(LarvaFacade):
         self._components = components
         self._registry = registry
 
+    def _registry_persona_ids_for_warnings(self) -> frozenset[str] | None:
+        registry_result = self._registry.list()
+        if isinstance(registry_result, Failure):
+            return None
+        return frozenset(
+            persona_id
+            for persona in registry_result.unwrap()
+            for persona_id in [persona.get("id")]
+            if isinstance(persona_id, str) and persona_id != ""
+        )
+
     def validate(self, spec: PersonaSpec) -> ValidationReport:
-        return self._validate.validate_spec(spec)
+        return self._validate.validate_spec(spec, self._registry_persona_ids_for_warnings())
 
     def _normalize_and_validate(
         self,

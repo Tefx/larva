@@ -52,7 +52,11 @@ class MockValidateModule:
     report: ValidationReport
     calls: list[PersonaSpec] = field(default_factory=list)
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+    def validate_spec(
+        self,
+        spec: PersonaSpec,
+        registry_persona_ids: frozenset[str] | None = None,
+    ) -> ValidationReport:
         self.calls.append(dict(spec))
         return self.report
 
@@ -782,7 +786,11 @@ class TestMCPAssembleConflictCodePreservation:
                 raise error
 
         class SpyValidateModule:
-            def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+            def validate_spec(
+                self,
+                spec: PersonaSpec,
+                registry_persona_ids: frozenset[str] | None = None,
+            ) -> ValidationReport:
                 return _valid_report()
 
         class SpyNormalizeModule:
@@ -1018,6 +1026,31 @@ class TestMCPHandlersImplementation:
         assert result["valid"] is True
         assert result["errors"] == []
         assert result["warnings"] == []
+
+    def test_handle_validate_real_facade_surfaces_registry_snapshot_warning(self) -> None:
+        """Real MCP validate path must surface canonical warnings when the scenario warrants it."""
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(
+                list_result=Success([_canonical_spec("known-child")]),
+            ),
+        )
+        handlers = mcp_module.MCPHandlers(facade)
+        spec = _canonical_spec("warning-runtime")
+        spec["can_spawn"] = ["known-child", "missing-child"]
+
+        result = handlers.handle_validate({"spec": spec})
+
+        assert result["valid"] is True
+        assert result["errors"] == []
+        assert (
+            "can_spawn references ids outside the current registry snapshot: missing-child"
+            in result["warnings"]
+        )
 
     def test_handle_validate_rejects_variables_as_extra_field(self) -> None:
         """MCP validate path must preserve canonical extra-field rejection."""

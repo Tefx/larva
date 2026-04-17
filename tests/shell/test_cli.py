@@ -263,7 +263,11 @@ class SpyValidateModule:
     calls: list[str] = field(default_factory=list)
     inputs: list[PersonaSpec] = field(default_factory=list)
 
-    def validate_spec(self, spec: PersonaSpec) -> ValidationReport:
+    def validate_spec(
+        self,
+        spec: PersonaSpec,
+        registry_persona_ids: frozenset[str] | None = None,
+    ) -> ValidationReport:
         self.calls.append("validate")
         self.inputs.append(dict(spec))
         return self.report
@@ -508,6 +512,32 @@ class TestValidateCommand:
         for warning in report["warnings"]:
             assert warning in text_result.unwrap()["stdout"]
         assert json_result.unwrap()["json"]["data"] == report
+
+    def test_validate_real_facade_surfaces_registry_snapshot_warning(self) -> None:
+        """Real validation path must surface registry-context warnings instead of fixed empty warnings."""
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=SpyAssembleModule(_canonical_spec("assembled-unused")),
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=InMemoryRegistryStore(
+                list_result=Success([_canonical_spec("known-child")]),
+            ),
+        )
+        spec = _canonical_spec("warning-runtime")
+        spec["can_spawn"] = ["known-child", "missing-child"]
+
+        result = validate_command(spec, as_json=True, facade=facade)
+
+        assert isinstance(result, Success)
+        report = cast("ValidationReport", result.unwrap()["json"]["data"])
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "can_spawn references ids outside the current registry snapshot: missing-child"
+            in report["warnings"]
+        )
 
 
 # ============================================================================
