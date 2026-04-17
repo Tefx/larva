@@ -52205,7 +52205,7 @@ phases:
   steps:
   - id: final_zeroing_20260418.mcp_schema_and_export_semantics
     name: Align MCP schema exactly and enforce export boolean semantics
-    status: claimed
+    status: done
     description: 'Implement and verify exact canonical MCP contract behavior.
 
 
@@ -52297,6 +52297,31 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-17T21:44:01.418255+00:00'
+    done_at: '2026-04-17T21:49:21.642287+00:00'
+    evidence: "Implemented final strict MCP contract exactness and export boolean\
+      \ semantics.\n\nExpected-red:\n- Added/ran schema-exact and export(false) tests\
+      \ first:\n  - `test_persona_spec_targeted_fields_match_canonical_schema_authority[...]`\
+      \ failed on permissive capabilities/can_spawn/spec_version/spec_digest projection.\n\
+      \  - `test_handle_export_all_false_does_not_route_to_export_all` failed because\
+      \ all=false was routed as true.\n\nImplementation:\n- Updated MCP schema projection\
+      \ and export selector handling in:\n  - src/larva/shell/mcp_contract.py\n  -\
+      \ src/larva/shell/mcp_export.py\n  - tests/shell/test_mcp.py (coverage for exactness)\n\
+      - Canonical authority used: `/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json`.\n\
+      \nVerification:\n- Focused MCP tests: `uv run pytest tests/shell/test_mcp.py\
+      \ tests/shell/test_canonical_boundary_gaps.py` => `169 passed`.\n- invar guard\
+      \ (changed files): passed (0 errors, 0 warnings).\n- Direct proof checks:\n\
+      \  - targeted field schema equality map all true for capabilities/can_spawn/spec_version/spec_digest\n\
+      \  - requiredness/optionality alignment true for required_capabilities, required_spec_version,\
+      \ optional_can_spawn, optional_spec_digest\n  - direct `handle_export({\"all\"\
+      : False})` proof returned empty export_ids path with no export_all side effects.\n\
+      \nWire-exact register:\n- capabilities: matches canonical object + additionalProperties\
+      \ enum set.\n- can_spawn: matches canonical oneOf(boolean | array[string constraints])\
+      \ + default false.\n- spec_version: matches canonical const \"0.1.0\".\n- spec_digest:\
+      \ matches canonical string contract.\n\nExport selector proof:\n- `{\"all\"\
+      : false}` now preserves false selector and routes through non-export_all branch\
+      \ (`export_ids([])` behavior), preventing all-export side effects.\n\nCommit/merge:\n\
+      - Step branch commit: `1ae8001` (`mcp: fix schema and export selector semantics`)\n\
+      - Fast-forward merged to main; worktree/branch cleaned."
   - id: final_zeroing_20260418_mcp_contract.gate
     name: Gate MCP contract exactness
     status: pending
