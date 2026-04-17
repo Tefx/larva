@@ -51376,3 +51376,9 @@ phases:
       - Performance benchmarks
 
       - Security penetration testing'
+- id: fresh_deep_reaudit_20260417
+  name: Fresh Deep Re-Audit Pass (2026-04-17)
+  status: pending
+  gate: Re-audit complete with evidence and no unresolved critical issues
+  depends_on:
+  - hard_cut_finish_20260417_registry_ux_cleanup
