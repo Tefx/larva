@@ -51575,3 +51575,8 @@ phases:
   depends_on:
   - fresh_deep_reaudit_20260417
   - meta.gate
+- id: final_zeroing_20260418_mcp_contract
+  name: Final Strict Zeroing — MCP Contract Exactness
+  status: locked
+  depends_on:
+  - final_zeroing_20260418_fail_closed_admission
