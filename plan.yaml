@@ -50885,3 +50885,111 @@ phases:
 
       '
     agent: python-executor
+  - id: hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
+    name: Web registry error state cleanup
+    status: pending
+    description: 'Implement-and-verify the larva serve web UX for `/api/personas`
+      hard-cut failures without changing canonical registry semantics.
+
+
+      work_type: defect_repair
+
+      step_type: implementation
+
+      agent_source: default
+
+      spec_refs:
+
+      - prior analysis: larva serve must stay fail-closed on invalid registry records
+
+      - runtime contract: web UI must distinguish loading vs true empty vs blocking
+      registry failure
+
+
+      touch_paths:
+
+      - contrib/web/index.html
+
+      - contrib/web/server.py
+
+      - tests covering web UI / `/api/personas` failure behavior
+
+
+      authoritative_interface: GET /api/personas remains the existing hard-cut registry
+      surface; do not add partial-success envelopes or compatibility fields.
+
+
+      Required behavior:
+
+      - render a blocking registry error state when `/api/personas` returns an error
+      envelope
+
+      - preserve a distinct loading state and a distinct true-empty state
+
+      - keep current canonical runtime/test behavior fail-closed
+
+      - do NOT add compatibility behavior, silent skipping, or partial-success fallbacks
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      1. First add/adjust regression coverage that demonstrates the current bug.
+
+      2. Run the relevant verification command before implementation and capture the
+      failing output.
+
+      3. Only then implement the UI/server changes that make the same check pass.
+
+      '
+    verification: '- Expected-red proof recorded first for the existing empty-state-on-error
+      bug
+
+      - Targeted web tests or harness checks prove loading, empty, and blocking error
+      are distinct states
+
+      - `/api/personas` registry failure renders blocking error state instead of empty
+      library
+
+      - No compatibility mode, partial-success path, or silent skip behavior introduced
+
+      - Run project verification via invar_guard on changed files'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Added/updated regression test or harness:
+
+      - Command run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Green Proof
+
+      - Command run after implementation:
+
+      - Passing output pasted here:
+
+      - Evidence showing three distinct UI states: loading / empty / blocking registry
+      error
+
+
+      ## Hard-Cut Preservation
+
+      - Explain why fail-closed canonical behavior is unchanged
+
+      - Confirm no compatibility layer, partial-success behavior, or silent skipping
+      was added
+
+      '
+    agent: frontend-engineer-tacit
