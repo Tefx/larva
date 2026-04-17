@@ -51575,6 +51575,112 @@ phases:
   depends_on:
   - fresh_deep_reaudit_20260417
   - meta.gate
+  steps:
+  - id: final_zeroing_20260418.fail_closed_toolset_and_digest
+    name: Fail-closed toolset admission and malformed digest handling
+    status: pending
+    description: 'Implement and verify the final strict fail-closed admission behavior
+      for malformed toolset content and malformed spec_digest across read/update/clone
+      flows.
+
+
+      Closure targets owned by this step:
+
+      - malformed toolset must fail closed; bad toolset content must never degrade
+      into a valid persona with capabilities:{}
+
+      - malformed component content must fail, not succeed with warnings only
+
+      - malformed spec_digest must fail closed on read/update/clone; no laundering
+      into a recomputed digest
+
+
+      Technical domain boundaries:
+
+      - core assembly + validation seams: src/larva/core/assemble.py, src/larva/core/validate.py,
+      src/larva/core/validation_field_shapes.py
+
+      - component loading boundary: src/larva/shell/components.py
+
+      - facade read/update/clone strictness: src/larva/app/facade.py, src/larva/app/facade_strictness.py
+
+      - focused tests under tests/core/, tests/shell/, tests/app/test_facade/
+
+
+      Execution rules:
+
+      - Write/strengthen falsifiable tests/contracts FIRST.
+
+      - Expected-Red is mandatory before implementation.
+
+      - Use property-based or adversarial fixture coverage for malformed toolset/spec_digest
+      inputs; pure example-only tests are not sufficient.
+
+      - Replace any warning-only acceptance path with structured fail-closed failure.
+
+      - Remove any recompute-on-read/update/clone behavior for malformed spec_digest.
+
+      - If any malformed input still reaches canonical output, this step is incomplete.
+
+
+      Completion criteria:
+
+      - malformed toolset content is rejected before canonical persona output exists
+
+      - malformed spec_digest is rejected on read/update/clone instead of being silently
+      replaced
+
+      - no helper or facade path preserves a fail-open bypass'
+    verification: 'implement_and_verify: prove expected-red with newly strengthened
+      tests/contracts, implement fail-closed behavior, then rerun focused tests plus
+      invar guard for changed files. This step protects the downstream phase gate
+      and the final full-plan-check.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Tests/contracts added or strengthened:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output proving malformed toolset or malformed spec_digest was still
+      accepted:
+
+
+      ## Implementation Proof
+
+      - Edited files:
+
+      - Exact command(s) run after implementation:
+
+      - Passing output:
+
+
+      ## Fail-Closed Register
+
+      - malformed toolset case:
+
+      - malformed component-content case:
+
+      - malformed spec_digest on read path:
+
+      - malformed spec_digest on update path:
+
+      - malformed spec_digest on clone path:
+
+
+      ## Anti-Laundering Proof
+
+      State exactly where recompute-on-read/update/clone was removed or blocked. If
+      any malformed metadata was normalized into success, mark FAIL.
+
+      '
+    agent: python-senior-tacit
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
