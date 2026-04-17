@@ -51787,6 +51787,70 @@ phases:
     depends_on:
     - final_zeroing_20260418.fail_closed_toolset_and_digest
     agent: python-senior-tacit
+  - id: final_zeroing_20260418_fail_closed_admission.gate
+    name: Gate fail-closed admission and read-path closure
+    status: pending
+    description: 'Independent gate review for the final fail-closed admission phase.
+
+
+      review_depth: THOROUGH
+
+      focus:
+
+      - no malformed toolset or malformed component content reaches canonical success
+
+      - no malformed spec_digest is laundered into recomputed success
+
+      - no component-show/helper/web path accepts and cleans forbidden legacy fields
+
+      - no singular alias remains at public ingress
+
+
+      Gate rule: any remaining open issue is FAIL; no debt bucket, no later pass.'
+    verification: 'phase-check: review evidence from all implementation work in this
+      phase and confirm there is no remaining fail-open, sanitize-on-read, alias-ingress,
+      or structured-error gap. This gate protects the MCP-contract phase and final
+      full-plan-check.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Reviewed step evidence:
+
+      - Commands/results spot-checked:
+
+      - Residual issues found:
+
+
+      ## Decision Basis
+
+      - malformed toolset fail-closed: PASS/FAIL
+
+      - malformed component content fail-closed: PASS/FAIL
+
+      - malformed spec_digest fail-closed on read/update/clone: PASS/FAIL
+
+      - component-show/helper/web reject forbidden legacy fields: PASS/FAIL
+
+      - canonical public ingress only: PASS/FAIL
+
+      - structured web assemble reject: PASS/FAIL
+
+
+      ## Gate Decision
+
+      PASS only if every line above is PASS. Any open item = FAIL.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.fail_closed_toolset_and_digest
+    - final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
