@@ -51910,6 +51910,127 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T21:12:18.215662+00:00'
+  - id: final_zeroing_20260418_fail_closed_admission.fix_batched
+    name: Batched remediation for stale singular-alias expectations and web lint debt
+    status: pending
+    description: 'Fix ALL gate blockers from final_zeroing_20260418_fail_closed_admission.gate
+      in one batched remediation step.
+
+
+      Issue family: stale singular-alias expectations remained after canonical plural
+      ingress hardening, plus shell web lint debt.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### Root Cause vs Symptom
+
+      - Root cause: canonical plural ingress/admission rules were hardened, but downstream
+      test expectations still assert legacy singular aliases on toolset, constraint,
+      and prompt-facing paths.
+
+      - Symptom: gate evidence reports three stale test expectations still asserting
+      singular forms.
+
+      - Why this fix is not surface-level: update every named stale expectation to
+      the authoritative plural/canonical behavior and clean the related shell web
+      lint debt in the same bounded slice.
+
+
+      ### B1: stale toolset singular alias expectation
+
+      - Location: tests/shell/test_canonical_boundary_gaps.py around line 579
+
+      - Required change: replace legacy singular expectation "toolset/test" with the
+      canonical plural expectation required by ingress hardening.
+
+      - Sibling search: inspect nearby canonical-boundary cases for other stale singular
+      alias expectations in the same family.
+
+
+      ### B2: stale constraint singular alias expectation
+
+      - Location: tests/shell/test_canonical_boundary_gaps.py around line 620
+
+      - Required change: replace legacy singular expectation "constraint/test" with
+      the canonical plural expectation required by ingress hardening.
+
+      - Sibling search: inspect adjacent constraint admission/read-path expectations
+      for any remaining singular aliases.
+
+
+      ### B3: stale python API prompt singular expectation
+
+      - Location: tests/shell/test_python_api.py around line 1102
+
+      - Required change: align the singular "prompt" expectation with the authoritative
+      canonical/plural behavior exposed by the Python API path.
+
+      - Sibling search: inspect neighboring Python API canonical-name assertions so
+      prompt-family expectations remain internally consistent.
+
+
+      ### SHOULD_FIX: shell web lint cleanup
+
+      - Location: src/larva/shell/web.py
+
+      - Required change: resolve reported lint debt: I001 import sort, TC001 TYPE_CHECKING
+      import placement, and E501 line length.
+
+      - Guardrail: keep runtime behavior unchanged; this is hygiene coupled to the
+      same gate failure bundle.
+
+
+      ## Completion Criteria
+
+      - All three named stale expectation sites updated to canonical plural/canonical
+      behavior.
+
+      - src/larva/shell/web.py lint findings addressed (I001, TC001, E501).
+
+      - Sibling search completed for each stale-expectation family; evidence must
+      say whether additional stale singular aliases were found.
+
+      - Remaining blocker-class debt from this gate is either fixed in this slice
+      or explicitly called out with non-intersection evidence.
+
+
+      step_type: implementation'
+    verification: '- Update covers all three blocker test locations plus shell web
+      lint cleanup in one batched change
+
+      - Evidence identifies any sibling stale singular-alias expectations inspected
+
+      - No new behavior change beyond aligning tests to canonical plural ingress and
+      lint hygiene
+
+      - This reduction step must leave downstream gate remediation ownership explicit
+      if any residual blocker remains'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Remediation Evidence
+
+      - Files changed:
+
+      - For each listed blocker (B1-B3 + web lint), summarize exact edit made
+
+      - Sibling search notes for toolset / constraint / prompt families
+
+      - Residual issues: none | <describe>
+
+
+      ## Completion Proof
+
+      - Why the updated expectations now match canonical plural ingress hardening
+
+      - Why web.py cleanup is behavior-preserving lint-only hygiene'
+    depends_on:
+    - final_zeroing_20260418_fail_closed_admission.gate
+    agent: python-senior-tacit
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
