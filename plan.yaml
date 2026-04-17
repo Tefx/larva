@@ -51385,7 +51385,7 @@ phases:
   steps:
   - id: fresh_deep_reaudit_20260417.run-independent-deep-re-audit
     name: Run independent deep re-audit
-    status: claimed
+    status: done
     description: Run a fresh independent deep re-audit of the current repository state,
       including architecture/gate checks, warning semantics consistency, docs/readiness
       consistency, and residual-risk scan. Produce structured evidence and findings.
@@ -51394,6 +51394,37 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T12:40:41.417581+00:00'
+    done_at: '2026-04-17T12:54:06.421677+00:00'
+    evidence: "Audit execution completed and produced blocking findings for remediation.\n\
+      \nSubagent status: FAIL (expected for audit when blockers exist)\n\n## Audit\
+      \ Scope\n- Full source tree: `src/larva/` (core, app, shell), `tests/`, contracts,\
+      \ ADRs, INVAR.md\n- Automated gates: mypy, ruff, pytest (881 tests), invar guard\
+      \ --all\n- Expert reviews: E1 Spec Alignment, E3 Developer Experience, E4 SE\
+      \ Quality (E2 Architecture spawned separately)\n- Cross-cutting pattern scan\
+      \ for `side_effect_policy`, `tools`, `transition_toolset_fixture`, escape hatches,\
+      \ stub patterns\n- Risk tiering: CRITICAL (5 files), STANDARD (8+ files), LOW\
+      \ (3+ files)\n\n## Checks Performed\n1. Type checking (mypy strict): 88 errors\
+      \ (mostly third-party stubs)\n2. Linting (ruff): 119 errors (mostly I001/E501)\n\
+      3. Pytest: 3 failing tests\n4. Invar guard --all: failed due to property test\
+      \ in patch precondition alignment\n5. Wiring/contract/escape-hatch audits and\
+      \ pattern scans\n\n## Findings\n- blockers:\n  - B1: Canonical boundary inconsistencies\
+      \ from transition fixtures leaking forbidden fields (`tools`/`side_effect_policy`)\
+      \ into canonical paths and unstable field assertion ordering in clone test.\n\
+      \  - B2: `src/larva/core/patch.py::_reject_forbidden_patch_fields` precondition\
+      \ contract semantically incomplete vs rejection behavior (property test fail).\n\
+      \  - B3: Readiness scanner legitimate-pattern gap for phrase `or side_effect_policy\
+      \ are rejected.` in MCP contract description.\n- should_fix:\n  - facade file-size\
+      \ pressure; long CLI function; mypy/ruf debt; transition fixture defaults.\n\
+      - suggestions:\n  - Robust assertion strategy for forbidden-field ordering;\
+      \ scanner pattern broadening.\n- tech_debt:\n  - escape hatch budget near ceiling\
+      \ and static analysis debt.\n\n## Residual Risk\n- Blocking risk exists until\
+      \ B1/B2/B3 are remediated and tests/guard rerun.\n\n## Recommendation\n- FAIL\
+      \ (audit gate not open); proceed to remediation step.\n\n## Behavioral proof\n\
+      - step_intent: fresh independent deep re-audit\n- expected_result: structured\
+      \ blocker inventory and gate decision\n- observed_result: blockers identified\
+      \ with reproducible failing checks\n- failure_alignment: aligned (audit surfaced\
+      \ canonical boundary and contract-strength blockers)\n- product_files_modified:\
+      \ none\n- gate_open_allowed: false"
   - id: fresh_deep_reaudit_20260417.resolve-critical-findings-if-any
     name: Resolve critical findings if any
     status: pending
