@@ -50993,3 +50993,67 @@ phases:
 
       '
     agent: frontend-engineer-tacit
+  - id: hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
+    name: Registry UX cleanup verification
+    status: pending
+    description: 'Independent phase-check for the final registry UX cleanup.
+
+
+      verification_scope: phase-check
+
+      consumer_surfaces:
+
+      - larva serve web UI
+
+      - CLI diagnostic surface
+
+
+      touch_paths:
+
+      - contrib/web/index.html
+
+      - contrib/web/server.py
+
+      - src/larva/shell/cli.py
+
+      - tests covering web and CLI behavior
+
+
+      Protects downstream gate: hard_cut_finish_20260417_registry_ux_cleanup.gate
+
+
+      Verify from a fresh perspective that:
+
+      - registry failure yields a blocking UI error, not a false empty state
+
+      - loading, empty, and error states remain distinguishable
+
+      - `larva doctor registry` is reachable and read-only
+
+      - canonical hard-cut behavior remains fail-closed with no compatibility fallback
+
+      '
+    verification: '- Re-run targeted web and CLI checks independently
+
+      - Confirm actual evidence for loading / empty / blocking error separation
+
+      - Confirm `larva doctor registry` is read-only and does not alter runtime semantics
+
+      - Confirm no compatibility layer, partial-success behavior, or silent skipping
+      intersects remaining gate'
+    evidence_template: "## Verification Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\
+      \n\n### Commands executed\n- <actual commands>\n\n### Behavioral proof register\n\
+      - requirement_ref: web error-state distinction\n  behavior_claim: `/api/personas`\
+      \ failure blocks with explicit error state\n  runtime_proof_expected: targeted\
+      \ failing-registry UI evidence\n  evidence_ref: <command/output>\n  status:\
+      \ PROVEN|UNPROVEN\n  closure_path: <none or follow-up>\n  gate_decision_basis:\
+      \ blocks gate if unproven\n- requirement_ref: doctor registry diagnostic\n \
+      \ behavior_claim: `larva doctor registry` is reachable and read-only\n  runtime_proof_expected:\
+      \ targeted CLI evidence\n  evidence_ref: <command/output>\n  status: PROVEN|UNPROVEN\n\
+      \  closure_path: <none or follow-up>\n  gate_decision_basis: blocks gate if\
+      \ unproven\n\n### Headline\n- PASS | PASS_WITH_DEBT | FAIL\n"
+    depends_on:
+    - hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
+    - hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
+    agent: integration-verifier-tacit
