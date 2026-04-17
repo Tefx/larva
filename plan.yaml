@@ -52613,7 +52613,7 @@ phases:
       - Worktree/branch cleaned after no-op verification.'
   - id: final_zeroing_20260418_parity_cleanup.gate
     name: Gate test and documentation parity cleanup
-    status: claimed
+    status: done
     description: 'Independent gate review for parity cleanup.
 
 
@@ -52662,6 +52662,19 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T22:04:54.471285+00:00'
+    done_at: '2026-04-17T22:15:47.429274+00:00'
+    evidence: "Independent gate review completed with FAIL verdict for parity cleanup\
+      \ phase.\n\nBlocker family identified:\n- stale transition-era wording in test\
+      \ docs/function names contradicting final hard-cut rejection semantics (5 locations):\n\
+      \  - tests/core/test_normalize.py (~220, ~222)\n  - tests/repro/spec_verify_black_box_surfaces.py\
+      \ (~9, ~153, ~371)\n\nDecision basis from reviewer:\n- tests parity clean: FAIL\
+      \ (wording contradiction with actual hard-cut behavior)\n- docs parity clean:\
+      \ PASS\n- headline FAIL, blocking_status OPEN, gate_open_allowed false.\n\n\
+      Batched remediation protocol executed:\n- Planner added one batched fix step\
+      \ and one retest step:\n  - final_zeroing_20260418_parity_cleanup.fix_batched\n\
+      \  - final_zeroing_20260418_parity_cleanup.retest\n- Chain: parity_cleanup.gate\
+      \ -> fix_batched -> retest\n\nThis gate step is completed as review artifact\
+      \ with fail verdict and explicit remediation ownership created."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched
     name: Batched stale transition-era wording cleanup
     status: pending
