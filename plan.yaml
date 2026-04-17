@@ -52324,7 +52324,7 @@ phases:
       - Fast-forward merged to main; worktree/branch cleaned."
   - id: final_zeroing_20260418_mcp_contract.gate
     name: Gate MCP contract exactness
-    status: pending
+    status: claimed
     description: 'Independent gate review for the MCP contract exactness phase.
 
 
@@ -52375,6 +52375,8 @@ phases:
     depends_on:
     - final_zeroing_20260418.mcp_schema_and_export_semantics
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-17T21:49:32.990416+00:00'
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
   status: locked
