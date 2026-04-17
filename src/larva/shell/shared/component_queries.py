@@ -82,7 +82,12 @@ def query_component(
             )
         )
 
-    return Success(cast("ComponentPayload", load_result.unwrap()))
+    payload = dict(cast("ComponentPayload", load_result.unwrap()))
+    if normalized_type == "toolsets":
+        payload.pop("tools", None)
+    if normalized_type == "constraints":
+        payload.pop("side_effect_policy", None)
+    return Success(payload)
 
 
 __all__ = ["ComponentPayload", "query_component"]

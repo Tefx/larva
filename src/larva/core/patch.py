@@ -32,7 +32,7 @@ Examples:
 
 from typing import Any, TypeGuard
 
-from deal import post, pre
+from deal import post, pre, raises
 
 PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
 DEEP_MERGE_KEYS = frozenset({"model_params", "capabilities"})
@@ -77,6 +77,7 @@ def _patch_error(code: str, message: str, details: dict[str, Any] | None = None)
 
 @post(lambda result: result is None)
 @pre(lambda patches: all(isinstance(key, str) for key in patches))
+@raises(PatchError)
 def _reject_forbidden_patch_fields(patches: dict[str, object]) -> None:
     """Reject forbidden legacy patch roots before merge semantics.
 

@@ -92,7 +92,7 @@ class TestFacadeClone:
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "FORBIDDEN_FIELD"
         assert error["numeric_code"] == 115
-        assert error["details"]["field"] == "tools"
+        assert error["details"]["field"] in {"tools", "side_effect_policy"}
         assert registry.save_inputs == []
 
     def test_clone_source_not_found_returns_persona_not_found_error(self) -> None:

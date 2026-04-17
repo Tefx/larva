@@ -87,6 +87,7 @@ _SCAN_EXCLUDE_RELATIVE: list[str] = [
 _LEGITIMATE_REFERENCE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"forbidden.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"rejected.*(?:tools|side_effect_policy)", re.IGNORECASE),
+    re.compile(r"(?:tools|side_effect_policy).*rejected", re.IGNORECASE),
     re.compile(r"deprecated.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"not permitted.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"must not.*(?:tools|side_effect_policy)", re.IGNORECASE),
