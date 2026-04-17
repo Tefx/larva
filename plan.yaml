@@ -51057,3 +51057,60 @@ phases:
     - hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     - hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
     agent: integration-verifier-tacit
+  - id: hard_cut_finish_20260417_registry_ux_cleanup.gate
+    name: Registry UX cleanup gate
+    status: pending
+    description: 'Gate review for the final registry UX cleanup.
+
+
+      review_depth: STANDARD
+
+      review_depth_rationale:
+
+      - final cleanup touching runnable `larva serve` surface
+
+      - must preserve hard-cut fail-closed semantics while improving UX visibility
+
+
+      This gate MUST block if:
+
+      - the web surface still collapses registry errors into an empty state
+
+      - `larva doctor registry` changes runtime/admission semantics instead of remaining
+      diagnostic-only
+
+      - any compatibility layer, partial-success path, or silent skipping of bad records
+      was introduced
+
+      '
+    verification: '- All phase steps completed
+
+      - Independent verification evidence reviewed
+
+      - Hard-cut canonical behavior remains fail-closed
+
+      - Web and CLI cleanup is acceptable for final-phase closure'
+    evidence_template: '## Gate Review Report
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ### Gate decision basis
+
+      - requirement/proof refs reviewed:
+
+      - unresolved statuses (`NEEDS_TEST`, `UNPROVEN`, `UNCERTAIN_BLOCKING`):
+
+      - why each unresolved item blocks or does not intersect remaining gates:
+
+      - final OPEN/BLOCK recommendation:
+
+      '
+    depends_on:
+    - hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
+    agent: gate-reviewer-tacit
