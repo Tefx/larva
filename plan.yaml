@@ -51399,6 +51399,8 @@ phases:
       verification. If no blockers, record no-op evidence.
     verification: Either blocker fixes verified, or explicit no-op statement with
       audit reference.
+    depends_on:
+    - fresh_deep_reaudit_20260417.run-independent-deep-re-audit
     agent: python-senior-tacit
   - id: fresh_deep_reaudit_20260417.final-re-audit-gate-verdict
     name: Final re-audit gate verdict
