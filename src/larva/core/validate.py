@@ -3,6 +3,11 @@
 Owns larva's admission metadata seam and enforces fail-closed canonical rules
 for required fields, extra fields, prompt composition, capabilities, and
 spawn semantics.
+
+Validation report semantics:
+- ``errors`` block admission (``valid == False``)
+- ``warnings`` are non-blocking canonical guidance signals (``valid`` may stay
+  ``True``)
 """
 
 import re
@@ -10,6 +15,7 @@ from types import MappingProxyType
 from typing import TypedDict
 
 from deal import post, pre
+from larva.core.validation_warnings import collect_non_blocking_warnings
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
@@ -408,8 +414,10 @@ def validate_spec(spec: dict[str, object]) -> ValidationReport:
     required_errors = _validate_required_fields(spec)
     errors.extend(required_errors)
 
+    warnings = collect_non_blocking_warnings(spec)
+
     return {
         "valid": len(errors) == 0,
         "errors": errors,
-        "warnings": [],
+        "warnings": warnings,
     }

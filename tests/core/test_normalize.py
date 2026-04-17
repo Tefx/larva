@@ -2,8 +2,7 @@
 
 These tests express the frozen authority for normalize semantics per ADR-002
 and ADR-003:
-- normalize_spec preserves transition-era forbidden fields so validation can
-  reject them explicitly at canonical admission
+- normalize_spec rejects forbidden legacy fields at the canonical boundary
 - spec_version is defaulted to '0.1.0' when absent
 - spec_digest is always freshly computed
 - Digest is deterministic and excludes spec_digest from input
@@ -33,15 +32,14 @@ CANONICAL_NORMALIZE_INPUT_MINIMAL: dict = {
 
 CANONICAL_NORMALIZE_INPUT_WITH_SIDE_EFFECT_POLICY: dict = {
     "id": "normalize-fixture-sep",
-    "description": "Normalize fixture — transition-era side_effect_policy input",
+    "description": "Normalize fixture — historical invalid side_effect_policy input",
     "prompt": "You are a test persona.",
     "model": "gpt-4o-mini",
     "capabilities": {"shell": "read_only"},
     "side_effect_policy": "allow",
     "spec_version": "0.1.0",
 }
-"""Transition-era input with 'side_effect_policy'. normalize_spec preserves the
-field so validation can reject it explicitly downstream."""
+"""Historical invalid input carrying ``side_effect_policy`` for fail-closed tests."""
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +213,7 @@ class TestNormalizeSpecBehavior:
 # ---------------------------------------------------------------------------
 
 
-class TestNormalizeSpecCapabilitiesTransition:
+class TestNormalizeSpecHardCutRejection:
     """Test ADR-002 hard-cut normalization behavior.
 
     Per ADR-002 authority decision (hard-cut semantics):
@@ -236,7 +234,7 @@ class TestNormalizeSpecCapabilitiesTransition:
     def test_tools_not_mapped_to_capabilities(self) -> None:
         """tools in input must NOT result in capabilities being added — hard-cut.
 
-        Unlike transition-era behavior, tools is preserved for rejection, not mapped.
+        Hard cut means tools is rejected, not translated.
         """
         from larva.core.normalize import normalize_spec
 
@@ -291,8 +289,8 @@ class TestNormalizeSpecCapabilitiesTransition:
                 }
             )
 
-    def test_transition_fixture_with_side_effect_policy_is_rejected(self) -> None:
-        """Transition fixture must now fail at normalize boundary."""
+    def test_historical_invalid_fixture_with_side_effect_policy_is_rejected(self) -> None:
+        """Historical invalid fixture must fail at the normalize boundary."""
         from larva.core.normalize import normalize_spec
 
         with pytest.raises(Exception):

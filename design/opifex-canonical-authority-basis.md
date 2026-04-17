@@ -28,7 +28,7 @@ Accepted authority basis for downstream remediation planning.
 For downstream remediation planning, treat the canonical PersonaSpec input contract as:
 
 - **Required fields:** `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
-- **Optional fields:** `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`, `variables`
+- **Optional fields:** `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`
 - **Derived/managed behavior:** `spec_digest` may be computed by larva outputs, but it remains optional at admission input
 - **Removed fields:** `tools`, `side_effect_policy` — reject-immediate on admission, never emit on canonical outputs
 - **Extra-field rule:** reject unknown top-level fields during admission rather than silently accepting or preserving them

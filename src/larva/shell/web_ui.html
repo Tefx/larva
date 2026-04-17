@@ -533,7 +533,13 @@
               ></div>
             </div>
           </template>
-        <div x-show="filteredPersonas.length === 0" style="padding:16px;text-align:center;color:var(--text-muted);">
+        <div x-show="personaRegistryState === 'loading'" style="padding:16px;text-align:center;color:var(--text-muted);">
+          Loading persona library...
+        </div>
+        <div x-show="personaRegistryState === 'error'" style="padding:16px;text-align:center;color:var(--danger);">
+          Persona library unavailable
+        </div>
+        <div x-show="personaRegistryState === 'ready' && personas.length > 0 && filteredPersonas.length === 0" style="padding:16px;text-align:center;color:var(--text-muted);">
           No personas found
         </div>
       </div>
@@ -817,13 +823,26 @@
         </div>
       </div>
 
+    <!-- LOADING STATE: registry list request in flight -->
+    <div class="empty-state" x-show="view === 'detail' && personaRegistryState === 'loading' && !selectedPersona" style="display:none;">
+      <h2>Loading persona library...</h2>
+      <p>Waiting for the canonical <code>/api/personas</code> registry response.</p>
+    </div>
+
+    <!-- BLOCKING ERROR STATE: registry list failed closed -->
+    <div class="empty-state" x-show="view === 'detail' && personaRegistryState === 'error'" style="display:none;">
+      <h2>Unable to load persona library</h2>
+      <p>The canonical registry request failed, so the library stays blocked until <code>/api/personas</code> succeeds.</p>
+      <div class="error-badge" x-text="personaRegistryError || 'Failed to load persona library'" style="margin-top:12px;"></div>
+    </div>
+
     <!-- EMPTY STATE: no persona selected -->
-    <div class="empty-state" x-show="view === 'detail' && !selectedPersona && personas.length > 0" style="display:none;">
+    <div class="empty-state" x-show="view === 'detail' && personaRegistryState === 'ready' && !selectedPersona && personas.length > 0" style="display:none;">
       <h2>Select a persona from the sidebar</h2>
     </div>
 
     <!-- EMPTY STATE: no personas -->
-    <div class="empty-state" x-show="view === 'detail' && personas.length === 0" style="display:none;">
+    <div class="empty-state" x-show="view === 'detail' && personaRegistryState === 'ready' && personas.length === 0" style="display:none;">
       <h2>No personas registered</h2>
       <p>Register your first persona to get started</p>
       <div class="empty-state-actions">
@@ -1072,6 +1091,8 @@ function larvaApp() {
     personas: [],
     personaDetails: {},
     personaErrors: {},
+    personaRegistryState: 'loading',
+    personaRegistryError: '',
     loadingPersonaId: null,
     selected: null,
     search: '',
@@ -1184,24 +1205,42 @@ function larvaApp() {
     },
 
     async loadPersonas() {
-      const resp = await fetch('/api/personas');
-      const data = await resp.json();
-      const summaries = data.data || [];
-      this.personas = summaries;
+      this.personaRegistryState = 'loading';
+      this.personaRegistryError = '';
 
-      const availableIds = new Set(summaries.map(s => s.id));
-      this.personaDetails = Object.fromEntries(
-        Object.entries(this.personaDetails).filter(([id]) => availableIds.has(id))
-      );
-      this.personaErrors = Object.fromEntries(
-        Object.entries(this.personaErrors).filter(([id]) => availableIds.has(id))
-      );
+      try {
+        const resp = await fetch('/api/personas');
+        const data = await resp.json();
+        if (data.error) {
+          throw new Error(data.error.message || 'Failed to load persona library');
+        }
 
-      if (!this.selected || !availableIds.has(this.selected)) {
-        this.selected = this.personas.length ? this.personas[0].id : null;
-      }
-      if (this.selected) {
-        await this.ensurePersonaDetail(this.selected);
+        const summaries = Array.isArray(data.data) ? data.data : [];
+        this.personas = summaries;
+
+        const availableIds = new Set(summaries.map(s => s.id));
+        this.personaDetails = Object.fromEntries(
+          Object.entries(this.personaDetails).filter(([id]) => availableIds.has(id))
+        );
+        this.personaErrors = Object.fromEntries(
+          Object.entries(this.personaErrors).filter(([id]) => availableIds.has(id))
+        );
+
+        if (!this.selected || !availableIds.has(this.selected)) {
+          this.selected = this.personas.length ? this.personas[0].id : null;
+        }
+        this.personaRegistryState = 'ready';
+        if (this.selected) {
+          await this.ensurePersonaDetail(this.selected);
+        }
+      } catch (e) {
+        this.personas = [];
+        this.personaDetails = {};
+        this.personaErrors = {};
+        this.selected = null;
+        this.loadingPersonaId = null;
+        this.personaRegistryState = 'error';
+        this.personaRegistryError = e?.message || 'Failed to load persona library';
       }
     },
 

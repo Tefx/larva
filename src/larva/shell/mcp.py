@@ -99,27 +99,27 @@ class MCPHandlers(MCPHandlerOpsMixin):
         self._components = components
 
     def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
-        """Handle larva.component_list MCP tool call."""
+        """Handle ``larva_component_list`` MCP tool call."""
         return self._handle_component_list_impl(params)
 
     def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
-        """Handle larva.component_show MCP tool call."""
+        """Handle ``larva_component_show`` MCP tool call."""
         return self._handle_component_show_impl(params)
 
     def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
-        """Handle larva.validate MCP tool call."""
+        """Handle ``larva_validate`` MCP tool call."""
         return self._handle_validate_impl(params)
 
     def handle_assemble(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle larva.assemble MCP tool call."""
+        """Handle ``larva_assemble`` MCP tool call."""
         return self._handle_assemble_impl(params)
 
     def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle larva.resolve MCP tool call."""
+        """Handle ``larva_resolve`` MCP tool call."""
         return self._handle_resolve_impl(params)
 
     def handle_register(self, params: object) -> Union[RegisteredPersona, LarvaError]:
-        """Handle larva.register MCP tool call.
+        """Handle ``larva_register`` MCP tool call.
 
         Delegates to: facade.register(spec)
 
@@ -148,7 +148,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         )
 
     def handle_list(self, params: object) -> Union[list[dict[str, str]], LarvaError]:
-        """Handle larva.list MCP tool call.
+        """Handle ``larva_list`` MCP tool call.
 
         Delegates to: facade.list()
 
@@ -166,7 +166,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         return cast("list[dict[str, str]] | LarvaError", self._unwrap_result(self._facade.list()))
 
     def handle_delete(self, params: object) -> Union["DeletedPersona", LarvaError]:
-        """Handle larva.delete MCP tool call.
+        """Handle ``larva_delete`` MCP tool call.
 
         Delegates to: facade.delete(persona_id)
 
@@ -195,7 +195,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         )
 
     def handle_clear(self, params: object) -> Union["ClearedRegistry", LarvaError]:
-        """Handle larva.clear MCP tool call.
+        """Handle ``larva_clear`` MCP tool call.
 
         Delegates to: facade.clear(confirm)
 
@@ -225,7 +225,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         )
 
     def handle_clone(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle larva.clone MCP tool call.
+        """Handle ``larva_clone`` MCP tool call.
 
         Delegates to: facade.clone(source_id, new_id)
 
@@ -257,7 +257,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         )
 
     def handle_update(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle larva.update MCP tool call.
+        """Handle ``larva_update`` MCP tool call.
 
         Delegates to: facade.update(persona_id, patches)
 
@@ -290,7 +290,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         )
 
     def handle_update_batch(self, params: object) -> Union[dict[str, object], LarvaError]:
-        """Handle larva.update_batch MCP tool call.
+        """Handle ``larva_update_batch`` MCP tool call.
 
         Delegates to shared update_batch handler logic with where/patches/dry_run validation.
         """
@@ -300,7 +300,7 @@ class MCPHandlers(MCPHandlerOpsMixin):
         return result.failure()
 
     def handle_export(self, params: object) -> Union[list["PersonaSpec"], LarvaError]:
-        """Handle larva.export MCP tool call.
+        """Handle ``larva_export`` MCP tool call.
 
         Delegates to shared export handler logic with ``all`` xor ``ids`` validation.
         """

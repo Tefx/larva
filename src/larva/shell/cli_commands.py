@@ -506,3 +506,91 @@ def component_show_command(
     if as_json:
         cli_result["json"] = {"data": payload}
     return Success(cli_result)
+
+
+# @shell_complexity: branching is driven by diagnostic outcome (probe results), not business logic
+def doctor_registry_command(*, as_json: bool) -> Result[CliCommandResult, CliFailure]:
+    """Run read-only diagnostics on the registry.
+
+    Validates registry list/read paths without mutating any data.
+    Returns diagnostics about index integrity, spec file accessibility,
+    and canonical boundary compliance.
+    """
+    from larva.shell.registry import (
+        INDEX_FILENAME,
+        FileSystemRegistryStore,
+    )
+
+    diagnostics: list[str] = []
+    issues: list[str] = []
+
+    # Probe index read
+    fs_store = FileSystemRegistryStore()
+    index_result = fs_store._read_index()
+
+    if isinstance(index_result, Failure):
+        index_diagnostic = f"  [FAIL] Cannot read registry index: {index_result.failure()}"
+        issues.append(index_diagnostic)
+        diagnostics.append(index_diagnostic)
+    else:
+        index = index_result.unwrap()
+        index_diagnostic = f"  [OK] Registry index read succeeded ({len(index)} entries)"
+        diagnostics.append(index_diagnostic)
+
+        if index:
+            # Probe a sample of spec reads
+            sample_ids = sorted(index.keys())[:3]
+            for persona_id in sample_ids:
+                spec_result = fs_store._read_spec(persona_id, index.get(persona_id))
+                if isinstance(spec_result, Failure):
+                    spec_diagnostic = (
+                        f"  [FAIL] Spec read failed for '{persona_id}': {spec_result.failure()}"
+                    )
+                    issues.append(spec_diagnostic)
+                    diagnostics.append(spec_diagnostic)
+                else:
+                    spec_diagnostic = f"  [OK] Spec read succeeded for '{persona_id}'"
+                    diagnostics.append(spec_diagnostic)
+
+            # Check for forbidden field violations in sample
+            for persona_id in sample_ids:
+                spec_result = fs_store._read_spec(persona_id, index.get(persona_id))
+                if isinstance(spec_result, Success):
+                    spec = spec_result.unwrap()
+                    forbidden = [fld for fld in ("tools", "side_effect_policy") if fld in spec]
+                    if forbidden:
+                        field_diagnostic = f"  [WARN] Spec '{persona_id}' contains forbidden legacy fields: {forbidden}"
+                        diagnostics.append(field_diagnostic)
+
+    # Registry root location
+    diagnostics.append(f"  [INFO] Registry root: {fs_store.root}")
+    index_path = fs_store.root / INDEX_FILENAME
+    diagnostics.append(f"  [INFO] Index path: {index_path}")
+
+    # Command succeeds; exit code reflects diagnostic outcome
+    # (no mutations, so no hard-cut failure semantics apply)
+    if issues:
+        status = "DIAGNOSTIC FAIL"
+        stdout_lines = [status, *diagnostics, ""]
+        failure: CliFailure = {
+            "exit_code": EXIT_ERROR,
+            "stderr": "\n".join(stdout_lines),
+            "error": {
+                "code": "REGISTRY_DIAGNOSTIC_FAILED",
+                "numeric_code": 107,
+                "message": "registry diagnostic found issues",
+                "details": {"issues": issues},
+            },
+        }
+        return Failure(failure)
+
+    status = "DIAGNOSTIC OK"
+    stdout_lines = [status, *diagnostics, ""]
+    cli_result: CliCommandResult = {
+        "exit_code": EXIT_OK,
+        "stdout": "\n".join(stdout_lines) + "\n",
+    }
+    if as_json:
+        cli_result["json"] = {"data": {"status": "ok", "diagnostics": diagnostics}}
+
+    return Success(cli_result)

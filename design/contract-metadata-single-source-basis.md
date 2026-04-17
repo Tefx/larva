@@ -33,7 +33,7 @@ Original request: design the single-source metadata seam that all local projecti
 - [Proven] The validator seam is the only local place allowed to declare the canonical top-level field partition.
 - [Proven] Current partition:
   - required: `id`, `description`, `prompt`, `model`, `capabilities`, `spec_version`
-  - optional: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`, `variables`
+  - optional: `can_spawn`, `model_params`, `compaction_prompt`, `spec_digest`
   - forbidden: `tools`, `side_effect_policy`
 - [Likely] If upstream opifex contract changes, the update order must be:
   1. validator seam

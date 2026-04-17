@@ -46,15 +46,14 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
     }
 
 
-def _transition_spec_with_deprecated_fields(
+def _historical_spec_with_legacy_fields(
     persona_id: str,
-    digest: str = "sha256:transition",
+    digest: str = "sha256:historical-debt",
 ) -> PersonaSpec:
-    """Return fixture with non-canonical fields for rejection testing.
+    """Return historical non-canonical fixture for rejection-path tests.
 
-    Per ADR-002/opifex authority basis: tools and side_effect_policy are
-    rejected at canonical admission boundary. This fixture is used to test
-    that validation properly rejects specs containing these fields.
+    The payload deliberately carries forbidden legacy fields so hard-cut tests
+    can prove register/validate paths reject them explicitly.
     """
     spec = dict(_canonical_spec(persona_id, digest=digest))
     spec["tools"] = {"shell": "read_only"}
@@ -111,9 +110,8 @@ class SpyNormalizeModule:
 
     def normalize_spec(self, spec: PersonaSpec) -> PersonaSpec:
         self.calls.append("normalize")
-        # Hard-cut policy: delegate to real normalize_spec to strip forbidden
-        # fields (tools, side_effect_policy) and recompute spec_digest.
-        # This ensures tests see canonical behavior, not spy pass-through.
+        # Hard-cut policy: delegate to real normalize_spec so tests observe the
+        # production rejection/computation behavior, not a permissive spy.
         from larva.core.normalize import normalize_spec as real_normalize
 
         normalized = real_normalize(dict(spec))
@@ -129,8 +127,8 @@ class RaisingAssembleModule:
         self.calls.append("assemble")
         raise _assembly_error(
             code="COMPONENT_CONFLICT",
-            message="Multiple sources provide different values for 'side_effect_policy'",
-            details={"field": "side_effect_policy"},
+            message="Multiple sources provide different values for 'can_spawn'",
+            details={"field": "can_spawn"},
         )
 
 
@@ -151,9 +149,7 @@ class RaisingUnknownCodeAssembleModule:
 class InMemoryComponentStore:
     prompt_text: str = "Prompt body"
     toolset: dict[str, str] = field(default_factory=lambda: {"shell": "read_only"})
-    constraint: dict[str, object] = field(
-        default_factory=lambda: {"side_effect_policy": "read_only"}
-    )
+    constraint: dict[str, object] = field(default_factory=lambda: {"can_spawn": False})
     model: dict[str, object] = field(default_factory=lambda: {"model": "gpt-4o-mini"})
     prompts_by_name: dict[str, str] = field(default_factory=dict)
     toolsets_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -173,11 +169,8 @@ class InMemoryComponentStore:
         return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        # Component load returns capabilities for assembly (canonical per ADR-002).
-        # The double returns both for legacy compatibility testing of component loading,
-        # but assembly output is canonical-only.
         capabilities = self.toolsets_by_name.get(name, self.toolset)
-        return Success({"capabilities": capabilities, "tools": capabilities})
+        return Success({"capabilities": capabilities})
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
         return Success(self.constraints_by_name.get(name, self.constraint))

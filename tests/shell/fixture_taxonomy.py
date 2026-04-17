@@ -1,4 +1,4 @@
-"""Shared shell-test fixture taxonomy for canonical vs transition coverage."""
+"""Shared shell-test fixtures for canonical and historical non-canonical coverage."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def canonical_persona_spec(
     digest: str = "sha256:canonical",
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
-    """Return canonical-only PersonaSpec fixture (no deprecated fields)."""
+    """Return canonical PersonaSpec fixture with no forbidden legacy fields."""
     return {
         "id": persona_id,
         "description": f"Persona {persona_id}",
@@ -31,10 +31,18 @@ def canonical_persona_spec(
     }
 
 
-def transition_toolset_fixture(
+def canonical_toolset_fixture(
     capabilities: dict[str, str] | None = None,
 ) -> dict[str, dict[str, str]]:
-    """Return explicit transition-only toolset payload (canonical + mirrored)."""
+    """Return canonical toolset payload for success-path component tests."""
+    resolved = capabilities or {"shell": "read_only"}
+    return {"capabilities": dict(resolved)}
+
+
+def historical_toolset_fixture_with_legacy_fields(
+    capabilities: dict[str, str] | None = None,
+) -> dict[str, dict[str, str]]:
+    """Return historical non-canonical toolset payload for rejection-path tests."""
     resolved = capabilities or {"shell": "read_only"}
     return {"capabilities": dict(resolved), "tools": dict(resolved)}
 
@@ -47,10 +55,10 @@ def legacy_toolset_fixture(
     return {"tools": dict(resolved)}
 
 
-def transition_constraint_fixture(
+def historical_constraint_fixture_with_legacy_field(
     side_effect_policy: str = "read_only",
 ) -> dict[str, object]:
-    """Return explicit transition-only constraint payload."""
+    """Return historical non-canonical constraint payload for rejection tests."""
     return {"side_effect_policy": side_effect_policy}
 
 
@@ -64,17 +72,16 @@ def canonical_constraint_fixture(
     }
 
 
-def transition_persona_spec_with_legacy_fields(
+def historical_persona_spec_with_legacy_fields(
     persona_id: str,
-    digest: str = "sha256:transition",
+    digest: str = "sha256:historical-debt",
     model: str = "gpt-4o-mini",
     side_effect_policy: str = "read_only",
 ) -> dict[str, object]:
-    """Return PersonaSpec fixture with non-canonical fields for rejection testing.
+    """Return historical non-canonical PersonaSpec for rejection-path coverage.
 
-    Per ADR-002/opifex authority basis: tools and side_effect_policy are
-    rejected at canonical admission boundary. This fixture is used to test
-    that validation properly rejects specs containing these fields.
+    The payload deliberately carries forbidden legacy fields so tests can prove
+    current hard-cut surfaces reject them instead of silently repairing them.
     """
     spec = dict(canonical_persona_spec(persona_id=persona_id, digest=digest, model=model))
     spec["tools"] = {"shell": "read_only"}
@@ -83,8 +90,8 @@ def transition_persona_spec_with_legacy_fields(
 
 
 @dataclass
-class TransitionComponentStoreDouble:
-    """Shared transition-path component store double for shell tests."""
+class HistoricalComponentStoreDouble:
+    """Shared store double carrying historical non-canonical component payloads."""
 
     toolsets_by_name: dict[str, dict[str, dict[str, str]]] = field(default_factory=dict)
     constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)

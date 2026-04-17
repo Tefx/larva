@@ -11,9 +11,8 @@ Canonical contract (per validate.py CANONICAL_*_FIELDS):
 - Forbidden: tools, side_effect_policy
 - Unknown top-level fields: forbidden at canonical admission
 
-Where tests reference transition-era behaviour (assembly input shapes,
-normalise input compat), they are explicitly annotated as INTENTIONAL
-TRANSITION SUPPORT.
+Where tests reference historical non-canonical payloads, they do so only to
+prove those shapes are excluded from the canonical typing contract.
 """
 
 import pytest
@@ -369,12 +368,11 @@ class TestToolsetComponentCanonicalShape:
     """Tests for ToolsetComponent canonical shape — ADR-002 authority.
 
     Per ADR-002 and spec.py docstring: ``ToolsetComponent`` has only the
-    ``capabilities`` field as Required.  The ``tools`` key existed in
-    transition-era shapes but is NOT part of the canonical TypedDict.
+    ``capabilities`` field as Required. The ``tools`` key is a historical
+    non-canonical payload shape and is NOT part of the canonical TypedDict.
 
-    Assembly input (ToolsetComponent dicts with a ``tools`` key) is a
-    transition-era compat surface handled by ``assemble_candidate``, not by
-    the type definition.
+    Historical invalid payloads with a ``tools`` key may still appear in
+    rejection-path tests, but they are not part of the type definition.
     """
 
     def test_toolset_component_has_capabilities(self) -> None:
@@ -414,8 +412,8 @@ class TestToolsetComponentCanonicalShape:
     def test_toolset_component_has_no_tools_key(self) -> None:
         """Assert 'tools' is NOT in ToolsetComponent annotations — canonical authority.
 
-        Per ADR-002: capabilities is the canonical surface; tools only exists
-        as a transition-era input shape for assembly, not in ToolsetComponent.
+        Per ADR-002: capabilities is the canonical surface; tools only appears
+        in historical invalid payload examples, not in ToolsetComponent.
         """
         from larva.core.spec import ToolsetComponent
 

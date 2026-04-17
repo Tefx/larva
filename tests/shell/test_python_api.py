@@ -35,9 +35,9 @@ from larva.core.validate import ValidationReport
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import RegistryError
 from tests.shell.fixture_taxonomy import (
+    canonical_constraint_fixture,
     canonical_persona_spec,
-    transition_constraint_fixture,
-    transition_toolset_fixture,
+    canonical_toolset_fixture,
 )
 
 if TYPE_CHECKING:
@@ -117,7 +117,7 @@ class SpyNormalizeModule:
 class InMemoryComponentStore:
     prompt_text: str = "Prompt body"
     toolset: dict[str, str] = field(default_factory=lambda: {"shell": "read_only"})
-    constraint: dict[str, object] = field(default_factory=transition_constraint_fixture)
+    constraint: dict[str, object] = field(default_factory=canonical_constraint_fixture)
     model: dict[str, object] = field(default_factory=lambda: {"model": "gpt-4o-mini"})
     prompts_by_name: dict[str, str] = field(default_factory=dict)
     toolsets_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
@@ -137,9 +137,8 @@ class InMemoryComponentStore:
         return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
 
     def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        # Per ADR-002: return both capabilities (canonical) and tools (mirrored)
         capabilities = self.toolsets_by_name.get(name, self.toolset)
-        return Success(transition_toolset_fixture(capabilities))
+        return Success(canonical_toolset_fixture(capabilities))
 
     def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
         return Success(self.constraints_by_name.get(name, self.constraint))
@@ -864,7 +863,7 @@ class TestPythonApiComponentShow:
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
         result = python_api.component_show("toolset", "default")
-        # Canonical cutover: only capabilities (canonical) is returned, tools (mirrored) stripped
+        # Canonical cutover: component output stays capabilities-only.
         assert result == {"capabilities": {"shell": "read_write"}}
 
     def test_component_show_constraint_delegates_to_load_constraint(
@@ -889,7 +888,7 @@ class TestPythonApiComponentShow:
 
         monkeypatch.setattr(python_api_components, "_component_store", MockComponentStore())
         result = python_api.component_show("constraint", "strict")
-        # Canonical cutover: side_effect_policy (mirrored) is stripped from constraint output
+        # Canonical cutover: constraint output omits forbidden runtime-policy fields.
         assert result == {}
 
     def test_component_show_model_delegates_to_load_model(

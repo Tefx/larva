@@ -312,6 +312,6 @@ class TestCanonicalTypingSurface:
         assemble_properties = assemble_definition["input_schema"]["properties"]
         assert "variables" not in assemble_properties
 
-    def test_transition_alias_is_not_exported_from_canonical_typing_module(self) -> None:
+    def test_historical_alias_is_not_exported_from_canonical_typing_module(self) -> None:
         assert "SideEffectPolicy" not in spec_module.__all__
         assert not hasattr(spec_module, "SideEffectPolicy")

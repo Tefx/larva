@@ -1006,8 +1006,35 @@ class TestWebUiHtmlContent:
             "UI must not drop personas solely because full-detail loading failed"
         )
 
-    def test_html_omits_deprecated_tools_and_side_effect_policy_sections(self) -> None:
-        """HTML should not render deprecated persona fields as first-class UI sections.
+    def test_html_distinguishes_registry_loading_empty_and_blocking_error_states(self) -> None:
+        """HTML separates registry loading, true-empty, and blocking list failure UX.
+
+        Source: vectl step hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
+        Source: runtime contract says /api/personas error envelope must block instead of rendering empty library.
+        Regression target: error envelopes from the authoritative list endpoint must not fall through to the empty state.
+        """
+        html_path = Path(__file__).parent.parent.parent / "src" / "larva" / "shell" / "web_ui.html"
+        content = html_path.read_text()
+
+        assert "personaRegistryState" in content, "UI should track registry load state explicitly"
+        assert "personaRegistryError" in content, (
+            "UI should preserve the blocking registry error message"
+        )
+        assert "personaRegistryState === 'loading'" in content, (
+            "UI should render a dedicated loading state while /api/personas is in flight"
+        )
+        assert "personaRegistryState === 'ready' && personas.length === 0" in content, (
+            "True-empty state should only render after a successful empty registry response"
+        )
+        assert "personaRegistryState === 'error'" in content, (
+            "Blocking registry errors should render distinctly from empty results"
+        )
+        assert "Unable to load persona library" in content, (
+            "Blocking state should explain that the canonical registry failed closed"
+        )
+
+    def test_html_omits_legacy_tools_and_side_effect_policy_sections(self) -> None:
+        """HTML should not render forbidden legacy persona fields as first-class UI sections.
 
         Source: canonical PersonaSpec excludes tools and side_effect_policy.
         """

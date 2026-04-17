@@ -48,7 +48,7 @@ def handle_update_batch(
     handlers: UpdateBatchHandlerDeps,
     params: object,
 ) -> Result[BatchUpdateResult, LarvaError]:
-    """Handle ``larva.update_batch`` with ``where``, ``patches``, ``dry_run`` validation."""
+    """Handle ``larva_update_batch`` with ``where``, ``patches``, ``dry_run`` validation."""
     return _handle_update_batch_impl(handlers, params)
 
 

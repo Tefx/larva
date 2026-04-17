@@ -178,7 +178,7 @@ Success means:
 During cutover validation, retain a tally of rejected canonical admission
 attempts containing legacy fields, split by field name (`tools`,
 `side_effect_policy`). Emit the tally as structured stdout or a CI artifact file
-named `larva-legacy-field-rejections.jsonl`; the cutover is not complete if the
+named `larva-canonical-conformance-findings.jsonl`; the cutover is not complete if the
 tally cannot be produced.
 
 ## Failure Conditions

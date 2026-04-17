@@ -185,7 +185,7 @@ larva validate code-reviewer.json --json
 Typical outcomes:
 
 - `valid: true` and no warnings
-- `valid: true` with warnings, such as unused variables
+- `valid: true` with warnings, such as unknown model ids or empty/all-`none` capabilities
 - `valid: false` with one or more structured errors
 
 Example validation response:

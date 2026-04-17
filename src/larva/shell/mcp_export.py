@@ -46,7 +46,7 @@ def handle_export(
     handlers: ExportHandlerDeps,
     params: object,
 ) -> Result[list[PersonaSpec], LarvaError]:
-    """Handle ``larva.export`` with ``all`` xor ``ids`` validation."""
+    """Handle ``larva_export`` with ``all`` xor ``ids`` validation."""
     return _handle_export_impl(handlers, params)
 
 

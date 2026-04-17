@@ -7,13 +7,13 @@ test fixtures.
 Covered regressions:
 - MCP/tool descriptions explicitly state rejection semantics
 - packaged web patch flow does not preserve forbidden fields
-- component and spec fixtures distinguish canonical-only vs transition-only data
+- component and spec fixtures distinguish canonical data from historical invalid data
 - canonical validation rejects forbidden extra fields even when envelopes parse
 
 Sources:
 - ARCHITECTURE.md :: Decision 3: Python API is a thin facade export
 - INTERFACES.md :: Canonical PersonaSpec Contract
-- ADR-002 :: capabilities (canonical) vs removed/rejected transition fields
+- ADR-002 :: capabilities (canonical) vs removed/rejected legacy fields
 """
 
 from __future__ import annotations
@@ -37,11 +37,11 @@ from larva.shell import mcp as mcp_module
 from larva.shell import web as web_module
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS
 from tests.shell.fixture_taxonomy import (
-    TransitionComponentStoreDouble,
+    HistoricalComponentStoreDouble,
     canonical_persona_spec,
-    transition_constraint_fixture,
-    transition_persona_spec_with_legacy_fields,
-    transition_toolset_fixture,
+    historical_constraint_fixture_with_legacy_field,
+    historical_persona_spec_with_legacy_fields,
+    historical_toolset_fixture_with_legacy_fields,
 )
 
 if TYPE_CHECKING:
@@ -108,46 +108,44 @@ class TestMCPToolDescriptionSemantics:
 
 
 # -----------------------------------------------------------------------------
-# Regression 2: transition fixtures remain explicit rather than implicit
+# Regression 2: historical invalid fixtures remain explicit rather than implicit
 # -----------------------------------------------------------------------------
 
 
 class TestComponentFixtureSemantics:
-    """Verify component fixtures clearly separate canonical and transition semantics."""
+    """Verify component fixtures clearly separate canonical and historical invalid data."""
 
     def test_inmemory_toolset_store_returns_capabilities_only(self) -> None:
-        """Transition test doubles should make mirrored fields explicit, not implicit."""
+        """Historical invalid toolset fixtures keep forbidden fields explicit."""
 
-        store = TransitionComponentStoreDouble(
-            toolsets_by_name={"readonly": transition_toolset_fixture()}
+        store = HistoricalComponentStoreDouble(
+            toolsets_by_name={"readonly": historical_toolset_fixture_with_legacy_fields()}
         )
 
         result = store.load_toolset("readonly")
         assert isinstance(result, Success)
         loaded = result.unwrap()
 
-        # Transition-only fixture includes both fields by design.
         assert "capabilities" in loaded
         assert "tools" in loaded, (
-            "Transition fixture should keep mirrored `tools` field explicit so canonical-only "
+            "Historical invalid fixture should keep legacy `tools` explicit so canonical "
             "fixtures remain separate."
         )
 
     def test_inmemory_constraint_store_returns_side_effect_policy(self) -> None:
-        """Transition constraint fixtures must make forbidden fields explicit."""
+        """Historical invalid constraint fixtures keep forbidden fields explicit."""
 
-        store = TransitionComponentStoreDouble(
-            constraints_by_name={"safe": transition_constraint_fixture()}
+        store = HistoricalComponentStoreDouble(
+            constraints_by_name={"safe": historical_constraint_fixture_with_legacy_field()}
         )
 
         result = store.load_constraint("safe")
         assert isinstance(result, Success)
         loaded = result.unwrap()
 
-        # Transition-only fixture keeps side_effect_policy explicit by design.
         assert "side_effect_policy" in loaded, (
-            "Transition fixture should keep `side_effect_policy` explicit so canonical fixtures "
-            "remain clean."
+            "Historical invalid fixture should keep `side_effect_policy` explicit so canonical "
+            "fixtures remain clean."
         )
 
 
@@ -159,10 +157,10 @@ class TestComponentFixtureSemantics:
 class TestSpecFixtureSemantics:
     """Verify spec fixtures no longer blur canonical and forbidden-field shapes."""
 
-    def test_canonical_spec_fixture_excludes_deprecated_fields(self) -> None:
-        """Canonical-only helper should exclude forbidden fields."""
+    def test_canonical_spec_fixture_excludes_legacy_fields(self) -> None:
+        """Canonical-only helper excludes forbidden legacy fields."""
         canonical_only = canonical_persona_spec("test")
-        forbidden_spec = transition_persona_spec_with_legacy_fields("test")
+        forbidden_spec = historical_persona_spec_with_legacy_fields("test")
 
         # Canonical fixture must exclude forbidden fields.
         assert "tools" not in canonical_only, "Canonical spec should NOT have `tools` field"
@@ -170,12 +168,12 @@ class TestSpecFixtureSemantics:
             "Canonical spec should NOT have `side_effect_policy` field"
         )
 
-        # Forbidden fixture keeps them only for rejection-path coverage.
+        # Historical invalid fixture keeps them only for rejection-path coverage.
         assert "tools" in forbidden_spec
         assert "side_effect_policy" in forbidden_spec
 
-    def test_mcp_assemble_test_fixture_includes_deprecated_fields(self) -> None:
-        """Transition fixture usage in MCP tests must remain explicit."""
+    def test_mcp_assemble_test_fixture_keeps_historical_invalid_fields_explicit(self) -> None:
+        """Historical invalid fixture usage in MCP tests must remain explicit."""
         # Read the test file source to find _canonical_spec definition
         test_file = Path(__file__).parent / "test_mcp.py"
         if not test_file.exists():
@@ -183,10 +181,10 @@ class TestSpecFixtureSemantics:
 
         source = test_file.read_text()
 
-        # Check that transition-only fixture content is still explicit in source.
+        # Check that historical invalid fixture content is still explicit in source.
         if '"tools":' in source and "_canonical_spec" in source:
             assert '"tools"' in source, (
-                "Transition fixture coverage should remain explicit in source so canonical-only "
+                "Historical invalid fixture coverage should remain explicit in source so canonical "
                 "fixtures are not confused with forbidden-field coverage."
             )
 
@@ -327,7 +325,7 @@ class TestCanonicalBoundaryRejection:
         result = handlers.handle_assemble(
             {
                 "id": "test-persona",
-                "overrides": {"tools": {"shell": "read_write"}},  # deprecated
+                "overrides": {"tools": {"shell": "read_write"}},  # forbidden legacy field
             }
         )
 
@@ -361,12 +359,12 @@ VERIFIED_IMPLEMENTATION_SURFACES = {
     "component_fixtures": {
         "files": ["tests/shell/test_mcp.py", "tests/shell/test_python_api.py"],
         "owner": "shell test authors",
-        "expectation": "Transition-only fixtures must keep mirrored fields explicit",
+        "expectation": "Historical invalid fixtures must keep forbidden fields explicit",
     },
     "spec_fixtures": {
         "files": ["tests/shell/test_mcp.py", "tests/shell/test_python_api.py"],
         "owner": "shell test authors",
-        "expectation": "Canonical-only fixtures exclude forbidden fields; transition fixtures stay explicit",
+        "expectation": "Canonical fixtures exclude forbidden fields; historical invalid fixtures stay explicit",
     },
     "web_api_patch": {
         "files": ["src/larva/shell/web.py"],
@@ -391,12 +389,12 @@ as a regression suite documenting the cleaned-up canonical boundary.
 
 Covered categories:
 1. MCP tool descriptions explicitly state tools rejection.
-2. Transition fixtures are explicit and distinct from canonical-only fixtures.
+2. Historical invalid fixtures are explicit and distinct from canonical fixtures.
 3. Spec helper usage preserves the canonical vs forbidden-field distinction.
 4. Web API patch flow rejects forbidden fields through revalidation.
 5. Core validation and assemble overrides reject forbidden fields.
 6. CLI assemble surface rejects variables input (removed from canonical contract).
-7. CLI component projection does not filter legacy keys from toolset/constraint output.
+7. CLI component projection examples remain canonical.
 """
 
 

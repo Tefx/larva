@@ -53,10 +53,8 @@ class TestFacadeAssemble:
         assemble_input = assemble_module.inputs[0]
         assert assemble_input["id"] == "persona-a"
         assert assemble_input["prompts"] == [{"text": "Prompt body"}]
-        assert assemble_input["toolsets"] == [
-            {"capabilities": {"shell": "read_only"}, "tools": {"shell": "read_only"}}
-        ]
-        assert assemble_input["constraints"] == [{"side_effect_policy": "read_only"}]
+        assert assemble_input["toolsets"] == [{"capabilities": {"shell": "read_only"}}]
+        assert assemble_input["constraints"] == [{"can_spawn": False}]
         assert assemble_input["model"] == {"model": "gpt-4o-mini"}
         assert "variables" not in assemble_input
         assert assemble_input["overrides"] == {"description": "runtime description"}
@@ -131,7 +129,7 @@ class TestFacadeAssemble:
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "COMPONENT_CONFLICT"
         assert error["numeric_code"] == 106
-        assert error["details"]["field"] == "side_effect_policy"
+        assert error["details"]["field"] == "can_spawn"
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
 

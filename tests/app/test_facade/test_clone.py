@@ -76,9 +76,9 @@ class TestFacadeClone:
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
     def test_clone_hard_cut_rejects_forbidden_fields_from_source(self) -> None:
-        """Clone of a stored legacy spec rejects forbidden fields immediately."""
-        source_spec = _canonical_spec("legacy-source", digest="sha256:stale")
-        # Simulate a stored legacy record with forbidden and unknown fields
+        """Clone of a stored historical non-canonical spec rejects forbidden fields."""
+        source_spec = _canonical_spec("historical-source", digest="sha256:stale")
+        # Simulate a stored historical record with forbidden and unknown fields.
         source_with_legacy = dict(source_spec)
         source_with_legacy["tools"] = {"shell": "full_access"}
         source_with_legacy["side_effect_policy"] = "full_access"
@@ -87,7 +87,7 @@ class TestFacadeClone:
         registry = InMemoryRegistryStore(get_result=Success(source_with_legacy))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
 
-        result = facade.clone("legacy-source", "cloned-from-legacy")
+        result = facade.clone("historical-source", "cloned-from-historical")
 
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "FORBIDDEN_FIELD"

@@ -109,13 +109,16 @@ Check a PersonaSpec for schema conformance and semantic validity.
 {
   "valid": true,
   "errors": [],
-  "warnings": []
+  "warnings": [
+    "unknown model identifier 'custom-model-x' is outside the known-model snapshot"
+  ]
 }
 ```
 
 - `errors` is always present (empty list when valid).
-- `warnings` is always present; current canonical runtime returns `[]`.
-- Prompt placeholders are not a variables feature: unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
+- `warnings` is always present and is non-blocking.
+- Example warning conditions: unknown model identifier, empty/all-`none` capability posture, description outside guidance range.
+- Prompt placeholders are not resolved at admission time: unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
 - `model_params` is an optional canonical field and remains valid across validate/register/resolve/update flows.
 
 **Decision:** Use `valid` field to gate next action.
@@ -145,7 +148,7 @@ All fields except `id` are optional.
 **Error triggers:**
 - `COMPONENT_NOT_FOUND` — named component does not exist in `~/.larva/components/`
 - `COMPONENT_CONFLICT` — two components set the same scalar field without an `overrides` key resolving it
-- `VARIABLES_NOT_ALLOWED` — `variables` is rejected at the canonical assembly boundary
+- `VARIABLES_NOT_ALLOWED` — non-canonical placeholder-map input is rejected at the assembly boundary
 
 **Conflict resolution:** Use `overrides` to explicitly win over conflicting component values.
 
@@ -356,9 +359,9 @@ larva component show --json prompts/base      # machine-readable
 
 ## 5. Placeholder policy
 
-Canonical larva does not support a `variables` input on PersonaSpec or assembly requests.
+Canonical larva does not support non-canonical placeholder-map inputs on PersonaSpec or assembly requests.
 
-- `variables` at validate/register/assemble/update boundaries is rejected as an extra or forbidden field.
+- Placeholder-map inputs at validate/register/assemble/update boundaries are rejected as extra/forbidden fields.
 - Prompt text must already be fully composed before admission.
 - Literal braces should be escaped in prompt authoring (`{{literal}}`).
 - Unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
@@ -393,7 +396,7 @@ All errors use a single envelope shape:
 | 100 | `PERSONA_NOT_FOUND` | `resolve` id not in registry |
 | 101 | `PERSONA_INVALID` | validation failed |
 | 102 | `PERSONA_CYCLE` | circular reference (reserved) |
-| 103 | `VARIABLE_UNRESOLVED` | `{var}` placeholder missing from variables |
+| 103 | `VARIABLE_UNRESOLVED` | unresolved `{placeholder}` remains in canonical prompt text |
 | 104 | `INVALID_PERSONA_ID` | id violates kebab-case rules |
 | 105 | `COMPONENT_NOT_FOUND` | named component not on disk |
 | 106 | `COMPONENT_CONFLICT` | two components set same scalar field |

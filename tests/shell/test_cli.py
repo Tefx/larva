@@ -73,9 +73,9 @@ from larva.shell.cli_types import CliCommandResult as SharedCliCommandResult
 from larva.shell.cli_types import CliFailure as SharedCliFailure
 from larva.shell.cli_types import JsonErrorEnvelope as SharedJsonErrorEnvelope
 from tests.shell.fixture_taxonomy import (
+    canonical_constraint_fixture,
     canonical_persona_spec,
-    transition_constraint_fixture,
-    transition_toolset_fixture,
+    canonical_toolset_fixture,
 )
 
 if TYPE_CHECKING:
@@ -301,10 +301,10 @@ class InMemoryComponentStore:
         default_factory=lambda: Success({"text": "Prompt body"})
     )
     toolset_result: Result[dict[str, dict[str, str]], Exception] = field(
-        default_factory=lambda: Success(transition_toolset_fixture())
+        default_factory=lambda: Success(canonical_toolset_fixture())
     )
     constraint_result: Result[dict[str, object], Exception] = field(
-        default_factory=lambda: Success(transition_constraint_fixture())
+        default_factory=lambda: Success(canonical_constraint_fixture())
     )
     model_result: Result[dict[str, object], Exception] = field(
         default_factory=lambda: Success({"model": "gpt-4o-mini"})
@@ -492,8 +492,8 @@ class TestValidateCommand:
             "valid": True,
             "errors": [],
             "warnings": [
-                "FUTURE_WARNING: reserved validation warning channel",
-                "SECONDARY_WARNING: projection preserves ordered warning text",
+                "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
+                "capabilities is empty; this is valid but likely under-specified",
             ],
         }
         facade = _make_facade(report=report)
@@ -1546,8 +1546,8 @@ class TestCliSharedProjectionAuthority:
             "valid": True,
             "errors": [],
             "warnings": [
-                "FUTURE_WARNING: reserved validation warning channel",
-                "SECONDARY_WARNING: projection preserves ordered warning text",
+                "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
+                "capabilities is empty; this is valid but likely under-specified",
             ],
         }
 
@@ -4030,3 +4030,182 @@ class TestRunLoopBatchUpdate:
         payload = json.loads(stdout.getvalue())
         assert payload["data"]["matched"] == 1
         assert payload["data"]["updated"] == 1
+
+
+# ============================================================================
+# Doctor Registry Command Tests
+# ============================================================================
+
+
+# ============================================================================
+# Doctor Registry Command Tests
+# ============================================================================
+
+
+class TestDoctorRegistryCommand:
+    """Tests for the doctor registry diagnostic command."""
+
+    def test_doctor_registry_empty_registry_returns_ok(self) -> None:
+        """Doctor registry with empty registry returns exit 0."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Success
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({})
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            result = doctor_registry_command(as_json=False)
+
+            assert isinstance(result, Success)
+            cli_result = result.unwrap()
+            assert cli_result["exit_code"] == EXIT_OK
+            assert "DIAGNOSTIC OK" in cli_result["stdout"]
+
+    def test_doctor_registry_index_read_failure_returns_error(self) -> None:
+        """Doctor registry when index read fails returns exit 1."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Failure
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Failure(
+                {
+                    "code": "REGISTRY_INDEX_READ_FAILED",
+                    "message": "index unreadable",
+                    "path": "/tmp/index.json",
+                }
+            )
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            result = doctor_registry_command(as_json=False)
+
+            assert isinstance(result, Failure)
+            failure = result.failure()
+            assert failure["exit_code"] == EXIT_ERROR
+
+    def test_doctor_registry_spec_read_failure_returns_error(self) -> None:
+        """Doctor registry when spec read fails returns exit 1."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Failure, Success
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({"persona-a": "sha256:abc"})
+            mock_store._read_spec.return_value = Failure(
+                {
+                    "code": "REGISTRY_SPEC_READ_FAILED",
+                    "message": "spec file missing",
+                    "persona_id": "persona-a",
+                    "path": "/fake/root/persona-a.json",
+                }
+            )
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            result = doctor_registry_command(as_json=False)
+
+            assert isinstance(result, Failure)
+            failure = result.failure()
+            assert failure["exit_code"] == EXIT_ERROR
+            assert "DIAGNOSTIC FAIL" in failure["stderr"]
+
+    def test_doctor_registry_with_entries_succeeds(self) -> None:
+        """Doctor registry with valid entries returns exit 0."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Success
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success(
+                {
+                    "persona-a": "sha256:aaa",
+                    "persona-b": "sha256:bbb",
+                }
+            )
+            spec = {"id": "persona-a", "description": "Test persona"}
+            mock_store._read_spec.return_value = Success(spec)
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            result = doctor_registry_command(as_json=False)
+
+            assert isinstance(result, Success)
+            cli_result = result.unwrap()
+            assert cli_result["exit_code"] == EXIT_OK
+            assert "DIAGNOSTIC OK" in cli_result["stdout"]
+
+    def test_doctor_registry_json_mode_returns_json_payload(self) -> None:
+        """Doctor registry in JSON mode returns structured payload."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Success
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({})
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            result = doctor_registry_command(as_json=True)
+
+            assert isinstance(result, Success)
+            cli_result = result.unwrap()
+            assert cli_result["exit_code"] == EXIT_OK
+            assert "json" in cli_result
+            assert cli_result["json"]["data"]["status"] == "ok"
+
+    def test_doctor_registry_unknown_subcommand_returns_critical(self) -> None:
+        """Unknown doctor subcommand returns exit code 2."""
+        from larva.shell.cli import run_cli
+
+        facade = _make_facade()
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = run_cli(
+            ["doctor", "unknown-subcommand"],
+            facade=facade,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        assert exit_code == EXIT_CRITICAL
+
+    def test_doctor_registry_via_cli_full_path(self) -> None:
+        """Doctor registry via run_cli with full path succeeds."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli import run_cli
+        from returns.result import Success
+
+        facade = _make_facade()
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({})
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+
+            exit_code = run_cli(
+                ["doctor", "registry"],
+                facade=facade,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+            assert exit_code == EXIT_OK

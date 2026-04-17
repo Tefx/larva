@@ -20,9 +20,9 @@ from larva.shell.components import (
 )
 from tests.shell.fixture_taxonomy import (
     canonical_constraint_fixture,
+    historical_constraint_fixture_with_legacy_field,
+    historical_toolset_fixture_with_legacy_fields,
     legacy_toolset_fixture,
-    transition_constraint_fixture,
-    transition_toolset_fixture,
 )
 
 
@@ -100,7 +100,7 @@ class TestFilesystemComponentStoreIntegration:
         assert toolset["capabilities"]["filesystem"] == "read_write"
         assert toolset["capabilities"]["shell"] == "read_only"
         assert toolset["capabilities"]["http"] == "none"
-        # Canonical: only capabilities field is present, tools is not mirrored
+        # Canonical: only capabilities field is present.
 
     def test_load_constraint_parses_yaml(
         self, temp_component_store: FilesystemComponentStore
@@ -275,7 +275,7 @@ some_other_field: value
         toolsets_dir = components_dir / "toolsets"
         toolsets_dir.mkdir(parents=True)
 
-        # Write canonical toolset with ONLY capabilities (no tools mirrored)
+        # Write canonical toolset with ONLY capabilities.
         (toolsets_dir / "canonical_toolset.yaml").write_text(
             """capabilities:
   filesystem: read_write
@@ -297,14 +297,14 @@ some_other_field: value
         # tools field must not be present
         assert "tools" not in toolset
 
-    def test_load_toolset_rejects_toolset_with_mirrored_tools(self, tmp_path: Path) -> None:
-        """Prove toolset with mirrored tools field (transition artifact) fails closed."""
+    def test_load_toolset_rejects_toolset_with_legacy_mirrored_tools(self, tmp_path: Path) -> None:
+        """Prove toolset with legacy mirrored ``tools`` field fails closed."""
         components_dir = tmp_path / "components"
         toolsets_dir = components_dir / "toolsets"
         toolsets_dir.mkdir(parents=True)
 
-        # Write a toolset with both capabilities AND the mirrored tools field
-        (toolsets_dir / "transition_toolset.yaml").write_text(
+        # Write a toolset with both canonical and forbidden legacy fields.
+        (toolsets_dir / "historical_mixed_toolset.yaml").write_text(
             """capabilities:
   filesystem: read_write
   shell: read_only
@@ -316,13 +316,13 @@ tools:
         )
 
         store = FilesystemComponentStore(components_dir)
-        result = store.load_toolset("transition_toolset")
+        result = store.load_toolset("historical_mixed_toolset")
 
         assert isinstance(result, Failure)
         error = result.failure()
         assert isinstance(error, ComponentStoreError)
         assert error.component_type == "toolset"
-        assert error.component_name == "transition_toolset"
+        assert error.component_name == "historical_mixed_toolset"
         assert "tools" in str(error).lower()
 
     def test_component_store_error_carries_component_name_and_type(self, tmp_path: Path) -> None:
@@ -420,7 +420,9 @@ class TestFailClosedLegacyPayloads:
             ("legacy_only", legacy_toolset_fixture({"shell": "read_only"})),
             (
                 "mixed_payload",
-                transition_toolset_fixture({"filesystem": "read_write", "shell": "read_only"}),
+                historical_toolset_fixture_with_legacy_fields(
+                    {"filesystem": "read_write", "shell": "read_only"}
+                ),
             ),
         ],
     )
@@ -455,7 +457,7 @@ class TestFailClosedLegacyPayloads:
         constraints_dir = components_dir / "constraints"
         constraints_dir.mkdir(parents=True)
         (constraints_dir / "legacy_constraint.yaml").write_text(
-            _dump_yaml(transition_constraint_fixture("approval_required")),
+            _dump_yaml(historical_constraint_fixture_with_legacy_field("approval_required")),
             encoding="utf-8",
         )
 

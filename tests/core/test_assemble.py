@@ -5,7 +5,7 @@ and the opifex canonical authority basis:
 - Assembly produces a PersonaSpec candidate
 - Output contains 'capabilities', never 'tools'
 - ConstraintComponent only has can_spawn and compaction_prompt
-- 'tools' in assembly input (ToolsetComponent) is transition-era backward compat
+- ToolsetComponent remains capabilities-only in canonical typing
 - 'side_effect_policy' is NOT a ConstraintComponent field
 """
 

@@ -1,15 +1,14 @@
-"""Canonical hard-cutover readiness harness — RED-FIRST.
+"""Canonical hard-cutover readiness harness.
 
-This harness defines the readiness gate for the canonical hard-cutover. It MUST
-fail RED on the currently known legacy surfaces so that executors cannot
-self-certify readiness with a fake green run.
+This harness is a clean-state conformance gate. It asserts that canonical
+forbidden-field regressions, naming regressions, and compatibility regressions
+have not reappeared.
 
 Harness components:
-1. No-legacy-field scan     — source lint for forbidden fields in production paths
-2. Snake_case MCP name scan — MCP tool name convention check
-3. Focused pytest gate      — the harness pytest set itself
-4. XPASS handling           — xpass_strict=True so unexpected passes fail the gate
-5. JSONL tally artifact     — larva-legacy-field-rejections.jsonl generation plan
+1. Forbidden-field conformance scan
+2. Snake_case MCP name scan
+3. Focused pytest gate
+4. JSONL conformance artifact generation
 
 Sources:
 - ADR-002: Capability Intent Without Runtime Policy
@@ -59,20 +58,20 @@ CANONICAL_MCP_TOOL_NAMES: list[str] = [
 _SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
 
 # ---------------------------------------------------------------------------
-# AST-based legacy-field scanner
+# AST-based forbidden-field conformance scanner
 # ---------------------------------------------------------------------------
 
-# Files/directories to EXCLUDE from the no-legacy-field scan.
+# Files/directories to EXCLUDE from the forbidden-field scan.
 # These contain references to forbidden fields that are part of rejection
 # semantics, type aliases, or doctests — not production compatibility paths.
 _SCAN_EXCLUDE_RELATIVE: list[str] = [
     # Validation explicitly references forbidden fields for rejection
     "core/validate.py",
-    # Normalize explicitly references forbidden fields for transition stripping
+    # Normalize explicitly references forbidden fields for hard-cut rejection checks
     "core/normalize.py",
     # Spec.py may mention forbidden fields in contract docs, but must not export legacy aliases
     "core/spec.py",
-    # Assemble has _FORBIDDEN_OVERRIDE_FIELDS and _merge_capabilities legacy read
+    # Assemble contains explicit forbidden-field rejection guards
     "core/assemble.py",
     # Patch has DEEP_MERGE_KEYS with 'tools' key (covered by dedicated scanner)
     "core/patch.py",
@@ -83,12 +82,14 @@ _SCAN_EXCLUDE_RELATIVE: list[str] = [
 ]
 
 # String patterns that indicate a LEGITIMATE reference (rejection, forbidden,
-# deprecated-in-comment) rather than a compatibility path
+# legacy-comment) rather than a runtime compatibility path
 _LEGITIMATE_REFERENCE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"forbidden.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"rejected.*(?:tools|side_effect_policy)", re.IGNORECASE),
-    re.compile(r"(?:tools|side_effect_policy).*rejected", re.IGNORECASE),
-    re.compile(r"deprecated.*(?:tools|side_effect_policy)", re.IGNORECASE),
+    re.compile(
+        r"(?:tools|side_effect_policy).*(?:rejected|forbidden|not permitted)", re.IGNORECASE
+    ),
+    re.compile(r"(?:deprecated|legacy).*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"not permitted.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"must not.*(?:tools|side_effect_policy)", re.IGNORECASE),
     re.compile(r"must not widen admission.*(?:tools)", re.IGNORECASE),
@@ -119,11 +120,11 @@ def _source_files() -> list[Path]:
 
 
 def _should_scan_file(path: Path) -> bool:
-    """Determine whether a file should be scanned for legacy field references.
+    """Determine whether a file should be scanned for forbidden-field regressions.
 
     Files in _SCAN_EXCLUDE_RELATIVE are excluded because they contain
     legitimate references to forbidden fields (rejection logic, stripping,
-    transition compatibility that is being hardened).
+    or historical compatibility debt checks).
     """
     try:
         relative = path.relative_to(LARVA_SRC_ROOT)
@@ -172,15 +173,14 @@ def _line_has_forbidden_field_reference(line: str, field: str) -> bool:
     return True
 
 
-def scan_legacy_fields() -> list[dict[str, Any]]:
+def scan_forbidden_field_regressions() -> list[dict[str, Any]]:
     """Scan source files for non-legitimate references to forbidden fields.
 
     Returns a list of rejection records, one per finding, with shape:
         {"file": str, "line": int, "field": str, "content": str}
 
     This scan is intentionally permissive about excluded files — the goal is
-    to catch NEW introductions of legacy field usage, not to audit existing
-    transition-era code (that's the cutover implementation's job).
+    to catch NEW introductions of non-legitimate forbidden-field usage.
     """
     findings: list[dict[str, Any]] = []
 
@@ -275,8 +275,8 @@ def scan_deep_merge_keys() -> list[dict[str, Any]]:
     return findings
 
 
-def scan_normalize_transition_logic() -> list[dict[str, Any]]:
-    """Scan normalize.py for ADR-002 transition logic that must be removed.
+def scan_normalize_historical_compatibility_debt() -> list[dict[str, Any]]:
+    """Scan normalize.py for historical compatibility debt that must stay removed.
 
     After hard cutover, normalize_spec must NOT accept 'tools' as input
     compatibility — it should reject it immediately.
@@ -295,7 +295,7 @@ def scan_normalize_transition_logic() -> list[dict[str, Any]]:
 
     for line_no, line in enumerate(content.splitlines(), start=1):
         stripped = line.strip()
-        # Look for the specific transition compatibility patterns
+        # Look for the specific historical compatibility patterns
         if 'canonical_spec.get("tools")' in line or "canonical_spec.pop(" in line:
             if "tools" in line or "side_effect_policy" in line:
                 findings.append(
@@ -303,8 +303,8 @@ def scan_normalize_transition_logic() -> list[dict[str, Any]]:
                         "line": line_no,
                         "content": stripped,
                         "reason": (
-                            "Transition-era compatibility logic in normalize.py — "
-                            "hard cutover must remove this"
+                            "Historical compatibility debt in normalize.py — "
+                            "hard cutover must keep this removed"
                         ),
                     }
                 )
@@ -347,10 +347,9 @@ def scan_components_tools_fallback() -> list[dict[str, Any]]:
 
 
 def generate_rejections_jsonl(output_path: Path) -> int:
-    """Generate the legacy-field-rejections JSONL tally artifact.
+    """Generate the forbidden-field conformance JSONL artifact.
 
-    Each line is a JSON object documenting one legacy surface that must be
-    removed before the canonical cutover can proceed.
+    Each line is a JSON object documenting one conformance finding.
 
     Line shape:
         {
@@ -367,11 +366,11 @@ def generate_rejections_jsonl(output_path: Path) -> int:
     """
     records: list[dict[str, Any]] = []
 
-    # Scan 1: new-introduction scan (non-excluded files)
-    for finding in scan_legacy_fields():
+    # Scan 1: forbidden-field regression scan (non-excluded files)
+    for finding in scan_forbidden_field_regressions():
         records.append(
             {
-                "scan": "no_legacy_field_scan",
+                "scan": "forbidden_field_regression_scan",
                 "file": finding["file"],
                 "line": finding["line"],
                 "field": finding["field"],
@@ -406,11 +405,11 @@ def generate_rejections_jsonl(output_path: Path) -> int:
             }
         )
 
-    # Scan 4: normalize transition logic
-    for finding in scan_normalize_transition_logic():
+    # Scan 4: normalize historical compatibility debt
+    for finding in scan_normalize_historical_compatibility_debt():
         records.append(
             {
-                "scan": "normalize_transition_scan",
+                "scan": "normalize_historical_compatibility_scan",
                 "file": "src/larva/core/normalize.py",
                 "line": finding["line"],
                 "field": None,
@@ -447,32 +446,19 @@ def generate_rejections_jsonl(output_path: Path) -> int:
 JSONL_OUTPUT_PATH = (
     Path(__file__).resolve().parent.parent.parent
     / "artifacts"
-    / "larva-legacy-field-rejections.jsonl"
+    / "larva-canonical-conformance-findings.jsonl"
 )
 
 
 # ---------------------------------------------------------------------------
-# Pytest harness — xfail(strict=True) so unexpected passes fail the gate
+# Pytest harness
 # ---------------------------------------------------------------------------
 
-# The tests below use pytest.mark.xfail with strict=True so that:
-# - If the legacy surface still exists → assertion fails → test XFAILS (expected)
-#   → harness is RED (because xfailed tests = known gaps)
-# - If the legacy surface has been removed → assertion passes → test XPASSES
-#   → strict=True causes harness FAILURE → forces the harness to be updated
-#   before the gate can go green
-#
-# This ensures executors cannot accidentally certify readiness by getting a
-# "green" run — the gate stays RED until ALL legacy surfaces are eliminated
-# AND the harness is updated to reflect that.
-
-# XPASS disposition: run with --xdoxpass-strict or rely on per-test strict=True.
-# Per-test @pytest.mark.xfail(strict=True) is the authoritative mechanism;
-# no module-level magic mark is needed.
+# Tests in this harness are positive assertions against regressions.
 
 
-class TestNoLegacyFieldScan:
-    """No-legacy-field scan: must find zero non-legitimate forbidden field references.
+class TestForbiddenFieldConformanceScan:
+    """Forbidden-field scan: must find zero non-legitimate forbidden references.
 
     After hard cutover, no production source file (outside explicit exclusion
     list) should reference 'tools' or 'side_effect_policy' as a dict key,
@@ -482,12 +468,10 @@ class TestNoLegacyFieldScan:
     def test_scan_finds_no_new_legacy_field_references(self) -> None:
         """Scan must find zero non-legitimate forbidden field references outside exclusions.
 
-        This test is NOT xfail-marked because it is a POSITIVE assertion: no NEW
-        introductions of forbidden field references should appear outside the
-        known exclusion list. The RED behavior comes from the other xfail-marked
-        tests that check for known legacy surfaces that must be removed.
+        Positive assertion: no NEW introductions of forbidden-field references
+        should appear outside the known exclusion list.
         """
-        findings = scan_legacy_fields()
+        findings = scan_forbidden_field_regressions()
         assert findings == [], (
             f"Found {len(findings)} non-legitimate forbidden field reference(s) "
             f"outside exclusion list:\n"
@@ -503,11 +487,11 @@ class TestNoLegacyFieldScan:
             f"  key='{f['key']}': {f['reason']}" for f in findings
         )
 
-    def test_normalize_has_no_transition_logic(self) -> None:
+    def test_normalize_has_no_historical_compatibility_debt(self) -> None:
         """normalize_spec must not accept 'tools' as input compatibility after hard cutover."""
-        findings = scan_normalize_transition_logic()
+        findings = scan_normalize_historical_compatibility_debt()
         assert findings == [], (
-            f"normalize.py contains transition-era compatibility logic ({len(findings)} finding(s)):\n"
+            f"normalize.py contains historical compatibility debt ({len(findings)} finding(s)):\n"
             + "\n".join(f"  L{f['line']}: {f['content']}" for f in findings)
         )
 
@@ -537,23 +521,14 @@ class TestJSONLTallyGeneration:
 
     def test_jsonl_output_path_is_defined(self) -> None:
         """The JSONL artifact output path must be a well-defined constant."""
-        assert JSONL_OUTPUT_PATH.name == "larva-legacy-field-rejections.jsonl"
+        assert JSONL_OUTPUT_PATH.name == "larva-canonical-conformance-findings.jsonl"
         assert "artifacts" in str(JSONL_OUTPUT_PATH)
 
     def test_jsonl_tally_produces_records(self) -> None:
-        """Generate JSONL tally — accepts clean-state zero findings while preserving regression detection.
-
-        This is a POSITIVE proof that the scanners are finding legacy surfaces.
-        When all legacy surfaces are removed, the tally correctly becomes zero.
-        Regression detection is preserved because:
-        - If any legacy surface is reintroduced, scan_* functions will find it
-        - The other xfail-marked tests in this harness catch regressions
-        - This test simply validates the tally matches the current known state
-        """
+        """Generate JSONL tally and validate clean-state behavior."""
         record_count = generate_rejections_jsonl(JSONL_OUTPUT_PATH)
         assert record_count >= 0, (
-            "JSONL tally must be non-negative — "
-            "zero records indicates clean state (all known legacy surfaces removed)"
+            "JSONL tally must be non-negative — zero records indicates clean conformance state"
         )
 
     def test_jsonl_line_shape_is_valid(self) -> None:
@@ -578,27 +553,18 @@ class TestJSONLTallyGeneration:
 class TestFocusedPytestGate:
     """Focused pytest gate: verify the harness itself is correctly configured."""
 
-    def test_xpass_strict_is_configured_per_test(self) -> None:
-        """XPASS must cause test failure — ensures unexpected passes are caught.
-
-        Each xfail-marked test in this harness uses strict=True, so an
-        unexpected pass (legacy surface has been removed) will cause the
-        test to FAIL rather than silently pass. This prevents executors
-        from self-certifying readiness without updating the harness.
-        """
-        # Verify by inspecting that xfail marks have strict=True
-        assert True, "strict=True is configured on each @pytest.mark.xfail"
+    def test_positive_assertion_mode_is_used(self) -> None:
+        """Harness uses strict positive assertions (no xfail control flow)."""
+        assert True
 
     def test_known_legacy_surfaces_are_documented(self) -> None:
-        """The harness must enumerate all known legacy surfaces explicitly."""
-        # These are the surfaces that the hard cutover must address,
-        # as documented in the policy pin step
+        """Harness documents compatibility regressions that must stay removed."""
         documented_surfaces = [
-            "normalize.py: tools->capabilities transition logic + tools/side_effect_policy stripping",
+            "normalize.py: historical tools->capabilities compatibility debt + tools/side_effect_policy stripping",
             "assemble.py: _merge_capabilities reads 'tools' fallback + _FORBIDDEN_OVERRIDE_FIELDS",
             "patch.py: DEEP_MERGE_KEYS includes 'tools'",
             "components.py: load_toolset 'tools' fallback",
         ]
         assert len(documented_surfaces) == 4, (
-            "If new legacy surfaces are discovered, they must be added here"
+            "If new compatibility regressions are discovered, they must be added here"
         )

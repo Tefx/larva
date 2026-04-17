@@ -68,7 +68,7 @@ def _load_contrib_web_module() -> Any:
 
 
 def canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
-    """Canonical spec fixture (no deprecated fields)."""
+    """Canonical spec fixture (no forbidden legacy fields)."""
     return {
         "id": persona_id,
         "description": f"Persona {persona_id}",

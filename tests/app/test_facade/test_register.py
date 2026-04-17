@@ -20,7 +20,7 @@ from .conftest import (
     _digest_for,
     _facade,
     _failure,
-    _transition_spec_with_deprecated_fields,
+    _historical_spec_with_legacy_fields,
     _invalid_report,
     _valid_report,
 )
@@ -177,32 +177,17 @@ class TestFacadeRegister:
 from returns.result import Failure
 
 
-class TestFacadeRegisterExposesCanonicalGaps:
-    """Tests exposing canonical admission gaps at the register level.
-
-    Gap documentation:
-    - gap_1: _canonical_spec contains tools (forbidden at canonical boundary)
-    - gap_2: _canonical_spec contains side_effect_policy (forbidden at canonical boundary)
-    - gap_3: tests that pass with _canonical_spec are accepting forbidden fields
-    - gap_4: register success with forbidden fields implies no canonical conformance
-
-    Downstream step: canonical_core_admission.implementation
-    """
+class TestFacadeRegisterCanonicalRejections:
+    """Historical-debt fixtures must be rejected by the hard-cut register path."""
 
     def test_register_rejects_spec_with_tools_field(self):
-        """Register should reject specs with tools field (EXTRA_FIELD_NOT_ALLOWED).
-
-        Gap: _canonical_spec includes tools, but register doesn't check for it.
-        Downstream: canonical_core_admission.implementation
-        """
+        """Register rejects a historical payload carrying forbidden ``tools``."""
         registry = InMemoryRegistryStore()
-        # Use _valid_report() so register proceeds
         facade, _, _, _ = _facade(
             report=_valid_report(),
             registry=registry,
         )
 
-        # Spec with tools - should be rejected but currently passes
         spec_with_tools = {
             "id": "tools-register",
             "description": "Test",
@@ -222,11 +207,7 @@ class TestFacadeRegisterExposesCanonicalGaps:
         assert registry.save_inputs == []
 
     def test_register_rejects_spec_with_side_effect_policy(self):
-        """Register should reject specs with side_effect_policy (EXTRA_FIELD_NOT_ALLOWED).
-
-        Gap: _canonical_spec includes side_effect_policy, but register doesn't check.
-        Downstream: canonical_core_admission.implementation
-        """
+        """Register rejects a historical payload carrying ``side_effect_policy``."""
         registry = InMemoryRegistryStore()
         facade, _, _, _ = _facade(
             report=_valid_report(),
@@ -245,44 +226,34 @@ class TestFacadeRegisterExposesCanonicalGaps:
 
         result = facade.register(spec_with_sep)
 
-        # Currently succeeds because _valid_report() returns valid=True
-        # Gap: spec has side_effect_policy which should be rejected
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_FIELD"
+        assert error["numeric_code"] == 115
+        assert error["details"]["field"] == "side_effect_policy"
+        assert registry.save_inputs == []
 
-    def test_register_rejects_spec_without_capabilities(self):
-        """Register should reject specs without capabilities (MISSING_REQUIRED_FIELD).
-
-        Gap: Spec without capabilities currently passes validation.
-        Downstream: canonical_core_admission.implementation
-        """
-        registry = InMemoryRegistryStore()
-        facade, _, _, _ = _facade(
-            report=_valid_report(),
-            registry=registry,
-        )
-
-        spec_no_capabilities = {
-            "id": "no-capabilities-register",
-            "description": "Test",
-            "prompt": "You help",
-            "model": "gpt-4o-mini",
-            "spec_version": "0.1.0",
-        }
-
-        result = facade.register(spec_no_capabilities)
-
-        # Currently succeeds because _valid_report() returns valid=True
-        # Gap: capabilities is required at canonical boundary
-
-    def test_fixture_taxonomy_keeps_canonical_clean_and_transition_explicit(self):
-        """Canonical helper is canonical-only; transition helper carries deprecated fields."""
+    def test_fixture_taxonomy_keeps_canonical_clean_and_historical_debt_explicit(self):
+        """Canonical helper stays clean; historical helper stays visibly non-canonical."""
         canonical_spec = _canonical_spec("fixture-check")
-        transition_spec = _transition_spec_with_deprecated_fields("fixture-check-transition")
+        historical_spec = _historical_spec_with_legacy_fields("fixture-check-historical")
 
         assert "tools" not in canonical_spec
         assert "side_effect_policy" not in canonical_spec
-        assert "tools" in transition_spec
-        assert "side_effect_policy" in transition_spec
+        assert "tools" in historical_spec
+        assert "side_effect_policy" in historical_spec
 
-        # Keep current gap documentation explicit through transition fixture usage.
-        report = _valid_report()
-        assert report["valid"] is True, "Setup: spy returns valid for any input"
+    def test_register_allows_warning_only_spec(self):
+        """Warning-only canonical specs remain admissible for registration."""
+        registry = InMemoryRegistryStore()
+        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
+
+        spec = _canonical_spec("warn-register")
+        spec["model"] = "custom-model-x"
+
+        result = facade.register(spec)
+
+        assert isinstance(result, Success)
+        payload = result.unwrap()
+        assert payload["id"] == "warn-register"
+        assert payload["registered"] is True
+        assert len(registry.save_inputs) == 1

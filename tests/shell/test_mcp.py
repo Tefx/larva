@@ -34,7 +34,6 @@ from larva.shell.mcp_update_batch import handle_update_batch as handle_update_ba
 from larva.shell.shared import request_validation
 from tests.shell.fixture_taxonomy import (
     canonical_persona_spec,
-    transition_persona_spec_with_legacy_fields,
 )
 
 if TYPE_CHECKING:
@@ -119,7 +118,6 @@ class InMemoryComponentStore:
             return Failure(cast("LarvaError", self.fail_error))
         if name not in self.toolsets_by_name:
             return Failure(self._make_not_found_error("toolset", name))
-        # Per ADR-002: toolsets should contain capabilities (canonical) + tools (mirrored)
         toolset_data = self.toolsets_by_name[name]
         return Success(toolset_data)
 
@@ -211,18 +209,6 @@ def _canonical_spec(
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
     return canonical_persona_spec(persona_id=persona_id, digest=digest, model=model)
-
-
-def _transition_spec(
-    persona_id: str,
-    digest: str = "sha256:transition",
-    model: str = "gpt-4o-mini",
-) -> PersonaSpec:
-    return transition_persona_spec_with_legacy_fields(
-        persona_id=persona_id,
-        digest=digest,
-        model=model,
-    )
 
 
 def _valid_report() -> ValidationReport:
@@ -476,7 +462,9 @@ class TestMCPValidateSuccessShape:
         report = {
             "valid": True,
             "errors": [],
-            "warnings": ["FUTURE_WARNING: reserved validation warning channel"],
+            "warnings": [
+                "unknown model identifier 'custom-model-x' is outside the known-model snapshot"
+            ],
         }
         facade = _make_facade(validate_report=report)
         spec = _canonical_spec("test")
@@ -484,7 +472,9 @@ class TestMCPValidateSuccessShape:
         result = facade.validate(spec)
 
         assert result["valid"] is True
-        assert result["warnings"] == ["FUTURE_WARNING: reserved validation warning channel"]
+        assert result["warnings"] == [
+            "unknown model identifier 'custom-model-x' is outside the known-model snapshot"
+        ]
 
 
 class TestMCPAssembleSuccessShape:
@@ -931,14 +921,13 @@ class TestMCPToolsRoundTrip:
     def test_assemble_tool_params_extraction(self) -> None:
         """Simulate MCP tool handler extracting assemble params and calling facade.
 
-        Per ADR-002: toolsets use capabilities (canonical) with tools mirrored.
+        Toolset payloads on the happy path are canonical capabilities-only data.
         """
         components = InMemoryComponentStore(
             prompts_by_name={"base-prompt": {"text": "You are helpful."}},
             toolsets_by_name={
                 "readonly-tools": {
-                    "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
-                    "tools": {"shell": "read_only"},  # mirrored backward compat
+                    "capabilities": {"shell": "read_only"},
                 }
             },
             constraints_by_name={"no-spawn": {"can_spawn": False}},

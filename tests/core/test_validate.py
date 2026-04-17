@@ -1,18 +1,10 @@
-"""Contract-focused tests for larva.core.validate module.
+"""Contract and behavior tests for ``larva.core.validate``.
 
-This test module validates the contract of the validate_spec function
-and its associated types. It does NOT test implementation since the function
-is currently a stub.
-
-Responsibility:
-- Verify function signature and type hints
-- Verify contract annotations (@pre, @post) are present
-- Verify stub behavior raises NotImplementedError
-- Verify TypedDict shapes for ValidationIssue, ValidationReport
-
-Non-Responsibility:
-- No implementation tests (function is stub)
-- No downstream module tests
+Responsibilities:
+- verify signature/type-contract invariants
+- verify fail-closed canonical admission errors
+- verify non-blocking canonical warning semantics
+- verify TypedDict report shapes remain stable
 """
 
 import pytest
@@ -76,7 +68,7 @@ class TestValidateSpecBehavior:
         report = validate_module.validate_spec(
             {
                 "id": "valid-persona",
-                "description": "A valid persona",
+                "description": "A valid persona for canonical validate success coverage.",
                 "prompt": "You are a helpful assistant.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
@@ -145,6 +137,90 @@ class TestValidateSpecBehavior:
         )
         assert report["valid"] is False
         assert any(e["code"] == "UNRESOLVED_PLACEHOLDER" for e in report["errors"])
+
+
+class TestCanonicalWarningSemantics:
+    """Canonical warning channel is non-blocking but populated when expected."""
+
+    def test_unknown_model_emits_warning_but_keeps_valid_true(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-unknown-model",
+                "description": "A canonical persona that intentionally uses an unknown model id.",
+                "prompt": "You are a warning test persona.",
+                "model": "custom-model-x",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any("unknown model identifier 'custom-model-x'" in w for w in report["warnings"])
+
+    def test_empty_capabilities_emits_warning_but_is_valid(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-empty-capabilities",
+                "description": "A canonical persona with an intentionally empty capabilities map.",
+                "prompt": "You are a warning test persona.",
+                "model": "gpt-4o-mini",
+                "capabilities": {},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "capabilities is empty; this is valid but likely under-specified" in report["warnings"]
+        )
+
+    def test_all_none_capabilities_emits_warning_but_is_valid(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-none-capabilities",
+                "description": "A canonical persona where all capabilities are intentionally none.",
+                "prompt": "You are a warning test persona.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "none", "git": "none"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert (
+            "all declared capabilities are 'none'; this is valid but operationally inert"
+            in report["warnings"]
+        )
+
+    def test_unknown_tool_family_emits_warning_but_is_valid(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-unknown-tool-family",
+                "description": "A canonical persona with one unrecognized tool-family identifier.",
+                "prompt": "You are a warning test persona.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only", "custom_tool": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any("unknown tool families" in w and "custom_tool" in w for w in report["warnings"])
+
+    def test_short_description_emits_warning_but_is_valid(self):
+        report = validate_module.validate_spec(
+            {
+                "id": "warning-short-description",
+                "description": "Too short",
+                "prompt": "You are a warning test persona.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
+        assert any("description length is outside guidance range" in w for w in report["warnings"])
 
 
 class TestValidationIssueTypedDict:
@@ -235,7 +311,7 @@ class TestValidationReportShapes:
 
 
 class TestCanonicalFieldRejections:
-    """Canonical validator rejects removed transition-era fields."""
+    """Canonical validator rejects removed historical legacy fields."""
 
     def test_variables_field_rejected_as_extra(self):
         """variables is not part of canonical PersonaSpec v1."""
@@ -394,31 +470,10 @@ class TestCapabilitiesValidation:
 
 
 class TestCanonicalAdmissionRejection:
-    """Tests exposing gaps between current implementation and canonical admission contract.
-
-    Per validate.py docstring and INTERFACES.md:
-    - tools is forbidden at the canonical admission boundary (not deprecated-advisory)
-    - side_effect_policy is forbidden at the canonical admission boundary
-    - unknown top-level fields are forbidden at the canonical admission boundary
-    - capabilities is required at the canonical admission boundary
-
-    These tests document the EXPECTED canonical behavior and will FAIL until
-    the implementation is corrected to match the canonical contract.
-
-    Gap coverage:
-    - gap_1: tools currently emits legacy taxonomy instead of EXTRA_FIELD_NOT_ALLOWED
-    - gap_2: side_effect_policy currently emits legacy taxonomy instead of EXTRA_FIELD_NOT_ALLOWED
-    - gap_3: extra unknown fields currently not checked (extra fields silently accepted)
-    - gap_4: capabilities not enforced as required (spec without capabilities currently passes)
-    """
+    """Pinned canonical admission rejections for forbidden and missing fields."""
 
     def test_tools_field_rejected_at_canonical_boundary(self):
-        """tools is forbidden at canonical admission, not a deprecation warning.
-
-        Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
-        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error and mark spec invalid.
-        Downstream step: canonical_core_admission.implementation
-        """
+        """tools is forbidden at canonical admission."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -435,12 +490,7 @@ class TestCanonicalAdmissionRejection:
         )
 
     def test_side_effect_policy_field_rejected_at_canonical_boundary(self):
-        """side_effect_policy is forbidden at canonical admission boundary.
-
-        Gap: Currently produces DEPRECATED_FIELD warning but spec is valid.
-        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error and mark spec invalid.
-        Downstream step: canonical_core_admission.implementation
-        """
+        """side_effect_policy is forbidden at canonical admission boundary."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -459,12 +509,7 @@ class TestCanonicalAdmissionRejection:
         )
 
     def test_extra_unknown_field_rejected(self):
-        """Unknown top-level fields are forbidden at canonical admission.
-
-        Gap: Extra fields are silently accepted currently.
-        Expected: Should produce EXTRA_FIELD_NOT_ALLOWED error.
-        Downstream step: canonical_core_admission.implementation
-        """
+        """Unknown top-level fields are forbidden at canonical admission."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -478,12 +523,7 @@ class TestCanonicalAdmissionRejection:
         )
 
     def test_capabilities_required_at_canonical_boundary(self):
-        """capabilities is required at canonical admission boundary.
-
-        Gap: Spec without capabilities currently passes (only one of tools/capabilities required by schema).
-        Expected: Should produce MISSING_REQUIRED_FIELD error.
-        Downstream step: canonical_core_admission.implementation
-        """
+        """capabilities is required at canonical admission boundary."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -500,12 +540,7 @@ class TestCanonicalAdmissionRejection:
         )
 
     def test_both_tools_and_capabilities_rejected(self):
-        """Spec with both tools and capabilities is invalid at canonical boundary.
-
-        Gap: Currently warns that capabilities takes precedence but still passes.
-        Expected: tools presence alone is forbidden regardless of capabilities presence.
-        Downstream step: canonical_core_admission.implementation
-        """
+        """Spec with both tools and capabilities is invalid at canonical boundary."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
@@ -594,10 +629,7 @@ class TestCanonicalRequiredOnlyFixture:
         assert report["warnings"] == []
 
     def test_tools_field_in_canonical_fixture_produces_rejection(self):
-        """Fixture variation: tools present = EXTRA_FIELD_NOT_ALLOWED.
-
-        This test exposes gap_1: tools should be rejected, not warned.
-        """
+        """Fixture variation: tools present = EXTRA_FIELD_NOT_ALLOWED."""
         spec = {
             "id": "persona-with-tools",
             "description": "Test persona with forbidden tools field",
@@ -612,10 +644,7 @@ class TestCanonicalRequiredOnlyFixture:
         assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
     def test_side_effect_policy_in_canonical_fixture_produces_rejection(self):
-        """Fixture variation: side_effect_policy present = EXTRA_FIELD_NOT_ALLOWED.
-
-        This test exposes gap_2: side_effect_policy should be rejected, not warned.
-        """
+        """Fixture variation: side_effect_policy present = EXTRA_FIELD_NOT_ALLOWED."""
         spec = {
             "id": "persona-with-sep",
             "description": "Test persona with forbidden side_effect_policy",
@@ -630,10 +659,7 @@ class TestCanonicalRequiredOnlyFixture:
         assert any(e["code"] == "EXTRA_FIELD_NOT_ALLOWED" for e in report["errors"])
 
     def test_extra_forbidden_field_produces_rejection(self):
-        """Fixture variation: extra unknown field produces EXTRA_FIELD_NOT_ALLOWED.
-
-        This test exposes gap_3: unknown fields should be rejected.
-        """
+        """Fixture variation: extra unknown field produces EXTRA_FIELD_NOT_ALLOWED."""
         spec = {
             "id": "persona-with-extra",
             "description": "Test persona with extra forbidden field",
@@ -649,23 +675,10 @@ class TestCanonicalRequiredOnlyFixture:
 
 
 class TestAdmissionSuccessImpliesConformance:
-    """Test that admission success implies canonical contract conformance.
-
-    Per validate.py docstring: "If valid is True for a spec accepted through
-    larva production paths, that success must mean the candidate conforms to
-    the opifex canonical PersonaSpec contract."
-
-    Gap: Currently, specs with tools/side_effect_policy are marked valid
-    (just warned), so admission success does NOT imply conformance.
-    """
+    """Admission success implies conformance to the canonical PersonaSpec contract."""
 
     def test_valid_report_does_not_contain_forbidden_fields(self):
-        """A valid report means the spec has no forbidden canonical fields.
-
-        Gap: Currently a spec with tools is marked valid=True with just a warning.
-        Expected: A valid report means zero forbidden fields present.
-        """
-        # This spec has tools - currently valid with warning, should be invalid
+        """A valid report means the spec has no forbidden canonical fields."""
         spec_with_tools = {
             "id": "tools-persona",
             "description": "Test",
@@ -676,19 +689,10 @@ class TestAdmissionSuccessImpliesConformance:
             "spec_version": "0.1.0",
         }
         report = validate_module.validate_spec(spec_with_tools)
-        # If valid, then no forbidden fields should be present
-        if report["valid"]:
-            assert "tools" not in spec_with_tools, (
-                "Valid report found with 'tools' field present - "
-                "admission success does not imply conformance"
-            )
+        assert report["valid"] is False
 
     def test_valid_report_does_not_contain_side_effect_policy(self):
-        """A valid report means no side_effect_policy present.
-
-        Gap: Currently a spec with side_effect_policy is marked valid with warning.
-        Expected: Valid report means this field is absent.
-        """
+        """A valid report means no side_effect_policy is present."""
         spec_with_sep = {
             "id": "sep-persona",
             "description": "Test",
@@ -699,8 +703,4 @@ class TestAdmissionSuccessImpliesConformance:
             "spec_version": "0.1.0",
         }
         report = validate_module.validate_spec(spec_with_sep)
-        if report["valid"]:
-            assert "side_effect_policy" not in spec_with_sep, (
-                "Valid report found with 'side_effect_policy' field present - "
-                "admission success does not imply conformance"
-            )
+        assert report["valid"] is False
