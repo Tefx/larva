@@ -51714,7 +51714,7 @@ phases:
       \ no out-of-scope implementation bypass accepted."
   - id: final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
     name: Reject legacy read-path fields and canonicalize public ingress
-    status: claimed
+    status: done
     description: 'Implement and verify strict rejection on component-show/helper read
       paths plus canonical-only public ingress behavior.
 
@@ -51820,6 +51820,30 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-17T20:58:07.985171+00:00'
+    done_at: '2026-04-17T21:12:05.741225+00:00'
+    evidence: "Execution agent python-senior-tacit implemented strict-rejection behavior\
+      \ for legacy read-path fields, canonical-only ingress, and web assemble missing-id\
+      \ structured failure.\n\nExpected-red proof:\n- Before implementation, adversarial\
+      \ tests failed as expected:\n  - python_api legacy tools read: DID NOT RAISE\
+      \ (sanitize-on-read success existed)\n  - CLI singular alias accepted as Success\n\
+      \  - shared query legacy side_effect_policy accepted as Success\n  - web assemble\
+      \ missing id triggered KeyError at src/larva/shell/web.py\n\nImplementation:\n\
+      - Changed:\n  - src/larva/core/component_kind.py\n  - src/larva/shell/shared/component_queries.py\n\
+      \  - src/larva/shell/web.py\n  - tests/shell/test_canonical_boundary_gaps.py\n\
+      \  - tests/shell/test_cli.py\n  - tests/shell/test_mcp.py\n  - tests/shell/test_python_api.py\n\
+      \  - tests/shell/test_web.py\n- Public ingress now rejects singular aliases;\
+      \ shared query path rejects legacy `tools` and `side_effect_policy` rather than\
+      \ stripping; web assemble missing `id` returns structured INVALID_INPUT 400\
+      \ envelope.\n\nVerification:\n- Focused suite passed:\n  - pytest subset across\
+      \ shell CLI/python_api/MCP/web/query: `15 passed in 0.32s`\n- invar_guard(changed=true):\
+      \ passed (errors=0)\n- Execution commit on step branch: `5227d38cbc886e7565d194ab60e6e69f9d9cff5b`\n\
+      \nMerge/cleanup:\n- Fast-forward merged branch into main successfully.\n- Removed\
+      \ `.vectl/worktrees/final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress`\n\
+      - Deleted `vectl/step-final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress`\n\
+      \nStep semantic report:\n- step_intent: fail-closed rejection for legacy read-path\
+      \ payloads + canonical ingress + web missing-id error envelope.\n- expected_result:\
+      \ expected-red then green.\n- observed_result: aligned.\n- out-of-scope product\
+      \ edits: none."
   - id: final_zeroing_20260418_fail_closed_admission.gate
     name: Gate fail-closed admission and read-path closure
     status: pending
