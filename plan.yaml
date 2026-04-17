@@ -52199,7 +52199,7 @@ phases:
       Phase unblock criteria satisfied.'
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
-  status: in_progress
+  status: done
   depends_on:
   - final_zeroing_20260418_fail_closed_admission
   steps:
@@ -52324,7 +52324,7 @@ phases:
       - Fast-forward merged to main; worktree/branch cleaned."
   - id: final_zeroing_20260418_mcp_contract.gate
     name: Gate MCP contract exactness
-    status: claimed
+    status: done
     description: 'Independent gate review for the MCP contract exactness phase.
 
 
@@ -52377,9 +52377,23 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T21:49:32.990416+00:00'
+    done_at: '2026-04-17T21:53:57.787919+00:00'
+    evidence: "Independent adversarial gate review completed for MCP contract exactness\
+      \ phase.\n\nSpot-check results:\n- Targeted schema exactness tests passed:\n\
+      \  - test_persona_spec_targeted_fields_match_canonical_schema_authority (both\
+      \ tools)\n- Export selector semantics test passed:\n  - test_handle_export_all_false_does_not_route_to_export_all\n\
+      - Additional focused suites passed:\n  - tests/shell/test_mcp.py full subset\
+      \ => all pass\n  - tests/shell/test_canonical_boundary_gaps.py => all pass\n\
+      - Invar guard changed: passed (0 errors, 0 warnings)\n- Verify-only purity:\
+      \ no product code modifications (git diff src/ empty)\n\nDecision basis:\n-\
+      \ schema exact for targeted fields (capabilities/can_spawn/spec_version/spec_digest):\
+      \ PASS\n- export(all=false) does not trigger export_all: PASS\n- no looser-than-canonical\
+      \ drift remains for targeted fields: PASS\n\nGate decision:\n- PASS (blocking_status:\
+      \ CLOSED, proof_gap_status: NONE)\n- no residual blocking findings.\n\nWorktree/branch\
+      \ cleanup completed for gate step."
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
-  status: locked
+  status: pending
   depends_on:
   - final_zeroing_20260418_mcp_contract
   steps:
