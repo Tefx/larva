@@ -51382,3 +51382,29 @@ phases:
   gate: Re-audit complete with evidence and no unresolved critical issues
   depends_on:
   - hard_cut_finish_20260417_registry_ux_cleanup
+  steps:
+  - id: fresh_deep_reaudit_20260417.run-independent-deep-re-audit
+    name: Run independent deep re-audit
+    status: pending
+    description: Run a fresh independent deep re-audit of the current repository state,
+      including architecture/gate checks, warning semantics consistency, docs/readiness
+      consistency, and residual-risk scan. Produce structured evidence and findings.
+    verification: Independent audit evidence includes scope, checks performed, findings
+      by severity, and explicit residual risk status.
+    agent: gate-reviewer-tacit
+  - id: fresh_deep_reaudit_20260417.resolve-critical-findings-if-any
+    name: Resolve critical findings if any
+    status: pending
+    description: If audit returns blocker-level findings, remediate them and provide
+      verification. If no blockers, record no-op evidence.
+    verification: Either blocker fixes verified, or explicit no-op statement with
+      audit reference.
+    agent: python-senior-tacit
+  - id: fresh_deep_reaudit_20260417.final-re-audit-gate-verdict
+    name: Final re-audit gate verdict
+    status: pending
+    description: Issue final verdict for the fresh deep re-audit pass using independent
+      evidence from audit and any remediation results.
+    verification: Gate verdict includes pass/fail, evidence completeness check, and
+      explicit residual risk statement.
+    agent: gate-reviewer-tacit
