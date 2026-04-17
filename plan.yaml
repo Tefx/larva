@@ -52007,6 +52007,74 @@ phases:
   status: locked
   depends_on:
   - final_zeroing_20260418_mcp_contract
+  steps:
+  - id: final_zeroing_20260418.tests_transition_parity_cleanup
+    name: Remove transition-era legacy wording from tests
+    status: pending
+    description: 'Implement and verify test-suite parity cleanup so test names, fixtures,
+      and assertions no longer encode transition-era normalize/legacy wording.
+
+
+      Closure target owned by this step:
+
+      - tests parity clean with the final hard-cut contract vocabulary
+
+
+      Technical domain boundaries:
+
+      - targeted tests under tests/core/, tests/app/, tests/shell/, and web-facing
+      tests that still encode normalize/legacy transition language or laundering expectations
+
+
+      Execution rules:
+
+      - Expected-Red first by strengthening text/behavior assertions that still describe
+      sanitize/normalize/legacy success when the contract is strict rejection.
+
+      - Update fixtures/assertions to canonical vocabulary only.
+
+      - Remove any tests that still certify recompute-on-read, sanitize-on-read, singular-alias
+      ingress, or permissive schema drift.
+
+
+      Completion criteria:
+
+      - tests express only final canonical behavior
+
+      - no test text or fixture teaches transition-era acceptance behavior'
+    verification: 'implement_and_verify: prove expected-red on stale test wording/behavior,
+      update tests, rerun targeted test suites and changed-file invar guard. This
+      step protects the phase gate and final full-plan-check.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Exact command(s) run before implementation:
+
+      - Failing output or grep evidence showing transition-era wording/behavior in
+      tests:
+
+
+      ## Implementation Proof
+
+      - Edited test files:
+
+      - Exact command(s) run after implementation:
+
+      - Passing output:
+
+
+      ## Test-Parity Register
+
+      List each stale wording or permissive behavior removed from tests.
+
+      '
+    agent: python-executor
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
