@@ -51427,7 +51427,7 @@ phases:
       \ none\n- gate_open_allowed: false"
   - id: fresh_deep_reaudit_20260417.resolve-critical-findings-if-any
     name: Resolve critical findings if any
-    status: claimed
+    status: done
     description: If audit returns blocker-level findings, remediate them and provide
       verification. If no blockers, record no-op evidence.
     verification: Either blocker fixes verified, or explicit no-op statement with
@@ -51437,6 +51437,74 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-17T12:54:27.899094+00:00'
+    done_at: '2026-04-17T13:00:43.377539+00:00'
+    evidence: 'Remediation executed for all blocker findings from fresh_deep_reaudit_20260417.run-independent-deep-re-audit.
+
+
+      ## Input Findings
+
+      - clone forbidden-field order assertion instability
+
+      - readiness scanner legitimate-reference pattern gap
+
+      - component-show canonical payload leaked forbidden transition keys
+
+      - patch contract/behavior mismatch under full guard property checks
+
+
+      ## Actions Taken
+
+      - Hardened clone test assertion to avoid deterministic forbidden-field ordering
+      dependence.
+
+      - Extended readiness scanner legitimate-reference pattern to accept rejection-style
+      phrasing.
+
+      - Updated canonical component-show payload shaping to strip forbidden keys (`tools`
+      for toolsets, `side_effect_policy` for constraints).
+
+      - Added `@raises(PatchError)` to `_reject_forbidden_patch_fields` so contract
+      matches fail-closed behavior.
+
+
+      Files changed:
+
+      - src/larva/core/patch.py
+
+      - src/larva/shell/shared/component_queries.py
+
+      - tests/app/test_facade/test_clone.py
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py
+
+
+      Commit hash(es):
+
+      - 988a3033bb01ceb9ae694a2f182dc2d0224707c9
+
+
+      ## Verification
+
+      - `.venv/bin/python -m pytest --version` -> worktree .venv lacked pytest (detected)
+
+      - `uv run python -m pytest tests/app/test_facade/test_clone.py::TestFacadeClone::test_clone_hard_cut_rejects_forbidden_fields_from_source
+      tests/canonical_cutover/test_hard_cutover_readiness.py::TestNoLegacyFieldScan::test_scan_finds_no_new_legacy_field_references
+      tests/shell/test_cli.py::TestComponentShowCommand::test_component_show_toolset_success_json_mode_returns_json_payload
+      tests/core/test_patch.py -vv` -> 37 passed
+
+      - `uvx invar-tools guard --all` -> passed (errors: 0, warnings: 7, doctest passed,
+      crosshair verified, property tests passed)
+
+
+      ## Residual Risk
+
+      - none
+
+
+      ## Gaps/Notes
+
+      - Scope constrained to blocker set only; no compatibility fallback or admission
+      relaxation introduced.'
   - id: fresh_deep_reaudit_20260417.final-re-audit-gate-verdict
     name: Final re-audit gate verdict
     status: pending
