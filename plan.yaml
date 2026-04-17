@@ -50780,7 +50780,7 @@ phases:
   steps:
   - id: hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
     name: Doctor registry diagnostic command
-    status: claimed
+    status: done
     description: 'Implement-and-verify a small read-only `larva doctor registry` diagnostic
       command for registry failures.
 
@@ -50887,6 +50887,42 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-17T08:55:00.117557+00:00'
+    done_at: '2026-04-17T09:11:34.172853+00:00'
+    evidence: '## Expected-Red Proof
+
+      - Added/updated regression tests: `tests/shell/test_cli.py::TestDoctorRegistryCommand`
+      (7 tests)
+
+      - Pre-implementation command: `uv run larva doctor registry`
+
+      - Failing output: `error: argument command: invalid choice: ''doctor''`
+
+
+      ## Green Proof
+
+      - Post-implementation command: `uv run larva doctor registry`
+
+      - Passing output shows diagnostic status and registry probe results, including
+      registry root/index and sampled spec-read successes
+
+      - Help surfaces work: `larva doctor --help` and `larva doctor registry --help`
+
+
+      ## Hard-Cut Preservation
+
+      - Read-only behavior: command probes registry via read-only index/spec reads;
+      no mutation path introduced
+
+      - No compatibility layer / partial-success fallback / silent skipping introduced
+
+      - Existing serve/runtime hard-cut semantics remain unchanged
+
+
+      ## Verification
+
+      - Targeted tests: 195 passed (including 7 new doctor tests)
+
+      - invar guard on changed files: passed (0 errors)'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     name: Web registry error state cleanup
     status: pending
