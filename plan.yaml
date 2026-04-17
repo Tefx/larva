@@ -50777,3 +50777,111 @@ phases:
   status: pending
   depends_on:
   - hard_cut_finish_20260416_finalization
+  steps:
+  - id: hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
+    name: Doctor registry diagnostic command
+    status: pending
+    description: 'Implement-and-verify a small read-only `larva doctor registry` diagnostic
+      command for registry failures.
+
+
+      work_type: new_capability
+
+      step_type: implementation
+
+      agent_source: default
+
+      spec_refs:
+
+      - prior analysis: prefer a small read-only diagnostic surface for registry failure
+      visibility
+
+      - hard-cut policy: diagnostics must not relax canonical admission/runtime behavior
+
+
+      touch_paths:
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_helpers.py
+
+      - tests/shell/test_cli.py
+
+
+      authoritative_interface: new read-only CLI diagnostic surface `larva doctor
+      registry`; existing serve/runtime semantics remain authoritative and unchanged.
+
+
+      Required behavior:
+
+      - expose a read-only diagnostic command that helps explain registry failure
+      state
+
+      - do not mutate registry contents
+
+      - do not add compatibility shims, fallback loading, or serve-time partial success
+
+      - keep scope small and local to CLI diagnostic wiring
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      1. First add/adjust regression coverage for the missing diagnostic command.
+
+      2. Run the relevant verification command before implementation and capture the
+      failing output.
+
+      3. Only then complete the CLI wiring and diagnostic behavior.
+
+      '
+    verification: '- Expected-red proof recorded for the absent diagnostic command
+
+      - Targeted CLI tests show `larva doctor registry` is reachable and read-only
+
+      - Evidence shows the command reports registry failure information without changing
+      serve semantics
+
+      - No compatibility layer, partial-success path, or silent skip behavior introduced
+
+      - Run project verification via invar_guard on changed files'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Added/updated regression test:
+
+      - Command run before implementation:
+
+      - Failing output pasted here:
+
+
+      ## Green Proof
+
+      - Command run after implementation:
+
+      - Passing output pasted here:
+
+      - Example `larva doctor registry` output or test assertion:
+
+
+      ## Hard-Cut Preservation
+
+      - Confirm the command is read-only
+
+      - Confirm canonical fail-closed serve/runtime behavior is unchanged
+
+      - Confirm no compatibility layer, partial-success behavior, or silent skipping
+      was added
+
+      '
+    agent: python-executor
