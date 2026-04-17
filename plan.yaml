@@ -52399,7 +52399,7 @@ phases:
   steps:
   - id: final_zeroing_20260418.tests_transition_parity_cleanup
     name: Remove transition-era legacy wording from tests
-    status: claimed
+    status: done
     description: 'Implement and verify test-suite parity cleanup so test names, fixtures,
       and assertions no longer encode transition-era normalize/legacy wording.
 
@@ -52466,6 +52466,45 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-17T21:54:07.870889+00:00'
+    done_at: '2026-04-17T22:01:15.481490+00:00'
+    evidence: 'Parity-cleanup execution performed as verification-focused no-op: subagent
+      audited targeted test domains for transition-era normalize/legacy acceptance
+      vocabulary and permissive behaviors.
+
+
+      Audit/verification evidence:
+
+      - Full test run: `uv run pytest tests/ -x -q --tb=short` => `931 passed`.
+
+      - Focused parity subset run: canonical_cutover + shell/components + shell/python_api
+      + app/facade => `218 passed`.
+
+      - Reviewed targeted files show historical fixtures are used for rejection-path
+      validation only, not acceptance behavior.
+
+
+      Findings:
+
+      - No stale transition-era acceptance behavior remained to modify.
+
+      - No tests teaching recompute-on-read acceptance, sanitize-on-read acceptance,
+      singular-alias ingress acceptance, or permissive schema drift.
+
+      - Therefore step closed as verified no-change parity confirmation.
+
+
+      Step semantics:
+
+      - step_intent: remove transition-era wording/behavior from tests.
+
+      - expected_result: canonical-only test vocabulary/behavior.
+
+      - observed_result: already canonical across targeted areas; no edits required.
+
+      - product implementation files modified: none.
+
+
+      Worktree/branch cleaned; no merge changes required.'
   - id: final_zeroing_20260418.docs_transition_parity_cleanup
     name: Remove transition-era legacy wording from docs
     status: pending
