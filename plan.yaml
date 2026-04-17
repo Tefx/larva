@@ -50772,3 +50772,8 @@ phases:
       \ fix\n  - BF4 docstring confirmed uses reject semantics (no strip wording)\n\
       \  - full suite: `870 passed in 4.06s`\n- blocker_status:\n  - BF1 CLOSED\n\
       \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
+- id: hard_cut_finish_20260417_registry_ux_cleanup
+  name: Final Registry UX Cleanup
+  status: pending
+  depends_on:
+  - hard_cut_finish_20260416_finalization
