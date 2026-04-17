@@ -52075,6 +52075,76 @@ phases:
 
       '
     agent: python-executor
+  - id: final_zeroing_20260418.docs_transition_parity_cleanup
+    name: Remove transition-era legacy wording from docs
+    status: pending
+    description: 'Implement and verify documentation parity cleanup so repository
+      docs state the final hard-cut contract without normalize/legacy transition wording.
+
+
+      Closure target owned by this step:
+
+      - docs parity clean with the final hard-cut contract vocabulary
+
+
+      Technical domain boundaries:
+
+      - README/USAGE/USER_GUIDE/ARCHITECTURE/INTERFACES and any larva-local docs that
+      still imply sanitize, transition, compatibility, or later cleanup language
+
+
+      Execution rules:
+
+      - Update docs only after the code/test contract is fixed upstream in prior phases.
+
+      - Remove wording that implies compatibility layers, accept-and-clean paths,
+      warning-only legacy success, or future cleanup passes.
+
+      - Final wording must describe strict rejection and canonical-only behavior.
+
+
+      Completion criteria:
+
+      - docs use canonical vocabulary only
+
+      - no doc text implies remaining migration or residual-risk posture'
+    verification: 'implement_and_verify: identify stale transition-era wording, update
+      docs, and provide exact proof snippets before/after. This step protects the
+      phase gate and final closure.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Stale-Text Inventory (MANDATORY)
+
+      - File:
+
+      - Exact stale wording removed:
+
+      - Why it violated final canonical wording:
+
+
+      ## Implementation Proof
+
+      - Edited doc files:
+
+      - Exact verification command(s):
+
+      - Output/snippets showing canonical-only wording:
+
+
+      ## Documentation Parity Register
+
+      Confirm docs no longer mention normalize/legacy transition success, compatibility
+      softening, future-pass cleanup, or residual-risk carveouts.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.tests_transition_parity_cleanup
+    agent: doc-reviewer-tacit
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
