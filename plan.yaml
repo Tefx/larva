@@ -50774,7 +50774,7 @@ phases:
       \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
 - id: hard_cut_finish_20260417_registry_ux_cleanup
   name: Final Registry UX Cleanup
-  status: in_progress
+  status: done
   depends_on:
   - hard_cut_finish_20260416_finalization
   steps:
@@ -51141,7 +51141,7 @@ phases:
       \ no longer uses error->empty fallback\n\n### Headline\n- PASS"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.gate
     name: Registry UX cleanup gate
-    status: claimed
+    status: done
     description: 'Gate review for the final registry UX cleanup.
 
 
@@ -51198,3 +51198,181 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T09:28:05.829334+00:00'
+    done_at: '2026-04-17T09:38:39.812234+00:00'
+    evidence: '## Gate Review Report
+
+
+      **Headline**: PASS
+
+      **Blocking Status**: CLOSED
+
+      **Proof-Gap Status**: NONE
+
+
+      ### Phase 0: Automated Gate Results
+
+      - **invar guard (--changed)**: PASS (0 errors, 2 warnings — file size proximity,
+      not new issues)
+
+      - **Test suite (test_web.py + test_cli.py)**: 234 passed, 0 failed
+
+      - **Key regression test**: `test_html_distinguishes_registry_loading_empty_and_blocking_error_states`
+      PASS
+
+      - **Doctor tests**: 7/7 passed (TestDoctorRegistryCommand)
+
+      - **`data || []` anti-pattern**: NOT FOUND in `loadPersonas()` — error envelopes
+      now trigger `throw` → `personaRegistryState = ''error''`
+
+      - **Compatibility/fallback/silent-skip patterns**: NOT FOUND in any changed
+      file
+
+      - **Stub masquerading patterns** (`_Stub`, `_Runtime`, `_Placeholder`): NOT
+      FOUND
+
+      - **Escape hatches**: 2 in scope — `dead_param: facade reserved for future doctor
+      subcommands` (legitimate), `shell_result: CLI entry handler` (legitimate for
+      process exit codes)
+
+
+      ### Phase 1: Risk Classification
+
+      All changed files: STANDARD
+
+      - `cli.py` (354 lines): Dispatch layer — new `_dispatch_doctor` path
+
+      - `cli_commands.py` (596 lines): New `doctor_registry_command` (read-only, 85
+      lines)
+
+      - `cli_parser.py` (339 lines): New `doctor` subparser + `registry` subcommand
+
+      - `web_ui.html` (1752 lines): Three-state `personaRegistryState` tracking
+
+      - `web.py` (372 lines): Unchanged `/api/personas` error envelope mapping (pre-existing)
+
+      - Test files: regression coverage added
+
+
+      ### Phase 2: Expert Findings
+
+
+      **E1 — Spec Alignment**:
+
+      - Gate criterion "Web UI distinguishes loading / true-empty / blocking registry
+      error": ✅ `personaRegistryState` tracks `''loading''`, `''ready''`, `''error''`
+      explicitly. Three distinct UI panels rendered per state. Test `test_html_distinguishes_registry_loading_empty_and_blocking_error_states`
+      confirms all three.
+
+      - Gate criterion "`/api/personas` error path no longer appears as empty list":
+      ✅ `loadPersonas()` now does `if (data.error) { throw new Error(...) }` — error
+      envelopes enter the catch block → `personaRegistryState = ''error''`. No `data
+      || []` fallback exists.
+
+      - Gate criterion "`larva doctor registry` exists, is reachable, and read-only":
+      ✅ CLI surface: `larva doctor registry [--json]` works. Parser wired in `cli_parser.py:293-309`.
+      Dispatch wired in `cli.py:240-241`. Command implementation `doctor_registry_command`
+      (cli_commands.py:512-596) only calls `_read_index` and `_read_spec` — zero mutation
+      paths confirmed via AST analysis.
+
+      - Gate criterion "No compatibility layer, partial-success behavior, or silent
+      skipping": ✅ grep for `compat`, `fallback`, `skip_bad`, `partial_success`, `silent.*skip`
+      in changed files: zero matches.
+
+      - Gate criterion "Hard-cut canonical fail-closed semantics preserved": ✅ `/api/personas`
+      error envelope still returns HTTP 400 via `_api_error_response`. Web UI now
+      renders this as blocking error state instead of falling through to empty library.
+      No change to server-side registry failure semantics.
+
+
+      **E2 — Architecture** (isolated assessment):
+
+      - `doctor` command follows existing CLI pattern (subparser + dispatch → command
+      function)
+
+      - `doctor_registry_command` is correctly decoupled from facade — no `LarvaFacade`
+      dependency needed for read-only diagnostics
+
+      - `personaRegistryState` three-state model is a minimal, correct state machine:
+      `loading → ready | error`
+
+      - No circular dependencies introduced
+
+
+      **E3 — Developer Experience**:
+
+      - `cli_commands.py` approaching file size limit (597 lines / 700 limit = 85%)
+      — invar warned, not blocking
+
+      - `_add_registry_commands` function slightly over size limit (102 lines, limit
+      100) — invar warned, not blocking
+
+      - All new code is well-structured and follows existing patterns
+
+
+      **E4 — SE Quality**:
+
+      - **Testing**: 7 doctor tests covering: empty registry (ok), index read failure,
+      spec read failure, valid entries, JSON mode, unknown subcommand, full CLI run
+      path. 1 web regression test for three-state distinction. All pass.
+
+      - **Expected-red proof**: Both implementers documented failing pre-implementation
+      state
+
+      - **Read-only proof**: AST analysis of `doctor_registry_command` confirms zero
+      mutation calls
+
+      - **Error envelope test**: `test_larva_api_error_maps_to_400_with_error_envelope`
+      confirms `/api/personas` errors still map to HTTP 400
+
+
+      ### Phase 3: Security
+
+      - No credentials, tokens, or trust boundaries in changed code
+
+      - `doctor_registry_command` is read-only by design — no mutation surface
+
+      - No new input validation gaps (doctor reads from existing registry paths only)
+
+      - No hardcoded secrets
+
+
+      ### Behavioral Proof Register
+
+      | proof_id | requirement_ref | claim | status | evidence |
+
+      |----------|----------------|------|--------|----------|
+
+      | P1 | web error-state distinction | UI distinguishes loading/true-empty/blocking
+      error | PROVEN | `personaRegistryState` three-state model + test_web.py:1009
+      |
+
+      | P2 | `/api/personas` error path | Error envelopes no longer appear as empty
+      list | PROVEN | `loadPersonas()` throws on `data.error` → `personaRegistryState
+      = ''error''`; no `data \|\| []` fallback |
+
+      | P3 | doctor registry diagnostic | `larva doctor registry` exists, reachable,
+      read-only | PROVEN | CLI full-path test (test_cli.py:4187-4211) + AST analysis
+      confirming zero mutation calls |
+
+      | P4 | no compatibility layer | No partial-success, fallback, or silent skip
+      | PROVEN | grep zero matches; code inspection confirms |
+
+      | P5 | fail-closed semantics | Hard-cut canonical behavior preserved | PROVEN
+      | `/api/personas` still returns HTTP 400 error envelope; UI now blocks instead
+      of empty-list fallback |
+
+
+      ### Confidence Calibration
+
+      - **High** for all gate criteria: Automated gates pass, targeted tests pass,
+      code inspection confirms all five gate criteria are met, no anomalies detected.
+
+
+      ### Non-Goals
+
+      - Frontend visual rendering verification (no P10/Mode-E evidence — but this
+      is a UX cleanup, not a new UI surface)
+
+      - Performance benchmarks
+
+      - Security penetration testing'
