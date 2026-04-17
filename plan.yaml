@@ -51856,6 +51856,99 @@ phases:
   status: locked
   depends_on:
   - final_zeroing_20260418_fail_closed_admission
+  steps:
+  - id: final_zeroing_20260418.mcp_schema_and_export_semantics
+    name: Align MCP schema exactly and enforce export boolean semantics
+    status: pending
+    description: 'Implement and verify exact canonical MCP contract behavior.
+
+
+      Closure targets owned by this step:
+
+      - MCP advertised schema must be wire-exact for capabilities, can_spawn, spec_version,
+      spec_digest and match the canonical schema exactly
+
+      - larva_export with {"all": false} must not trigger export_all
+
+
+      Technical domain boundaries:
+
+      - MCP advertised contract: src/larva/shell/mcp_contract.py
+
+      - MCP export selection path: src/larva/shell/mcp_export.py, src/larva/shell/mcp.py
+
+      - canonical schema authority: /Users/tefx/Projects/opifex/contracts/persona_spec.schema.json
+
+      - focused MCP tests under tests/shell/
+
+
+      Execution rules:
+
+      - Expected-Red first with schema-exact assertions and explicit false-boolean
+      export fixtures.
+
+      - Validate shape, requiredness, and type semantics against the canonical schema
+      for capabilities/can_spawn/spec_version/spec_digest.
+
+      - Boolean false is a selector value, not a truthy signal; the handler must not
+      route to export_all when all=false.
+
+      - No public schema may remain looser than the canonical schema.
+
+
+      Completion criteria:
+
+      - advertised MCP schema is wire-exact for the targeted fields
+
+      - larva_export(all=false) fails or routes correctly without export_all side
+      effects
+
+      - no schema or handler path contains permissive drift for the targeted fields'
+    verification: 'implement_and_verify: prove expected-red with MCP schema assertions
+      and export(false) coverage, implement exact contract behavior, rerun focused
+      MCP tests and changed-file invar guard. This step protects the phase gate and
+      final full-plan-check.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Exact command(s) run before implementation:
+
+      - Failing output for MCP schema drift and/or export(false) misrouting:
+
+
+      ## Implementation Proof
+
+      - Edited files:
+
+      - Exact command(s) run after implementation:
+
+      - Passing output:
+
+
+      ## Wire-Exact Register
+
+      - capabilities field contract matches canonical schema:
+
+      - can_spawn field contract matches canonical schema:
+
+      - spec_version field contract matches canonical schema:
+
+      - spec_digest field contract matches canonical schema:
+
+
+      ## Export Selector Proof
+
+      Show the exact all=false invocation/result and explain why export_all was not
+      triggered.
+
+      '
+    agent: python-senior-tacit
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
   status: locked
