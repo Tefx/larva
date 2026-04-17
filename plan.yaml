@@ -50774,13 +50774,13 @@ phases:
       \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
 - id: hard_cut_finish_20260417_registry_ux_cleanup
   name: Final Registry UX Cleanup
-  status: pending
+  status: in_progress
   depends_on:
   - hard_cut_finish_20260416_finalization
   steps:
   - id: hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
     name: Doctor registry diagnostic command
-    status: pending
+    status: claimed
     description: 'Implement-and-verify a small read-only `larva doctor registry` diagnostic
       command for registry failures.
 
@@ -50885,6 +50885,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-17T08:55:00.117557+00:00'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     name: Web registry error state cleanup
     status: pending
