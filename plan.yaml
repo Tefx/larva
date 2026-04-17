@@ -51054,7 +51054,7 @@ phases:
       \ changed=true)` passed (0 errors)"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
     name: Registry UX cleanup verification
-    status: pending
+    status: claimed
     description: 'Independent phase-check for the final registry UX cleanup.
 
 
@@ -51116,6 +51116,8 @@ phases:
     - hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     - hard_cut_finish_20260417_registry_ux_cleanup.doctor_registry_diagnostic
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-17T09:14:57.278448+00:00'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.gate
     name: Registry UX cleanup gate
     status: pending
