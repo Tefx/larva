@@ -50925,7 +50925,7 @@ phases:
       - invar guard on changed files: passed (0 errors)'
   - id: hard_cut_finish_20260417_registry_ux_cleanup.web_registry_error_state
     name: Web registry error state cleanup
-    status: claimed
+    status: done
     description: 'Implement-and-verify the larva serve web UX for `/api/personas`
       hard-cut failures without changing canonical registry semantics.
 
@@ -51033,6 +51033,25 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-04-17T09:11:41.287457+00:00'
+    done_at: '2026-04-17T09:14:51.695607+00:00'
+    evidence: "## Expected-Red Proof\n- Added regression: `tests/shell/test_web.py::TestWebUiHtmlContent::test_html_distinguishes_registry_loading_empty_and_blocking_error_states`\n\
+      - Pre-implementation command: `uv run pytest tests/shell/test_web.py -k registry_loading_empty_and_blocking_error_states`\n\
+      - Failing output: assertion failed because UI did not track explicit registry\
+      \ load state (`personaRegistryState` missing)\n\n## Green Proof\n- Post-implementation\
+      \ command: `uv run pytest tests/shell/test_web.py -k registry_loading_empty_and_blocking_error_states`\n\
+      - Passing output: `1 passed, 38 deselected`\n- Additional targeted checks: `uv\
+      \ run pytest tests/shell/test_web.py -k \"registry_loading_empty_and_blocking_error_states\
+      \ or preserves_summary_library_when_detail_fetch_fails or larva_api_error_maps_to_400_with_error_envelope\"\
+      ` → `3 passed`\n- Three-state evidence in `src/larva/shell/web_ui.html`:\n \
+      \ - `personaRegistryState === 'loading'` for loading UI\n  - `personaRegistryState\
+      \ === 'ready' && personas.length === 0` for true-empty state\n  - `personaRegistryState\
+      \ === 'error'` with blocking error panel/title `Unable to load persona library`\n\
+      \  - `/api/personas` error envelopes now enter blocking error state instead\
+      \ of `data || []` empty fallback\n\n## Hard-Cut Preservation\n- Fail-closed\
+      \ semantics unchanged: `/api/personas` error remains authoritative failure and\
+      \ now blocks the UI visibly\n- No compatibility layer, partial-success path,\
+      \ or silent-skip behavior introduced\n\n## Verification\n- `invar_guard(path=/Users/tefx/Projects/larva,\
+      \ changed=true)` passed (0 errors)"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
     name: Registry UX cleanup verification
     status: pending
