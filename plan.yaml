@@ -51571,7 +51571,7 @@ phases:
       Residual risk: none (blocking risk closed).'
 - id: final_zeroing_20260418_fail_closed_admission
   name: Final Strict Zeroing — Fail-Closed Admission and Read Paths
-  status: in_progress
+  status: done
   depends_on:
   - fresh_deep_reaudit_20260417
   - meta.gate
@@ -52071,7 +52071,7 @@ phases:
       \ merged to main and worktree/branch cleaned."
   - id: final_zeroing_20260418_fail_closed_admission.retest
     name: Retest gate criteria after batched admission remediation
-    status: claimed
+    status: done
     description: 'Independent retest/review after final_zeroing_20260418_fail_closed_admission.fix_batched.
 
 
@@ -52149,9 +52149,57 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T21:33:51.344412+00:00'
+    done_at: '2026-04-17T21:43:48.580904+00:00'
+    evidence: 'Independent retest/review completed by gate-reviewer-tacit with expected_result
+      green.
+
+
+      Verification executed:
+
+      - `uv run pytest tests/ -x -q` => `928 passed`
+
+      - `uv run ruff check src/larva/shell/web.py` => all checks passed
+
+      - `uv run ruff check src/larva/shell/web.py --select I001,TC001,E501` => all
+      checks passed
+
+      - focused shell subset (`test_canonical_boundary_gaps.py`, `test_python_api.py`,
+      `test_web.py`) => `165 passed`
+
+      - `invar guard` => passed (0 errors, 0 warnings)
+
+      - verify-only purity: `git diff HEAD` empty
+
+
+      Gate criteria recheck:
+
+      - B1 stale toolset singular alias expectation: PASS (canonical `toolsets/...`
+      now used)
+
+      - B2 stale constraint singular alias expectation: PASS (canonical `constraints/...`
+      now used)
+
+      - B3 stale python API prompt singular expectation: PASS (`prompts` canonical
+      path aligned)
+
+      - web.py lint debt I001/TC001/E501: PASS
+
+
+      Behavioral proof register in evidence marked all required proofs PROVEN, headline
+      PASS, blocking_status CLOSED, proof_gap_status NONE, gate_open_allowed implied
+      true by PASS.
+
+
+      Non-blocking note from reviewer:
+
+      - one stale singular alias in tests/repro/cross_surface_consistency_verify.py
+      flagged as SHOULD_FIX and explicitly non-blocking to this phase gate.
+
+
+      Phase unblock criteria satisfied.'
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
-  status: locked
+  status: pending
   depends_on:
   - final_zeroing_20260418_fail_closed_admission
   steps:
