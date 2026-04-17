@@ -51928,7 +51928,7 @@ phases:
       \ FAIL verdict and owned remediation path created."
   - id: final_zeroing_20260418_fail_closed_admission.fix_batched
     name: Batched remediation for stale singular-alias expectations and web lint debt
-    status: pending
+    status: claimed
     description: 'Fix ALL gate blockers from final_zeroing_20260418_fail_closed_admission.gate
       in one batched remediation step.
 
@@ -52047,6 +52047,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_fail_closed_admission.gate
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-17T21:29:18.051165+00:00'
   - id: final_zeroing_20260418_fail_closed_admission.retest
     name: Retest gate criteria after batched admission remediation
     status: pending
