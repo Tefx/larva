@@ -51407,4 +51407,6 @@ phases:
       evidence from audit and any remediation results.
     verification: Gate verdict includes pass/fail, evidence completeness check, and
       explicit residual risk statement.
+    depends_on:
+    - fresh_deep_reaudit_20260417.resolve-critical-findings-if-any
     agent: gate-reviewer-tacit
