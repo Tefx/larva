@@ -51681,6 +51681,112 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
+    name: Reject legacy read-path fields and canonicalize public ingress
+    status: pending
+    description: 'Implement and verify strict rejection on component-show/helper read
+      paths plus canonical-only public ingress behavior.
+
+
+      Closure targets owned by this step:
+
+      - component-show and related hidden/helper read paths must reject forbidden
+      legacy fields tools and side_effect_policy instead of strip/sanitize-on-read
+      success
+
+      - public component-type ingress must reject singular aliases; canonical public
+      ingress only
+
+      - web assemble missing id must return a structured fail-closed error instead
+      of a 500
+
+
+      Technical domain boundaries:
+
+      - shared read/query path: src/larva/shell/shared/component_queries.py
+
+      - canonical component-kind boundary: src/larva/core/component_kind.py
+
+      - shell surfaces: src/larva/shell/cli_commands.py, src/larva/shell/python_api.py,
+      src/larva/shell/mcp.py
+
+      - web ingress/runtime error path: src/larva/shell/web.py
+
+      - focused tests under tests/shell/ and web-facing tests
+
+
+      Execution rules:
+
+      - Expected-Red first with adversarial fixtures that contain legacy fields and
+      singular aliases.
+
+      - No sanitize-on-read success path may remain.
+
+      - Public ingress must accept canonical plural vocabulary only.
+
+      - Missing id at the web assemble endpoint must produce a structured client-facing
+      failure envelope; server-error behavior is invalid.
+
+
+      Completion criteria:
+
+      - every component-show style path rejects tools and side_effect_policy when
+      present
+
+      - singular aliases like prompt/toolset/constraint/model are rejected at public
+      ingress
+
+      - web assemble missing id returns structured fail-closed output'
+    verification: 'implement_and_verify: prove expected-red on legacy-field read success,
+      alias ingress, and web missing-id behavior; implement strict rejection; rerun
+      focused tests and changed-file invar guard. This step protects the downstream
+      MCP-contract phase and final closure gate.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof (MANDATORY)
+
+      - Exact adversarial fixtures added:
+
+      - Exact command(s) run before implementation:
+
+      - Failing output showing sanitize-on-read success, alias acceptance, or web
+      500 behavior:
+
+
+      ## Implementation Proof
+
+      - Edited files:
+
+      - Exact command(s) run after implementation:
+
+      - Passing output:
+
+
+      ## Strict-Rejection Matrix
+
+      - component_show / helper path rejects tools:
+
+      - component_show / helper path rejects side_effect_policy:
+
+      - canonical plural ingress only:
+
+      - web assemble missing id structured error:
+
+
+      ## No-Bleedthrough Check
+
+      Confirm no helper/read/show/web path still accepts-and-cleans forbidden input.
+      If any such path remains, mark FAIL.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.fail_closed_toolset_and_digest
+    agent: python-senior-tacit
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
