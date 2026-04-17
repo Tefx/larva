@@ -51054,7 +51054,7 @@ phases:
       \ changed=true)` passed (0 errors)"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.phase_verify
     name: Registry UX cleanup verification
-    status: claimed
+    status: done
     description: 'Independent phase-check for the final registry UX cleanup.
 
 
@@ -51118,6 +51118,27 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-17T09:14:57.278448+00:00'
+    done_at: '2026-04-17T09:27:57.612069+00:00'
+    evidence: "## Verification Report\n### refs Read Confirmation\n- `src/larva/shell/web_ui.html`\
+      \ loading/error/empty state panels and `loadPersonas()` state transitions verified\n\
+      - `src/larva/shell/web.py` `/api/personas` error envelope mapping verified\n\
+      - `src/larva/shell/cli_parser.py`, `src/larva/shell/cli.py`, `src/larva/shell/cli_commands.py`\
+      \ doctor command wiring and read-only implementation verified\n\n### Commands\
+      \ executed\n- `uv run pytest tests/shell/test_web.py::TestWebUiHtmlContent::test_html_distinguishes_registry_loading_empty_and_blocking_error_states\
+      \ -xvs` (pass)\n- `uv run pytest tests/shell/test_web.py -v` (39 passed)\n-\
+      \ `uv run pytest tests/shell/test_cli.py::TestDoctorRegistryCommand -v` (7 passed)\n\
+      - `uv run larva doctor registry` (diagnostic ok output)\n- `uv run larva doctor\
+      \ registry --json` (valid JSON diagnostic payload)\n- Grep checks for compatibility/fallback/silent-skip\
+      \ patterns in changed shell files (none)\n\n### Behavioral proof register\n\
+      - requirement_ref: web error-state distinction\n  status: PROVEN\n  evidence:\
+      \ blocking registry error state is distinct from loading and true-empty in `web_ui.html`;\
+      \ `/api/personas` LarvaApiError maps to error envelope; targeted web test passes\n\
+      - requirement_ref: doctor registry diagnostic\n  status: PROVEN\n  evidence:\
+      \ parser + dispatch + command wiring verified; command reachable; output verified\
+      \ in text/json; command uses read-only probes (`_read_index`, `_read_spec`)\
+      \ only\n- requirement_ref: no compatibility layer/partial-success/silent-skip\n\
+      \  status: PROVEN\n  evidence: no such patterns introduced; canonical web UI\
+      \ no longer uses error->empty fallback\n\n### Headline\n- PASS"
   - id: hard_cut_finish_20260417_registry_ux_cleanup.gate
     name: Registry UX cleanup gate
     status: pending
