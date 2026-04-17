@@ -51585,3 +51585,8 @@ phases:
   status: locked
   depends_on:
   - final_zeroing_20260418_mcp_contract
+- id: final_zeroing_20260418_finalization
+  name: Final Strict Zeroing — Full-Plan Closure
+  status: locked
+  depends_on:
+  - final_zeroing_20260418_parity_cleanup
