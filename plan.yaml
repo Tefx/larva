@@ -51846,7 +51846,7 @@ phases:
       \ edits: none."
   - id: final_zeroing_20260418_fail_closed_admission.gate
     name: Gate fail-closed admission and read-path closure
-    status: pending
+    status: claimed
     description: 'Independent gate review for the final fail-closed admission phase.
 
 
@@ -51908,6 +51908,8 @@ phases:
     - final_zeroing_20260418.fail_closed_toolset_and_digest
     - final_zeroing_20260418.reject_legacy_read_paths_and_web_ingress
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-17T21:12:18.215662+00:00'
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
