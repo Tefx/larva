@@ -52613,7 +52613,7 @@ phases:
       - Worktree/branch cleaned after no-op verification.'
   - id: final_zeroing_20260418_parity_cleanup.gate
     name: Gate test and documentation parity cleanup
-    status: pending
+    status: claimed
     description: 'Independent gate review for parity cleanup.
 
 
@@ -52660,6 +52660,8 @@ phases:
     - final_zeroing_20260418.tests_transition_parity_cleanup
     - final_zeroing_20260418.docs_transition_parity_cleanup
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-17T22:04:54.471285+00:00'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
