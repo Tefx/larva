@@ -51427,7 +51427,7 @@ phases:
       \ none\n- gate_open_allowed: false"
   - id: fresh_deep_reaudit_20260417.resolve-critical-findings-if-any
     name: Resolve critical findings if any
-    status: pending
+    status: claimed
     description: If audit returns blocker-level findings, remediate them and provide
       verification. If no blockers, record no-op evidence.
     verification: Either blocker fixes verified, or explicit no-op statement with
@@ -51435,6 +51435,8 @@ phases:
     depends_on:
     - fresh_deep_reaudit_20260417.run-independent-deep-re-audit
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-17T12:54:27.899094+00:00'
   - id: fresh_deep_reaudit_20260417.final-re-audit-gate-verdict
     name: Final re-audit gate verdict
     status: pending
