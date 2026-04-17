@@ -51378,7 +51378,7 @@ phases:
       - Security penetration testing'
 - id: fresh_deep_reaudit_20260417
   name: Fresh Deep Re-Audit Pass (2026-04-17)
-  status: in_progress
+  status: done
   gate: Re-audit complete with evidence and no unresolved critical issues
   depends_on:
   - hard_cut_finish_20260417_registry_ux_cleanup
@@ -51507,7 +51507,7 @@ phases:
       relaxation introduced.'
   - id: fresh_deep_reaudit_20260417.final-re-audit-gate-verdict
     name: Final re-audit gate verdict
-    status: claimed
+    status: done
     description: Issue final verdict for the fresh deep re-audit pass using independent
       evidence from audit and any remediation results.
     verification: Gate verdict includes pass/fail, evidence completeness check, and
@@ -51517,3 +51517,55 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T13:04:10.643089+00:00'
+    done_at: '2026-04-17T13:16:54.752398+00:00'
+    evidence: 'Final re-audit gate executed with independent verification and gate
+      open.
+
+
+      Verdict: PASS_WITH_DEBT
+
+      Gate Decision: open
+
+
+      Evidence reviewed:
+
+      - Prior audit blockers B1/B2/B3
+
+      - Remediation changes in patch/core query/tests readiness scanner
+
+      - Independent command verification including full tests and guard
+
+
+      Independent checks reported by gate reviewer:
+
+      - `pytest tests/` -> 881 passed, 0 failed
+
+      - targeted tests for clone/readiness/patch -> passed
+
+      - `uvx invar-tools guard src/larva --all` -> passed (warnings only)
+
+      - scanner checks -> 0 findings for legacy/deep-merge/normalize/components fallback
+      scans
+
+      - runtime checks for forbidden patch rejection and key stripping -> aligned
+
+
+      Behavioral proof summary:
+
+      - headline: PASS_WITH_DEBT
+
+      - proof_gap_status: NONE
+
+      - blocking_status: CLOSED
+
+      - gate_open_allowed: true
+
+      - uncertainty sources: none for blocker closure
+
+
+      Residual debt (non-blocking, pre-existing):
+
+      - facade/core file-size pressure and minor contract info-level finding.
+
+
+      Residual risk: none (blocking risk closed).'
