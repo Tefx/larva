@@ -51928,7 +51928,7 @@ phases:
       \ FAIL verdict and owned remediation path created."
   - id: final_zeroing_20260418_fail_closed_admission.fix_batched
     name: Batched remediation for stale singular-alias expectations and web lint debt
-    status: claimed
+    status: done
     description: 'Fix ALL gate blockers from final_zeroing_20260418_fail_closed_admission.gate
       in one batched remediation step.
 
@@ -52049,6 +52049,26 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-17T21:29:18.051165+00:00'
+    done_at: '2026-04-17T21:33:39.188897+00:00'
+    evidence: "Batched remediation implemented for ALL gate blockers from final_zeroing_20260418_fail_closed_admission.gate.\n\
+      \nFiles changed:\n- tests/shell/test_canonical_boundary_gaps.py\n- tests/shell/test_python_api.py\n\
+      - src/larva/shell/web.py\n\nBlocker fixes:\n- B1: updated stale singular alias\
+      \ expectation `toolset/test` -> `toolsets/test` in canonical boundary gaps test.\n\
+      - B2: updated stale singular alias expectation `constraint/test` -> `constraints/test`.\n\
+      - B3: updated stale python API expectation from singular ingress `prompt` to\
+      \ canonical `prompts` in not-found test path.\n\nWeb lint cleanup (should-fix\
+      \ bundle):\n- Addressed I001 import sorting, TC001 TYPE_CHECKING import placement,\
+      \ and E501 line-length wrapping in src/larva/shell/web.py.\n- Hygiene only;\
+      \ runtime behavior unchanged.\n\nSibling search notes:\n- Searched toolset/constraint\
+      \ singular alias family in tests/shell/test_canonical_boundary_gaps.py; only\
+      \ the two stale expectations were present and fixed.\n- Searched prompt singular\
+      \ API ingress expectations in tests/shell; no remaining in-scope stale singular\
+      \ prompt expectations after update.\n\nVerification:\n- Ruff check web.py: `All\
+      \ checks passed!`\n- Focused blocker regression tests:\n  - tests/shell/test_canonical_boundary_gaps.py::...toolset...\n\
+      \  - tests/shell/test_canonical_boundary_gaps.py::...constraint...\n  - tests/shell/test_python_api.py::...not_found...\n\
+      \  => `3 passed in 0.23s`\n\nCommit/merge:\n- Step branch commit: `4155dd7`\
+      \ (`test(shell): align canonical plural component expectations`)\n- Fast-forward\
+      \ merged to main and worktree/branch cleaned."
   - id: final_zeroing_20260418_fail_closed_admission.retest
     name: Retest gate criteria after batched admission remediation
     status: pending
