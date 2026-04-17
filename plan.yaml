@@ -51580,3 +51580,8 @@ phases:
   status: locked
   depends_on:
   - final_zeroing_20260418_fail_closed_admission
+- id: final_zeroing_20260418_parity_cleanup
+  name: Final Strict Zeroing — Test and Documentation Parity Cleanup
+  status: locked
+  depends_on:
+  - final_zeroing_20260418_mcp_contract
