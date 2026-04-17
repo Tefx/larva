@@ -51949,6 +51949,59 @@ phases:
 
       '
     agent: python-senior-tacit
+  - id: final_zeroing_20260418_mcp_contract.gate
+    name: Gate MCP contract exactness
+    status: pending
+    description: 'Independent gate review for the MCP contract exactness phase.
+
+
+      review_depth: THOROUGH
+
+      focus:
+
+      - schema exactness versus canonical schema, not merely test green
+
+      - false boolean export selector behavior
+
+      - no permissive public-schema drift remaining
+
+
+      Gate rule: any unresolved contract mismatch or boolean-semantic leak is FAIL.'
+    verification: 'phase-check: independently review schema exactness and export selector
+      evidence. This gate protects parity cleanup and final closure.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Reviewed evidence:
+
+      - Spot-check commands:
+
+      - Residual issues found:
+
+
+      ## Decision Basis
+
+      - schema exact for targeted fields: PASS/FAIL
+
+      - export(all=false) does not trigger export_all: PASS/FAIL
+
+      - no looser-than-canonical public schema remains for targeted fields: PASS/FAIL
+
+
+      ## Gate Decision
+
+      PASS only if every line above is PASS. Any open item = FAIL.
+
+      '
+    depends_on:
+    - final_zeroing_20260418.mcp_schema_and_export_semantics
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
   status: locked
