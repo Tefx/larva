@@ -51846,7 +51846,7 @@ phases:
       \ edits: none."
   - id: final_zeroing_20260418_fail_closed_admission.gate
     name: Gate fail-closed admission and read-path closure
-    status: claimed
+    status: done
     description: 'Independent gate review for the final fail-closed admission phase.
 
 
@@ -51910,6 +51910,22 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-17T21:12:18.215662+00:00'
+    done_at: '2026-04-17T21:29:02.664604+00:00'
+    evidence: "Independent adversarial gate review completed and returned FAIL with\
+      \ explicit blocker evidence.\n\nGate evidence summary:\n- Decision headline:\
+      \ FAIL\n- blocking_status: OPEN\n- gate_open_allowed: false\n- Blocker family:\
+      \ stale singular-alias tests after canonical-ingress hardening.\n- Blocking\
+      \ locations:\n  1) tests/shell/test_canonical_boundary_gaps.py (toolset/test\
+      \ alias)\n  2) tests/shell/test_canonical_boundary_gaps.py (constraint/test\
+      \ alias)\n  3) tests/shell/test_python_api.py (singular prompt expectation mismatch)\n\
+      - Additional should-fix: ruff lint findings in src/larva/shell/web.py (I001,\
+      \ TC001, E501).\n\nBehavioral proof register in gate evidence verified production\
+      \ behavior is correct but regression tests were stale; gate remains closed until\
+      \ remediation and retest.\n\nBatched-fix protocol applied:\n- Auto planner remediation\
+      \ executed.\n- Added one batched fix step and one retest step:\n  - final_zeroing_20260418_fail_closed_admission.fix_batched\n\
+      \  - final_zeroing_20260418_fail_closed_admission.retest\n- New chain: gate\
+      \ -> fix_batched -> retest.\n\nThis step is completed as a review artifact with\
+      \ FAIL verdict and owned remediation path created."
   - id: final_zeroing_20260418_fail_closed_admission.fix_batched
     name: Batched remediation for stale singular-alias expectations and web lint debt
     status: pending
