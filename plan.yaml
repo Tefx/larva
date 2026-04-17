@@ -52031,6 +52031,84 @@ phases:
     depends_on:
     - final_zeroing_20260418_fail_closed_admission.gate
     agent: python-senior-tacit
+  - id: final_zeroing_20260418_fail_closed_admission.retest
+    name: Retest gate criteria after batched admission remediation
+    status: pending
+    description: 'Independent retest/review after final_zeroing_20260418_fail_closed_admission.fix_batched.
+
+
+      Re-run the gate criteria for final_zeroing_20260418_fail_closed_admission with
+      explicit focus on:
+
+      - the three previously blocking stale singular-alias expectations
+
+      - the shell web lint findings (I001, TC001, E501)
+
+      - whether the batched fix closed the gate blocker family without introducing
+      new admission/read-path regressions
+
+
+      This retest is the downstream unblock point for the phase. Downstream phases
+      should only proceed once this retest is satisfied.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check'
+    verification: '- Re-run the original gate criteria for fail-closed admission and
+      read-path closure
+
+      - Confirm all three stale singular-alias expectation mismatches are resolved
+
+      - Confirm src/larva/shell/web.py lint issues I001, TC001, and E501 are resolved
+
+      - Record PASS / PASS_WITH_DEBT / FAIL with explicit blocker disposition
+
+      - This phase remains the dependency barrier for final_zeroing_20260418_mcp_contract
+      until retest evidence is accepted'
+    evidence_template: '## Verification Report
+
+      **Tester**: gate-reviewer-tacit (independent)
+
+      **Scope**: final_zeroing_20260418_fail_closed_admission batched remediation
+      retest
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ### Test Execution
+
+      - Commands or review actions executed:
+
+      - Actual output / findings:
+
+
+      ### Gate Criteria Recheck
+
+      - B1 toolset singular alias expectation: PASS/FAIL
+
+      - B2 constraint singular alias expectation: PASS/FAIL
+
+      - B3 prompt singular expectation: PASS/FAIL
+
+      - web.py lint cleanup (I001/TC001/E501): PASS/FAIL
+
+
+      ### Headline
+
+      - PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - final_zeroing_20260418_fail_closed_admission.fix_batched
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_mcp_contract
   name: Final Strict Zeroing — MCP Contract Exactness
   status: locked
