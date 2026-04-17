@@ -52769,6 +52769,73 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.gate
     agent: python-executor
+  - id: final_zeroing_20260418_parity_cleanup.retest
+    name: Retest gate for batched stale-wording cleanup
+    status: pending
+    description: 'Gate-style retest after final_zeroing_20260418_parity_cleanup.fix_batched.
+
+
+      As an INDEPENDENT REVIEWER (gate-reviewer-tacit), verify the batched stale transition-era
+      wording cleanup closed the blocker family without reopening parity drift.
+
+
+      step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+      Protects downstream finalization and the final full-plan-check.
+
+
+      Review focus:
+
+      - all 5 named locations now use final strict zeroing wording
+
+      - no stale preserve/validation-era wording remains in the targeted files'' relevant
+      parity/repro contexts
+
+      - renamed function wording and references are internally consistent
+
+      - evidence shows sibling search rather than one-line patching only
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - tests/core/test_normalize.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/spec_verify_black_box_surfaces.py — key passage or "NOT READ:
+      <reason>"
+
+      '
+    verification: 'phase-check protecting the final full-plan-check: independently
+      review the fix evidence, confirm the five reported locations and sibling references
+      were updated, and require green disposition only if no stale transition-era
+      wording remains in the targeted parity/repro surfaces.'
+    evidence_template: "## Gate Retest Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- tests/core/test_normalize.py — key passage or\
+      \ \"NOT READ: <reason>\"\n- tests/repro/spec_verify_black_box_surfaces.py —\
+      \ key passage or \"NOT READ: <reason>\"\n\n## Reviewed locations\n- tests/core/test_normalize.py:~220\n\
+      - tests/core/test_normalize.py:~222\n- tests/repro/spec_verify_black_box_surfaces.py:~9\n\
+      - tests/repro/spec_verify_black_box_surfaces.py:~153\n- tests/repro/spec_verify_black_box_surfaces.py:~371\n\
+      \n## Independent retest\n- Evidence reviewed:\n  <list commands / outputs /\
+      \ diffs cited by worker>\n- Residual stale wording found:\n  <none or list>\n\
+      - Function-name/reference consistency:\n  <pass/fail with notes>\n\n## Decision\
+      \ basis\n- requirement_ref: final hard-cut parity wording must match strict\
+      \ zeroing semantics\n- behavior_claim: parity and black-box surfaces no longer\
+      \ certify transition-era preserve behavior\n- runtime_proof_expected: read-only\
+      \ wording/references audit across the targeted files\n- evidence_ref: worker\
+      \ cleanup evidence plus reviewer spot-checks\n- status: PROVEN | UNPROVEN\n\
+      - closure_path: OPEN only if all five locations and sibling references are clean;\
+      \ otherwise BLOCK with follow-up remediation\n- gate_decision_basis: this retest\
+      \ gates downstream full-plan-check readiness\n"
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.fix_batched
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
