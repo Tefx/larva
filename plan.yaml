@@ -53033,7 +53033,7 @@ phases:
       - worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest_2
     name: Retest gate for batched parity-wording remediation follow-up
-    status: claimed
+    status: done
     description: 'Independent gate-style retest after `final_zeroing_20260418_parity_cleanup.fix_batched_2`.
 
 
@@ -53073,6 +53073,22 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T06:51:54.815210+00:00'
+    done_at: '2026-04-18T06:57:39.229930+00:00'
+    evidence: "Independent gate-style retest completed with non-green disposition\
+      \ due residual parity wording drift.\n\nReviewed refs:\n- tests/core/test_normalize.py\n\
+      - tests/repro/spec_verify_black_box_surfaces.py\n\nFindings:\n- Behavioral rejection\
+      \ semantics remain correct.\n- Residual stale framing still present in targeted\
+      \ parity/repro scope:\n  - `tests/core/test_normalize.py` method identifiers\
+      \ around ~147/~155 retain `...is_removed` naming substrate.\n  - `tests/repro/spec_verify_black_box_surfaces.py`\
+      \ module docstring around ~9 retains preserve framing.\n  - `tests/repro/spec_verify_black_box_surfaces.py`\
+      \ function name around ~153 retains preserves framing (and referenced in file\
+      \ list around ~371).\n- Optional mismatch (`PERSONA_INVALID` vs `FORBIDDEN_FIELD`)\
+      \ was reviewed and considered non-blocking/non-intersecting with wording parity\
+      \ semantics.\n\nDisposition:\n- headline: non-green (proof gap open on wording\
+      \ consistency)\n- blocking_status: open for strict wording parity closure\n\
+      - gate_open_allowed: false until identifier/docstring framing is fully canonicalized.\n\
+      \nFollow-up remediation path added:\n- final_zeroing_20260418_parity_cleanup.fix_batched_3\n\
+      - final_zeroing_20260418_parity_cleanup.retest_3"
   - id: final_zeroing_20260418_parity_cleanup.fix_batched_3
     name: Fix stale zeroing/preserve framing in targeted tests
     status: pending
