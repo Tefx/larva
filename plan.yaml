@@ -53568,7 +53568,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: final_zeroing_20260418.final_spec_conformance_fix
     name: Batch spec conformance doc/runtime remediation
-    status: pending
+    status: claimed
     description: 'Remediate the failed spec conformance audit in one coordinated change
       set. Scope must cover: (1) align spec_version requirement/defaulting language
       in USAGE.md around line ~491, (2) resolve docs/runtime mismatch on PATCH behavior
@@ -53586,6 +53586,8 @@ phases:
       to show docs/runtime/tests now agree.
     depends_on:
     - final_zeroing_20260418.spec_conformance_audit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-18T07:25:07.008399+00:00'
   - id: final_zeroing_20260418.final_spec_conformance_retest
     name: Retest spec conformance after batched fix
     status: pending
