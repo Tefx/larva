@@ -53073,6 +53073,22 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T06:51:54.815210+00:00'
+  - id: final_zeroing_20260418_parity_cleanup.fix_batched_3
+    name: Fix stale zeroing/preserve framing in targeted tests
+    status: pending
+    description: 'Apply one batched follow-up patch for the remaining parity-cleanup
+      blockers: rename stale `...is_removed`-framed method identifiers in `tests/core/test_normalize.py`
+      around lines ~147 and ~155, update the module docstring in `tests/repro/spec_verify_black_box_surfaces.py`
+      around line ~9 so it no longer uses preserve framing, and rename the stale `preserves`-framed
+      function in that file around line ~153 while updating all references including
+      around line ~371.'
+    verification: Confirm the targeted identifiers/docstrings/references now use the
+      intended zeroing/removal framing and no stale preserve/preserves wording remains
+      in the specified locations.
+    evidence_template: Paste the exact renamed identifiers/docstring/function/reference
+      locations changed in both files.
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.retest_2
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
