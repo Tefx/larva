@@ -52842,7 +52842,7 @@ phases:
       - Worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest
     name: Retest gate for batched stale-wording cleanup
-    status: pending
+    status: claimed
     description: 'Gate-style retest after final_zeroing_20260418_parity_cleanup.fix_batched.
 
 
@@ -52907,6 +52907,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.fix_batched
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T06:39:28.609478+00:00'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
