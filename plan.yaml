@@ -53089,6 +53089,18 @@ phases:
       locations changed in both files.
     depends_on:
     - final_zeroing_20260418_parity_cleanup.retest_2
+  - id: final_zeroing_20260418_parity_cleanup.retest_3
+    name: Retest parity cleanup after batched follow-up fix
+    status: pending
+    description: Re-run the relevant parity-cleanup verification after `fix_batched_3`
+      to confirm the targeted stale framings were fully removed and the updated names/references
+      are consistent.
+    verification: Run the relevant focused verification for the touched tests/repros
+      and confirm the batched follow-up path passes without stale framing regressions.
+    evidence_template: Paste the retest command(s) and outcome showing the updated
+      tests/repro checks passed.
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.fix_batched_3
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
