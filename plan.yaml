@@ -54627,3 +54627,12 @@ phases:
       \ gate\"\n    claim: \"No residual placeholder-rejection language in authority\
       \ docs\"\n    status: \"PROVEN\"\n\ngate_decision:\n  headline: \"PASS\"\n \
       \ gate_open_allowed: true\n  blocking_behavioral_proofs: []"
+- id: post_prompt_opacity_debt_cleanup_20260419
+  name: Prompt Opacity Post-Gate Debt Cleanup
+  status: pending
+  gate: 'Cleanup gate: OPEN only when dead prompt-placeholder residue is removed,
+    larva_export all=false semantics match the larva export case-matrix, focused docs/tests
+    parity is updated, and verification reports uncovered cases = none, Open Problems
+    = none, Residual Risk = none.'
+  depends_on:
+  - prompt_opacity_doctor_parity_20260418
