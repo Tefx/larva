@@ -53610,7 +53610,7 @@ phases:
       \ assert strict rejection, aligning docs/runtime/tests."
   - id: final_zeroing_20260418.final_spec_conformance_retest
     name: Retest spec conformance after batched fix
-    status: pending
+    status: claimed
     description: Re-run the spec conformance checks after final_zeroing_20260418.final_spec_conformance_fix
       lands. Confirm the original audit failure is cleared and that the batched remediation
       did not introduce regressions in the affected PATCH/spec_version/metadata handling
@@ -53622,3 +53622,5 @@ phases:
       resolved.
     depends_on:
     - final_zeroing_20260418.final_spec_conformance_fix
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-04-18T07:35:17.844480+00:00'
