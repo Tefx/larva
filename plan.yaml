@@ -54032,7 +54032,7 @@ phases:
       \ as assigned. No larva repo-local implementation was started."
   - id: prompt_opacity_authority_sync_20260418.gate
     name: Gate opifex authority sync before larva repo-local work
-    status: pending
+    status: claimed
     description: 'Independent gate for the upstream prerequisite. Open only when the
       opifex authority files, larva handover, and larva case-matrix are mutually aligned
       to the chosen prompt-opacity contract and the boundary is explicit: upstream
@@ -54066,3 +54066,5 @@ phases:
     depends_on:
     - prompt_opacity_authority_sync_20260418.opifex_sync
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T12:30:31.956362+00:00'
