@@ -53957,6 +53957,7 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
+    - prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     agent: integration-verifier-tacit
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
