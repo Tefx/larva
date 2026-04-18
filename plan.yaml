@@ -53669,7 +53669,7 @@ phases:
       \ semantics."
 - id: prompt_opacity_doctor_parity_20260418
   name: Prompt Opacity + Doctor Parity (Larva Repo-Local Implementation + Gates)
-  status: pending
+  status: in_progress
   gate: 'Phase 4 repo-local execution/gate protocol: after each modification round
     rerun a fresh full self-test, make assigned-surface coverage explicit, map all
     larva case-matrix coverage explicitly, run docs/tests parity scan, and only PASS
@@ -53683,7 +53683,7 @@ phases:
   steps:
   - id: prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     name: Implement canonical prompt opacity in core validation and assembly
-    status: pending
+    status: claimed
     description: Delete brace-placeholder scanning from src/larva/core/validate.py
       and src/larva/core/assemble.py, preserve prompt string-shape validation by moving
       prompt coverage into src/larva/core/validation_field_shapes.py, and replace
@@ -53705,6 +53705,8 @@ phases:
 
       - residual risks: note any remaining brace-policy callers or none'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T13:46:54.540388+00:00'
   - id: prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     name: Retire placeholder-specific error code and sync user-facing docs/tests
     status: pending
