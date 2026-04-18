@@ -78,7 +78,7 @@ class TestFacadeAssemble:
 
         result = facade.assemble({"id": "persona-a", "prompts": ["templated"]})
 
-        assert result.ok
+        assert isinstance(result, Success)
         assembled = cast("dict[str, object]", result.value)
         assert assembled["prompt"] == "You are {role}."
 
