@@ -54009,9 +54009,6 @@ phases:
     - ../opifex/conformance/case_matrix/larva/*
     - ../opifex/design/final-canonical-contract.md
     depends_on:
-    - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
-    - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
-    - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     - prompt_opacity_doctor_parity_20260418.cross_surface_verify
     agent: gate-reviewer-tacit
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
