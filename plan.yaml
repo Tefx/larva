@@ -53552,3 +53552,23 @@ phases:
     - final_zeroing_20260418.full_plan_check
     - final_zeroing_20260418.spec_conformance_audit
     agent: gate-reviewer-tacit
+  - id: final_zeroing_20260418.final_spec_conformance_fix
+    name: Batch spec conformance doc/runtime remediation
+    status: pending
+    description: 'Remediate the failed spec conformance audit in one coordinated change
+      set. Scope must cover: (1) align spec_version requirement/defaulting language
+      in USAGE.md around line ~491, (2) resolve docs/runtime mismatch on PATCH behavior
+      in INTERFACES.md around line ~150 and ADR-001-spec-version-boundary.md lines
+      ~13-14 if still authoritative, and (3) fix or intentionally redefine metadata
+      scrubbing/laundering behavior on the patch/update path in src/larva/core/patch.py
+      around 132-148 plus related tests such as tests/shell/test_web.py around 387-401
+      so docs, runtime behavior, and test expectations agree. Preserve completed steps
+      unchanged and keep the remediation batched into this single fix step.'
+    verification: Code/docs/tests reflect one consistent spec-conformance story for
+      spec_version handling, PATCH semantics, and metadata laundering behavior; targeted
+      tests updated to match the chosen contract.
+    evidence_template: Summarize the chosen spec-conformant behavior for each blocker,
+      list files changed, and provide the exact verification commands/results used
+      to show docs/runtime/tests now agree.
+    depends_on:
+    - final_zeroing_20260418.spec_conformance_audit
