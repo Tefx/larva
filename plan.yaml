@@ -52677,7 +52677,7 @@ phases:
       \ with fail verdict and explicit remediation ownership created."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched
     name: Batched stale transition-era wording cleanup
-    status: claimed
+    status: done
     description: 'Fix ALL stale transition-era wording blockers found by final_zeroing_20260418_parity_cleanup.gate.
 
 
@@ -52784,6 +52784,62 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T06:35:48.961432+00:00'
+    done_at: '2026-04-18T06:39:18.578658+00:00'
+    evidence: 'Completed batched stale transition-era wording cleanup across all blocker
+      locations.
+
+
+      Updated locations:
+
+      - tests/core/test_normalize.py (~220, ~222): replaced preserve/downstream/late-validation
+      phrasing with strict rejection semantics.
+
+      - tests/repro/spec_verify_black_box_surfaces.py (~9): module docstring updated
+      to strict rejection semantics.
+
+      - tests/repro/spec_verify_black_box_surfaces.py (~153): function renamed from
+      `test_normalize_preserves_forbidden_fields_for_rejection` to `test_normalize_rejects_forbidden_fields`
+      with matching docstring.
+
+      - tests/repro/spec_verify_black_box_surfaces.py (~371): function reference updated
+      to renamed function.
+
+
+      refs read confirmation:
+
+      - tests/core/test_normalize.py read; key class docstring passage identified
+      and corrected.
+
+      - tests/repro/spec_verify_black_box_surfaces.py read; module docstring/function
+      name/reference corrected.
+
+
+      Sibling search evidence:
+
+      - Ran grep scans for preserve/downstream/late-validation wording and stale function
+      name patterns.
+
+      - No remaining references to old function name in targeted files.
+
+      - One out-of-scope phrase in tests/shell/test_canonical_boundary_gaps.py deemed
+      non-blocking for this step family (not normalize preserve semantics).
+
+
+      Verification:
+
+      - Focused run reported wording changes complete; one pre-existing unrelated
+      test mismatch surfaced outside step scope.
+
+      - Diff limited to two targeted test files; no product implementation files modified.
+
+
+      Commit/merge:
+
+      - Step branch commit: `89b2021`.
+
+      - Fast-forward merged into main.
+
+      - Worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest
     name: Retest gate for batched stale-wording cleanup
     status: pending
