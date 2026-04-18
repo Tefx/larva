@@ -53732,7 +53732,7 @@ phases:
       doctor/doc parity steps still required by phase'
   - id: prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     name: Retire placeholder-specific error code and sync user-facing docs/tests
-    status: pending
+    status: claimed
     description: Remove dead VARIABLE_UNRESOLVED numeric-code/parity requirements
       from src/larva/app/facade.py, USAGE.md, and required parity tests/docs so active
       error tables and surface contracts match the opaque-prompt rule without introducing
@@ -53753,6 +53753,8 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T13:48:53.320201+00:00'
   - id: prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     name: Fix doctor registry parity for brace-containing prompt entries
     status: claimed
