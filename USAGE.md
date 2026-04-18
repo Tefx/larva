@@ -31,6 +31,10 @@ larva_component_list()                  → {prompts, toolsets, constraints, mod
 larva_component_show(type, name)        → component content
 ```
 
+For `larva_export`, provide exactly one selector: `all=true` to export the
+full registry, or `ids=[...]` to export specific personas. `{all:false}` is
+rejected as a missing selector.
+
 For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
 `side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
 
@@ -46,9 +50,14 @@ larva delete <id> [--json]
 larva clear --confirm "CLEAR REGISTRY" [--json]
 larva component list [--json]
 larva component show <type>/<name> [--json]
+larva doctor [--json]
 ```
 
 Use `--json` for machine-readable output on all commands. All CLI commands exit 0 (success), 1 (domain error), 2 (input/critical failure).
+
+`larva doctor` always runs the registry diagnostic through the same
+facade-backed canonical validation path used by list/serve. There is no
+separate shallow mode.
 
 ### Fallback: Python API
 

@@ -230,23 +230,11 @@ def _dispatch_update_batch(
 
 
 def _dispatch_doctor(
-    args: argparse.Namespace,
     *,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
-    doctor_command = cast("str", getattr(args, "doctor_command", ""))
-    if doctor_command == "registry":
-        return doctor_registry_command(as_json=as_json, facade=facade)
-    return Failure(
-        {
-            "exit_code": EXIT_CRITICAL,
-            "stderr": f"Unsupported doctor subcommand: {doctor_command}\n",
-            "error": _critical_error(
-                "unsupported doctor subcommand", {"command": doctor_command}
-            ).unwrap(),
-        }
-    )
+    return doctor_registry_command(as_json=as_json, facade=facade)
 
 
 def _dispatch(
@@ -282,7 +270,7 @@ def _dispatch(
         "component": lambda: _dispatch_component(
             args, as_json=as_json, component_store=component_store
         ),
-        "doctor": lambda: _dispatch_doctor(args, as_json=as_json, facade=facade),
+        "doctor": lambda: _dispatch_doctor(as_json=as_json, facade=facade),
     }
     dispatch = command_dispatchers.get(command)
     if dispatch is not None:

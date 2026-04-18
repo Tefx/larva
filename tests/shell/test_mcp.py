@@ -2698,14 +2698,19 @@ class TestMCPHandleExport:
             reason="params must be an object",
         )
 
-    def test_handle_export_all_false_does_not_route_to_export_all(self) -> None:
+    def test_handle_export_all_false_returns_missing_selector_error(self) -> None:
         registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
 
         result = handlers.handle_export({"all": False})
 
-        assert result == []
+        assert isinstance(result, dict)
+        _assert_malformed_params_error(
+            cast("LarvaError", result),
+            tool="larva_export",
+            reason="must specify either 'all' or 'ids'",
+        )
         assert registry.list_calls == 0
         assert registry.get_calls == []
 

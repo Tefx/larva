@@ -592,7 +592,7 @@ class TestCrossSurfaceComponentQueryConsistency:
         try:
             shared_result = query_component(
                 components,
-                component_type="prompt",
+                component_type="prompts",
                 component_name="missing",
                 operation="python_api.component_show",
             )
@@ -600,7 +600,7 @@ class TestCrossSurfaceComponentQueryConsistency:
             shared_error = shared_result.failure()
 
             with pytest.raises(python_api.LarvaApiError) as python_exc:
-                python_api.component_show("prompt", "missing")
+                python_api.component_show("prompts", "missing")
             python_error = python_exc.value.error
 
             assert shared_error["code"] == "COMPONENT_NOT_FOUND"
@@ -630,7 +630,7 @@ class TestCrossSurfaceComponentQueryConsistency:
         try:
             shared_result = query_component(
                 components,
-                component_type="prompt",
+                component_type="prompts",
                 component_name="missing",
                 operation="python_api.component_show",
             )
@@ -638,7 +638,7 @@ class TestCrossSurfaceComponentQueryConsistency:
             shared_error = shared_result.failure()
 
             with pytest.raises(python_api.LarvaApiError) as python_exc:
-                python_api.component_show("prompt", "missing")
+                python_api.component_show("prompts", "missing")
             python_error = python_exc.value.error
 
             assert shared_error["code"] == "INTERNAL"
@@ -648,8 +648,8 @@ class TestCrossSurfaceComponentQueryConsistency:
         finally:
             python_api_components._component_store = original_py_store
 
-    def test_component_alias_query_semantics_align_across_all_surfaces(self) -> None:
-        """Singular aliases should normalize consistently across every public surface."""
+    def test_component_singular_alias_rejected_consistently_across_all_surfaces(self) -> None:
+        """Singular aliases must fail closed consistently across every public surface."""
         from starlette.testclient import TestClient
 
         components = InMemoryComponentStore(
@@ -665,15 +665,17 @@ class TestCrossSurfaceComponentQueryConsistency:
             cli_result = component_show_command(
                 "prompt/test-item", as_json=True, component_store=components
             )
-            assert isinstance(cli_result, Success)
-            cli_payload = cli_result.unwrap()["json"]["data"]
+            assert isinstance(cli_result, Failure)
+            cli_error = cli_result.failure()["error"]
 
             mcp_payload = handlers.handle_component_show(
                 {"component_type": "prompt", "name": "test-item"}
             )
             assert isinstance(mcp_payload, dict)
 
-            python_payload = python_api.component_show("prompt", "test-item")
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.component_show("prompt", "test-item")
+            python_error = python_exc.value.error
 
             packaged_response = TestClient(web_module.app, raise_server_exceptions=False).get(
                 "/api/components/prompt/test-item"
@@ -682,13 +684,19 @@ class TestCrossSurfaceComponentQueryConsistency:
                 "/api/components/prompt/test-item"
             )
 
-            assert packaged_response.status_code == 200
-            assert packaged_response.json()["data"] == cli_payload == mcp_payload == python_payload
-            assert contrib_response.status_code == 200, (
+            assert cli_error["code"] == "INVALID_INPUT"
+            assert cli_error["details"]["reason"] == "invalid_kind"
+            assert mcp_payload["code"] == cli_error["code"]
+            assert mcp_payload["details"]["reason"] == cli_error["details"]["reason"]
+            assert python_error["code"] == cli_error["code"]
+            assert python_error["details"]["reason"] == cli_error["details"]["reason"]
+            assert packaged_response.status_code == 400
+            assert packaged_response.json()["error"]["code"] == cli_error["code"]
+            assert contrib_response.status_code == 400, (
                 "exposed_gap[component_query_cross_surface]: contrib web does not honor the "
-                "shared singular-alias query contract"
+                "shared invalid-kind contract for singular aliases"
             )
-            assert contrib_response.json()["data"] == packaged_response.json()["data"]
+            assert contrib_response.json()["error"]["code"] == cli_error["code"]
         finally:
             python_api_components._component_store = original_py_store
 
@@ -818,6 +826,19 @@ class TestCrossSurfaceMalformedParams:
         assert result["code"] == "INTERNAL"
         assert result["numeric_code"] == 10
         assert "missing required parameter 'id'" in result["message"]
+
+    def test_mcp_export_all_false_is_rejected_like_missing_selector(self) -> None:
+        """MCP export treats all=false as no selector, not export-all."""
+        facade = make_facade()
+        handlers = mcp_module.MCPHandlers(facade)
+
+        result = handlers.handle_export({"all": False})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "INTERNAL"
+        assert result["numeric_code"] == 10
+        assert result["details"]["tool"] == "larva_export"
+        assert result["details"]["reason"] == "must specify either 'all' or 'ids'"
 
     def test_mcp_register_missing_spec_parameter(self) -> None:
         """MCP register with missing spec parameter returns malformed error."""

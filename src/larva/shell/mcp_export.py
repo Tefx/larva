@@ -46,7 +46,7 @@ def handle_export(
     handlers: ExportHandlerDeps,
     params: object,
 ) -> Result[list[PersonaSpec], LarvaError]:
-    """Handle ``larva_export`` with ``all`` xor ``ids`` validation."""
+    """Handle ``larva_export`` with ``all=true`` xor ``ids`` validation."""
     return _handle_export_impl(handlers, params)
 
 
@@ -75,8 +75,8 @@ def _handle_export_impl(
     return handlers._facade.export_ids(ids)
 
 
-# @shell_complexity: export selection keeps explicit all/ids conflict handling
-# at the transport boundary.
+# @shell_complexity: export selection keeps explicit all=true/ids conflict and
+# missing-selector handling at the transport boundary.
 def _validate_export_target(
     handlers: ExportHandlerDeps,
     checked_params: dict[str, Any],
@@ -108,6 +108,14 @@ def _validate_export_target(
         if isinstance(type_result, Failure):
             issue = type_result.failure()
             return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
+        if checked_params["all"] is False:
+            return Failure(
+                handlers._malformed_params_error(
+                    "larva_export",
+                    "must specify either 'all' or 'ids'",
+                    {"field": "all", "missing": ["ids"]},
+                )
+            )
         return Success((cast("bool", checked_params["all"]), []))
 
     list_result = require_list_of_strings(checked_params, "ids")

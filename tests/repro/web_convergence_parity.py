@@ -184,7 +184,7 @@ class TestComponentQueryParity:
     """Expose current packaged/contrib component-query divergence."""
 
     def test_component_alias_query_parity_exposes_contrib_gap(self) -> None:
-        """Singular aliases should behave the same on packaged and contrib web."""
+        """Singular aliases should be rejected the same way on packaged and contrib web."""
         from starlette.testclient import TestClient
 
         contrib_module = _load_contrib_module()
@@ -194,10 +194,15 @@ class TestComponentQueryParity:
         packaged_response = packaged_client.get("/api/components/prompt/test-alias")
         contrib_response = contrib_client.get("/api/components/prompt/test-alias")
 
+        assert packaged_response.status_code == 400
         assert packaged_response.status_code == contrib_response.status_code, (
             "exposed_gap[component_query_alias_web]: packaged and contrib alias ingress "
             f"diverged: packaged={packaged_response.status_code} contrib={contrib_response.status_code}"
         )
+        assert packaged_response.headers.get("content-type", "").startswith("application/json")
+        assert contrib_response.headers.get("content-type", "").startswith("application/json")
+        assert packaged_response.json()["error"]["details"]["reason"] == "invalid_kind"
+        assert contrib_response.json()["error"]["details"]["reason"] == "invalid_kind"
 
     def test_component_invalid_kind_error_parity_exposes_contrib_gap(self) -> None:
         """Invalid component kinds should project the same typed error envelope."""

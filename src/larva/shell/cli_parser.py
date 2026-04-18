@@ -294,24 +294,16 @@ def _add_server_commands(subparsers: argparse._SubParsersAction[_CliParser]) -> 
         description="Launch larva as an MCP server communicating over stdio.",
     )
 
-    # doctor subcommands
+    # doctor command
     doctor_parser = subparsers.add_parser(
         "doctor",
         help="Run diagnostics for larva subsystems",
-        description="Run read-only diagnostic checks on larva subsystems.",
+        description=(
+            "Run read-only diagnostics on the persona registry using the same "
+            "facade-backed canonical validation path as list/serve."
+        ),
     )
-    doctor_subparsers = doctor_parser.add_subparsers(
-        dest="doctor_command",
-        required=True,
-        title="subcommands",
-        metavar="SUBCOMMAND",
-    )
-    doctor_registry_parser = doctor_subparsers.add_parser(
-        "registry",
-        help="Diagnose the persona registry",
-        description="Run read-only diagnostics on the registry: index integrity, spec file accessibility, and canonical boundary compliance.",
-    )
-    _add_json_flag(doctor_registry_parser)
+    _add_json_flag(doctor_parser)
 
 
 # @shell_orchestration: parser composition only wires command definitions and flags

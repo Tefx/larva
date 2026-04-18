@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import math
-import re
 
 from deal import post, pre
 
 from larva.core.validation_contract import ValidationIssue
-
-_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 _REQUIRED_STRING_TYPE_FIELDS: tuple[str, ...] = ("description", "model")
 _OPTIONAL_STRING_TYPE_FIELDS: tuple[str, ...] = ("compaction_prompt", "spec_digest")

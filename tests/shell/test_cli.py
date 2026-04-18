@@ -4072,7 +4072,7 @@ class TestRunLoopBatchUpdate:
 
 
 class TestDoctorRegistryCommand:
-    """Tests for the doctor registry diagnostic command."""
+    """Tests for the doctor diagnostic command and underlying registry probe."""
 
     def test_doctor_registry_empty_registry_returns_ok(self) -> None:
         """Doctor registry with empty registry returns exit 0."""
@@ -4195,8 +4195,8 @@ class TestDoctorRegistryCommand:
             assert "json" in cli_result
             assert cli_result["json"]["data"]["status"] == "ok"
 
-    def test_doctor_registry_unknown_subcommand_returns_critical(self) -> None:
-        """Unknown doctor subcommand returns exit code 2."""
+    def test_doctor_extra_argument_returns_critical(self) -> None:
+        """Doctor rejects extra positional arguments after surface simplification."""
         from larva.shell.cli import run_cli
 
         facade = _make_facade()
@@ -4205,7 +4205,7 @@ class TestDoctorRegistryCommand:
         stderr = io.StringIO()
 
         exit_code = run_cli(
-            ["doctor", "unknown-subcommand"],
+            ["doctor", "registry"],
             facade=facade,
             stdout=stdout,
             stderr=stderr,
@@ -4213,8 +4213,8 @@ class TestDoctorRegistryCommand:
 
         assert exit_code == EXIT_CRITICAL
 
-    def test_doctor_registry_via_cli_full_path(self) -> None:
-        """Doctor registry via run_cli with full path succeeds."""
+    def test_doctor_via_cli_full_path(self) -> None:
+        """Doctor via run_cli succeeds with the single public surface."""
         from pathlib import Path
         from unittest.mock import MagicMock, patch
         from larva.shell.cli import run_cli
@@ -4231,13 +4231,41 @@ class TestDoctorRegistryCommand:
             stderr = io.StringIO()
 
             exit_code = run_cli(
-                ["doctor", "registry"],
+                ["doctor"],
                 facade=facade,
                 stdout=stdout,
                 stderr=stderr,
             )
 
             assert exit_code == EXIT_OK
+
+    def test_doctor_json_mode_via_cli_full_path_succeeds(self) -> None:
+        """Doctor supports JSON mode on the single public surface."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli import run_cli
+        from returns.result import Success
+
+        facade = _make_facade()
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({})
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+
+            exit_code = run_cli(
+                ["doctor", "--json"],
+                facade=facade,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+            assert exit_code == EXIT_OK
+            payload = json.loads(stdout.getvalue())
+            assert payload["data"]["status"] == "ok"
 
     def test_doctor_registry_with_malformed_spec_fails_via_facade_validation(self) -> None:
         """Doctor registry with facade catches malformed spec that list/serve would reject.
@@ -4292,6 +4320,53 @@ class TestDoctorRegistryCommand:
             assert "DIAGNOSTIC FAIL" in failure["stderr"]
             assert "spec_version" in failure["stderr"]
             assert "malformed-persona" in failure["stderr"]
+
+    def test_doctor_cli_fails_on_malformed_spec_via_facade_validation(self) -> None:
+        """doctor must expose facade-backed validation failures on its only surface."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli import run_cli
+        from returns.result import Success
+
+        malformed_spec = {
+            "id": "malformed-persona",
+            "description": "Missing spec_version",
+            "prompt": "You are helpful.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+        }
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success({"malformed-persona": "sha256:bad"})
+            mock_store._read_spec.return_value = Success(malformed_spec)
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            facade = DefaultLarvaFacade(
+                spec=spec_module,
+                assemble=assemble_module,
+                validate=validate_module,
+                normalize=normalize_module,
+                components=InMemoryComponentStore(),
+                registry=InMemoryRegistryStore(),
+            )
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+
+            exit_code = run_cli(
+                ["doctor"],
+                facade=facade,
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+            assert exit_code == EXIT_ERROR
+            error_output = stderr.getvalue()
+            assert "DIAGNOSTIC FAIL" in error_output
+            assert "spec_version" in error_output
+            assert "malformed-persona" in error_output
 
     def test_doctor_registry_with_valid_specs_succeeds_via_facade_validation(self) -> None:
         """Doctor registry with facade passes valid specs that list/serve accept."""

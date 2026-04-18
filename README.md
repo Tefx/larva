@@ -195,6 +195,7 @@ larva export --id <id> [--id <id>]... [--json]
 larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [-o output.json]
 larva component list [--json]
 larva component show <type>/<name> [--json]
+larva doctor [--json]
 ```
 
 ### Python API
