@@ -53821,7 +53821,7 @@ phases:
       - Commit was produced in step branch; changes are ready for orchestrator merge.'
   - id: prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     name: Fix doctor registry parity for brace-containing prompt entries
-    status: claimed
+    status: done
     description: Narrowly update src/larva/shell/cli_doctor.py so doctor registry
       no longer reports OK for registry entries that larva list/serve would reject,
       using the same facade-backed admission/read path needed to catch brace-related
@@ -53848,6 +53848,21 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T13:59:09.528618+00:00'
+    done_at: '2026-04-18T14:23:03.868121+00:00'
+    evidence: "- refs read: design/prompt-text-opacity-basis.md, src/larva/shell/cli_doctor.py,\
+      \ src/larva/app/facade.py\n- expected-red: doctor previously did shallow fs-only\
+      \ reads and could report OK for malformed specs that facade list/serve rejects\
+      \ via normalization/validation (e.g., missing spec_version)\n- implementation\
+      \ summary: narrowly added optional facade-backed validation path in doctor registry\
+      \ command and wired CLI dispatch to pass facade; retained backward compatibility\
+      \ with facade=None; added focused regression tests for malformed vs valid specs\n\
+      - files changed: src/larva/shell/cli_doctor.py, src/larva/shell/cli.py, tests/shell/test_cli.py\n\
+      - commit: 1f2d2245b8809d8ab874e852682e52419da63d45\n- verification:\n  - `uv\
+      \ run pytest tests/shell/test_cli.py::TestDoctorRegistryCommand -v` -> 9 passed\n\
+      \  - `uv run pytest tests/shell/test_cli.py -v` -> 198 passed\n  - `uv run pyright\
+      \ src/larva/shell/cli_doctor.py src/larva/shell/cli.py` -> 0 errors\n- residual\
+      \ risks: no broad health-scan expansion; no registry mutation introduced; backward\
+      \ compatibility preserved for direct doctor command callers"
   - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
     name: Verify opaque-prompt and doctor behavior across affected surfaces
     status: pending
