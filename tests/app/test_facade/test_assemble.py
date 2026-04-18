@@ -76,10 +76,18 @@ class TestFacadeAssemble:
             registry=InMemoryRegistryStore(),
         )
 
-        result = facade.assemble({"id": "persona-a", "prompts": ["templated"]})
+        result = facade.assemble({
+            "id": "persona-a",
+            "description": "Test persona with literal braces",
+            "prompts": ["templated"],
+            "toolsets": ["default-tools"],
+            "constraints": ["default-constraints"],
+            "model": "default-model",
+            "overrides": {"spec_version": "0.1.0"},
+        })
 
         assert isinstance(result, Success)
-        assembled = cast("dict[str, object]", result.value)
+        assembled = cast("dict[str, object]", result.unwrap())
         assert assembled["prompt"] == "You are {role}."
 
     def test_assemble_rejects_variables_at_facade_request_boundary(self) -> None:
