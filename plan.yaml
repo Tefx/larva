@@ -54711,3 +54711,32 @@ phases:
     - post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
     - post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     agent: integration-verifier-tacit
+  - id: post_prompt_opacity_debt_cleanup_20260419.gate
+    name: Gate the non-blocking debt cleanup phase
+    status: pending
+    description: 'Independent gate for the debt-cleanup phase. OPEN only when both
+      previously non-blocking debts are now closed with explicit evidence: no dead
+      prompt-placeholder residue remains, larva_export all=false matches the shared-surface
+      case matrix, verification shows no parity gaps, and no new residual risk was
+      introduced.'
+    verification: Reviewer confirms both prior debts are closed, verification evidence
+      is complete, uncovered cases = none, Open Problems = none, Residual Risk = none,
+      and no speculative scope creep was introduced.
+    evidence_template: '## Gate Decision Basis
+
+      - dead placeholder residue cleared: YES/NO
+
+      - export all=false semantic drift cleared: YES/NO
+
+      - docs/tests parity complete: YES/NO
+
+      - uncovered cases: NONE / list
+
+      - Open Problems: NONE / list
+
+      - Residual Risk: NONE / list
+
+      - Decision: OPEN | BLOCKED'
+    depends_on:
+    - post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
+    agent: gate-reviewer-tacit
