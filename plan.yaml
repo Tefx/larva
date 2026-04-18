@@ -53422,7 +53422,7 @@ phases:
       ### Verdict: ALL 9 TARGETS PROVEN → PASS'
   - id: final_zeroing_20260418.spec_conformance_audit
     name: Audit final strict zeroing against canonical authorities
-    status: claimed
+    status: done
     description: 'Independent spec-conformance audit for the final strict zeroing
       pass.
 
@@ -53497,6 +53497,20 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-18T07:19:19.104304+00:00'
+    done_at: '2026-04-18T07:24:41.885744+00:00'
+    evidence: "Independent spec-conformance audit completed with FAIL.\n\nDivergences\
+      \ found:\n1) public-contract wording looser than canonical requirement for `spec_version`\
+      \ (docs mention defaulting/overwrite behavior):\n   - USAGE.md (~491)\n2) accept-and-clean\
+      \ semantics documented/implemented on patch/update paths:\n   - INTERFACES.md\
+      \ (~150) and related behavior in src/larva/core/patch.py (~132-148)\n   - web\
+      \ tests currently certify ignore/overwrite behavior (tests/shell/test_web.py\
+      \ ~387-401)\n3) malformed metadata laundering concern remains on patch/update\
+      \ path via metadata stripping before validation.\n\nConformance area that passed:\n\
+      - MCP advertised schema/runtime checks align with canonical contract for targeted\
+      \ strict fields (closed schema, requireds, no legacy fields).\n\nAudit decision:\n\
+      - FAIL due to docs/runtime mismatch and residual laundering-style behavior on\
+      \ patch/update surfaces.\n\nRemediation path created:\n- final_zeroing_20260418.final_spec_conformance_fix\n\
+      - final_zeroing_20260418.final_spec_conformance_retest"
   - id: final_zeroing_20260418_finalization.gate
     name: Final gate for strict zeroing closure
     status: pending
