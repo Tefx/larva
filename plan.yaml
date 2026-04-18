@@ -53091,7 +53091,7 @@ phases:
       - final_zeroing_20260418_parity_cleanup.retest_3"
   - id: final_zeroing_20260418_parity_cleanup.fix_batched_3
     name: Fix stale zeroing/preserve framing in targeted tests
-    status: claimed
+    status: done
     description: 'Apply one batched follow-up patch for the remaining parity-cleanup
       blockers: rename stale `...is_removed`-framed method identifiers in `tests/core/test_normalize.py`
       around lines ~147 and ~155, update the module docstring in `tests/repro/spec_verify_black_box_surfaces.py`
@@ -53107,6 +53107,22 @@ phases:
     - final_zeroing_20260418_parity_cleanup.retest_2
     claimed_by: python-executor
     claimed_at: '2026-04-18T06:57:56.069361+00:00'
+    done_at: '2026-04-18T06:59:27.443399+00:00'
+    evidence: "Batched cleanup applied for remaining parity framing blockers.\n\n\
+      Targeted updates:\n- tests/core/test_normalize.py\n  - renamed `test_post_contracts_do_not_claim_tools_is_removed`\
+      \ -> `test_post_contracts_do_not_claim_tools_are_strictly_rejected`\n  - renamed\
+      \ `test_post_contracts_do_not_claim_side_effect_policy_is_removed` -> `test_post_contracts_do_not_claim_side_effect_policy_are_strictly_rejected`\n\
+      - tests/repro/spec_verify_black_box_surfaces.py\n  - module docstring wording\
+      \ updated from preserve framing to reject framing\n  - renamed `test_normalize_preserves_forbidden_fields_for_rejection`\
+      \ -> `test_normalize_rejects_forbidden_fields_strictly`\n  - updated `__main__`\
+      \ reference accordingly.\n\nVerification evidence:\n- grep checks for stale\
+      \ tokens returned no matches in targeted files:\n  - `is_removed` in tests/core/test_normalize.py\n\
+      \  - `preserves_forbidden|preserves forbidden` in tests/repro/spec_verify_black_box_surfaces.py\n\
+      \nCommit evidence from implementer:\n- commit hash reported: `37500d78caac2ba064585ea34bf4e4cc144a5bad`\n\
+      - files changed: 2 (5 insertions/5 deletions).\n\nPost-merge state:\n- ff merge\
+      \ showed no additional delta required at orchestrator merge point.\n- stale-name\
+      \ grep on main confirms old identifiers/phrasing absent.\n- worktree/branch\
+      \ cleaned."
   - id: final_zeroing_20260418_parity_cleanup.retest_3
     name: Retest parity cleanup after batched follow-up fix
     status: pending
