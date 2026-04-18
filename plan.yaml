@@ -54013,7 +54013,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     name: Repair facade prompt-opacity verification fixture/assertions
-    status: pending
+    status: claimed
     description: 'Fix the blocker-class verification bug in the facade assemble tests
       without changing product behavior.
 
@@ -54111,6 +54111,8 @@ phases:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T14:56:59.518737+00:00'
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
