@@ -53758,19 +53758,94 @@ phases:
   - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
     name: Verify opaque-prompt and doctor behavior across affected surfaces
     status: pending
-    description: Run a focused verification sweep across core, facade, CLI, MCP, and
-      repro coverage to confirm brace text is treated as literal prompt data everywhere,
-      variables remain forbidden, and doctor now agrees with facade-backed registry
-      behavior for the fixed mismatch.
-    verification: Run the focused affected-suite commands plus invar guard on changed
-      files to prove contract, parity, and regression coverage remain green.
-    evidence_template: '- refs read: affected tests and design basis
+    description: Independent Phase 4 repo-local verification sweep for larva after
+      the repo-local modification rounds. Require fresh full self-test evidence after
+      each modification round, then verify the final larva state across core, facade,
+      CLI, MCP, docs/tests parity, and the repo-local doctor path. Assigned shared-surface
+      coverage must be explicit for larva_validate, larva_register, larva_resolve,
+      larva_assemble, larva_component_show, larva_export, larva_shared_naming_docs,
+      and larva_mcp_server_naming. Also require explicit mapping to ../opifex/conformance/case_matrix/larva/*
+      and explicit confirmation that doctor registry parity is a larva-only repo-local
+      obligation rather than upstream shared-surface work.
+    verification: 'Require fresh full self-test output after each modification round
+      plus a final focused sweep proving: assigned-surface coverage is explicit, larva
+      case-matrix mapping is explicit, docs/tests parity scan is complete, brace text
+      is treated as literal prompt data everywhere, variables remain forbidden, doctor
+      now agrees with facade-backed registry behavior for the fixed mismatch, and
+      uncovered cases = none.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - verification matrix: core / facade / CLI / MCP / repro / doctor parity
 
-      - commands: paste focused test commands/results and invar guard output
+      For each ref in this step:
 
-      - gaps: explicitly state any skipped checks or ''none'''
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Phase 4 Verification Ledger
+
+      - Modification round 1 fresh full self-test command + output:
+
+      - Modification round 2 fresh full self-test command + output:
+
+      - Additional rounds (if any):
+
+
+      ## Assigned-Surface Coverage
+
+      - larva_validate:
+
+      - larva_register:
+
+      - larva_resolve:
+
+      - larva_assemble:
+
+      - larva_component_show:
+
+      - larva_export:
+
+      - larva_shared_naming_docs:
+
+      - larva_mcp_server_naming:
+
+      - Doctor registry parity (repo-local only, not shared-surface):
+
+
+      ## Case Matrix Mapping
+
+      - case id/path -> larva evidence ref
+
+      - Uncovered cases: NONE / list
+
+
+      ## Docs/Tests Parity Scan
+
+      - Docs checked:
+
+      - Tests checked:
+
+      - Parity gaps: NONE / list
+
+
+      ## Open Problems / Residual Risk
+
+      - Open Problems: NONE / list
+
+      - Residual Risk: NONE / list
+
+
+      ## PASS Criteria
+
+      - uncovered cases = none
+
+      - Open Problems = none
+
+      - Residual Risk = none'
+    refs:
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/handovers/02-to-larva.md
+    - ../opifex/conformance/case_matrix/larva/*
+    - ../opifex/design/final-canonical-contract.md
     depends_on:
     - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
