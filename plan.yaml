@@ -53732,7 +53732,7 @@ phases:
       doctor/doc parity steps still required by phase'
   - id: prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     name: Retire placeholder-specific error code and sync user-facing docs/tests
-    status: claimed
+    status: done
     description: Remove dead VARIABLE_UNRESOLVED numeric-code/parity requirements
       from src/larva/app/facade.py, USAGE.md, and required parity tests/docs so active
       error tables and surface contracts match the opaque-prompt rule without introducing
@@ -53755,6 +53755,70 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T13:48:53.320201+00:00'
+    done_at: '2026-04-18T13:58:18.000551+00:00'
+    evidence: '## refs read
+
+      - design/prompt-text-opacity-basis.md
+
+      - src/larva/app/facade.py
+
+      - USAGE.md
+
+      - contracts/errors.yaml
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+
+      ## implementation summary
+
+      Removed dead VARIABLE_UNRESOLVED/code 103 parity requirements from facade numeric
+      code map, errors contract, usage docs, and parity tests/docs. Updated prompt
+      policy wording to opaque prompt semantics (no placeholder interpretation/rejection).
+
+
+      Files updated:
+
+      - src/larva/app/facade.py
+
+      - contracts/errors.yaml
+
+      - USAGE.md
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_mcp.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+
+      ## verification
+
+      - `uv run pytest tests/shell/test_cli.py::TestJsonErrorEnvelope::test_error_envelope_numeric_codes_match_spec
+      tests/shell/test_mcp.py::TestMCPErrorCodes::test_all_required_error_codes_present
+      tests/repro/cross_surface_consistency_verify.py::TestErrorCodeTableConsistency::test_all_required_error_codes_present_in_facade
+      -v`
+
+      - Result: 3 passed
+
+      - Residual grep for VARIABLE_UNRESOLVED in src/tests/contracts returned zero
+      active matches; remaining mentions are historical plan.yaml records.
+
+
+      ## residual risks
+
+      - Historical references remain in plan.yaml evidence only (orchestrator-managed
+      archival context); no runtime impact.
+
+      - No additional cascade dependencies detected for retired code 103.
+
+
+      ## note
+
+      - Commit was produced in step branch; changes are ready for orchestrator merge.'
   - id: prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     name: Fix doctor registry parity for brace-containing prompt entries
     status: claimed
