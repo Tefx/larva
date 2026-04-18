@@ -52842,7 +52842,7 @@ phases:
       - Worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest
     name: Retest gate for batched stale-wording cleanup
-    status: claimed
+    status: done
     description: 'Gate-style retest after final_zeroing_20260418_parity_cleanup.fix_batched.
 
 
@@ -52909,6 +52909,18 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T06:39:28.609478+00:00'
+    done_at: '2026-04-18T06:46:26.803858+00:00'
+    evidence: "Independent parity retest completed with FAIL verdict.\n\nFindings:\n\
+      - 5 originally targeted stale-wording locations were fixed.\n- Residual stale\
+      \ transition-era wording remains in tests/core/test_normalize.py:\n  - around\
+      \ line ~148: \"silently stripped\" framing\n  - around line ~156: \"leave rejection\
+      \ ... to validation\" wording contradicting hard-cut semantics\n- Function rename/reference\
+      \ consistency in tests/repro/spec_verify_black_box_surfaces.py is correct.\n\
+      \nBlocking decision:\n- headline: FAIL\n- blocking_status: BLOCKING\n- gate_open_allowed:\
+      \ NO\n- blocker family: residual stale wording in targeted parity test file.\n\
+      \nRemediation path added:\n- final_zeroing_20260418_parity_cleanup.fix_batched_2\n\
+      - final_zeroing_20260418_parity_cleanup.retest_2\n\nThis retest step is completed\
+      \ as review artifact with fail disposition and explicit follow-up ownership."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched_2
     name: Batched remediation for stale parity-wording retest blockers
     status: pending
