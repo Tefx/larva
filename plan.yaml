@@ -53180,13 +53180,13 @@ phases:
       pre-existing failure is orthogonal.'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
-  status: pending
+  status: in_progress
   depends_on:
   - final_zeroing_20260418_parity_cleanup
   steps:
   - id: final_zeroing_20260418.full_plan_check
     name: Run strict zeroing full-plan verification
-    status: pending
+    status: claimed
     description: 'Independent full-plan-check for the final strict zeroing pass.
 
 
@@ -53269,6 +53269,8 @@ phases:
 
       '
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-18T07:09:05.895598+00:00'
   - id: final_zeroing_20260418.spec_conformance_audit
     name: Audit final strict zeroing against canonical authorities
     status: pending
