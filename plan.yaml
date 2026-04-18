@@ -53668,11 +53668,18 @@ phases:
       \ true.\n- docs/runtime/tests now aligned on fail-closed protected-metadata\
       \ semantics."
 - id: prompt_opacity_doctor_parity_20260418
-  name: Prompt Text Opacity + Doctor Parity
-  status: pending
-  gate: Phase ends with focused cross-surface verification and gate review.
+  name: Prompt Opacity + Doctor Parity (Larva Repo-Local Implementation + Gates)
+  status: locked
+  gate: 'Phase 4 repo-local execution/gate protocol: after each modification round
+    rerun a fresh full self-test, make assigned-surface coverage explicit, map all
+    larva case-matrix coverage explicitly, run docs/tests parity scan, and only PASS
+    when uncovered cases = none, Open Problems = none, and Residual Risk = none.'
+  context: Repo-local larva implementation plus repo-local verification/gates only.
+    Upstream authority-definition work belongs to prompt_opacity_authority_sync_20260418.
+    Keep doctor registry parity in this larva phase because doctor registry is not
+    an assigned shared surface.
   depends_on:
-  - final_zeroing_20260418_finalization
+  - prompt_opacity_authority_sync_20260418
   steps:
   - id: prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     name: Implement canonical prompt opacity in core validation and assembly
