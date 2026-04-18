@@ -53797,3 +53797,49 @@ phases:
     contract.
   depends_on:
   - final_zeroing_20260418_finalization
+  steps:
+  - id: prompt_opacity_authority_sync_20260418.opifex_sync
+    name: Sync opifex authority, handover, and larva case-matrix to the chosen prompt-opacity
+      contract
+    status: pending
+    description: 'In ../opifex, align the canonical prompt-opacity rule across the
+      authority docs, schema, shared-surface handover, and larva case-matrix before
+      any larva repo-local implementation starts. Required authority inputs to read
+      and update together: ../opifex/design/final-canonical-contract.md, ../opifex/contracts/persona_spec.schema.json,
+      ../opifex/design/personaspec-v1.md, ../opifex/design/larva-clean-architecture.md,
+      ../opifex/conformance/shared_surfaces.yaml, ../opifex/conformance/handovers/02-to-larva.md,
+      ../opifex/conformance/case_matrix/larva/*. Scope is upstream authority/conformance
+      only. Do NOT include larva doctor registry parity here because doctor registry
+      is not an assigned shared surface. Completion requires the opifex authority
+      files, larva handover text, and larva case-matrix to agree on opaque prompt
+      text semantics with no residual placeholder-rejection language.'
+    verification: Produce a single authority-sync diff/evidence set showing all listed
+      opifex sources now agree on the same prompt-opacity rule, larva repo-local implementation
+      remains blocked until this lands, and no placeholder-rejection wording remains
+      in the authority docs or larva handover/case-matrix.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Authority Alignment Proof
+
+      - Exact authority files updated:
+
+      - Exact larva handover/case-matrix files updated:
+
+      - Shared-surface assignment check: confirm larva assigned surfaces remain limited
+      to larva_validate, larva_register, larva_resolve, larva_assemble, larva_component_show,
+      larva_export, larva_shared_naming_docs, larva_mcp_server_naming
+
+      - Explicit non-scope confirmation: doctor registry parity remains repo-local
+      in larva because it is not a shared surface
+
+      - Placeholder-rejection language removed from personaspec-v1.md and larva-clean-architecture.md:
+      <cite lines/sections>
+
+      - Blocking statement for larva repo-local phase: authority sync complete / incomplete'
+    agent: minimalist-architect-tacit
