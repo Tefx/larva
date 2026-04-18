@@ -53669,7 +53669,7 @@ phases:
       \ semantics."
 - id: prompt_opacity_doctor_parity_20260418
   name: Prompt Opacity + Doctor Parity (Larva Repo-Local Implementation + Gates)
-  status: in_progress
+  status: done
   gate: 'Phase 4 repo-local execution/gate protocol: after each modification round
     rerun a fresh full self-test, make assigned-surface coverage explicit, map all
     larva case-matrix coverage explicitly, run docs/tests parity scan, and only PASS
@@ -54063,7 +54063,7 @@ phases:
       - uncertainty_sources: []'
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
-    status: claimed
+    status: done
     description: 'Independent gate for the larva repo-local implementation phase only.
       Review Phase 4 execution evidence and confirm the change stayed minimal and
       repo-local: canonical prompt is opaque text, variables remain forbidden, dead
@@ -54115,6 +54115,64 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T16:56:04.924047+00:00'
+    done_at: '2026-04-18T17:34:49.346942+00:00'
+    evidence: 'Independent gate result: PASS_WITH_DEBT; blocking_status=CLOSED; proof_gap_status=NON_BLOCKING;
+      gate_open_allowed=true.
+
+
+      refs Read Confirmation:
+
+      - ../opifex/conformance/shared_surfaces.yaml read
+
+      - ../opifex/conformance/handovers/02-to-larva.md read
+
+      - ../opifex/conformance/case_matrix/larva/* read
+
+      - ../opifex/design/final-canonical-contract.md read
+
+
+      Gate Decision Basis:
+
+      - Fresh full self-test after modification rounds: YES (939 passed, 0 failed)
+
+      - Assigned-surface coverage explicit: YES (all 8 larva shared surfaces)
+
+      - Case-matrix mapping explicit: YES
+
+      - Docs/tests parity scan complete: YES
+
+      - Uncovered cases: NONE
+
+      - Open Problems: NONE
+
+      - Residual Risk: non-blocking only
+
+      - Doctor parity kept repo-local: YES
+
+      - Speculative framework creep introduced: NO
+
+      - Decision: OPEN
+
+
+      Behavioral proof highlights:
+
+      - Prompt braces treated as opaque literal text across validate/assemble/facade
+      flows
+
+      - Variables-style inputs remain rejected
+
+      - Forbidden legacy fields still fail-closed
+
+      - MCP naming remains snake_case with no dotted names
+
+
+      Non-blocking debt noted:
+
+      - Dead placeholder regex/import residue in validation_field_shapes.py (SHOULD_FIX,
+      no runtime impact)
+
+      - Previously noted non-blocking export all=false semantic drift remains tracked
+      as debt'
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     name: Repair facade prompt-opacity verification fixture/assertions
     status: done
