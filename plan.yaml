@@ -54629,7 +54629,7 @@ phases:
       \ gate_open_allowed: true\n  blocking_behavioral_proofs: []"
 - id: post_prompt_opacity_debt_cleanup_20260419
   name: Prompt Opacity Post-Gate Debt Cleanup
-  status: in_progress
+  status: done
   gate: 'Cleanup gate: OPEN only when dead prompt-placeholder residue is removed,
     larva_export all=false semantics match the larva export case-matrix, focused docs/tests
     parity is updated, and verification reports uncovered cases = none, Open Problems
@@ -54812,7 +54812,7 @@ phases:
       \ and `USAGE.md`."
   - id: post_prompt_opacity_debt_cleanup_20260419.gate
     name: Gate the non-blocking debt cleanup phase
-    status: claimed
+    status: done
     description: 'Independent gate for the debt-cleanup phase. OPEN only when both
       previously non-blocking debts are now closed with explicit evidence: no dead
       prompt-placeholder residue remains, larva_export all=false matches the shared-surface
@@ -54841,3 +54841,21 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T17:49:28.015612+00:00'
+    done_at: '2026-04-18T17:49:51.968474+00:00'
+    evidence: "## Gate Decision Basis\n- dead placeholder residue cleared: YES\n-\
+      \ export all=false semantic drift cleared: YES\n- docs/tests parity complete:\
+      \ YES\n- uncovered cases: NONE\n- Open Problems: NONE\n- Residual Risk: NONE\n\
+      - Decision: OPEN\n\nSupporting evidence:\n- Scoped diff is minimal: 5 files\
+      \ changed, 35 insertions / 8 deletions, with no new framework abstractions or\
+      \ scope creep.\n- `src/larva/core/validation_field_shapes.py` no longer contains\
+      \ `import re` or `_PROMPT_PLACEHOLDER_PATTERN`.\n- `src/larva/shell/mcp_export.py`\
+      \ now rejects `{all:false}` as missing selector, matching ../opifex/conformance/case_matrix/larva/larva.export.yaml\
+      \ lines 29-34.\n- `USAGE.md` documents the exact selector rule for `larva_export`.\n\
+      - Focused verification passed:\n  - core prompt-opacity regressions: 106 passed\n\
+      \  - MCP export regressions: 17 passed\n  - cross-surface malformed/export parity\
+      \ regressions: 6 passed\n  - changed-file invar guard: passed with 0 errors,\
+      \ 0 warnings\n- No speculative framework creep introduced: only dead-code deletion,\
+      \ one transport-boundary selector check, one doc note, and focused tests.\n\n\
+      Reviewer note:\n- The unrelated untracked file `design/prompt-text-opacity-basis.md`\
+      \ remains outside this cleanup scope and does not block gate OPEN for the two\
+      \ requested non-blocking debts."
