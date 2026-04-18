@@ -53853,18 +53853,52 @@ phases:
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
     status: pending
-    description: 'Review the completed implementation and verification evidence for
-      this phase and confirm the change stayed minimal: canonical prompt is opaque
-      text, variables remain forbidden, dead placeholder-specific code/docs are retired,
-      and doctor parity was fixed only for the real mismatch.'
-    verification: Reviewer confirms dependency closure, evidence completeness, and
-      that no speculative templating or oversized diagnostics framework was introduced.
-    evidence_template: '- reviewed steps: core_prompt_opacity, surface_error_doc_sync,
-      doctor_registry_parity, cross_surface_verify
+    description: 'Independent gate for the larva repo-local implementation phase only.
+      Review Phase 4 execution evidence and confirm the change stayed minimal and
+      repo-local: canonical prompt is opaque text, variables remain forbidden, dead
+      placeholder-specific code/docs are retired, doctor parity was fixed only for
+      the real larva mismatch, fresh full self-test evidence exists after each modification
+      round, assigned-surface coverage is explicit, case-matrix mapping is explicit,
+      and docs/tests parity scan is complete.'
+    verification: OPEN only when dependency closure and evidence completeness are
+      satisfied, assigned-surface coverage is explicit, larva case-matrix coverage
+      shows uncovered cases = none, docs/tests parity scan shows no gaps, Open Problems
+      = none, Residual Risk = none, and no speculative templating or oversized diagnostics
+      framework was introduced.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
-      - verdict: pass/fail with concise rationale
 
-      - scope check: confirm minimality and no generic doctor framework creep'
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Decision Basis
+
+      - Fresh full self-test after each modification round: YES/NO
+
+      - Assigned-surface coverage explicit: YES/NO
+
+      - Case-matrix mapping explicit: YES/NO
+
+      - Docs/tests parity scan complete: YES/NO
+
+      - Uncovered cases: NONE / list
+
+      - Open Problems: NONE / list
+
+      - Residual Risk: NONE / list
+
+      - Doctor parity kept repo-local: YES/NO
+
+      - Speculative framework creep introduced: NO / describe
+
+      - Decision: OPEN | BLOCKED'
+    refs:
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/handovers/02-to-larva.md
+    - ../opifex/conformance/case_matrix/larva/*
+    - ../opifex/design/final-canonical-contract.md
     depends_on:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
