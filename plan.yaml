@@ -53610,7 +53610,7 @@ phases:
       \ assert strict rejection, aligning docs/runtime/tests."
   - id: final_zeroing_20260418.final_spec_conformance_retest
     name: Retest spec conformance after batched fix
-    status: claimed
+    status: done
     description: Re-run the spec conformance checks after final_zeroing_20260418.final_spec_conformance_fix
       lands. Confirm the original audit failure is cleared and that the batched remediation
       did not introduce regressions in the affected PATCH/spec_version/metadata handling
@@ -53624,3 +53624,16 @@ phases:
     - final_zeroing_20260418.final_spec_conformance_fix
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-04-18T07:35:17.844480+00:00'
+    done_at: '2026-04-18T07:38:38.627822+00:00'
+    evidence: "Retest after spec-conformance remediation completed and resolved original\
+      \ audit failure.\n\nVerification commands/results:\n- `uv run pytest tests/core/test_patch.py\
+      \ tests/app/test_facade/test_update.py tests/shell/test_web.py tests/repro/web_convergence_parity.py\
+      \ -q`\n  - result: `108 passed`\n- grep/audit checks confirmed updated conformance\
+      \ wording and behavior:\n  - USAGE.md now states `spec_version` required (`0.1.0`)\
+      \ and mutation attempts rejected\n  - INTERFACES.md now states PATCH rejects\
+      \ protected `id/spec_version/spec_digest` with `FORBIDDEN_PATCH_FIELD`\n  -\
+      \ src/larva/core/patch.py exposes protected-key rejection paths and FORBIDDEN_PATCH_FIELD\
+      \ behavior\n- matching rejection assertions present across updated core/facade/web/repro\
+      \ tests.\n\nRetest decision:\n- original `spec_conformance_audit` failure resolved:\
+      \ true.\n- docs/runtime/tests now aligned on fail-closed protected-metadata\
+      \ semantics."
