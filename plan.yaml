@@ -52393,7 +52393,7 @@ phases:
       \ cleanup completed for gate step."
 - id: final_zeroing_20260418_parity_cleanup
   name: Final Strict Zeroing — Test and Documentation Parity Cleanup
-  status: in_progress
+  status: done
   depends_on:
   - final_zeroing_20260418_mcp_contract
   steps:
@@ -53125,7 +53125,7 @@ phases:
       \ cleaned."
   - id: final_zeroing_20260418_parity_cleanup.retest_3
     name: Retest parity cleanup after batched follow-up fix
-    status: claimed
+    status: done
     description: Re-run the relevant parity-cleanup verification after `fix_batched_3`
       to confirm the targeted stale framings were fully removed and the updated names/references
       are consistent.
@@ -53137,9 +53137,50 @@ phases:
     - final_zeroing_20260418_parity_cleanup.fix_batched_3
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T06:59:41.058803+00:00'
+    done_at: '2026-04-18T07:06:58.143974+00:00'
+    evidence: 'Retest-3 verify-only gate: PASS.
+
+
+      Stale-framing grep checks (all zero matches):
+
+      - `is_removed` in tests/core/test_normalize.py: 0 matches
+
+      - `preserves_forbidden|preserves forbidden` in tests/repro/spec_verify_black_box_surfaces.py:
+      0 matches
+
+      - `is_removed` global in tests/: 0 matches
+
+      - `preserves_forbidden` global in tests/: 0 matches
+
+
+      New-naming grep checks (confirmed present):
+
+      - `are_strictly_rejected` in test_normalize.py: 2 matches (lines 147, 155)
+
+      - `rejects_forbidden_fields_strictly` in spec_verify: 2 matches (definition
+      line 153, __main__ ref line 371)
+
+      - Docstring at line 9 updated to reject framing
+
+
+      Focused pytest:
+
+      - tests/core/test_normalize.py: 22 passed
+
+      - Renamed tests targeted run: 3 passed (test_post_contracts_do_not_claim_tools_are_strictly_rejected,
+      test_post_contracts_do_not_claim_side_effect_policy_are_strictly_rejected, test_normalize_rejects_forbidden_fields_strictly)
+
+      - tests/repro/spec_verify_black_box_surfaces.py: 16 passed, 1 pre-existing failure
+      (test_python_api_resolve_rejects_tools_override — error code PERSONA_INVALID
+      vs expected FORBIDDEN_FIELD; unrelated to parity-cleanup rename, line 285 untouched
+      by fix_batched_3)
+
+
+      Decision: PASS — all stale framing removed and renamed identifiers consistent;
+      pre-existing failure is orthogonal.'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
-  status: locked
+  status: pending
   depends_on:
   - final_zeroing_20260418_parity_cleanup
   steps:
