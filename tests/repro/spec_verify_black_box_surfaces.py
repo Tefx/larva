@@ -6,7 +6,7 @@ Expected: All four public surfaces enforce canonical admission:
   - Validate rejects forbidden-field fixtures
   - Update rejects forbidden fields in patches
   - Resolve rejects forbidden fields in overrides
-  - Normalize rejects forbidden fields immediately at the boundary; it never maps them into canonical acceptance
+  - Normalize preserves forbidden fields for downstream rejection; it never maps them into canonical acceptance
   - Assemble rejects forbidden override fields
 
 Actual: To be determined by running this script.
@@ -150,8 +150,8 @@ def test_validate_invalid_spec_version():
     print("PASS: invalid spec_version is rejected")
 
 
-def test_normalize_rejects_forbidden_fields():
-    """normalize_spec rejects forbidden fields immediately at the boundary."""
+def test_normalize_preserves_forbidden_fields_for_rejection():
+    """normalize_spec rejects forbidden fields instead of preserving compatibility."""
     import pytest
 
     from larva.core.normalize import NormalizeError, normalize_spec
@@ -368,7 +368,7 @@ if __name__ == "__main__":
         test_validate_unknown_field,
         test_validate_missing_capabilities,
         test_validate_invalid_spec_version,
-        test_normalize_rejects_forbidden_fields,
+        test_normalize_preserves_forbidden_fields_for_rejection,
         test_normalize_computes_spec_digest,
         test_normalize_deterministic,
         test_python_api_register_accepts_canonical,
