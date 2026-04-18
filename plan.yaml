@@ -53572,3 +53572,17 @@ phases:
       to show docs/runtime/tests now agree.
     depends_on:
     - final_zeroing_20260418.spec_conformance_audit
+  - id: final_zeroing_20260418.final_spec_conformance_retest
+    name: Retest spec conformance after batched fix
+    status: pending
+    description: Re-run the spec conformance checks after final_zeroing_20260418.final_spec_conformance_fix
+      lands. Confirm the original audit failure is cleared and that the batched remediation
+      did not introduce regressions in the affected PATCH/spec_version/metadata handling
+      paths.
+    verification: Relevant spec conformance audit and regression checks pass after
+      the batched fix.
+    evidence_template: Paste the retest commands, key pass/fail outputs, and a short
+      statement confirming whether the original spec_conformance_audit failure is
+      resolved.
+    depends_on:
+    - final_zeroing_20260418.final_spec_conformance_fix
