@@ -53843,3 +53843,39 @@ phases:
 
       - Blocking statement for larva repo-local phase: authority sync complete / incomplete'
     agent: minimalist-architect-tacit
+  - id: prompt_opacity_authority_sync_20260418.gate
+    name: Gate opifex authority sync before larva repo-local work
+    status: pending
+    description: 'Independent gate for the upstream prerequisite. Open only when the
+      opifex authority files, larva handover, and larva case-matrix are mutually aligned
+      to the chosen prompt-opacity contract and the boundary is explicit: upstream
+      defines authority, larva phase performs repo-local implementation plus repo-local
+      gates.'
+    verification: Reviewer confirms upstream authority alignment is complete, larva
+      shared-surface ownership is explicit, doctor parity was not misclassified as
+      upstream shared-surface work, and downstream larva repo-local implementation
+      may begin without interpretation drift.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Decision Basis
+
+      - Authority files aligned: YES/NO
+
+      - Larva handover aligned: YES/NO
+
+      - Larva case-matrix aligned: YES/NO
+
+      - Doctor parity kept repo-local: YES/NO
+
+      - Remaining placeholder-rejection language: NONE / list
+
+      - Decision: OPEN | BLOCKED'
+    depends_on:
+    - prompt_opacity_authority_sync_20260418.opifex_sync
+    agent: gate-reviewer-tacit
