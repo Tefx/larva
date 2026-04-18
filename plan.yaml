@@ -52969,6 +52969,46 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.retest
     agent: python-executor
+  - id: final_zeroing_20260418_parity_cleanup.retest_2
+    name: Retest gate for batched parity-wording remediation follow-up
+    status: pending
+    description: 'Independent gate-style retest after `final_zeroing_20260418_parity_cleanup.fix_batched_2`.
+
+
+      As an INDEPENDENT REVIEWER, verify the follow-up batched remediation fully closes
+      the stale parity-wording blocker family without mutating completed history or
+      reintroducing drift.
+
+
+      Review focus:
+
+      - the `tests/core/test_normalize.py` ~148 and ~156 wording now matches final
+      strict zeroing/rejection semantics
+
+      - no adjacent stale `silently stripped` / `leave rejection to validation` framing
+      remains in the touched parity/repro scope
+
+      - the optional `PERSONA_INVALID` vs `FORBIDDEN_FIELD` mismatch was either correctly
+      remediated when in-scope or explicitly recorded as non-intersecting/out-of-scope
+
+      - evidence demonstrates batched review/remediation, not one-line patching only
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - tests/core/test_normalize.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/spec_verify_black_box_surfaces.py — key passage or "NOT READ:
+      <reason>"'
+    verification: 'phase-check protecting downstream finalization: independently review
+      the follow-up fix evidence, confirm the cited normalize wording blockers are
+      closed, and require explicit disposition of the optional expectation-mismatch
+      consistency check before marking green.'
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.fix_batched_2
+    agent: gate-reviewer-tacit
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
