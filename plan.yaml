@@ -54639,7 +54639,7 @@ phases:
   steps:
   - id: post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
     name: Remove dead prompt-placeholder cleanup residue
-    status: claimed
+    status: done
     description: 'Delete the unused `import re` and `_PROMPT_PLACEHOLDER_PATTERN`
       left in `src/larva/core/validation_field_shapes.py` after prompt-opacity cutover.
       Keep this change minimal and code-only: no behavior change beyond removing dead
@@ -54655,6 +54655,48 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T17:47:11.327379+00:00'
+    done_at: '2026-04-18T17:48:06.265809+00:00'
+    evidence: 'Artifact:
+
+      - Working tree change in: src/larva/core/validation_field_shapes.py
+
+
+      Spec link:
+
+      - Cleanup is driven by the prior gate finding: dead `_PROMPT_PLACEHOLDER_PATTERN`
+      and its supporting `import re` remained in `src/larva/core/validation_field_shapes.py`
+      after prompt-opacity cutover, with no live consumer.
+
+
+      Implementation summary:
+
+      - Removed the unused `import re`.
+
+      - Removed the dead `_PROMPT_PLACEHOLDER_PATTERN` definition.
+
+      - No validation behavior changed; only dead residue was deleted.
+
+
+      Verification:
+
+      - Run: `uv run pytest tests/core/test_validate.py tests/core/test_assemble.py
+      -q` -> `106 passed in 0.24s`
+
+      - Run: `grep _PROMPT_PLACEHOLDER_PATTERN src/larva/*.py src/larva/core/*.py`
+      equivalent content search -> no remaining matches under `src/larva`
+
+      - Run: `invar guard (changed files)` -> passed; 0 errors, 0 warnings; crosshair
+      verified `src/larva/core/validation_field_shapes.py`
+
+
+      Residual risks:
+
+      - none for this scoped dead-code cleanup
+
+
+      Commit:
+
+      - none (user did not request a git commit)'
   - id: post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     name: Align larva_export all=false selector semantics to the case matrix
     status: done
