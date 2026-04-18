@@ -54639,7 +54639,7 @@ phases:
   steps:
   - id: post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
     name: Remove dead prompt-placeholder cleanup residue
-    status: pending
+    status: claimed
     description: 'Delete the unused `import re` and `_PROMPT_PLACEHOLDER_PATTERN`
       left in `src/larva/core/validation_field_shapes.py` after prompt-opacity cutover.
       Keep this change minimal and code-only: no behavior change beyond removing dead
@@ -54653,6 +54653,8 @@ phases:
     - tests/core/test_validate.py
     - tests/core/test_assemble.py
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T17:47:11.327379+00:00'
   - id: post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     name: Align larva_export all=false selector semantics to the case matrix
     status: done
