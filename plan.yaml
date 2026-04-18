@@ -53748,3 +53748,23 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     agent: python-executor
+  - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
+    name: Verify opaque-prompt and doctor behavior across affected surfaces
+    status: pending
+    description: Run a focused verification sweep across core, facade, CLI, MCP, and
+      repro coverage to confirm brace text is treated as literal prompt data everywhere,
+      variables remain forbidden, and doctor now agrees with facade-backed registry
+      behavior for the fixed mismatch.
+    verification: Run the focused affected-suite commands plus invar guard on changed
+      files to prove contract, parity, and regression coverage remain green.
+    evidence_template: '- refs read: affected tests and design basis
+
+      - verification matrix: core / facade / CLI / MCP / repro / doctor parity
+
+      - commands: paste focused test commands/results and invar guard output
+
+      - gaps: explicitly state any skipped checks or ''none'''
+    depends_on:
+    - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
+    - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
+    agent: integration-verifier-tacit
