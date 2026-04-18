@@ -54671,3 +54671,43 @@ phases:
     - tests/repro/cross_surface_consistency_verify.py
     - USAGE.md
     agent: python-executor
+  - id: post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
+    name: Verify the non-blocking debt cleanup across affected surfaces
+    status: pending
+    description: Independent verification for the debt-cleanup phase. Re-run focused
+      verification over prompt-opacity core paths and larva_export shared-surface
+      semantics, confirm the previous non-blocking findings are cleared, and ensure
+      docs/tests parity remains consistent with the opifex export case matrix and
+      prompt-opacity authority.
+    verification: 'Require fresh focused verification output showing: dead placeholder
+      residue is gone, larva_export all=false is rejected per case matrix, valid export
+      selectors still work, prompt opacity tests still pass, docs/tests parity scan
+      shows no gaps, uncovered cases = none, Open Problems = none, Residual Risk =
+      none.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - <file> — key passage
+
+
+      ## Verification Ledger
+
+      - Commands + outputs
+
+
+      ## Debt Closure Check
+
+      - dead placeholder residue cleared: YES/NO
+
+      - export all=false semantic drift cleared: YES/NO
+
+      - docs/tests parity gaps: NONE / list
+
+      - uncovered cases: NONE / list
+
+      - Open Problems: NONE / list
+
+      - Residual Risk: NONE / list'
+    depends_on:
+    - post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
+    - post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
+    agent: integration-verifier-tacit
