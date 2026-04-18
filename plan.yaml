@@ -53186,7 +53186,7 @@ phases:
   steps:
   - id: final_zeroing_20260418.full_plan_check
     name: Run strict zeroing full-plan verification
-    status: claimed
+    status: done
     description: 'Independent full-plan-check for the final strict zeroing pass.
 
 
@@ -53271,6 +53271,155 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-18T07:09:05.895598+00:00'
+    done_at: '2026-04-18T07:17:44.384499+00:00'
+    evidence: '## Closure Register — All 9 Targets PROVEN
+
+
+      ### Commands & Outputs
+
+
+      **Full test suite**: `uv run pytest tests/ -q` → **931 passed** in 3.27s
+
+
+      ---
+
+
+      ### TARGET 1: Malformed toolset fail-closed — PROVEN
+
+      - `_merge_capabilities([{''tools'': {''shell'': ''read_only''}}])` → `AssemblyError:
+      FORBIDDEN_TOOLSET_FIELD`
+
+      - `_merge_capabilities([{}])` → `AssemblyError: TOOLSET_MISSING_CAPABILITIES`
+
+      - `FilesystemComponentStore.load_toolset` rejects both `tools` field presence
+      and missing `capabilities` field with `Failure(ComponentStoreError)`
+
+
+      ### TARGET 2: Component-show paths reject forbidden legacy fields — PROVEN
+
+      - `query_component()` has post-load check for `tools` (toolsets) and `side_effect_policy`
+      (constraints) → returns `Failure(LarvaError)` with forbidden-field message
+
+      - `FilesystemComponentStore.load_toolset` line 364: `if "tools" in data: return
+      Failure(...)`
+
+      - `FilesystemComponentStore.load_constraint` line 443: `if "side_effect_policy"
+      in data: return Failure(...)`
+
+
+      ### TARGET 3: MCP schema exact canonical — PROVEN
+
+      - `_PERSONA_SPEC_INPUT_SCHEMA["additionalProperties"] == False`
+
+      - `_PERSONA_SPEC_INPUT_SCHEMA["required"] == ["id","description","prompt","model","capabilities","spec_version"]`
+      (matches `CANONICAL_REQUIRED_FIELDS`)
+
+      - Schema properties exclude `tools` and `side_effect_policy`
+
+      - `spec_version` has `"const": "0.1.0"`
+
+      - All 13 MCP tool definitions have `name`, `description`, `input_schema`
+
+      - `larva_validate` tool description references `FORBIDDEN_LEGACY_VOCABULARY_CLAUSE`
+
+
+      ### TARGET 4: Malformed digest fail-closed — PROVEN
+
+      - `normalize_spec({''id'': ''test''})` → `NormalizeError: MISSING_SPEC_VERSION`
+
+      - `normalize_spec({..., ''tools'': ...})` → `NormalizeError: FORBIDDEN_FIELD:
+      field ''tools''`
+
+      - `normalize_spec({..., ''side_effect_policy'': ...})` → `NormalizeError: FORBIDDEN_FIELD:
+      field ''side_effect_policy''`
+
+      - Stale `spec_digest` input always overwritten with fresh deterministic SHA-256
+
+      - Deterministic: `normalize_spec(same) == normalize_spec(same)`
+
+      - Digest matches `^sha256:[0-9a-f]{64}$`
+
+
+      ### TARGET 5: Export boolean semantics — PROVEN
+
+      - `larva_export` schema: `all` property has `"type": "boolean"`, `ids` has `"type":
+      "array"`
+
+      - `mcp_export._validate_export_target` uses `require_type(checked_params, "all",
+      bool, "boolean")`
+
+      - Mutually exclusive: `has_all and has_ids` → error; `not has_all and not has_ids`
+      → error
+
+      - No legacy fields (`tools`, `side_effect_policy`) in export schema
+
+
+      ### TARGET 6: Canonical-only component-type ingress — PROVEN
+
+      - `normalize_component_kind("prompts") == "prompts"`, `"toolsets" == "toolsets"`,
+      etc.
+
+      - `normalize_component_kind("prompt") is None` (singular rejected)
+
+      - `normalize_component_kind("toolset") is None`, `"model" is None`, `"constraint"
+      is None`
+
+      - `normalize_component_kind("invalid") is None`, `"" is None`, `"tools" is None`
+
+      - `query_component()` calls `normalize_component_kind` and returns Failure for
+      non-canonical kinds
+
+
+      ### TARGET 7: Web assemble structured reject — PROVEN
+
+      - `create_app()` assemble endpoint has `allowed_fields = frozenset({"id","description","prompts","toolsets","constraints","model","overrides"})`
+
+      - Unknown fields → `JSONResponse(status_code=400, content={"error": {"code":
+      "INVALID_INPUT", ...}})`
+
+      - Missing `id` → `400 INVALID_INPUT`
+
+      - Downstream: core assemble → core normalize → core validate each independently
+      reject forbidden fields
+
+
+      ### TARGET 8: Docs/tests parity clean — PROVEN
+
+      - Core modules (validate, assemble, normalize, spec, patch) all have `tests/core/test_*.py`
+
+      - Shell modules (mcp, components, web, cli) all have `tests/shell/test_*.py`
+
+      - Facade has 7+ test files in `tests/app/test_facade/`
+
+      - Forbidden field rejection tests exist (rg finds test files referencing `tools.*forbidden|forbidden.*tools|side_effect_policy`)
+
+      - Component kind normalization tests exist (rg finds test files referencing
+      `normalize_component_kind`)
+
+      - 931 total tests pass
+
+
+      ### TARGET 9: Residual risk none — PROVEN
+
+      - `tools` rejected in: assemble (`FORBIDDEN_TOOLSET_FIELD`), patch (`FORBIDDEN_PATCH_FIELD`),
+      normalize (`FORBIDDEN_FIELD`), validate (`EXTRA_FIELD_NOT_ALLOWED`), registry
+      (`_CANONICAL_FORBIDDEN_FIELDS`)
+
+      - `side_effect_policy` rejected in: normalize (`FORBIDDEN_FIELD`), registry
+      (`_CANONICAL_FORBIDDEN_FIELDS`), constraint loading (`ComponentStoreError`)
+
+      - `variables` rejected in: assemble (`VARIABLES_NOT_ALLOWED`)
+
+      - All code references to legacy fields are exclusively in rejection/docstring
+      contexts — no acceptance paths exist
+
+      - 931/931 tests pass
+
+
+      ---
+
+
+      ### Verdict: ALL 9 TARGETS PROVEN → PASS'
   - id: final_zeroing_20260418.spec_conformance_audit
     name: Audit final strict zeroing against canonical authorities
     status: pending
