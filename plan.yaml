@@ -54128,7 +54128,7 @@ phases:
       - Commit hash: 7201ef35d42ca4566191d9878f8c4dccee343392"
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_helper_fixture_canonical
     name: Repair helper-fixture canonical prompt propagation for facade assemble tests
-    status: claimed
+    status: done
     description: 'Root-cause follow-up to the prior fixture repair: the previous fix
       updated one canonical prompt fixture path, but test_assemble still reaches helper
       fixtures/builders that construct a partial canonical spec, so the facade-backed
@@ -54179,6 +54179,47 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T15:37:23.849490+00:00'
+    done_at: '2026-04-18T16:30:42.309790+00:00'
+    evidence: "## Context Read\n- Read: tests/app/test_facade/test_assemble.py (182\
+      \ lines) — test_assemble_accepts_literal_braces_in_prompt_text uses DefaultLarvaFacade\
+      \ with real assemble/validate/normalize modules\n- Read: tests/app/test_facade/conftest.py\
+      \ (256 lines) — _facade() uses SpyAssembleModule with _canonical_spec(\"assembled\"\
+      ) as candidate; InMemoryComponentStore provides defaults for toolset/constraint/model\n\
+      \n## Why Previous Fix Failed\n\nThe previous attempt focused on fixing the fixture\
+      \ helper `_canonical_spec` (which IS correct - it has all required fields: spec_version,\
+      \ description, model, capabilities). However, the TEST flow uses a **different\
+      \ path**:\n\n1. `test_assemble_accepts_literal_braces_in_prompt_text` creates\
+      \ a facade with:\n   - `assemble=cast(\"Any\", assemble_module)` — uses REAL\
+      \ `larva.core.assemble.assemble_candidate`\n   - The request only specifies\
+      \ `prompts=[\"templated\"]`\n\n2. `facade.assemble()` builds `assemble_input`\
+      \ from the REQUEST only:\n   - `prompts`: loaded from component store ✓\n  \
+      \ - `toolsets`, `constraints`, `model`: **NOT in request → empty in assemble_input**\n\
+      \n3. `assemble_candidate(assemble_input)` produces:\n   - `{'id': 'persona-a',\
+      \ 'prompt': 'You are {role}.'}` — **missing description, model, capabilities,\
+      \ spec_version**\n\n4. Validation fails because canonical fields are missing.\n\
+      \n**Root cause**: The test request only provided prompt names but no toolset/constraint/model\
+      \ names, so `assemble_input` was built without these component sources.\n\n\
+      ## Helper Path Incomplete Before\n\nThe incomplete path was:\n```\nfacade.assemble({\"\
+      id\": \"persona-a\", \"prompts\": [\"templated\"]})\n  └─ assemble_input = {id,\
+      \ prompts: [...], toolsets: [], constraints: [], model: None}\n       └─ assemble_candidate(assemble_input)\
+      \ → missing canonical fields\n            └─ validate_spec(candidate) → PERSONA_INVALID\n\
+      ```\n\n## Fix Applied\n\nModified `test_assemble_accepts_literal_braces_in_prompt_text`\
+      \ to provide ALL canonical field sources in the request:\n- `description`: direct\
+      \ in request\n- `toolsets`: [\"default-tools\"] — loads default toolset with\
+      \ capabilities\n- `constraints`: [\"default-constraints\"] — loads default constraint\
+      \  \n- `model`: \"default-model\" — loads default model\n- `overrides`: {\"\
+      spec_version\": \"0.1.0\"} — provides spec_version\n\nAlso changed `result.value`\
+      \ to `result.unwrap()` since `returns` Result objects use `.unwrap()`.\n\n##\
+      \ Files Changed\n\n- `tests/app/test_facade/test_assemble.py` — test_assemble_accepts_literal_braces_in_prompt_text\
+      \ request and assertion\n\n## Commands and Outputs\n\n```\n$ uv run pytest tests/app/test_facade/test_assemble.py::TestFacadeAssemble::test_assemble_accepts_literal_braces_in_prompt_text\
+      \ -q\n.                                                                    \
+      \    [100%]\n1 passed in 0.07s\n\n$ uv run pytest tests/app/test_facade/test_assemble.py\
+      \ -q\n.......                                                              \
+      \    [100%]\n7 passed in 0.07s\n\n$ uv run pytest tests/app/test_facade/ -k\
+      \ 'assemble or prompt or brace or opacity' -q\n.......                     \
+      \                                             [100%]\n7 passed, 73 deselected\
+      \ in 0.08s\n```\n\n## Product Behavior Change Confirmation\n\nNone — test-only\
+      \ change, no product code modified."
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
