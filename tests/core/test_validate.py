@@ -124,20 +124,35 @@ class TestValidateSpecBehavior:
         assert report["valid"] is False
         assert report["errors"][0]["code"] == "EXTRA_FIELD_NOT_ALLOWED"
 
-    def test_unresolved_prompt_placeholders_produce_canonical_error(self):
-        """validate_spec should fail closed on unresolved placeholders in prompt."""
+    def test_single_braces_accepted_as_literal_prompt_text(self):
+        """Single braces are accepted as literal prompt text."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
                 "description": "Test persona",
-                "prompt": "You are {role} speaking to {target}",
+                "prompt": "You are {role}.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
             }
         )
-        assert report["valid"] is False
-        assert any(e["code"] == "UNRESOLVED_PLACEHOLDER" for e in report["errors"])
+        assert report["valid"] is True
+        assert report["errors"] == []
+
+    def test_doubled_braces_accepted_as_literal_prompt_text(self):
+        """Doubled braces are accepted as literal prompt text."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "description": "Test persona",
+                "prompt": "Use {{literal}} braces.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
 
 
 class TestCanonicalWarningSemantics:
@@ -411,23 +426,38 @@ class TestCanonicalFieldRejections:
 
 
 class TestPlaceholderSemantics:
-    """Canonical prompt validation is fail-closed for unresolved placeholders."""
+    """Canonical prompt validation accepts literal braces in prompt text."""
 
     @given(name=st.sampled_from(("role", "target", "agent_name")))
-    def test_placeholder_like_tokens_are_rejected_without_variables(self, name: str):
-        """Fully composed canonical prompts must not retain placeholder tokens."""
+    def test_single_braces_accepted_as_literal_prompt_text(self, name: str):
+        """Single braces with names are accepted as literal prompt text."""
         report = validate_module.validate_spec(
             {
                 "id": "test-persona",
-                "description": "Prompt placeholder rejection coverage for canonical validation",
+                "description": "Prompt literal brace acceptance for canonical validation",
                 "prompt": f"You are {{{name}}}.",
                 "model": "gpt-4o-mini",
                 "capabilities": {"shell": "read_only"},
                 "spec_version": "0.1.0",
             }
         )
-        assert report["valid"] is False
-        assert any(e["code"] == "UNRESOLVED_PLACEHOLDER" for e in report["errors"])
+        assert report["valid"] is True
+        assert report["errors"] == []
+
+    def test_doubled_braces_preserved_in_assembled_prompt(self):
+        """Doubled braces are preserved as literal braces in prompt text."""
+        report = validate_module.validate_spec(
+            {
+                "id": "test-persona",
+                "description": "Doubled brace preservation test",
+                "prompt": "Use {{literal}} braces {{here}}.",
+                "model": "gpt-4o-mini",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            }
+        )
+        assert report["valid"] is True
+        assert report["errors"] == []
 
 
 class TestCapabilitiesValidation:

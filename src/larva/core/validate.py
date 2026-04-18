@@ -26,7 +26,6 @@ from larva.core.validation_field_shapes import validate_field_shapes
 from larva.core.validation_warnings import collect_non_blocking_warnings
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 
@@ -128,45 +127,6 @@ def _validate_required_string_fields(spec: dict[str, object]) -> list[Validation
                     {"field": field, "value": value},
                 )
             )
-
-    return errors
-
-
-@pre(lambda spec: _is_json_safe_dict(spec))
-@post(lambda result: isinstance(result, list))
-def _validate_prompt_semantics(spec: dict[str, object]) -> list[ValidationIssue]:
-    """Validate canonical prompt semantics.
-
-    >>> _validate_prompt_semantics({"prompt": "You are {role}."})[0]["code"]
-    'UNRESOLVED_PLACEHOLDER'
-    >>> _validate_prompt_semantics({"prompt": "Use {{literal}} braces."})
-    []
-    """
-    errors: list[ValidationIssue] = []
-
-    prompt_obj = spec.get("prompt")
-    if prompt_obj is None:
-        return errors
-
-    if not isinstance(prompt_obj, str):
-        errors.append(
-            _issue(
-                "INVALID_PROMPT",
-                "prompt must be a string",
-                {"field": "prompt", "value": prompt_obj},
-            )
-        )
-        return errors
-
-    placeholders = sorted(set(_PROMPT_PLACEHOLDER_PATTERN.findall(prompt_obj)))
-    if placeholders:
-        errors.append(
-            _issue(
-                "UNRESOLVED_PLACEHOLDER",
-                "prompt contains unresolved placeholders and must be fully composed before admission",
-                {"field": "prompt", "placeholders": placeholders},
-            )
-        )
 
     return errors
 
@@ -372,7 +332,6 @@ def validate_spec(
     """
     errors = _validate_identity_fields(spec)
     errors.extend(_validate_required_string_fields(spec))
-    errors.extend(_validate_prompt_semantics(spec))
     errors.extend(validate_field_shapes(spec))
 
     capabilities_errors = _validate_capabilities(spec)

@@ -1,6 +1,5 @@
 """Contracted PersonaSpec assembly from in-memory components."""
 
-import re
 from typing import Any, Mapping, cast
 
 from deal import post, pre, raises
@@ -10,9 +9,6 @@ from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
 
 _assembly_error = assembly_error
 _VALID_TOOL_POSTURES = frozenset({"none", "read_only", "read_write", "destructive"})
-
-
-_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 
 @pre(lambda mapping: not isinstance(mapping, dict) or all(key is not None for key in mapping))
@@ -197,22 +193,8 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-@pre(lambda prompt: isinstance(prompt, str) and "\x00" not in prompt)
-@post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
-def _find_unresolved_placeholders(prompt: str) -> list[str]:
-    """Return unresolved placeholder names in prompt text.
-
-    >>> _find_unresolved_placeholders("You are {role}.")
-    ['role']
-    >>> _find_unresolved_placeholders("Use {{literal}} braces.")
-    []
-    """
-    return sorted(set(_PROMPT_PLACEHOLDER_PATTERN.findall(prompt)))
-
-
 @pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
-@raises(AssemblyError)
 def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompts_obj = data.get("prompts", [])
     prompts = prompts_obj if isinstance(prompts_obj, list) else []
@@ -224,13 +206,6 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
         text = prompt_component.get("text", "")
         if not isinstance(text, str):
             text = ""
-        placeholders = _find_unresolved_placeholders(text)
-        if placeholders:
-            raise assembly_error(
-                code="UNRESOLVED_PROMPT_TEXT",
-                message="prompt text contains unresolved placeholders and must already be fully composed",
-                details={"placeholders": placeholders, "prompt": text},
-            )
         prompt_texts.append(text)
     return prompt_texts
 
@@ -339,10 +314,11 @@ def assemble_candidate(data: dict[str, object]) -> PersonaSpec:
         AssemblyError: On component conflicts or non-canonical assembly input.
 
     Examples:
-        >>> assemble_candidate({"id": "p", "prompts": [{"text": "You are {role}"}]})
-        Traceback (most recent call last):
-        ...
-        larva.core.assembly_error.AssemblyError: UNRESOLVED_PROMPT_TEXT: prompt text contains unresolved placeholders and must already be fully composed
+        >>> result = assemble_candidate({"id": "p", "prompts": [{"text": "You are {role}."}]})
+        >>> result["prompt"]
+        'You are {role}.'
+        >>> assemble_candidate({"id": "p", "prompts": [{"text": "Use {{literal}} braces."}]})["prompt"]
+        'Use {{literal}} braces.'
         >>> # Capabilities input (canonical)
         >>> result = assemble_candidate(
         ...     {"id": "p", "toolsets": [{"capabilities": {"read": "read_only"}}]}

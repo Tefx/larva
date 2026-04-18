@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import math
+import re
 
 from deal import post, pre
 
 from larva.core.validation_contract import ValidationIssue
+
+_PROMPT_PLACEHOLDER_PATTERN = re.compile(r"(?<!\{)\{([a-zA-Z_][a-zA-Z0-9_.-]*)\}(?!\})")
 
 _REQUIRED_STRING_TYPE_FIELDS: tuple[str, ...] = ("description", "model")
 _OPTIONAL_STRING_TYPE_FIELDS: tuple[str, ...] = ("compaction_prompt", "spec_digest")
@@ -199,6 +202,32 @@ def _validate_model_params(spec: dict[str, object]) -> list[ValidationIssue]:
 
 
 @pre(lambda spec: isinstance(spec, dict) and all(isinstance(key, str) for key in spec))
+@post(lambda result: result is None or isinstance(result, list))
+def _validate_prompt_string_shape(spec: dict[str, object]) -> list[ValidationIssue] | None:
+    """Validate prompt field string type when present.
+
+    >>> _validate_prompt_string_shape({"prompt": 123})[0]["code"]
+    'INVALID_FIELD_TYPE'
+    >>> _validate_prompt_string_shape({"prompt": "hello"}) is None
+    True
+    >>> _validate_prompt_string_shape({}) is None
+    True
+    """
+    if "prompt" not in spec:
+        return None
+    prompt = spec.get("prompt")
+    if isinstance(prompt, str):
+        return None
+    return [
+        _issue(
+            "INVALID_FIELD_TYPE",
+            "prompt must be a string when present",
+            {"field": "prompt", "value": prompt},
+        )
+    ]
+
+
+@pre(lambda spec: isinstance(spec, dict) and all(isinstance(key, str) for key in spec))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, dict) for item in result))
 def validate_field_shapes(spec: dict[str, object]) -> list[ValidationIssue]:
     """Validate canonical field shapes beyond required-field presence.
@@ -207,6 +236,10 @@ def validate_field_shapes(spec: dict[str, object]) -> list[ValidationIssue]:
     'INVALID_FIELD_TYPE'
     >>> validate_field_shapes({"model_params": {"temperature": 0.2}, "compaction_prompt": "ok"})
     []
+    >>> validate_field_shapes({"prompt": "Use {{literal}} braces."})
+    []
+    >>> validate_field_shapes({"prompt": "You are {role}."})
+    []
     """
     issues: list[ValidationIssue] = []
     for field in _REQUIRED_STRING_TYPE_FIELDS:
@@ -214,4 +247,7 @@ def validate_field_shapes(spec: dict[str, object]) -> list[ValidationIssue]:
     for field in _OPTIONAL_STRING_TYPE_FIELDS:
         issues.extend(_validate_string_field_type(spec, field, required=False))
     issues.extend(_validate_model_params(spec))
+    prompt_issues = _validate_prompt_string_shape(spec)
+    if prompt_issues is not None:
+        issues.extend(prompt_issues)
     return issues

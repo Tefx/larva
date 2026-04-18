@@ -63,7 +63,8 @@ class TestFacadeAssemble:
         assert validate_module.inputs[1] == normalize_module.inputs[0]
         assert normalize_module.inputs[0]["id"] == "assembled"
 
-    def test_assemble_rejects_unresolved_placeholder_without_variables_escape_hatch(self) -> None:
+    def test_assemble_accepts_literal_braces_in_prompt_text(self) -> None:
+        """Literal braces in prompt text are accepted at assembly boundary."""
         facade = DefaultLarvaFacade(
             spec=spec_module,
             assemble=cast("Any", assemble_module),
@@ -77,9 +78,9 @@ class TestFacadeAssemble:
 
         result = facade.assemble({"id": "persona-a", "prompts": ["templated"]})
 
-        error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "UNRESOLVED_PROMPT_TEXT"
-        assert cast("dict[str, object]", error["details"])["placeholders"] == ["role"]
+        assert result.ok
+        assembled = cast("dict[str, object]", result.value)
+        assert assembled["prompt"] == "You are {role}."
 
     def test_assemble_rejects_variables_at_facade_request_boundary(self) -> None:
         facade, _, _, _ = _facade()

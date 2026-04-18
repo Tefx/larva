@@ -291,16 +291,36 @@ class TestAssembleCandidateBehavior:
         assert exc_info.value.code == "VARIABLES_NOT_ALLOWED"
 
     @given(name=st.sampled_from(("role", "target", "agent_name")))
-    def test_unresolved_prompt_placeholders_rejected(self, name: str):
-        """Prompt text must already be composed before assembly output."""
+    def test_single_braces_preserved_in_assembled_prompt(self, name: str):
+        """Single braces with names are preserved as literal text in assembled prompt."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "prompts": [{"text": f"You are {{{name}}}."}],
+            }
+        )
+        assert result["prompt"] == f"You are {{{name}}}."
+
+    def test_doubled_braces_preserved_in_assembled_prompt(self):
+        """Doubled braces are preserved as literal braces in assembled prompt."""
+        result = assemble_candidate(
+            {
+                "id": "persona",
+                "prompts": [{"text": "Use {{literal}} braces."}],
+            }
+        )
+        assert result["prompt"] == "Use {{literal}} braces."
+
+    def test_variables_input_still_rejected(self):
+        """Variables-style inputs remain forbidden at assembly boundary."""
         with pytest.raises(AssemblyError) as exc_info:
             assemble_candidate(
                 {
                     "id": "persona",
-                    "prompts": [{"text": f"You are {{{name}}}."}],
+                    "variables": {"role": "assistant"},
                 }
             )
-        assert exc_info.value.code == "UNRESOLVED_PROMPT_TEXT"
+        assert exc_info.value.code == "VARIABLES_NOT_ALLOWED"
 
     @given(posture=st.sampled_from(("read_only", "read_write", "destructive")))
     def test_mixed_legacy_toolset_payload_fails_closed(self, posture: str):
