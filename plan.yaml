@@ -53917,7 +53917,7 @@ phases:
   - id: prompt_opacity_authority_sync_20260418.opifex_sync
     name: Sync opifex authority, handover, and larva case-matrix to the chosen prompt-opacity
       contract
-    status: claimed
+    status: done
     description: 'In ../opifex, align the canonical prompt-opacity rule across the
       authority docs, schema, shared-surface handover, and larva case-matrix before
       any larva repo-local implementation starts. Required authority inputs to read
@@ -53961,6 +53961,75 @@ phases:
     agent: minimalist-architect-tacit
     claimed_by: minimalist-architect-tacit
     claimed_at: '2026-04-18T12:25:01.523716+00:00'
+    done_at: '2026-04-18T12:30:16.853128+00:00'
+    evidence: "status: \"SUCCESS\"\n## refs Read Confirmation (MANDATORY)\n\nFor each\
+      \ ref in this step:\n- design/final-canonical-contract.md — read PersonaSpec\
+      \ rules; now states `prompt` is required opaque executable text and canonical\
+      \ validation only requires a non-empty string (lines 85-94, especially 88)\n\
+      - contracts/persona_spec.schema.json — read schema `prompt` field; now describes\
+      \ opaque executable prompt text with no prompt-internal parsing at shared-surface\
+      \ validation (lines 18-22)\n- design/personaspec-v1.md — read `prompt` section\
+      \ and validation model; now defines opaque prompt handling and removes placeholder-rejection\
+      \ taxonomy (lines 45-55, 184-236)\n- design/larva-clean-architecture.md — read\
+      \ PersonaSpec field model and validation rules; now defines opaque prompt handling\
+      \ and removes placeholder-rejection rules (lines 87-91, 297-356)\n- conformance/shared_surfaces.yaml\
+      \ — read larva assigned surfaces and invariants; now adds prompt-opacity invariants\
+      \ for `larva_validate`, `larva_register`, `larva_resolve`, `larva_assemble`\
+      \ and renames residual placeholder wording in authority controls (lines 241-326,\
+      \ 447-449)\n- conformance/handovers/02-to-larva.md — read assigned surfaces,\
+      \ invariants, and blocking note; now states prompt opacity and that larva repo-local\
+      \ prompt work remains blocked until this authority sync lands (lines 10-33)\n\
+      - conformance/case_matrix/larva/larva.validate.yaml — read and updated; now\
+      \ covers `prompt_opacity` with `prompt_text_treated_as_opaque_string` acceptance\
+      \ case (lines 6-16, 59-64)\n- conformance/case_matrix/larva/larva.register.yaml\
+      \ — read and updated; now covers `prompt_opacity` with `register_preserves_prompt_as_opaque_text`\
+      \ case (lines 6-16, 74-79)\n- conformance/case_matrix/larva/larva.resolve.yaml\
+      \ — read and updated; now covers `prompt_opacity` with `resolved_prompt_preserved_opaquely`\
+      \ case (lines 6-16, 49-54)\n- conformance/case_matrix/larva/larva.assemble.yaml\
+      \ — read and updated; now covers `prompt_opacity` with `assembled_prompt_preserved_opaquely`\
+      \ case (lines 6-16, 52-57)\n- conformance/case_matrix/larva/larva.component_show.yaml\
+      \ — read; no prompt-opacity change required because this surface is about component\
+      \ payload field rejection, not PersonaSpec prompt semantics\n- conformance/case_matrix/larva/larva.export.yaml\
+      \ — read; no prompt-opacity change required because this surface is selector/export\
+      \ semantics, not PersonaSpec admission/resolve/assemble prompt handling\n- conformance/case_matrix/larva/larva.shared_naming_docs.yaml\
+      \ — read and updated; now covers docs parity for opaque prompt text (lines 3-13,\
+      \ 31-36)\n- conformance/case_matrix/larva/larva.mcp_server_naming.yaml — read;\
+      \ no prompt-opacity change required because this surface is MCP tool registration\
+      \ naming only\n\n## Authority Alignment Proof\n- Exact authority files updated:\n\
+      \  - /Users/tefx/Projects/opifex/design/final-canonical-contract.md\n  - /Users/tefx/Projects/opifex/contracts/persona_spec.schema.json\n\
+      \  - /Users/tefx/Projects/opifex/design/personaspec-v1.md\n  - /Users/tefx/Projects/opifex/design/larva-clean-architecture.md\n\
+      \  - /Users/tefx/Projects/opifex/conformance/shared_surfaces.yaml\n- Exact larva\
+      \ handover/case-matrix files updated:\n  - /Users/tefx/Projects/opifex/conformance/handovers/02-to-larva.md\n\
+      \  - /Users/tefx/Projects/opifex/conformance/case_matrix/larva/larva.validate.yaml\n\
+      \  - /Users/tefx/Projects/opifex/conformance/case_matrix/larva/larva.register.yaml\n\
+      \  - /Users/tefx/Projects/opifex/conformance/case_matrix/larva/larva.resolve.yaml\n\
+      \  - /Users/tefx/Projects/opifex/conformance/case_matrix/larva/larva.assemble.yaml\n\
+      \  - /Users/tefx/Projects/opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml\n\
+      - Shared-surface assignment check: confirmed larva assigned surfaces remain\
+      \ limited to `larva_validate`, `larva_register`, `larva_resolve`, `larva_assemble`,\
+      \ `larva_component_show`, `larva_export`, `larva_component_show`, `larva_shared_naming_docs`,\
+      \ `larva_mcp_server_naming` in handover lines 10-19 and shared_surfaces larva\
+      \ block lines 241-385. No doctor-registry surface was added.\n- Explicit non-scope\
+      \ confirmation: doctor registry parity remains repo-local in larva because it\
+      \ is not a shared surface; no doctor-registry entry appears in the larva assigned\
+      \ surfaces or the updated authority files.\n- Placeholder-rejection language\
+      \ removed from personaspec-v1.md and larva-clean-architecture.md: `personaspec-v1.md`\
+      \ no longer contains placeholder-based ERROR or `UNRESOLVED_PLACEHOLDER` code\
+      \ (lines 188-209) and now defers prompt-internal interpretation (lines 226-236);\
+      \ `larva-clean-architecture.md` no longer contains placeholder-based example/error\
+      \ bullets (lines 297-333) and now defers prompt-internal interpretation/review\
+      \ (lines 346-356)\n- Blocking statement for larva repo-local phase: authority\
+      \ sync complete in the opifex authority/conformance working tree; larva repo-local\
+      \ prompt-handling implementation remains blocked until this upstream sync lands,\
+      \ as stated in handover lines 29-33\n\nAdditional verification:\n- Targeted\
+      \ search across the listed authority docs, schema, larva handover, and larva\
+      \ case-matrix for `placeholder|UNRESOLVED_PLACEHOLDER|unresolved template|unresolved\
+      \ variables|unresolved placeholders` returned no matches after the edits.\n\
+      - Canonical rule now agrees across contract/schema/docs/conformance: `prompt`\
+      \ is required opaque executable text, validated as a non-empty string, preserved\
+      \ opaquely on larva shared surfaces, and not subject to repo-local prompt-content\
+      \ rejection heuristics.\n\nNote:\n- Scope execution was upstream-only in `/Users/tefx/Projects/opifex`\
+      \ as assigned. No larva repo-local implementation was started."
   - id: prompt_opacity_authority_sync_20260418.gate
     name: Gate opifex authority sync before larva repo-local work
     status: pending
