@@ -53683,7 +53683,7 @@ phases:
   steps:
   - id: prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     name: Implement canonical prompt opacity in core validation and assembly
-    status: claimed
+    status: done
     description: Delete brace-placeholder scanning from src/larva/core/validate.py
       and src/larva/core/assemble.py, preserve prompt string-shape validation by moving
       prompt coverage into src/larva/core/validation_field_shapes.py, and replace
@@ -53707,6 +53707,29 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T13:46:54.540388+00:00'
+    done_at: '2026-04-18T13:47:05.102766+00:00'
+    evidence: '- refs read: design/prompt-text-opacity-basis.md, src/larva/core/validate.py,
+      src/larva/core/assemble.py, src/larva/core/validation_field_shapes.py
+
+      - expected-red: prior behavior rejected unresolved brace placeholders via `_validate_prompt_semantics`
+      in validate.py and placeholder scans in assemble.py; associated placeholder-rejection
+      tests were replaced
+
+      - implementation summary: removed regex/semantic placeholder rejection from
+      validate/assemble, kept prompt string-shape validation via validation_field_shapes.py,
+      preserved variables-map input rejection
+
+      - files changed: src/larva/core/assemble.py, src/larva/core/validate.py, src/larva/core/validation_field_shapes.py,
+      tests/app/test_facade/test_assemble.py, tests/core/test_assemble.py, tests/core/test_validate.py
+
+      - commit hash(es): 2d2466473a41ae5d991b68bc4f0b6e2c3b00d32c
+
+      - verification: focused tests passed for literal single/doubled brace acceptance
+      and preservation, plus variables-style input rejection across core/facade flows
+      (35 relevant tests)
+
+      - residual risks: none identified in scoped core prompt-opacity path; downstream
+      doctor/doc parity steps still required by phase'
   - id: prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
     name: Retire placeholder-specific error code and sync user-facing docs/tests
     status: pending
