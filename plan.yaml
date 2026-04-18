@@ -53673,3 +53673,28 @@ phases:
   gate: Phase ends with focused cross-surface verification and gate review.
   depends_on:
   - final_zeroing_20260418_finalization
+  steps:
+  - id: prompt_opacity_doctor_parity_20260418.core_prompt_opacity
+    name: Implement canonical prompt opacity in core validation and assembly
+    status: pending
+    description: Delete brace-placeholder scanning from src/larva/core/validate.py
+      and src/larva/core/assemble.py, preserve prompt string-shape validation by moving
+      prompt coverage into src/larva/core/validation_field_shapes.py, and replace
+      placeholder-rejection tests with literal-brace acceptance tests while keeping
+      variables/placeholder-map inputs forbidden.
+    verification: Run focused core/app tests proving single and doubled braces are
+      accepted as literal prompt text, assembled prompt text preserves braces, and
+      variables-style inputs remain rejected.
+    evidence_template: '- refs read: design/prompt-text-opacity-basis.md, src/larva/core/validate.py,
+      src/larva/core/assemble.py, src/larva/core/validation_field_shapes.py
+
+      - expected-red: cite the pre-change placeholder rejection behavior/tests
+
+      - implementation summary: deleted regex/semantic rejection paths and preserved
+      prompt type checks
+
+      - verification: paste focused test commands/results for tests/core/test_validate.py,
+      tests/core/test_assemble.py, and relevant facade assembly coverage
+
+      - residual risks: note any remaining brace-policy callers or none'
+    agent: python-executor
