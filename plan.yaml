@@ -53821,7 +53821,7 @@ phases:
       - Commit was produced in step branch; changes are ready for orchestrator merge.'
   - id: prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     name: Fix doctor registry parity for brace-containing prompt entries
-    status: pending
+    status: claimed
     description: Narrowly update src/larva/shell/cli_doctor.py so doctor registry
       no longer reports OK for registry entries that larva list/serve would reject,
       using the same facade-backed admission/read path needed to catch brace-related
@@ -53846,6 +53846,8 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T13:59:09.528618+00:00'
   - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
     name: Verify opaque-prompt and doctor behavior across affected surfaces
     status: pending
