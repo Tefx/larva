@@ -144,7 +144,7 @@ class TestNormalizeSpecContractAnnotations:
         post_validator = contract.posts[0]
         assert hasattr(post_validator, "function"), "Post validator should have function attribute"
 
-    def test_post_contracts_do_not_claim_tools_is_removed(self) -> None:
+    def test_post_contracts_do_not_claim_tools_are_strictly_rejected(self) -> None:
         """normalize_spec must not claim forbidden fields are silently stripped."""
         from larva.core.normalize import normalize_spec
 
@@ -152,7 +152,7 @@ class TestNormalizeSpecContractAnnotations:
         assert contract is not None
         assert len(contract.posts) > 0, "Expected at least one post condition"
 
-    def test_post_contracts_do_not_claim_side_effect_policy_is_removed(self) -> None:
+    def test_post_contracts_do_not_claim_side_effect_policy_are_strictly_rejected(self) -> None:
         """normalize_spec must not claim forbidden fields are silently stripped."""
         from larva.core.normalize import normalize_spec
 
