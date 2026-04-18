@@ -54128,7 +54128,7 @@ phases:
       - Commit hash: 7201ef35d42ca4566191d9878f8c4dccee343392"
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_helper_fixture_canonical
     name: Repair helper-fixture canonical prompt propagation for facade assemble tests
-    status: pending
+    status: claimed
     description: 'Root-cause follow-up to the prior fixture repair: the previous fix
       updated one canonical prompt fixture path, but test_assemble still reaches helper
       fixtures/builders that construct a partial canonical spec, so the facade-backed
@@ -54177,6 +54177,8 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T15:37:23.849490+00:00'
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
