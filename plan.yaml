@@ -52923,7 +52923,7 @@ phases:
       \ as review artifact with fail disposition and explicit follow-up ownership."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched_2
     name: Batched remediation for stale parity-wording retest blockers
-    status: pending
+    status: claimed
     description: 'Follow-up remediation path after failed `final_zeroing_20260418_parity_cleanup.retest`.
 
 
@@ -52981,6 +52981,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.retest
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T06:46:45.145167+00:00'
   - id: final_zeroing_20260418_parity_cleanup.retest_2
     name: Retest gate for batched parity-wording remediation follow-up
     status: pending
