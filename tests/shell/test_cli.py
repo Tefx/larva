@@ -40,6 +40,7 @@ from larva.app.facade import (
     RegisteredPersona,
 )
 from larva import cli_facade
+from larva.core import assemble as assemble_module
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
@@ -4086,7 +4087,7 @@ class TestDoctorRegistryCommand:
             mock_store.root = Path("/fake/root")
             mock_store_class.return_value = mock_store
 
-            result = doctor_registry_command(as_json=False)
+            result = doctor_registry_command(as_json=False, facade=None)
 
             assert isinstance(result, Success)
             cli_result = result.unwrap()
@@ -4112,7 +4113,7 @@ class TestDoctorRegistryCommand:
             mock_store.root = Path("/fake/root")
             mock_store_class.return_value = mock_store
 
-            result = doctor_registry_command(as_json=False)
+            result = doctor_registry_command(as_json=False, facade=None)
 
             assert isinstance(result, Failure)
             failure = result.failure()
@@ -4139,7 +4140,7 @@ class TestDoctorRegistryCommand:
             mock_store.root = Path("/fake/root")
             mock_store_class.return_value = mock_store
 
-            result = doctor_registry_command(as_json=False)
+            result = doctor_registry_command(as_json=False, facade=None)
 
             assert isinstance(result, Failure)
             failure = result.failure()
@@ -4166,7 +4167,7 @@ class TestDoctorRegistryCommand:
             mock_store.root = Path("/fake/root")
             mock_store_class.return_value = mock_store
 
-            result = doctor_registry_command(as_json=False)
+            result = doctor_registry_command(as_json=False, facade=None)
 
             assert isinstance(result, Success)
             cli_result = result.unwrap()
@@ -4186,7 +4187,7 @@ class TestDoctorRegistryCommand:
             mock_store.root = Path("/fake/root")
             mock_store_class.return_value = mock_store
 
-            result = doctor_registry_command(as_json=True)
+            result = doctor_registry_command(as_json=True, facade=None)
 
             assert isinstance(result, Success)
             cli_result = result.unwrap()
@@ -4237,3 +4238,93 @@ class TestDoctorRegistryCommand:
             )
 
             assert exit_code == EXIT_OK
+
+    def test_doctor_registry_with_malformed_spec_fails_via_facade_validation(self) -> None:
+        """Doctor registry with facade catches malformed spec that list/serve would reject.
+
+        Regression test: previously doctor did shallow filesystem reads only and would
+        report OK for registry entries that facade-backed list/serve would reject due to
+        missing spec_version or other canonical admission failures.
+        """
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Failure, Success
+
+        # A spec missing spec_version - this is what list/serve reject
+        # Include all required fields except spec_version so normalize catches it
+        malformed_spec = {
+            "id": "malformed-persona",
+            "description": "Missing spec_version",
+            "prompt": "You are helpful.",
+            "model": "gpt-4o-mini",
+            "capabilities": {"shell": "read_only"},
+            # spec_version intentionally omitted to trigger canonical validation failure
+        }
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success(
+                {
+                    "malformed-persona": "sha256:malformed",
+                }
+            )
+            mock_store._read_spec.return_value = Success(malformed_spec)
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            # Build facade with REAL validate/normalize modules so _normalize_and_validate
+            # runs production canonical checks (NOT spy doubles that return valid unconditionally)
+            facade = DefaultLarvaFacade(
+                spec=spec_module,
+                assemble=assemble_module,
+                validate=validate_module,
+                normalize=normalize_module,
+                components=InMemoryComponentStore(),
+                registry=InMemoryRegistryStore(),
+            )
+
+            result = doctor_registry_command(as_json=False, facade=facade)
+
+            assert isinstance(result, Failure)
+            failure = result.failure()
+            assert failure["exit_code"] == EXIT_ERROR
+            assert "DIAGNOSTIC FAIL" in failure["stderr"]
+            assert "spec_version" in failure["stderr"]
+            assert "malformed-persona" in failure["stderr"]
+
+    def test_doctor_registry_with_valid_specs_succeeds_via_facade_validation(self) -> None:
+        """Doctor registry with facade passes valid specs that list/serve accept."""
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from larva.shell.cli_commands import doctor_registry_command
+        from returns.result import Success
+
+        with patch("larva.shell.registry.FileSystemRegistryStore") as mock_store_class:
+            mock_store = MagicMock()
+            mock_store._read_index.return_value = Success(
+                {
+                    "persona-a": "sha256:aaa",
+                    "persona-b": "sha256:bbb",
+                }
+            )
+            mock_store._read_spec.return_value = Success(_canonical_spec("persona-a"))
+            mock_store.root = Path("/fake/root")
+            mock_store_class.return_value = mock_store
+
+            # Build facade with REAL modules so validation runs production checks
+            facade = DefaultLarvaFacade(
+                spec=spec_module,
+                assemble=assemble_module,
+                validate=validate_module,
+                normalize=normalize_module,
+                components=InMemoryComponentStore(),
+                registry=InMemoryRegistryStore(),
+            )
+
+            result = doctor_registry_command(as_json=False, facade=facade)
+
+            assert isinstance(result, Success)
+            cli_result = result.unwrap()
+            assert cli_result["exit_code"] == EXIT_OK
+            assert "DIAGNOSTIC OK" in cli_result["stdout"]

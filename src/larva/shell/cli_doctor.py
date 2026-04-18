@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from returns.result import Failure, Result, Success
 
 from larva.shell.cli_helpers import EXIT_ERROR, EXIT_OK, CliCommandResult, CliFailure
 
+if TYPE_CHECKING:
+    from larva.app.facade import LarvaFacade
+
 
 # @shell_complexity: diagnostic branching mirrors probe outcomes across index/read checks
-def doctor_registry_command(*, as_json: bool) -> Result[CliCommandResult, CliFailure]:
-    """Run read-only diagnostics on the registry."""
+def doctor_registry_command(
+    *, as_json: bool, facade: LarvaFacade | None = None
+) -> Result[CliCommandResult, CliFailure]:
+    """Run read-only diagnostics on the registry.
+
+    When facade is provided, performs full canonical admission validation
+    (via _normalize_and_validate) to match the same checks that list/serve use.
+    Without facade, performs shallow filesystem diagnostics only.
+    """
     from larva.shell.registry import INDEX_FILENAME, FileSystemRegistryStore
 
     diagnostics: list[str] = []
@@ -34,16 +46,29 @@ def doctor_registry_command(*, as_json: bool) -> Result[CliCommandResult, CliFai
                 issues.append(spec_diagnostic)
                 diagnostics.append(spec_diagnostic)
                 continue
+            spec = spec_result.unwrap()
             diagnostics.append(f"  [OK] Spec read succeeded for '{persona_id}'")
 
-        for persona_id in sample_ids:
-            spec_result = fs_store._read_spec(persona_id, index.get(persona_id))
-            if isinstance(spec_result, Success):
-                forbidden = [fld for fld in ("tools", "side_effect_policy") if fld in spec_result.unwrap()]
-                if forbidden:
-                    diagnostics.append(
-                        f"  [WARN] Spec '{persona_id}' contains forbidden legacy fields: {forbidden}"
+            # Facade-backed admission validation: catch the same failures that
+            # list/serve would encounter so doctor no longer reports false-OK
+            # for registry entries that fail canonical validation.
+            if facade is not None:
+                normalized_result = facade._normalize_and_validate(spec)
+                if isinstance(normalized_result, Failure):
+                    error = normalized_result.failure()
+                    spec_diagnostic = (
+                        f"  [FAIL] Spec validation failed for '{persona_id}': "
+                        f"{error.get('code', 'UNKNOWN')}: {error.get('message', 'unknown error')}"
                     )
+                    issues.append(spec_diagnostic)
+                    diagnostics.append(spec_diagnostic)
+                    continue
+
+            forbidden = [fld for fld in ("tools", "side_effect_policy") if fld in spec]
+            if forbidden:
+                diagnostics.append(
+                    f"  [WARN] Spec '{persona_id}' contains forbidden legacy fields: {forbidden}"
+                )
 
     diagnostics.append(f"  [INFO] Registry root: {fs_store.root}")
     diagnostics.append(f"  [INFO] Index path: {fs_store.root / INDEX_FILENAME}")
