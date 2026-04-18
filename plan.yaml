@@ -53125,7 +53125,7 @@ phases:
       \ cleaned."
   - id: final_zeroing_20260418_parity_cleanup.retest_3
     name: Retest parity cleanup after batched follow-up fix
-    status: pending
+    status: claimed
     description: Re-run the relevant parity-cleanup verification after `fix_batched_3`
       to confirm the targeted stale framings were fully removed and the updated names/references
       are consistent.
@@ -53135,6 +53135,8 @@ phases:
       tests/repro checks passed.
     depends_on:
     - final_zeroing_20260418_parity_cleanup.fix_batched_3
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T06:59:41.058803+00:00'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
