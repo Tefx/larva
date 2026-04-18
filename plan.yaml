@@ -54125,6 +54125,57 @@ phases:
       \ or brace or opacity' -q` -> 1 passed, 6 deselected\n  - `pytest tests/app/test_facade/\
       \ -q` -> 80 passed\n- Product behavior change confirmation: none (test-only)\n\
       - Commit hash: 7201ef35d42ca4566191d9878f8c4dccee343392"
+  - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_helper_fixture_canonical
+    name: Repair helper-fixture canonical prompt propagation for facade assemble tests
+    status: pending
+    description: 'Root-cause follow-up to the prior fixture repair: the previous fix
+      updated one canonical prompt fixture path, but test_assemble still reaches helper
+      fixtures/builders that construct a partial canonical spec, so the facade-backed
+      path continues receiving an invalid spec missing spec_version, description,
+      model, and capabilities. Keep this fix narrow and test-only: unify or route
+      every helper fixture used by tests/app/test_facade/test_assemble.py through
+      the same canonical prompt spec shape so literal braces remain valid prompt text
+      rather than being masked by validation failure from incomplete fixture data.
+
+
+      Scope:
+
+      - trace the helper fixtures/builders used by tests/app/test_facade/test_assemble.py
+
+      - ensure each helper path feeding facade assembly uses the full canonical spec
+      fields: spec_version, description, model, capabilities
+
+      - do not broaden beyond the facade assemble prompt-opacity fixture/helper chain
+
+      - no product code behavior changes
+
+
+      Completion criteria:
+
+      - explicitly document in evidence why the previous fix failed to clear the blocker
+
+      - exact failing test now passes through the facade-backed path with canonical
+      fixture data
+
+      - nearest module tests covering the same helper chain also pass
+
+      - helper-fixture canonicalization is consistent across test_assemble inputs
+      that rely on shared fixture/build paths'
+    verification: 'Require exact blocker proof plus nearest regression coverage:
+
+      - pytest tests/app/test_facade/test_assemble.py::TestFacadeAssemble::test_assemble_accepts_literal_braces_in_prompt_text
+      -q
+
+      - pytest tests/app/test_facade/test_assemble.py -q
+
+      - pytest tests/app/test_facade/ -k ''assemble or prompt or brace or opacity''
+      -q
+
+      Evidence must state which helper fixture/build path was still producing the
+      incomplete canonical spec and how the fix unified it.'
+    depends_on:
+    - prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
+    agent: python-executor
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
