@@ -53033,7 +53033,7 @@ phases:
       - worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest_2
     name: Retest gate for batched parity-wording remediation follow-up
-    status: pending
+    status: claimed
     description: 'Independent gate-style retest after `final_zeroing_20260418_parity_cleanup.fix_batched_2`.
 
 
@@ -53071,6 +53071,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.fix_batched_2
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T06:51:54.815210+00:00'
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
