@@ -53907,7 +53907,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
-  status: pending
+  status: in_progress
   gate: Larva repo-local implementation stays blocked until opifex authority docs/schema/shared-surfaces
     handover and larva case-matrix coverage all align to the chosen prompt-opacity
     contract.
@@ -53917,7 +53917,7 @@ phases:
   - id: prompt_opacity_authority_sync_20260418.opifex_sync
     name: Sync opifex authority, handover, and larva case-matrix to the chosen prompt-opacity
       contract
-    status: pending
+    status: claimed
     description: 'In ../opifex, align the canonical prompt-opacity rule across the
       authority docs, schema, shared-surface handover, and larva case-matrix before
       any larva repo-local implementation starts. Required authority inputs to read
@@ -53959,6 +53959,8 @@ phases:
 
       - Blocking statement for larva repo-local phase: authority sync complete / incomplete'
     agent: minimalist-architect-tacit
+    claimed_by: minimalist-architect-tacit
+    claimed_at: '2026-04-18T12:25:01.523716+00:00'
   - id: prompt_opacity_authority_sync_20260418.gate
     name: Gate opifex authority sync before larva repo-local work
     status: pending
