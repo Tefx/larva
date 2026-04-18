@@ -54013,6 +54013,106 @@ phases:
     - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     - prompt_opacity_doctor_parity_20260418.cross_surface_verify
     agent: gate-reviewer-tacit
+  - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
+    name: Repair facade prompt-opacity verification fixture/assertions
+    status: pending
+    description: 'Fix the blocker-class verification bug in the facade assemble tests
+      without changing product behavior.
+
+
+      Scope:
+
+      - Repair tests/app/test_facade/test_assemble.py for the returns.Result API actually
+      returned by facade assembly (do not use assert result.ok on Failure objects)
+
+      - Replace the incomplete canonical spec fixture with a canonical prompt fixture
+      that includes the required fields description, model, spec_version, and capabilities
+
+      - Keep the change narrow to failing facade prompt-opacity verification coverage
+      and adjacent facade prompt-opacity test cases only
+
+
+      Targeted surfaces:
+
+      - tests/app/test_facade/test_assemble.py
+
+      - any directly-related prompt-opacity facade test helpers/fixtures required
+      by that module
+
+
+      Completion criteria:
+
+      - The literal-braces prompt test asserts against the correct returns.Result
+      success/failure surface
+
+      - Canonical required fields are present in the fixture so validation failure
+      is not caused by an invalid test input
+
+      - Related facade prompt-opacity tests use the same canonical fixture shape where
+      needed
+
+      - No product code behavior changes are introduced
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.'
+    verification: 'Focused verification only:
+
+      - pytest tests/app/test_facade/test_assemble.py::TestFacadeAssemble::test_assemble_accepts_literal_braces_in_prompt_text
+      -q
+
+      - pytest tests/app/test_facade/test_assemble.py -k ''prompt or brace or opacity''
+      -q
+
+      Both commands must pass with no product-code changes required beyond test/fixture
+      repair.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Narrow Fix Evidence
+
+      - Files changed:
+
+      - Assertions repaired for returns.Result API:
+
+      - Canonical required fields added to fixture:
+
+      - Commands run:
+
+      ```text
+
+      pytest tests/app/test_facade/test_assemble.py::TestFacadeAssemble::test_assemble_accepts_literal_braces_in_prompt_text
+      -q
+
+      pytest tests/app/test_facade/test_assemble.py -k ''prompt or brace or opacity''
+      -q
+
+      ```
+
+      - Actual output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - Product behavior change confirmation: none'
+    depends_on:
+    - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
+    - prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
+    agent: python-executor
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
