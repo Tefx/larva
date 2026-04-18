@@ -54812,7 +54812,7 @@ phases:
       \ and `USAGE.md`."
   - id: post_prompt_opacity_debt_cleanup_20260419.gate
     name: Gate the non-blocking debt cleanup phase
-    status: pending
+    status: claimed
     description: 'Independent gate for the debt-cleanup phase. OPEN only when both
       previously non-blocking debts are now closed with explicit evidence: no dead
       prompt-placeholder residue remains, larva_export all=false matches the shared-surface
@@ -54839,3 +54839,5 @@ phases:
     depends_on:
     - post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T17:49:28.015612+00:00'
