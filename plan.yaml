@@ -53789,3 +53789,11 @@ phases:
     - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     - prompt_opacity_doctor_parity_20260418.cross_surface_verify
     agent: gate-reviewer-tacit
+- id: prompt_opacity_authority_sync_20260418
+  name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
+  status: pending
+  gate: Larva repo-local implementation stays blocked until opifex authority docs/schema/shared-surfaces
+    handover and larva case-matrix coverage all align to the chosen prompt-opacity
+    contract.
+  depends_on:
+  - final_zeroing_20260418_finalization
