@@ -52677,7 +52677,7 @@ phases:
       \ with fail verdict and explicit remediation ownership created."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched
     name: Batched stale transition-era wording cleanup
-    status: pending
+    status: claimed
     description: 'Fix ALL stale transition-era wording blockers found by final_zeroing_20260418_parity_cleanup.gate.
 
 
@@ -52782,6 +52782,8 @@ phases:
     depends_on:
     - final_zeroing_20260418_parity_cleanup.gate
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T06:35:48.961432+00:00'
   - id: final_zeroing_20260418_parity_cleanup.retest
     name: Retest gate for batched stale-wording cleanup
     status: pending
