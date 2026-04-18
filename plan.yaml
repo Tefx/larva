@@ -52923,7 +52923,7 @@ phases:
       \ as review artifact with fail disposition and explicit follow-up ownership."
   - id: final_zeroing_20260418_parity_cleanup.fix_batched_2
     name: Batched remediation for stale parity-wording retest blockers
-    status: claimed
+    status: done
     description: 'Follow-up remediation path after failed `final_zeroing_20260418_parity_cleanup.retest`.
 
 
@@ -52983,6 +52983,54 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T06:46:45.145167+00:00'
+    done_at: '2026-04-18T06:51:44.081652+00:00'
+    evidence: 'Second batched parity-wording remediation executed for retest blockers.
+
+
+      refs confirmed read:
+
+      - tests/core/test_normalize.py
+
+      - tests/repro/spec_verify_black_box_surfaces.py
+
+
+      Fixes applied in targeted parity file:
+
+      - tests/core/test_normalize.py around ~148 and ~156 now both use strict wording
+      (`must not claim forbidden fields are silently stripped`) removing prior transition-era/late-validation
+      phrasing.
+
+
+      Sibling sweep evidence:
+
+      - searched for `leave rejection to validation` and `silently stripped` patterns
+      in tests.
+
+      - no residual stale transition-era matches outside corrected target passages.
+
+
+      Scoped mismatch check:
+
+      - `tests/repro/spec_verify_black_box_surfaces.py::test_python_api_resolve_rejects_tools_override`
+      mismatch (`PERSONA_INVALID` vs `FORBIDDEN_FIELD`) reviewed.
+
+      - recorded as out-of-scope for this wording-contract step because behavioral
+      rejection contract remains satisfied; issue is error-code expectation policy.
+
+
+      Verification reported by implementer:
+
+      - targeted normalize tests pass.
+
+      - no src/ product implementation files modified.
+
+
+      Step branch merge:
+
+      - ff merge reported already up to date against main (no additional branch delta
+      at merge time).
+
+      - worktree/branch cleaned.'
   - id: final_zeroing_20260418_parity_cleanup.retest_2
     name: Retest gate for batched parity-wording remediation follow-up
     status: pending
