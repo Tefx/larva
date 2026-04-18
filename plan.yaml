@@ -54740,7 +54740,7 @@ phases:
       \ (user did not request a git commit)"
   - id: post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
     name: Verify the non-blocking debt cleanup across affected surfaces
-    status: claimed
+    status: done
     description: Independent verification for the debt-cleanup phase. Re-run focused
       verification over prompt-opacity core paths and larva_export shared-surface
       semantics, confirm the previous non-blocking findings are cleared, and ensure
@@ -54780,6 +54780,36 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-18T17:48:37.021221+00:00'
+    done_at: '2026-04-18T17:49:18.809328+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- ../opifex/conformance/case_matrix/larva/larva.export.yaml\
+      \ — lines 23-34 require both `missing_selector` and `all_false_does_not_mean_export_all`\
+      \ to reject with `selector_required` semantics, with `field: all` for the all=false\
+      \ case.\n- ../opifex/design/final-canonical-contract.md — line 88 defines `prompt`\
+      \ as required opaque executable text and says shared-surface validation treats\
+      \ it as a non-empty string without prompt-internal parsing.\n- src/larva/core/validation_field_shapes.py\
+      \ — lines 1-12 now show only `import math` and no `_PROMPT_PLACEHOLDER_PATTERN`,\
+      \ confirming the dead residue is gone from active code.\n- src/larva/shell/mcp_export.py\
+      \ — lines 106-119 now reject `{all:false}` with the same missing-selector reason\
+      \ instead of succeeding with empty export ids.\n- USAGE.md — lines 34-36 now\
+      \ document that `larva_export` requires exactly one selector and rejects `{all:false}`\
+      \ as missing selector.\n\n## Verification Ledger\n- `uv run pytest tests/core/test_validate.py\
+      \ tests/core/test_assemble.py -q` -> `106 passed in 0.45s`\n- `uv run pytest\
+      \ tests/shell/test_mcp.py -k 'export' -q` -> `17 passed, 133 deselected in 0.24s`\n\
+      - `uv run pytest tests/repro/cross_surface_consistency_verify.py -k 'export_all_false\
+      \ or malformed' -q` -> `6 passed, 39 deselected in 0.56s`\n- `invar guard (changed\
+      \ files)` -> passed, 0 errors, 0 warnings; changed-file verification level STANDARD\n\
+      - Active-code search:\n  - `_PROMPT_PLACEHOLDER_PATTERN` under `src/larva` ->\
+      \ no matches\n  - `does_not_route_to_export_all|all_false_does_not_mean_export_all`\
+      \ under larva source/docs/tests -> no matches\n\n## Debt Closure Check\n- dead\
+      \ placeholder residue cleared: YES\n- export all=false semantic drift cleared:\
+      \ YES\n- docs/tests parity gaps: NONE\n- uncovered cases: NONE\n- Open Problems:\
+      \ NONE\n- Residual Risk: NONE\n\nNotes:\n- Historical design notes still mention\
+      \ `_PROMPT_PLACEHOLDER_PATTERN` in `design/prompt-text-opacity-basis.md`, but\
+      \ there are no remaining active-code references under `src/larva`; this is not\
+      \ a live residue or parity gap.\n- Product files modified during this phase\
+      \ remain limited to the scoped cleanup set: `src/larva/core/validation_field_shapes.py`,\
+      \ `src/larva/shell/mcp_export.py`, `tests/shell/test_mcp.py`, `tests/repro/cross_surface_consistency_verify.py`,\
+      \ and `USAGE.md`."
   - id: post_prompt_opacity_debt_cleanup_20260419.gate
     name: Gate the non-blocking debt cleanup phase
     status: pending
