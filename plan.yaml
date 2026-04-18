@@ -54629,7 +54629,7 @@ phases:
       \ gate_open_allowed: true\n  blocking_behavioral_proofs: []"
 - id: post_prompt_opacity_debt_cleanup_20260419
   name: Prompt Opacity Post-Gate Debt Cleanup
-  status: pending
+  status: in_progress
   gate: 'Cleanup gate: OPEN only when dead prompt-placeholder residue is removed,
     larva_export all=false semantics match the larva export case-matrix, focused docs/tests
     parity is updated, and verification reports uncovered cases = none, Open Problems
@@ -54655,7 +54655,7 @@ phases:
     agent: python-executor
   - id: post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     name: Align larva_export all=false selector semantics to the case matrix
-    status: pending
+    status: claimed
     description: 'Fix the shared-surface semantic drift noted by cross-surface verification:
       the larva export surface must reject selector `{all:false}` with the case-matrix-required
       selector error instead of silently succeeding with an empty export list. Keep
@@ -54671,6 +54671,8 @@ phases:
     - tests/repro/cross_surface_consistency_verify.py
     - USAGE.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-18T17:42:51.950857+00:00'
   - id: post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
     name: Verify the non-blocking debt cleanup across affected surfaces
     status: pending
