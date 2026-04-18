@@ -53568,7 +53568,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: final_zeroing_20260418.final_spec_conformance_fix
     name: Batch spec conformance doc/runtime remediation
-    status: claimed
+    status: done
     description: 'Remediate the failed spec conformance audit in one coordinated change
       set. Scope must cover: (1) align spec_version requirement/defaulting language
       in USAGE.md around line ~491, (2) resolve docs/runtime mismatch on PATCH behavior
@@ -53588,6 +53588,26 @@ phases:
     - final_zeroing_20260418.spec_conformance_audit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-18T07:25:07.008399+00:00'
+    done_at: '2026-04-18T07:35:02.984130+00:00'
+    evidence: "Batched spec-conformance remediation implemented with hard git evidence\
+      \ and merged.\n\nChosen contract behavior:\n- PATCH/update now fail-closed on\
+      \ protected metadata roots (`id`, `spec_version`, `spec_digest`) via `FORBIDDEN_PATCH_FIELD`\
+      \ instead of ignore/scrub semantics.\n\nChanged files:\n- ADR-001-spec-version-boundary.md\n\
+      - INTERFACES.md\n- USAGE.md\n- src/larva/core/patch.py\n- tests/app/test_facade/test_update.py\n\
+      - tests/core/test_patch.py\n- tests/repro/web_convergence_parity.py\n- tests/shell/test_web.py\n\
+      \nExpected-red proof (pre-fix):\n- assertion script against HEAD behavior failed\
+      \ because protected metadata patch was silently accepted/ignored.\n\nImplementation\
+      \ proof:\n- `git diff --stat` after edits showed 8 files changed (133 insertions\
+      \ / 86 deletions).\n- Focused tests:\n  - `uv run pytest tests/core/test_patch.py\
+      \ tests/app/test_facade/test_update.py tests/shell/test_web.py tests/repro/web_convergence_parity.py\
+      \ -q`\n  - result: `108 passed`\n- `invar guard --changed`: passed (doctest\
+      \ + crosshair verified patch.py).\n\nCommit proof:\n- commit: `53b647e08e956cc0697acdc5de8eec8450ea4b01`\n\
+      - message: `fix: fail closed on protected patch metadata`\n- merged to main\
+      \ via fast-forward.\n\nConformance closure rationale:\n- Docs now state required\
+      \ spec_version/no defaulting language and reject semantics for protected metadata\
+      \ on PATCH.\n- Runtime patch path rejects protected metadata pre-merge, preventing\
+      \ laundering into canonical success.\n- Tests across core/facade/web/repro now\
+      \ assert strict rejection, aligning docs/runtime/tests."
   - id: final_zeroing_20260418.final_spec_conformance_retest
     name: Retest spec conformance after batched fix
     status: pending
