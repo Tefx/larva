@@ -53513,7 +53513,7 @@ phases:
       - final_zeroing_20260418.final_spec_conformance_retest"
   - id: final_zeroing_20260418_finalization.gate
     name: Final gate for strict zeroing closure
-    status: pending
+    status: claimed
     description: 'Independent final gate for the strict zeroing pass.
 
 
@@ -53566,6 +53566,8 @@ phases:
     - final_zeroing_20260418.full_plan_check
     - final_zeroing_20260418.spec_conformance_audit
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T07:38:46.228613+00:00'
   - id: final_zeroing_20260418.final_spec_conformance_fix
     name: Batch spec conformance doc/runtime remediation
     status: done
