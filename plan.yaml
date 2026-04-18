@@ -53721,3 +53721,30 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
     agent: python-executor
+  - id: prompt_opacity_doctor_parity_20260418.doctor_registry_parity
+    name: Fix doctor registry parity for brace-containing prompt entries
+    status: pending
+    description: Narrowly update src/larva/shell/cli_doctor.py so doctor registry
+      no longer reports OK for registry entries that larva list/serve would reject,
+      using the same facade-backed admission/read path needed to catch brace-related
+      canonical failures, and add regression coverage for the specific mismatch without
+      broadening into generic registry health scanning.
+    verification: Run focused doctor CLI regressions proving doctor flags the same
+      invalid registry content that facade-backed list/serve reject and no longer
+      produces shallow false-OK results for this mismatch class.
+    evidence_template: '- refs read: design/prompt-text-opacity-basis.md, src/larva/shell/cli_doctor.py,
+      src/larva/app/facade.py
+
+      - expected-red: cite how doctor previously passed while list/serve failed for
+      the same registry content
+
+      - implementation summary: describe the minimal parity/deep-check change and
+      why it is intentionally narrow
+
+      - verification: paste focused CLI test commands/results covering doctor-vs-list/serve
+      parity
+
+      - residual risks: note any intentionally deferred diagnostics outside this mismatch'
+    depends_on:
+    - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
+    agent: python-executor
