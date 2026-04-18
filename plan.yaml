@@ -53669,7 +53669,7 @@ phases:
       \ semantics."
 - id: prompt_opacity_doctor_parity_20260418
   name: Prompt Opacity + Doctor Parity (Larva Repo-Local Implementation + Gates)
-  status: locked
+  status: pending
   gate: 'Phase 4 repo-local execution/gate protocol: after each modification round
     rerun a fresh full self-test, make assigned-surface coverage explicit, map all
     larva case-matrix coverage explicitly, run docs/tests parity scan, and only PASS
@@ -53907,7 +53907,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
-  status: in_progress
+  status: done
   gate: Larva repo-local implementation stays blocked until opifex authority docs/schema/shared-surfaces
     handover and larva case-matrix coverage all align to the chosen prompt-opacity
     contract.
@@ -54032,7 +54032,7 @@ phases:
       \ as assigned. No larva repo-local implementation was started."
   - id: prompt_opacity_authority_sync_20260418.gate
     name: Gate opifex authority sync before larva repo-local work
-    status: claimed
+    status: done
     description: 'Independent gate for the upstream prerequisite. Open only when the
       opifex authority files, larva handover, and larva case-matrix are mutually aligned
       to the chosen prompt-opacity contract and the boundary is explicit: upstream
@@ -54068,3 +54068,86 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T12:30:31.956362+00:00'
+    done_at: '2026-04-18T12:51:54.890909+00:00'
+    evidence: "status: \"SUCCESS\"\n## refs Read Confirmation (MANDATORY)\n\nFor each\
+      \ ref in this step:\n- design/final-canonical-contract.md — NOT in this worktree\
+      \ (upstream opifex file); read independently from /Users/tefx/Projects/opifex/design/final-canonical-contract.md\
+      \ lines 85-94: \"prompt is required opaque executable text on shared surfaces;\
+      \ canonical validation treats it as a non-empty string and does not parse or\
+      \ reject prompt-internal template/prose conventions\"\n- contracts/persona_spec.schema.json\
+      \ — NOT in this worktree (upstream opifex schema); read independently from /Users/tefx/Projects/opifex/contracts/persona_spec.schema.json\
+      \ lines 18-22: prompt described as \"Opaque executable prompt text... Shared-surface\
+      \ validation treats it as a non-empty string and does not parse prompt-internal\
+      \ template or prose semantics.\" Confirmed identical to larva-local mirror at\
+      \ contracts/persona_spec.schema.json via diff.\n- design/personaspec-v1.md —\
+      \ read from /Users/tefx/Projects/opifex/design/personaspec-v1.md lines 45-55,\
+      \ 184-236: defines opaque prompt handling, DEFER section line 232 explicitly\
+      \ defers \"prompt-internal template/prose interpretation or text-quality review\"\
+      , no placeholder-rejection taxonomy present.\n- design/larva-clean-architecture.md\
+      \ — read from /Users/tefx/Projects/opifex/design/larva-clean-architecture.md\
+      \ lines 87-91, 297-356: defines opaque prompt handling at line 91 (\"Canonical\
+      \ validation treats prompt text opaquely\"), DEFER section lines 346-356 defers\
+      \ \"prompt-internal template/prose interpretation or deep semantic alignment\
+      \ review\".\n- conformance/shared_surfaces.yaml — read from /Users/tefx/Projects/opifex/conformance/shared_surfaces.yaml\
+      \ lines 241-395: larva assigned surfaces include prompt-opacity invariants:\
+      \ larva_validate has `prompt_text_treated_as_opaque_string` (line 256), larva_register\
+      \ has `prompt_text_treated_as_opaque_string` (line 276), larva_resolve has `prompt_text_preserved_opaquely`\
+      \ (line 296), larva_assemble has `assembled_prompt_text_preserved_opaquely`\
+      \ (line 323). No placeholder wording found.\n- conformance/handovers/02-to-larva.md\
+      \ — read from /Users/tefx/Projects/opifex/conformance/handovers/02-to-larva.md:\
+      \ lines 10-19 list 8 assigned surfaces (larva_validate, larva_register, larva_resolve,\
+      \ larva_assemble, larva_component_show, larva_export, larva_mcp_server_naming,\
+      \ larva_shared_naming_docs). Line 27 states \"prompt is canonical opaque executable\
+      \ text: larva shared surfaces require a non-empty string and must not add repo-local\
+      \ prompt-content rejection heuristics.\" Lines 31-33: blocking note stating\
+      \ larva repo-local prompt-handling work blocked until this sync lands.\n- conformance/case_matrix/larva/larva.validate.yaml\
+      \ — read full file (70 lines): `prompt_opacity: covered` at line 14, `prompt_text_treated_as_opaque_string`\
+      \ case at lines 59-64 with note \"prompt text is validated as a non-empty string\
+      \ only\".\n- conformance/case_matrix/larva/larva.register.yaml — read full file\
+      \ (85 lines): `prompt_opacity: covered` at line 14, `register_preserves_prompt_as_opaque_text`\
+      \ case at lines 74-79 with note \"registration must not add prompt-content rejection\
+      \ heuristics\".\n- conformance/case_matrix/larva/larva.resolve.yaml — read full\
+      \ file (59 lines): `prompt_opacity: covered` at line 12, `resolved_prompt_preserved_opaquely`\
+      \ case at lines 49-54 with note \"resolve returns canonical prompt text without\
+      \ repo-local reinterpretation\".\n- conformance/case_matrix/larva/larva.assemble.yaml\
+      \ — read full file (63 lines): `prompt_opacity: covered` at line 12, `assembled_prompt_preserved_opaquely`\
+      \ case at lines 52-57 with note \"assembly emits canonical prompt text without\
+      \ repo-local prompt-content rejection\".\n- conformance/case_matrix/larva/larva.component_show.yaml\
+      \ — read full file (39 lines): no prompt_opacity entry; correctly scoped to\
+      \ component payload field rejection only.\n- conformance/case_matrix/larva/larva.export.yaml\
+      \ — read full file (53 lines): no prompt_opacity entry; correctly scoped to\
+      \ selector/export semantics only.\n- conformance/case_matrix/larva/larva.shared_naming_docs.yaml\
+      \ — read full file (42 lines): `prompt_opacity: covered` at line 11, `docs_state_prompt_is_opaque_text`\
+      \ case at lines 31-36 with note \"larva-facing docs describe prompt as opaque\
+      \ executable text\".\n- conformance/case_matrix/larva/larva.mcp_server_naming.yaml\
+      \ — read full file (37 lines): no prompt_opacity entry; correctly scoped to\
+      \ MCP tool registration naming only.\n- src/larva/shell/cli_doctor.py — read\
+      \ from worktree (72 lines): doctor checks for forbidden legacy fields (tools,\
+      \ side_effect_policy) at lines 42-46. No prompt-content rejection logic. Correctly\
+      \ scoped as repo-local diagnostic.\n- src/larva/core/validate.py — read from\
+      \ worktree (394 lines): OBSERVATION: `_validate_prompt_semantics` at line 137\
+      \ with `_PROMPT_PLACEHOLDER_PATTERN` regex at line 29 still emits `UNRESOLVED_PLACEHOLDER`\
+      \ error at line 165. This is pre-existing code that contradicts the upstream\
+      \ authority \"prompt is opaque\" rule but is correctly in scope for the downstream\
+      \ `prompt_opacity_doctor_parity_20260418.core_prompt_opacity` step.\n- contracts/errors.yaml\
+      \ — read from worktree (117 lines): code 103 `VARIABLE_UNRESOLVED` at line 37-38\
+      \ is pre-existing; downstream step `surface_error_doc_sync` explicitly scopes\
+      \ its removal.\n- src/larva/app/facade.py — grep confirmed \"VARIABLE_UNRESOLVED\"\
+      : 103 mapping at line 44 is pre-existing; downstream step scopes its removal.\n\
+      \n## Gate Decision Basis\n- Authority files aligned: YES\n- Larva handover aligned:\
+      \ YES\n- Larva case-matrix aligned: YES\n- Doctor parity kept repo-local: YES\n\
+      - Remaining placeholder-rejection language: NONE\n- Decision: OPEN\n\nbehavioral_proof_register:\n\
+      \  - proof_id: \"P1\"\n    requirement_ref: \"prompt_opacity_authority_sync_20260418\
+      \ gate\"\n    claim: \"Upstream authority docs/schema agree on prompt-opacity\
+      \ contract\"\n    status: \"PROVEN\"\n  - proof_id: \"P2\"\n    requirement_ref:\
+      \ \"prompt_opacity_authority_sync_20260418 gate\"\n    claim: \"Larva handover\
+      \ explicitly states prompt-opacity boundary and blocking note\"\n    status:\
+      \ \"PROVEN\"\n  - proof_id: \"P3\"\n    requirement_ref: \"prompt_opacity_authority_sync_20260418\
+      \ gate\"\n    claim: \"Larva case-matrix covers prompt-opacity for all relevant\
+      \ surfaces\"\n    status: \"PROVEN\"\n  - proof_id: \"P4\"\n    requirement_ref:\
+      \ \"prompt_opacity_authority_sync_20260418 gate\"\n    claim: \"Doctor parity\
+      \ correctly scoped as repo-local, not upstream shared-surface work\"\n    status:\
+      \ \"PROVEN\"\n  - proof_id: \"P5\"\n    requirement_ref: \"prompt_opacity_authority_sync_20260418\
+      \ gate\"\n    claim: \"No residual placeholder-rejection language in authority\
+      \ docs\"\n    status: \"PROVEN\"\n\ngate_decision:\n  headline: \"PASS\"\n \
+      \ gate_open_allowed: true\n  blocking_behavioral_proofs: []"
