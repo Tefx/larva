@@ -54636,3 +54636,38 @@ phases:
     = none, Residual Risk = none.'
   depends_on:
   - prompt_opacity_doctor_parity_20260418
+  steps:
+  - id: post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
+    name: Remove dead prompt-placeholder cleanup residue
+    status: pending
+    description: 'Delete the unused `import re` and `_PROMPT_PLACEHOLDER_PATTERN`
+      left in `src/larva/core/validation_field_shapes.py` after prompt-opacity cutover.
+      Keep this change minimal and code-only: no behavior change beyond removing dead
+      code, no scope expansion into other validation logic.'
+    verification: Run focused core validation/assembly regression coverage proving
+      prompt opacity behavior is unchanged after the dead-code removal. Evidence must
+      include exact test command/output and explicit confirmation that no live references
+      to `_PROMPT_PLACEHOLDER_PATTERN` remain.
+    refs:
+    - src/larva/core/validation_field_shapes.py
+    - tests/core/test_validate.py
+    - tests/core/test_assemble.py
+    agent: python-executor
+  - id: post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
+    name: Align larva_export all=false selector semantics to the case matrix
+    status: pending
+    description: 'Fix the shared-surface semantic drift noted by cross-surface verification:
+      the larva export surface must reject selector `{all:false}` with the case-matrix-required
+      selector error instead of silently succeeding with an empty export list. Keep
+      this change narrow to the export surface contract, its docs, and parity tests;
+      do not redesign export APIs or broaden selector abstractions.'
+    verification: Run focused export-surface regressions proving `{all:false}` is
+      now rejected with the expected selector error, existing valid export flows still
+      pass, and parity/docs checks are updated consistently.
+    refs:
+    - ../opifex/conformance/case_matrix/larva/larva.export.yaml
+    - src/larva/shell/mcp_export.py
+    - tests/shell/test_mcp.py
+    - tests/repro/cross_surface_consistency_verify.py
+    - USAGE.md
+    agent: python-executor
