@@ -147,8 +147,20 @@ class MockFacade:
             raise LarvaError(
                 error={"code": "PERSONA_NOT_FOUND", "message": f"Persona {persona_id} not found"}
             )
+        for key in patches:
+            root = key.split(".", 1)[0]
+            if root in ("id", "spec_digest", "spec_version"):
+                raise LarvaApiError(
+                    error={
+                        "code": "FORBIDDEN_PATCH_FIELD",
+                        "message": (
+                            f"patch field '{root}' is not permitted at canonical update boundary"
+                        ),
+                        "details": {"field": root, "key": key},
+                    }
+                )
         for key, value in patches.items():
-            if key not in ("spec_digest", "spec_version"):
+            if key != "id":
                 spec[key] = value  # type: ignore[misc]
         self._registry.save(spec)
         return spec
@@ -384,7 +396,7 @@ class TestWebSurfaceEndpoints:
 
         client = TestClient(app)
 
-        # Attempt to patch protected fields should be ignored
+        # Attempt to patch protected metadata must be rejected
         resp = client.patch(
             "/api/personas/update-target",
             json={
@@ -394,11 +406,10 @@ class TestWebSurfaceEndpoints:
             },
         )
 
-        assert resp.status_code == 200
-        data = resp.json()["data"]
-        # Protected fields should NOT change
-        assert data["spec_digest"] != "sha256:malicious"
-        assert data["spec_version"] == "0.1.0"
+        assert resp.status_code == 400
+        error = resp.json()["error"]
+        assert error["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert error["details"] == {"field": "spec_digest", "key": "spec_digest"}
 
     def test_delete_api_personas_returns_deletion_result(
         self,

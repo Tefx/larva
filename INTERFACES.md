@@ -147,7 +147,7 @@ surface:
 | `GET` | `/api/personas` | Return `{data: PersonaSummary[]}` |
 | `GET` | `/api/personas/{persona_id}` | Return `{data: PersonaSpec}` or a 400 error payload |
 | `POST` | `/api/personas` | Accept a PersonaSpec or `{spec: PersonaSpec}`; validate then register |
-| `PATCH` | `/api/personas/{persona_id}` | Accept patch object; ignore protected `spec_version` and `spec_digest`; revalidate before register |
+| `PATCH` | `/api/personas/{persona_id}` | Accept patch object; reject protected `id`, `spec_version`, and `spec_digest` with `FORBIDDEN_PATCH_FIELD`; revalidate before register |
 | `DELETE` | `/api/personas/{persona_id}` | Return `{data: {id, deleted}}` |
 | `POST` | `/api/personas/clear` | Accept `{confirm}` and clear only on valid confirmation |
 | `POST` | `/api/personas/validate` | Accept PersonaSpec candidate and return validation report |

@@ -11,7 +11,7 @@ persona release metadata:
 - the canonical schema constrains `spec_version` to `"0.1.0"`
 - validation rejects any other version
 - normalization defaults the field to `"0.1.0"` when absent
-- patch/update flows treat `spec_version` as protected and ignore caller attempts to modify it
+- patch/update flows treat `spec_version` as protected and reject caller attempts to modify it
 
 At the same time, a small set of clone tests had started assuming a different model:
 that clone should transparently preserve arbitrary source versions such as `"0.2.0"`.
@@ -47,7 +47,7 @@ persona release history. In larva v1, that schema version is fixed at `"0.1.0"`.
 As a result:
 - larva does not auto-bump `spec_version`
 - clone does not introduce multi-version pass-through semantics
-- update and patch flows must keep treating `spec_version` as protected
+- update and patch flows must keep treating `spec_version` as protected and fail closed on attempted mutation
 - persona content changes are tracked by `spec_digest`, not by `spec_version`
 
 If larva later needs persona-level revisioning, it should use a separate field or

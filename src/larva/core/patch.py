@@ -5,11 +5,15 @@ Examples:
     >>> apply_patches({"model": "gpt-4", "spec_digest": "old"}, {"model": "gpt-5"})
     {'model': 'gpt-5'}
 
-    Protected stripping:
+    Protected metadata rejection:
     >>> apply_patches({"id": "base-id", "x": 1}, {"id": "patch-id", "x": 2})
-    {'id': 'base-id', 'x': 2}
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'id' is not permitted at canonical update boundary
     >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
-    {'spec_version': '0.1.0', 'x': 1}
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
 
     Deep merge (model_params):
     >>> apply_patches(
@@ -127,25 +131,33 @@ def _copy_dict(mapping: dict[str, object]) -> dict[str, object]:
     return copied
 
 
-@post(lambda result: isinstance(result, dict))
+@post(lambda result: result is None)
 @pre(lambda patches: all(isinstance(key, str) for key in patches))
-def _strip_protected_keys(patches: dict[str, object]) -> dict[str, object]:
-    """Remove protected keys from incoming patches.
+@raises(PatchError)
+def _reject_protected_patch_fields(patches: dict[str, object]) -> None:
+    """Reject protected metadata keys from incoming patches.
+
+    >>> _reject_protected_patch_fields({"prompt": "ok"})
+    >>> _reject_protected_patch_fields({"spec_version": "9.9.9"})
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
+    >>> _reject_protected_patch_fields({"spec_digest.value": "sha256:bad"})
+    Traceback (most recent call last):
+    ...
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_digest' is not permitted at canonical update boundary
 
     Args:
         patches: Runtime override mapping.
-
-    Returns:
-        Patch mapping without protected top-level keys or protected dot-path roots.
     """
-    stripped: dict[str, object] = {}
-    for key, value in patches.items():
-        if not isinstance(key, str):
-            continue
-        if key.split(DOT_KEY_SEPARATOR, 1)[0] in PROTECTED_KEYS:
-            continue
-        stripped[key] = _copy_dict(value) if _is_str_dict(value) else value
-    return stripped
+    for key in patches:
+        root = key.split(DOT_KEY_SEPARATOR, 1)[0]
+        if root in PROTECTED_KEYS:
+            raise _patch_error(
+                code="FORBIDDEN_PATCH_FIELD",
+                message=f"patch field '{root}' is not permitted at canonical update boundary",
+                details={"field": root, "key": key},
+            )
 
 
 @post(lambda result: isinstance(result, dict))
@@ -235,7 +247,9 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
         >>> apply_patches({"model": "gpt-4", "spec_digest": "old"}, {"model": "gpt-5"})
         {'model': 'gpt-5'}
         >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
-        {'spec_version': '0.1.0', 'x': 1}
+        Traceback (most recent call last):
+        ...
+        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
         >>> apply_patches(
         ...     {"model_params": {"temperature": 0.2, "top_p": 0.9}},
         ...     {"model_params": {"temperature": 0.7}},
@@ -252,8 +266,8 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
         patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted at canonical update boundary
     """
     _reject_forbidden_patch_fields(patches)
-    sanitized = _strip_protected_keys(patches)
-    expanded = _expand_dot_keys(sanitized)
+    _reject_protected_patch_fields(patches)
+    expanded = _expand_dot_keys(patches)
 
     result: dict[str, object] = _copy_dict(spec)
     for key, patch_value in expanded.items():

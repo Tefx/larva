@@ -143,3 +143,23 @@ class TestFacadeUpdate:
         assert normalize_module.inputs == []
         assert validate_module.inputs == []
         assert registry.save_inputs == []
+
+    def test_update_rejects_protected_metadata_patch_fields_before_normalization(self) -> None:
+        calls: list[str] = []
+        existing = _canonical_spec("update-metadata")
+        registry = InMemoryRegistryStore(get_result=Success(existing))
+        facade, _, validate_module, normalize_module = _facade(
+            registry=registry,
+            calls=calls,
+        )
+
+        result = facade.update("update-metadata", patches={"spec_version": "0.2.0"})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert error["numeric_code"] == 114
+        assert error["details"] == {"field": "spec_version", "key": "spec_version"}
+        assert calls == []
+        assert normalize_module.inputs == []
+        assert validate_module.inputs == []
+        assert registry.save_inputs == []

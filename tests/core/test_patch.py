@@ -2,7 +2,7 @@
 
 These 12 tests define the acceptance surface for patch application behavior:
 1) scalar overwrite
-2) protected fields stripped
+2) protected fields rejected
 3) deep merge model_params
 4) deep merge tools
 5) shallow overwrite other dicts
@@ -26,6 +26,7 @@ from hypothesis import strategies as st
 from larva.core.patch import (
     DEEP_MERGE_KEYS,
     DOT_KEY_SEPARATOR,
+    PatchError,
     PROTECTED_KEYS,
     apply_patches,
 )
@@ -57,31 +58,42 @@ class TestScalarOverwrite:
         assert result["can_spawn"] is False
 
 
-class TestProtectedFieldsStripped:
-    """Test 2: Protected keys are stripped from patches before merge."""
+class TestProtectedFieldsRejected:
+    """Test 2: Protected metadata is rejected before merge."""
 
-    def test_id_stripped_from_patches(self) -> None:
-        """Protected key 'id' is stripped from patches."""
+    def test_id_patch_rejected(self) -> None:
+        """Protected key 'id' must be rejected from patches."""
         base = {"id": "base-id", "prompt": "original"}
         patches = {"id": "patch-id", "prompt": "new"}
-        result = apply_patches(base, patches)
-        assert result["id"] == "base-id"  # preserved from base
-        assert result["prompt"] == "new"  # applied from patch
+        with pytest.raises(PatchError, match="patch field 'id'") as excinfo:
+            apply_patches(base, patches)
+        assert excinfo.value.code == "FORBIDDEN_PATCH_FIELD"
+        assert excinfo.value.details == {"field": "id", "key": "id"}
 
-    def test_spec_version_stripped_from_patches(self) -> None:
-        """Protected key 'spec_version' is stripped from patches."""
+    def test_spec_version_patch_rejected(self) -> None:
+        """Protected key 'spec_version' must be rejected from patches."""
         base = {"id": "test", "spec_version": "0.1.0"}
         patches = {"spec_version": "9.9.9", "prompt": "new"}
-        result = apply_patches(base, patches)
-        assert result["spec_version"] == "0.1.0"  # preserved from base
+        with pytest.raises(PatchError, match="patch field 'spec_version'") as excinfo:
+            apply_patches(base, patches)
+        assert excinfo.value.code == "FORBIDDEN_PATCH_FIELD"
+        assert excinfo.value.details == {"field": "spec_version", "key": "spec_version"}
 
-    def test_spec_digest_stripped_from_patches(self) -> None:
-        """Protected key 'spec_digest' is stripped from patches (removed from result)."""
+    def test_spec_digest_patch_rejected(self) -> None:
+        """Protected key 'spec_digest' must be rejected from patches."""
         base = {"id": "test", "spec_digest": "abc123"}
         patches = {"spec_digest": "xyz789", "prompt": "new"}
-        result = apply_patches(base, patches)
-        assert "spec_digest" not in result  # spec_digest is always removed
-        assert result["prompt"] == "new"  # patch applied
+        with pytest.raises(PatchError, match="patch field 'spec_digest'") as excinfo:
+            apply_patches(base, patches)
+        assert excinfo.value.code == "FORBIDDEN_PATCH_FIELD"
+        assert excinfo.value.details == {"field": "spec_digest", "key": "spec_digest"}
+
+    def test_protected_dot_path_rejected_at_root(self) -> None:
+        """Protected metadata dot-paths must fail closed before expansion."""
+        with pytest.raises(PatchError, match="patch field 'spec_version'") as excinfo:
+            apply_patches({"id": "test", "spec_version": "0.1.0"}, {"spec_version.minor": 2})
+        assert excinfo.value.code == "FORBIDDEN_PATCH_FIELD"
+        assert excinfo.value.details == {"field": "spec_version", "key": "spec_version.minor"}
 
     def test_all_protected_keys_defined(self) -> None:
         """Protected keys match expected set."""
@@ -231,12 +243,12 @@ class TestEmptyPatches:
         result = apply_patches(base, patches)
         assert result == {"id": "test", "prompt": "hello"}
 
-    def test_empty_patches_with_protected_only(self) -> None:
-        """Patches with only protected keys result in unchanged base."""
+    def test_protected_only_patches_are_rejected(self) -> None:
+        """Patches with only protected keys must fail closed."""
         base = {"id": "test", "prompt": "hello"}
         patches = {"id": "ignored", "spec_version": "ignored"}
-        result = apply_patches(base, patches)
-        assert result == {"id": "test", "prompt": "hello"}
+        with pytest.raises(Exception):
+            apply_patches(base, patches)
 
 
 class TestNewKeyAllowed:

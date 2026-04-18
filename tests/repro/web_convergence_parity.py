@@ -450,14 +450,14 @@ class TestPatchSemanticsParity:
     """Test that both runtimes handle PATCH identically.
 
     Source: INTERFACES.md line 117
-    Contract: PATCH ignores protected fields (spec_version, spec_digest)
+    Contract: PATCH rejects protected fields (spec_version, spec_digest)
     """
 
-    def test_packaged_patch_ignores_spec_version(self) -> None:
-        """Packaged runtime ignores spec_version in PATCH.
+    def test_packaged_patch_rejects_spec_version(self) -> None:
+        """Packaged runtime rejects spec_version in PATCH.
 
         Source: INTERFACES.md line 117
-        Expected: PATCH with spec_version field ignores it
+        Expected: PATCH with spec_version field returns a structured rejection
         """
         from starlette.testclient import TestClient
         from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -475,15 +475,13 @@ class TestPatchSemanticsParity:
             json={"model": "new-model", "spec_version": "0.2.0"},
         )
 
-        # Should succeed but ignore spec_version change
-        assert patch_resp.status_code == 200
+        assert patch_resp.status_code == 400
         data = patch_resp.json()
-        assert data["data"]["spec_version"] == "0.1.0", (
-            f"spec_version should remain 0.1.0, got {data['data']['spec_version']}"
-        )
+        assert data["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert data["error"]["details"] == {"field": "spec_version", "key": "spec_version"}
 
-    def test_contrib_patch_ignores_spec_version(self) -> None:
-        """Contrib runtime ignores spec_version in PATCH.
+    def test_contrib_patch_rejects_spec_version(self) -> None:
+        """Contrib runtime rejects spec_version in PATCH.
 
         Source: INTERFACES.md line 117
         Expected: Same PATCH semantics as packaged
@@ -504,17 +502,16 @@ class TestPatchSemanticsParity:
             json={"model": "new-model", "spec_version": "0.2.0"},
         )
 
-        assert patch_resp.status_code == 200
+        assert patch_resp.status_code == 400
         data = patch_resp.json()
-        assert data["data"]["spec_version"] == "0.1.0", (
-            f"Contrib spec_version should remain 0.1.0, got {data['data']['spec_version']}"
-        )
+        assert data["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert data["error"]["details"] == {"field": "spec_version", "key": "spec_version"}
 
-    def test_packaged_patch_ignores_spec_digest(self) -> None:
-        """Packaged runtime ignores spec_digest in PATCH.
+    def test_packaged_patch_rejects_spec_digest(self) -> None:
+        """Packaged runtime rejects spec_digest in PATCH.
 
         Source: INTERFACES.md line 117, 190
-        Expected: PATCH cannot change spec_digest
+        Expected: PATCH with spec_digest field returns a structured rejection
         """
         from starlette.testclient import TestClient
 
@@ -524,24 +521,19 @@ class TestPatchSemanticsParity:
         reg_resp = client.post("/api/personas", json={"spec": _VALID_SPEC_WITH_DIGEST})
         assert reg_resp.status_code == 200
 
-        original_digest = _VALID_SPEC_WITH_DIGEST.get("spec_digest", "")
-
         # Try to PATCH with malicious spec_digest
         patch_resp = client.patch(
             f"/api/personas/{_VALID_SPEC_WITH_DIGEST['id']}",
             json={"model": "new-model", "spec_digest": "sha256:malicious"},
         )
 
-        assert patch_resp.status_code == 200
+        assert patch_resp.status_code == 400
         data = patch_resp.json()
-        # spec_digest should NOT have changed
-        result_digest = data["data"].get("spec_digest", "")
-        assert result_digest != "sha256:malicious", (
-            f"spec_digest should not accept malicious value: {result_digest}"
-        )
+        assert data["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert data["error"]["details"] == {"field": "spec_digest", "key": "spec_digest"}
 
-    def test_contrib_patch_ignores_spec_digest(self) -> None:
-        """Contrib runtime ignores spec_digest in PATCH.
+    def test_contrib_patch_rejects_spec_digest(self) -> None:
+        """Contrib runtime rejects spec_digest in PATCH.
 
         Source: INTERFACES.md line 117, 190
         Expected: Same PATCH semantics as packaged
@@ -562,12 +554,10 @@ class TestPatchSemanticsParity:
             json={"model": "new-model", "spec_digest": "sha256:malicious"},
         )
 
-        assert patch_resp.status_code == 200
+        assert patch_resp.status_code == 400
         data = patch_resp.json()
-        result_digest = data["data"].get("spec_digest", "")
-        assert result_digest != "sha256:malicious", (
-            f"Contrib spec_digest should not accept malicious value: {result_digest}"
-        )
+        assert data["error"]["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert data["error"]["details"] == {"field": "spec_digest", "key": "spec_digest"}
 
 
 # -----------------------------------------------------------------------------
@@ -766,7 +756,7 @@ def test_step_intent_behavioral_proof() -> None:
     It demonstrates parity across:
     - canonical-success (accept valid PersonaSpec)
     - forbidden-field rejection (reject tools, side_effect_policy, unknown)
-    - PATCH semantics (ignore spec_version, spec_digest)
+    - PATCH semantics (reject spec_version, spec_digest)
     - runtime startup (serve HTML, bind 127.0.0.1, port 7400)
 
     Expected: All parity tests pass
