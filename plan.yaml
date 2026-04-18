@@ -53698,3 +53698,26 @@ phases:
 
       - residual risks: note any remaining brace-policy callers or none'
     agent: python-executor
+  - id: prompt_opacity_doctor_parity_20260418.surface_error_doc_sync
+    name: Retire placeholder-specific error code and sync user-facing docs/tests
+    status: pending
+    description: Remove dead VARIABLE_UNRESOLVED numeric-code/parity requirements
+      from src/larva/app/facade.py, USAGE.md, and required parity tests/docs so active
+      error tables and surface contracts match the opaque-prompt rule without introducing
+      new template abstractions.
+    verification: Run focused parity/doc tests showing retired placeholder code 103
+      is removed and brace-containing canonical prompts are accepted across listed
+      surfaces.
+    evidence_template: '- refs read: design/prompt-text-opacity-basis.md, src/larva/app/facade.py,
+      USAGE.md
+
+      - implementation summary: removed VARIABLE_UNRESOLVED parity/doc/code references
+      and updated prompt policy wording
+
+      - verification: paste focused test commands/results for CLI/MCP parity coverage
+      and cross-surface repro coverage
+
+      - residual risks: list any remaining placeholder-specific docs/tests or none'
+    depends_on:
+    - prompt_opacity_doctor_parity_20260418.core_prompt_opacity
+    agent: python-executor
