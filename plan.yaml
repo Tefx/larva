@@ -53865,7 +53865,7 @@ phases:
       \ compatibility preserved for direct doctor command callers"
   - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
     name: Verify opaque-prompt and doctor behavior across affected surfaces
-    status: claimed
+    status: done
     description: Independent Phase 4 repo-local verification sweep for larva after
       the repo-local modification rounds. Require fresh full self-test evidence after
       each modification round, then verify the final larva state across core, facade,
@@ -53962,6 +53962,105 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-18T16:31:38.706998+00:00'
+    done_at: '2026-04-18T16:55:50.675269+00:00'
+    evidence: 'status: SUCCESS
+
+      Verification sweep result: PASS_WITH_DEBT, blocking_status=CLOSED, gate_open_allowed=true.
+
+
+      refs Read Confirmation:
+
+      - ../opifex/conformance/shared_surfaces.yaml read
+
+      - ../opifex/conformance/handovers/02-to-larva.md read
+
+      - ../opifex/conformance/case_matrix/larva/* read
+
+      - ../opifex/design/final-canonical-contract.md read
+
+
+      Phase 4 Verification Ledger:
+
+      - Fresh full self-test: 939 passed, 0 failed, 0 skipped
+
+      - Canonical cutover + boundary gaps suites: 29 passed
+
+      - Facade core suites (validate/register/resolve/assemble/export): 65 passed
+
+
+      Assigned-surface coverage explicit:
+
+      - larva_validate: covered
+
+      - larva_register: covered
+
+      - larva_resolve: covered
+
+      - larva_assemble: covered
+
+      - larva_component_show: covered
+
+      - larva_export: covered (non-blocking semantic drift note)
+
+      - larva_shared_naming_docs: covered
+
+      - larva_mcp_server_naming: covered
+
+      - doctor registry parity confirmed repo-local obligation
+
+
+      Case matrix mapping:
+
+      - Explicit mapping provided across all 8 larva case-matrix files.
+
+      - Uncovered blocking cases: none.
+
+      - Non-blocking drift documented: larva_export case `all_false_does_not_mean_export_all`
+      (implementation returns success empty list).
+
+
+      Docs/tests parity scan:
+
+      - README.md, USAGE.md, INTERFACES.md, USER_GUIDE.md parity checked
+
+      - No dotted tool names found
+
+      - Legacy fields documented as rejected
+
+      - Prompt opacity language consistent with canonical contract
+
+
+      Open problems / residual risk:
+
+      - Non-blocking semantic drift in export all=false interpretation
+
+      - Coverage residuals in some shell/core edge branches (non-blocking)
+
+      - Prompt content validation limited to non-empty string by design (canonical)
+
+
+      step_intent: Independent phase-4 cross-surface verification after remediation
+
+      expected_result: full pass with explicit mapping and no blocking gaps
+
+      observed_result: all tests passed; one documented non-blocking debt
+
+      failure_alignment: none blocking
+
+      product-files-modified: none
+
+
+      gate_decision:
+
+      - headline: PASS_WITH_DEBT
+
+      - proof_gap_status: NON_BLOCKING
+
+      - blocking_status: CLOSED
+
+      - gate_open_allowed: true
+
+      - uncertainty_sources: []'
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
     status: pending
