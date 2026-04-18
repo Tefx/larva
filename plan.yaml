@@ -54740,7 +54740,7 @@ phases:
       \ (user did not request a git commit)"
   - id: post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
     name: Verify the non-blocking debt cleanup across affected surfaces
-    status: pending
+    status: claimed
     description: Independent verification for the debt-cleanup phase. Re-run focused
       verification over prompt-opacity core paths and larva_export shared-surface
       semantics, confirm the previous non-blocking findings are cleared, and ensure
@@ -54778,6 +54778,8 @@ phases:
     - post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue
     - post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-18T17:48:37.021221+00:00'
   - id: post_prompt_opacity_debt_cleanup_20260419.gate
     name: Gate the non-blocking debt cleanup phase
     status: pending
