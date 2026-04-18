@@ -54655,7 +54655,7 @@ phases:
     agent: python-executor
   - id: post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix
     name: Align larva_export all=false selector semantics to the case matrix
-    status: claimed
+    status: done
     description: 'Fix the shared-surface semantic drift noted by cross-surface verification:
       the larva export surface must reject selector `{all:false}` with the case-matrix-required
       selector error instead of silently succeeding with an empty export list. Keep
@@ -54673,6 +54673,27 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T17:42:51.950857+00:00'
+    done_at: '2026-04-18T17:46:56.913783+00:00'
+    evidence: "Artifact:\n- Working tree changes in: src/larva/shell/mcp_export.py,\
+      \ tests/shell/test_mcp.py, tests/repro/cross_surface_consistency_verify.py,\
+      \ USAGE.md\n\nSpec link:\n- ../opifex/conformance/case_matrix/larva/larva.export.yaml\
+      \ lines 29-34 require `all_false_does_not_mean_export_all` to reject with selector-required\
+      \ semantics.\n- src/larva/shell/mcp_export.py previously treated `{all:false}`\
+      \ as Success((False, [])) and delegated to export_ids([]).\n\nImplementation\
+      \ summary:\n- Changed MCP export selector validation to treat `{all:false}`\
+      \ as missing-selector failure instead of empty export success.\n- Kept scope\
+      \ narrow to MCP export surface + parity tests/docs.\n- Updated docs to state\
+      \ `larva_export` requires exactly one selector: `all=true` or `ids=[...]`; `{all:false}`\
+      \ is rejected.\n- Added focused cross-surface regression coverage for the MCP\
+      \ malformed-selector path.\n\nVerification:\n- Run: `uv run pytest tests/shell/test_mcp.py\
+      \ -k 'export' -q && uv run pytest tests/repro/cross_surface_consistency_verify.py\
+      \ -k 'export_all_false or malformed' -q` ->\n  - `17 passed, 133 deselected\
+      \ in 0.22s`\n  - `6 passed, 39 deselected in 0.26s`\n- Reference search:\n \
+      \ - no remaining `all_false_does_not_mean_export_all` references in repo source/docs/tests\n\
+      \  - `must specify either 'all' or 'ids'` now appears in `src/larva/shell/mcp_export.py`,\
+      \ `tests/shell/test_mcp.py`, and `tests/repro/cross_surface_consistency_verify.py`\n\
+      \nResidual risks:\n- none for this scoped export-surface fix\n\nCommit:\n- none\
+      \ (user did not request a git commit)"
   - id: post_prompt_opacity_debt_cleanup_20260419.cross_surface_verify
     name: Verify the non-blocking debt cleanup across affected surfaces
     status: pending
