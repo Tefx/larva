@@ -54063,7 +54063,7 @@ phases:
       - uncertainty_sources: []'
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
-    status: pending
+    status: claimed
     description: 'Independent gate for the larva repo-local implementation phase only.
       Review Phase 4 execution evidence and confirm the change stayed minimal and
       repo-local: canonical prompt is opaque text, variables remain forbidden, dead
@@ -54113,6 +54113,8 @@ phases:
     depends_on:
     - prompt_opacity_doctor_parity_20260418.cross_surface_verify
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-18T16:56:04.924047+00:00'
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     name: Repair facade prompt-opacity verification fixture/assertions
     status: done
