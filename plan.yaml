@@ -54013,7 +54013,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     name: Repair facade prompt-opacity verification fixture/assertions
-    status: claimed
+    status: done
     description: 'Fix the blocker-class verification bug in the facade assemble tests
       without changing product behavior.
 
@@ -54113,6 +54113,18 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-18T14:56:59.518737+00:00'
+    done_at: '2026-04-18T15:21:22.215329+00:00'
+    evidence: "## refs Read Confirmation\n- No refs for this step.\n\n## Narrow Fix\
+      \ Evidence\n- Files changed:\n  - tests/app/test_facade/conftest.py\n  - tests/app/test_facade/test_assemble.py\n\
+      - Assertions repaired for returns.Result API:\n  - replaced `assert result.ok`\
+      \ with `assert isinstance(result, Success)`\n  - replaced `result.value` access\
+      \ with `result.unwrap()`\n- Canonical required fields added to fixture:\n  -\
+      \ added canonical prompt fixture fields: `description`, `model`, `spec_version`,\
+      \ `capabilities`\n- Commands run:\n  - `pytest tests/app/test_facade/test_assemble.py::TestFacadeAssemble::test_assemble_accepts_literal_braces_in_prompt_text\
+      \ -q` -> 1 passed\n  - `pytest tests/app/test_facade/test_assemble.py -k 'prompt\
+      \ or brace or opacity' -q` -> 1 passed, 6 deselected\n  - `pytest tests/app/test_facade/\
+      \ -q` -> 80 passed\n- Product behavior change confirmation: none (test-only)\n\
+      - Commit hash: 7201ef35d42ca4566191d9878f8c4dccee343392"
 - id: prompt_opacity_authority_sync_20260418
   name: Prompt Opacity Authority + Conformance Sync (opifex prerequisite)
   status: done
