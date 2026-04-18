@@ -34,9 +34,6 @@ errors:
   PERSONA_CYCLE:
     code: 102
     description: "Circular reference detected (reserved)"
-  VARIABLE_UNRESOLVED:
-    code: 103
-    description: "Unresolved variable in prompt text"
   INVALID_PERSONA_ID:
     code: 104
     description: "Persona id violates flat kebab-case rules"

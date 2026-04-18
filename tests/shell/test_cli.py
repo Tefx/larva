@@ -1479,7 +1479,6 @@ class TestJsonErrorEnvelope:
             ("PERSONA_NOT_FOUND", 100, {"persona_id": "missing"}),
             ("PERSONA_INVALID", 101, {"report": {}}),
             ("PERSONA_CYCLE", 102, {}),
-            ("VARIABLE_UNRESOLVED", 103, {}),
             ("INVALID_PERSONA_ID", 104, {"persona_id": "bad-id"}),
             ("COMPONENT_NOT_FOUND", 105, {"component_type": "prompt"}),
             ("COMPONENT_CONFLICT", 106, {}),

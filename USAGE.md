@@ -125,7 +125,7 @@ Check a PersonaSpec for schema conformance and semantic validity.
 - `errors` is always present (empty list when valid).
 - `warnings` is always present and is non-blocking.
 - Canonical warning conditions include: unknown model identifiers; empty/all-`none` capability posture; descriptions outside the guidance range; prompt-like descriptions; unknown capability-family identifiers; read-focused reviewer/auditor identities paired with `read_write`/`destructive` capability postures; and `can_spawn` targets missing from the current registry snapshot.
-- Prompt placeholders are not resolved at admission time: unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
+- Prompt text is treated as opaque data; `{placeholder}` style text is not rejected or interpreted as a template variable.
 - `model_params` is an optional canonical field and remains valid across validate/register/resolve/update flows.
 
 **Decision:** Use `valid` field to gate next action.
@@ -370,8 +370,7 @@ Canonical larva does not support non-canonical placeholder-map inputs on Persona
 
 - Placeholder-map inputs at validate/register/assemble/update boundaries are rejected as extra/forbidden fields.
 - Prompt text must already be fully composed before admission.
-- Literal braces should be escaped in prompt authoring (`{{literal}}`).
-- Unresolved `{placeholder}` text is rejected as `UNRESOLVED_PLACEHOLDER`.
+- Prompt text is opaque; `{placeholder}` style text is not interpreted as a template variable.
 
 ---
 
@@ -403,7 +402,6 @@ All errors use a single envelope shape:
 | 100 | `PERSONA_NOT_FOUND` | `resolve` id not in registry |
 | 101 | `PERSONA_INVALID` | validation failed |
 | 102 | `PERSONA_CYCLE` | circular reference (reserved) |
-| 103 | `VARIABLE_UNRESOLVED` | unresolved `{placeholder}` remains in canonical prompt text |
 | 104 | `INVALID_PERSONA_ID` | id violates kebab-case rules |
 | 105 | `COMPONENT_NOT_FOUND` | named component not on disk |
 | 106 | `COMPONENT_CONFLICT` | two components set same scalar field |

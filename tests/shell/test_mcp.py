@@ -454,7 +454,6 @@ class TestMCPErrorCodes:
             "PERSONA_NOT_FOUND",
             "PERSONA_INVALID",
             "PERSONA_CYCLE",
-            "VARIABLE_UNRESOLVED",
             "INVALID_PERSONA_ID",
             "COMPONENT_NOT_FOUND",
             "COMPONENT_CONFLICT",
