@@ -53865,7 +53865,7 @@ phases:
       \ compatibility preserved for direct doctor command callers"
   - id: prompt_opacity_doctor_parity_20260418.cross_surface_verify
     name: Verify opaque-prompt and doctor behavior across affected surfaces
-    status: claimed
+    status: pending
     description: Independent Phase 4 repo-local verification sweep for larva after
       the repo-local modification rounds. Require fresh full self-test evidence after
       each modification round, then verify the final larva state across core, facade,
@@ -53959,8 +53959,6 @@ phases:
     - prompt_opacity_doctor_parity_20260418.doctor_registry_parity
     - prompt_opacity_doctor_parity_20260418.fix_facade_prompt_fixture
     agent: integration-verifier-tacit
-    claimed_by: integration-verifier-tacit
-    claimed_at: '2026-04-18T15:21:46.691962+00:00'
   - id: prompt_opacity_doctor_parity_20260418.gate
     name: Gate prompt-opacity plus doctor-parity slice
     status: pending
