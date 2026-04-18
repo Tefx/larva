@@ -52909,6 +52909,66 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-18T06:39:28.609478+00:00'
+  - id: final_zeroing_20260418_parity_cleanup.fix_batched_2
+    name: Batched remediation for stale parity-wording retest blockers
+    status: pending
+    description: 'Follow-up remediation path after failed `final_zeroing_20260418_parity_cleanup.retest`.
+
+
+      Fix ALL blocker items in one pass:
+
+      - `tests/core/test_normalize.py` around line ~156: replace stale wording that
+      says `normalize_spec should leave rejection ... to validation` so the test language
+      matches final strict zeroing/rejection semantics.
+
+      - `tests/core/test_normalize.py` around line ~148: remove stale `silently stripped`
+      framing if it still certifies transition-era behavior rather than the current
+      parity contract.
+
+      - Scoped consistency check: inspect `tests/repro/spec_verify_black_box_surfaces.py::test_python_api_resolve_rejects_tools_override`
+      for the pre-existing expectation mismatch (`PERSONA_INVALID` vs `FORBIDDEN_FIELD`)
+      and remediate only if it intersects the same parity wording/contract family;
+      otherwise record as out-of-scope in evidence.
+
+
+      Guardrails:
+
+      - Treat this as one batched cleanup step, not separate micro-fixes.
+
+      - Preserve completed step history; only add the minimum remediation needed after
+      the failed retest.
+
+      - Search nearby sibling wording in the touched parity/repro surfaces so the
+      fix does not leave adjacent stale framing behind.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - tests/core/test_normalize.py — key passage or "NOT READ: <reason>"
+
+      - tests/repro/spec_verify_black_box_surfaces.py — key passage or "NOT READ:
+      <reason>"'
+    verification: 'local-check protecting downstream phase finalization: confirm the
+      two cited `tests/core/test_normalize.py` wording blockers are corrected, run
+      a sibling wording sweep in touched parity/repro surfaces, and explicitly document
+      whether the `PERSONA_INVALID` vs `FORBIDDEN_FIELD` mismatch intersected this
+      parity wording contract and was remediated or left out-of-scope.'
+    evidence_template: '- Files/lines updated:
+
+      - refs read confirmation for each pinned file:
+
+      - sibling wording sweep performed:
+
+      - optional mismatch outcome (`PERSONA_INVALID` vs `FORBIDDEN_FIELD`):
+
+      - verification commands/results:
+
+      - residual out-of-scope items (if any):'
+    depends_on:
+    - final_zeroing_20260418_parity_cleanup.retest
+    agent: python-executor
 - id: final_zeroing_20260418_finalization
   name: Final Strict Zeroing — Full-Plan Closure
   status: locked
