@@ -53667,3 +53667,9 @@ phases:
       \ tests.\n\nRetest decision:\n- original `spec_conformance_audit` failure resolved:\
       \ true.\n- docs/runtime/tests now aligned on fail-closed protected-metadata\
       \ semantics."
+- id: prompt_opacity_doctor_parity_20260418
+  name: Prompt Text Opacity + Doctor Parity
+  status: pending
+  gate: Phase ends with focused cross-surface verification and gate review.
+  depends_on:
+  - final_zeroing_20260418_finalization
