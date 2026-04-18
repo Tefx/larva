@@ -216,10 +216,10 @@ class TestNormalizeSpecBehavior:
 class TestNormalizeSpecHardCutRejection:
     """Test ADR-002 hard-cut normalization behavior.
 
-    Per ADR-002 authority decision (hard-cut semantics):
-    - normalize_spec preserves forbidden fields for downstream rejection
+    Per ADR-002 authority decision (final strict rejection semantics):
+    - normalize_spec rejects forbidden fields immediately at the normalize boundary
     - normalize_spec never maps 'tools' to capabilities
-    - validation, not normalize_spec, is responsible for rejecting forbidden input
+    - normalize_spec is responsible for rejecting forbidden input, not downstream validation
     """
 
     def test_tools_rejected_at_normalize_boundary(self) -> None:
