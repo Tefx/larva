@@ -13,10 +13,25 @@ jobs:
       - name: Checkout larva
         uses: actions/checkout@v4
 
+      - name: Read frozen opifex authority pin
+        id: opifex-authority
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path("design/opifex-frozen-authority-packet.json").read_text(encoding="utf-8"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"repository={payload['repository']}\n")
+              handle.write(f"ref={payload['ref']}\n")
+          PY
+
       - name: Checkout opifex authority
         uses: actions/checkout@v4
         with:
-          repository: Tefx/opifex
+          repository: ${{ steps.opifex-authority.outputs.repository }}
+          ref: ${{ steps.opifex-authority.outputs.ref }}
           path: opifex
 
       - name: Setup Python
@@ -40,10 +55,25 @@ jobs:
       - name: Checkout larva
         uses: actions/checkout@v4
 
+      - name: Read frozen opifex authority pin
+        id: opifex-authority
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = json.loads(Path("design/opifex-frozen-authority-packet.json").read_text(encoding="utf-8"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"repository={payload['repository']}\n")
+              handle.write(f"ref={payload['ref']}\n")
+          PY
+
       - name: Checkout opifex authority
         uses: actions/checkout@v4
         with:
-          repository: Tefx/opifex
+          repository: ${{ steps.opifex-authority.outputs.repository }}
+          ref: ${{ steps.opifex-authority.outputs.ref }}
           path: opifex
 
       - name: Setup Python

@@ -202,11 +202,12 @@ larva doctor [--json]
 
 Source basis:
 
+- `design/opifex-frozen-authority-packet.json`
 - `opifex/design/final-canonical-contract.md`
+- `opifex/design/cross-repo-followup-packet.md`
 - `opifex/contracts/persona_spec.schema.json`
 - `opifex/conformance/shared_surfaces.yaml`
-- `opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml`
-- `opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml`
+- `opifex/conformance/case_matrix/larva/*`
 
 Trusted repo-local commands:
 
@@ -218,8 +219,10 @@ uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
 
 These checks are intentionally opifex-authoritative. They fail closed on:
 
+- floating or mismatched frozen `opifex` authority refs
 - canonical PersonaSpec schema mirror drift
-- capabilities-only admission drift (`capabilities` required; `tools` and `side_effect_policy` forbidden)
+- capabilities-only admission drift as derived from `opifex` `shared_surfaces` + `case_matrix` authority (`capabilities` required; `tools` and `side_effect_policy` forbidden)
+- authority-derived shared MCP surface drift, including missing shared tool registration
 - dotted or non-`snake_case` MCP tool naming
 - repo-facing docs drift away from shared naming and invalid-field wording
 
