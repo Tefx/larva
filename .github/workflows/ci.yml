@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  repo-local-expected-red:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout larva
+        uses: actions/checkout@v4
+
+      - name: Checkout opifex authority
+        uses: actions/checkout@v4
+        with:
+          repository: Tefx/opifex
+          path: opifex
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Seed expected-red drift
+        run: uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root opifex
+
+  repo-local-gate:
+    runs-on: ubuntu-latest
+    needs: repo-local-expected-red
+    steps:
+      - name: Checkout larva
+        uses: actions/checkout@v4
+
+      - name: Checkout opifex authority
+        uses: actions/checkout@v4
+        with:
+          repository: Tefx/opifex
+          path: opifex
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Sync dependencies
+        run: uv sync --group dev
+
+      - name: Verify repo-local gate script tests
+        run: uv run pytest -q tests/shell/test_repo_local_ci_gate.py
+
+      - name: Verify shared-surface repo-local gate
+        run: uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root opifex

@@ -198,6 +198,31 @@ larva component show <type>/<name> [--json]
 larva doctor [--json]
 ```
 
+## Repo-local CI gate
+
+Source basis:
+
+- `opifex/design/final-canonical-contract.md`
+- `opifex/contracts/persona_spec.schema.json`
+- `opifex/conformance/shared_surfaces.yaml`
+- `opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml`
+- `opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml`
+
+Trusted repo-local commands:
+
+```bash
+uv run pytest -q tests/shell/test_repo_local_ci_gate.py
+uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root ../opifex
+uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
+```
+
+These checks are intentionally opifex-authoritative. They fail closed on:
+
+- canonical PersonaSpec schema mirror drift
+- capabilities-only admission drift (`capabilities` required; `tools` and `side_effect_policy` forbidden)
+- dotted or non-`snake_case` MCP tool naming
+- repo-facing docs drift away from shared naming and invalid-field wording
+
 ### Python API
 
 ```python

@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PersonaSpec",
-  "description": "Reference-only local snapshot of the opifex PersonaSpec contract. This file is a derived projection of larva.core.validate field-partition metadata and is non-authoritative for canonical admission semantics; larva.core.validate enforces the canonical boundary.",
+  "description": "Canonical persona definition artifact. Validated, assembled, and registered by larva. Consumed by anima (runtime) and nervus (dispatch).",
   "type": "object",
   "required": ["id", "description", "prompt", "model", "capabilities", "spec_version"],
   "properties": {
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
-      "description": "Stable canonical persona identity. Required by schema (missing id is invalid). Flat kebab-case, no namespaces in v1. Used by registry, resolution, promotion, and dispatch references."
+      "description": "Stable canonical persona identity. Flat kebab-case, no namespaces in v1. Used by registry, resolution, promotion, and dispatch references."
     },
     "description": {
       "type": "string",
@@ -18,7 +18,7 @@
     "prompt": {
       "type": "string",
       "minLength": 1,
-      "description": "Fully composed executable prompt text. This is the final baked artifact, not a template. Assembly may exist upstream but canonical PersonaSpec stores the result."
+      "description": "Opaque executable prompt text. This is the final baked artifact stored in canonical PersonaSpec. Shared-surface validation treats it as a non-empty string and does not parse prompt-internal template or prose semantics."
     },
     "model": {
       "type": "string",
@@ -31,7 +31,7 @@
         "type": "string",
         "enum": ["none", "read_only", "read_write", "destructive"]
       },
-      "description": "Map of tool_family -> posture. The canonical tool-access declaration surface per ADR-002."
+      "description": "Map of family -> posture. Each key is a stable, provider-agnostic capability family identifier. Each value is the maximum intended posture for that family. Empty map is valid but triggers a warning."
     },
     "model_params": {
       "type": "object",
