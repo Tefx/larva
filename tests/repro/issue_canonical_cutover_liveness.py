@@ -36,6 +36,27 @@ def run_cli(*args, json_output=True):
     return json.loads(result.stdout) if json_output else result
 
 
+def _probe_spec(persona_id: str) -> dict[str, object]:
+    return {
+        "id": persona_id,
+        "description": f"Probe persona {persona_id}",
+        "prompt": "You are a probe persona.",
+        "model": "openai/gpt-5.4",
+        "spec_version": "0.1.0",
+        "capabilities": {"filesystem": "read_only"},
+    }
+
+
+def _register_probe_persona(persona_id: str) -> None:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as handle:
+        json.dump(_probe_spec(persona_id), handle)
+        handle.flush()
+        data = run_cli("register", handle.name)
+
+    error = data.get("error")
+    assert error is None, f"Failed to register probe persona {persona_id}: {data}"
+
+
 def test_cli_validate_rejects_tools():
     """CLI validate rejects spec with 'tools' field."""
     spec = {
@@ -106,7 +127,9 @@ def test_cli_validate_rejects_side_effect_policy():
 
 def test_cli_resolve_output_canonical():
     """CLI resolve output contains 'capabilities' but not 'tools' or 'side_effect_policy'."""
-    data = run_cli("resolve", "general")
+    persona_id = "probe-resolve-general"
+    _register_probe_persona(persona_id)
+    data = run_cli("resolve", persona_id)
     spec = data.get("data", {})
 
     assert "capabilities" in spec, (
@@ -123,7 +146,10 @@ def test_cli_resolve_output_canonical():
 
 def test_cli_export_output_canonical():
     """CLI export output contains 'capabilities' but not 'tools' in any persona."""
-    data = run_cli("export", "general", "archimedes")
+    persona_ids = ["probe-export-general", "probe-export-archimedes"]
+    for persona_id in persona_ids:
+        _register_probe_persona(persona_id)
+    data = run_cli("export", *persona_ids)
     personas = data.get("data", [])
 
     for p in personas:
@@ -214,7 +240,10 @@ def test_python_api_resolve_canonical():
     from larva.cli_facade import build_default_facade
 
     facade = build_default_facade()
-    result = facade.resolve("general", None)
+    persona_id = "probe-python-resolve"
+    register_result = facade.register(_probe_spec(persona_id))
+    assert register_result.unwrap()["registered"] is True
+    result = facade.resolve(persona_id, None)
     spec = result.unwrap()
 
     assert "capabilities" in spec, (
@@ -264,6 +293,8 @@ def test_web_api_liveness():
     import urllib.error
 
     port = 17431
+    persona_id = "probe-web-general"
+    _register_probe_persona(persona_id)
     proc = subprocess.Popen(
         [LARVA_BIN, "serve", "--port", str(port), "--no-open"],
         stdout=subprocess.PIPE,
@@ -304,11 +335,11 @@ def test_web_api_liveness():
         # Check single-persona resolve endpoint
         try:
             resp = urllib.request.urlopen(
-                f"http://localhost:{port}/api/personas/general", timeout=5
+                f"http://localhost:{port}/api/personas/{persona_id}", timeout=5
             )
             person_data = json.loads(resp.read().decode())
         except Exception as e:
-            raise AssertionError(f"Cannot fetch /api/personas/general: {e}")
+            raise AssertionError(f"Cannot fetch /api/personas/{persona_id}: {e}")
 
         spec = person_data.get("data", {})
         assert "capabilities" in spec, (

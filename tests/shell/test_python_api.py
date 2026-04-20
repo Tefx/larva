@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
+def _canonical_spec(persona_id: str, digest: str | None = None) -> PersonaSpec:
     return canonical_persona_spec(persona_id=persona_id, digest=digest)
 
 
@@ -416,7 +416,7 @@ class TestPythonApiResolve:
 
     def test_resolve_delegates_to_facade_resolve(self, facade_fixture: FacadeFixture) -> None:
         """resolve() must forward to facade.resolve() and apply overrides."""
-        canonical = _canonical_spec("resolve-test", digest="sha256:old")
+        canonical = _canonical_spec("resolve-test")
         facade_fixture.registry.get_result = Success(canonical)
 
         # Call the python_api wrapper (the actual thin delegation)
@@ -431,7 +431,7 @@ class TestPythonApiResolve:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """Overrides must be applied and revalidated through delegation."""
-        canonical = _canonical_spec("resolve-override-test", digest="sha256:old")
+        canonical = _canonical_spec("resolve-override-test")
         facade_fixture.registry.get_result = Success(canonical)
 
         result = python_api.resolve(
@@ -441,11 +441,11 @@ class TestPythonApiResolve:
 
         assert result["description"] == "overridden description"
         # Override must go through validate
-        assert facade_fixture.validate_module.inputs[0]["description"] == "overridden description"
+        assert facade_fixture.validate_module.inputs[-1]["description"] == "overridden description"
 
     def test_resolve_returns_normalized_spec(self, facade_fixture: FacadeFixture) -> None:
         """resolve() must return a normalized PersonaSpec."""
-        canonical = _canonical_spec("resolve-normalized", digest="sha256:old")
+        canonical = _canonical_spec("resolve-normalized")
         facade_fixture.registry.get_result = Success(canonical)
         result = python_api.resolve("resolve-normalized")
         assert "spec_digest" in result
@@ -474,8 +474,8 @@ class TestPythonApiList:
         so spec_digest values are recomputed by normalization.
         """
         specs = [
-            _canonical_spec("alpha", digest="sha256:a"),
-            _canonical_spec("beta", digest="sha256:b"),
+            _canonical_spec("alpha"),
+            _canonical_spec("beta"),
         ]
         facade_fixture.registry.list_result = Success(specs)
 
@@ -499,8 +499,8 @@ class TestPythonApiList:
         Hard-cut policy: spec_digest values are recomputed by normalization.
         """
         specs = [
-            _canonical_spec("test1", digest="sha256:abc"),
-            _canonical_spec("test2", digest="sha256:def"),
+            _canonical_spec("test1"),
+            _canonical_spec("test2"),
         ]
         facade_fixture.registry.list_result = Success(specs)
         result = python_api.list()
@@ -543,7 +543,7 @@ class TestExplicitNullFalseyOverrides:
 
     def test_resolve_explicit_null_override_preserved(self, facade_fixture: FacadeFixture) -> None:
         """Explicit None must be preserved through delegation chain."""
-        canonical = _canonical_spec("null-override", digest="sha256:old")
+        canonical = _canonical_spec("null-override")
         facade_fixture.registry.get_result = Success(canonical)
 
         # Call the python_api wrapper (the actual thin delegation)
@@ -561,7 +561,7 @@ class TestExplicitNullFalseyOverrides:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """Explicit falsey values (0, "", False, empty dict) must be preserved."""
-        canonical = _canonical_spec("falsey-override", digest="sha256:old")
+        canonical = _canonical_spec("falsey-override")
         facade_fixture.registry.get_result = Success(canonical)
 
         result = python_api.resolve(
@@ -580,7 +580,7 @@ class TestExplicitNullFalseyOverrides:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """Override with falsey values must trigger revalidation and renormalization."""
-        canonical = _canonical_spec("digest-recompute", digest="sha256:original")
+        canonical = _canonical_spec("digest-recompute")
         facade_fixture.registry.get_result = Success(canonical)
 
         result = python_api.resolve(
@@ -589,7 +589,7 @@ class TestExplicitNullFalseyOverrides:
         )
 
         # Digest must be recomputed because content changed (even if empty string)
-        assert result["spec_digest"] != "sha256:original"
+        assert result["spec_digest"] != canonical["spec_digest"]
         # Must have gone through normalize
         assert "normalize" in facade_fixture.call_record
 
@@ -1112,7 +1112,7 @@ class TestPythonApiClone:
 
     def test_clone_delegates_to_facade_clone(self, facade_fixture: FacadeFixture) -> None:
         """clone() must forward to facade.clone() and return PersonaSpec."""
-        source_spec = _canonical_spec("source-to-clone", digest="sha256:original")
+        source_spec = _canonical_spec("source-to-clone")
         facade_fixture.registry.get_result = Success(source_spec)
 
         result = python_api.clone("source-to-clone", "cloned-persona")
@@ -1124,7 +1124,7 @@ class TestPythonApiClone:
 
     def test_clone_returns_cloned_persona_with_new_id(self, facade_fixture: FacadeFixture) -> None:
         """clone() must return PersonaSpec with new_id and recomputed spec_digest."""
-        source_spec = _canonical_spec("original-persona", digest="sha256:old")
+        source_spec = _canonical_spec("original-persona")
         facade_fixture.registry.get_result = Success(source_spec)
 
         result = python_api.clone("original-persona", "new-persona")
@@ -1150,6 +1150,7 @@ class TestPythonApiClone:
             "spec_version": "0.1.0",
             "spec_digest": "sha256:source-digest",
         }
+        source_spec["spec_digest"] = _digest_for(source_spec)
         facade_fixture.registry.get_result = Success(source_spec)
 
         result = python_api.clone("source-preserves", "target-preserves")
@@ -1184,7 +1185,7 @@ class TestPythonApiClone:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """clone() with validation failure on cloned spec must raise LarvaApiError."""
-        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        source_spec = _canonical_spec("valid-source")
         facade_fixture.registry.get_result = Success(source_spec)
         facade_fixture.validate_module.report = _invalid_report("PERSONA_INVALID")
 
@@ -1198,7 +1199,7 @@ class TestPythonApiClone:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """clone() with registry save failure must raise LarvaApiError."""
-        source_spec = _canonical_spec("source-write-fail", digest="sha256:source")
+        source_spec = _canonical_spec("source-write-fail")
         facade_fixture.registry.get_result = Success(source_spec)
         facade_fixture.registry.save_result = Failure(
             {
@@ -1304,6 +1305,7 @@ class TestPythonApiUpdate:
         """update() must return the updated PersonaSpec."""
         existing = _canonical_spec("update-ok")
         existing["description"] = "Original description"
+        existing["spec_digest"] = _digest_for(existing)
         facade_fixture.registry.get_result = Success(existing)
 
         result = python_api.update("update-ok", patches={"description": "New description"})
@@ -1358,6 +1360,7 @@ class TestPythonApiUpdate:
         existing = _canonical_spec("update-falsey")
         existing["description"] = "Original"
         existing["can_spawn"] = True
+        existing["spec_digest"] = _digest_for(existing)
         facade_fixture.registry.get_result = Success(existing)
 
         result = python_api.update(
@@ -1434,8 +1437,8 @@ class TestPythonApiExportAll:
 
     def test_export_all_delegates_to_facade_export_all(self, facade_fixture: FacadeFixture) -> None:
         """export_all() must forward to facade.export_all()."""
-        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
-        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        spec_alpha = _canonical_spec("export-alpha")
+        spec_beta = _canonical_spec("export-beta")
         facade_fixture.registry.list_result = Success([spec_alpha, spec_beta])
 
         result = python_api.export_all()
@@ -1460,9 +1463,10 @@ class TestPythonApiExportAll:
         Hard-cut policy: export normalizes each spec before returning,
         so spec_digest values are recomputed.
         """
-        spec = _canonical_spec("full-spec", digest="sha256:full")
+        spec = _canonical_spec("full-spec")
         spec["description"] = "Full description"
         spec["prompt"] = "Full prompt"
+        spec["spec_digest"] = _digest_for(spec)
         facade_fixture.registry.list_result = Success([spec])
 
         result = python_api.export_all()
@@ -1500,8 +1504,8 @@ class TestPythonApiExportIds:
 
     def test_export_ids_delegates_to_facade_export_ids(self, facade_fixture: FacadeFixture) -> None:
         """export_ids() must forward to facade.export_ids()."""
-        spec_one = _canonical_spec("export-one", digest="sha256:one")
-        spec_two = _canonical_spec("export-two", digest="sha256:two")
+        spec_one = _canonical_spec("export-one")
+        spec_two = _canonical_spec("export-two")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
             if persona_id == "export-one":
@@ -1521,9 +1525,9 @@ class TestPythonApiExportIds:
 
     def test_export_ids_preserves_input_order(self, facade_fixture: FacadeFixture) -> None:
         """export_ids() must return specs in same order as input ids."""
-        spec_a = _canonical_spec("export-a", digest="sha256:a")
-        spec_b = _canonical_spec("export-b", digest="sha256:b")
-        spec_c = _canonical_spec("export-c", digest="sha256:c")
+        spec_a = _canonical_spec("export-a")
+        spec_b = _canonical_spec("export-b")
+        spec_c = _canonical_spec("export-c")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
             if persona_id == "export-a":
@@ -1554,7 +1558,7 @@ class TestPythonApiExportIds:
         self, facade_fixture: FacadeFixture
     ) -> None:
         """Single id returns list with one spec, not the spec directly."""
-        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        spec_single = _canonical_spec("export-single")
         facade_fixture.registry.get_result = Success(spec_single)
 
         result = python_api.export_ids(["export-single"])
@@ -1585,9 +1589,10 @@ class TestPythonApiExportIds:
         Hard-cut policy: export normalizes each spec before returning,
         so spec_digest values are recomputed.
         """
-        spec = _canonical_spec("full-spec", digest="sha256:full")
+        spec = _canonical_spec("full-spec")
         spec["description"] = "Full description"
         spec["prompt"] = "Full prompt"
+        spec["spec_digest"] = _digest_for(spec)
         facade_fixture.registry.get_result = Success(spec)
 
         result = python_api.export_ids(["full-spec"])
@@ -1697,10 +1702,12 @@ class TestPythonApiUpdateBatch:
         spec_match = _canonical_spec("match")
         spec_match["model"] = "gpt-4o"
         spec_match["model_params"] = {"temperature": 0.7}
+        spec_match["spec_digest"] = _digest_for(spec_match)
 
         spec_wrong_model = _canonical_spec("wrong-model")
         spec_wrong_temp = _canonical_spec("wrong-temp")
         spec_wrong_temp["model"] = "gpt-4o"
+        spec_wrong_temp["spec_digest"] = _digest_for(spec_wrong_temp)
 
         facade_fixture.registry.list_result = Success(
             [spec_match, spec_wrong_model, spec_wrong_temp]
@@ -1721,6 +1728,7 @@ class TestPythonApiUpdateBatch:
         """update_batch() with no matches returns matched=0, updated=0, items=[]."""
         spec_alpha = _canonical_spec("alpha")
         spec_alpha["model"] = "gpt-4"  # Different model
+        spec_alpha["spec_digest"] = _digest_for(spec_alpha)
         facade_fixture.registry.list_result = Success([spec_alpha])
 
         result = python_api.update_batch(
@@ -1856,9 +1864,11 @@ class TestPythonApiUpdateBatch:
         """update_batch() dotted where clause matches nested fields."""
         spec_nested = _canonical_spec("nested-match")
         spec_nested["model_params"] = {"temperature": 0.7, "nested": {"deep": "value"}}
+        spec_nested["spec_digest"] = _digest_for(spec_nested)
 
         spec_missing = _canonical_spec("missing-path")
         spec_missing["model_params"] = {"temperature": 0.7}
+        spec_missing["spec_digest"] = _digest_for(spec_missing)
 
         facade_fixture.registry.list_result = Success([spec_nested, spec_missing])
 

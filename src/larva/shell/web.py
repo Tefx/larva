@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any, TypedDict
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
+from returns.result import Failure
 
 if TYPE_CHECKING:
     from larva.core.validate import ValidationReport
@@ -54,6 +55,7 @@ from larva.shell.python_api import (
 from larva.shell.python_api import (
     list as list_personas,
 )
+from larva.shell.shared.request_validation import require_params_object, require_type
 
 STATIC_DIR = Path(__file__).parent
 
@@ -183,6 +185,38 @@ def _validation_error_response(report: ValidationReport) -> Any:
     )
 
 
+def _invalid_input_response(message: str, details: dict[str, object]) -> Any:
+    """Project malformed request input to a structured HTTP 400 envelope."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": "INVALID_INPUT",
+                "numeric_code": 1,
+                "message": message,
+                "details": details,
+            }
+        },
+    )
+
+
+async def _read_request_object(request: Request) -> dict[str, Any] | JSONResponse:
+    """Read request JSON and require a top-level object payload."""
+    try:
+        payload = await request.json()
+    except Exception:
+        return _invalid_input_response(
+            "request body must be valid JSON object",
+            {"field": "params", "received_type": "invalid_json"},
+        )
+
+    params_result = require_params_object(payload)
+    if isinstance(params_result, Failure):
+        issue = params_result.failure()
+        return _invalid_input_response(issue.reason, issue.details)
+    return params_result.unwrap()
+
+
 # ---------------------------------------------------------------------------
 # Persona endpoints (shared implementation pattern)
 # ---------------------------------------------------------------------------
@@ -212,8 +246,15 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     @app.post("/api/personas")
     async def api_register_persona(request: Request) -> Any:
         """Validate and register a new persona."""
-        body = await request.json()
+        body = await _read_request_object(request)
+        if isinstance(body, JSONResponse):
+            return body
         spec = body.get("spec", body)
+        if "spec" in body:
+            spec_result = require_type(body, "spec", dict, "object")
+            if isinstance(spec_result, Failure):
+                issue = spec_result.failure()
+                return _invalid_input_response(issue.reason, issue.details)
         try:
             report = validate(spec)
             if not report["valid"]:
@@ -227,7 +268,9 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     @app.patch("/api/personas/{persona_id}")
     async def api_update_persona(persona_id: str, request: Request) -> Any:
         """Patch a persona through the shared facade seam."""
-        patches = await request.json()
+        patches = await _read_request_object(request)
+        if isinstance(patches, JSONResponse):
+            return patches
         try:
             return {"data": update(persona_id, patches)}
         except LarvaApiError as e:
@@ -245,7 +288,9 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     @app.post("/api/personas/clear")
     async def api_clear_personas(request: Request) -> Any:
         """Clear the registry with confirmation."""
-        body = await request.json()
+        body = await _read_request_object(request)
+        if isinstance(body, JSONResponse):
+            return body
         confirm = body.get("confirm", "")
         try:
             count = clear(confirm=confirm)
@@ -256,7 +301,9 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     @app.post("/api/personas/validate")
     async def api_validate_persona(request: Request) -> Any:
         """Validate a candidate persona spec."""
-        spec = await request.json()
+        spec = await _read_request_object(request)
+        if isinstance(spec, JSONResponse):
+            return spec
         try:
             report = validate(spec)
             return {"data": report}
@@ -267,7 +314,9 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
     # @invar:allow entry_point_too_thick: web endpoint, mirrors contrib implementation parity
     async def api_assemble_persona(request: Request) -> Any:
         """Assemble a persona spec from components."""
-        body = await request.json()
+        body = await _read_request_object(request)
+        if isinstance(body, JSONResponse):
+            return body
 
         # Validate: reject unknown fields at canonical boundary
         allowed_fields = frozenset(

@@ -51,11 +51,11 @@ class TestFacadeUpdate:
         assert isinstance(result, Success)
         updated = result.unwrap()
         assert registry.get_inputs == ["update-me"]
-        assert calls == ["validate", "normalize", "validate"]
-        assert len(validate_module.inputs) == 2
-        assert validate_module.inputs[0]["description"] == "Updated description"
-        assert validate_module.inputs[0]["model_params"] == {"temperature": 0}
+        assert calls == ["validate", "validate", "normalize", "validate"]
+        assert len(validate_module.inputs) == 3
+        assert validate_module.inputs[1]["description"] == "Updated description"
         assert validate_module.inputs[1]["model_params"] == {"temperature": 0}
+        assert validate_module.inputs[2]["model_params"] == {"temperature": 0}
         assert normalize_module.inputs[0]["description"] == "Updated description"
         assert len(registry.save_inputs) == 1
         assert registry.save_inputs[0] == updated
@@ -128,7 +128,7 @@ class TestFacadeUpdate:
         existing = _canonical_spec("update-tools")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade, _, validate_module, normalize_module = _facade(
-            report=_invalid_report("EXTRA_FIELD_NOT_ALLOWED"),
+            report=_valid_report(),
             registry=registry,
             calls=calls,
         )
@@ -139,9 +139,9 @@ class TestFacadeUpdate:
         assert error["code"] == "FORBIDDEN_PATCH_FIELD"
         assert error["numeric_code"] == 114
         assert error["details"] == {"field": "tools", "key": "tools"}
-        assert calls == []
+        assert calls == ["validate"]
         assert normalize_module.inputs == []
-        assert validate_module.inputs == []
+        assert len(validate_module.inputs) == 1
         assert registry.save_inputs == []
 
     def test_update_rejects_protected_metadata_patch_fields_before_normalization(self) -> None:
@@ -159,7 +159,7 @@ class TestFacadeUpdate:
         assert error["code"] == "FORBIDDEN_PATCH_FIELD"
         assert error["numeric_code"] == 114
         assert error["details"] == {"field": "spec_version", "key": "spec_version"}
-        assert calls == []
+        assert calls == ["validate"]
         assert normalize_module.inputs == []
-        assert validate_module.inputs == []
+        assert len(validate_module.inputs) == 1
         assert registry.save_inputs == []

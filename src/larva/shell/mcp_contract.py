@@ -99,6 +99,29 @@ _PERSONA_SPEC_INPUT_SCHEMA = cast(
         ),
     },
 )
+_PERSONA_OVERRIDE_ALLOWED_FIELDS = (
+    "description",
+    "prompt",
+    "model",
+    "capabilities",
+    "model_params",
+    "can_spawn",
+    "compaction_prompt",
+)
+_PERSONA_OVERRIDE_INPUT_SCHEMA = cast(
+    "dict[str, Any]",
+    {
+        "type": "object",
+        "properties": {
+            field: _PERSONA_SPEC_FIELD_TYPES[field] for field in _PERSONA_OVERRIDE_ALLOWED_FIELDS
+        },
+        "additionalProperties": False,
+        "description": (
+            "Canonical mutable PersonaSpec fields only. Stable identity and generated metadata "
+            "fields such as id, spec_version, and spec_digest are not overrideable."
+        ),
+    },
+)
 
 
 class MCPToolDefinition(TypedDict):
@@ -128,6 +151,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 }
             },
             "required": ["spec"],
+            "additionalProperties": False,
         },
     },
     {
@@ -165,11 +189,11 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
                 "model": {"type": "string", "description": "Model component name"},
                 "overrides": {
-                    "type": "object",
                     "description": (
                         "Field overrides (wins over components). "
                         f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
+                    **_PERSONA_OVERRIDE_INPUT_SCHEMA,
                 },
             },
             "required": ["id"],
@@ -187,14 +211,15 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "properties": {
                 "id": {"type": "string", "description": "Persona id in registry"},
                 "overrides": {
-                    "type": "object",
                     "description": (
                         "Field overrides applied to the resolved spec. Canonical admission "
                         f"requires capabilities and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
+                    **_PERSONA_OVERRIDE_INPUT_SCHEMA,
                 },
             },
             "required": ["id"],
+            "additionalProperties": False,
         },
     },
     {
@@ -215,6 +240,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 }
             },
             "required": ["spec"],
+            "additionalProperties": False,
         },
     },
     {
@@ -223,6 +249,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "input_schema": {
             "type": "object",
             "properties": {},
+            "additionalProperties": False,
         },
     },
     {
@@ -234,6 +261,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         "input_schema": {
             "type": "object",
             "properties": {},
+            "additionalProperties": False,
         },
     },
     {
@@ -247,6 +275,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
             "properties": {
                 "component_type": {
                     "type": "string",
+                    "enum": ["prompts", "toolsets", "constraints", "models"],
                     "description": "Component type (prompts, toolsets, constraints, or models)",
                 },
                 "name": {
@@ -255,6 +284,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["component_type", "name"],
+            "additionalProperties": False,
         },
     },
     {
@@ -266,6 +296,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "id": {"type": "string", "description": "Persona id to delete"},
             },
             "required": ["id"],
+            "additionalProperties": False,
         },
     },
     {
@@ -280,6 +311,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["confirm"],
+            "additionalProperties": False,
         },
     },
     {
@@ -301,6 +333,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["source_id", "new_id"],
+            "additionalProperties": False,
         },
     },
     {
@@ -322,6 +355,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "description": "Export specific persona specs by id",
                 },
             },
+            "additionalProperties": False,
         },
     },
     {
@@ -347,6 +381,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["id", "patches"],
+            "additionalProperties": False,
         },
     },
     {
@@ -380,6 +415,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
             },
             "required": ["where", "patches"],
+            "additionalProperties": False,
         },
     },
 ]

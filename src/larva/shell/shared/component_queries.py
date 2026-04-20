@@ -13,7 +13,6 @@ from returns.result import Failure, Result, Success
 
 from larva.core.component_error_projection import (
     component_invalid_kind_error,
-    component_not_found_error,
     project_component_store_error,
 )
 from larva.core.component_kind import (
@@ -21,7 +20,7 @@ from larva.core.component_kind import (
     invalid_component_kind_message,
     normalize_component_kind,
 )
-from larva.shell.components import ComponentStore, ComponentStoreError
+from larva.shell.components import ComponentStore, ComponentStoreError, ensure_component_payload
 
 if TYPE_CHECKING:
     from larva.app.facade import LarvaError
@@ -77,23 +76,18 @@ def query_component(
             )
         )
 
-    payload = dict(cast("ComponentPayload", load_result.unwrap()))
-    forbidden_field = {
-        "toolsets": "tools",
-        "constraints": "side_effect_policy",
-    }.get(normalized_type)
-    if forbidden_field is not None and forbidden_field in payload:
+    payload_result = ensure_component_payload(normalized_type, component_name, load_result.unwrap())
+    if isinstance(payload_result, Failure):
         return Failure(
-            component_not_found_error(
+            project_component_store_error(
                 operation=operation,
-                component_type=normalized_type,
-                component_name=component_name,
-                message=(
-                    f"Component '{component_name}' in '{normalized_type}' still contains "
-                    f"forbidden legacy field '{forbidden_field}'"
-                ),
+                error=payload_result.failure(),
+                default_component_type=normalized_type,
+                default_component_name=component_name,
             )
         )
+
+    payload = dict(cast("ComponentPayload", payload_result.unwrap()))
     return Success(payload)
 
 

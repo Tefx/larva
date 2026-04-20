@@ -74,10 +74,10 @@ class TestFacadeClone:
         assert cloned["spec_version"] == "0.1.0"
         assert cloned["spec_digest"] == _digest_for(cloned)
         assert cloned["spec_digest"] != "sha256:old-digest"
-        assert calls == ["validate", "normalize", "validate"]
+        assert calls == ["validate", "validate", "normalize", "validate"]
         assert registry.get_inputs == ["source-persona"]
-        assert validate_module.inputs[0]["id"] == "cloned-persona"
         assert validate_module.inputs[1]["id"] == "cloned-persona"
+        assert validate_module.inputs[2]["id"] == "cloned-persona"
         assert normalize_module.inputs[0]["id"] == "cloned-persona"
 
     def test_clone_hard_cut_rejects_forbidden_fields_from_source(self) -> None:
@@ -90,14 +90,21 @@ class TestFacadeClone:
         source_with_legacy["custom_field"] = "custom_value"
 
         registry = InMemoryRegistryStore(get_result=Success(source_with_legacy))
-        facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
 
         result = facade.clone("historical-source", "cloned-from-historical")
 
         error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "FORBIDDEN_FIELD"
-        assert error["numeric_code"] == 115
-        assert error["details"]["field"] in {"tools", "side_effect_policy"}
+        assert error["code"] == "PERSONA_INVALID"
+        fields = {issue["details"]["field"] for issue in error["details"]["report"]["errors"]}
+        assert {"tools", "side_effect_policy"}.issubset(fields)
         assert registry.save_inputs == []
 
     def test_clone_source_not_found_returns_persona_not_found_error(self) -> None:
@@ -149,12 +156,14 @@ class TestFacadeClone:
         Returns PERSONA_INVALID on failure.
         """
         source_spec = _canonical_spec("valid-source")
-        calls: list[str] = []
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
-        facade, _, validate_module, normalize_module = _facade(
-            report=_invalid_report("INVALID_PERSONA_ID"),
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
             registry=registry,
-            calls=calls,
         )
 
         result = facade.clone("valid-source", "Invalid_Clone_Id")
@@ -162,14 +171,13 @@ class TestFacadeClone:
         error = _failure(cast("Result[object, LarvaError]", result))
         assert error["code"] == "PERSONA_INVALID"
         assert error["numeric_code"] == 101
-        assert validate_module.inputs[0]["id"] == "Invalid_Clone_Id"
-        assert normalize_module.inputs == []
-        assert calls == ["validate"]
+        assert error["details"]["report"]["errors"][0]["details"]["field"] == "id"
         assert registry.get_inputs == ["valid-source"]
 
     def test_clone_rejects_invalid_optional_field_type_from_source(self) -> None:
         source_spec = dict(_canonical_spec("clone-bad-shape"))
         source_spec["model_params"] = "invalid"
+        source_spec["spec_digest"] = _digest_for(cast("PersonaSpec", source_spec))
         registry = InMemoryRegistryStore(get_result=Success(cast("dict[str, object]", source_spec)))
         facade = DefaultLarvaFacade(
             spec=spec_module,
@@ -256,9 +264,11 @@ class TestFacadeClone:
         result = facade.clone("ordered-source", "ordered-clone")
 
         assert isinstance(result, Success)
-        assert calls == ["validate", "normalize", "validate"]
+        assert calls == ["validate", "validate", "normalize", "validate"]
         assert registry.get_inputs == ["ordered-source"]
-        assert validate_module.inputs[0]["id"] == "ordered-clone"
+        assert validate_module.inputs[0]["id"] == "ordered-source"
+        assert validate_module.inputs[1]["id"] == "ordered-clone"
+        assert validate_module.inputs[2]["id"] == "ordered-clone"
         assert normalize_module.inputs[0]["id"] == "ordered-clone"
         saved_spec = registry.save_inputs[0]
         assert saved_spec["id"] == "ordered-clone"

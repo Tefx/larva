@@ -11,10 +11,15 @@ from typing import cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaError
+from larva.app.facade import DefaultLarvaFacade, LarvaError
+from larva.core import assemble as assemble_module
+from larva.core import normalize as normalize_module
+from larva.core import spec as spec_module
+from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 
 from .conftest import (
+    InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
     _facade,
@@ -25,8 +30,8 @@ from .conftest import (
 class TestFacadeList:
     def test_list_returns_facade_summaries_only(self) -> None:
         specs = [
-            _canonical_spec("alpha", digest="sha256:a"),
-            _canonical_spec("beta", digest="sha256:b"),
+            _canonical_spec("alpha"),
+            _canonical_spec("beta"),
         ]
         registry = InMemoryRegistryStore(list_result=Success(specs))
         facade, _, _, normalize_module = _facade(registry=registry)
@@ -97,12 +102,33 @@ class TestFacadeList:
             },
         )
         registry = InMemoryRegistryStore(list_result=Success([malformed]))
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.list()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        issues = error["details"]["report"]["errors"]
+        assert any(issue["code"] == "MISSING_REQUIRED_FIELD" for issue in issues)
+        assert any(issue["details"]["field"] == "spec_version" for issue in issues)
+
+    def test_list_rejects_stored_spec_with_mismatched_digest(self) -> None:
+        bad_spec = dict(_canonical_spec("alpha"))
+        bad_spec["spec_digest"] = "sha256:bad-digest"
+        registry = InMemoryRegistryStore(list_result=Success([cast("PersonaSpec", bad_spec)]))
         facade, _, _, _ = _facade(registry=registry)
 
         result = facade.list()
 
         error = _failure(cast("Result[object, LarvaError]", result))
-        assert error["code"] == "MISSING_SPEC_VERSION"
-        assert error["numeric_code"] == 116
-        assert "spec_version" in error["message"]
-        assert error["details"]["field"] == "spec_version"
+        assert error["code"] == "PERSONA_INVALID"
+        issue = error["details"]["report"]["errors"][0]
+        assert issue["code"] == "INVALID_SPEC_DIGEST"
+        assert issue["details"]["field"] == "spec_digest"

@@ -10,7 +10,7 @@ See:
 """
 
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from returns.result import Result, Success, Failure
 
@@ -22,6 +22,22 @@ from larva.core.spec import (
 )
 
 _VALID_TOOL_POSTURES = frozenset({"none", "read_only", "read_write", "destructive"})
+_CANONICAL_COMPONENT_KIND_INDEX = {
+    "prompt": "prompts",
+    "prompts": "prompts",
+    "toolset": "toolsets",
+    "toolsets": "toolsets",
+    "constraint": "constraints",
+    "constraints": "constraints",
+    "model": "models",
+    "models": "models",
+}
+_COMPONENT_ALLOWED_KEYS = {
+    "prompts": frozenset({"text"}),
+    "toolsets": frozenset({"capabilities"}),
+    "constraints": frozenset({"can_spawn", "compaction_prompt"}),
+    "models": frozenset({"model", "model_params"}),
+}
 
 # -----------------------------------------------------------------------------
 # Shell Error Types
@@ -46,6 +62,139 @@ class ComponentStoreError(Exception):
         self.component_type = component_type
         self.component_name = component_name
         super().__init__(message)
+
+
+def ensure_component_payload(
+    component_type: str,
+    component_name: str,
+    payload: object,
+) -> Result[dict[str, object], ComponentStoreError]:
+    """Validate one component payload without stripping malformed metadata.
+
+    The shared component-show surface and direct component loaders both depend on
+    this helper so malformed payloads fail closed instead of being cleaned on
+    read.
+    """
+
+    canonical_kind = _CANONICAL_COMPONENT_KIND_INDEX.get(component_type, component_type)
+    if not isinstance(payload, dict):
+        return Failure(
+            ComponentStoreError(
+                f"{component_type.capitalize()} {component_name} is not a valid mapping",
+                component_type=component_type,
+                component_name=component_name,
+            )
+        )
+
+    data = dict(payload)
+    allowed_keys = _COMPONENT_ALLOWED_KEYS.get(canonical_kind)
+    if allowed_keys is None:
+        return Failure(
+            ComponentStoreError(
+                f"Unsupported component type: {component_type}",
+                component_type=component_type,
+                component_name=component_name,
+            )
+        )
+
+    unknown_keys = sorted(set(data) - allowed_keys)
+    if unknown_keys:
+        return Failure(
+            ComponentStoreError(
+                f"{component_type.capitalize()} {component_name} contains unsupported field(s): {unknown_keys}",
+                component_type=component_type,
+                component_name=component_name,
+            )
+        )
+
+    if canonical_kind == "prompts":
+        text = data.get("text")
+        if not isinstance(text, str):
+            return Failure(
+                ComponentStoreError(
+                    f"Prompt {component_name} must contain string field 'text'",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+        return Success(data)
+
+    if canonical_kind == "toolsets":
+        capabilities = data.get("capabilities")
+        if not isinstance(capabilities, dict):
+            return Failure(
+                ComponentStoreError(
+                    f"Toolset {component_name} capabilities must be a mapping of strings to canonical postures.",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+        for capability_name, posture in capabilities.items():
+            if not isinstance(capability_name, str) or not isinstance(posture, str):
+                return Failure(
+                    ComponentStoreError(
+                        f"Toolset {component_name} capabilities entries must use string keys and posture values.",
+                        component_type=component_type,
+                        component_name=component_name,
+                    )
+                )
+            if posture not in _VALID_TOOL_POSTURES:
+                return Failure(
+                    ComponentStoreError(
+                        f"Toolset {component_name} capabilities entry '{capability_name}' uses invalid posture '{posture}'.",
+                        component_type=component_type,
+                        component_name=component_name,
+                    )
+                )
+        return Success(data)
+
+    if canonical_kind == "constraints":
+        can_spawn = data.get("can_spawn")
+        if can_spawn is not None:
+            if isinstance(can_spawn, bool):
+                pass
+            elif isinstance(can_spawn, list) and all(
+                isinstance(item, str) and item != "" for item in can_spawn
+            ) and len(set(can_spawn)) == len(can_spawn):
+                pass
+            else:
+                return Failure(
+                    ComponentStoreError(
+                        f"Constraint {component_name} field 'can_spawn' must be boolean or list[string] with unique non-empty entries.",
+                        component_type=component_type,
+                        component_name=component_name,
+                    )
+                )
+        compaction_prompt = data.get("compaction_prompt")
+        if compaction_prompt is not None and not isinstance(compaction_prompt, str):
+            return Failure(
+                ComponentStoreError(
+                    f"Constraint {component_name} field 'compaction_prompt' must be a string.",
+                    component_type=component_type,
+                    component_name=component_name,
+                )
+            )
+        return Success(data)
+
+    model_name = data.get("model")
+    if model_name is not None and not isinstance(model_name, str):
+        return Failure(
+            ComponentStoreError(
+                f"Model {component_name} field 'model' must be a string.",
+                component_type=component_type,
+                component_name=component_name,
+            )
+        )
+    model_params = data.get("model_params")
+    if model_params is not None and not isinstance(model_params, dict):
+        return Failure(
+            ComponentStoreError(
+                f"Model {component_name} field 'model_params' must be a mapping.",
+                component_type=component_type,
+                component_name=component_name,
+            )
+        )
+    return Success(data)
 
 
 # -----------------------------------------------------------------------------
@@ -286,7 +435,10 @@ class FilesystemComponentStore:
                     )
                 )
             text = prompt_path.read_text(encoding="utf-8")
-            return Success(PromptComponent(text=text))
+            payload_result = ensure_component_payload("prompt", name, {"text": text})
+            if isinstance(payload_result, Failure):
+                return payload_result
+            return Success(PromptComponent(**payload_result.unwrap()))
         except Exception as e:
             return Failure(
                 self._error(
@@ -352,16 +504,7 @@ class FilesystemComponentStore:
             return yaml_result
 
         data = yaml_result.unwrap()
-        if not isinstance(data, dict):
-            return Failure(
-                self._error(
-                    f"Toolset {name} is not a valid mapping",
-                    component_type="toolset",
-                    component_name=name,
-                )
-            )
-
-        if "tools" in data:
+        if isinstance(data, dict) and "tools" in data:
             return Failure(
                 self._error(
                     f"Toolset {name} contains forbidden legacy field 'tools'. "
@@ -371,7 +514,7 @@ class FilesystemComponentStore:
                 )
             )
 
-        if "capabilities" not in data:
+        if not isinstance(data, dict) or "capabilities" not in data:
             return Failure(
                 self._error(
                     f"Toolset {name} is missing 'capabilities' field. "
@@ -381,36 +524,11 @@ class FilesystemComponentStore:
                 )
             )
 
-        capabilities = data.get("capabilities")
-
-        if not isinstance(capabilities, dict):
-            return Failure(
-                self._error(
-                    f"Toolset {name} capabilities must be a mapping of strings to canonical postures.",
-                    component_type="toolset",
-                    component_name=name,
-                )
-            )
-
-        for capability_name, posture in capabilities.items():
-            if not isinstance(capability_name, str) or not isinstance(posture, str):
-                return Failure(
-                    self._error(
-                        f"Toolset {name} capabilities entries must use string keys and posture values.",
-                        component_type="toolset",
-                        component_name=name,
-                    )
-                )
-            if posture not in _VALID_TOOL_POSTURES:
-                return Failure(
-                    self._error(
-                        f"Toolset {name} capabilities entry '{capability_name}' uses invalid posture '{posture}'.",
-                        component_type="toolset",
-                        component_name=name,
-                    )
-                )
-
-        return Success(ToolsetComponent(capabilities=capabilities))
+        payload_result = ensure_component_payload("toolset", name, data)
+        if isinstance(payload_result, Failure):
+            return payload_result
+        validated_payload = payload_result.unwrap()
+        return Success(ToolsetComponent(capabilities=validated_payload["capabilities"]))
 
     def load_constraint(self, name: str) -> Result[ConstraintComponent, ComponentStoreError]:
         """Load a constraint component by name.
@@ -431,16 +549,7 @@ class FilesystemComponentStore:
             return yaml_result
 
         data = yaml_result.unwrap()
-        if not isinstance(data, dict):
-            return Failure(
-                self._error(
-                    f"Constraint {name} is not a valid mapping",
-                    component_type="constraint",
-                    component_name=name,
-                )
-            )
-
-        if "side_effect_policy" in data:
+        if isinstance(data, dict) and "side_effect_policy" in data:
             return Failure(
                 self._error(
                     f"Constraint {name} contains forbidden legacy field 'side_effect_policy'.",
@@ -449,13 +558,10 @@ class FilesystemComponentStore:
                 )
             )
 
-        constraint: ConstraintComponent = {}
-        if "can_spawn" in data:
-            constraint["can_spawn"] = data["can_spawn"]
-        if "compaction_prompt" in data:
-            constraint["compaction_prompt"] = data["compaction_prompt"]
-
-        return Success(constraint)
+        payload_result = ensure_component_payload("constraint", name, data)
+        if isinstance(payload_result, Failure):
+            return payload_result
+        return Success(cast("ConstraintComponent", payload_result.unwrap()))
 
     def load_model(self, name: str) -> Result[ModelComponent, ComponentStoreError]:
         """Load a model component by name.
@@ -475,16 +581,10 @@ class FilesystemComponentStore:
         if isinstance(yaml_result, Failure):
             return yaml_result
 
-        data = yaml_result.unwrap()
-        if not isinstance(data, dict):
-            return Failure(
-                self._error(
-                    f"Model {name} is not a valid mapping",
-                    component_type="model",
-                    component_name=name,
-                )
-            )
-        return Success(ModelComponent(**data))
+        payload_result = ensure_component_payload("model", name, yaml_result.unwrap())
+        if isinstance(payload_result, Failure):
+            return payload_result
+        return Success(ModelComponent(**payload_result.unwrap()))
 
     def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
         """List all available components by type.
@@ -535,4 +635,5 @@ __all__ = [
     "ComponentStoreError",
     "FilesystemComponentStore",
     "COMPONENT_NOT_FOUND_CODE",
+    "ensure_component_payload",
 ]

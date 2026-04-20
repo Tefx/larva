@@ -185,6 +185,22 @@ class TestAssembleCandidateBehavior:
             )
         assert exc_info.value.code == "FORBIDDEN_TOOLSET_FIELD"
 
+    def test_toolset_with_unknown_metadata_fails_closed(self):
+        """Toolset extra keys must be rejected instead of being ignored."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "toolsets": [
+                        {
+                            "capabilities": {"read": "read_only"},
+                            "notes": "unexpected",
+                        }
+                    ],
+                }
+            )
+        assert exc_info.value.code == "EXTRA_TOOLSET_FIELD"
+
     @given(
         malformed_capabilities=st.one_of(
             st.none(),
@@ -310,6 +326,39 @@ class TestAssembleCandidateBehavior:
             }
         )
         assert result["prompt"] == "Use {{literal}} braces."
+
+    def test_prompt_component_with_unknown_metadata_fails_closed(self):
+        """Prompt components must not accept extra keys or strip them silently."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "prompts": [{"text": "Prompt", "notes": "unexpected"}],
+                }
+            )
+        assert exc_info.value.code == "INVALID_PROMPT_COMPONENT"
+
+    def test_constraint_component_with_unknown_metadata_fails_closed(self):
+        """Constraint components must reject unknown metadata instead of downgrading."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "constraints": [{"can_spawn": False, "notes": "unexpected"}],
+                }
+            )
+        assert exc_info.value.code == "INVALID_CONSTRAINT_COMPONENT"
+
+    def test_model_component_with_unknown_metadata_fails_closed(self):
+        """Model components must reject unknown metadata instead of downgrading."""
+        with pytest.raises(AssemblyError) as exc_info:
+            assemble_candidate(
+                {
+                    "id": "persona",
+                    "model": {"model": "gpt-4o-mini", "notes": "unexpected"},
+                }
+            )
+        assert exc_info.value.code == "INVALID_MODEL_COMPONENT"
 
     def test_variables_input_still_rejected(self):
         """Variables-style inputs remain forbidden at assembly boundary."""

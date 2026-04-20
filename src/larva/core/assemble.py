@@ -9,6 +9,10 @@ from larva.core.spec import ModelComponent, PersonaSpec, ToolPosture
 
 _assembly_error = assembly_error
 _VALID_TOOL_POSTURES = frozenset({"none", "read_only", "read_write", "destructive"})
+_ALLOWED_PROMPT_COMPONENT_FIELDS = frozenset({"text"})
+_ALLOWED_TOOLSET_COMPONENT_FIELDS = frozenset({"capabilities"})
+_ALLOWED_CONSTRAINT_COMPONENT_FIELDS = frozenset({"can_spawn", "compaction_prompt"})
+_ALLOWED_MODEL_COMPONENT_FIELDS = frozenset({"model", "model_params"})
 
 
 @pre(lambda mapping: not isinstance(mapping, dict) or all(key is not None for key in mapping))
@@ -122,6 +126,13 @@ def _merge_capabilities(toolsets: list[dict[str, object]]) -> dict[str, str]:
                 message="toolset field 'tools' is not permitted at canonical assembly boundary",
                 details={"field": "tools", "toolset": toolset},
             )
+        unknown_fields = sorted(set(toolset) - _ALLOWED_TOOLSET_COMPONENT_FIELDS)
+        if unknown_fields:
+            raise assembly_error(
+                code="EXTRA_TOOLSET_FIELD",
+                message=f"toolset contains unsupported field(s): {unknown_fields}",
+                details={"field": unknown_fields[0], "unknown_fields": unknown_fields},
+            )
 
         if "capabilities" not in toolset:
             raise assembly_error(
@@ -195,6 +206,7 @@ def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
 
 @pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, str) for item in result))
+@raises(AssemblyError)
 def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompts_obj = data.get("prompts", [])
     prompts = prompts_obj if isinstance(prompts_obj, list) else []
@@ -202,27 +214,98 @@ def _collect_prompt_texts(data: dict[str, object]) -> list[str]:
     prompt_texts: list[str] = []
     for prompt_component in prompts:
         if not isinstance(prompt_component, dict):
-            continue
-        text = prompt_component.get("text", "")
+            raise assembly_error(
+                code="INVALID_PROMPT_COMPONENT",
+                message="prompt components must be object payloads with string field 'text'",
+                details={"field": "prompts", "component": prompt_component},
+            )
+        unknown_fields = sorted(set(prompt_component) - _ALLOWED_PROMPT_COMPONENT_FIELDS)
+        if unknown_fields:
+            raise assembly_error(
+                code="INVALID_PROMPT_COMPONENT",
+                message=f"prompt component contains unsupported field(s): {unknown_fields}",
+                details={"field": unknown_fields[0], "unknown_fields": unknown_fields},
+            )
+        text = prompt_component.get("text")
         if not isinstance(text, str):
-            text = ""
+            raise assembly_error(
+                code="INVALID_PROMPT_COMPONENT",
+                message="prompt component field 'text' must be a string",
+                details={"field": "text", "component": prompt_component},
+            )
         prompt_texts.append(text)
     return prompt_texts
 
 
 @pre(lambda data: all(isinstance(key, str) for key in data))
 @post(lambda result: isinstance(result, list) and all(isinstance(item, dict) for item in result))
+@raises(AssemblyError)
 def _collect_constraint_sources(data: dict[str, object]) -> list[dict[str, Any]]:
     constraints_obj = data.get("constraints", [])
     constraints = constraints_obj if isinstance(constraints_obj, list) else []
-    constraint_sources: list[dict[str, Any]] = [
-        cast("dict[str, Any]", item) for item in constraints if isinstance(item, dict)
-    ]
+    constraint_sources: list[dict[str, Any]] = []
+    for item in constraints:
+        if not isinstance(item, dict):
+            raise assembly_error(
+                code="INVALID_CONSTRAINT_COMPONENT",
+                message="constraint components must be object payloads",
+                details={"field": "constraints", "component": item},
+            )
+        unknown_fields = sorted(set(item) - _ALLOWED_CONSTRAINT_COMPONENT_FIELDS)
+        if unknown_fields:
+            raise assembly_error(
+                code="INVALID_CONSTRAINT_COMPONENT",
+                message=f"constraint component contains unsupported field(s): {unknown_fields}",
+                details={"field": unknown_fields[0], "unknown_fields": unknown_fields},
+            )
+        can_spawn = item.get("can_spawn")
+        if can_spawn is not None and not (
+            isinstance(can_spawn, bool)
+            or (
+                isinstance(can_spawn, list)
+                and all(isinstance(value, str) and value != "" for value in can_spawn)
+                and len(set(can_spawn)) == len(can_spawn)
+            )
+        ):
+            raise assembly_error(
+                code="INVALID_CONSTRAINT_COMPONENT",
+                message="constraint component field 'can_spawn' must be boolean or list[string]",
+                details={"field": "can_spawn", "component": item},
+            )
+        compaction_prompt = item.get("compaction_prompt")
+        if compaction_prompt is not None and not isinstance(compaction_prompt, str):
+            raise assembly_error(
+                code="INVALID_CONSTRAINT_COMPONENT",
+                message="constraint component field 'compaction_prompt' must be a string",
+                details={"field": "compaction_prompt", "component": item},
+            )
+        constraint_sources.append(cast("dict[str, Any]", item))
 
     model = data.get("model")
     if isinstance(model, str):
         constraint_sources.append({"model": model})
     elif isinstance(model, dict):
+        unknown_fields = sorted(set(model) - _ALLOWED_MODEL_COMPONENT_FIELDS)
+        if unknown_fields:
+            raise assembly_error(
+                code="INVALID_MODEL_COMPONENT",
+                message=f"model component contains unsupported field(s): {unknown_fields}",
+                details={"field": unknown_fields[0], "unknown_fields": unknown_fields},
+            )
+        model_name = model.get("model")
+        if model_name is not None and not isinstance(model_name, str):
+            raise assembly_error(
+                code="INVALID_MODEL_COMPONENT",
+                message="model component field 'model' must be a string",
+                details={"field": "model", "component": model},
+            )
+        model_params = model.get("model_params")
+        if model_params is not None and not isinstance(model_params, dict):
+            raise assembly_error(
+                code="INVALID_MODEL_COMPONENT",
+                message="model component field 'model_params' must be a mapping",
+                details={"field": "model_params", "component": model},
+            )
         constraint_sources.append(cast("dict[str, Any]", model))
     return constraint_sources
 

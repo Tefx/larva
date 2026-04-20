@@ -642,7 +642,17 @@ class TestWebSurfaceEndpoints:
             validate=validate_module,
             normalize=normalize_module,
             components=_Components(),
-            registry=_Registry(_MINIMAL_SPEC),
+            registry=_Registry(
+                {
+                    **_MINIMAL_SPEC,
+                    "spec_digest": "sha256:"
+                    + hashlib.sha256(
+                        json.dumps(_MINIMAL_SPEC, sort_keys=True, separators=(",", ":")).encode(
+                            "utf-8"
+                        )
+                    ).hexdigest(),
+                }
+            ),
         )
         monkeypatch.setattr(python_api, "_get_facade", lambda: facade)
 
@@ -712,6 +722,46 @@ class TestWebSurfaceEndpoints:
         assert body["error"]["numeric_code"] == 1
         assert "id" in body["error"]["message"]
         assert body["error"]["details"] == {"field": "id", "reason": "missing_required_field"}
+
+    @pytest.mark.parametrize(
+        ("method", "path"),
+        [
+            ("post", "/api/personas"),
+            ("patch", "/api/personas/test-persona"),
+            ("post", "/api/personas/clear"),
+            ("post", "/api/personas/validate"),
+            ("post", "/api/personas/assemble"),
+        ],
+    )
+    def test_json_body_endpoints_reject_non_object_payloads_with_structured_400(
+        self,
+        method: str,
+        path: str,
+    ) -> None:
+        """JSON-body endpoints must fail closed on non-object JSON payloads."""
+        client = TestClient(app, raise_server_exceptions=False)
+
+        response = getattr(client, method)(path, json=["not", "an", "object"])
+
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error"]["code"] == "INVALID_INPUT"
+        assert body["error"]["numeric_code"] == 1
+        assert body["error"]["message"] == "params must be an object"
+        assert body["error"]["details"]["field"] == "params"
+
+    def test_post_api_personas_rejects_non_object_spec_wrapper_with_structured_400(self) -> None:
+        """POST /api/personas must reject wrapped spec values that are not objects."""
+        client = TestClient(app, raise_server_exceptions=False)
+
+        response = client.post("/api/personas", json={"spec": ["not", "an", "object"]})
+
+        assert response.status_code == 400
+        body = response.json()
+        assert body["error"]["code"] == "INVALID_INPUT"
+        assert body["error"]["numeric_code"] == 1
+        assert body["error"]["message"] == "parameter 'spec' must be object"
+        assert body["error"]["details"]["field"] == "spec"
 
     def test_get_api_components_projection_returns_ui_metadata(self) -> None:
         """GET /api/components/projection returns web-facing display metadata.

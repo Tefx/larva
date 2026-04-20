@@ -75,11 +75,10 @@ class TestFacadeResolve:
         resolved = result.unwrap()
         assert calls == ["validate", "normalize", "validate"]
         assert len(validate_module.inputs) == 2
-        assert validate_module.inputs[0]["description"] is None
-        assert validate_module.inputs[0]["can_spawn"] is False
-        assert validate_module.inputs[0]["compaction_prompt"] == ""
-        assert validate_module.inputs[0]["model_params"] == {"temperature": 0}
+        assert validate_module.inputs[1]["description"] is None
+        assert validate_module.inputs[1]["can_spawn"] is False
         assert validate_module.inputs[1]["compaction_prompt"] == ""
+        assert validate_module.inputs[1]["model_params"] == {"temperature": 0}
         assert normalize_module.inputs[0]["description"] is None
         assert normalize_module.inputs[0]["can_spawn"] is False
         assert normalize_module.inputs[0]["compaction_prompt"] == ""
@@ -111,6 +110,7 @@ class TestFacadeResolve:
     def test_resolve_rejects_invalid_optional_field_type_from_registry(self) -> None:
         stored = dict(_canonical_spec("resolve-bad-shape"))
         stored["compaction_prompt"] = ["bad"]
+        stored["spec_digest"] = _digest_for(cast("PersonaSpec", stored))
         registry = InMemoryRegistryStore(get_result=Success(cast("dict[str, object]", stored)))
         facade = DefaultLarvaFacade(
             spec=spec_module,
@@ -127,6 +127,45 @@ class TestFacadeResolve:
         assert error["code"] == "PERSONA_INVALID"
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_FIELD_TYPE"
         assert error["details"]["report"]["errors"][0]["details"]["field"] == "compaction_prompt"
+
+    def test_resolve_rejects_identity_override_before_normalization(self) -> None:
+        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("resolve-identity")))
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.resolve("resolve-identity", overrides={"id": "mutated-id"})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_OVERRIDE_FIELD"
+        assert error["numeric_code"] == 113
+        assert error["details"] == {"field": "id"}
+
+    def test_resolve_rejects_stored_spec_with_mismatched_digest(self) -> None:
+        stored = dict(_canonical_spec("resolve-bad-digest"))
+        stored["spec_digest"] = "sha256:bad-digest"
+        registry = InMemoryRegistryStore(get_result=Success(cast("PersonaSpec", stored)))
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.resolve("resolve-bad-digest")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        issue = error["details"]["report"]["errors"][0]
+        assert issue["code"] == "INVALID_SPEC_DIGEST"
+        assert issue["details"]["field"] == "spec_digest"
 
     def test_resolve_maps_persona_not_found_to_app_error(self) -> None:
         registry = InMemoryRegistryStore(

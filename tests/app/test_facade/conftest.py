@@ -31,8 +31,8 @@ if TYPE_CHECKING:
     from larva.core.validate import ValidationReport
 
 
-def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
-    return {
+def _canonical_spec(persona_id: str, digest: str | None = None) -> PersonaSpec:
+    spec: PersonaSpec = {
         "id": persona_id,
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
@@ -42,8 +42,9 @@ def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Person
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
-        "spec_digest": digest,
     }
+    spec["spec_digest"] = _digest_for(spec) if digest is None else digest
+    return spec
 
 
 def _historical_spec_with_legacy_fields(

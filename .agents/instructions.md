@@ -104,3 +104,41 @@ directly as a workaround. Use `vectl guide stuck` for troubleshooting.
   - `--evidence-template`: Force workers to provide specific proof (e.g., "Paste logs here").
   - `--refs`: Pin specific files (e.g., "src/auth.py") to the worker's context.
 <!-- VECTL:AGENTS:END -->
+
+---
+
+## Shared Contract Discipline
+
+`larva` is a **consumer and producer** of shared contract surfaces, but it is
+not the authority for shared contract meaning. Canonical meaning lives in
+`../opifex`.
+
+### Canonical Inputs
+
+Before changing any shared surface, read:
+
+- `../opifex/design/final-canonical-contract.md`
+- `../opifex/contracts/persona_spec.schema.json`
+- `../opifex/conformance/shared_surfaces.yaml`
+- `../opifex/conformance/case_matrix/larva/*`
+
+### Hard Rules
+
+1. Do not invent local interpretations of shared fields.
+2. Do not add compatibility aliases on shared surfaces.
+3. Do not accept-and-clean malformed shared input.
+4. Helper, component, web, and MCP paths must be at least as strict as main
+   admission paths.
+5. Shared-surface fixes require failing proof first, then implementation, then
+   green proof.
+
+### Evidence Standard
+
+For every shared-surface blocker:
+
+- provide pre-fix red proof
+- provide at least one runtime/integration-level proof when applicable
+- rerun full repo tests and `invar guard`
+- perform a fresh self-review before claiming PASS
+
+Never return PASS with `Open Problems` or `Residual Risk` other than `none`.

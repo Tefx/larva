@@ -298,8 +298,8 @@ def test_python_api_resolve_rejects_tools_override():
         print(f"Resolve result: {result}")
     except LarvaApiError as e:
         error = e.error
-        assert error.get("code") == "FORBIDDEN_FIELD", (
-            f"Expected FORBIDDEN_FIELD error, got: {error.get('code')}"
+        assert error.get("code") == "FORBIDDEN_OVERRIDE_FIELD", (
+            f"Expected FORBIDDEN_OVERRIDE_FIELD error, got: {error.get('code')}"
         )
         print("PASS: Python API resolve rejects 'tools' in overrides")
 

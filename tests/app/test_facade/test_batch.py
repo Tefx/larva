@@ -16,6 +16,7 @@ from larva.app.facade import LarvaError
 from .conftest import (
     InMemoryRegistryStore,
     _canonical_spec,
+    _digest_for,
     _facade,
     _failure,
     _valid_report,
@@ -26,8 +27,8 @@ class TestFacadeUpdateBatch:
     """Acceptance tests for facade update_batch operation."""
 
     def test_update_batch_success_returns_counts_and_items_in_registry_order(self) -> None:
-        spec_alpha = _canonical_spec("alpha", digest="sha256:alpha-old")
-        spec_beta = _canonical_spec("beta", digest="sha256:beta-old")
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
         calls: list[str] = []
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade, _, validate_module, normalize_module = _facade(
@@ -49,8 +50,9 @@ class TestFacadeUpdateBatch:
             {"id": "alpha", "updated": True},
             {"id": "beta", "updated": True},
         ]
-        # Each spec goes through raw-validate + normalize + validate during matching,
-        # then the same sequence again during update.
+        # Each matched spec goes through validate + normalize + validate while
+        # scanning list results, then validate + validate + normalize + validate
+        # during delegated update (stored-read strictness plus patched admission).
         assert calls == [
             "validate",
             "normalize",
@@ -59,25 +61,29 @@ class TestFacadeUpdateBatch:
             "normalize",
             "validate",
             "validate",
+            "validate",
             "normalize",
+            "validate",
             "validate",
             "validate",
             "normalize",
             "validate",
         ]
-        assert len(validate_module.inputs) == 8
+        assert len(validate_module.inputs) == 10
         assert len(normalize_module.inputs) == 4
         assert len(registry.save_inputs) == 2
 
     def test_update_batch_where_uses_and_across_clauses(self) -> None:
-        spec_match = _canonical_spec("match-me", digest="sha256:match-old")
+        spec_match = _canonical_spec("match-me")
         spec_match["model"] = "gpt-4o"
         spec_match["model_params"] = {"temperature": 0.7, "max_tokens": 1000}
+        spec_match["spec_digest"] = _digest_for(spec_match)
 
         spec_wrong_model = _canonical_spec("wrong-model")
         spec_wrong_temp = _canonical_spec("wrong-temp")
         spec_wrong_temp["model"] = "gpt-4o"
         spec_wrong_temp["model_params"] = {"temperature": 0.3, "max_tokens": 1000}
+        spec_wrong_temp["spec_digest"] = _digest_for(spec_wrong_temp)
 
         registry = InMemoryRegistryStore(
             list_result=Success([spec_match, spec_wrong_model, spec_wrong_temp])
@@ -100,9 +106,11 @@ class TestFacadeUpdateBatch:
     def test_update_batch_missing_dotted_key_is_non_match(self) -> None:
         spec_nested = _canonical_spec("nested-match")
         spec_nested["model_params"] = {"temperature": 0.7, "nested": {"deep": "value"}}
+        spec_nested["spec_digest"] = _digest_for(spec_nested)
 
         spec_missing = _canonical_spec("missing-path")
         spec_missing["model_params"] = {"temperature": 0.7}
+        spec_missing["spec_digest"] = _digest_for(spec_missing)
 
         registry = InMemoryRegistryStore(list_result=Success([spec_nested, spec_missing]))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)
@@ -119,8 +127,8 @@ class TestFacadeUpdateBatch:
         assert payload["items"] == [{"id": "nested-match", "updated": True}]
 
     def test_update_batch_dry_run_returns_matched_ids_without_writes(self) -> None:
-        spec_alpha = _canonical_spec("alpha", digest="sha256:alpha-old")
-        spec_beta = _canonical_spec("beta", digest="sha256:beta-old")
+        spec_alpha = _canonical_spec("alpha")
+        spec_beta = _canonical_spec("beta")
         calls: list[str] = []
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade, _, validate_module, normalize_module = _facade(
@@ -185,6 +193,7 @@ class TestFacadeUpdateBatch:
         spec_beta = _canonical_spec("beta")
         spec_skip = _canonical_spec("skip")
         spec_skip["model"] = "gpt-4o"
+        spec_skip["spec_digest"] = _digest_for(spec_skip)
 
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta, spec_skip]))
         facade, _, _, _ = _facade(report=_valid_report(), registry=registry)

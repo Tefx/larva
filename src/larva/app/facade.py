@@ -63,6 +63,9 @@ _LOOKUP_NOT_FOUND = object()
 _ASSEMBLE_REQUEST_ALLOWED_FIELDS = frozenset(
     {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
 )
+_RESOLVE_FORBIDDEN_OVERRIDE_FIELDS = frozenset(
+    {"id", "tools", "side_effect_policy", "variables"}
+)
 
 
 class DefaultLarvaFacade(LarvaFacade):
@@ -105,12 +108,45 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._validation_error(report))
         return Success(None)
 
-    def _validate_stripped_spec_digest(self, spec: PersonaSpec) -> Result[None, LarvaError]:
+    def _validate_stored_spec_digest(self, spec: PersonaSpec) -> Result[None, LarvaError]:
         issues = spec_digest_issues(spec)
         if not issues:
             return Success(None)
         return Failure(
             self._validation_error({"valid": False, "errors": issues, "warnings": []})
+        )
+
+    def _validate_registry_read_spec(self, spec: PersonaSpec) -> Result[None, LarvaError]:
+        raw_validation = self._validate_raw_spec(spec)
+        if isinstance(raw_validation, Failure):
+            return raw_validation
+        return self._validate_stored_spec_digest(spec)
+
+    def _normalize_validated_spec(self, spec: PersonaSpec) -> Result[PersonaSpec, LarvaError]:
+        try:
+            normalized = self._normalize.normalize_spec(spec)
+        except NormalizeError as error:
+            return Failure(self._normalize_error(error))
+        report = self.validate(normalized)
+        if not report["valid"]:
+            return Failure(self._validation_error(report))
+        return Success(normalized)
+
+    def _validate_resolve_overrides(
+        self, overrides: dict[str, object] | None
+    ) -> Result[None, LarvaError]:
+        if overrides is None:
+            return Success(None)
+        forbidden_fields = sorted(set(overrides) & _RESOLVE_FORBIDDEN_OVERRIDE_FIELDS)
+        if not forbidden_fields:
+            return Success(None)
+        field = forbidden_fields[0]
+        return Failure(
+            self._error(
+                code="FORBIDDEN_OVERRIDE_FIELD",
+                message=f"Override field '{field}' is not permitted at canonical resolve boundary",
+                details={"field": field},
+            )
         )
 
     def _normalize_and_validate(
@@ -340,10 +376,16 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         resolved = dict(get_result.unwrap())
+        stored_validation = self._validate_registry_read_spec(cast("PersonaSpec", resolved))
+        if isinstance(stored_validation, Failure):
+            return stored_validation
+        override_validation = self._validate_resolve_overrides(overrides)
+        if isinstance(override_validation, Failure):
+            return override_validation
         if overrides is not None:
             resolved.update(overrides)
 
-        normalized_result = self._normalize_and_validate(cast("PersonaSpec", resolved))
+        normalized_result = self._normalize_validated_spec(cast("PersonaSpec", resolved))
         if isinstance(normalized_result, Failure):
             return normalized_result
         return Success(normalized_result.unwrap())
@@ -358,9 +400,9 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         existing = cast("dict[str, object]", dict(get_result.unwrap()))
-        digest_validation = self._validate_stripped_spec_digest(cast("PersonaSpec", existing))
-        if isinstance(digest_validation, Failure):
-            return digest_validation
+        stored_validation = self._validate_registry_read_spec(cast("PersonaSpec", existing))
+        if isinstance(stored_validation, Failure):
+            return stored_validation
         try:
             patched = apply_patches(existing, patches)
         except PatchError as error:
@@ -401,7 +443,10 @@ class DefaultLarvaFacade(LarvaFacade):
 
         matched_specs: list[PersonaSpec] = []
         for raw_spec in list_result.unwrap():
-            normalized_result = self._normalize_and_validate(raw_spec)
+            stored_validation = self._validate_registry_read_spec(raw_spec)
+            if isinstance(stored_validation, Failure):
+                return stored_validation
+            normalized_result = self._normalize_validated_spec(raw_spec)
             if isinstance(normalized_result, Failure):
                 return normalized_result
             canonical_spec = normalized_result.unwrap()
@@ -474,7 +519,10 @@ class DefaultLarvaFacade(LarvaFacade):
 
         summaries: list[PersonaSummary] = []
         for raw_spec in list_result.unwrap():
-            normalized_result = self._normalize_and_validate(raw_spec)
+            stored_validation = self._validate_registry_read_spec(raw_spec)
+            if isinstance(stored_validation, Failure):
+                return stored_validation
+            normalized_result = self._normalize_validated_spec(raw_spec)
             if isinstance(normalized_result, Failure):
                 return normalized_result
             summary_result = self._summary_from_spec(normalized_result.unwrap())
@@ -489,9 +537,9 @@ class DefaultLarvaFacade(LarvaFacade):
             return Failure(self._registry_failure_error(get_result.failure()))
 
         cloned = dict(get_result.unwrap())
-        digest_validation = self._validate_stripped_spec_digest(cast("PersonaSpec", cloned))
-        if isinstance(digest_validation, Failure):
-            return digest_validation
+        stored_validation = self._validate_registry_read_spec(cast("PersonaSpec", cloned))
+        if isinstance(stored_validation, Failure):
+            return stored_validation
         cloned["id"] = new_id
         if "spec_digest" in cloned:
             del cloned["spec_digest"]
@@ -527,7 +575,10 @@ class DefaultLarvaFacade(LarvaFacade):
 
         specs: list[PersonaSpec] = []
         for raw_spec in list_result.unwrap():
-            normalized_result = self._normalize_and_validate(raw_spec)
+            stored_validation = self._validate_registry_read_spec(raw_spec)
+            if isinstance(stored_validation, Failure):
+                return stored_validation
+            normalized_result = self._normalize_validated_spec(raw_spec)
             if isinstance(normalized_result, Failure):
                 return normalized_result
             specs.append(normalized_result.unwrap())
@@ -547,7 +598,11 @@ class DefaultLarvaFacade(LarvaFacade):
                         extra_details={"id": persona_id},
                     )
                 )
-            normalized_result = self._normalize_and_validate(get_result.unwrap())
+            stored_spec = get_result.unwrap()
+            stored_validation = self._validate_registry_read_spec(stored_spec)
+            if isinstance(stored_validation, Failure):
+                return stored_validation
+            normalized_result = self._normalize_validated_spec(stored_spec)
             if isinstance(normalized_result, Failure):
                 return normalized_result
             specs.append(normalized_result.unwrap())

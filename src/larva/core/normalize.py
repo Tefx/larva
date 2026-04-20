@@ -108,10 +108,16 @@ def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
 
 @pre(lambda spec: _is_json_serializable_spec(spec))
 @post(lambda result: isinstance(result, str) and _SPEC_DIGEST_PATTERN.fullmatch(result) is not None)
-def _compute_spec_digest(spec: dict[str, object]) -> str:
+def compute_spec_digest(spec: dict[str, object]) -> str:
     """Compute SHA-256 digest from canonical JSON representation.
 
     Canonical form: sorted keys, no whitespace, excluding spec_digest field.
+
+    >>> digest = compute_spec_digest({"id": "test", "spec_version": "0.1.0"})
+    >>> digest.startswith("sha256:")
+    True
+    >>> len(digest)
+    71
 
     Args:
         spec: PersonaSpec to compute digest for.
@@ -180,5 +186,5 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
     _reject_noncanonical_normalize_input(spec)
     canonical_spec = dict(spec)
 
-    digest = _compute_spec_digest(canonical_spec)
+    digest = compute_spec_digest(canonical_spec)
     return cast("PersonaSpec", {**canonical_spec, "spec_digest": digest})

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import hashlib
+import json
 from typing import TYPE_CHECKING
 
 from returns.result import Failure, Result, Success
@@ -11,13 +13,19 @@ if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
 
 
+def _digest_for(spec: dict[str, object]) -> str:
+    payload = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()}"
+
+
 def canonical_persona_spec(
     persona_id: str,
-    digest: str = "sha256:canonical",
+    digest: str | None = None,
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
     """Return canonical PersonaSpec fixture with no forbidden legacy fields."""
-    return {
+    spec: PersonaSpec = {
         "id": persona_id,
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
@@ -27,8 +35,9 @@ def canonical_persona_spec(
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
-        "spec_digest": digest,
     }
+    spec["spec_digest"] = _digest_for(spec) if digest is None else digest
+    return spec
 
 
 def canonical_toolset_fixture(

@@ -14,6 +14,7 @@ should remain.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import importlib.util
 from dataclasses import dataclass, field
@@ -67,9 +68,15 @@ def _load_contrib_web_module() -> Any:
 # ============================================================================
 
 
-def canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
+def _digest_for(spec: dict[str, object]) -> str:
+    payload = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()}"
+
+
+def canonical_spec(persona_id: str, digest: str | None = None) -> PersonaSpec:
     """Canonical spec fixture (no forbidden legacy fields)."""
-    return {
+    spec: PersonaSpec = {
         "id": persona_id,
         "description": f"Persona {persona_id}",
         "prompt": "You are careful.",
@@ -79,8 +86,9 @@ def canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> Persona
         "can_spawn": False,
         "compaction_prompt": "Summarize facts.",
         "spec_version": "0.1.0",
-        "spec_digest": digest,
     }
+    spec["spec_digest"] = _digest_for(spec) if digest is None else digest
+    return spec
 
 
 def missing_id_spec() -> dict[str, object]:
@@ -523,6 +531,84 @@ class TestCrossSurfaceValidationConsistency:
         # Consistent error codes
         assert cli_error["code"] == mcp_result["code"]
         assert cli_error["numeric_code"] == mcp_result["numeric_code"]
+
+    def test_resolve_identity_override_rejected_consistently_across_surfaces(self) -> None:
+        """Stable identity must not be mutable through resolve overrides."""
+        registry = InMemoryRegistryStore(get_result=Success(canonical_spec("stable-id")))
+        facade = make_facade(registry=registry)
+
+        cli_result = resolve_command(
+            "stable-id",
+            overrides={"id": "mutated-id"},
+            as_json=True,
+            facade=facade,
+        )
+        assert isinstance(cli_result, Failure)
+        cli_error = cli_result.failure()["error"]
+        assert cli_error["code"] == "FORBIDDEN_OVERRIDE_FIELD"
+        assert cli_error["details"]["field"] == "id"
+
+        handlers = mcp_module.MCPHandlers(facade)
+        mcp_result = handlers.handle_resolve({"id": "stable-id", "overrides": {"id": "mutated-id"}})
+        assert isinstance(mcp_result, dict)
+        assert mcp_result["code"] == cli_error["code"]
+        assert mcp_result["details"]["field"] == cli_error["details"]["field"]
+
+        original_get_facade = python_api._get_facade
+        python_api._get_facade = lambda: facade
+        try:
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.resolve("stable-id", overrides={"id": "mutated-id"})
+            python_error = python_exc.value.error
+        finally:
+            python_api._get_facade = original_get_facade
+
+        assert python_error["code"] == cli_error["code"]
+        assert python_error["details"]["field"] == cli_error["details"]["field"]
+
+    def test_bad_stored_digest_fails_closed_across_resolve_surfaces(self) -> None:
+        """Stored digest mismatches must fail closed instead of being laundered."""
+        stored = dict(canonical_spec("bad-digest"))
+        stored["spec_digest"] = "sha256:bad-digest"
+        registry = InMemoryRegistryStore(get_result=Success(cast("PersonaSpec", stored)))
+        facade = make_facade(registry=registry)
+
+        cli_result = resolve_command("bad-digest", as_json=True, facade=facade)
+        assert isinstance(cli_result, Failure)
+        cli_error = cli_result.failure()["error"]
+        assert cli_error["code"] == "PERSONA_INVALID"
+        issue = cli_error["details"]["report"]["errors"][0]
+        assert issue["code"] == "INVALID_SPEC_DIGEST"
+        assert issue["details"]["field"] == "spec_digest"
+
+        handlers = mcp_module.MCPHandlers(facade)
+        mcp_result = handlers.handle_resolve({"id": "bad-digest"})
+        assert isinstance(mcp_result, dict)
+        assert mcp_result["code"] == cli_error["code"]
+        assert mcp_result["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_DIGEST"
+
+        original_get_facade = python_api._get_facade
+        python_api._get_facade = lambda: facade
+        try:
+            with pytest.raises(python_api.LarvaApiError) as python_exc:
+                python_api.resolve("bad-digest")
+            python_error = python_exc.value.error
+            from starlette.testclient import TestClient
+
+            packaged_response = TestClient(web_module.app, raise_server_exceptions=False).get(
+                "/api/personas/bad-digest"
+            )
+        finally:
+            python_api._get_facade = original_get_facade
+
+        assert python_error["code"] == cli_error["code"]
+        assert python_error["details"]["report"]["errors"][0]["code"] == "INVALID_SPEC_DIGEST"
+        assert packaged_response.status_code == 400
+        assert packaged_response.json()["error"]["code"] == "PERSONA_INVALID"
+        assert (
+            packaged_response.json()["error"]["details"]["report"]["errors"][0]["code"]
+            == "INVALID_SPEC_DIGEST"
+        )
 
 
 class TestCrossSurfaceErrorEnvelopeConsistency:

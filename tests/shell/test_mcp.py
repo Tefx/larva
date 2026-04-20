@@ -13,6 +13,7 @@ Scope: MCP adapter boundary with facade doubles. Does NOT test facade internals.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -216,10 +217,16 @@ class IsolatedMCPHandlerDeps:
 
 def _canonical_spec(
     persona_id: str,
-    digest: str = "sha256:canonical",
+    digest: str | None = None,
     model: str = "gpt-4o-mini",
 ) -> PersonaSpec:
     return canonical_persona_spec(persona_id=persona_id, digest=digest, model=model)
+
+
+def _digest_for(spec: dict[str, object]) -> str:
+    payload = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()}"
 
 
 def _valid_report() -> ValidationReport:
@@ -334,6 +341,14 @@ class TestMCPToolDefinitions:
         assert "overrides" in props
         assert "variables" not in props
         assert "id" in assemble_tool["input_schema"]["required"]
+        overrides_schema = cast("dict[str, object]", props["overrides"])
+        assert overrides_schema["additionalProperties"] is False
+        override_props = cast("dict[str, object]", overrides_schema["properties"])
+        assert "id" not in override_props
+        assert "spec_version" not in override_props
+        assert "spec_digest" not in override_props
+        assert "tools" not in override_props
+        assert "side_effect_policy" not in override_props
 
     def test_resolve_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
@@ -344,6 +359,14 @@ class TestMCPToolDefinitions:
         assert "id" in props
         assert "overrides" in props
         assert "id" in resolve_tool["input_schema"]["required"]
+        overrides_schema = cast("dict[str, object]", props["overrides"])
+        assert overrides_schema["additionalProperties"] is False
+        override_props = cast("dict[str, object]", overrides_schema["properties"])
+        assert "id" not in override_props
+        assert "spec_version" not in override_props
+        assert "spec_digest" not in override_props
+        assert "tools" not in override_props
+        assert "side_effect_policy" not in override_props
 
     def test_register_tool_is_defined(self) -> None:
         tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
@@ -414,6 +437,7 @@ class TestMCPToolDefinitions:
         assert "name" in props
         assert "component_type" in component_show_tool["input_schema"]["required"]
         assert "name" in component_show_tool["input_schema"]["required"]
+        assert props["component_type"]["enum"] == ["prompts", "toolsets", "constraints", "models"]
 
     def test_delete_tool_is_defined(self) -> None:
         """Verify larva_delete is defined in LARVA_MCP_TOOLS."""
@@ -567,7 +591,7 @@ class TestMCPResolveSuccessShape:
     """Test larva_resolve success response shape."""
 
     def test_resolve_returns_persona_spec_shape(self) -> None:
-        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored = _canonical_spec("stored")
         registry = InMemoryRegistryStore(get_result=Success(stored))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
 
@@ -602,8 +626,8 @@ class TestMCPListSuccessShape:
 
     def test_list_returns_list_of_summaries(self) -> None:
         specs = [
-            _canonical_spec("alpha", digest="sha256:a"),
-            _canonical_spec("beta", digest="sha256:b"),
+            _canonical_spec("alpha"),
+            _canonical_spec("beta"),
         ]
         registry = InMemoryRegistryStore(list_result=Success(specs))
         facade = _make_facade(registry=registry)
@@ -744,11 +768,12 @@ class TestMCPFalseyOverrideForwarding:
     """Regression: falsey values in overrides must be forwarded correctly."""
 
     def test_resolve_falsey_override_forwarded_to_validation(self) -> None:
-        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored = _canonical_spec("stored")
         stored["description"] = "original description"
         stored["can_spawn"] = True
         stored["compaction_prompt"] = "Original prompt"
         stored["model_params"] = {"temperature": 0.5}
+        stored["spec_digest"] = _digest_for(stored)
 
         registry = InMemoryRegistryStore(get_result=Success(stored))
         validate_report: ValidationReport = {"valid": True, "errors": [], "warnings": []}
@@ -994,8 +1019,9 @@ class TestMCPToolsRoundTrip:
 
     def test_resolve_tool_params_extraction(self) -> None:
         """Simulate MCP tool handler extracting resolve params and calling facade."""
-        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored = _canonical_spec("stored")
         stored["model_params"] = {"temperature": 0.5}
+        stored["spec_digest"] = _digest_for(stored)
         registry = InMemoryRegistryStore(get_result=Success(stored))
 
         # Need a facade with valid report
@@ -1023,7 +1049,7 @@ class TestMCPToolsRoundTrip:
 
     def test_list_tool_params_extraction(self) -> None:
         """Simulate MCP tool handler calling list with empty params."""
-        specs = [_canonical_spec("one", digest="sha256:one")]
+        specs = [_canonical_spec("one")]
         registry = InMemoryRegistryStore(list_result=Success(specs))
         facade = _make_facade(registry=registry)
 
@@ -1233,7 +1259,7 @@ class TestMCPHandlersImplementation:
 
     def test_handle_resolve_success(self) -> None:
         """Test handle_resolve returns PersonaSpec on success."""
-        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored = _canonical_spec("stored")
         registry = InMemoryRegistryStore(get_result=Success(stored))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -1282,10 +1308,11 @@ class TestMCPHandlersImplementation:
 
     def test_handle_resolve_preserves_falsey_overrides(self) -> None:
         """Test handle_resolve preserves falsey values in overrides."""
-        stored = _canonical_spec("stored", digest="sha256:stored")
+        stored = _canonical_spec("stored")
         stored["description"] = "original"
         stored["can_spawn"] = True
         stored["model_params"] = {"temperature": 0.5}
+        stored["spec_digest"] = _digest_for(stored)
         registry = InMemoryRegistryStore(get_result=Success(stored))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -1352,8 +1379,8 @@ class TestMCPHandlersImplementation:
     def test_handle_list_success(self) -> None:
         """Test handle_list returns list of summaries on success."""
         specs = [
-            _canonical_spec("alpha", digest="sha256:a"),
-            _canonical_spec("beta", digest="sha256:b"),
+            _canonical_spec("alpha"),
+            _canonical_spec("beta"),
         ]
         registry = InMemoryRegistryStore(list_result=Success(specs))
         facade = _make_facade(registry=registry)
@@ -1709,6 +1736,37 @@ class TestMCPComponentShowAcceptance:
         assert result["numeric_code"] == 105
         assert "side_effect_policy" in result["message"]
 
+    @pytest.mark.parametrize(
+        ("component_type", "payload"),
+        [
+            ("toolsets", {"capabilities": {"shell": "read_only"}, "notes": "unexpected"}),
+            ("constraints", {"can_spawn": False, "notes": "unexpected"}),
+            ("models", {"model": "gpt-4o-mini", "notes": "unexpected"}),
+        ],
+    )
+    def test_handle_component_show_rejects_payload_with_unknown_metadata(
+        self,
+        component_type: str,
+        payload: dict[str, object],
+    ) -> None:
+        """component_show must reject malformed component metadata without stripping."""
+        components = InMemoryComponentStore(
+            toolsets_by_name={"bad": cast("dict[str, dict[str, str]]", payload)}
+            if component_type == "toolsets"
+            else {},
+            constraints_by_name={"bad": payload} if component_type == "constraints" else {},
+            models_by_name={"bad": payload} if component_type == "models" else {},
+        )
+        facade = _make_facade(components=components)
+        handlers = mcp_module.MCPHandlers(facade, components=components)
+
+        result = handlers.handle_component_show({"component_type": component_type, "name": "bad"})
+
+        assert isinstance(result, dict)
+        assert result["code"] == "COMPONENT_NOT_FOUND"
+        assert result["numeric_code"] == 105
+        assert "unsupported field" in result["message"].lower()
+
     def test_handle_component_show_success_for_model(self) -> None:
         """Test handle_component_show success path for models."""
         components = InMemoryComponentStore(
@@ -1831,7 +1889,7 @@ class TestMCPHandleClone:
 
     def test_handle_clone_success(self) -> None:
         """Test handle_clone returns PersonaSpec on success."""
-        source_spec = _canonical_spec("source-persona", digest="sha256:source")
+        source_spec = _canonical_spec("source-persona")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -2485,8 +2543,8 @@ class TestMCPHandleExport:
 
     def test_handle_export_all_success(self) -> None:
         """Test handle_export returns all specs on success with all=True."""
-        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
-        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        spec_alpha = _canonical_spec("export-alpha")
+        spec_beta = _canonical_spec("export-beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -2500,8 +2558,8 @@ class TestMCPHandleExport:
 
     def test_handle_export_ids_success(self) -> None:
         """Test handle_export returns ordered specs with ids parameter."""
-        spec_one = _canonical_spec("export-one", digest="sha256:one")
-        spec_two = _canonical_spec("export-two", digest="sha256:two")
+        spec_one = _canonical_spec("export-one")
+        spec_two = _canonical_spec("export-two")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, LarvaError]:
             if persona_id == "export-one":
@@ -2524,7 +2582,7 @@ class TestMCPHandleExport:
 
     def test_handle_export_ids_single_returns_list_with_one(self) -> None:
         """Test handle_export with single id returns list with one spec."""
-        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        spec_single = _canonical_spec("export-single")
         registry = InMemoryRegistryStore(get_result=Success(spec_single))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)

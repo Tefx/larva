@@ -471,6 +471,59 @@ class TestFailClosedLegacyPayloads:
         assert error.component_name == "legacy_constraint"
         assert "side_effect_policy" in str(error)
 
+    @pytest.mark.parametrize(
+        ("subdirectory", "filename", "payload", "fragment"),
+        [
+            (
+                "toolsets",
+                "toolset_extra.yaml",
+                {"capabilities": {"shell": "read_only"}, "notes": "unexpected"},
+                "unsupported field",
+            ),
+            (
+                "constraints",
+                "constraint_extra.yaml",
+                {"can_spawn": False, "notes": "unexpected"},
+                "unsupported field",
+            ),
+            (
+                "models",
+                "model_extra.yaml",
+                {"model": "gpt-4o-mini", "notes": "unexpected"},
+                "unsupported field",
+            ),
+        ],
+    )
+    def test_component_loader_rejects_unknown_metadata_without_stripping(
+        self,
+        tmp_path: Path,
+        subdirectory: str,
+        filename: str,
+        payload: object,
+        fragment: str,
+    ) -> None:
+        """Unknown component metadata must fail closed instead of being stripped."""
+        components_dir = tmp_path / "components"
+        target_dir = components_dir / subdirectory
+        target_dir.mkdir(parents=True)
+        (target_dir / filename).write_text(_dump_yaml(payload), encoding="utf-8")
+
+        store = FilesystemComponentStore(components_dir)
+        loader = getattr(
+            store,
+            {
+                "toolsets": "load_toolset",
+                "constraints": "load_constraint",
+                "models": "load_model",
+            }[subdirectory],
+        )
+        result = loader(Path(filename).stem)
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert isinstance(error, ComponentStoreError)
+        assert fragment in str(error).lower()
+
     def test_canonical_constraint_payload_is_still_accepted(self, tmp_path: Path) -> None:
         """Canonical constraint payload remains loadable after hard cut."""
         components_dir = tmp_path / "components"

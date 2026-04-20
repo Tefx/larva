@@ -36,8 +36,8 @@ class TestFacadeExportAll:
 
     def test_export_all_returns_full_canonical_specs_from_registry(self) -> None:
         """Success export_all returns complete canonical PersonaSpec records after normalization."""
-        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha-digest")
-        spec_beta = _canonical_spec("export-beta", digest="sha256:beta-digest")
+        spec_alpha = _canonical_spec("export-alpha")
+        spec_beta = _canonical_spec("export-beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade, _, _, _ = _facade(registry=registry)
 
@@ -103,6 +103,7 @@ class TestFacadeExportAll:
     def test_export_all_rejects_invalid_optional_field_type_from_registry(self) -> None:
         bad_spec = dict(_canonical_spec("export-bad-shape"))
         bad_spec["model_params"] = "invalid"
+        bad_spec["spec_digest"] = _digest_for(cast("PersonaSpec", bad_spec))
         registry = InMemoryRegistryStore(
             list_result=Success([cast("PersonaSpec", bad_spec)]),
         )
@@ -121,6 +122,29 @@ class TestFacadeExportAll:
         assert error["code"] == "PERSONA_INVALID"
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_MODEL_PARAMS"
 
+    def test_export_all_rejects_stored_spec_with_mismatched_digest(self) -> None:
+        bad_spec = dict(_canonical_spec("export-bad-digest"))
+        bad_spec["spec_digest"] = "sha256:bad-digest"
+        registry = InMemoryRegistryStore(
+            list_result=Success([cast("PersonaSpec", bad_spec)]),
+        )
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.export_all()
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        issue = error["details"]["report"]["errors"][0]
+        assert issue["code"] == "INVALID_SPEC_DIGEST"
+        assert issue["details"]["field"] == "spec_digest"
+
 
 class TestFacadeExportIds:
     """Pinned acceptance tests for facade export_ids operation.
@@ -130,9 +154,9 @@ class TestFacadeExportIds:
 
     def test_export_ids_returns_full_canonical_specs_in_input_order(self) -> None:
         """Success export_ids returns complete canonical PersonaSpec records preserving order."""
-        spec_one = _canonical_spec("export-one", digest="sha256:one-digest")
-        spec_two = _canonical_spec("export-two", digest="sha256:two-digest")
-        spec_three = _canonical_spec("export-three", digest="sha256:three-digest")
+        spec_one = _canonical_spec("export-one")
+        spec_two = _canonical_spec("export-two")
+        spec_three = _canonical_spec("export-three")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, RegistryError]:
             if persona_id == "export-one":
@@ -194,7 +218,7 @@ class TestFacadeExportIds:
 
     def test_export_ids_fail_fast_on_first_not_found(self) -> None:
         """First PERSONA_NOT_FOUND stops iteration, returns error immediately."""
-        spec_valid = _canonical_spec("export-valid", digest="sha256:valid")
+        spec_valid = _canonical_spec("export-valid")
 
         def get_with_not_found(persona_id: str) -> Result[PersonaSpec, RegistryError]:
             if persona_id == "export-valid":
@@ -217,6 +241,34 @@ class TestFacadeExportIds:
         assert error["code"] == "PERSONA_NOT_FOUND"
         assert error["numeric_code"] == 100
         assert error["details"]["persona_id"] == "export-missing"
+
+    def test_export_ids_rejects_stored_spec_with_mismatched_digest(self) -> None:
+        bad_spec = dict(_canonical_spec("export-bad-digest-id"))
+        bad_spec["spec_digest"] = "sha256:bad-digest"
+
+        def get_bad_digest(persona_id: str) -> Result[PersonaSpec, RegistryError]:
+            if persona_id == "export-bad-digest-id":
+                return Success(cast("PersonaSpec", bad_spec))
+            return Failure({"code": "PERSONA_NOT_FOUND", "message": f"not found: {persona_id}"})
+
+        registry = InMemoryRegistryStore(get_result=Success(_canonical_spec("default")))
+        registry.get = get_bad_digest  # type: ignore[method-assign]
+        facade = DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=assemble_module,
+            validate=validate_module,
+            normalize=normalize_module,
+            components=InMemoryComponentStore(),
+            registry=registry,
+        )
+
+        result = facade.export_ids(["export-bad-digest-id"])
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_INVALID"
+        issue = error["details"]["report"]["errors"][0]
+        assert issue["code"] == "INVALID_SPEC_DIGEST"
+        assert issue["details"]["field"] == "spec_digest"
 
     def test_export_ids_maps_registry_spec_read_failed_to_app_error(self) -> None:
         """REGISTRY_SPEC_READ_FAILED from registry maps to LarvaError with context."""
@@ -242,7 +294,7 @@ class TestFacadeExportIds:
 
     def test_export_ids_single_id_returns_single_element_list(self) -> None:
         """Single id returns list with one canonical spec after normalization."""
-        spec_single = _canonical_spec("export-single", digest="sha256:single")
+        spec_single = _canonical_spec("export-single")
         registry = InMemoryRegistryStore(get_result=Success(spec_single))
         facade, _, _, _ = _facade(registry=registry)
 

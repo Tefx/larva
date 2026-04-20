@@ -20,6 +20,7 @@ Sources:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import importlib
 import io
@@ -225,8 +226,14 @@ def test_cli_entrypoint_source_has_no_local_default_factory_or_store_authority()
     assert "run_cli(" in source
 
 
-def _canonical_spec(persona_id: str, digest: str = "sha256:canonical") -> PersonaSpec:
+def _canonical_spec(persona_id: str, digest: str | None = None) -> PersonaSpec:
     return canonical_persona_spec(persona_id=persona_id, digest=digest)
+
+
+def _digest_for(spec: dict[str, object]) -> str:
+    payload = {k: v for k, v in spec.items() if k != "spec_digest"}
+    canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()}"
 
 
 def _valid_report() -> ValidationReport:
@@ -808,8 +815,8 @@ class TestListCommand:
         registry = InMemoryRegistryStore(
             list_result=Success(
                 [
-                    _canonical_spec("persona-a", digest="sha256:a"),
-                    _canonical_spec("persona-b", digest="sha256:b"),
+                    _canonical_spec("persona-a"),
+                    _canonical_spec("persona-b"),
                 ]
             )
         )
@@ -826,8 +833,8 @@ class TestListCommand:
         registry = InMemoryRegistryStore(
             list_result=Success(
                 [
-                    _canonical_spec("persona-a", digest="sha256:a"),
-                    _canonical_spec("persona-b", digest="sha256:b"),
+                    _canonical_spec("persona-a"),
+                    _canonical_spec("persona-b"),
                 ]
             )
         )
@@ -1030,7 +1037,7 @@ class TestCloneCommand:
 
     def test_clone_success_text_mode_returns_exit_ok(self) -> None:
         """Clone existing persona returns exit code 0 in text mode."""
-        source_spec = _canonical_spec("source-persona", digest="sha256:source")
+        source_spec = _canonical_spec("source-persona")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -1046,7 +1053,7 @@ class TestCloneCommand:
 
     def test_clone_success_json_mode_returns_json_payload(self) -> None:
         """Clone existing persona returns JSON payload in JSON mode."""
-        source_spec = _canonical_spec("source-to-clone", digest="sha256:original")
+        source_spec = _canonical_spec("source-to-clone")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -1111,7 +1118,7 @@ class TestCloneCommand:
 
     def test_clone_invalid_new_id_returns_exit_error(self) -> None:
         """Clone with invalid new_id returns exit code 1."""
-        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        source_spec = _canonical_spec("valid-source")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(
             report=_invalid_report("INVALID_PERSONA_ID"),
@@ -1128,7 +1135,7 @@ class TestCloneCommand:
 
     def test_clone_invalid_new_id_json_mode_returns_error_envelope(self) -> None:
         """Clone with invalid new_id returns JSON error envelope in JSON mode."""
-        source_spec = _canonical_spec("valid-source", digest="sha256:valid")
+        source_spec = _canonical_spec("valid-source")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(
             report=_invalid_report("PERSONA_INVALID"),
@@ -1149,7 +1156,7 @@ class TestCloneCommand:
 
     def test_clone_registry_write_failure_returns_exit_error(self) -> None:
         """Clone with registry write failure returns exit code 1."""
-        source_spec = _canonical_spec("source-write-fail", digest="sha256:source")
+        source_spec = _canonical_spec("source-write-fail")
         registry = InMemoryRegistryStore(
             get_result=Success(source_spec),
             save_result=Failure(
@@ -1188,6 +1195,7 @@ class TestCloneCommand:
             "spec_version": "0.1.0",
             "spec_digest": "sha256:stale",
         }
+        source_spec["spec_digest"] = _digest_for(source_spec)
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -1777,8 +1785,8 @@ class TestExportCommand:
 
     def test_export_all_success_text_mode_returns_exit_ok(self) -> None:
         """Export all with valid specs returns exit code 0 in text mode."""
-        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
-        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        spec_alpha = _canonical_spec("export-alpha")
+        spec_beta = _canonical_spec("export-beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade = _make_facade(registry=registry)
 
@@ -1794,8 +1802,8 @@ class TestExportCommand:
 
     def test_export_all_success_json_mode_returns_json_payload(self) -> None:
         """Export all returns JSON payload in JSON mode."""
-        spec_alpha = _canonical_spec("export-alpha", digest="sha256:alpha")
-        spec_beta = _canonical_spec("export-beta", digest="sha256:beta")
+        spec_alpha = _canonical_spec("export-alpha")
+        spec_beta = _canonical_spec("export-beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
         facade = _make_facade(registry=registry)
 
@@ -1889,8 +1897,8 @@ class TestExportCommand:
 
     def test_export_ids_success_text_mode_returns_exit_ok(self) -> None:
         """Export ids with valid specs returns exit code 0 in text mode."""
-        spec_one = _canonical_spec("export-one", digest="sha256:one")
-        spec_two = _canonical_spec("export-two", digest="sha256:two")
+        spec_one = _canonical_spec("export-one")
+        spec_two = _canonical_spec("export-two")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, Any]:
             if persona_id == "export-one":
@@ -1917,7 +1925,7 @@ class TestExportCommand:
 
     def test_export_ids_success_json_mode_returns_json_payload(self) -> None:
         """Export ids returns JSON payload in JSON mode."""
-        spec_one = _canonical_spec("export-one", digest="sha256:one")
+        spec_one = _canonical_spec("export-one")
 
         def get_by_id(persona_id: str) -> Result[PersonaSpec, Any]:
             if persona_id == "export-one":
@@ -3191,7 +3199,7 @@ class TestUpdateCommand:
 
     def test_update_success_applies_patches_and_returns_updated_spec(self) -> None:
         """Update applies patches and returns updated spec."""
-        existing = _canonical_spec("patch-test", digest="sha256:old")
+        existing = _canonical_spec("patch-test")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -3415,6 +3423,7 @@ class TestRunLoopUpdateTypeInference:
         """Update --set with boolean false is inferred correctly."""
         existing = _canonical_spec("bool-test-false")
         existing["can_spawn"] = True
+        existing["spec_digest"] = _digest_for(existing)
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -3436,6 +3445,7 @@ class TestRunLoopUpdateTypeInference:
         """Update --set with null is inferred correctly."""
         existing = _canonical_spec("null-test")
         existing["description"] = "Will be nulled"
+        existing["spec_digest"] = _digest_for(existing)
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -3654,6 +3664,7 @@ class TestUpdateBatchCommand:
         """Update batch with no matching personas returns zero counts."""
         spec_alpha = _canonical_spec("alpha")
         spec_alpha["model"] = "gpt-4"
+        spec_alpha["spec_digest"] = _digest_for(spec_alpha)
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
         facade = _make_facade(report=_valid_report(), registry=registry)
 
@@ -3774,8 +3785,10 @@ class TestUpdateBatchCommand:
         """Update batch where clause with dot notation matches nested fields."""
         spec_match = _canonical_spec("match")
         spec_match["model_params"] = {"temperature": 0.7}
+        spec_match["spec_digest"] = _digest_for(spec_match)
         spec_no_match = _canonical_spec("no-match")
         spec_no_match["model_params"] = {"temperature": 0.3}
+        spec_no_match["spec_digest"] = _digest_for(spec_no_match)
 
         registry = InMemoryRegistryStore(list_result=Success([spec_match, spec_no_match]))
         facade = _make_facade(report=_valid_report(), registry=registry)
@@ -3802,10 +3815,12 @@ class TestUpdateBatchCommand:
         spec_match = _canonical_spec("match")
         spec_match["model"] = "gpt-4o"
         spec_match["model_params"] = {"temperature": 0.7}
+        spec_match["spec_digest"] = _digest_for(spec_match)
 
         spec_wrong_model = _canonical_spec("wrong-model")
         spec_wrong_temp = _canonical_spec("wrong-temp")
         spec_wrong_temp["model"] = "gpt-4o"
+        spec_wrong_temp["spec_digest"] = _digest_for(spec_wrong_temp)
 
         registry = InMemoryRegistryStore(
             list_result=Success([spec_match, spec_wrong_model, spec_wrong_temp])
@@ -3999,8 +4014,10 @@ class TestRunLoopBatchUpdate:
         """Update batch with nested --where key matches nested specs."""
         spec_match = _canonical_spec("match")
         spec_match["model_params"] = {"temperature": "0.9"}  # String to match CLI parsing
+        spec_match["spec_digest"] = _digest_for(spec_match)
         spec_no_match = _canonical_spec("no-match")
         spec_no_match["model_params"] = {"temperature": "0.1"}
+        spec_no_match["spec_digest"] = _digest_for(spec_no_match)
 
         registry = InMemoryRegistryStore(list_result=Success([spec_match, spec_no_match]))
         facade = _make_facade(report=_valid_report(), registry=registry)
@@ -4032,6 +4049,7 @@ class TestRunLoopBatchUpdate:
         spec_match = _canonical_spec("match")
         spec_match["model"] = "gpt-4o"
         spec_match["model_params"] = {"temperature": "0.7"}  # String to match CLI parsing
+        spec_match["spec_digest"] = _digest_for(spec_match)
 
         registry = InMemoryRegistryStore(list_result=Success([spec_match]))
         facade = _make_facade(report=_valid_report(), registry=registry)

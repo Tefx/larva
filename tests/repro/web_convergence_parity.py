@@ -226,6 +226,24 @@ class TestComponentQueryParity:
             "is not a typed JSON error envelope"
         )
 
+    def test_non_object_validate_payload_rejected_consistently_across_web_runtimes(self) -> None:
+        """Packaged and contrib web runtimes must fail closed on non-object JSON bodies."""
+        from starlette.testclient import TestClient
+
+        contrib_module = _load_contrib_module()
+        packaged_client = TestClient(packaged_app, raise_server_exceptions=False)
+        contrib_client = TestClient(contrib_module.app, raise_server_exceptions=False)
+
+        packaged_response = packaged_client.post("/api/personas/validate", json=["bad"])
+        contrib_response = contrib_client.post("/api/personas/validate", json=["bad"])
+
+        assert packaged_response.status_code == 400
+        assert contrib_response.status_code == 400
+        assert packaged_response.json()["error"]["code"] == "INVALID_INPUT"
+        assert contrib_response.json()["error"]["code"] == "INVALID_INPUT"
+        assert packaged_response.json()["error"]["details"]["field"] == "params"
+        assert contrib_response.json()["error"]["details"]["field"] == "params"
+
     def test_contrib_accepts_canonical_spec(self) -> None:
         """Contrib runtime accepts minimal valid PersonaSpec.
 
