@@ -55795,7 +55795,7 @@ phases:
       \ regressions."
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
-  status: in_progress
+  status: done
   depends_on:
   - merge_debt_20260425_test
   steps:
@@ -55931,7 +55931,7 @@ phases:
       TRIGGER_CONDITIONAL_FIX = true (review FAIL with blocker-class issues).'
   - id: merge_debt_20260425_review.conditional-fix
     name: Conditional repair and same-suite retest
-    status: claimed
+    status: done
     description: 'Conditional repair closure for the follow-up review.
 
 
@@ -56041,3 +56041,89 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-25T10:19:03.770359+00:00'
+    done_at: '2026-04-25T10:30:11.289006+00:00'
+    evidence: '## Trigger Evaluation
+
+      - Audit decision: FAIL
+
+      - Triggered repair?: YES
+
+      - Reason: blocker-class issues B1/B2 and full-guard blocker required closure.
+
+
+      ## Repair Log
+
+      | Audit issue | Files changed | Root cause | Fix summary | Regression proof
+      |
+
+      |-------------|---------------|------------|-------------|------------------|
+
+      | B1 lint blocker | `src/larva/core/_structured_error.py`, `src/larva/core/normalize.py`,
+      `src/larva/core/patch.py`, `src/larva/core/assembly_error.py` | refactor residue
+      from helper extraction | formatting/import/doctest-line cleanup | ruff clean
+      on touched files (worker evidence) |
+
+      | B2 typing blocker | same core files | helper/wrapper type mismatch after consolidation
+      | wrapper typing alignment + safe casts preserving behavior | mypy clean on
+      touched files (worker evidence) |
+
+      | Full-guard blocker (retry) | `src/larva/core/validation_warnings.py` | CrossHair
+      path raised `KeyError(''__ch_pytype__'')` on symbolic dict-like view ops | hardened
+      snapshot warning logic by guarded item materialization + doctest for symbolic
+      dict-like failure mode; preserved normal dict behavior | full invar guard now
+      passes (`ok=true`, 0 errors) |
+
+
+      ## Same-Suite Retest Evidence
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_python_api.py tests/shell/test_cli.py -q
+
+      500 passed in 3.40s
+
+      ```
+
+      ```text
+
+      uv run pytest tests/core/test_validate.py tests/core/test_schema_validation.py
+      tests/core/test_normalize.py tests/core/test_patch.py tests/core/test_assemble.py
+      -q
+
+      197 passed in 0.30s
+
+      ```
+
+      ```text
+
+      invar guard --all (deferred run grd_702c8b0f24274ec2ab6aabda)
+
+      status: complete
+
+      report: ok=true, errors=0, warnings=6, infos=1, files_checked=42
+
+      ```
+
+
+      ## Closure Mapping
+
+      - B1: CLOSED (lint clean for repaired scope).
+
+      - B2: CLOSED (typing clean for repaired scope).
+
+      - guard_all_blocker: CLOSED (full invar guard all green with zero errors).
+
+
+      ## Invar Boundary Confirmation
+
+      - Core contracts/doctests preserved/updated where core changed.
+
+      - Shell boundary preserved; no cross-zone merge introduced.
+
+
+      ## Final Gate Decision
+
+      - verdict: PASS
+
+      - blockers: []'
