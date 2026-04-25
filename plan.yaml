@@ -55524,7 +55524,7 @@ phases:
       \ wrappers.\n- No error taxonomy changes.\n- No core/shell boundary merge."
   - id: merge_debt_20260425.component-list-query-helper
     name: Extract shared component-list query
-    status: pending
+    status: claimed
     description: 'Implement and verify the P1 component-list query consolidation.
 
 
@@ -55658,3 +55658,5 @@ phases:
     depends_on:
     - merge_debt_20260425.core-structured-exception-helper
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T09:09:36.715401+00:00'
