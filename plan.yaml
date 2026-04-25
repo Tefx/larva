@@ -55011,7 +55011,7 @@ phases:
       - Core/shell boundary preserved."
   - id: merge_debt_20260425.mcp-mixin-cleanup
     name: Remove MCPHandlerOpsMixin indirection
-    status: claimed
+    status: done
     description: 'Implement and verify the P1 MCP handler-ops cleanup.
 
 
@@ -55129,6 +55129,76 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T08:20:21.067699+00:00'
+    done_at: '2026-04-25T08:28:23.647891+00:00'
+    evidence: '## refs Read Confirmation
+
+      - AGENTS.md — observed core/shell boundary and invar expectations.
+
+      - src/larva/shell/mcp.py — previous inheritance path `MCPHandlers(MCPHandlerOpsMixin)`
+      and delegations identified.
+
+      - src/larva/shell/mcp_handler_ops.py — single-consumer mixin implementation
+      methods identified.
+
+      - tests/shell/test_mcp.py — MCP handler behavior coverage and added mixin-removal
+      characterization assertions.
+
+      - tests/shell/test_mcp_server.py — server tool behavior coverage confirmed.
+
+      - tests/shell/test_mcp_stdio_integration.py — stdio integration behavior coverage
+      confirmed.
+
+
+      ## Expected-Red Proof
+
+      - Added `TestMixinRemoval` assertions in `tests/shell/test_mcp.py` to fail while
+      mixin inheritance/import still exists.
+
+      - Pre-change failure captured in worker evidence (`MCPHandlerOpsMixin` present
+      in `MCPHandlers.__mro__`).
+
+
+      ## Implementation Summary
+
+      - Deleted `src/larva/shell/mcp_handler_ops.py`.
+
+      - Updated `src/larva/shell/mcp.py` to remove mixin import/inheritance and inline
+      required implementation methods on `MCPHandlers` (still using `MCPParamValidationMixin`).
+
+      - Added needed imports for component query/error projection used by inlined
+      methods.
+
+      - Kept behavior and prior MCP validation consolidation intact.
+
+      - Verified `src/larva/shell/mcp.py` remains under 500 lines (worker evidence:
+      489 lines).
+
+
+      ## Green Proof
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      -q
+
+      194 passed in 3.21s
+
+      ```
+
+      ```text
+
+      invar_guard(path=''.'', changed=true) => passed
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - No generic transport renderer introduced.
+
+      - No core/shell boundary violation.
+
+      - No renamed one-consumer mixin replacement; obsolete mixin path removed.'
   - id: merge_debt_20260425.core-validation-issue-helper
     name: Extract core ValidationIssue builder
     status: pending
