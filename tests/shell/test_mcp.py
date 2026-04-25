@@ -3039,3 +3039,53 @@ class TestSharedMCPRequestValidation:
             tool="larva_export",
             reason="parameter 'ids' must be list[string]",
         )
+
+
+# -----------------------------------------------------------------------------
+# Mixin Removal Characterization Tests
+# -----------------------------------------------------------------------------
+
+
+class TestMixinRemoval:
+    """Characterization tests for MCPHandlerOpsMixin removal.
+
+    These tests verify that MCPHandlerOpsMixin is no longer a required
+    dependency for MCPHandlers to function correctly.
+    """
+
+    def test_mcp_handler_ops_mixin_is_not_required_for_mcp_handlers(self) -> None:
+        """MCPHandlers should not require MCPHandlerOpsMixin inheritance."""
+        # After inlining, MCPHandlers should work without mixin inheritance
+        from larva.shell import mcp as mcp_module
+
+        # Verify the mixin is not in the MRO
+        assert "MCPHandlerOpsMixin" not in str(mcp_module.MCPHandlers.__mro__)
+
+    def test_mcp_handler_ops_module_not_imported_by_mcp(self) -> None:
+        """The mcp_handler_ops module should not be imported by mcp.py."""
+        import sys
+
+        # If mcp_handler_ops is not in sys.modules, it means mcp.py doesn't import it
+        # This test will fail if the mixin import still exists
+        import importlib
+
+        # Check that the mixin import line is gone from mcp.py
+        mcp_file = importlib.util.find_spec("larva.shell.mcp")
+        if mcp_file and mcp_file.origin:
+            with open(mcp_file.origin, "r") as f:
+                mcp_source = f.read()
+            assert "from larva.shell.mcp_handler_ops import" not in mcp_source
+            assert "MCPHandlerOpsMixin" not in mcp_source
+
+    def test_mcp_handlers_has_inlined_implementation_methods(self) -> None:
+        """MCPHandlers should have the implementation methods directly, not via mixin."""
+        from larva.shell import mcp as mcp_module
+
+        handlers = mcp_module.MCPHandlers
+
+        # Verify these methods exist directly on MCPHandlers (not inherited from mixin)
+        assert hasattr(handlers, "_handle_component_list_impl")
+        assert hasattr(handlers, "_handle_component_show_impl")
+        assert hasattr(handlers, "_handle_assemble_impl")
+        assert hasattr(handlers, "_handle_resolve_impl")
+        assert hasattr(handlers, "_handle_validate_impl")

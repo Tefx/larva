@@ -24,10 +24,15 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, Union, cast
 
 from returns.result import Failure, Success
 
+from larva.core.component_error_projection import (
+    component_store_unavailable_error,
+    project_component_store_error,
+)
+from larva.shell.components import ComponentStore
 from larva.shell.mcp_contract import (
     LARVA_ERROR_CODES,
     LARVA_MCP_TOOLS,
@@ -35,10 +40,10 @@ from larva.shell.mcp_contract import (
     ValidationIssue,
     ValidationReport,
 )
-from larva.shell.mcp_handler_ops import MCPHandlerOpsMixin
-from larva.shell.components import ComponentStore
 from larva.shell.mcp_export import handle_export as handle_export_tool
+from larva.shell.mcp_params import MCPParamValidationMixin
 from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_tool
+from larva.shell.shared.component_queries import query_component
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -68,7 +73,7 @@ class MCPHandler(Protocol[_HandlerSuccessT]):
     def __call__(self, params: object) -> _HandlerSuccessT | LarvaError: ...
 
 
-class MCPHandlers(MCPHandlerOpsMixin):
+class MCPHandlers(MCPParamValidationMixin):
     """Container for MCP tool handlers.
 
     This class provides MCP tool handlers that delegate to the
@@ -88,6 +93,9 @@ class MCPHandlers(MCPHandlerOpsMixin):
     - Unsupported component type or component lookup failures => COMPONENT_NOT_FOUND (numeric 105)
     """
 
+    _facade: Any
+    _components: ComponentStore | None
+
     def __init__(self, facade: LarvaFacade, components: ComponentStore | None = None) -> None:
         """Initialize handlers with a facade instance and optional component store.
 
@@ -97,6 +105,152 @@ class MCPHandlers(MCPHandlerOpsMixin):
         """
         self._facade = facade
         self._components = components
+
+    # -------------------------------------------------------------------------
+    # Inlined implementation methods (formerly in mcp_handler_ops module)
+    # -------------------------------------------------------------------------
+
+    def _handle_component_list_impl(
+        self, params: object
+    ) -> dict[str, list[str]] | LarvaError:
+        """Implementation for larva_component_list."""
+        validated_params = self._validated_params(
+            "larva_component_list", params, allowed_keys=set()
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+
+        if self._components is None:
+            return component_store_unavailable_error(
+                operation="mcp.component_list",
+                component_type=None,
+                component_name=None,
+                reason="Component store not available",
+            )
+
+        result = self._components.list_components()
+        if isinstance(result, Failure):
+            error = result.failure()
+            return project_component_store_error(
+                operation="mcp.component_list",
+                error=error,
+            )
+
+        return cast("dict[str, list[str]]", result.unwrap())
+
+    def _handle_component_show_impl(self, params: object) -> dict[str, object] | LarvaError:
+        """Implementation for larva_component_show."""
+        validated_params = self._validated_params(
+            "larva_component_show",
+            params,
+            allowed_keys={"component_type", "name"},
+            required_keys=("component_type", "name"),
+            typed_keys=(("component_type", str, "string"), ("name", str, "string")),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+
+        component_type = checked_params["component_type"]
+        name = checked_params["name"]
+
+        if self._components is None:
+            return component_store_unavailable_error(
+                operation="mcp.component_show",
+                component_type=component_type,
+                component_name=cast("str", name),
+                reason="Component store not available",
+            )
+
+        result = query_component(
+            self._components,
+            component_type=cast("str", component_type),
+            component_name=cast("str", name),
+            operation="mcp.component_show",
+        )
+        if isinstance(result, Failure):
+            return result.failure()
+
+        return cast("dict[str, object]", result.unwrap())
+
+    def _handle_assemble_impl(self, params: object) -> PersonaSpec | LarvaError:
+        """Implementation for larva_assemble."""
+        validated_params = self._validated_params(
+            "larva_assemble",
+            params,
+            allowed_keys={
+                "id",
+                "description",
+                "prompts",
+                "toolsets",
+                "constraints",
+                "model",
+                "overrides",
+            },
+            required_keys=("id",),
+            typed_keys=(
+                ("id", str, "string"),
+                ("description", str, "string"),
+                ("model", str, "string"),
+                ("overrides", dict, "object"),
+            ),
+            list_string_keys=("prompts", "toolsets", "constraints"),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+
+        from larva.app.facade import AssembleRequest
+
+        request: AssembleRequest = {
+            "id": checked_params["id"],
+            "prompts": checked_params.get("prompts", []),
+            "toolsets": checked_params.get("toolsets", []),
+            "constraints": checked_params.get("constraints", []),
+            "model": checked_params.get("model", ""),
+            "overrides": checked_params.get("overrides", {}),
+        }
+        if "description" in checked_params:
+            request["description"] = checked_params["description"]
+        facade = cast("Any", self._facade)
+        result = cast("Failure[LarvaError] | object", self._unwrap_result(facade.assemble(request)))
+        return cast("PersonaSpec | LarvaError", result)
+
+    def _handle_resolve_impl(self, params: object) -> PersonaSpec | LarvaError:
+        """Implementation for larva_resolve."""
+        validated_params = self._validated_params(
+            "larva_resolve",
+            params,
+            allowed_keys={"id", "overrides"},
+            required_keys=("id",),
+            typed_keys=(("id", str, "string"), ("overrides", dict, "object")),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+
+        persona_id = checked_params["id"]
+        overrides: dict[str, object] | None = checked_params.get("overrides")
+        facade = cast("Any", self._facade)
+        return cast(
+            "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides))
+        )
+
+    def _handle_validate_impl(self, params: object) -> ValidationReport | LarvaError:
+        """Implementation for larva_validate."""
+        validated_params = self._validated_params(
+            "larva_validate",
+            params,
+            allowed_keys={"spec"},
+            required_keys=("spec",),
+            typed_keys=(("spec", dict, "object"),),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        spec = checked_params["spec"]
+        facade = cast("Any", self._facade)
+        return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))
 
     def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
         """Handle ``larva_component_list`` MCP tool call."""
