@@ -58157,3 +58157,88 @@ phases:
     - larva.operator_p2.gate.targeted_rest_tests
     - larva.operator_p2.gate.packaged_serve_smoke
     agent: integration-verifier-tacit
+  - id: larva.operator_p2.gate.final_review
+    name: Final independent review for operator P2 REST
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check
+
+      agent_source: default
+
+
+      As an INDEPENDENT REVIEWER, assess whether the operator P2 REST work is ready
+      to close.
+
+
+      Review criteria:
+
+      1. Scope: export/update_batch are added only to packaged `larva serve` REST,
+      not contrib-only contract.
+
+      2. Contract: route shapes match the route-decision evidence and INTERFACES.md.
+
+      3. Shared authority: opifex remains PersonaSpec schema authority; larva admission/projection
+      semantics are reused.
+
+      4. No forbidden drift: `tools` rejected, `side_effect_policy` rejected, protected
+      fields fail closed, `capabilities` meaning unchanged, `spec_digest` format preserved.
+
+      5. Evidence quality: Expected-red proof exists before implementation, targeted
+      REST tests are green, packaged serve smoke is real, full repo gate is green
+      or has explicit non-intersection/remediation disposition.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase touches runnable packaged web REST surface used by external operator
+      clients.
+
+      - update_batch is mutation-capable and must prove validation-before-mutation.
+
+      - Shared PersonaSpec admission invariants must not drift across REST/MCP/facade
+      surfaces.
+
+
+      Finding issues is valuable. BLOCK if behavioral runtime evidence is missing
+      or if any unresolved blocker-class obligation lacks closure path.'
+    verification: '- All operator P2 REST phase steps are complete with specific evidence.
+
+      - Gate decision basis maps each runtime/canonical obligation to evidence.
+
+      - No blocker-class issue remains without remediation ownership or explicit non-intersection
+      evidence.
+
+      - Final recommendation is OPEN only if export/update_batch REST behavior is
+      proven through packaged surface and full gate evidence is acceptable.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\nIf no refs\
+      \ were provided, state: \"No refs for this step.\"\n\n## Gate Review Report\n\
+      **Reviewer**: gate-reviewer-tacit (independent of implementation)\n**Phase**:\
+      \ larva.operator_p2.gate\n**Timestamp**: <ISO 8601>\n\n## Step-by-Step Review\n\
+      | Step ID | Status | Evidence Quality | Concerns |\n|---|---|---|---|\n| larva.operator_p2.rest_scope.decide_routes\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.red_tests.define_red_rest_gaps\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.rest_endpoints.update_interfaces_inventory\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.gate.targeted_rest_tests\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.gate.packaged_serve_smoke\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| larva.operator_p2.gate.repo_local_full_gate\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n\n## Gate\
+      \ Decision Basis\n| requirement_ref | artifact/evidence refs reviewed | unresolved\
+      \ status | blocks? why/why not | final basis |\n|---|---|---|---|---|\n| packaged\
+      \ REST export | <refs> | PROVEN/NEEDS_TEST/UNPROVEN | <decision> | <basis> |\n\
+      | packaged REST update_batch | <refs> | PROVEN/NEEDS_TEST/UNPROVEN | <decision>\
+      \ | <basis> |\n| canonical admission invariants | <refs> | PROVEN/NEEDS_TEST/UNPROVEN\
+      \ | <decision> | <basis> |\n| no contrib dependency | <refs> | PROVEN/NEEDS_TEST/UNPROVEN\
+      \ | <decision> | <basis> |\n\n## Issues Identified\n| Severity | Description\
+      \ | Related Step | Blocking? |\n|---|---|---|---|\n| <blocker/should_fix/suggestion/tech_debt>\
+      \ | <issue> | <step_id> | YES/NO |\n\n## Gate Decision\n- [ ] OPEN: operator\
+      \ P2 REST work passes gate\n- [ ] BLOCKED: required remediation before close\n\
+      \  - Blocking issues: <list>\n  - Required actions: <actions>"
+    depends_on:
+    - larva.operator_p2.gate.targeted_rest_tests
+    - larva.operator_p2.gate.packaged_serve_smoke
+    - larva.operator_p2.gate.repo_local_full_gate
+    agent: gate-reviewer-tacit
