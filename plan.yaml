@@ -56279,7 +56279,7 @@ phases:
       \ YES"
   - id: fresh_cleanup_20260425_impl.mcp-handler-flattening
     name: MCP handler flattening
-    status: pending
+    status: claimed
     description: 'Implement and verify a bounded MCP handler flattening cleanup.
 
 
@@ -56387,6 +56387,8 @@ phases:
     depends_on:
     - fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T11:28:24.128453+00:00'
   - id: fresh_cleanup_20260425_impl.core-validation-issue-alias-cleanup
     name: Core validation issue alias cleanup
     status: pending
