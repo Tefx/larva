@@ -65,15 +65,17 @@ testpaths = ["tests"]
 # wiring). This topology currently needs six justified `shell_result` hatches,
 # so raise the project cap/budget to the observed steady-state instead of
 # churning the boundary shape without a runtime win.
-# Guard-integrity exception: `web_routes.py` is a FastAPI transport adapter whose
-# route handlers must return framework-native response objects rather than
-# `Result[T, E]`; invar's current shell-result rule would require a file-wide
-# hatch beyond the allowed file budget. Keep this exclusion only while FastAPI
-# route-boundary detection is absent. Integrity is preserved by changed-file
-# strict mypy plus packaged REST runtime regression tests in the owning gate.
-# Removal path: either teach invar to classify FastAPI route handlers as shell
-# boundaries or split a typed route adapter layer that guard can analyze without
-# broad shell_result hatches; owner/path is the larva web REST gate.
+# Approved B4 guard-integrity exception: `web_routes.py` is the FastAPI
+# transport adapter for `larva serve`, and route handlers/helper builders must
+# return framework-native response objects instead of `Result[T, E]`. Removing
+# this exclusion currently makes invar report 26 shell-result errors plus
+# FastAPI route-registration orchestration warnings, because guard has no
+# FastAPI route-boundary classifier. The exception is constrained to this file;
+# REST behavior remains covered by strict changed-surface mypy and packaged
+# runtime tests. Removal owner/path: larva web REST gate, by either teaching
+# invar FastAPI route-boundary classification or moving route-independent request
+# parsing into guarded Core helpers while leaving framework response projection
+# in Shell.
 core_paths = ["src/larva/core"]
 shell_paths = ["src/larva/shell"]
 max_file_lines = 500

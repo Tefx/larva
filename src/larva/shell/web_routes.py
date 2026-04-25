@@ -392,13 +392,11 @@ def _make_serve_index(static_dir: Path, index_file: str) -> Callable[[], Awaitab
     return _serve_index
 
 
-def register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
-    """Register the packaged web REST routes on ``app``.
+def _register_persona_routes(app: FastAPI) -> None:
+    """Register packaged PersonaSpec REST routes on ``app``.
 
     Args:
-        app: FastAPI application receiving the canonical packaged routes.
-        static_dir: Directory containing the packaged HTML UI artifact.
-        index_file: HTML filename served at ``/``.
+        app: FastAPI application receiving the persona REST routes.
     """
     app.add_api_route("/api/personas", _api_list_personas, methods=["GET"])
     app.add_api_route("/api/personas/{persona_id}", _api_get_persona, methods=["GET"])
@@ -410,9 +408,40 @@ def register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
     app.add_api_route("/api/personas/clear", _api_clear_personas, methods=["POST"])
     app.add_api_route("/api/personas/validate", _api_validate_persona, methods=["POST"])
     app.add_api_route("/api/personas/assemble", _api_assemble_persona, methods=["POST"])
+
+
+def _register_component_routes(app: FastAPI) -> None:
+    """Register packaged component REST routes on ``app``.
+
+    Args:
+        app: FastAPI application receiving component routes.
+    """
     app.add_api_route("/api/components", _api_list_components, methods=["GET"])
     app.add_api_route(
         "/api/components/{component_type}/{name}", _api_get_component, methods=["GET"]
     )
     app.add_api_route("/api/components/projection", _api_components_projection, methods=["GET"])
+
+
+def _register_static_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
+    """Register packaged static UI routes on ``app``.
+
+    Args:
+        app: FastAPI application receiving static UI routes.
+        static_dir: Directory containing the packaged HTML UI artifact.
+        index_file: HTML filename served at ``/``.
+    """
     app.add_api_route("/", _make_serve_index(static_dir, index_file), methods=["GET"])
+
+
+def register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
+    """Register the packaged web REST routes on ``app``.
+
+    Args:
+        app: FastAPI application receiving the canonical packaged routes.
+        static_dir: Directory containing the packaged HTML UI artifact.
+        index_file: HTML filename served at ``/``.
+    """
+    _register_persona_routes(app)
+    _register_component_routes(app)
+    _register_static_routes(app, static_dir=static_dir, index_file=index_file)
