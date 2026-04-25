@@ -57057,7 +57057,7 @@ phases:
       - blockers remain []'
 - id: fresh_cleanup_20260425_should_fix
   name: Fresh Cleanup 2026-04-25 Should-Fix Evidence Consistency
-  status: pending
+  status: in_progress
   gate: Step fresh_cleanup_20260425_should_fix.audit_evidence_narrative is the phase
     closure/gate-like check; no separate gate step by explicit user constraint of
     exactly two steps.
@@ -57066,7 +57066,7 @@ phases:
   steps:
   - id: fresh_cleanup_20260425_should_fix.full_guard_counts
     name: Generate authoritative full invar guard warning counts
-    status: pending
+    status: claimed
     description: 'Re-run the full invar guard from a fresh workspace state and produce
       authoritative machine-readable plus human-readable warning/error/info count
       evidence.
@@ -57127,6 +57127,8 @@ phases:
       \ confirmation**:\n- Product code changed: YES/NO\n- If YES, explain why this\
       \ step violated scope."
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-25T12:34:00.767047+00:00'
   - id: fresh_cleanup_20260425_should_fix.audit_evidence_narrative
     name: Audit and close invar warning narrative consistency
     status: pending
