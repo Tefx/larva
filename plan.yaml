@@ -58258,7 +58258,7 @@ phases:
     agent: doc-reviewer-tacit
   - id: larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
     name: Complete packaged REST export and update_batch wiring
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: [integration]
@@ -58454,3 +58454,127 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-25T19:48:54.059644+00:00'
+    done_at: '2026-04-25T19:57:03.600841+00:00'
+    evidence: 'step_intent: implementation
+
+      expected_result: packaged REST export/update_batch wired and focused tests green
+
+      observed_result: PASS
+
+      failure_alignment: prior expected-red 405 gaps resolved; fail-closed validation
+      and delegation preserved
+
+      verdict: PASS
+
+      blockers: []
+
+      whether any product implementation files were modified: true
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Expected-Red Anchor
+
+      - Red-test step reviewed: `larva.operator_p2.red_tests.define_red_rest_gaps`
+
+      - Prior failing output: 12 failures with 405 for missing `POST /api/personas/export`
+      and `POST /api/personas/update_batch`.
+
+
+      ## Implementation Summary
+
+      - Route files changed: `src/larva/shell/web.py`
+
+      - Test artifact updated minimally: `tests/shell/test_web_rest_gaps.py` (fixture
+      setup correction)
+
+      - Export delegation seam used: `python_api.export_all()` / `python_api.export_ids(ids)`
+
+      - Update batch delegation seam used: `python_api.update_batch(where, patches,
+      dry_run)`
+
+      - REST-only validation added: none beyond transport-shape fail-closed checks
+      aligned to existing facade/MCP behavior
+
+
+      ## Failure-Mode Evidence
+
+      | Failure mode | Test/proof | Result |
+
+      |---|---|---|
+
+      | conflict selector fail-closed | `test_post_api_personas_export_conflicting_selectors_fail_closed`
+      | PASS |
+
+      | missing selector fail-closed | `test_post_api_personas_export_missing_selector_fail_closed`
+      | PASS |
+
+      | all=false fail-closed | `test_post_api_personas_export_all_false_fail_closed`
+      | PASS |
+
+      | ids order export success | `test_post_api_personas_export_ids_preserves_order`
+      | PASS |
+
+      | update_batch dry_run no mutation | `test_post_api_personas_update_batch_dry_run_returns_matched`
+      | PASS |
+
+      | update_batch non-dry-run counts | `test_post_api_personas_update_batch_non_dry_run_returns_counts`
+      | PASS |
+
+      | protected fields fail closed | `test_post_api_personas_update_batch_rejects_protected_patch_fields`
+      + hypothesis protected-field test | PASS |
+
+      | tools/side_effect_policy rejected | `test_post_api_personas_rejects_tools_field`
+      / `test_post_api_personas_rejects_side_effect_policy` | PASS |
+
+      | malformed selector property | `test_export_malformed_selector_hypothesis`
+      | PASS |
+
+      | spec_digest format invariant | `test_post_api_personas_export_preserves_spec_digest_format`
+      + hypothesis format test | PASS |
+
+
+      ## Verification
+
+      - `uv run pytest tests/shell/test_web_rest_gaps.py -q` → `17 passed`
+
+      - `invar_guard(path=/Users/tefx/Projects/larva, changed=true)` → passed
+
+
+      ## Deviation Records
+
+      - type: `test_error`
+
+      - artifact: `tests/shell/test_web_rest_gaps.py::test_post_api_personas_export_ids_preserves_order`
+
+      - change: registered canonical alpha/beta fixtures before ordered export assertion
+
+      - why: existing facade/export semantics reject missing ids; fixture alignment
+      required to keep delegation contract
+
+      - impact: minimal setup-only correction; contract assertions unchanged
+
+
+      ## Files changed
+
+      - `src/larva/shell/web.py`
+
+      - `tests/shell/test_web_rest_gaps.py`
+
+
+      ## Commit hash(es)
+
+      - `17ea1b62faf5a79bf98d54fb7b58a746b565876e`
+
+      - mainline squash commit: `[vectl] step-larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
+      completed`
+
+
+      ## Gaps/Notes
+
+      - no contrib imports/calls added
+
+      - no schema/contract compatibility aliases introduced'
