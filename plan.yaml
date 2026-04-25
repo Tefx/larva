@@ -57292,7 +57292,7 @@ phases:
       - should_fix status: CLOSED.'
 - id: larva.operator_p2.rest_scope
   name: Operator P2 REST Scope and Route Decision
-  status: pending
+  status: in_progress
   gate: Route-shape decision and source discovery complete before red tests
   depends_on:
   - fresh_cleanup_20260425_should_fix
@@ -57300,7 +57300,7 @@ phases:
   steps:
   - id: larva.operator_p2.rest_scope.decide_routes
     name: Decide packaged REST export/update_batch route shape
-    status: pending
+    status: claimed
     description: 'step_type: planning
 
       agent_source: default
@@ -57414,6 +57414,8 @@ phases:
 
       - Spec questions remaining: <none or list>'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-25T19:22:59.552127+00:00'
 - id: larva.operator_p2.red_tests
   name: Operator P2 REST Expected-Red Tests
   status: done
