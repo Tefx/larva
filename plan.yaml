@@ -54861,7 +54861,7 @@ phases:
       \ requested non-blocking debts."
 - id: merge_debt_20260425
   name: Merge Review Debt Demolition
-  status: in_progress
+  status: done
   depends_on:
   - post_prompt_opacity_debt_cleanup_20260419
   steps:
@@ -55524,7 +55524,7 @@ phases:
       \ wrappers.\n- No error taxonomy changes.\n- No core/shell boundary merge."
   - id: merge_debt_20260425.component-list-query-helper
     name: Extract shared component-list query
-    status: claimed
+    status: done
     description: 'Implement and verify the P1 component-list query consolidation.
 
 
@@ -55660,3 +55660,30 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T09:09:36.715401+00:00'
+    done_at: '2026-04-25T09:17:34.889583+00:00'
+    evidence: "## refs Read Confirmation\n- AGENTS.md — maintained shell-adapter separation\
+      \ and plan discipline.\n- src/larva/shell/python_api_components.py — duplicated\
+      \ list query/error projection path identified.\n- src/larva/shell/cli_commands.py\
+      \ — duplicated component list store query and mapping path identified.\n- src/larva/shell/mcp.py\
+      \ — duplicated component list query/projection path identified.\n- src/larva/shell/mcp_handler_ops.py\
+      \ — NOT READ: file absent after prior mixin-cleanup step.\n- tests/shell/test_python_api.py\
+      \ — component list behavior and error projection coverage.\n- tests/shell/test_cli.py\
+      \ — CLI component list text/json behavior coverage.\n- tests/shell/test_mcp.py\
+      \ — MCP component list acceptance coverage.\n- tests/shell/test_mcp_server.py\
+      \ — MCP server wiring coverage.\n- tests/shell/test_mcp_stdio_integration.py\
+      \ — stdio integration component list coverage.\n\n## Expected-Red Proof\n- Worker\
+      \ strengthened routing/characterization coverage for shared helper adoption\
+      \ across three adapters; extraction executed preserving adapter-specific rendering.\n\
+      \n## Implementation Summary\n- Added shared helper `query_component_list(...)`\
+      \ in `src/larva/shell/shared/component_queries.py` to centralize store query\
+      \ + error projection.\n- Rewired three adapters to call shared helper while\
+      \ preserving rendering/projection boundaries:\n  - `src/larva/shell/python_api_components.py`\n\
+      \  - `src/larva/shell/mcp.py`\n  - `src/larva/shell/cli_commands.py`\n- Kept\
+      \ transport-specific response behavior local (CLI text/json, MCP envelope, Python\
+      \ API exception mapping).\n\n## Green Proof\n```text\nuv run pytest tests/shell/test_python_api.py\
+      \ tests/shell/test_cli.py tests/shell/test_mcp.py tests/shell/test_mcp_server.py\
+      \ tests/shell/test_mcp_stdio_integration.py -q\n500 passed in 3.25s\n```\n```text\n\
+      invar_guard(path='.', changed=true) => passed (files_checked=4, static/doctest\
+      \ pass)\n```\n\n## Veto Confirmation\n- No transport renderer unification.\n\
+      - No boolean-flag request builder introduced.\n- No load_transform_save-style\
+      \ workflow introduced."
