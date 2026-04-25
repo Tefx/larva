@@ -91,6 +91,8 @@ class TestPackagedRestExportGap:
     def test_post_api_personas_export_ids_preserves_order(self) -> None:
         """POST /api/personas/export with {ids:[...]} preserves requested order."""
         client = TestClient(app)
+        _register_canonical(client, _canonical_spec("alpha"))
+        _register_canonical(client, _canonical_spec("beta"))
         resp = client.post(
             "/api/personas/export",
             json={"ids": ["alpha", "beta"]},

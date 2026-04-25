@@ -47,15 +47,24 @@ from larva.shell.python_api import (
     component_list,
     component_show,
     delete,
+    export_all,
+    export_ids,
     register,
     resolve,
     update,
+    update_batch,
     validate,
 )
 from larva.shell.python_api import (
     list as list_personas,
 )
-from larva.shell.shared.request_validation import require_params_object, require_type
+from larva.shell.shared.request_validation import (
+    reject_unknown_params,
+    require_list_of_strings,
+    require_param,
+    require_params_object,
+    require_type,
+)
 
 STATIC_DIR = Path(__file__).parent
 
@@ -217,6 +226,72 @@ async def _read_request_object(request: Request) -> dict[str, Any] | JSONRespons
     return params_result.unwrap()
 
 
+def _validation_issue_response(result: Failure[Any]) -> JSONResponse:
+    """Project a shared request-validation failure to the web error envelope."""
+    issue = result.failure()
+    return _invalid_input_response(issue.reason, issue.details)
+
+
+def _validate_export_request(body: dict[str, Any]) -> tuple[bool, list[str]] | JSONResponse:
+    """Validate the web export selector using the packaged REST fail-closed contract."""
+    unknown_result = reject_unknown_params(body, {"all", "ids"})
+    if isinstance(unknown_result, Failure):
+        return _validation_issue_response(unknown_result)
+
+    if "all" in body:
+        all_result = require_type(body, "all", bool, "boolean")
+        if isinstance(all_result, Failure):
+            return _validation_issue_response(all_result)
+    ids_result = require_list_of_strings(body, "ids")
+    if isinstance(ids_result, Failure):
+        return _validation_issue_response(ids_result)
+
+    has_all = "all" in body
+    has_ids = "ids" in body
+    if has_all and has_ids:
+        return _invalid_input_response(
+            "cannot specify both 'all' and 'ids'",
+            {"field": "params", "conflict": ["all", "ids"]},
+        )
+    if not has_all and not has_ids:
+        return _invalid_input_response(
+            "must specify either 'all' or 'ids'",
+            {"field": "params", "missing": ["all", "ids"]},
+        )
+    if has_all:
+        if body["all"] is False:
+            return _invalid_input_response(
+                "must specify either 'all' or 'ids'",
+                {"field": "all", "missing": ["ids"]},
+            )
+        return True, []
+    return False, body["ids"]
+
+
+def _validate_update_batch_request(
+    body: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], bool] | JSONResponse:
+    """Validate packaged REST update_batch request shape before facade delegation."""
+    unknown_result = reject_unknown_params(body, {"where", "patches", "dry_run"})
+    if isinstance(unknown_result, Failure):
+        return _validation_issue_response(unknown_result)
+
+    for key in ("where", "patches"):
+        required_result = require_param(body, key)
+        if isinstance(required_result, Failure):
+            return _validation_issue_response(required_result)
+        typed_result = require_type(body, key, dict, "object")
+        if isinstance(typed_result, Failure):
+            return _validation_issue_response(typed_result)
+
+    if "dry_run" in body:
+        dry_run_result = require_type(body, "dry_run", bool, "boolean")
+        if isinstance(dry_run_result, Failure):
+            return _validation_issue_response(dry_run_result)
+
+    return body["where"], body["patches"], body.get("dry_run", False)
+
+
 # ---------------------------------------------------------------------------
 # Persona endpoints (shared implementation pattern)
 # ---------------------------------------------------------------------------
@@ -261,6 +336,41 @@ def create_app(*, static_dir: Path | None = None, index_file: str = "web_ui.html
                 return _validation_error_response(report)
             result = register(spec)
             return {"data": result}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas/export")
+    async def api_export_personas(request: Request) -> Any:
+        """Export all personas or an ordered list of selected persona IDs."""
+        body = await _read_request_object(request)
+        if isinstance(body, JSONResponse):
+            return body
+
+        target = _validate_export_request(body)
+        if isinstance(target, JSONResponse):
+            return target
+
+        use_all, ids = target
+        try:
+            result = export_all() if use_all else export_ids(ids)
+            return {"data": result}
+        except LarvaApiError as e:
+            return _api_error_response(e)
+
+    @app.post("/api/personas/update_batch")
+    async def api_update_batch_personas(request: Request) -> Any:
+        """Apply an existing facade batch update by selector and patch object."""
+        body = await _read_request_object(request)
+        if isinstance(body, JSONResponse):
+            return body
+
+        update_request = _validate_update_batch_request(body)
+        if isinstance(update_request, JSONResponse):
+            return update_request
+
+        where, patches, dry_run = update_request
+        try:
+            return {"data": update_batch(where, patches, dry_run)}
         except LarvaApiError as e:
             return _api_error_response(e)
 
