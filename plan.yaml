@@ -55844,3 +55844,113 @@ phases:
       - If Decision=PASS and no trigger exists, the conditional fix step records no-op
       closure.'
     agent: gate-reviewer-tacit
+  - id: merge_debt_20260425_review.conditional-fix
+    name: Conditional repair and same-suite retest
+    status: pending
+    description: 'Conditional repair closure for the follow-up review.
+
+
+      Trigger:
+
+      - Execute repair work only if merge_debt_20260425_review.audit records FAIL,
+      a test/invar_guard failure, or any blocker/should_fix issue with disposition
+      blocking-now.
+
+      - If the audit records PASS with no trigger, perform no code changes and complete
+      with explicit no-op evidence citing the PASS decision.
+
+
+      When triggered, fix only the concrete issues listed by the audit. Do not broaden
+      scope or introduce generic boolean-flag abstractions. Preserve the Invar core/shell
+      boundary: core changes require meaningful @pre/@post contracts and doctests
+      before implementation; shell changes handle I/O and return Result-shaped outcomes
+      where applicable.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step when triggered. Stub-only completion is NOT acceptable.
+      Each repaired deliverable MUST contain substantive logic that processes its
+      inputs and produces outputs that vary based on those inputs.
+
+
+      Required closure after repair:
+
+      - Rerun the same focused tests from merge_debt_20260425_test.aggregate-regression.
+
+      - Rerun invar_guard.
+
+      - Show that each audit issue is closed or explicitly no longer intersects the
+      required checks.'
+    verification: local-check/fix-closure protecting final plan completion. If triggered,
+      prove each blocker/should_fix from the audit is repaired and the same focused
+      tests plus invar_guard are green. If not triggered, prove no-op closure by citing
+      the PASS audit decision.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Trigger Evaluation
+
+      - Audit decision: PASS | FAIL
+
+      - Triggered repair? YES | NO
+
+      - Reason: <failure/issue ids or PASS no-op rationale>
+
+
+      ## Repair Log (only if triggered)
+
+      | Audit issue | Files changed | Root cause | Fix summary | Regression proof
+      |
+
+      |-------------|---------------|------------|-------------|------------------|
+
+      | <id> | <paths> | <cause> | <fix> | <test/guard evidence> |
+
+
+      ## Same-Suite Retest Evidence
+
+      **Commands executed**:
+
+      ```
+
+      <same focused pytest commands from aggregate-regression>
+
+      <invar_guard command/result>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <paste key stdout/stderr>
+
+      ```
+
+
+      ## Invar Boundary Confirmation
+
+      - Core contracts/doctests added or preserved where core code changed: YES/NO/N/A
+
+      - Shell I/O boundary preserved where shell code changed: YES/NO/N/A
+
+
+      ## Headline
+
+      - [ ] PASS_NOOP: audit passed; no repair needed
+
+      - [ ] PASS_REPAIRED: all audit/test failures repaired and retested green
+
+      - [ ] FAIL: remaining blockers listed with closure path'
+    depends_on:
+    - merge_debt_20260425_review.audit
+    agent: python-senior-tacit
