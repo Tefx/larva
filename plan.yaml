@@ -58600,73 +58600,72 @@ phases:
       - B4 guard-integrity concern from excluding new implementation module in invar
       guard scope'
   - id: larva.operator_p2.gate.fix_final_review_blockers_residual
-    name: Residual fix for final review blockers B2/B4
+    name: Residual fix for final review blocker B4
     status: pending
-    description: 'Residual remediation after retest failure of larva.operator_p2.gate.retest_final_review_blockers_batch.
+    description: 'Residual remediation after partial salvage of `larva.operator_p2.gate.fix_final_review_blockers_residual`.
 
 
-      Work type: defect_repair / proof_closure residual. Own the remaining blocker-class
-      debt reported by the residual retest:
+      Work type: defect_repair / proof_closure residual. B2 is closed in mainline
+      via frozen mypy gate/dependency updates. This step now owns ONLY the remaining
+      B4 blocker-class debt:
 
 
-      - B2: changed-file mypy intersections remain red for changed files: `src/larva/shell/web.py`,
-      `src/larva/shell/web_routes.py`, fixture_taxonomy-related changed files, and
-      `tests/.../test_web_rest_gaps*`.
-
-      - B4: prior refactor introduced an architecture concern by adding `src/larva/shell/web_routes.py`
-      to Invar `exclude_paths` and leaving an oversized `register_routes` function.
+      - B4: guard-integrity concern from adding `src/larva/shell/web_routes.py` to
+      Invar `exclude_paths`, plus route-registration architecture quality around the
+      structure/size/reviewability of `register_routes`.
 
 
       Required remediation:
 
-      1. Restore changed-file mypy closure for every changed file intersecting B2.
-      Do not treat a red changed-file check as non-blocking unless there is explicit
-      non-intersection evidence with remaining gates.
-
-      2. Address the B4 guard-bypass concern by removing the `src/larva/shell/web_routes.py`
+      1. Address the B4 guard-bypass concern by removing the `src/larva/shell/web_routes.py`
       guard-bypass exclusion OR producing an approved exception with explicit rationale
       that preserves Invar guard integrity. An exception is acceptable only if it
       documents why the file cannot yet be guarded, what invariant remains protected,
       who owns removal, and why remaining gates are not weakened.
 
-      3. Reduce or split the oversized `register_routes` architecture concern enough
-      that route registration remains reviewable and guardable; do not hide route
-      logic behind a broader exclusion.
+      2. Reduce, split, or otherwise structurally remediate the `register_routes`
+      architecture concern enough that route registration remains reviewable and guardable;
+      do not hide route logic behind a broader exclusion.
 
-      4. Preserve REST runtime behavior from the completed Operator P2 REST delivery
-      path while remediating architecture and type-check issues.
+      3. Preserve REST runtime behavior from the completed Operator P2 REST delivery
+      path while remediating guard integrity and route-registration structure.
+
+      4. Do NOT reopen B2 scope. Treat B2 changed-file mypy closure as already salvaged
+      in mainline; only report B2 if the B4 remediation directly regresses the frozen
+      mypy gate/dependency closure.
 
 
       ## Root Cause vs Symptom
 
-      - Root cause to establish: why the prior batch fix left changed-file mypy intersections
-      and guard integrity concerns unresolved.
+      - Root cause to establish: why the prior batch/residual path left B4 guard integrity
+      and route-registration architecture concerns unresolved.
 
-      - Symptom: retest still found B2/B4 blockers after `larva.operator_p2.gate.fix_final_review_blockers_batch`.
+      - Symptom: final review/retest still found B4 blocker concerns after `larva.operator_p2.gate.fix_final_review_blockers_batch`.
 
-      - This fix must close the residual blocker family, not only patch the currently
-      listed line(s).
+      - This fix must close the B4 blocker family, not only patch the currently listed
+      line(s).
 
 
       ## Evidence MUST include these fields
 
       - `why_previous_fix_failed`: explain why `larva.operator_p2.gate.fix_final_review_blockers_batch`
-      did not close B2/B4.
+      / earlier residual handling did not close B4.
 
       - `why_previous_gate_missed_it`: explain why earlier final review/gate evidence
-      did not catch or did not block on the residual changed-file mypy and guard-bypass
-      concerns.
+      did not catch or did not block on the B4 guard-bypass and route-registration
+      architecture concerns.
 
       - `reversal_risk`: identify what previously-green behavior or proof could regress
-      due to this remediation, and how it was re-checked.
+      due to B4 remediation, including REST runtime behavior and the salvaged B2 mypy
+      gate/dependency closure, and how it was re-checked.
 
 
       ## Completion Criteria (stub exclusion)
 
       This is an IMPLEMENTATION/FIX step. Stub-only completion is NOT acceptable.
-      Each deliverable MUST contain substantive logic or structural remediation that
-      processes its inputs and preserves runtime behavior. Private stub classes (`_Runtime*`,
-      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+      Each deliverable MUST contain substantive structural remediation that preserves
+      runtime behavior. Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`)
+      do not satisfy this requirement.
 
 
       ## Guard Integrity Requirement
@@ -58675,20 +58674,25 @@ phases:
       must include the explicit approved rationale, preserved guard-integrity boundary,
       removal owner/path, and proof that the exception does not weaken remaining gate
       decisions.'
-    verification: '- Changed-file mypy intersections for `web.py`, `web_routes.py`,
-      fixture_taxonomy-related changed files, and `test_web_rest_gaps*` are green
-      or have explicit approved non-intersection evidence.
+    verification: '- B4 guard-integrity closure: Invar guard-bypass exclusion for
+      `src/larva/shell/web_routes.py` is removed OR an approved exception with explicit
+      guard-integrity rationale is documented.
 
-      - Invar guard-bypass exclusion for `src/larva/shell/web_routes.py` is removed
-      OR an approved exception with explicit guard-integrity rationale is documented.
+      - B4 architecture closure: `register_routes` route-registration structure is
+      remediated or bounded with evidence that route registration remains reviewable
+      and guardable.
 
-      - `register_routes` architecture concern is remediated or bounded with evidence
-      that route registration remains reviewable and guardable.
+      - Regression protection: targeted proof shows REST runtime behavior from Operator
+      P2 remains preserved.
+
+      - Regression protection: the salvaged B2 frozen mypy gate/dependency closure
+      is not regressed by the B4 remediation.
 
       - Evidence includes `why_previous_fix_failed`, `why_previous_gate_missed_it`,
       and `reversal_risk` fields.
 
-      - REST runtime behavior from Operator P2 remains preserved by targeted proof.'
+      - No B2 rework is required or accepted in this step unless the B4 remediation
+      itself introduces a B2 regression.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
       \ state: \"No refs for this step.\"\n\n## Residual Fix Evidence\n\nwhy_previous_fix_failed:\
       \ <required>\nwhy_previous_gate_missed_it: <required>\nreversal_risk: <required>\n\
