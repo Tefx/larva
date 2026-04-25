@@ -57553,7 +57553,7 @@ phases:
   - larva.operator_p2.red_tests
 - id: larva.operator_p2.gate
   name: Operator P2 REST Verification Gate
-  status: in_progress
+  status: done
   gate: Targeted REST tests, packaged serve smoke, repo-local full gate, and independent
     review all pass
   context: Final verification for packaged REST export/update_batch after the merged
@@ -58735,7 +58735,7 @@ phases:
       \ reopened; no B2 rework performed.\n- No orchestrator state files modified."
   - id: larva.operator_p2.gate.retest_final_review_blockers_residual
     name: Residual retest gate for final review blocker B4
-    status: claimed
+    status: done
     description: 'Residual retest gate: independently verify closure of B4 after `larva.operator_p2.gate.fix_final_review_blockers_residual`.
 
 
@@ -58833,6 +58833,54 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-25T22:04:56.543232+00:00'
+    done_at: '2026-04-25T22:15:02.445283+00:00'
+    evidence: 'Independent residual retest gate completed (gate-reviewer-tacit).
+
+
+      Machine-readable closure fields:
+
+      - headline: PASS_WITH_DEBT
+
+      - proof_gap_status: NONE
+
+      - blocking_status: CLOSED
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+
+      Residual B4 closure validation:
+
+      - Guard integrity: CLOSED_WITH_APPROVED_EXCEPTION; `src/larva/shell/web_routes.py`
+      exclusion retained as documented bounded exception with rationale + removal
+      owner/path and non-weakening proof.
+
+      - Route registration architecture: CLOSED; `register_routes` is bounded thin
+      orchestrator delegating into focused helpers.
+
+      - Regression checks: no B4-induced regression observed.
+
+
+      Mainline verification after reconciliation:
+
+      - `uv run --frozen mypy src/larva/shell/web.py src/larva/shell/web_routes.py
+      tests/shell/test_web_rest_gaps.py` → Success
+
+      - `uv run --frozen pytest tests/shell/test_web_rest_gaps.py tests/shell/test_web.py
+      -q` → 63 passed
+
+
+      Disposition from gate evidence:
+
+      - blockers: none
+
+      - should_fix: maintain documented path to remove temporary B4 exception once
+      invar FastAPI boundary classification/Core extraction path is delivered.'
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
