@@ -55201,7 +55201,7 @@ phases:
       - No renamed one-consumer mixin replacement; obsolete mixin path removed.'
   - id: merge_debt_20260425.core-validation-issue-helper
     name: Extract core ValidationIssue builder
-    status: pending
+    status: claimed
     description: 'Implement and verify the P1 core ValidationIssue builder extraction.
 
 
@@ -55333,6 +55333,8 @@ phases:
     depends_on:
     - merge_debt_20260425.mcp-mixin-cleanup
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T08:28:34.362983+00:00'
   - id: merge_debt_20260425.core-structured-exception-helper
     name: Extract core structured exception builder
     status: pending
