@@ -56483,3 +56483,120 @@ phases:
   status: locked
   depends_on:
   - fresh_cleanup_20260425_impl
+  steps:
+  - id: fresh_cleanup_20260425_verify.aggregate-tests-and-full-guard
+    name: Aggregate tests and full invar guard
+    status: pending
+    description: 'As an INDEPENDENT TESTER, run aggregate verification for the fresh
+      cleanup batch from a clean perspective.
+
+
+      Phase dependency: this phase depends on `fresh_cleanup_20260425_impl`, so this
+      step must run only after all implementation steps in that phase complete.
+
+
+      Scope:
+
+      - Shell MCP cleanup: `mcp_update_batch.py`, `mcp_params.py`, `mcp.py`.
+
+      - Core validation alias cleanup: `validate.py`, `validation_field_shapes.py`.
+
+
+      Required checks:
+
+      - Run focused shell MCP tests, including malformed `dry_run` envelope behavior.
+
+      - Run focused core validation tests.
+
+      - Run full `invar_guard` for the repo.
+
+      - Confirm no Boolean Trap, no unified transport renderer, no schema interpreter,
+      and no generic workflow were introduced.
+
+
+      Document all failures as findings. Finding a problem is a successful verification
+      outcome, but it must trigger the downstream conditional repair step.'
+    verification: '- Focused shell MCP tests pass.
+
+      - Focused core validation tests pass.
+
+      - Full repo `invar_guard` passes.
+
+      - Verification report lists blockers/should_fix/suggestions with exact reproduction
+      commands.
+
+      - Behavioral proof register marks blocker-class obligations PROVEN or routes
+      them to conditional repair.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/mcp_update_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_params.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validate.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validation_field_shapes.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_validate.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Verification Report
+
+      **Tester**: integration-verifier-tacit
+
+      **Independence Level**: L1
+
+
+      ### Commands Executed
+
+      ```
+
+      <paste focused shell tests>
+
+      <paste focused core tests>
+
+      <paste full invar_guard>
+
+      ```
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ### Findings
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+
+      ### Anti-Abstraction Veto Check
+
+      - Boolean Trap introduced? YES/NO
+
+      - Unified transport renderer introduced? YES/NO
+
+      - Schema interpreter introduced? YES/NO
+
+      - Generic workflow introduced? YES/NO
+
+
+      ### Headline
+
+      PASS | PASS_WITH_DEBT | FAIL'
+    agent: integration-verifier-tacit
