@@ -56721,3 +56721,136 @@ phases:
     depends_on:
     - fresh_cleanup_20260425_verify.aggregate-tests-and-full-guard
     agent: gate-reviewer-tacit
+  - id: fresh_cleanup_20260425_verify.conditional-repair-or-pass-noop
+    name: Conditional repair or PASS_NOOP
+    status: pending
+    description: 'Conditional closure step after independent review.
+
+
+      Trigger rules:
+
+      - If `fresh_cleanup_20260425_verify.independent-review-audit` decision is OPEN
+      and lists no blocker/should_fix findings, do not modify product code. Record
+      `PASS_NOOP` with the audit decision and verification evidence references.
+
+      - If the audit decision is BLOCK, or if any blocker/should_fix finding exists,
+      implement only the minimal repair needed for those findings and rerun the exact
+      failed focused tests plus full `invar_guard`.
+
+
+      Repair scope limits:
+
+      - Repairs may touch only files implicated by the audit findings within this
+      cleanup batch unless the evidence proves a direct gate intersection.
+
+      - Preserve core/shell separation.
+
+      - Core repairs require core tests and `invar_guard`.
+
+      - Shell repairs require shell tests; final closure requires full `invar_guard`.
+
+
+      VETO:
+
+      - Do NOT introduce a Boolean Trap.
+
+      - Do NOT introduce a unified transport renderer, schema interpreter, generic
+      workflow, compatibility alias, or accept-and-clean behavior.
+
+      - Do NOT execute optional/future cleanup items: mcp_export/update_batch internal
+      Protocol deletion, app/facade registry validate+normalize helper, ComponentStore/RegistryStore
+      Protocol deletion, facade factory/cli_facade chain.
+
+
+      ## Completion Criteria
+
+      - PASS_NOOP path: evidence cites OPEN audit and confirms no code changes in
+      this step.
+
+      - Repair path: every audit blocker/should_fix is fixed, exact failed tests now
+      pass, full `invar_guard` passes, and no new VETO abstraction appears.'
+    verification: '- PASS_NOOP if and only if independent audit is OPEN with no blocker/should_fix
+      findings.
+
+      - Otherwise, minimal repair addresses every blocker/should_fix from review.
+
+      - Exact failed tests from verification/review are rerun and pass.
+
+      - Full `invar_guard` passes after any repair.
+
+      - Evidence explicitly states which path was taken: PASS_NOOP or REPAIR_APPLIED.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/mcp_update_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_params.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validate.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validation_field_shapes.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_validate.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Conditional Closure Path
+
+      Choose exactly one:
+
+      - [ ] PASS_NOOP
+
+      - [ ] REPAIR_APPLIED
+
+
+      ### PASS_NOOP Evidence
+
+      - Audit step decision: OPEN
+
+      - Audit evidence ref:
+
+      - Product code changes in this step: NONE
+
+
+      ### Repair Evidence (if applicable)
+
+      | Finding | Minimal fix | Files changed | Tests rerun |
+
+      | --- | --- | --- | --- |
+
+
+      Commands and outputs:
+
+      ```
+
+      <paste exact failed tests rerun>
+
+      <paste full invar_guard>
+
+      ```
+
+
+      ### Final VETO Check
+
+      - Boolean Trap introduced? NO
+
+      - Unified transport renderer/schema interpreter/generic workflow introduced?
+      NO
+
+      - Optional/future cleanup items left out? YES
+
+
+      ### Headline
+
+      PASS_NOOP | REPAIR_APPLIED_AND_GREEN | FAIL'
+    depends_on:
+    - fresh_cleanup_20260425_verify.independent-review-audit
+    agent: python-senior-tacit
