@@ -57995,7 +57995,7 @@ phases:
   steps:
   - id: larva.operator_p2.red_tests.define_red_rest_gaps
     name: Define expected-red packaged REST P2 tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: default\n\nAdd test-only coverage that exposes the current\
       \ packaged REST gaps before endpoint implementation. Scope is tests and fixtures\
@@ -58096,6 +58096,80 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T19:27:11.993775+00:00'
+    done_at: '2026-04-25T19:48:33.172026+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Expected-Red Proof
+
+      Focused command run before implementation:
+
+      `PYTHONPATH=src:$PYTHONPATH .venv/bin/python -m pytest tests/shell/test_web_rest_gaps.py
+      -v`
+
+
+      Failing output demonstrates intended packaged REST gaps (12 failures, all method
+      mismatch/absence with 405 on POST `/api/personas/export` and `/api/personas/update_batch`;
+      5 pass).
+
+
+      Mainline post-merge verification:
+
+      `uv run pytest tests/shell/test_web_rest_gaps.py -q`
+
+      Observed: `12 failed, 5 passed` with failures aligned to missing packaged REST
+      endpoints and fail-closed semantics not yet wired.
+
+
+      ## Tests Added
+
+      `tests/shell/test_web_rest_gaps.py` with coverage for:
+
+      - export all/ids/selectors/fail-closed
+
+      - update_batch dry_run/non-dry/protected/invalid patches
+
+      - canonical invariants (`tools`, `side_effect_policy`, protected patch fields)
+
+      - spec_digest format checks
+
+      - no contrib dependency
+
+      - Hypothesis malformed selector/protected patch invariants
+
+
+      ## Property-Based / Contract Coverage
+
+      - Selector malformed payloads: present and RED-aligned.
+
+      - Protected patch fields: present and RED-aligned.
+
+      - spec_digest format: present.
+
+
+      ## Scope Guard
+
+      - Product code modified: none
+
+      - Contrib imports/calls in packaged REST tests: no
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: RED (12 failing tests expected)
+
+      failure_alignment: failures match intended packaged REST export/update_batch
+      gaps (endpoint absent/405), not infrastructure/setup failure
+
+      verdict: EXPECTED_RED_ACCEPTED
+
+      blockers: none for this step; downstream implementation owns green conversion
+
+      whether any product implementation files were modified: false'
   - id: larva.operator_p2.rest_endpoints.update_interfaces_inventory
     name: Update INTERFACES.md packaged REST inventory
     status: pending
