@@ -57715,7 +57715,7 @@ phases:
       \ were modified: false"
   - id: larva.operator_p2.gate.packaged_serve_smoke
     name: Smoke packaged larva serve REST runtime
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -57822,6 +57822,69 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-04-25T20:33:08.293538+00:00'
+    done_at: '2026-04-25T20:59:41.961434+00:00'
+    evidence: '## refs Read Confirmation
+
+      No refs for this step.
+
+
+      ## Packaged Runtime Smoke Evidence
+
+      Launch command:
+
+      `.venv/bin/python -c "from larva.shell.web import main; main(port=60198, no_open=True)"`
+
+
+      Startup output included uvicorn startup and bind on `http://127.0.0.1:60198`.
+
+
+      HTTP probes:
+
+      - `GET /` → 200 HTML (packaged UI)
+
+      - `POST /api/personas/export` `{ "all": true }` → 200 with `{data:[...PersonaSpec...]}`
+
+      - `POST /api/personas/update_batch` valid body → 200 with `{data:{items:[],matched:0,updated:0}}`
+      for non-matching selector
+
+      - malformed payloads on both endpoints → typed fail-closed `INVALID_INPUT` envelopes
+      (400)
+
+
+      ## No-Contrib Proof
+
+      - contrib server command used: no
+
+      - contrib imports/calls observed: none
+
+      - process command line referenced `larva.shell.web.main` only
+
+      - loaded modules check reported no `contrib` modules
+
+
+      ## Cleanup
+
+      - shutdown method: SIGTERM to server PID
+
+      - process status after cleanup: terminated
+
+      - port status after cleanup: listener removed
+
+
+      step_intent: integration/liveness verification for packaged serve REST runtime
+
+      expected_result: packaged server launches and serves HTML + export/update_batch
+      through packaged contract without contrib
+
+      observed_result: PASS
+
+      failure_alignment: n/a
+
+      verdict: PASS
+
+      blockers: []
+
+      whether any product implementation files were modified: false'
   - id: larva.operator_p2.gate.repo_local_full_gate
     name: Run repo-local full gate for REST P2
     status: pending
