@@ -56129,7 +56129,7 @@ phases:
       - blockers: []'
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
-  status: in_progress
+  status: done
   depends_on:
   - merge_debt_20260425_review
   steps:
@@ -56411,7 +56411,7 @@ phases:
       \ YES"
   - id: fresh_cleanup_20260425_impl.core-validation-issue-alias-cleanup
     name: Core validation issue alias cleanup
-    status: claimed
+    status: done
     description: 'Implement and verify a bounded core alias cleanup.
 
 
@@ -56525,9 +56525,16 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T11:58:02.661850+00:00'
+    done_at: '2026-04-25T12:16:00.859187+00:00'
+    evidence: Removed `_issue` local alias from `src/larva/core/validate.py` and `src/larva/core/validation_field_shapes.py`.
+      Replaced all call-sites with direct `validation_issue()` invocations imported
+      from `validation_contract`. Ran `tests/core/test_validate.py` (56 passed) and
+      `invar guard --changed` (static + doctest passed, no errors/warnings). Verified
+      no `_issue` definitions or calls remain in either core file. No behavior changes
+      beyond alias removal; core/shell separation preserved.
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
-  status: locked
+  status: pending
   depends_on:
   - fresh_cleanup_20260425_impl
   steps:
