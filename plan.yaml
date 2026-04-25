@@ -55201,7 +55201,7 @@ phases:
       - No renamed one-consumer mixin replacement; obsolete mixin path removed.'
   - id: merge_debt_20260425.core-validation-issue-helper
     name: Extract core ValidationIssue builder
-    status: claimed
+    status: done
     description: 'Implement and verify the P1 core ValidationIssue builder extraction.
 
 
@@ -55335,6 +55335,28 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T08:28:34.362983+00:00'
+    done_at: '2026-04-25T08:38:45.356294+00:00'
+    evidence: "## refs Read Confirmation\n- AGENTS.md — core functions require contracts/doctest\
+      \ and pure-core discipline.\n- INVAR.md — `@pre`/`@post` contract shape and\
+      \ doctest expectations confirmed.\n- src/larva/core/validate.py — duplicate\
+      \ local `_issue()` builder identified and redirected.\n- src/larva/core/validation_field_shapes.py\
+      \ — duplicate local `_issue()` builder identified and redirected.\n- tests/core/test_validate.py\
+      \ — focused validate behavior coverage referenced.\n- tests/core/test_schema_validation.py\
+      \ — schema/field-shape coverage referenced.\n\n## Expected-Red Proof\n- Worker\
+      \ classified this as behavioral-preserving extraction with indistinguishable\
+      \ external behavior; no meaningful red-on-absence signal beyond contract guard.\
+      \ Guard/doctest and focused tests used as adversary.\n\n## Implementation Summary\n\
+      - Added canonical helper `validation_issue()` in `src/larva/core/validation_contract.py`.\n\
+      - Implemented non-vacuous `@pre` / `@post` and doctest examples on helper.\n\
+      - Updated duplicate builders in:\n  - `src/larva/core/validate.py`\n  - `src/larva/core/validation_field_shapes.py`\n\
+      \  to delegate to shared helper while preserving visible issue payloads.\n\n\
+      ## Core Contract Proof\n- `validation_issue()` includes `@pre`, `@post`, and\
+      \ doctest in core module.\n- Invar guard reports static/doctest/property/crosshair\
+      \ pass in worker evidence.\n\n## Green Proof\n```text\nuv run pytest tests/core/test_validate.py\
+      \ tests/core/test_schema_validation.py -q\n86 passed in 0.22s\n```\n```text\n\
+      invar_guard(path='.', changed=true) => passed\n```\n\n## Veto Confirmation\n\
+      - No core/shell merge.\n- No canonical schema meaning changes.\n- No framework-scale\
+      \ rewrite; only duplicate builder extraction."
   - id: merge_debt_20260425.core-structured-exception-helper
     name: Extract core structured exception builder
     status: pending
