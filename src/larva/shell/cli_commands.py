@@ -33,7 +33,7 @@ from larva.shell.cli_helpers import (
 from larva.shell.cli_doctor import doctor_registry_command
 from larva.shell.components import ComponentStore
 from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
-from larva.shell.shared.component_queries import query_component
+from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -435,7 +435,10 @@ def component_list_command(
     from larva.shell.cli_helpers import _map_component_error
 
     try:
-        result = component_store.list_components()
+        result = query_component_list(
+            component_store,
+            operation="cli.component_list",
+        )
     except Exception as error:
         error_envelope, exit_code = _map_component_error(error).unwrap()
         failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}

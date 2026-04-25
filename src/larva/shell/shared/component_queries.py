@@ -91,4 +91,30 @@ def query_component(
     return Success(payload)
 
 
-__all__ = ["ComponentPayload", "query_component"]
+def query_component_list(
+    component_store: ComponentStore,
+    *,
+    operation: str,
+) -> Result[dict[str, list[str]], LarvaError]:
+    """List all components using shared error projection.
+
+    Args:
+        component_store: Shell component store implementation.
+        operation: Transport-local operation name for projected error details.
+
+    Returns:
+        Success with the component inventory dict mapping type to name list.
+        Failure with the canonical projected LarvaError.
+    """
+    result = component_store.list_components()
+    if isinstance(result, Failure):
+        return Failure(
+            project_component_store_error(
+                operation=operation,
+                error=result.failure(),
+            )
+        )
+    return Success(result.unwrap())
+
+
+__all__ = ["ComponentPayload", "query_component", "query_component_list"]

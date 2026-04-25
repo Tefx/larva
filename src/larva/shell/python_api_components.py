@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.core.component_error_projection import project_component_store_error
 from larva.shell.components import FilesystemComponentStore
-from larva.shell.shared.component_queries import query_component
+from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
     from larva.app.facade import LarvaError
@@ -27,13 +26,13 @@ _component_store = FilesystemComponentStore()
 
 def _component_list_result() -> Result[dict[str, list[str]], LarvaError]:
     """Return component list as Result with LarvaError failures."""
-    result = _component_store.list_components()
+    result = query_component_list(
+        _component_store,
+        operation="python_api.component_list",
+    )
     if isinstance(result, Failure):
-        error = result.failure()
-        return Failure(
-            project_component_store_error(operation="python_api.component_list", error=error)
-        )
-    return Success(cast("dict[str, list[str]]", result.unwrap()))
+        return Failure(result.failure())
+    return Success(result.unwrap())
 
 
 def _component_show_result(component_type: str, name: str) -> Result[dict[str, object], LarvaError]:

@@ -43,7 +43,7 @@ from larva.shell.mcp_contract import (
 from larva.shell.mcp_export import handle_export as handle_export_tool
 from larva.shell.mcp_params import MCPParamValidationMixin
 from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_tool
-from larva.shell.shared.component_queries import query_component
+from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -128,15 +128,14 @@ class MCPHandlers(MCPParamValidationMixin):
                 reason="Component store not available",
             )
 
-        result = self._components.list_components()
+        result = query_component_list(
+            self._components,
+            operation="mcp.component_list",
+        )
         if isinstance(result, Failure):
-            error = result.failure()
-            return project_component_store_error(
-                operation="mcp.component_list",
-                error=error,
-            )
+            return result.failure()
 
-        return cast("dict[str, list[str]]", result.unwrap())
+        return result.unwrap()
 
     def _handle_component_show_impl(self, params: object) -> dict[str, object] | LarvaError:
         """Implementation for larva_component_show."""
