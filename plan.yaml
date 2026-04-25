@@ -55371,3 +55371,139 @@ phases:
     depends_on:
     - merge_debt_20260425.core-validation-issue-helper
     agent: python-executor
+  - id: merge_debt_20260425.component-list-query-helper
+    name: Extract shared component-list query
+    status: pending
+    description: 'Implement and verify the P1 component-list query consolidation.
+
+
+      Purpose: extract the duplicated store-query/error-projection portion of component
+      list into `src/larva/shell/shared/component_queries.py::query_component_list()`
+      or an equivalent narrow shell/shared helper.
+
+
+      Scope:
+
+      - Share only the store query and error projection across Python API, MCP, and
+      CLI component-list paths.
+
+      - Keep transport rendering separate: CLI text/JSON rendering, MCP envelope shape,
+      and Python API exceptions remain owned by their adapters.
+
+      - Update `src/larva/shell/python_api_components.py`, the current MCP handler
+      location after mixin cleanup, and `src/larva/shell/cli_commands.py`.
+
+      - Add/adjust focused tests for Python API, CLI, and MCP component list behavior.
+
+
+      VETO guardrails:
+
+      - Do NOT create `transport=''cli|mcp|web''` renderer unification.
+
+      - Do NOT create a boolean-flag request builder.
+
+      - Do NOT introduce `load_transform_save(...)`-style registry workflows.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      helper must call the injected store, map real errors, and return input-dependent
+      results consumed by each adapter.
+
+
+      ## Mechanical adversary requirement
+
+      Before product-code edits, add or strengthen tests (prefer property/characterization
+      over single examples) that fail until all three adapters route through the shared
+      query helper while preserving separate rendering. Capture Expected-Red, then
+      extract and turn green.'
+    verification: '- Expected-Red: focused adapter-routing tests fail before the shared
+      query helper is wired.
+
+      - Green: CLI/Python API/MCP component-list tests pass (`tests/shell/test_cli.py`,
+      `tests/shell/test_python_api.py`, `tests/shell/test_mcp.py`, plus MCP server/stdio
+      integration where component-list is covered).
+
+      - Full guard: `invar_guard` passes.
+
+      - Explicit proof that adapter rendering remains separate and only store query/error
+      projection moved to shell/shared.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/python_api_components.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/cli_commands.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_handler_ops.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_python_api.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_cli.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp_server.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp_stdio_integration.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Tests added/changed:
+
+      - Command run before product-code changes:
+
+      ```text
+
+      <paste failing output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Helper path/name:
+
+      - Adapter call sites updated:
+
+      - Rendering kept separate evidence:
+
+
+      ## Green Proof
+
+      - Component-list test outputs:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - `invar_guard` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - No generic transport renderer:
+
+      - No boolean-flag request builder:
+
+      - No registry workflow mega-helper:
+
+      - Core/shell boundary preserved:'
+    depends_on:
+    - merge_debt_20260425.core-structured-exception-helper
+    agent: python-executor
