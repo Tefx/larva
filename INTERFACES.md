@@ -152,8 +152,11 @@ surface:
 | `POST` | `/api/personas/clear` | Accept `{confirm}` and clear only on valid confirmation |
 | `POST` | `/api/personas/validate` | Accept PersonaSpec candidate and return validation report |
 | `POST` | `/api/personas/assemble` | Accept assembly request body and return assembled PersonaSpec |
+| `POST` | `/api/personas/export` | Accept `{all: true}` or `{ids: [str]}`; mutually exclusive selectors; return `{data: [PersonaSpec]}` |
+| `POST` | `/api/personas/update_batch` | Accept `{where: dict, patches: dict, dry_run?: bool}`; match-by-selector batch update; reject protected patch fields |
 | `GET` | `/api/components` | Return available prompt/toolset/constraint/model names |
 | `GET` | `/api/components/{component_type}/{name}` | Return one component or a typed HTTP error |
+| `GET` | `/api/components/projection` | Return UI-only component-kind projection metadata (display labels, descriptions) |
 
 ### PersonaSummary Shape
 
@@ -218,12 +221,17 @@ fidelity, not as separate normative API guarantees:
 
 #### Contrib-only convenience surface
 
-The supported direct script runtime exposes one extra convenience endpoint that
-is not part of the authoritative packaged contract:
+The supported direct script runtime exposes one extra convenience endpoint
+that is not part of the authoritative packaged contract:
 
 | Method | Path | Status |
 |-------|------|--------|
 | `POST` | `/api/personas/batch-update` | contrib-only convenience surface |
+
+This `/api/personas/batch-update` endpoint (hyphenated path) is a contributor
+convenience alias for the packaged `/api/personas/update_batch` (underscored
+path). The packaged `update_batch` endpoint is the normative REST contract;
+`batch-update` exists only in `contrib/web/server.py` for local review use.
 
 Downstream test scope should treat `/api/personas/batch-update` and its related
 UI hooks as separate contrib coverage rather than normative `larva serve`

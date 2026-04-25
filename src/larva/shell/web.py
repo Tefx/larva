@@ -6,17 +6,20 @@ Authoritative runtime boundary for the packaged web surface used by
 serves the single-file HTML UI from ``src/larva/shell/web_ui.html``.
 
 Normative REST contract for ``larva serve``:
-    GET    /                       -> packaged HTML UI
-    GET    /api/personas           -> list personas
-    GET    /api/personas/{id}      -> resolve persona
-    POST   /api/personas           -> validate + register persona
-    PATCH  /api/personas/{id}      -> patch + revalidate + register persona
-    DELETE /api/personas/{id}      -> delete persona
-    POST   /api/personas/clear     -> clear registry with confirmation
-    POST   /api/personas/validate  -> validate candidate spec
-    POST   /api/personas/assemble  -> assemble candidate spec
-    GET    /api/components         -> list component names
-    GET    /api/components/{t}/{n} -> load one component
+    GET    /                            -> packaged HTML UI
+    GET    /api/personas                -> list personas
+    GET    /api/personas/{id}           -> resolve persona
+    POST   /api/personas                -> validate + register persona
+    PATCH  /api/personas/{id}           -> patch + revalidate + register persona
+    DELETE /api/personas/{id}           -> delete persona
+    POST   /api/personas/clear          -> clear registry with confirmation
+    POST   /api/personas/validate      -> validate candidate spec
+    POST   /api/personas/assemble      -> assemble candidate spec
+    POST   /api/personas/export        -> export all or selected personas
+    POST   /api/personas/update_batch  -> batch update by selector + patch
+    GET    /api/components             -> list component names
+    GET    /api/components/{t}/{n}      -> load one component
+    GET    /api/components/projection  -> component-kind projection metadata
 
 Convenience-only UI behavior such as browser auto-open and clipboard copy lives
 above the REST contract and should not be treated as a separate API guarantee.
