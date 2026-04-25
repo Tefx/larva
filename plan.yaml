@@ -55689,13 +55689,13 @@ phases:
       \ workflow introduced."
 - id: merge_debt_20260425_test
   name: Merge Debt Follow-up Test
-  status: in_progress
+  status: done
   depends_on:
   - merge_debt_20260425
   steps:
   - id: merge_debt_20260425_test.aggregate-regression
     name: Aggregate regression and guard proof
-    status: claimed
+    status: done
     description: 'Run a read-only aggregate verification pass for the completed merge_debt_20260425
       changes. Do not modify product code. Execute the focused regression set covering
       MCP validation, MCP mixin removal, core validation issue helpers, structured
@@ -55771,9 +55771,31 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-25T09:53:12.486370+00:00'
+    done_at: '2026-04-25T09:58:47.246271+00:00'
+    evidence: "## Aggregate Regression & Invar Proof Report\n\nstep_intent: test_verify\n\
+      expected_result: green\nobserved_result: green\nfailure_alignment: expected\n\
+      verdict: PASS\nblockers: []\norchestrator_action_hint: COMPLETE\n\n## Behavioral\
+      \ Proof Register\n1) Command: `uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py\
+      \ tests/shell/test_mcp_stdio_integration.py tests/shell/test_python_api.py tests/shell/test_cli.py\
+      \ -q`\n   - headline: PASS\n   - proof_gap_status: NONE\n   - blocking_status:\
+      \ CLOSED\n   - gate_open_allowed: true\n2) Command: `uv run pytest tests/core/test_validate.py\
+      \ tests/core/test_schema_validation.py tests/core/test_normalize.py tests/core/test_patch.py\
+      \ tests/core/test_assemble.py -q`\n   - headline: PASS\n   - proof_gap_status:\
+      \ NONE\n   - blocking_status: CLOSED\n   - gate_open_allowed: true\n3) Command:\
+      \ `uv run invar guard --all`\n   - headline: PASS\n   - proof_gap_status: NONE\n\
+      \   - blocking_status: CLOSED\n   - gate_open_allowed: true\nuncertainty_sources:\
+      \ none\n\n## Failure Inventory\n| Status | Command/Test | File/Area | Observed\
+      \ failure | Blocks review? |\n|--------|--------------|-----------|------------------|----------------|\n\
+      | (no failures) | — | — | — | — |\n\n## Invar Boundary Check\n- Core contract/static\
+      \ boundary: GREEN (no static errors; doctest pass; crosshair verified with no\
+      \ counterexamples; property tests pass)\n- Shell Result/I/O boundary: GREEN\
+      \ (shell regression suites pass; no core boundary leakage)\n\n## Advisory Notes\n\
+      - invar guard emitted non-blocking size/complexity advisories in pre-existing\
+      \ areas (`core/assemble.py`, `app/facade.py`, `shell/components.py`), no blocker-class\
+      \ regressions."
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
-  status: locked
+  status: pending
   depends_on:
   - merge_debt_20260425_test
   steps:
