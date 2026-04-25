@@ -57292,7 +57292,7 @@ phases:
       - should_fix status: CLOSED.'
 - id: larva.operator_p2.rest_scope
   name: Operator P2 REST Scope and Route Decision
-  status: in_progress
+  status: done
   gate: Route-shape decision and source discovery complete before red tests
   depends_on:
   - fresh_cleanup_20260425_should_fix
@@ -57300,7 +57300,7 @@ phases:
   steps:
   - id: larva.operator_p2.rest_scope.decide_routes
     name: Decide packaged REST export/update_batch route shape
-    status: claimed
+    status: done
     description: 'step_type: planning
 
       agent_source: default
@@ -57416,6 +57416,128 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-25T19:22:59.552127+00:00'
+    done_at: '2026-04-25T19:26:43.971728+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - src/larva/shell/web.py — READ. `create_app` is the packaged `larva serve`
+      REST boundary; current normative inventory includes `/api/personas`, `/api/personas/{id}`,
+      `/api/personas/clear`, `/api/personas/validate`, `/api/personas/assemble`, and
+      component routes. Startup binds `127.0.0.1`, default port `7400`, optional `--no-open`.
+
+      - src/larva/app/facade.py — READ. `export_all()` lists/validates/normalizes
+      all registry specs; `export_ids(ids)` returns selected validated/normalized
+      specs and allows empty `ids` as `[]`; `update_batch(where, patches, dry_run=False)`
+      validates `where`, matches registry specs, returns dry-run items or delegates
+      each update to `update()`.
+
+      - src/larva/shell/mcp_export.py — READ. `larva_export` accepts only `all` or
+      `ids`, requires exactly one selector, requires `all` to be boolean true, validates
+      `ids` as list[string], then delegates to `facade.export_all()` or `facade.export_ids(ids)`.
+
+      - src/larva/shell/mcp_update_batch.py — READ. `larva_update_batch` allows only
+      `where`, `patches`, `dry_run`; requires `where` and `patches`; requires object/object/boolean
+      types; defaults `dry_run` to false; delegates to `facade.update_batch(where,
+      patches, dry_run)`.
+
+      - src/larva/shell/mcp.py — READ. Handler wiring delegates `handle_export` to
+      shared export handler and `handle_update_batch` to shared update_batch handler;
+      documented seam is MCP handler -> app facade, keeping business logic centralized.
+
+      - INTERFACES.md — READ. larva is downstream admission/projection, not canonical
+      owner; opifex owns canonical PersonaSpec. `src/larva/shell/web.py` is authoritative
+      packaged REST surface; `contrib/web/server.py` is a supported extension/local
+      review runtime, not packaged contract owner. Existing contrib `/api/personas/batch-update`
+      is explicitly contrib-only.
+
+      - ../opifex/design/final-canonical-contract.md — READ. opifex canonical authority
+      defines shared meaning; downstream repos are conformance targets/consumers,
+      never canonical authorities. PersonaSpec rules require `capabilities`, reject
+      `tools` and `side_effect_policy`, and say larva admits canonical PersonaSpec.
+
+
+      ## Route Decision
+
+      - Export route: `POST /api/personas/export` with top-level JSON object containing
+      exactly one selector: `{ "all": true }` OR `{ "ids": ["persona-id", ...] }`.
+
+      - Update batch route: `POST /api/personas/update_batch` with top-level JSON
+      object `{ "where": {...}, "patches": {...}, "dry_run": <bool optional, default
+      false> }`.
+
+      - Selector semantics: require exactly one of `all` or `ids`; fail closed on
+      missing selector, conflicting selectors, `all=false`, non-boolean `all`, non-list
+      `ids`, non-string id elements, malformed JSON, non-object body, and unknown
+      top-level keys. Existing MCP/facade evidence permits `ids: []` to return an
+      empty export unless a later canonical source tightens it.
+
+      - Update batch semantics: require object body with `where` and `patches`; `where`
+      and `patches` must be objects; `dry_run` optional and boolean, default false;
+      reject unknown top-level keys and malformed body. REST should perform transport-shape
+      validation, then delegate to existing facade/Python API seams for where validation,
+      protected patch field rejection, canonical PersonaSpec validation, and forbidden
+      legacy/shared field rejection.
+
+
+      ## Source Discovery
+
+      - Packaged web routes discovered: `src/larva/shell/web.py:create_app`, plus
+      `run_web_app`/`main` for `larva serve` startup. Current packaged REST surface
+      has no export or update_batch routes yet; new P2 routes should be added under
+      `/api/personas` because they are registry/persona operations.
+
+      - Facade semantics discovered: `DefaultLarvaFacade.export_all`, `export_ids`,
+      `update_batch`, and `update`. Export returns validated/normalized PersonaSpecs.
+      Batch update validates `where`, supports `dry_run`, and uses existing update/patch/validation
+      path for actual writes.
+
+      - MCP semantics discovered: `mcp_export.handle_export` provides the exact export
+      selector model; `mcp_update_batch.handle_update_batch` provides the exact update_batch
+      request model; `mcp.py` wires both through handler methods that delegate to
+      facade logic.
+
+      - Contrib web status: non-contractual; `contrib/web/server.py` explicitly marks
+      `/api/personas/batch-update` as contrib-only convenience and not part of authoritative
+      `larva serve` contract.
+
+
+      ## Rejected Alternatives
+
+      | Alternative | Rejected because |
+
+      | --- | --- |
+
+      | `GET /api/personas/export` with query params | Export selection has typed,
+      mutually exclusive body semantics in MCP (`all=true` xor `ids` list[string]);
+      POST with JSON body mirrors that shared handler shape and avoids query-string
+      ambiguity for list selectors. |
+
+      | `POST /api/export` | Export is persona registry-scoped; packaged REST inventory
+      groups persona registry operations under `/api/personas`, so `/api/personas/export`
+      preserves resource scope. |
+
+      | Component-level paths outside `/api/personas` | Export/update_batch operate
+      on PersonaSpecs in the registry, not components; component routes are separately
+      scoped under `/api/components`. |
+
+      | Reusing contrib-only `/api/personas/batch-update` as packaged contract | INTERFACES.md
+      and contrib server both state this endpoint is contrib-only convenience, not
+      authoritative `larva serve` contract. |
+
+      | Creating REST-only validation/patch logic | MCP and facade already define
+      selector, parameter, where, patch, and canonical validation seams; REST should
+      remain a transport adapter and delegate semantics to existing facade/Python
+      API paths. |
+
+
+      ## Open Questions
+
+      - Route-shape questions remaining: none.
+
+      - Spec questions remaining: none.
+
+
+      No product code was modified for this planning/scope step; worktree status was
+      clean after source discovery.'
 - id: larva.operator_p2.red_tests
   name: Operator P2 REST Expected-Red Tests
   status: done
@@ -57865,7 +57987,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
-  status: locked
+  status: pending
   gate: Expected-red packaged REST tests, endpoint implementation, and INTERFACES.md
     sync complete before verification gate
   depends_on:
