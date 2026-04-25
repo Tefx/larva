@@ -57290,3 +57290,10 @@ phases:
       - No repair patch required in this step (PASS_NOOP).
 
       - should_fix status: CLOSED.'
+- id: larva.operator_p2.rest_scope
+  name: Operator P2 REST Scope and Route Decision
+  status: pending
+  gate: Route-shape decision and source discovery complete before red tests
+  depends_on:
+  - fresh_cleanup_20260425_should_fix
+  - meta.gate
