@@ -57303,3 +57303,10 @@ phases:
   gate: Expected-red tests expose packaged REST export/update_batch gaps before implementation
   depends_on:
   - larva.operator_p2.rest_scope
+- id: larva.operator_p2.rest_endpoints
+  name: Operator P2 Packaged REST Endpoints
+  status: locked
+  gate: Packaged REST export/update_batch endpoints implemented through existing facade
+    semantics
+  depends_on:
+  - larva.operator_p2.red_tests
