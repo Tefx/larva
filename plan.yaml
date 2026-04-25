@@ -56600,3 +56600,124 @@ phases:
 
       PASS | PASS_WITH_DEBT | FAIL'
     agent: integration-verifier-tacit
+  - id: fresh_cleanup_20260425_verify.independent-review-audit
+    name: Independent review audit
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER, audit the implementation and aggregate
+      verification evidence for the fresh cleanup batch.
+
+
+      Review focus:
+
+      - The cleanup stayed minimal and did not expand into optional/future items.
+
+      - MCP malformed parameter behavior, especially invalid `dry_run`, is preserved.
+
+      - Public MCP `handle_*` behavior is preserved after flattening.
+
+      - Core `_issue` alias removal preserved validation issue shape and did not violate
+      core/shell boundaries.
+
+      - AGENTS.md/Invar obligations were honored: shell tests for shell changes, core
+      tests + full `invar_guard` for core changes.
+
+      - Anti-abstraction VETO: no Boolean Trap, unified transport renderer, schema
+      interpreter, or generic workflow was introduced.
+
+
+      Gate decision basis:
+
+      - OPEN only if aggregate tests and full `invar_guard` pass and no blocker-class
+      drift is found.
+
+      - BLOCK if evidence is missing, malformed behavior changed, core/shell boundary
+      is violated, or VETO abstraction appears.
+
+      - If BLOCK or should_fix exists, route to the conditional repair step with exact
+      findings.'
+    verification: '- Review report includes step-by-step evidence assessment.
+
+      - Gate decision basis explicitly lists OPEN/BLOCK and any unresolved behavioral-runtime
+      obligations.
+
+      - Any blocker or should_fix has a concrete remediation instruction for `fresh_cleanup_20260425_verify.conditional-repair-or-pass-noop`.
+
+      - Reviewer is independent from implementation agent.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/mcp_update_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_params.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validate.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validation_field_shapes.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_validate.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer-tacit
+
+      **Phase scope**: fresh_cleanup_20260425_impl + fresh_cleanup_20260425_verify
+      aggregate verification
+
+
+      ### Step-by-Step Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+
+      ### Gate Decision Basis
+
+      | requirement_ref | evidence_ref | status | unresolved_items | blocks_remaining_work
+      | rationale |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ### Issues Identified
+
+      | Severity | Description | Related Step | Blocking? | Required repair |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ### VETO Audit
+
+      - Boolean Trap: PASS/FAIL
+
+      - Unified transport renderer: PASS/FAIL
+
+      - Schema interpreter: PASS/FAIL
+
+      - Generic workflow: PASS/FAIL
+
+
+      ### Decision
+
+      OPEN | BLOCK
+
+
+      ### Conditional Repair Trigger
+
+      - PASS_NOOP allowed only when Decision=OPEN and no blocker/should_fix findings
+      remain.
+
+      - Repair required when Decision=BLOCK or any blocker/should_fix finding is listed.'
+    depends_on:
+    - fresh_cleanup_20260425_verify.aggregate-tests-and-full-guard
+    agent: gate-reviewer-tacit
