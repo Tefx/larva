@@ -56411,7 +56411,7 @@ phases:
       \ YES"
   - id: fresh_cleanup_20260425_impl.core-validation-issue-alias-cleanup
     name: Core validation issue alias cleanup
-    status: pending
+    status: claimed
     description: 'Implement and verify a bounded core alias cleanup.
 
 
@@ -56523,6 +56523,8 @@ phases:
     depends_on:
     - fresh_cleanup_20260425_impl.mcp-handler-flattening
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T11:58:02.661850+00:00'
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
   status: locked
