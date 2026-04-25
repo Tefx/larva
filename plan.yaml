@@ -58069,7 +58069,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
   - id: larva.operator_p2.gate.final_review
     name: Final independent review for operator P2 REST
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -58154,6 +58154,15 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-25T21:10:07.599994+00:00'
+    done_at: '2026-04-25T21:19:59.981833+00:00'
+    evidence: "Gate detector step completed with BLOCKING findings routed to batched\
+      \ remediation.\n\nheadline: FAIL\nproof_gap_status: BLOCKING\nblocking_status:\
+      \ OPEN\nverdict: FAIL\nblockers: [B1,B2,B3,B4]\ngate_open_allowed: false\norchestrator_action_hint:\
+      \ DO_NOT_COMPLETE\n\nDisposition:\n- B1/B2/B3/B4 aggregated into planner-created\
+      \ batched remediation path:\n  - larva.operator_p2.gate.fix_final_review_blockers_batch\n\
+      \  - larva.operator_p2.gate.retest_final_review_blockers_batch\n\nThis step\
+      \ remains an evidence-producing detector; closure ownership transferred to fix/retest\
+      \ chain per batched fix protocol."
   - id: larva.operator_p2.gate.fix_final_review_blockers_batch
     name: Batch fix final review blockers B1-B4
     status: pending
