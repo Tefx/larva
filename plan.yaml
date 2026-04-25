@@ -57420,6 +57420,108 @@ phases:
   gate: Expected-red tests expose packaged REST export/update_batch gaps before implementation
   depends_on:
   - larva.operator_p2.rest_scope
+  steps:
+  - id: larva.operator_p2.red_tests.define_red_rest_gaps
+    name: Define expected-red packaged REST P2 tests
+    status: pending
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nagent_source: default\n\nAdd test-only coverage that exposes the current\
+      \ packaged REST gaps before endpoint implementation. Scope is tests and fixtures\
+      \ only; do not modify `src/` product code in this step.\n\nTargets to expose\
+      \ as red:\n1. Packaged REST export absence/mismatch for `POST /api/personas/export`:\n\
+      \   - `{ \"all\": true }` selector returns `{data: PersonaSpec[]}` through facade\
+      \ semantics.\n   - `{ \"ids\": [...] }` selector preserves requested order and\
+      \ returns `{data: PersonaSpec[]}`.\n   - conflicting selectors fail closed with\
+      \ existing web REST error envelope.\n   - missing selector and `all=false` fail\
+      \ closed.\n2. Packaged REST update_batch absence/mismatch for `POST /api/personas/update_batch`:\n\
+      \   - `dry_run=true` returns matched items with `updated: 0` and no mutation.\n\
+      \   - non-dry-run returns matched/updated counts and item statuses.\n   - validation\
+      \ happens before mutation; invalid/protected patches do not partially update\
+      \ registry state.\n3. Canonical admission invariants through REST:\n   - `tools`\
+      \ rejected.\n   - `side_effect_policy` rejected.\n   - protected fields (`id`,\
+      \ `spec_version`, `spec_digest`) fail closed for update_batch patches.\n   -\
+      \ successful export preserves `spec_digest` format exactly as `sha256:<64 lowercase\
+      \ hex chars>`.\n4. No contrib dependency:\n   - tests instantiate/exercise packaged\
+      \ `larva.shell.web` / `larva serve` contract only.\n   - tests must not import\
+      \ or call `contrib/web/server.py`.\n\nMechanical adversary requirements:\n-\
+      \ First run the new focused tests against current code and capture failing output\
+      \ (Expected-Red) before implementation starts.\n- Use Hypothesis/property-based\
+      \ checks where practical for selector malformed payloads, protected patch fields,\
+      \ and `spec_digest` format; do not rely only on one-off examples.\n- Evidence\
+      \ must include test names and failing output, not a summary.\n\nSpec-Fixture\
+      \ Conformance:\n- At least one fixture must use the exact PersonaSpec shape\
+      \ from INTERFACES.md/opifex with `capabilities`, not `tools`.\n- Forbidden fields\
+      \ must appear only in negative fixtures."
+    verification: '- New tests are limited to `tests/` plus test fixtures/helpers.
+
+      - Focused test command is run before implementation and fails for the intended
+      packaged REST gaps.
+
+      - Failure output demonstrates missing/mismatched packaged REST export and update_batch
+      behavior, not unrelated import/setup failure.
+
+      - Tests assert no contrib web server dependency for packaged REST coverage.
+
+      - Canonical negative fixtures confirm `tools`, `side_effect_policy`, and protected
+      fields fail closed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Expected-Red Proof
+
+      **Focused command run before implementation:**
+
+      ```
+
+      <paste exact command>
+
+      ```
+
+      **Failing output:**
+
+      ```
+
+      <paste failing output showing export/update_batch REST gap>
+
+      ```
+
+
+      ## Tests Added
+
+      | Test name | Obligation exposed | Expected current result |
+
+      |---|---|---|
+
+      | <test> | <export/update_batch/invariant/no-contrib> | RED |
+
+
+      ## Property-Based / Contract Coverage
+
+      - Selector malformed payloads: <Hypothesis/property test names or justification>
+
+      - Protected patch fields: <Hypothesis/property test names or justification>
+
+      - spec_digest format: <Hypothesis/property test names or justification>
+
+
+      ## Scope Guard
+
+      - Product code modified: MUST be `none`
+
+      - Contrib imports/calls in packaged REST tests: MUST be `none`
+
+
+      ## Downstream Owner
+
+      - Implementation step expected to turn these red tests green: `larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints`'
+    agent: python-executor
 - id: larva.operator_p2.rest_endpoints
   name: Operator P2 Packaged REST Endpoints
   status: locked
