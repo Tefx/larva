@@ -54861,13 +54861,13 @@ phases:
       \ requested non-blocking debts."
 - id: merge_debt_20260425
   name: Merge Review Debt Demolition
-  status: pending
+  status: in_progress
   depends_on:
   - post_prompt_opacity_debt_cleanup_20260419
   steps:
   - id: merge_debt_20260425.mcp-validation
     name: Centralize MCP parameter validation
-    status: pending
+    status: claimed
     description: 'Implement and verify the P0 MCP validation consolidation.
 
 
@@ -54982,6 +54982,8 @@ phases:
 
       - Core/shell boundary preserved:'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T08:07:10.658856+00:00'
   - id: merge_debt_20260425.mcp-mixin-cleanup
     name: Remove MCPHandlerOpsMixin indirection
     status: pending
