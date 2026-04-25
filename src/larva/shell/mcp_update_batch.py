@@ -10,12 +10,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from returns.result import Failure, Result
 
-from larva.shell.shared.request_validation import (
-    reject_unknown_params,
-    require_param,
-    require_params_object,
-    require_type,
-)
+from larva.shell.shared.mcp_handler_helpers import MalformedParamsBuilder, validate_mcp_params
 
 if TYPE_CHECKING:
     from returns.result import Result
@@ -58,54 +53,33 @@ def _handle_update_batch_impl(
     handlers: UpdateBatchHandlerDeps,
     params: object,
 ) -> Result[BatchUpdateResult, LarvaError]:
-    params_result = require_params_object(params)
-    if isinstance(params_result, Failure):
-        issue = params_result.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
-    checked_params = params_result.unwrap()
+    # Route params-object / unknown / required / typed validation through shared helper
+    validation_result = validate_mcp_params(
+        tool_name="larva_update_batch",
+        params=params,
+        malformed_error=handlers._malformed_params_error,
+        allowed_keys={"where", "patches", "dry_run"},
+        required_keys=("where", "patches"),
+        typed_keys=(("where", dict, "object"), ("patches", dict, "object")),
+    )
+    if isinstance(validation_result, Failure):
+        return validation_result
 
-    unknown_result = reject_unknown_params(checked_params, {"where", "patches", "dry_run"})
-    if isinstance(unknown_result, Failure):
-        issue = unknown_result.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
+    checked_params = validation_result.unwrap()
 
-    where_required = require_param(checked_params, "where")
-    if isinstance(where_required, Failure):
-        issue = where_required.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
-
-    patches_required = require_param(checked_params, "patches")
-    if isinstance(patches_required, Failure):
-        issue = patches_required.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
-
-    where_type = require_type(checked_params, "where", dict, "object")
-    if isinstance(where_type, Failure):
-        issue = where_type.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
-
-    patches_type = require_type(checked_params, "patches", dict, "object")
-    if isinstance(patches_type, Failure):
-        issue = patches_type.failure()
-        return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
-
+    # dry_run type rejection (optional, must be bool if present)
     if "dry_run" in checked_params:
+        from larva.shell.shared.request_validation import require_type
+
         dry_run_type = require_type(checked_params, "dry_run", bool, "boolean")
         if isinstance(dry_run_type, Failure):
             issue = dry_run_type.failure()
-            return _validation_failure(handlers, "larva_update_batch", issue.reason, issue.details)
+            return Failure(handlers._malformed_params_error(
+                "larva_update_batch", issue.reason, issue.details
+            ))
 
     where = checked_params["where"]
     patches = checked_params["patches"]
     dry_run = checked_params.get("dry_run", False)
 
     return handlers._facade.update_batch(where, patches, dry_run)
-
-
-def _validation_failure(
-    handlers: UpdateBatchHandlerDeps,
-    tool_name: str,
-    reason: str,
-    details: dict[str, object],
-) -> Result[BatchUpdateResult, LarvaError]:
-    return Failure(handlers._malformed_params_error(tool_name, reason, details))

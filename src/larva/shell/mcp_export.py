@@ -8,14 +8,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
-from returns.result import Failure, Success
+from returns.result import Failure, Result, Success
 
-from larva.shell.shared.request_validation import (
-    reject_unknown_params,
-    require_list_of_strings,
-    require_params_object,
-    require_type,
-)
+from larva.shell.shared.mcp_handler_helpers import validate_mcp_params
 
 if TYPE_CHECKING:
     from returns.result import Result
@@ -56,16 +51,23 @@ def _handle_export_impl(
     handlers: ExportHandlerDeps,
     params: object,
 ) -> Result[list[PersonaSpec], LarvaError]:
-    params_result = require_params_object(params)
-    if isinstance(params_result, Failure):
-        issue = params_result.failure()
-        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
-    checked_params = params_result.unwrap()
-    unknown_result = reject_unknown_params(checked_params, {"all", "ids"})
-    if isinstance(unknown_result, Failure):
-        issue = unknown_result.failure()
-        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
+    # Route params-object / unknown / typed / list-string validation through shared helper
+    # Note: XOR (all vs ids) is kept LOCAL as it is a business rule, not structural validation
+    validation_result = validate_mcp_params(
+        tool_name="larva_export",
+        params=params,
+        malformed_error=handlers._malformed_params_error,
+        allowed_keys={"all", "ids"},
+        required_keys=(),  # neither required - XOR handles this
+        typed_keys=(("all", bool, "boolean"),),
+        list_string_keys=("ids",),
+    )
+    if isinstance(validation_result, Failure):
+        return validation_result
 
+    checked_params = validation_result.unwrap()
+
+    # Local XOR rule: must specify exactly one of all=true or ids
     export_target = _validate_export_target(handlers, checked_params)
     if isinstance(export_target, Failure):
         return Failure(export_target.failure())
@@ -81,7 +83,11 @@ def _validate_export_target(
     handlers: ExportHandlerDeps,
     checked_params: dict[str, Any],
 ) -> Result[tuple[bool, list[str]], LarvaError]:
-    """Validate export selector and return execution target."""
+    """Validate export selector and return execution target.
+
+    XOR rule is kept LOCAL because it is a business rule (exactly one selector
+    must be provided), not a structural validation that validate_mcp_params handles.
+    """
 
     has_all = "all" in checked_params
     has_ids = "ids" in checked_params
@@ -104,10 +110,7 @@ def _validate_export_target(
         )
 
     if has_all:
-        type_result = require_type(checked_params, "all", bool, "boolean")
-        if isinstance(type_result, Failure):
-            issue = type_result.failure()
-            return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
+        # all=True required; all=False is a selector semantics violation (handled by XOR)
         if checked_params["all"] is False:
             return Failure(
                 handlers._malformed_params_error(
@@ -118,17 +121,5 @@ def _validate_export_target(
             )
         return Success((cast("bool", checked_params["all"]), []))
 
-    list_result = require_list_of_strings(checked_params, "ids")
-    if isinstance(list_result, Failure):
-        issue = list_result.failure()
-        return _validation_failure(handlers, "larva_export", issue.reason, issue.details)
+    # has_ids case - ids already validated as list[string] by validate_mcp_params
     return Success((False, cast("list[str]", checked_params["ids"])))
-
-
-def _validation_failure(
-    handlers: ExportHandlerDeps,
-    tool_name: str,
-    reason: str,
-    details: dict[str, object],
-) -> Result[Any, LarvaError]:
-    return Failure(handlers._malformed_params_error(tool_name, reason, details))

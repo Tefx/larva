@@ -2858,3 +2858,184 @@ class TestSharedMCPRequestValidation:
             reason="shared validator sentinel",
         )
         assert result["details"]["received_type"] == "sentinel"
+
+    # ---------------------------------------------------------------------
+    # Characterization tests for update_batch isolate route
+    # ---------------------------------------------------------------------
+
+    def test_update_batch_rejects_unknown_params_via_isolated_handler(self) -> None:
+        """Unknown params must be rejected at shared validation boundary."""
+        facade = _make_facade(registry=InMemoryRegistryStore())
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {
+                "where": {"model": "gpt-4o-mini"},
+                "patches": {"description": "Test"},
+                "extra": "unknown_param",
+            },
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="unknown parameter(s)",
+        )
+        assert error["details"]["unknown"] == ["extra"]
+
+    def test_update_batch_rejects_missing_where_via_isolated_handler(self) -> None:
+        """Missing required 'where' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"patches": {"description": "Test"}},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="missing required parameter 'where'",
+        )
+
+    def test_update_batch_rejects_missing_patches_via_isolated_handler(self) -> None:
+        """Missing required 'patches' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"where": {"model": "gpt-4o-mini"}},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="missing required parameter 'patches'",
+        )
+
+    def test_update_batch_rejects_wrong_type_where_via_isolated_handler(self) -> None:
+        """Wrong type for 'where' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"where": "not-an-object", "patches": {"description": "Test"}},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="parameter 'where' must be object",
+        )
+
+    def test_update_batch_rejects_wrong_type_patches_via_isolated_handler(self) -> None:
+        """Wrong type for 'patches' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"where": {"model": "gpt-4o-mini"}, "patches": ["not", "an", "object"]},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="parameter 'patches' must be object",
+        )
+
+    def test_update_batch_rejects_wrong_type_dry_run_via_isolated_handler(self) -> None:
+        """Wrong type for 'dry_run' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_update_batch_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {
+                "where": {"model": "gpt-4o-mini"},
+                "patches": {"description": "Test"},
+                "dry_run": "true",  # String instead of boolean
+            },
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_update_batch",
+            reason="parameter 'dry_run' must be boolean",
+        )
+
+    # ---------------------------------------------------------------------
+    # Characterization tests for export isolate route
+    # ---------------------------------------------------------------------
+
+    def test_export_rejects_all_plus_ids_via_isolated_handler(self) -> None:
+        """Both 'all' and 'ids' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_export_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"all": True, "ids": ["persona-1"]},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="cannot specify both 'all' and 'ids'",
+        )
+
+    def test_export_rejects_neither_all_nor_ids_via_isolated_handler(self) -> None:
+        """Missing both 'all' and 'ids' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {})
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="must specify either 'all' or 'ids'",
+        )
+
+    def test_export_rejects_all_false_via_isolated_handler(self) -> None:
+        """'all=False' must be rejected at XOR boundary, not at type check."""
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
+        facade = _make_facade(registry=registry)
+        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {"all": False})
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="must specify either 'all' or 'ids'",
+        )
+        # Verify registry was NOT called (all=False triggers XOR, not all=True path)
+        assert registry.list_calls == 0
+
+    def test_export_rejects_unknown_params_via_isolated_handler(self) -> None:
+        """Unknown params must be rejected at shared validation boundary."""
+        registry = InMemoryRegistryStore(list_result=Success([]))
+        facade = _make_facade(registry=registry)
+        result = handle_export_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"all": True, "extra": "param"},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="unknown parameter(s)",
+        )
+        assert error["details"]["unknown"] == ["extra"]
+
+    def test_export_rejects_non_list_ids_via_isolated_handler(self) -> None:
+        """Non-list 'ids' must be rejected at shared validation boundary."""
+        facade = _make_facade()
+        result = handle_export_impl(
+            IsolatedMCPHandlerDeps(facade),
+            {"ids": "not-a-list"},
+        )
+        assert isinstance(result, Failure)
+        error = result.failure()
+        _assert_malformed_params_error(
+            error,
+            tool="larva_export",
+            reason="parameter 'ids' must be list[string]",
+        )
