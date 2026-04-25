@@ -55692,6 +55692,83 @@ phases:
   status: pending
   depends_on:
   - merge_debt_20260425
+  steps:
+  - id: merge_debt_20260425_test.aggregate-regression
+    name: Aggregate regression and guard proof
+    status: pending
+    description: 'Run a read-only aggregate verification pass for the completed merge_debt_20260425
+      changes. Do not modify product code. Execute the focused regression set covering
+      MCP validation, MCP mixin removal, core validation issue helpers, structured
+      exception helpers, component-list query behavior, plus invar_guard for core/shell
+      boundary compliance. Produce an explicit failure inventory for the review phase.
+
+
+      Scope anchors:
+
+      - Core files remain subject to Invar: @pre/@post + doctest, no I/O imports.
+
+      - Shell files must preserve Result-style I/O boundary behavior.
+
+      - This is a verification step, not an implementation step; failures are valuable
+      evidence and must be listed rather than patched here.'
+    verification: 'local-check protecting merge_debt_20260425_review. Required proof:
+      run focused relevant tests and invar_guard; capture pass/fail output; produce
+      a failure inventory with file/test/command/observed error. No code changes are
+      allowed in this step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Aggregate Regression Evidence
+
+      **Commands executed**:
+
+      ```
+
+      <focused pytest commands for MCP/core/components>
+
+      <invar_guard command/result>
+
+      ```
+
+
+      **Actual output summary**:
+
+      ```
+
+      <paste key stdout/stderr, not just "passed">
+
+      ```
+
+
+      ## Failure Inventory
+
+      | Status | Command/Test | File/Area | Observed failure | Blocks review? |
+
+      |--------|--------------|-----------|------------------|----------------|
+
+      | PASS/FAIL | <command> | <path> | <error or none> | YES/NO |
+
+
+      ## Invar Boundary Check
+
+      - Core contract/static boundary: PASS/FAIL with evidence
+
+      - Shell I/O/Result boundary: PASS/FAIL with evidence
+
+
+      ## Headline
+
+      - [ ] PASS: focused tests and invar_guard passed
+
+      - [ ] FAIL: failures listed above for conditional repair closure'
+    agent: integration-verifier-tacit
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
   status: locked
