@@ -55359,7 +55359,7 @@ phases:
       \ rewrite; only duplicate builder extraction."
   - id: merge_debt_20260425.core-structured-exception-helper
     name: Extract core structured exception builder
-    status: claimed
+    status: done
     description: 'Implement and verify the P1 core structured exception builder extraction.
 
 
@@ -55496,6 +55496,32 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T08:39:03.981181+00:00'
+    done_at: '2026-04-25T09:09:20.640272+00:00'
+    evidence: "## refs Read Confirmation\n- AGENTS.md — core contract/doctest + pure-core\
+      \ constraints applied.\n- INVAR.md — `@pre`/`@post` semantics and doctest discipline\
+      \ followed.\n- src/larva/core/normalize.py — `_normalize_error` duplicate constructor\
+      \ replaced via shared helper while wrapper retained.\n- src/larva/core/patch.py\
+      \ — `_patch_error` duplicate constructor replaced via shared helper while wrapper\
+      \ retained.\n- src/larva/core/assembly_error.py — `assembly_error` wrapper retained,\
+      \ delegated to shared helper.\n- tests/core/test_normalize.py / tests/core/test_patch.py\
+      \ / tests/core/test_assemble.py — wrapper behavior invariants validated.\n\n\
+      ## Expected-Red Proof\n- Initial merge attempt hit hook failure: `invar guard`\
+      \ CrossHair counterexample on new helper file (`_structured_error.py`).\n- Root-cause\
+      \ remediation executed: simplified helper contract/type signature for CrossHair-verifiable\
+      \ semantics.\n\n## Implementation Summary\n- Added shared helper `src/larva/core/_structured_error.py`\
+      \ for structured exception construction.\n- Refactored wrappers to delegate:\n\
+      \  - `src/larva/core/normalize.py::_normalize_error`\n  - `src/larva/core/patch.py::_patch_error`\n\
+      \  - `src/larva/core/assembly_error.py::assembly_error`\n- Preserved domain\
+      \ wrappers and error taxonomy.\n- Remediation fix: replaced unverifiable generic\
+      \ TypeVar/`callable(...)` precondition with CrossHair-friendly `isinstance(exc_class,\
+      \ type) and issubclass(..., Exception)` contracts.\n\n## Core Contract Proof\n\
+      - Helper includes non-vacuous `@pre`, `@post`, and doctest.\n- CrossHair verification\
+      \ after remediation succeeded on helper path (worker evidence).\n\n## Green\
+      \ Proof\n```text\nuv run pytest tests/core/test_normalize.py tests/core/test_patch.py\
+      \ tests/core/test_assemble.py -q\n111 passed in 0.22s\n```\n```text\ninvar guard\
+      \ passed after remediation (CrossHair verified helper; no static/doctest/property\
+      \ failures)\n```\n\n## Veto Confirmation\n- No generic public API replacing\
+      \ wrappers.\n- No error taxonomy changes.\n- No core/shell boundary merge."
   - id: merge_debt_20260425.component-list-query-helper
     name: Extract shared component-list query
     status: pending
