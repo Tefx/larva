@@ -56129,13 +56129,13 @@ phases:
       - blockers: []'
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
-  status: pending
+  status: in_progress
   depends_on:
   - merge_debt_20260425_review
   steps:
   - id: fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
     name: MCP validation residue cleanup
-    status: pending
+    status: claimed
     description: 'Implement and verify a bounded MCP parameter-validation cleanup.
 
 
@@ -56254,6 +56254,8 @@ phases:
 
       - Core/shell boundary preserved? YES'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T11:03:28.238125+00:00'
   - id: fresh_cleanup_20260425_impl.mcp-handler-flattening
     name: MCP handler flattening
     status: pending
