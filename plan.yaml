@@ -57297,3 +57297,9 @@ phases:
   depends_on:
   - fresh_cleanup_20260425_should_fix
   - meta.gate
+- id: larva.operator_p2.red_tests
+  name: Operator P2 REST Expected-Red Tests
+  status: locked
+  gate: Expected-red tests expose packaged REST export/update_batch gaps before implementation
+  depends_on:
+  - larva.operator_p2.rest_scope
