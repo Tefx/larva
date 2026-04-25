@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import hashlib
 import json
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from returns.result import Failure, Result, Success
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from larva.core.spec import PersonaSpec
 
 
-def _digest_for(spec: dict[str, object]) -> str:
+def _digest_for(spec: Mapping[str, object]) -> str:
     payload = {k: v for k, v in spec.items() if k != "spec_digest"}
     canonical_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(canonical_json.encode('utf-8')).hexdigest()}"

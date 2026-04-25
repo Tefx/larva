@@ -20,16 +20,19 @@ Sources:
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Iterator
+
+    from larva.app.facade_types import AssembleModule, LarvaFacade, NormalizeModule, ValidateModule
+    from larva.core.spec import PersonaSpec
 
 # FastAPI/TestClient imports are optional at module load time
 pytest.importorskip("fastapi")
@@ -37,14 +40,9 @@ pytest.importorskip("httpx")
 
 from starlette.testclient import TestClient
 
-from larva.core.spec import PersonaSpec
-from larva.shell import web as web_module
+from larva.shell.shared import facade_factory
 from larva.shell.web import app
-from tests.shell.fixture_taxonomy import (
-    canonical_persona_spec,
-    historical_persona_spec_with_legacy_fields,
-)
-
+from tests.shell.fixture_taxonomy import canonical_persona_spec
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -55,6 +53,53 @@ def _canonical_spec(persona_id: str) -> PersonaSpec:
     """Return a canonical PersonaSpec suitable for REST registration."""
     spec = canonical_persona_spec(persona_id)
     return spec
+
+
+def _registry_file_hashes(home: Path) -> dict[str, str]:
+    """Return a deterministic content snapshot for the default registry root."""
+    registry_root = home / ".larva" / "registry"
+    if not registry_root.exists():
+        return {}
+    hashes: dict[str, str] = {}
+    for path in sorted(registry_root.rglob("*")):
+        if path.is_file():
+            relative_path = path.relative_to(registry_root).as_posix()
+            hashes[relative_path] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashes
+
+
+@pytest.fixture(autouse=True)
+def isolated_web_registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
+    """Run packaged REST tests against an isolated registry, never the user's default one."""
+    from larva.app.facade import DefaultLarvaFacade
+    from larva.core import assemble as assemble_module
+    from larva.core import normalize as normalize_module
+    from larva.core import spec as spec_module
+    from larva.core import validate as validate_module
+    from larva.shell.components import FilesystemComponentStore
+    from larva.shell.registry import FileSystemRegistryStore
+
+    default_home = Path.home()
+    before_default_registry = _registry_file_hashes(default_home)
+    isolated_home = tmp_path / "home"
+    isolated_home.mkdir()
+    isolated_registry_root = isolated_home / ".larva" / "registry"
+
+    def build_isolated_facade() -> LarvaFacade:
+        return DefaultLarvaFacade(
+            spec=spec_module,
+            assemble=cast("AssembleModule", assemble_module),
+            validate=cast("ValidateModule", validate_module),
+            normalize=cast("NormalizeModule", normalize_module),
+            components=FilesystemComponentStore(),
+            registry=FileSystemRegistryStore(root=isolated_registry_root),
+        )
+
+    monkeypatch.setenv("HOME", str(isolated_home))
+    monkeypatch.setattr(facade_factory, "build_default_facade", build_isolated_facade)
+    yield
+    after_default_registry = _registry_file_hashes(default_home)
+    assert after_default_registry == before_default_registry
 
 
 # ---------------------------------------------------------------------------
@@ -234,10 +279,10 @@ class TestPackagedRestUpdateBatchGap:
 class TestCanonicalAdmissionThroughRest:
     """Canonical invariants via packaged REST surface."""
 
-    def test_post_api_personas_rejects_tools_field(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_post_api_personas_rejects_tools_field(self) -> None:
         """POST /api/personas must reject canonical ``tools`` field."""
         client = TestClient(app)
-        bad_spec = _canonical_spec("tools-test")
+        bad_spec = cast("dict[str, Any]", dict(_canonical_spec("tools-test")))
         bad_spec["tools"] = {"shell": "read_write"}
         resp = client.post("/api/personas", json=bad_spec)
         assert resp.status_code == 400
@@ -246,7 +291,7 @@ class TestCanonicalAdmissionThroughRest:
     def test_post_api_personas_rejects_side_effect_policy(self) -> None:
         """POST /api/personas must reject ``side_effect_policy`` field."""
         client = TestClient(app)
-        bad_spec = _canonical_spec("sep-test")
+        bad_spec = cast("dict[str, Any]", dict(_canonical_spec("sep-test")))
         bad_spec["side_effect_policy"] = "read_only"
         resp = client.post("/api/personas", json=bad_spec)
         assert resp.status_code == 400
