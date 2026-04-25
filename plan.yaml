@@ -57563,7 +57563,7 @@ phases:
   steps:
   - id: larva.operator_p2.gate.targeted_rest_tests
     name: Run targeted packaged REST tests
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -57690,6 +57690,29 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-25T20:15:23.132744+00:00'
+    done_at: '2026-04-25T20:32:09.601243+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Verification Report\nTester: integration-verifier-tacit (independent)\nScope:\
+      \ packaged REST export/update_batch targeted tests\nIndependence Level: L1\n\
+      \n## Test Execution\nCommands executed:\n- `.venv/bin/python -m pytest tests/shell/test_web_rest_gaps.py\
+      \ -v --tb=long`\n- `.venv/bin/python -m pytest tests/shell/test_web.py -v --tb=long`\n\
+      \nActual output:\n- `tests/shell/test_web_rest_gaps.py`: `17 passed`\n- `tests/shell/test_web.py`:\
+      \ `46 passed`\n\n## Requirement Coverage Register\n- export all selector: PROVEN\n\
+      - export ids selector: PROVEN\n- selector fail-closed (conflict/missing/all=false):\
+      \ PROVEN\n- update_batch dry_run: PROVEN\n- update_batch matched/updated counts:\
+      \ PROVEN\n- validation-before-mutation: PROVEN\n- protected fields fail closed:\
+      \ PROVEN\n- `tools` rejected: PROVEN\n- `side_effect_policy` rejected: PROVEN\n\
+      - `spec_digest` format preserved: PROVEN\n- no contrib dependency: PROVEN\n\n\
+      ## No-contrib proof\n- AST/import trace in `tests/shell/test_web_rest_gaps.py`\
+      \ contains no contrib imports.\n- runtime check found zero `contrib.web` modules\
+      \ loaded.\n- `/api/personas/batch-update` absent from packaged app (405), confirming\
+      \ contrib convenience path not part of packaged contract.\n\nbehavioral_proof_register:\n\
+      \  headline: PASS\n  proof_gap_status: NONE\n  blocking_status: CLOSED\n  verdict:\
+      \ PASS\n  blockers: []\n  orchestrator_action_hint: COMPLETE\n  gate_open_allowed:\
+      \ true\n\nstep_intent: verification\nexpected_result: targeted packaged REST\
+      \ gate checks pass with no blockers\nobserved_result: PASS\nfailure_alignment:\
+      \ n/a\nverdict: PASS\nblockers: []\nwhether any product implementation files\
+      \ were modified: false"
   - id: larva.operator_p2.gate.packaged_serve_smoke
     name: Smoke packaged larva serve REST runtime
     status: claimed
