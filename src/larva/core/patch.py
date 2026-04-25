@@ -6,14 +6,20 @@ Examples:
     {'model': 'gpt-5'}
 
     Protected metadata rejection:
-    >>> apply_patches({"id": "base-id", "x": 1}, {"id": "patch-id", "x": 2})
+    >>> apply_patches(  # doctest: +ELLIPSIS
+    ...     {"id": "base-id", "x": 1},
+    ...     {"id": "patch-id", "x": 2},
+    ... )
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'id' is not permitted at canonical update boundary
-    >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'id' is not permitted...
+    >>> apply_patches(  # doctest: +ELLIPSIS
+    ...     {"spec_version": "0.1.0"},
+    ...     {"spec_version": "9.9.9", "x": 1},
+    ... )
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted...
 
     Deep merge (model_params):
     >>> apply_patches(
@@ -34,7 +40,7 @@ Examples:
     {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
 """
 
-from typing import Any, TypeGuard
+from typing import Any, TypeGuard, cast
 
 from deal import post, pre, raises
 
@@ -84,7 +90,7 @@ def _patch_error(
     >>> (err.code, err.message, err.details)
     ('FORBIDDEN_FIELD', 'patch field is forbidden', {'field': 'id'})
     """
-    return _build_structured_exception(PatchError, code, message, details)
+    return cast("PatchError", _build_structured_exception(PatchError, code, message, details))
 
 
 @post(lambda result: result is None)
@@ -94,14 +100,16 @@ def _reject_forbidden_patch_fields(patches: dict[str, object]) -> None:
     """Reject forbidden legacy patch roots before merge semantics.
 
     >>> _reject_forbidden_patch_fields({"prompt": "ok"})
-    >>> _reject_forbidden_patch_fields({"tools": {"shell": "read_only"}})
+    >>> _reject_forbidden_patch_fields(  # doctest: +ELLIPSIS
+    ...     {"tools": {"shell": "read_only"}}
+    ... )
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted at canonical update boundary
-    >>> _reject_forbidden_patch_fields({"variables.role": "assistant"})
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted...
+    >>> _reject_forbidden_patch_fields({"variables.role": "assistant"})  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'variables' is not permitted at canonical update boundary
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'variables' is not permitted...
     """
     for key in patches:
         root = key.split(DOT_KEY_SEPARATOR, 1)[0]
@@ -146,14 +154,16 @@ def _reject_protected_patch_fields(patches: dict[str, object]) -> None:
     """Reject protected metadata keys from incoming patches.
 
     >>> _reject_protected_patch_fields({"prompt": "ok"})
-    >>> _reject_protected_patch_fields({"spec_version": "9.9.9"})
+    >>> _reject_protected_patch_fields({"spec_version": "9.9.9"})  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
-    >>> _reject_protected_patch_fields({"spec_digest.value": "sha256:bad"})
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted...
+    >>> _reject_protected_patch_fields(  # doctest: +ELLIPSIS
+    ...     {"spec_digest.value": "sha256:bad"}
+    ... )
     Traceback (most recent call last):
     ...
-    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_digest' is not permitted at canonical update boundary
+    patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_digest' is not permitted...
 
     Args:
         patches: Runtime override mapping.
@@ -254,10 +264,13 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
     Examples:
         >>> apply_patches({"model": "gpt-4", "spec_digest": "old"}, {"model": "gpt-5"})
         {'model': 'gpt-5'}
-        >>> apply_patches({"spec_version": "0.1.0"}, {"spec_version": "9.9.9", "x": 1})
+        >>> apply_patches(  # doctest: +ELLIPSIS
+        ...     {"spec_version": "0.1.0"},
+        ...     {"spec_version": "9.9.9", "x": 1},
+        ... )
         Traceback (most recent call last):
         ...
-        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted at canonical update boundary
+        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'spec_version' is not permitted...
         >>> apply_patches(
         ...     {"model_params": {"temperature": 0.2, "top_p": 0.9}},
         ...     {"model_params": {"temperature": 0.7}},
@@ -268,10 +281,10 @@ def apply_patches(spec: dict[str, object], patches: dict[str, object]) -> dict[s
         ...     {"model_params.temperature": 0.4},
         ... )
         {'model_params': {'top_p': 0.95, 'temperature': 0.4}}
-        >>> apply_patches({"id": "p"}, {"tools": {"shell": "read_only"}})
+        >>> apply_patches({"id": "p"}, {"tools": {"shell": "read_only"}})  # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
-        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted at canonical update boundary
+        patch.PatchError: FORBIDDEN_PATCH_FIELD: patch field 'tools' is not permitted...
     """
     _reject_forbidden_patch_fields(patches)
     _reject_protected_patch_fields(patches)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from deal import post, pre
 
@@ -45,4 +45,4 @@ def assembly_error(
     >>> (error.code, error.message, error.details)
     ('COMPONENT_CONFLICT', 'conflict', {})
     """
-    return _build_structured_exception(AssemblyError, code, message, details)
+    return cast("AssemblyError", _build_structured_exception(AssemblyError, code, message, details))

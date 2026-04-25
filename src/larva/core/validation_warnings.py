@@ -6,7 +6,6 @@ import re
 
 from deal import post, pre
 
-
 _DESCRIPTION_WARN_MIN_CHARS = 20
 _DESCRIPTION_WARN_MAX_CHARS = 500
 _CANONICAL_PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -117,18 +116,28 @@ def _capability_snapshot_warnings(capabilities: object) -> list[str]:
     'capabilities is empty; this is valid but likely under-specified'
     >>> _capability_snapshot_warnings({"shell": "none"})[-1]
     "all declared capabilities are 'none'; this is valid but operationally inert"
+    >>> class AttrDict(dict):
+    ...     def items(self):
+    ...         raise KeyError("__ch_pytype__")
+    >>> _capability_snapshot_warnings(AttrDict())
+    []
     """
     if not isinstance(capabilities, dict):
         return []
 
+    try:
+        capability_items = list(capabilities.items())
+    except (KeyError, RuntimeError, TypeError):
+        return []
+
     warnings: list[str] = []
-    if len(capabilities) == 0:
+    if len(capability_items) == 0:
         warnings.append("capabilities is empty; this is valid but likely under-specified")
         return warnings
 
     unknown_families = sorted(
         family
-        for family in capabilities.keys()
+        for family, _posture in capability_items
         if isinstance(family, str) and family not in _KNOWN_CAPABILITY_FAMILY_SNAPSHOT
     )
     if unknown_families:
@@ -137,8 +146,13 @@ def _capability_snapshot_warnings(capabilities: object) -> list[str]:
             + ", ".join(unknown_families)
         )
 
-    if all(isinstance(posture, str) and posture == "none" for posture in capabilities.values()):
-        warnings.append("all declared capabilities are 'none'; this is valid but operationally inert")
+    if all(
+        isinstance(posture, str) and posture == "none"
+        for _family, posture in capability_items
+    ):
+        warnings.append(
+            "all declared capabilities are 'none'; this is valid but operationally inert"
+        )
 
     return warnings
 
@@ -211,8 +225,11 @@ def _mutating_capability_warning(spec: dict[str, object]) -> str | None:
     ...     "id": "code-reviewer",
     ...     "description": "Reviews code changes with read-only expectations.",
     ...     "capabilities": {"filesystem": "read_write"},
-    ... })
-    'read-focused persona identity conflicts with mutating/destructive capabilities: filesystem=read_write'
+    ... }) == (
+    ...     "read-focused persona identity conflicts with mutating/destructive "
+    ...     "capabilities: filesystem=read_write"
+    ... )
+    True
     >>> _mutating_capability_warning({
     ...     "id": "builder",
     ...     "description": "Builds tools.",

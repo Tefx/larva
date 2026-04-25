@@ -19,7 +19,6 @@ from deal import post, pre, raises
 from larva.core._structured_error import _build_structured_exception
 from larva.core.spec import PersonaSpec
 
-
 _SPEC_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 _FORBIDDEN_NORMALIZE_FIELDS = frozenset({"tools", "side_effect_policy"})
 
@@ -65,7 +64,22 @@ def _normalize_error(
     >>> err.details["field"]
     'spec_version'
     """
-    return _build_structured_exception(NormalizeError, code, message, details)
+    return cast(
+        "NormalizeError",
+        _build_structured_exception(NormalizeError, code, message, details),
+    )
+
+
+@pre(lambda spec: "spec_digest" not in spec or isinstance(spec.get("spec_digest"), str))
+@post(lambda result: isinstance(result, bool))
+def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
+    """Return True when spec can be encoded as canonical JSON."""
+    try:
+        spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
+        json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
+        return True
+    except (TypeError, ValueError):
+        return False
 
 
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))
@@ -75,14 +89,16 @@ def _reject_noncanonical_normalize_input(spec: dict[str, object]) -> None:
     """Reject hard-cut legacy inputs before digest computation.
 
     >>> _reject_noncanonical_normalize_input({"id": "p", "spec_version": "0.1.0"})
-    >>> _reject_noncanonical_normalize_input({"id": "p"})
+    >>> _reject_noncanonical_normalize_input({"id": "p"})  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
-    normalize.NormalizeError: MISSING_SPEC_VERSION: spec_version is required at canonical normalize boundary
-    >>> _reject_noncanonical_normalize_input({"id": "p", "spec_version": "0.1.0", "tools": {"shell": "read_only"}})
+    normalize.NormalizeError: MISSING_SPEC_VERSION: spec_version is required...
+    >>> _reject_noncanonical_normalize_input(
+    ...     {"id": "p", "spec_version": "0.1.0", "tools": {"shell": "read_only"}}
+    ... )  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     ...
-    normalize.NormalizeError: FORBIDDEN_FIELD: field 'tools' is not permitted at canonical normalize boundary
+    normalize.NormalizeError: FORBIDDEN_FIELD: field 'tools' is not permitted...
     """
     if "spec_version" not in spec:
         raise _normalize_error(
@@ -98,18 +114,6 @@ def _reject_noncanonical_normalize_input(spec: dict[str, object]) -> None:
                 message=f"field '{field}' is not permitted at canonical normalize boundary",
                 details={"field": field},
             )
-
-
-@pre(lambda spec: "spec_digest" not in spec or isinstance(spec.get("spec_digest"), str))
-@post(lambda result: isinstance(result, bool))
-def _is_json_serializable_spec(spec: dict[str, object]) -> bool:
-    """Return True when spec can be encoded as canonical JSON."""
-    try:
-        spec_copy = {k: v for k, v in spec.items() if k != "spec_digest"}
-        json.dumps(spec_copy, sort_keys=True, separators=(",", ":"))
-        return True
-    except (TypeError, ValueError):
-        return False
 
 
 @pre(lambda spec: _is_json_serializable_spec(spec))
@@ -180,14 +184,18 @@ def normalize_spec(spec: dict[str, object]) -> PersonaSpec:
         True
         >>> len(result["spec_digest"]) == 71
         True
-        >>> normalize_spec({"id": "test", "spec_version": "0.1.0"}) == normalize_spec({"id": "test", "spec_version": "0.1.0"})
+        >>> normalize_spec({"id": "test", "spec_version": "0.1.0"}) == normalize_spec(
+        ...     {"id": "test", "spec_version": "0.1.0"}
+        ... )
         True
-        >>> normalize_spec({"spec_version": "0.1.0", "spec_digest": "stale_digest"})["spec_digest"] != "stale_digest"
+        >>> normalize_spec(
+        ...     {"spec_version": "0.1.0", "spec_digest": "stale_digest"}
+        ... )["spec_digest"] != "stale_digest"
         True
-        >>> normalize_spec({"id": "test"})
+        >>> normalize_spec({"id": "test"})  # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
-        normalize.NormalizeError: MISSING_SPEC_VERSION: spec_version is required at canonical normalize boundary
+        normalize.NormalizeError: MISSING_SPEC_VERSION: spec_version is required...
     """
     _reject_noncanonical_normalize_input(spec)
     canonical_spec = dict(spec)

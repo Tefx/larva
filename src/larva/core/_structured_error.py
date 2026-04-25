@@ -11,9 +11,15 @@ See:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol, cast
 
 from deal import post, pre
+
+
+class _StructuredErrorAttrs(Protocol):
+    code: str
+    message: str
+    details: dict[str, Any]
 
 
 @pre(
@@ -30,11 +36,11 @@ from deal import post, pre
 @post(
     lambda result: (
         isinstance(result, Exception)
-        and isinstance(result.code, str)
-        and len(result.code) > 0
-        and isinstance(result.message, str)
-        and len(result.message) > 0
-        and isinstance(result.details, dict)
+        and isinstance(getattr(result, "code", None), str)
+        and len(getattr(result, "code", "")) > 0
+        and isinstance(getattr(result, "message", None), str)
+        and len(getattr(result, "message", "")) > 0
+        and isinstance(getattr(result, "details", None), dict)
     )
 )
 def _build_structured_exception(
@@ -57,7 +63,12 @@ def _build_structured_exception(
     ...     message: str
     ...     details: dict[str, object]
     ...
-    >>> err = _build_structured_exception(SimpleError, "SAMPLE", "a sample message", {"key": "value"})
+    >>> err = _build_structured_exception(
+    ...     SimpleError,
+    ...     "SAMPLE",
+    ...     "a sample message",
+    ...     {"key": "value"},
+    ... )
     >>> (err.code, err.message, err.details)
     ('SAMPLE', 'a sample message', {'key': 'value'})
     >>> "SAMPLE" in str(err)
@@ -67,7 +78,8 @@ def _build_structured_exception(
     {}
     """
     error = exc_class(f"{code}: {message}")
-    error.code = code
-    error.message = message
-    error.details = {} if details is None else details
+    structured_error = cast("_StructuredErrorAttrs", error)
+    structured_error.code = code
+    structured_error.message = message
+    structured_error.details = {} if details is None else details
     return error
