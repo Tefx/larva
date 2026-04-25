@@ -55801,7 +55801,7 @@ phases:
   steps:
   - id: merge_debt_20260425_review.audit
     name: Review aggregate evidence and diff
-    status: claimed
+    status: done
     description: 'Perform an independent review of the merge_debt_20260425 follow-up
       evidence from the prior test phase. Review the aggregate test output, relevant
       diff/context, and Invar boundary implications. Produce a clear PASS/FAIL decision
@@ -55870,6 +55870,65 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-25T09:59:05.885363+00:00'
+    done_at: '2026-04-25T10:06:00.199314+00:00'
+    evidence: 'verdict: FAIL
+
+      blockers: [B1, B2]
+
+      orchestrator_action_hint: DO_NOT_COMPLETE
+
+      headline: FAIL
+
+      proof_gap_status: BLOCKING
+
+      blocking_status: OPEN
+
+      gate_open_allowed: false
+
+      uncertainty_sources:
+
+      - Prior evidence omitted lint/type-check gates.
+
+      - `uv run invar guard --all` evidence showed ambiguity (exit 0 with JSON status
+      mismatch in reviewer output).
+
+
+      ## Review Decision
+
+      - Decision: FAIL
+
+      - Basis: independent audit reproduced pytest green but found blocking lint/type-check
+      failures on changed files.
+
+
+      ## Issue Register
+
+      | Severity | Provenance | Disposition | Location | Issue | Required closure
+      |
+
+      |----------|------------|-------------|----------|-------|------------------|
+
+      | blocker | out-of-step-origin | blocking-now | changed files across core/shell
+      | `ruff` failed on changed set | reduce to zero on targeted scope |
+
+      | blocker | out-of-step-origin | blocking-now | `src/larva/core/_structured_error.py`
+      and related wrappers | `mypy` failed with helper/wrapper typing mismatch | fix
+      helper typing/contracts and rerun mypy |
+
+      | should_fix | out-of-step-origin | non-blocking | invar report interpretation
+      | guard status ambiguity noted by reviewer | clarify semantics in evidence after
+      fix |
+
+
+      ## Gate-Intersection Basis
+
+      - B1/B2 intersect required automated quality checks for remaining closure; both
+      are blocking-now and require repair before review PASS.
+
+
+      ## Conditional Fix Trigger
+
+      TRIGGER_CONDITIONAL_FIX = true (review FAIL with blocker-class issues).'
   - id: merge_debt_20260425_review.conditional-fix
     name: Conditional repair and same-suite retest
     status: pending
