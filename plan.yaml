@@ -57057,7 +57057,7 @@ phases:
       - blockers remain []'
 - id: fresh_cleanup_20260425_should_fix
   name: Fresh Cleanup 2026-04-25 Should-Fix Evidence Consistency
-  status: in_progress
+  status: done
   gate: Step fresh_cleanup_20260425_should_fix.audit_evidence_narrative is the phase
     closure/gate-like check; no separate gate step by explicit user constraint of
     exactly two steps.
@@ -57144,7 +57144,7 @@ phases:
       \ run; worktree diff empty (no product changes)."
   - id: fresh_cleanup_20260425_should_fix.audit_evidence_narrative
     name: Audit and close invar warning narrative consistency
-    status: claimed
+    status: done
     description: 'Independently audit the authoritative counts from fresh_cleanup_20260425_should_fix.full_guard_counts
       against prior final-review narrative about invar warnings, then close the should_fix
       as PASS_NOOP or REPAIR_APPLIED.
@@ -57255,3 +57255,38 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-25T12:39:38.137922+00:00'
+    done_at: '2026-04-25T12:42:48.600267+00:00'
+    evidence: 'closure_status: PASS_NOOP
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ## Count Consistency Table
+
+      | Source | Errors | Warnings | Infos | Disposition |
+
+      | --- | ---: | ---: | ---: | --- |
+
+      | Step A machine-readable counts | 0 | 6 | 1 | authoritative |
+
+      | Step A human summary | 0 | 6 | 1 | matches machine-readable |
+
+      | Step A raw excerpt | 0 | 6 | 1 | matches counts |
+
+      | Prior inconsistent narrative | 0 | 0 | not stated | superseded by Step A authoritative
+      evidence |
+
+
+      ## Closure Decision
+
+      - Step A machine-readable counts and human summary are consistent.
+
+      - Prior mismatch is now resolved by authoritative evidence.
+
+      - No repair patch required in this step (PASS_NOOP).
+
+      - should_fix status: CLOSED.'
