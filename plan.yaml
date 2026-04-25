@@ -58671,6 +58671,97 @@ phases:
     depends_on:
     - larva.operator_p2.gate.retest_final_review_blockers_batch
     agent: python-senior-tacit
+  - id: larva.operator_p2.gate.retest_final_review_blockers_residual
+    name: Residual retest gate for final review blockers B2/B4
+    status: pending
+    description: 'Residual retest gate: independently verify closure of B2/B4 after
+      `larva.operator_p2.gate.fix_final_review_blockers_residual`.
+
+
+      As an INDEPENDENT REVIEWER (`gate-reviewer-tacit`), assess whether the residual
+      blocker family is closed and whether this phase may proceed/open. Your job is
+      to BLOCK if changed-file mypy intersections, guard-bypass integrity, or `register_routes`
+      architecture concerns remain unresolved.
+
+
+      Scope:
+
+      - B2: changed-file mypy intersections for `web.py`, `web_routes.py`, fixture_taxonomy-related
+      changed files, and `test_web_rest_gaps*`.
+
+      - B4: `src/larva/shell/web_routes.py` in Invar `exclude_paths` and oversized
+      `register_routes` architecture concern.
+
+      - Reversal risk: any previously-green REST runtime behavior, route registration
+      behavior, or guard coverage that could regress from the residual fix.
+
+
+      This is the successor close path for phase `larva.operator_p2.gate`: do not
+      recommend phase OPEN unless this residual retest records machine-readable closure
+      with no blocker-class proof gaps.
+
+
+      Required machine-readable closure fields in evidence:
+
+      - `headline`
+
+      - `proof_gap_status`
+
+      - `blocking_status`
+
+      - `verdict`
+
+      - `blockers`
+
+      - `gate_open_allowed`
+
+      - `orchestrator_action_hint`
+
+
+      Gate Decision Basis:
+
+      - OPEN is allowed only if B2/B4 are PROVEN closed or have explicit approved
+      non-intersection/exception evidence that preserves guard integrity.
+
+      - BLOCK if `web_routes.py` remains excluded without approved rationale, if changed-file
+      mypy intersections remain red, or if `register_routes` remains oversized without
+      an accepted remediation/exception path.'
+    verification: '- Verify the residual fix evidence includes `why_previous_fix_failed`,
+      `why_previous_gate_missed_it`, and `reversal_risk`.
+
+      - Verify changed-file mypy intersections for all B2 files are green or explicitly
+      dispositioned with approved non-intersection evidence.
+
+      - Verify `src/larva/shell/web_routes.py` guard-bypass exclusion was removed
+      OR an approved exception preserves guard integrity with explicit rationale.
+
+      - Verify `register_routes` architecture concern is remediated or explicitly
+      bounded without weakening Invar guard decisions.
+
+      - Verify targeted REST behavior did not regress.
+
+      - Evidence includes the required machine-readable closure fields and a final
+      OPEN/BLOCK decision.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Machine-Readable Closure\n\nheadline:\
+      \ \"PASS|PASS_WITH_DEBT|FAIL\"\nproof_gap_status: \"closed|open|partial\"\n\
+      blocking_status: \"none|blockers_present\"\nverdict: \"OPEN|BLOCK\"\nblockers:\n\
+      \  - id: \"B2|B4|<other>\"\n    status: \"closed|open|partial\"\n    evidence_ref:\
+      \ \"<command/output/file evidence>\"\ngate_open_allowed: true|false\norchestrator_action_hint:\
+      \ \"proceed|create_followup_fix|escalate\"\n\n## Residual Retest Detail\n\n\
+      fix_evidence_fields_present:\n  why_previous_fix_failed: true|false\n  why_previous_gate_missed_it:\
+      \ true|false\n  reversal_risk: true|false\n\nchanged_file_mypy_status:\n  web_py:\
+      \ \"green|red|not_checked|non_intersecting_with_evidence\"\n  web_routes_py:\
+      \ \"green|red|not_checked|non_intersecting_with_evidence\"\n  fixture_taxonomy:\
+      \ \"green|red|not_checked|non_intersecting_with_evidence\"\n  test_web_rest_gaps:\
+      \ \"green|red|not_checked|non_intersecting_with_evidence\"\n\nguard_integrity_status:\n\
+      \  web_routes_exclusion: \"removed|approved_exception|unapproved_bypass\"\n\
+      \  rationale_review: \"accepted|rejected|not_applicable\"\n\nregister_routes_architecture_status:\
+      \ \"accepted|blocked|needs_followup\"\nruntime_regression_status: \"green|red|not_checked\"\
+      \n\nfinal_decision_basis: \"<why OPEN or BLOCK>\"\n"
+    depends_on:
+    - larva.operator_p2.gate.fix_final_review_blockers_residual
+    agent: gate-reviewer-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
