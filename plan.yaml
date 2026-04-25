@@ -57432,8 +57432,10 @@ phases:
   status: locked
   gate: Targeted REST tests, packaged serve smoke, repo-local full gate, and independent
     review all pass
+  context: Final verification for packaged REST export/update_batch after the merged
+    REST delivery phase. Contrib server remains non-contractual.
   depends_on:
-  - larva.operator_p2.rest_endpoints
+  - larva.operator_p2.rest_delivery
   steps:
   - id: larva.operator_p2.gate.targeted_rest_tests
     name: Run targeted packaged REST tests
