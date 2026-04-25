@@ -57055,3 +57055,11 @@ phases:
       - No repair required.
 
       - blockers remain []'
+- id: fresh_cleanup_20260425_should_fix
+  name: Fresh Cleanup 2026-04-25 Should-Fix Evidence Consistency
+  status: pending
+  gate: Step fresh_cleanup_20260425_should_fix.audit_evidence_narrative is the phase
+    closure/gate-like check; no separate gate step by explicit user constraint of
+    exactly two steps.
+  depends_on:
+  - fresh_cleanup_20260425_verify
