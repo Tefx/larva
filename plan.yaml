@@ -55234,3 +55234,140 @@ phases:
     depends_on:
     - merge_debt_20260425.mcp-mixin-cleanup
     agent: python-executor
+  - id: merge_debt_20260425.core-structured-exception-helper
+    name: Extract core structured exception builder
+    status: pending
+    description: 'Implement and verify the P1 core structured exception builder extraction.
+
+
+      Purpose: consolidate duplicate structured exception construction across `normalize.py::_normalize_error`,
+      `patch.py::_patch_error`, and `assembly_error.py::assembly_error` behind a shared
+      core helper, tentatively `build_structured_exception()`.
+
+
+      Scope:
+
+      - Add one pure core helper with `@pre`, `@post`, and doctest.
+
+      - Keep domain-specific wrappers (`_normalize_error`, `_patch_error`, `assembly_error`)
+      so public/domain exception types and messages remain stable.
+
+      - Preserve exception class, code, message, details, and string/repr behavior
+      expected by existing tests.
+
+
+      VETO guardrails:
+
+      - Do NOT replace domain wrappers with a generic public API.
+
+      - Do NOT change error taxonomy.
+
+      - Do NOT merge core with shell.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      helper must construct the correct domain exception instance from inputs through
+      the wrapper paths.
+
+
+      ## Mechanical adversary requirement
+
+      Before product-code edits, add or strengthen doctest/property-style coverage
+      that fails while no shared builder exists or wrapper behavior is not preserved.
+      Capture Expected-Red, then extract and turn it green.'
+    verification: '- Expected-Red: contract/doctest or focused wrapper behavior test
+      fails before extraction.
+
+      - Core contract: new helper has non-vacuous `@pre`, `@post`, and doctest.
+
+      - Green: `tests/core/test_normalize.py`, `tests/core/test_patch.py`, and `tests/core/test_assemble.py`
+      pass.
+
+      - Full guard: `invar_guard` passes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/normalize.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/patch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/assembly_error.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_normalize.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_patch.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_assemble.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Contract/doctest/test added:
+
+      - Command run before product-code changes:
+
+      ```text
+
+      <paste failing output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Helper path/name:
+
+      - Wrappers preserved:
+
+      - Exception behavior preservation notes:
+
+
+      ## Core Contract Proof
+
+      - `@pre`/`@post` summary:
+
+      - Doctest output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Green Proof
+
+      - Focused core test output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - `invar_guard` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - Domain wrappers remain:
+
+      - Error taxonomy unchanged:
+
+      - Core remains pure/no I/O imports:'
+    depends_on:
+    - merge_debt_20260425.core-validation-issue-helper
+    agent: python-executor
