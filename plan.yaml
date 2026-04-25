@@ -57817,3 +57817,131 @@ phases:
     review all pass
   depends_on:
   - larva.operator_p2.rest_endpoints
+  steps:
+  - id: larva.operator_p2.gate.targeted_rest_tests
+    name: Run targeted packaged REST tests
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      agent_source: default
+
+
+      As an INDEPENDENT TESTER, run targeted packaged REST tests for the P2 export/update_batch
+      surface from a fresh perspective. Your goal is to find problems, not to rubber-stamp
+      the implementation.
+
+
+      Scope:
+
+      - `POST /api/personas/export` all selector, ids selector, conflict fail-closed,
+      missing selector fail-closed, `all=false` fail-closed.
+
+      - `POST /api/personas/update_batch` dry_run, matched/updated counts, validation-before-mutation,
+      protected fields fail closed.
+
+      - Canonical admission invariants through packaged REST: `tools` rejected, `side_effect_policy`
+      rejected, protected fields fail closed, `spec_digest` format preserved.
+
+      - No contrib dependency: packaged tests must use `larva.shell.web` / packaged
+      `larva serve` contract, not `contrib/web/server.py`.
+
+
+      Independence Level: L1 independent verification. This step protects the final
+      repo-local full gate and final operator P2 gate.'
+    verification: '- Focused packaged REST tests pass with actual output pasted.
+
+      - Coverage explicitly includes export all, export ids, conflict selector, missing
+      selector, update_batch dry_run, update_batch mutation counts, validation-before-mutation,
+      protected fields, `tools`, `side_effect_policy`, and `spec_digest` format.
+
+      - Evidence includes grep/import-trace proof that packaged REST tests do not
+      use contrib web server.
+
+      - Any blocker found is reported with reproduction steps and should drive remediation
+      before full gate.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Verification Report
+
+      **Tester**: integration-verifier-tacit (independent of implementation)
+
+      **Scope**: packaged REST export/update_batch targeted tests
+
+      **Independence Level**: L1
+
+
+      ## Test Execution
+
+      Commands executed:
+
+      ```
+
+      <paste exact focused commands>
+
+      ```
+
+      Actual output:
+
+      ```
+
+      <paste output, not summary>
+
+      ```
+
+
+      ## Requirement Coverage Register
+
+      | Requirement | Evidence ref | Status | Closure path if not PROVEN |
+
+      |---|---|---|---|
+
+      | export all selector | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN | <path>
+      |
+
+      | export ids selector | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN | <path>
+      |
+
+      | selector fail-closed cases | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN |
+      <path> |
+
+      | update_batch dry_run | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN | <path>
+      |
+
+      | validation before mutation | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN |
+      <path> |
+
+      | canonical forbidden fields rejected | <test/output> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <path> |
+
+      | no contrib dependency | <grep/import proof> | PROVEN/NEEDS_TEST/UNPROVEN |
+      <path> |
+
+
+      ## Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      |---|---|---|---|
+
+      | <blocker/should_fix/suggestion/tech_debt> | <issue> | <file:line> | <steps>
+      |
+
+
+      ## Headline
+
+      - [ ] PASS: no blocking issues found
+
+      - [ ] PASS_WITH_DEBT: only explicit non-blocking debt remains
+
+      - [ ] FAIL: blocking issues or proof gaps remain'
+    agent: integration-verifier-tacit
