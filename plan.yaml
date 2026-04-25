@@ -58258,7 +58258,7 @@ phases:
     agent: doc-reviewer-tacit
   - id: larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
     name: Complete packaged REST export and update_batch wiring
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: [integration]
@@ -58452,3 +58452,5 @@ phases:
     depends_on:
     - larva.operator_p2.red_tests.define_red_rest_gaps
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-25T19:48:54.059644+00:00'
