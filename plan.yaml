@@ -58415,7 +58415,7 @@ phases:
       - whether any product implementation files were modified: true'
   - id: larva.operator_p2.gate.retest_final_review_blockers_batch
     name: Retest final review blocker closure batch
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -58563,6 +58563,8 @@ phases:
     depends_on:
     - larva.operator_p2.gate.fix_final_review_blockers_batch
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-25T21:31:33.779236+00:00'
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
