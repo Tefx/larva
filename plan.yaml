@@ -55687,3 +55687,8 @@ phases:
       \ pass)\n```\n\n## Veto Confirmation\n- No transport renderer unification.\n\
       - No boolean-flag request builder introduced.\n- No load_transform_save-style\
       \ workflow introduced."
+- id: merge_debt_20260425_test
+  name: Merge Debt Follow-up Test
+  status: pending
+  depends_on:
+  - merge_debt_20260425
