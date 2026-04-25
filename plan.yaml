@@ -56254,6 +56254,116 @@ phases:
 
       - Core/shell boundary preserved? YES'
     agent: python-executor
+  - id: fresh_cleanup_20260425_impl.mcp-handler-flattening
+    name: MCP handler flattening
+    status: pending
+    description: 'Implement and verify a bounded MCP handler flattening cleanup.
+
+
+      Scope:
+
+      - In `src/larva/shell/mcp.py`, inline the five private `_handle_*_impl` helpers
+      into their corresponding public `handle_*` functions.
+
+      - Delete the unused `MCPHandler` Protocol.
+
+      - Preserve public MCP behavior, response envelope shapes, error semantics, and
+      handler names.
+
+
+      VETO:
+
+      - Do NOT introduce a Boolean Trap.
+
+      - Do NOT build a unified transport renderer, schema interpreter, generic workflow,
+      dispatch mega-table, or new protocol abstraction.
+
+      - Do NOT touch optional future cleanup items such as `mcp_export`/`mcp_update_batch`
+      internal Protocol deletion.
+
+
+      Falsifiability before implementation:
+
+      - First run or add a focused test/probe covering the public MCP handlers before
+      flattening. If the cleanup exposes no new failing behavior by itself, paste
+      the pre-change public-handler test output and identify the exact post-change
+      preservation obligation.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      public handlers must contain the preserved behavior directly and must not delegate
+      to the removed private `_handle_*_impl` helpers.'
+    verification: '- Targeted MCP shell tests pass after handler flattening.
+
+      - No `_handle_*_impl` helper definitions or call sites remain in `src/larva/shell/mcp.py`.
+
+      - `MCPHandler` Protocol no longer remains unless evidence identifies a live
+      external reference.
+
+      - Public `handle_*` behavior and malformed/error response envelopes are preserved.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red / Falsifiability Proof
+
+      - Pre-change public-handler preservation test/probe:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - If already green, explain preservation obligation:
+
+      ```
+
+      <explanation>
+
+      ```
+
+
+      ## Implementation Evidence
+
+      - Five `_handle_*_impl` helpers inlined:
+
+      - `MCPHandler` Protocol removed:
+
+      - Public handler behavior preserved:
+
+
+      ## Verification Evidence
+
+      Commands and outputs:
+
+      ```
+
+      <paste targeted MCP shell test output>
+
+      ```
+
+
+      ## Guardrails
+
+      - Boolean Trap introduced? NO
+
+      - Unified transport renderer/schema interpreter/generic workflow introduced?
+      NO
+
+      - Optional future Protocol cleanup left untouched? YES'
+    depends_on:
+    - fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
+    agent: python-executor
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
   status: locked
