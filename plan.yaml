@@ -56132,3 +56132,8 @@ phases:
   status: pending
   depends_on:
   - merge_debt_20260425_review
+- id: fresh_cleanup_20260425_verify
+  name: Fresh Cleanup 2026-04-25 Verification and Review
+  status: locked
+  depends_on:
+  - fresh_cleanup_20260425_impl
