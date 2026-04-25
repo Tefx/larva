@@ -57063,3 +57063,67 @@ phases:
     exactly two steps.
   depends_on:
   - fresh_cleanup_20260425_verify
+  steps:
+  - id: fresh_cleanup_20260425_should_fix.full_guard_counts
+    name: Generate authoritative full invar guard warning counts
+    status: pending
+    description: 'Re-run the full invar guard from a fresh workspace state and produce
+      authoritative machine-readable plus human-readable warning/error/info count
+      evidence.
+
+
+      Scope: evidence-only proof closure for the prior final should_fix: "invar warning
+      narrative did not match actual full guard warning count." Do not modify product
+      code. If the guard command itself fails to run, record command/runtime failure
+      separately from guard diagnostics.
+
+
+      Required outputs:
+
+      - Machine-readable count artifact pasted in evidence: errors, warnings, infos,
+      command_exit_code, command, timestamp, repo_head if available.
+
+      - Human summary explaining the counts and distinguishing guard diagnostics from
+      command/runtime failures.
+
+      - Raw relevant guard output excerpt sufficient to audit the counts.
+
+
+      Trigger rule: run after fresh_cleanup_20260425_verify is complete because this
+      phase remediates a non-blocking evidence debt found in that final review.
+
+
+      Mechanical adversary: the executor has autonomy to collect evidence but zero
+      autonomy to self-certify consistency; counts must come from the actual full
+      guard output, not manual memory or prior narrative.'
+    verification: 'local-check protecting fresh_cleanup_20260425_should_fix.audit_evidence_narrative
+      and any future final review that relies on invar diagnostic counts.
+
+      - Execute the authoritative full guard command for this repo, preferring `uvx
+      invar-tools guard --all` when available for DX-91 parity, or record the exact
+      repo-supported equivalent if different.
+
+      - Evidence contains machine-readable counts for errors/warnings/infos and command_exit_code.
+
+      - Evidence contains a concise human summary that matches the machine-readable
+      counts exactly.
+
+      - Evidence includes raw output excerpt or saved artifact reference sufficient
+      to reproduce the count derivation.
+
+      - No product code modifications are made.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- AGENTS.md — key passage or \"NOT READ: <reason>\"\n- INVAR.md — key\
+      \ passage or \"NOT READ: <reason>\"\n- plan.yaml — key passage around fresh_cleanup_20260425_verify\
+      \ or \"NOT READ: <reason>\"\n\nIf no refs were provided, state: \"No refs for\
+      \ this step.\"\n\n## Full Invar Guard Count Evidence\n\n**Command executed**:\n\
+      ```text\n<paste exact command>\n```\n\n**Machine-readable counts**:\n```json\n\
+      {\n  \"command\": \"<exact command>\",\n  \"command_exit_code\": 0,\n  \"errors\"\
+      : 0,\n  \"warnings\": 0,\n  \"infos\": 0,\n  \"timestamp\": \"<ISO 8601>\",\n\
+      \  \"repo_head\": \"<git sha or NOT_CAPTURED>\"\n}\n```\n\n**Human summary**:\n\
+      - Errors: <N>\n- Warnings: <N>\n- Infos: <N>\n- Summary sentence: <must exactly\
+      \ match the JSON counts>\n\n**Raw output excerpt / artifact reference**:\n```text\n\
+      <paste relevant guard output lines proving the counts>\n```\n\n**No-code-change\
+      \ confirmation**:\n- Product code changed: YES/NO\n- If YES, explain why this\
+      \ step violated scope."
+    agent: integration-verifier-tacit
