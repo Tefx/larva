@@ -56364,6 +56364,120 @@ phases:
     depends_on:
     - fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
     agent: python-executor
+  - id: fresh_cleanup_20260425_impl.core-validation-issue-alias-cleanup
+    name: Core validation issue alias cleanup
+    status: pending
+    description: 'Implement and verify a bounded core alias cleanup.
+
+
+      Scope:
+
+      - In `src/larva/core/validate.py`, delete the `_issue` alias and call `validation_issue()`
+      directly.
+
+      - In `src/larva/core/validation_field_shapes.py`, delete the `_issue` alias
+      and call `validation_issue()` directly.
+
+      - Preserve core/shell separation; do not introduce I/O into core.
+
+      - Because this touches core, obey Invar: contracts/doctests must remain valid
+      and `invar_guard` is required.
+
+
+      VETO:
+
+      - Do NOT introduce a Boolean Trap.
+
+      - Do NOT build a generic validation workflow, schema interpreter, or transport
+      renderer.
+
+      - Do NOT change validation semantics, issue code strings, locations, or public
+      PersonaSpec behavior.
+
+
+      Falsifiability before implementation:
+
+      - First run the focused core validation tests or add/confirm an adversarial
+      regression that would catch issue-shape drift. Capture the pre-change proof
+      before replacing aliases.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. All
+      former alias call sites must call `validation_issue()` directly while preserving
+      issue output.'
+    verification: '- Focused core validation tests pass.
+
+      - `invar_guard` or changed-file invar guard passes for core changes.
+
+      - `_issue` aliases are gone from `src/larva/core/validate.py` and `src/larva/core/validation_field_shapes.py`.
+
+      - No shell imports or I/O are introduced into core.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/core/validate.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validation_field_shapes.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_validate.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red / Falsifiability Proof
+
+      - Pre-change focused core regression proof:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - If already green, explain preservation obligation:
+
+      ```
+
+      <explanation>
+
+      ```
+
+
+      ## Implementation Evidence
+
+      - `_issue` aliases removed from:
+
+      - Direct `validation_issue()` calls confirmed:
+
+      - Core/shell boundary preserved:
+
+
+      ## Verification Evidence
+
+      Commands and outputs:
+
+      ```
+
+      <paste core test and invar guard output>
+
+      ```
+
+
+      ## Guardrails
+
+      - Boolean Trap introduced? NO
+
+      - Generic validation workflow/schema interpreter introduced? NO
+
+      - Core contains no I/O imports? YES'
+    depends_on:
+    - fresh_cleanup_20260425_impl.mcp-handler-flattening
+    agent: python-executor
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
   status: locked
