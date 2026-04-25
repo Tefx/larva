@@ -58315,6 +58315,156 @@ phases:
     depends_on:
     - larva.operator_p2.gate.final_review
     agent: python-senior-tacit
+  - id: larva.operator_p2.gate.retest_final_review_blockers_batch
+    name: Retest final review blocker closure batch
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      agent_source: project
+
+      priority: HIGH
+
+
+      As an INDEPENDENT REVIEWER, re-run the final gate protocols after `larva.operator_p2.gate.fix_final_review_blockers_batch`
+      and decide whether the operator P2 REST verification gate may open.
+
+
+      This retest is the successor terminal close path for blockers found by `larva.operator_p2.gate.final_review`.
+      Re-check ALL B1-B4 closures, not only command pass/fail.
+
+
+      Required closure checks:
+
+      1. B1: `tests/shell/test_web_rest_gaps.py` and touched files are ruff-clean.
+
+      2. B2: mypy changed-file intersections are explicitly closed or have gate-acceptable
+      non-intersection evidence.
+
+      3. B3: targeted REST tests prove registry/temp HOME isolation and no writes
+      to real default registry state.
+
+      4. B4: `src/larva/shell/web.py` extraction/refactor satisfies shell file-size
+      policy while preserving packaged REST behavior.
+
+      5. Packaged REST export/update_batch behavior remains unchanged through focused
+      tests and packaged serve smoke.
+
+      6. Shared PersonaSpec authority and fail-closed admission invariants remain
+      intact.
+
+
+      Finding issues remains valuable. BLOCK if any blocker-class item lacks closure
+      evidence or if runtime/package REST proof regressed.
+
+
+      ## Machine-readable closure fields required
+
+      Evidence MUST include exactly these top-level fields in a YAML or JSON block:
+
+      - headline
+
+      - proof_gap_status
+
+      - blocking_status
+
+      - verdict
+
+      - blockers
+
+      - gate_open_allowed
+
+      - orchestrator_action_hint'
+    verification: '- Re-run final review/gate protocol against all prior final-review
+      criteria plus B1-B4 closure criteria.
+
+      - Verify ruff green on touched files.
+
+      - Verify mypy targeted changed-file intersections have explicit closure.
+
+      - Verify test isolation evidence proves no writes to real default registry.
+
+      - Verify focused REST tests and packaged serve smoke are green.
+
+      - Verify packaged REST route shapes and canonical PersonaSpec behavior are unchanged.
+
+      - Produce machine-readable closure fields: `headline`, `proof_gap_status`, `blocking_status`,
+      `verdict`, `blockers`, `gate_open_allowed`, `orchestrator_action_hint`.
+
+      - Gate may OPEN only when `gate_open_allowed: true`, `blocking_status: clear`,
+      and `blockers: []`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `src/larva/shell/web.py` — key passage or "NOT READ: <reason>"
+
+      - `tests/shell/test_web_rest_gaps.py` — key passage or "NOT READ: <reason>"
+
+      - `INTERFACES.md` — key passage or "NOT READ: <reason>"
+
+      - `../opifex/design/final-canonical-contract.md` — key passage or "NOT READ:
+      <reason>"
+
+      - `../opifex/contracts/persona_spec.schema.json` — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Gate Retest Protocol
+
+      - Commands/protocols re-run:
+
+      ```text
+
+      <paste commands and key output>
+
+      ```
+
+      - B1 closure reviewed: PASS/FAIL
+
+      - B2 closure reviewed: PASS/FAIL
+
+      - B3 closure reviewed: PASS/FAIL
+
+      - B4 closure reviewed: PASS/FAIL
+
+      - Packaged REST behavior preservation reviewed: PASS/FAIL
+
+
+      ## Machine-readable closure
+
+      ```yaml
+
+      headline: "PASS|FAIL|PASS_WITH_DEBT"
+
+      proof_gap_status: "clear|open"
+
+      blocking_status: "clear|blocked"
+
+      verdict: "OPEN|BLOCKED"
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: "proceed|create_followup_fix|escalate"
+
+      ```
+
+
+      ## Notes
+
+      - Any unresolved blocker must include remediation ownership, not provenance-only
+      disposition.'
+    depends_on:
+    - larva.operator_p2.gate.fix_final_review_blockers_batch
+    agent: gate-reviewer-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
