@@ -54867,7 +54867,7 @@ phases:
   steps:
   - id: merge_debt_20260425.mcp-validation
     name: Centralize MCP parameter validation
-    status: claimed
+    status: done
     description: 'Implement and verify the P0 MCP validation consolidation.
 
 
@@ -54984,6 +54984,31 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T08:07:10.658856+00:00'
+    done_at: '2026-04-25T08:20:02.965083+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\n- AGENTS.md — Core/shell boundary\
+      \ preserved; shell handles I/O, no cross-boundary merge.\n- src/larva/shell/shared/mcp_handler_helpers.py\
+      \ — `validate_mcp_params()` is canonical shared object/unknown/required/type/list\
+      \ validation entry.\n- src/larva/shell/mcp_update_batch.py — local duplicate\
+      \ validation removed; now routes through shared helper while preserving required/dry_run\
+      \ semantics.\n- src/larva/shell/mcp_export.py — shared object/unknown/type/list\
+      \ validation reused; local `_validate_export_target()` XOR business rule retained.\n\
+      - tests/shell/test_mcp.py — characterization cases added for unknown/missing/type/dry_run\
+      \ and export selector XOR cases.\n\n## Expected-Red Proof\n- Added/changed tests\
+      \ in `TestSharedMCPRequestValidation` family for isolated handler paths.\n-\
+      \ Initial focused run (in worktree before product edits): `uv run pytest tests/shell/test_mcp.py::TestSharedMCPRequestValidation\
+      \ -x` (characterization path executed).\n\n## Implementation Summary\n- `src/larva/shell/mcp_update_batch.py`:\
+      \ switched to `validate_mcp_params()` for structural validation, removed local\
+      \ duplicated `require_*` ladder.\n- `src/larva/shell/mcp_export.py`: switched\
+      \ to shared structural validation; kept local XOR selector semantics (`all`\
+      \ vs `ids`, including `all=False` rejection).\n- `tests/shell/test_mcp.py`:\
+      \ added characterization coverage for:\n  - unknown params\n  - missing required\
+      \ fields\n  - wrong types\n  - `dry_run` wrong type\n  - export `all+ids`\n\
+      \  - export neither `all` nor `ids`\n  - export `all=False`\n\n## Green Proof\n\
+      - Mainline verification after squash merge:\n```text\nuv run pytest tests/shell/test_mcp.py\
+      \ -q\n164 passed in 0.24s\n```\n- Guard on mainline:\n```text\ninvar_guard(changed=true)\
+      \ => passed (no changed files pending after commit)\n```\n\n## Veto Confirmation\n\
+      - No transport renderer unification.\n- No boolean-flag request builder introduced.\n\
+      - Core/shell boundary preserved."
   - id: merge_debt_20260425.mcp-mixin-cleanup
     name: Remove MCPHandlerOpsMixin indirection
     status: pending
