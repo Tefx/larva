@@ -56279,7 +56279,7 @@ phases:
       \ YES"
   - id: fresh_cleanup_20260425_impl.mcp-handler-flattening
     name: MCP handler flattening
-    status: claimed
+    status: done
     description: 'Implement and verify a bounded MCP handler flattening cleanup.
 
 
@@ -56389,6 +56389,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T11:28:24.128453+00:00'
+    done_at: '2026-04-25T11:57:43.783927+00:00'
+    evidence: "## refs Read Confirmation\n- `src/larva/shell/mcp.py`: five private\
+      \ `_handle_*_impl` definitions and one-to-one public delegations identified\
+      \ and removed by inlining.\n- `tests/shell/test_mcp.py`: MCP handler behavior\
+      \ suite and mixin-removal assertions updated to reflect flattened handler shape.\n\
+      - `AGENTS.md`: shell boundary/verification rules followed.\n\n## Expected-Red\
+      \ / Falsifiability Proof\n- Pre-change MCP suite baseline was green; preservation\
+      \ obligation = keep all public handler behavior unchanged after flattening.\n\
+      - Flattening falsified via structural checks (no `_handle_*_impl` remaining,\
+      \ no `MCPHandler` Protocol remaining) plus unchanged test outcomes.\n\n## Implementation\
+      \ Evidence\n- Inlined and removed:\n  - `_handle_component_list_impl`\n  - `_handle_component_show_impl`\n\
+      \  - `_handle_validate_impl`\n  - `_handle_assemble_impl`\n  - `_handle_resolve_impl`\n\
+      - Deleted unused `MCPHandler` Protocol and related type-only scaffolding.\n\
+      - Updated test expectation to assert absence of removed private impl methods.\n\
+      \n## Verification Evidence\n```text\nuv run pytest tests/shell/test_mcp.py -q\n\
+      167 passed in 0.24s\n```\n```text\ninvar_guard(changed=true): passed (files_checked=1,\
+      \ errors=0)\n```\n\n## Guardrails\n- Boolean Trap introduced? NO\n- Unified\
+      \ renderer/schema interpreter/generic workflow introduced? NO\n- Optional future\
+      \ protocol cleanup touched? NO\n- Public handler behavior/envelopes preserved?\
+      \ YES"
   - id: fresh_cleanup_20260425_impl.core-validation-issue-alias-cleanup
     name: Core validation issue alias cleanup
     status: pending
