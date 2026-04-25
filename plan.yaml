@@ -56135,7 +56135,7 @@ phases:
   steps:
   - id: fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
     name: MCP validation residue cleanup
-    status: claimed
+    status: done
     description: 'Implement and verify a bounded MCP parameter-validation cleanup.
 
 
@@ -56256,6 +56256,27 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-04-25T11:03:28.238125+00:00'
+    done_at: '2026-04-25T11:28:01.712341+00:00'
+    evidence: "## refs Read Confirmation\n- `src/larva/shell/mcp_update_batch.py`:\
+      \ local `dry_run` `require_type` block identified and removed in favor of shared\
+      \ validator typed_keys.\n- `src/larva/shell/mcp_params.py`: unused `_require_*`\
+      \ wrappers removed; `_malformed_params_error`, `_validated_params`, `_unwrap_result`\
+      \ preserved.\n- `tests/shell/test_mcp.py`: malformed `dry_run` envelope coverage\
+      \ confirmed and kept green.\n- `AGENTS.md`: core/shell boundary and no vectl\
+      \ CLI constraints respected.\n\n## Expected-Red / Falsifiability Proof\n- Existing\
+      \ focused test for malformed `dry_run` already present and green prior to refactor;\
+      \ this step is behavior-preserving cleanup.\n- Validation preserved by rerunning\
+      \ the same MCP suite after merge.\n\n## Implementation Evidence\n- `src/larva/shell/mcp_update_batch.py`:\n\
+      \  - Added `(\"dry_run\", bool, \"boolean\")` to `validate_mcp_params(... typed_keys=...)`.\n\
+      \  - Removed local `dry_run` type-check block.\n- `src/larva/shell/mcp_params.py`:\n\
+      \  - Removed wrappers: `_require_params_object`, `_reject_unknown_params`, `_require_param`,\
+      \ `_require_type`, `_require_list_of_strings`.\n  - Preserved required helpers\
+      \ (`_malformed_params_error`, `_validated_params`, `_unwrap_result`).\n- No\
+      \ core files modified.\n\n## Verification Evidence\n```text\nuv run pytest tests/shell/test_mcp.py\
+      \ -q\n167 passed in 0.25s\n```\n```text\ninvar_guard(changed=true) => passed\n\
+      ```\n\n## Guardrails\n- Boolean Trap introduced? NO\n- Unified transport renderer/schema\
+      \ interpreter/generic workflow introduced? NO\n- Core/shell boundary preserved?\
+      \ YES"
   - id: fresh_cleanup_20260425_impl.mcp-handler-flattening
     name: MCP handler flattening
     status: pending
