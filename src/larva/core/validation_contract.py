@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import MappingProxyType
 from typing import TypedDict
 
+from deal import post, pre
+
 
 CANONICAL_REQUIRED_FIELDS: tuple[str, ...] = (
     "id",
@@ -60,6 +62,37 @@ class ValidationIssue(TypedDict):
     code: str
     message: str
     details: dict[str, object]
+
+
+@pre(
+    lambda code, message, details: isinstance(code, str)
+    and code != ""
+    and isinstance(message, str)
+    and message != ""
+    and isinstance(details, dict)
+)
+@post(
+    lambda result: isinstance(result, dict)
+    and "code" in result
+    and "message" in result
+    and "details" in result
+)
+def validation_issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
+    """Build a canonical ValidationIssue with typed fields.
+
+    >>> issue = validation_issue("MISSING_REQUIRED_FIELD", "id is required", {"field": "id"})
+    >>> issue["code"]
+    'MISSING_REQUIRED_FIELD'
+    >>> issue["message"]
+    'id is required'
+    >>> issue["details"]["field"]
+    'id'
+    >>> validation_issue("", "msg", {})  # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+    ...
+    deal.PreContractError: ...
+    """
+    return {"code": code, "message": message, "details": details}
 
 
 class ValidationReport(TypedDict):

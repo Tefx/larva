@@ -21,6 +21,7 @@ from larva.core.validation_contract import (
     VALIDATION_REPORT_KEYS,
     ValidationIssue,
     ValidationReport,
+    validation_issue,
 )
 from larva.core.validation_field_shapes import validate_field_shapes
 from larva.core.validation_warnings import collect_non_blocking_warnings
@@ -69,7 +70,12 @@ def _is_json_safe_dict(d: object) -> bool:
 )
 @post(lambda result: "code" in result and "message" in result and "details" in result)
 def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
-    return {"code": code, "message": message, "details": details}
+    """Local alias delegating to the canonical helper.
+
+    >>> _issue("INVALID_ID_FORMAT", "bad id", {"field": "id"})["code"]
+    'INVALID_ID_FORMAT'
+    """
+    return validation_issue(code, message, details)
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))

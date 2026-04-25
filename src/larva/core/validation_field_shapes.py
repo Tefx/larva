@@ -6,7 +6,7 @@ import math
 
 from deal import post, pre
 
-from larva.core.validation_contract import ValidationIssue
+from larva.core.validation_contract import ValidationIssue, validation_issue
 
 _REQUIRED_STRING_TYPE_FIELDS: tuple[str, ...] = ("description", "model")
 _OPTIONAL_STRING_TYPE_FIELDS: tuple[str, ...] = ("compaction_prompt", "spec_digest")
@@ -34,12 +34,12 @@ _INTEGER_MODEL_PARAMS: dict[str, int] = {
     and isinstance(result.get("details"), dict)
 )
 def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
-    """Build a typed validation issue.
+    """Local alias delegating to the canonical helper.
 
     >>> _issue("INVALID_FIELD_TYPE", "bad", {"field": "model"})["code"]
     'INVALID_FIELD_TYPE'
     """
-    return {"code": code, "message": message, "details": details}
+    return validation_issue(code, message, details)
 
 
 @pre(lambda value: value is not None)
