@@ -57553,7 +57553,7 @@ phases:
   - larva.operator_p2.red_tests
 - id: larva.operator_p2.gate
   name: Operator P2 REST Verification Gate
-  status: locked
+  status: pending
   gate: Targeted REST tests, packaged serve smoke, repo-local full gate, and independent
     review all pass
   context: Final verification for packaged REST export/update_batch after the merged
@@ -57987,7 +57987,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
-  status: in_progress
+  status: done
   gate: Expected-red packaged REST tests, endpoint implementation, and INTERFACES.md
     sync complete before verification gate
   depends_on:
@@ -58172,7 +58172,7 @@ phases:
       whether any product implementation files were modified: false'
   - id: larva.operator_p2.rest_endpoints.update_interfaces_inventory
     name: Update INTERFACES.md packaged REST inventory
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -58258,6 +58258,29 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-04-25T19:57:27.017901+00:00'
+    done_at: '2026-04-25T20:14:42.948717+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Documentation Sync Evidence\n- Sections updated: `INTERFACES.md` normative\
+      \ endpoint inventory and contrib-only convenience boundary; `src/larva/shell/web.py`\
+      \ module endpoint inventory docstring aligned.\n- Endpoint inventory additions\
+      \ documented:\n  - `POST /api/personas/export` with selector body `{all:true}`\
+      \ xor `{ids:[string]}` and fail-closed semantics\n  - `POST /api/personas/update_batch`\
+      \ with `{where, patches, dry_run?}` semantics\n- Follow-up status changed from\
+      \ pending gap language to implemented packaged endpoint inventory.\n- Contrib\
+      \ boundary preserved: contrib `/api/personas/batch-update` remains convenience-only\
+      \ and non-authoritative for packaged contract.\n\n## Contract Preservation\n\
+      - PersonaSpec redefined: no\n- `tools` advertised as accepted: no\n- `side_effect_policy`\
+      \ advertised as accepted: no\n- `capabilities` meaning changed: no\n- `spec_digest`\
+      \ format changed: no\n\n## Commands / Checks\n- `uv run pytest tests/shell/test_web_rest_gaps.py\
+      \ -q` → `17 passed`\n- `invar_guard(path=/Users/tefx/Projects/larva, changed=true)`\
+      \ → passed\n- merge introduced `INTERFACES.md` and `src/larva/shell/web.py`\
+      \ documentation alignment only (no contract-surface behavioral drift)\n\n##\
+      \ Files changed\n- `INTERFACES.md`\n- `src/larva/shell/web.py`\n\n## Commit\
+      \ hash(es)\n- branch commit reported by subagent (worktree-local)\n- mainline\
+      \ squash commit: `[vectl] step-larva.operator_p2.rest_endpoints.update_interfaces_inventory\
+      \ completed`\n\n## Gaps/Notes\n- no forbidden legacy/shared-field acceptance\
+      \ language added\n- contrib boundary remains explicit and unchanged in authority\
+      \ semantics"
   - id: larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
     name: Complete packaged REST export and update_batch wiring
     status: done
