@@ -60,23 +60,16 @@ def _handle_update_batch_impl(
         malformed_error=handlers._malformed_params_error,
         allowed_keys={"where", "patches", "dry_run"},
         required_keys=("where", "patches"),
-        typed_keys=(("where", dict, "object"), ("patches", dict, "object")),
+        typed_keys=(
+            ("where", dict, "object"),
+            ("patches", dict, "object"),
+            ("dry_run", bool, "boolean"),
+        ),
     )
     if isinstance(validation_result, Failure):
         return validation_result
 
     checked_params = validation_result.unwrap()
-
-    # dry_run type rejection (optional, must be bool if present)
-    if "dry_run" in checked_params:
-        from larva.shell.shared.request_validation import require_type
-
-        dry_run_type = require_type(checked_params, "dry_run", bool, "boolean")
-        if isinstance(dry_run_type, Failure):
-            issue = dry_run_type.failure()
-            return Failure(handlers._malformed_params_error(
-                "larva_update_batch", issue.reason, issue.details
-            ))
 
     where = checked_params["where"]
     patches = checked_params["patches"]

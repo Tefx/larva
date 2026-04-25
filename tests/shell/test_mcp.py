@@ -2844,7 +2844,7 @@ class TestSharedMCPRequestValidation:
             )
 
         monkeypatch.setattr(
-            mcp_params.request_validation,
+            request_validation,
             "require_params_object",
             _fake_require_params_object,
         )
