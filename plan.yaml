@@ -58601,7 +58601,7 @@ phases:
       guard scope'
   - id: larva.operator_p2.gate.fix_final_review_blockers_residual
     name: Residual fix for final review blockers B2/B4
-    status: pending
+    status: claimed
     description: 'Residual remediation after retest failure of larva.operator_p2.gate.retest_final_review_blockers_batch.
 
 
@@ -58705,6 +58705,8 @@ phases:
     depends_on:
     - larva.operator_p2.gate.retest_final_review_blockers_batch
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-25T21:42:16.160487+00:00'
   - id: larva.operator_p2.gate.retest_final_review_blockers_residual
     name: Residual retest gate for final review blockers B2/B4
     status: pending
