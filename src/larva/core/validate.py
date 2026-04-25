@@ -65,19 +65,6 @@ def _is_json_safe_dict(d: object) -> bool:
     return all(isinstance(v, _JSON_SAFE_TYPES) for v in values)
 
 
-@pre(
-    lambda code, message, details: len(code) > 0 and len(message) > 0 and isinstance(details, dict)
-)
-@post(lambda result: "code" in result and "message" in result and "details" in result)
-def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
-    """Local alias delegating to the canonical helper.
-
-    >>> _issue("INVALID_ID_FORMAT", "bad id", {"field": "id"})["code"]
-    'INVALID_ID_FORMAT'
-    """
-    return validation_issue(code, message, details)
-
-
 @pre(lambda spec: _is_json_safe_dict(spec))
 @post(lambda result: isinstance(result, list))
 def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
@@ -91,7 +78,7 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
         and (not isinstance(persona_id, str) or not _PERSONA_ID_PATTERN.fullmatch(persona_id))
     ):
         errors.append(
-            _issue(
+            validation_issue(
                 "INVALID_ID_FORMAT",
                 "id must match canonical kebab-case syntax ^[a-z0-9]+(-[a-z0-9]+)*$",
                 {"field": "id", "value": persona_id},
@@ -101,7 +88,7 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     spec_version = spec.get("spec_version")
     if spec_version is not None and spec_version != "0.1.0":
         errors.append(
-            _issue(
+            validation_issue(
                 "INVALID_SPEC_VERSION",
                 "spec_version must be '0.1.0'",
                 {"field": "spec_version", "value": spec_version},
@@ -127,7 +114,7 @@ def _validate_required_string_fields(spec: dict[str, object]) -> list[Validation
         value = spec.get(field)
         if isinstance(value, str) and value.strip() == "":
             errors.append(
-                _issue(
+                validation_issue(
                     "EMPTY_REQUIRED_FIELD",
                     f"required string field '{field}' must not be empty or whitespace-only",
                     {"field": field, "value": value},
@@ -155,7 +142,7 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 
     if not isinstance(capabilities, dict):
         errors.append(
-            _issue(
+            validation_issue(
                 "INVALID_CAPABILITIES_SHAPE",
                 "capabilities must be a dict mapping tool-family names to posture values",
                 {"field": "capabilities", "value": capabilities},
@@ -166,7 +153,7 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
     for tool_name, posture in capabilities.items():
         if not isinstance(tool_name, str):
             errors.append(
-                _issue(
+                validation_issue(
                     "INVALID_CAPABILITIES_SHAPE",
                     "capabilities keys must be strings",
                     {"field": "capabilities", "tool": tool_name},
@@ -176,7 +163,7 @@ def _validate_capabilities(spec: dict[str, object]) -> list[ValidationIssue]:
 
         if not isinstance(posture, str) or posture not in _VALID_POSTURES:
             errors.append(
-                _issue(
+                validation_issue(
                     "INVALID_POSTURE",
                     f"capability posture must be one of {', '.join(sorted(_VALID_POSTURES))}",
                     {"field": "capabilities", "tool": tool_name, "value": posture},
@@ -199,7 +186,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
     for key in spec:
         if key in _CANONICAL_FORBIDDEN_FIELDS:
             errors.append(
-                _issue(
+                validation_issue(
                     "EXTRA_FIELD_NOT_ALLOWED",
                     CANONICAL_FORBIDDEN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
@@ -207,7 +194,7 @@ def _validate_forbidden_fields(spec: dict[str, object]) -> list[ValidationIssue]
             )
         elif key not in _CANONICAL_ALLOWED_FIELDS:
             errors.append(
-                _issue(
+                validation_issue(
                     "EXTRA_FIELD_NOT_ALLOWED",
                     CANONICAL_UNKNOWN_FIELD_MESSAGE.format(field=key),
                     {"field": key, "value": spec.get(key)},
@@ -233,7 +220,7 @@ def _validate_can_spawn(spec: dict[str, object]) -> list[ValidationIssue]:
 
     if not isinstance(can_spawn, list):
         return [
-            _issue(
+            validation_issue(
                 "INVALID_CAN_SPAWN",
                 "can_spawn must be false, true, or a list of canonical persona ids",
                 {"field": "can_spawn", "value": can_spawn},
@@ -242,7 +229,7 @@ def _validate_can_spawn(spec: dict[str, object]) -> list[ValidationIssue]:
 
     if len(can_spawn) > _MAX_CAN_SPAWN_TARGETS:
         return [
-            _issue(
+            validation_issue(
                 "INVALID_CAN_SPAWN",
                 f"can_spawn list must contain at most {_MAX_CAN_SPAWN_TARGETS} persona ids",
                 {"field": "can_spawn", "count": len(can_spawn)},
@@ -266,7 +253,7 @@ def _validate_can_spawn(spec: dict[str, object]) -> list[ValidationIssue]:
 
     if invalid_targets or duplicates:
         return [
-            _issue(
+            validation_issue(
                 "INVALID_CAN_SPAWN",
                 "can_spawn list members must be unique non-empty canonical persona ids",
                 {
@@ -293,7 +280,7 @@ def _validate_required_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     for field in _CANONICAL_REQUIRED_FIELDS:
         if field not in spec:
             errors.append(
-                _issue(
+                validation_issue(
                     "MISSING_REQUIRED_FIELD",
                     CANONICAL_REQUIRED_FIELD_MESSAGE.format(field=field),
                     {"field": field},

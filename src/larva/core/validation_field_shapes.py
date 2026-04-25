@@ -20,28 +20,6 @@ _INTEGER_MODEL_PARAMS: dict[str, int] = {
 }
 
 
-@pre(
-    lambda code, message, details: isinstance(code, str)
-    and code != ""
-    and isinstance(message, str)
-    and message != ""
-    and isinstance(details, dict)
-)
-@post(
-    lambda result: isinstance(result, dict)
-    and isinstance(result.get("code"), str)
-    and isinstance(result.get("message"), str)
-    and isinstance(result.get("details"), dict)
-)
-def _issue(code: str, message: str, details: dict[str, object]) -> ValidationIssue:
-    """Local alias delegating to the canonical helper.
-
-    >>> _issue("INVALID_FIELD_TYPE", "bad", {"field": "model"})["code"]
-    'INVALID_FIELD_TYPE'
-    """
-    return validation_issue(code, message, details)
-
-
 @pre(lambda value: value is not None)
 @post(lambda result: isinstance(result, bool))
 def _is_finite_number(value: object) -> bool:
@@ -82,7 +60,7 @@ def _validate_string_field_type(
 
     suffix = "" if required else " when present"
     return [
-        _issue(
+        validation_issue(
             "INVALID_FIELD_TYPE",
             f"{field} must be a string{suffix}",
             {"field": field, "value": value},
@@ -102,7 +80,7 @@ def _model_params_shape_issue(value: object) -> ValidationIssue:
     >>> _model_params_shape_issue("bad")["details"]["field"]
     'model_params'
     """
-    return _issue(
+    return validation_issue(
         "INVALID_MODEL_PARAMS",
         "model_params must be an object when present",
         {"field": "model_params", "value": value},
@@ -124,7 +102,7 @@ def _validate_number_model_param(key: str, value: object) -> ValidationIssue | N
     minimum, maximum = _NUMBER_MODEL_PARAMS[key]
     if _is_finite_number(value) and value >= minimum and value <= maximum:
         return None
-    return _issue(
+    return validation_issue(
         "INVALID_MODEL_PARAMS",
         f"model_params.{key} must be a finite number between {minimum:g} and {maximum:g}",
         {"field": f"model_params.{key}", "value": value},
@@ -146,7 +124,7 @@ def _validate_integer_model_param(key: str, value: object) -> ValidationIssue | 
     minimum = _INTEGER_MODEL_PARAMS[key]
     if isinstance(value, int) and not isinstance(value, bool) and value >= minimum:
         return None
-    return _issue(
+    return validation_issue(
         "INVALID_MODEL_PARAMS",
         f"model_params.{key} must be an integer greater than or equal to {minimum}",
         {"field": f"model_params.{key}", "value": value},
@@ -181,7 +159,7 @@ def _validate_model_params(spec: dict[str, object]) -> list[ValidationIssue]:
     for key, value in items:
         if not isinstance(key, str):
             issues.append(
-                _issue(
+                validation_issue(
                     "INVALID_MODEL_PARAMS",
                     "model_params keys must be strings",
                     {"field": "model_params", "key": key},
@@ -216,7 +194,7 @@ def _validate_prompt_string_shape(spec: dict[str, object]) -> list[ValidationIss
     if isinstance(prompt, str):
         return None
     return [
-        _issue(
+        validation_issue(
             "INVALID_FIELD_TYPE",
             "prompt must be a string when present",
             {"field": "prompt", "value": prompt},
