@@ -58053,6 +58053,8 @@ phases:
       are absent>
 
       ```'
+    depends_on:
+    - larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
     agent: doc-reviewer-tacit
   - id: larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
     name: Complete packaged REST export and update_batch wiring
