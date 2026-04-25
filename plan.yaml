@@ -57297,6 +57297,123 @@ phases:
   depends_on:
   - fresh_cleanup_20260425_should_fix
   - meta.gate
+  steps:
+  - id: larva.operator_p2.rest_scope.decide_routes
+    name: Decide packaged REST export/update_batch route shape
+    status: pending
+    description: 'step_type: planning
+
+      agent_source: default
+
+
+      Read the canonical opifex contract, larva INTERFACES.md, packaged web routes,
+      facade export/update_batch methods, and MCP export/update_batch handlers. Decide
+      the exact packaged REST route shapes for P2 operator use before tests or implementation.
+
+
+      Required source discovery:
+
+      - Packaged web routes: `src/larva/shell/web.py` (`create_app`) and `larva serve`
+      startup contract.
+
+      - Facade semantics: `src/larva/app/facade.py` (`export_all`, `export_ids`, `update_batch`).
+
+      - MCP handler semantics: `src/larva/shell/mcp_export.py`, `src/larva/shell/mcp_update_batch.py`,
+      and `src/larva/shell/mcp.py` handler wiring.
+
+      - External authority: `../opifex/design/final-canonical-contract.md` and `INTERFACES.md`.
+
+
+      Route shape decision to lock unless evidence contradicts it:
+
+      - Export route: `POST /api/personas/export` with a top-level JSON object containing
+      exactly one selector: `{ "all": true }` OR `{ "ids": ["persona-id", ...] }`.
+
+      - Export must fail closed on missing selector, conflicting selectors, `all=false`,
+      non-boolean `all`, non-list `ids`, or non-string id elements.
+
+      - Update batch route: `POST /api/personas/update_batch` with `{ "where": {...},
+      "patches": {...}, "dry_run": <bool optional, default false> }`, delegating to
+      existing facade semantics.
+
+      - Update batch must fail closed on malformed body, missing `where`, missing
+      `patches`, non-object `where`/`patches`, non-boolean `dry_run`, protected patch
+      fields, and legacy/shared forbidden fields.
+
+
+      Rejected alternatives to evaluate and document:
+
+      - `GET /api/personas/export` with query params (reject unless source discovery
+      proves otherwise; selector body mirrors MCP semantics better).
+
+      - `POST /api/export` or component-level paths outside `/api/personas` (reject
+      unless source discovery proves otherwise; operation is persona registry-scoped).
+
+      - Reusing contrib-only batch routes as packaged contract (reject; contrib is
+      convenience surface only).
+
+      - Creating REST-only validation/patch logic (reject; REST must call existing
+      facade/Python API seams).
+
+
+      Output artifact: a concise route-decision note in step evidence. Do not modify
+      product code in this step.'
+    verification: '- Evidence lists the chosen export and update_batch route shapes.
+
+      - Evidence cites the key passages from opifex and INTERFACES.md proving larva/opifex
+      ownership boundaries.
+
+      - Evidence maps route behavior to existing facade/MCP semantics and explicitly
+      rejects contrib as packaged contract.
+
+      - No product code is modified in this planning/scope step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Route Decision
+
+      - Export route: <method path body shape>
+
+      - Update batch route: <method path body shape>
+
+      - Selector semantics: <exactly-one all=true or ids list; fail-closed cases>
+
+      - Update batch semantics: <where/patches/dry_run default and facade delegation>
+
+
+      ## Source Discovery
+
+      - Packaged web routes discovered: <file:functions>
+
+      - Facade semantics discovered: <methods and behavior>
+
+      - MCP semantics discovered: <handlers and selector/validation behavior>
+
+      - Contrib web status: <non-contractual; not used>
+
+
+      ## Rejected Alternatives
+
+      | Alternative | Rejected because |
+
+      |---|---|
+
+      | <alt> | <reason> |
+
+
+      ## Open Questions
+
+      - Route-shape questions remaining: <none or list>
+
+      - Spec questions remaining: <none or list>'
+    agent: python-senior-tacit
 - id: larva.operator_p2.red_tests
   name: Operator P2 REST Expected-Red Tests
   status: locked
