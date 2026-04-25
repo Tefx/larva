@@ -55774,3 +55774,73 @@ phases:
   status: locked
   depends_on:
   - merge_debt_20260425_test
+  steps:
+  - id: merge_debt_20260425_review.audit
+    name: Review aggregate evidence and diff
+    status: pending
+    description: 'Perform an independent review of the merge_debt_20260425 follow-up
+      evidence from the prior test phase. Review the aggregate test output, relevant
+      diff/context, and Invar boundary implications. Produce a clear PASS/FAIL decision
+      and issue list.
+
+
+      Decision rules:
+
+      - PASS only if aggregate tests and invar_guard are green and no blocker/should_fix
+      issues are found.
+
+      - FAIL if any test/guard failure remains, evidence is incomplete, or review
+      finds a blocker/should_fix issue intersecting merge_debt_20260425 surfaces.
+
+      - Suggestions/non-blocking debt may be recorded but must include non-intersection
+      rationale.
+
+
+      This review step does not modify code.'
+    verification: phase-check protecting merge_debt_20260425_review. Verify the aggregate
+      test evidence is complete, classify every issue with provenance and disposition,
+      and emit a PASS/FAIL decision that determines whether the conditional fix step
+      performs repair or no-op closure.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Review Decision
+
+      - Decision: PASS | FAIL
+
+      - Evidence reviewed: <test step evidence refs / command summaries>
+
+
+      ## Issue Register
+
+      | Severity | Provenance | Disposition | Location | Issue | Required closure
+      |
+
+      |----------|------------|-------------|----------|-------|------------------|
+
+      | blocker/should_fix/suggestion/tech_debt | pre-existing/introduced_now/out-of-step-origin
+      | blocking-now/blocking-later/non-blocking | <path/test> | <description> | <fix/no-intersection
+      rationale> |
+
+
+      ## Gate-Intersection Basis
+
+      For each unresolved issue, state which remaining check it intersects or why
+      it does not intersect.
+
+
+      ## Conditional Fix Trigger
+
+      - Trigger conditional repair if Decision=FAIL OR any aggregate test/guard failure
+      exists OR any blocker/should_fix issue has disposition blocking-now.
+
+      - If Decision=PASS and no trigger exists, the conditional fix step records no-op
+      closure.'
+    agent: gate-reviewer-tacit
