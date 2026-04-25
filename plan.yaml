@@ -57622,92 +57622,6 @@ phases:
 
       - Open problems: <none or explicit>'
     agent: python-senior-tacit
-  - id: larva.operator_p2.rest_endpoints.update_interfaces_inventory
-    name: Update INTERFACES.md packaged REST inventory
-    status: pending
-    description: 'step_type: implementation
-
-      agent_source: default
-
-
-      Update `INTERFACES.md` after the packaged REST routes are completed so the Web
-      Runtime Surface no longer lists export/update_batch as P2 follow-up targets
-      and instead documents the implemented packaged endpoint inventory.
-
-
-      Scope:
-
-      - Move packaged REST export and update_batch from `Operator-console REST follow-up
-      status` into `Normative endpoint inventory` only after the endpoint implementation
-      evidence exists.
-
-      - Document the exact method/path/body shape chosen by `larva.operator_p2.rest_scope.decide_routes`.
-
-      - Preserve ownership language: opifex remains canonical PersonaSpec authority;
-      larva remains validation/admission/projection owner.
-
-      - Preserve contrib boundary: `python contrib/web/server.py` remains contributor
-      convenience, not packaged operator contract.
-
-
-      Do not redefine PersonaSpec, capabilities, `tools`, `side_effect_policy`, or
-      `spec_digest`. This step is documentation sync only.'
-    verification: '- `INTERFACES.md` normative endpoint inventory includes packaged
-      REST export and update_batch with exact route/body semantics.
-
-      - P2 follow-up status is updated to indicate these targets are implemented,
-      not pending.
-
-      - Documentation continues to state contrib web server is not a packaged operator
-      contract.
-
-      - Documentation does not advertise forbidden legacy fields or alter PersonaSpec
-      meaning.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
-
-
-      If no refs were provided, state: "No refs for this step."
-
-
-      ## Documentation Sync Evidence
-
-      - Sections updated: <INTERFACES.md headings>
-
-      - Endpoint inventory additions: <method/path/body summary>
-
-      - Follow-up status change: <from P2 target to implemented>
-
-      - Contrib boundary preserved: <yes/no + citation>
-
-
-      ## Contract Preservation
-
-      - PersonaSpec redefined: MUST be no
-
-      - `tools` advertised as accepted: MUST be no
-
-      - `side_effect_policy` advertised as accepted: MUST be no
-
-      - `capabilities` meaning changed: MUST be no
-
-      - `spec_digest` format changed: MUST be no
-
-
-      ## Commands / Checks
-
-      ```
-
-      <paste doc-related checks or targeted grep confirming forbidden advertisements
-      are absent>
-
-      ```'
-    depends_on:
-    - larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
-    agent: doc-reviewer-tacit
 - id: larva.operator_p2.gate
   name: Operator P2 REST Verification Gate
   status: locked
@@ -58249,3 +58163,87 @@ phases:
 
       - Implementation step expected to turn these red tests green: `larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints`'
     agent: python-executor
+  - id: larva.operator_p2.rest_endpoints.update_interfaces_inventory
+    name: Update INTERFACES.md packaged REST inventory
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+
+      Update `INTERFACES.md` after the packaged REST routes are completed so the Web
+      Runtime Surface no longer lists export/update_batch as P2 follow-up targets
+      and instead documents the implemented packaged endpoint inventory.
+
+
+      Scope:
+
+      - Move packaged REST export and update_batch from `Operator-console REST follow-up
+      status` into `Normative endpoint inventory` only after the endpoint implementation
+      evidence exists.
+
+      - Document the exact method/path/body shape chosen by `larva.operator_p2.rest_scope.decide_routes`.
+
+      - Preserve ownership language: opifex remains canonical PersonaSpec authority;
+      larva remains validation/admission/projection owner.
+
+      - Preserve contrib boundary: `python contrib/web/server.py` remains contributor
+      convenience, not packaged operator contract.
+
+
+      Do not redefine PersonaSpec, capabilities, `tools`, `side_effect_policy`, or
+      `spec_digest`. This step is documentation sync only.'
+    verification: '- `INTERFACES.md` normative endpoint inventory includes packaged
+      REST export and update_batch with exact route/body semantics.
+
+      - P2 follow-up status is updated to indicate these targets are implemented,
+      not pending.
+
+      - Documentation continues to state contrib web server is not a packaged operator
+      contract.
+
+      - Documentation does not advertise forbidden legacy fields or alter PersonaSpec
+      meaning.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Documentation Sync Evidence
+
+      - Sections updated: <INTERFACES.md headings>
+
+      - Endpoint inventory additions: <method/path/body summary>
+
+      - Follow-up status change: <from P2 target to implemented>
+
+      - Contrib boundary preserved: <yes/no + citation>
+
+
+      ## Contract Preservation
+
+      - PersonaSpec redefined: MUST be no
+
+      - `tools` advertised as accepted: MUST be no
+
+      - `side_effect_policy` advertised as accepted: MUST be no
+
+      - `capabilities` meaning changed: MUST be no
+
+      - `spec_digest` format changed: MUST be no
+
+
+      ## Commands / Checks
+
+      ```
+
+      <paste doc-related checks or targeted grep confirming forbidden advertisements
+      are absent>
+
+      ```'
+    agent: doc-reviewer-tacit
