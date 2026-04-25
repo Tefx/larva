@@ -54859,3 +54859,8 @@ phases:
       Reviewer note:\n- The unrelated untracked file `design/prompt-text-opacity-basis.md`\
       \ remains outside this cleanup scope and does not block gate OPEN for the two\
       \ requested non-blocking debts."
+- id: merge_debt_20260425
+  name: Merge Review Debt Demolition
+  status: pending
+  depends_on:
+  - post_prompt_opacity_debt_cleanup_20260419
