@@ -55100,3 +55100,137 @@ phases:
     depends_on:
     - merge_debt_20260425.mcp-validation
     agent: python-executor
+  - id: merge_debt_20260425.core-validation-issue-helper
+    name: Extract core ValidationIssue builder
+    status: pending
+    description: 'Implement and verify the P1 core ValidationIssue builder extraction.
+
+
+      Purpose: replace duplicate `_issue()` builders in `src/larva/core/validate.py`
+      and `src/larva/core/validation_field_shapes.py` with one core helper, tentatively
+      `validation_issue()`.
+
+
+      Scope:
+
+      - Add the helper in an appropriate core module; keep it pure core with no I/O
+      imports.
+
+      - New core helper MUST include `@pre`, `@post`, and at least one doctest per
+      AGENTS.md.
+
+      - Preserve the existing `ValidationIssue` shape and all caller-visible error
+      codes/messages/details.
+
+      - Update only the two duplicate-builder call sites plus focused tests.
+
+
+      VETO guardrails:
+
+      - Do NOT merge core and shell.
+
+      - Do NOT change canonical schema meaning.
+
+      - Do NOT broaden this into a validation framework rewrite.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      helper must construct real issue dictionaries from its inputs and preserve caller-visible
+      behavior.
+
+
+      ## Mechanical adversary requirement
+
+      Before product-code edits, add or strengthen doctest/property-style tests that
+      fail because the new helper is absent or not used. Capture Expected-Red, then
+      extract the helper and turn tests/guard green.'
+    verification: '- Expected-Red: helper contract/doctest or focused test fails before
+      extraction.
+
+      - Core contract: new helper has non-vacuous `@pre`, `@post`, and doctest.
+
+      - Green: relevant core validate/field-shape tests pass (`tests/core/test_validate.py`
+      and any schema/field-shape coverage touched).
+
+      - Full guard: `invar_guard` passes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validate.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/core/validation_field_shapes.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_validate.py — key passage or "NOT READ: <reason>"
+
+      - tests/core/test_schema_validation.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Contract/doctest/test added:
+
+      - Command run before product-code changes:
+
+      ```text
+
+      <paste failing output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Helper path/name:
+
+      - Removed duplicate builders:
+
+      - Behavior preservation notes for code/message/details:
+
+
+      ## Core Contract Proof
+
+      - `@pre`/`@post` summary:
+
+      - Doctest output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Green Proof
+
+      - Focused core test output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - `invar_guard` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - Core remains pure/no I/O imports:
+
+      - No schema meaning change:'
+    depends_on:
+    - merge_debt_20260425.mcp-mixin-cleanup
+    agent: python-executor
