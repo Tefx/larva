@@ -57563,7 +57563,7 @@ phases:
   steps:
   - id: larva.operator_p2.gate.targeted_rest_tests
     name: Run targeted packaged REST tests
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -57688,6 +57688,8 @@ phases:
 
       - [ ] FAIL: blocking issues or proof gaps remain'
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-25T20:15:23.132744+00:00'
   - id: larva.operator_p2.gate.packaged_serve_smoke
     name: Smoke packaged larva serve REST runtime
     status: claimed
