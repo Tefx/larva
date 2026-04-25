@@ -58735,7 +58735,7 @@ phases:
       \ reopened; no B2 rework performed.\n- No orchestrator state files modified."
   - id: larva.operator_p2.gate.retest_final_review_blockers_residual
     name: Residual retest gate for final review blocker B4
-    status: pending
+    status: claimed
     description: 'Residual retest gate: independently verify closure of B4 after `larva.operator_p2.gate.fix_final_review_blockers_residual`.
 
 
@@ -58831,6 +58831,8 @@ phases:
     depends_on:
     - larva.operator_p2.gate.fix_final_review_blockers_residual
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-25T22:04:56.543232+00:00'
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
