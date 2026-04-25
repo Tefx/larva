@@ -58154,6 +58154,167 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-25T21:10:07.599994+00:00'
+  - id: larva.operator_p2.gate.fix_final_review_blockers_batch
+    name: Batch fix final review blockers B1-B4
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      priority: HIGH
+
+
+      Batch remediation for ALL blockers reported by `larva.operator_p2.gate.final_review`.
+      This is one consolidated fix path; do not split into separate sibling loops.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Ruff issues in targeted REST gap tests
+
+      Ownership: Clean `tests/shell/test_web_rest_gaps.py` so ruff is green for the
+      touched test file(s), including unused imports, import sorting, TC001/type-checking
+      import placement, and any sibling ruff findings introduced while fixing.
+
+      Grep/search hint: inspect all imports and type-only references in `tests/shell/test_web_rest_gaps.py`
+      and any related touched tests.
+
+
+      ### B2: mypy intersections on changed files
+
+      Ownership: Close mypy blockers intersecting the operator P2 REST changed-file
+      set, especially `src/larva/shell/web.py` route decorators and TypedDict negative
+      fixtures in tests.
+
+      Required strategy: provide explicit disposition for each changed-file mypy finding:
+      fixed, intentionally avoided by narrowed target, or non-intersecting with evidence.
+      Do not leave changed-file type errors as "pre-existing" disposition.
+
+
+      ### B3: Targeted REST tests mutate real default registry state
+
+      Ownership: Make targeted REST tests isolate registry state and HOME/config paths
+      so they do not write to or mutate the real default registry.
+
+      Required strategy: use isolated registry/temp HOME or equivalent fixture-level
+      isolation; prove default registry files are untouched before/after focused tests.
+
+
+      ### B4: `src/larva/shell/web.py` exceeds shell file-size threshold
+
+      Ownership: Extract/refactor the REST web shell surface enough to satisfy the
+      shell file-size threshold while preserving packaged REST behavior exactly.
+
+      Preserve behavior: packaged `larva serve` REST export/update_batch routes, route
+      shapes, validation-before-mutation, canonical PersonaSpec admission semantics,
+      and response/error behavior MUST remain unchanged. Contrib server remains non-contractual.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: final gate blockers are quality/gate intersections around test
+      hygiene, typing, state isolation, and oversized shell module structure; behavior
+      is reportedly green but cannot close while these gate policies fail.
+
+      - Symptom: final review reported B1-B4 despite targeted and smoke REST tests
+      passing.
+
+      - Why this fix is not surface-level: the step must close each blocker family
+      and provide sibling/state-isolation proof, not merely silence one command output.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic or test infrastructure that processes
+      its inputs and produces outputs that vary based on those inputs. Private stub
+      classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Packaged REST behavior preservation
+
+      Before claiming done, compare focused REST behavior before/after refactor using
+      existing tests/smoke evidence. Any extraction from `src/larva/shell/web.py`
+      must be behavior-preserving and must not invent local interpretations of shared
+      PersonaSpec fields.'
+    verification: '- Ruff: run ruff on all touched files, explicitly including `tests/shell/test_web_rest_gaps.py`,
+      and show green output.
+
+      - Mypy: run a targeted mypy strategy covering changed-file intersections; list
+      every mypy finding involving `src/larva/shell/web.py` route decorators and TypedDict
+      negative fixtures, with closure status.
+
+      - Isolation: prove targeted REST tests use isolated registry/temp HOME or equivalent
+      and do not write to real default registry state; include before/after path evidence.
+
+      - Behavior: focused REST tests for packaged export/update_batch pass.
+
+      - Runtime smoke: packaged `larva serve` smoke still passes through the packaged
+      REST surface.
+
+      - Refactor: `src/larva/shell/web.py` is below the shell file-size threshold
+      or has an explicit gate-accepted threshold disposition.
+
+      - Shared-surface invariants: no drift in PersonaSpec admission/projection semantics
+      (`tools` rejected, protected fields fail closed, `capabilities` meaning unchanged).'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - `src/larva/shell/web.py` — key passage or "NOT READ: <reason>"
+
+      - `tests/shell/test_web_rest_gaps.py` — key passage or "NOT READ: <reason>"
+
+      - `INTERFACES.md` — key passage or "NOT READ: <reason>"
+
+      - `../opifex/design/final-canonical-contract.md` — key passage or "NOT READ:
+      <reason>"
+
+      - `../opifex/contracts/persona_spec.schema.json` — key passage or "NOT READ:
+      <reason>"
+
+
+      ## Batched Blocker Closure
+
+      - B1 ruff closure: <commands/output and files changed>
+
+      - B2 mypy closure: <targeted command/output and changed-file intersection table>
+
+      - B3 registry isolation closure: <temp HOME/registry strategy and before/after
+      proof>
+
+      - B4 web.py size/refactor closure: <extraction summary and line/threshold proof>
+
+
+      ## Behavior Preservation Proof
+
+      - Focused REST tests command/output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - Packaged serve smoke command/output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - Packaged REST behavior unchanged: PASS/FAIL with notes
+
+
+      ## Residual Risk
+
+      - none, or list with explicit non-intersection evidence'
+    depends_on:
+    - larva.operator_p2.gate.final_review
+    agent: python-senior-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
