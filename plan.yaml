@@ -55011,7 +55011,7 @@ phases:
       - Core/shell boundary preserved."
   - id: merge_debt_20260425.mcp-mixin-cleanup
     name: Remove MCPHandlerOpsMixin indirection
-    status: pending
+    status: claimed
     description: 'Implement and verify the P1 MCP handler-ops cleanup.
 
 
@@ -55127,6 +55127,8 @@ phases:
     depends_on:
     - merge_debt_20260425.mcp-validation
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T08:20:21.067699+00:00'
   - id: merge_debt_20260425.core-validation-issue-helper
     name: Extract core ValidationIssue builder
     status: pending
