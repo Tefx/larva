@@ -58242,3 +58242,10 @@ phases:
     - larva.operator_p2.gate.packaged_serve_smoke
     - larva.operator_p2.gate.repo_local_full_gate
     agent: gate-reviewer-tacit
+- id: larva.operator_p2.rest_delivery
+  name: Operator P2 REST Delivery
+  status: locked
+  gate: Expected-red packaged REST tests, endpoint implementation, and INTERFACES.md
+    sync complete before verification gate
+  depends_on:
+  - larva.operator_p2.rest_scope
