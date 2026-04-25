@@ -55931,7 +55931,7 @@ phases:
       TRIGGER_CONDITIONAL_FIX = true (review FAIL with blocker-class issues).'
   - id: merge_debt_20260425_review.conditional-fix
     name: Conditional repair and same-suite retest
-    status: pending
+    status: claimed
     description: 'Conditional repair closure for the follow-up review.
 
 
@@ -56039,3 +56039,5 @@ phases:
     depends_on:
     - merge_debt_20260425_review.audit
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-25T10:19:03.770359+00:00'
