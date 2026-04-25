@@ -58069,7 +58069,7 @@ phases:
       orchestrator_action_hint: COMPLETE'
   - id: larva.operator_p2.gate.final_review
     name: Final independent review for operator P2 REST
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -58152,6 +58152,8 @@ phases:
     - larva.operator_p2.gate.packaged_serve_smoke
     - larva.operator_p2.gate.repo_local_full_gate
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-25T21:10:07.599994+00:00'
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
   status: done
