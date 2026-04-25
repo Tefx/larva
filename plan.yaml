@@ -56127,3 +56127,8 @@ phases:
       - verdict: PASS
 
       - blockers: []'
+- id: fresh_cleanup_20260425_impl
+  name: Fresh Cleanup 2026-04-25 Implementation
+  status: pending
+  depends_on:
+  - merge_debt_20260425_review
