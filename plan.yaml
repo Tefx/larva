@@ -57945,3 +57945,110 @@ phases:
 
       - [ ] FAIL: blocking issues or proof gaps remain'
     agent: integration-verifier-tacit
+  - id: larva.operator_p2.gate.packaged_serve_smoke
+    name: Smoke packaged larva serve REST runtime
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      tags: [integration, liveness]
+
+      agent_source: default
+
+
+      As a semi-blind runtime tester, prove the packaged `larva serve` runtime starts
+      and exposes the new REST endpoints through the packaged contract. Do not use
+      `python contrib/web/server.py`.
+
+
+      Required runtime proof:
+
+      - Launch packaged `larva serve --port <free-port> --no-open`.
+
+      - Confirm `/` serves the packaged HTML artifact.
+
+      - Send at least one real HTTP request to `POST /api/personas/export` and one
+      to `POST /api/personas/update_batch` through the running packaged server.
+
+      - Show expected response envelopes or typed fail-closed errors depending on
+      fixture state.
+
+      - Shut down cleanly and report process exit/cleanup.
+
+
+      Independence Level: L2 semi-blind integration/liveness verification. This protects
+      the final operator P2 gate and the runnable Web Runtime Surface.'
+    verification: '- `larva serve` starts on a free local port and stays alive long
+      enough for requests.
+
+      - `/` returns HTML from packaged surface.
+
+      - Real HTTP requests reach packaged export/update_batch endpoints.
+
+      - Evidence proves contrib server is not launched or imported.
+
+      - Process cleanup is documented.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Packaged Runtime Smoke Evidence
+
+      **Launch command:**
+
+      ```
+
+      <paste exact `larva serve --port ... --no-open` command>
+
+      ```
+
+      **Startup output:**
+
+      ```
+
+      <paste stdout/stderr or captured log>
+
+      ```
+
+      **HTTP probes:**
+
+      | Request | Status | Response excerpt | Path exercised |
+
+      |---|---|---|---|
+
+      | GET / | <status> | <excerpt> | packaged server -> HTML |
+
+      | POST /api/personas/export | <status> | <excerpt> | packaged server -> REST
+      route -> facade |
+
+      | POST /api/personas/update_batch | <status> | <excerpt> | packaged server ->
+      REST route -> facade |
+
+
+      ## No-Contrib Proof
+
+      - Contrib server command used: MUST be no
+
+      - Contrib imports/calls observed: MUST be none
+
+
+      ## Cleanup
+
+      - Shutdown method: <signal/cleanup>
+
+      - Process status after cleanup: <status>
+
+
+      ## Headline
+
+      - [ ] PASS
+
+      - [ ] FAIL'
+    agent: blind-tester-tacit
