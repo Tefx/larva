@@ -57066,7 +57066,7 @@ phases:
   steps:
   - id: fresh_cleanup_20260425_should_fix.full_guard_counts
     name: Generate authoritative full invar guard warning counts
-    status: claimed
+    status: done
     description: 'Re-run the full invar guard from a fresh workspace state and produce
       authoritative machine-readable plus human-readable warning/error/info count
       evidence.
@@ -57129,6 +57129,19 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-04-25T12:34:00.767047+00:00'
+    done_at: '2026-04-25T12:39:14.436031+00:00'
+    evidence: "## Full Invar Guard Count Evidence\n\n**Command executed**\n```text\n\
+      uvx invar-tools guard --all\n```\n\n**Machine-readable counts**\n```json\n{\n\
+      \  \"command\": \"uvx invar-tools guard --all\",\n  \"command_exit_code\": 0,\n\
+      \  \"errors\": 0,\n  \"warnings\": 6,\n  \"infos\": 1,\n  \"timestamp\": \"\
+      2026-04-25T12:38:38Z\",\n  \"repo_head\": \"5abed876680fc414076bac662270164d56313268\"\
+      ,\n  \"files_checked\": 42\n}\n```\n\n**Human summary**\n- Errors: 0\n- Warnings:\
+      \ 6\n- Infos: 1\n- Summary sentence: full invar guard completed successfully\
+      \ with zero errors, six warnings, and one info.\n\n**Raw output excerpt proving\
+      \ counts**\n```text\nsummary: { files_checked: 42, errors: 0, warnings: 6, infos:\
+      \ 1 }\nstatic.passed: true\ndoctest.passed: true\ncrosshair.status: verified\n\
+      property_tests.passed: true\n```\n\n**No-code-change confirmation**\n- verify-only\
+      \ run; worktree diff empty (no product changes)."
   - id: fresh_cleanup_20260425_should_fix.audit_evidence_narrative
     name: Audit and close invar warning narrative consistency
     status: pending
