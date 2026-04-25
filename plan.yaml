@@ -57553,7 +57553,7 @@ phases:
   - larva.operator_p2.red_tests
 - id: larva.operator_p2.gate
   name: Operator P2 REST Verification Gate
-  status: pending
+  status: in_progress
   gate: Targeted REST tests, packaged serve smoke, repo-local full gate, and independent
     review all pass
   context: Final verification for packaged REST export/update_batch after the merged
@@ -57690,7 +57690,7 @@ phases:
     agent: integration-verifier-tacit
   - id: larva.operator_p2.gate.packaged_serve_smoke
     name: Smoke packaged larva serve REST runtime
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -57795,6 +57795,8 @@ phases:
 
       - [ ] FAIL'
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-04-25T20:15:09.176412+00:00'
   - id: larva.operator_p2.gate.repo_local_full_gate
     name: Run repo-local full gate for REST P2
     status: pending
