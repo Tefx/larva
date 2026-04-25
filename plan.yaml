@@ -58601,7 +58601,7 @@ phases:
       guard scope'
   - id: larva.operator_p2.gate.fix_final_review_blockers_residual
     name: Residual fix for final review blocker B4
-    status: claimed
+    status: done
     description: 'Residual remediation after partial salvage of `larva.operator_p2.gate.fix_final_review_blockers_residual`.
 
 
@@ -58711,6 +58711,28 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-25T21:59:31.342059+00:00'
+    done_at: '2026-04-25T22:04:32.906128+00:00'
+    evidence: "Mainline merge + verification for residual B4 closure.\n\nMerge:\n\
+      - Squash merged branch `vectl/step-larva.operator_p2.gate.fix_final_review_blockers_residual`\
+      \ into `main`.\n- Mainline commit: `[vectl] step-larva.operator_p2.gate.fix_final_review_blockers_residual\
+      \ completed` (HEAD).\n- Files merged: `pyproject.toml`, `src/larva/shell/web_routes.py`.\n\
+      \nB4 closure evidence (from execution + mainline verification):\n- `why_previous_fix_failed`:\
+      \ prior residual path left broad invar exclusion + monolithic route registration\
+      \ unresolved.\n- `why_previous_gate_missed_it`: prior gate emphasized mypy/runtime\
+      \ checks and did not require explicit guard-integrity/route-architecture closure\
+      \ for `web_routes.py`.\n- `reversal_risk`: runtime low (no REST behavior changes),\
+      \ guard-policy medium (documented temporary exception path).\n- `guard_bypass_resolution`:\
+      \ retained approved exception with explicit rationale/removal ownership path;\
+      \ demonstrated exclusion removal attempt caused current invar FastAPI-boundary\
+      \ false positives; final guard run passes.\n- `register_routes_architecture`:\
+      \ split registration into focused helpers (`_register_persona_routes`, `_register_component_routes`,\
+      \ `_register_static_routes`) and kept `register_routes` as thin orchestrator.\n\
+      - `runtime_regression_proof`:\n  - `uv run --frozen mypy src/larva/shell/web.py\
+      \ src/larva/shell/web_routes.py tests/shell/fixture_taxonomy.py tests/shell/test_web_rest_gaps.py`\
+      \ → Success: no issues found in 4 source files\n  - `uv run --frozen pytest\
+      \ tests/shell/test_web_rest_gaps.py -q` → 17 passed\n  - `uv run --frozen invar\
+      \ guard` → passed, static errors=0 warnings=0\n\nScope control:\n- B2 was not\
+      \ reopened; no B2 rework performed.\n- No orchestrator state files modified."
   - id: larva.operator_p2.gate.retest_final_review_blockers_residual
     name: Residual retest gate for final review blocker B4
     status: pending
