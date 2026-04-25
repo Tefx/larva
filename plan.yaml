@@ -57529,6 +57529,201 @@ phases:
     semantics
   depends_on:
   - larva.operator_p2.red_tests
+  steps:
+  - id: larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints
+    name: Complete packaged REST export and update_batch wiring
+    status: pending
+    description: 'step_type: implementation
+
+      tags: [integration]
+
+      agent_source: default
+
+
+      Complete the thin packaged web route wiring in `src/larva/shell/web.py` for
+      the P2 REST obligations defined by `larva.operator_p2.rest_scope.decide_routes`
+      and exposed by `larva.operator_p2.red_tests.define_red_rest_gaps`.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - `larva.operator_p2.rest_scope.decide_routes` — route shape and rejected alternatives
+      are AUTHORITATIVE unless evidence records a deviation.
+
+      - `tests/shell/test_web.py` additions from `larva.operator_p2.red_tests.define_red_rest_gaps`
+      — expected-red tests are PROTECTED.
+
+
+      YOUR SCOPE:
+
+      - Add packaged `POST /api/personas/export` to `create_app`, delegating to existing
+      `python_api.export_all()` / `python_api.export_ids(ids)` or the equivalent facade
+      seam already used by web REST.
+
+      - Add packaged `POST /api/personas/update_batch` to `create_app`, delegating
+      to existing `python_api.update_batch(where, patches, dry_run=False)` or the
+      equivalent facade seam already used by web REST.
+
+      - Reuse existing request-object parsing and web REST response/error envelope
+      style.
+
+      - Do not add REST-only PersonaSpec validation, patch validation, or selector
+      semantics that diverge from existing facade/MCP behavior.
+
+      - Do not import or call `contrib/web/server.py`.
+
+
+      Failure-mode checklist (must be covered by code and tests):
+
+      - Export selector: exactly one of `all=true` OR `ids=[...]`; missing/conflicting
+      selectors fail closed.
+
+      - Export selector: `all=false`, wrong `all` type, wrong `ids` type, and non-string
+      ids fail closed.
+
+      - Update batch: missing/wrong `where`, missing/wrong `patches`, and wrong `dry_run`
+      type fail closed.
+
+      - Update batch: `dry_run=true` is last-writer-safe by not mutating registry
+      state.
+
+      - Update batch: validation/protected-field rejection happens before any mutation;
+      no partial writes.
+
+      - Shared canonical invariants: `tools` and `side_effect_policy` remain rejected;
+      `spec_digest` format remains `sha256:<64 lowercase hex chars>`.
+
+
+      State semantics:
+
+      - Last-writer-wins behavior remains owned by existing facade registry/update
+      semantics; REST only delegates.
+
+      - Backward-compatible legacy behavior is limited to existing facade semantics;
+      REST must not accept-and-clean malformed shared input.
+
+      - Explicit clear/null overwrite semantics must match existing `update`/`update_batch`
+      facade behavior.
+
+
+      Out-of-scope guardrail:
+
+      - No PersonaSpec schema changes.
+
+      - No `tools` compatibility alias.
+
+      - No `side_effect_policy` as PersonaSpec field.
+
+      - No change to `capabilities` meaning or `spec_digest` format.
+
+      - No new complex service layer.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      route must process its JSON body, delegate to the real facade/Python API seam,
+      and return outputs that vary based on registry state and request inputs. Private
+      stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Any packaged REST test that imports or calls contrib web server.
+
+      2. Any REST-only validation path that accepts `tools`/`side_effect_policy` or
+      rewrites `capabilities` semantics.
+
+      3. Any update_batch path that mutates before validation/protected-field failure.
+
+      4. Any export route accepting missing/conflicting selectors instead of failing
+      closed.'
+    verification: '- Main path: focused packaged REST tests for export all, export
+      ids, update_batch dry_run, and update_batch mutation pass.
+
+      - Failure path: focused packaged REST tests for selector conflicts, missing
+      selectors, protected fields, `tools`, and `side_effect_policy` fail-closed behavior
+      pass.
+
+      - Integration proof: at least one test exercises HTTP request -> packaged web
+      route -> Python API/facade seam -> response envelope.
+
+      - Evidence confirms no contrib web server import/call in packaged REST tests.
+
+      - Run `invar_guard` on changed files after focused tests.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Expected-Red Anchor
+
+      - Red-test step reviewed: `larva.operator_p2.red_tests.define_red_rest_gaps`
+
+      - Failing output before implementation: <paste or cite exact evidence>
+
+
+      ## Implementation Summary
+
+      - Route files changed: <paths>
+
+      - Export delegation seam used: <export_all/export_ids path>
+
+      - Update batch delegation seam used: <update_batch path>
+
+      - REST-only validation added: <none or deviation record>
+
+
+      ## Failure-Mode Evidence
+
+      | Failure mode | Test/proof | Result |
+
+      |---|---|---|
+
+      | conflict selector fail-closed | <test> | PASS |
+
+      | missing selector fail-closed | <test> | PASS |
+
+      | validation before mutation | <test> | PASS |
+
+      | protected fields fail closed | <test> | PASS |
+
+      | tools/side_effect_policy rejected | <test> | PASS |
+
+
+      ## Integration Evidence
+
+      **Command or test exercising full path:**
+
+      ```
+
+      <paste exact command/test>
+
+      ```
+
+      **Actual output:**
+
+      ```
+
+      <paste output>
+
+      ```
+
+      **Path exercised:** HTTP client -> `larva.shell.web.create_app` route -> `larva.shell.python_api`/facade
+      -> response envelope
+
+
+      ## Guard Evidence
+
+      - Changed-file guard command/result: <paste>
+
+      - Open problems: <none or explicit>'
+    agent: python-senior-tacit
 - id: larva.operator_p2.gate
   name: Operator P2 REST Verification Gate
   status: locked
