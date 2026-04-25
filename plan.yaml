@@ -58052,3 +58052,108 @@ phases:
 
       - [ ] FAIL'
     agent: blind-tester-tacit
+  - id: larva.operator_p2.gate.repo_local_full_gate
+    name: Run repo-local full gate for REST P2
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+      agent_source: default
+
+
+      Run the repo-local full verification gate after targeted REST and packaged runtime
+      smoke evidence exist. This step protects against cross-surface drift and broad
+      guard failures introduced by the REST P2 work.
+
+
+      Required checks:
+
+      - Run the authoritative full-scan invar gate for this repo (`uvx invar-tools
+      guard --all` or the project-authoritative equivalent if tooling indicates a
+      different exact command).
+
+      - Include any full test/guard output necessary to prove canonical admission
+      invariants still hold across core/shell/web surfaces.
+
+      - If the full gate reports failures outside the P2 seam, classify provenance
+      separately from disposition: any failure intersecting this final gate must get
+      remediation ownership, not be dismissed as pre-existing.
+
+
+      This is a full-plan-check. It protects the final operator P2 close gate.'
+    verification: '- Full repo-local guard command completes successfully, or any
+      failures are reported with blocker/non-intersection disposition.
+
+      - Evidence includes the exact command and output.
+
+      - No blocker-class broad failures remain without remediation ownership.
+
+      - Canonical admission shared-surface invariants remain green after REST P2 changes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Full Gate Execution
+
+      **Command:**
+
+      ```
+
+      <paste exact full gate command>
+
+      ```
+
+      **Output:**
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | INTERFACES.md Web Runtime Surface | packaged REST export/update_batch work
+      through `larva serve` | targeted tests + smoke | <refs> | PROVEN/NEEDS_TEST/UNPROVEN
+      | <path> | <basis> |
+
+      | opifex PersonaSpec | forbidden fields rejected and digest format preserved
+      | full guard + targeted tests | <refs> | PROVEN/NEEDS_TEST/UNPROVEN | <path>
+      | <basis> |
+
+
+      ## Gate-Intersection Disposition
+
+      | Failure/debt | Provenance | Disposition | Intersects remaining gate? | Owner/closure
+      |
+
+      |---|---|---|---|---|
+
+      | <item or none> | <pre-existing/introduced_now/out-of-step-origin> | <blocking-now/blocking-later/non-blocking>
+      | <yes/no + evidence> | <step/none> |
+
+
+      ## Headline
+
+      - [ ] PASS
+
+      - [ ] PASS_WITH_DEBT (non-intersection evidence required)
+
+      - [ ] FAIL (blockers remain)'
+    depends_on:
+    - larva.operator_p2.gate.targeted_rest_tests
+    - larva.operator_p2.gate.packaged_serve_smoke
+    agent: integration-verifier-tacit
