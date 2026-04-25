@@ -57887,7 +57887,7 @@ phases:
       whether any product implementation files were modified: false'
   - id: larva.operator_p2.gate.repo_local_full_gate
     name: Run repo-local full gate for REST P2
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -57990,6 +57990,8 @@ phases:
     - larva.operator_p2.gate.targeted_rest_tests
     - larva.operator_p2.gate.packaged_serve_smoke
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-25T21:00:05.975610+00:00'
   - id: larva.operator_p2.gate.final_review
     name: Final independent review for operator P2 REST
     status: pending
