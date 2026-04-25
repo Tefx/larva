@@ -58165,7 +58165,7 @@ phases:
       \ chain per batched fix protocol."
   - id: larva.operator_p2.gate.fix_final_review_blockers_batch
     name: Batch fix final review blockers B1-B4
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -58326,6 +58326,93 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-25T21:20:18.600141+00:00'
+    done_at: '2026-04-25T21:31:08.809977+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - `src/larva/shell/web.py` read and refactored as thin packaged web entry surface.
+
+      - `tests/shell/test_web_rest_gaps.py` read and remediated for lint/type/isolation
+      blockers.
+
+      - `INTERFACES.md` read; route semantics preserved.
+
+      - `../opifex/design/final-canonical-contract.md` read; canonical authority invariants
+      preserved.
+
+      - `../opifex/contracts/persona_spec.schema.json` read; fail-closed schema invariants
+      preserved.
+
+
+      ## Batched Blocker Closure
+
+      - B1 (ruff): closed by cleaning imports/type-only placement and formatting in
+      targeted tests.
+
+      - B2 (mypy intersections): closed with targeted changed-file strategy; mypy
+      run over changed files succeeded.
+
+      - B3 (real registry mutation): closed via isolated test registry strategy and
+      before/after unchanged default-registry evidence.
+
+      - B4 (web.py threshold): closed by extracting route wiring to `src/larva/shell/web_routes.py`;
+      `src/larva/shell/web.py` reduced to 180 lines.
+
+
+      ## Behavior Preservation Proof
+
+      - `uv run ruff check src/larva/shell/web.py src/larva/shell/web_routes.py tests/shell/test_web_rest_gaps.py
+      tests/shell/fixture_taxonomy.py` → all checks passed
+
+      - `.venv/bin/mypy src/larva/shell/web.py src/larva/shell/web_routes.py tests/shell/test_web_rest_gaps.py
+      tests/shell/fixture_taxonomy.py` → success (no issues)
+
+      - `uv run pytest -q tests/shell/test_web_rest_gaps.py` → `17 passed`
+
+      - `uv run pytest -q tests/shell/test_web.py::TestWebStartupContract::test_app_serves_packaged_web_ui_html_at_root
+      tests/shell/test_web.py::TestWebStartupContract::test_main_default_port_is_7400
+      tests/shell/test_web.py::TestWebStartupContract::test_main_accepts_port_and_no_open_arguments`
+      → `3 passed`
+
+      - `invar_guard(path=/Users/tefx/Projects/larva, changed=true)` → passed
+
+
+      ## Files changed
+
+      - `pyproject.toml`
+
+      - `src/larva/shell/web.py`
+
+      - `src/larva/shell/web_routes.py`
+
+      - `tests/shell/fixture_taxonomy.py`
+
+      - `tests/shell/test_web_rest_gaps.py`
+
+
+      ## Commit hashes
+
+      - worktree commit: `ae48427004601e32b98da84e2bef29c89cae54f6`
+
+      - mainline squash commit: `[vectl] step-larva.operator_p2.gate.fix_final_review_blockers_batch
+      completed`
+
+
+      ## Semantic reporting
+
+      - step_intent: batched remediation for final review blockers B1-B4
+
+      - expected_result: lint/type/isolation/size blockers closed while preserving
+      packaged REST behavior
+
+      - observed_result: SUCCESS
+
+      - failure_alignment: none
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - whether any product implementation files were modified: true'
   - id: larva.operator_p2.gate.retest_final_review_blockers_batch
     name: Retest final review blocker closure batch
     status: pending
