@@ -55689,13 +55689,13 @@ phases:
       \ workflow introduced."
 - id: merge_debt_20260425_test
   name: Merge Debt Follow-up Test
-  status: pending
+  status: in_progress
   depends_on:
   - merge_debt_20260425
   steps:
   - id: merge_debt_20260425_test.aggregate-regression
     name: Aggregate regression and guard proof
-    status: pending
+    status: claimed
     description: 'Run a read-only aggregate verification pass for the completed merge_debt_20260425
       changes. Do not modify product code. Execute the focused regression set covering
       MCP validation, MCP mixin removal, core validation issue helpers, structured
@@ -55769,6 +55769,8 @@ phases:
 
       - [ ] FAIL: failures listed above for conditional repair closure'
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-25T09:52:14.679887+00:00'
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
   status: locked
