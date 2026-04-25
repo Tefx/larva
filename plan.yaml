@@ -57144,7 +57144,7 @@ phases:
       \ run; worktree diff empty (no product changes)."
   - id: fresh_cleanup_20260425_should_fix.audit_evidence_narrative
     name: Audit and close invar warning narrative consistency
-    status: pending
+    status: claimed
     description: 'Independently audit the authoritative counts from fresh_cleanup_20260425_should_fix.full_guard_counts
       against prior final-review narrative about invar warnings, then close the should_fix
       as PASS_NOOP or REPAIR_APPLIED.
@@ -57253,3 +57253,5 @@ phases:
     depends_on:
     - fresh_cleanup_20260425_should_fix.full_guard_counts
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-25T12:39:38.137922+00:00'
