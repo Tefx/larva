@@ -57987,7 +57987,7 @@ phases:
     agent: gate-reviewer-tacit
 - id: larva.operator_p2.rest_delivery
   name: Operator P2 REST Delivery
-  status: pending
+  status: in_progress
   gate: Expected-red packaged REST tests, endpoint implementation, and INTERFACES.md
     sync complete before verification gate
   depends_on:
@@ -57995,7 +57995,7 @@ phases:
   steps:
   - id: larva.operator_p2.red_tests.define_red_rest_gaps
     name: Define expected-red packaged REST P2 tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: default\n\nAdd test-only coverage that exposes the current\
       \ packaged REST gaps before endpoint implementation. Scope is tests and fixtures\
@@ -58094,6 +58094,8 @@ phases:
 
       - Implementation step expected to turn these red tests green: `larva.operator_p2.rest_endpoints.complete_packaged_rest_endpoints`'
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-04-25T19:27:11.993775+00:00'
   - id: larva.operator_p2.rest_endpoints.update_interfaces_inventory
     name: Update INTERFACES.md packaged REST inventory
     status: pending
