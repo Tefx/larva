@@ -13,24 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from returns.result import Failure
 
 from larva.core.patch import PatchError, apply_patches
-from larva.shell.python_api import (
-    LarvaApiError,
-    assemble,
-    clear,
-    component_list,
-    component_show,
-    delete,
-    export_all,
-    export_ids,
-    register,
-    resolve,
-    update,
-    update_batch,
-    validate,
-)
-from larva.shell.python_api import (
-    list as list_personas,
-)
+from larva.shell.python_api import LarvaApiError
 from larva.shell.shared.request_validation import (
     reject_unknown_params,
     require_list_of_strings,
@@ -40,12 +23,20 @@ from larva.shell.shared.request_validation import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from pathlib import Path
 
     from fastapi import FastAPI
 
     from larva.core.spec import PersonaSpec
     from larva.core.validation_contract import ValidationReport
+
+
+def _web_api() -> Any:
+    """Return the web module exposing monkeypatchable REST facade call sites."""
+    from larva.shell import web
+
+    return web
 
 
 # @invar:allow shell_result: FastAPI HTTP boundary must return JSONResponse, not Result
@@ -195,6 +186,212 @@ def _validate_update_batch_request(
     return body["where"], body["patches"], body.get("dry_run", False)
 
 
+async def _api_list_personas() -> Any:
+    """Return all registered personas through the packaged REST envelope."""
+    try:
+        return {"data": _web_api().list_personas()}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_get_persona(persona_id: str) -> Any:
+    """Resolve one persona by id through the packaged REST envelope."""
+    try:
+        return {"data": _web_api().resolve(persona_id, None)}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_register_persona(request: Request) -> Any:
+    """Validate and register a persona from the packaged REST request body."""
+    body = await _read_request_object(request)
+    if isinstance(body, JSONResponse):
+        return body
+    spec = body.get("spec", body)
+    if "spec" in body:
+        spec_result = require_type(body, "spec", dict, "object")
+        if isinstance(spec_result, Failure):
+            issue = spec_result.failure()
+            return _invalid_input_response(issue.reason, issue.details)
+    try:
+        report = _web_api().validate(cast("PersonaSpec", spec))
+        if not report["valid"]:
+            return _validation_error_response(report)
+        result = _web_api().register(spec)
+        return {"data": result}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_export_personas(request: Request) -> Any:
+    """Export all or selected personas through the packaged REST surface."""
+    body = await _read_request_object(request)
+    if isinstance(body, JSONResponse):
+        return body
+    target = _validate_export_request(body)
+    if isinstance(target, JSONResponse):
+        return target
+    use_all, ids = target
+    try:
+        result = _web_api().export_all() if use_all else _web_api().export_ids(ids)
+        return {"data": result}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_update_batch_personas(request: Request) -> Any:
+    """Batch update personas after fail-closed packaged REST validation."""
+    body = await _read_request_object(request)
+    if isinstance(body, JSONResponse):
+        return body
+    update_request = _validate_update_batch_request(body)
+    if isinstance(update_request, JSONResponse):
+        return update_request
+    where, patches, dry_run = update_request
+    try:
+        return {"data": _web_api().update_batch(where, patches, dry_run)}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_update_persona(persona_id: str, request: Request) -> Any:
+    """Patch one persona by id through the packaged REST envelope."""
+    patches = await _read_request_object(request)
+    if isinstance(patches, JSONResponse):
+        return patches
+    try:
+        return {"data": _web_api().update(persona_id, patches)}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_delete_persona(persona_id: str) -> Any:
+    """Delete one persona by id through the packaged REST envelope."""
+    try:
+        result = _web_api().delete(persona_id)
+        return {"data": result}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_clear_personas(request: Request) -> Any:
+    """Clear the registry after packaged REST confirmation validation."""
+    body = await _read_request_object(request)
+    if isinstance(body, JSONResponse):
+        return body
+    confirm = body.get("confirm", "")
+    try:
+        count = _web_api().clear(confirm=confirm)
+        return {"data": {"cleared": True, "count": count}}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_validate_persona(request: Request) -> Any:
+    """Validate a candidate PersonaSpec through the packaged REST envelope."""
+    spec = await _read_request_object(request)
+    if isinstance(spec, JSONResponse):
+        return spec
+    try:
+        report = _web_api().validate(cast("PersonaSpec", spec))
+        return {"data": report}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+def _assemble_unknown_field_response(unknown_fields: list[str]) -> JSONResponse:
+    """Build the canonical-boundary unknown-field response for assemble."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": "INVALID_INPUT",
+                "numeric_code": 1,
+                "message": (
+                    f"assemble request field '{unknown_fields[0]}' is not permitted "
+                    "at canonical boundary"
+                ),
+                "details": {"field": unknown_fields[0], "unknown_fields": unknown_fields},
+            }
+        },
+    )
+
+
+def _assemble_missing_id_response() -> JSONResponse:
+    """Build the canonical-boundary missing-id response for assemble."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": "INVALID_INPUT",
+                "numeric_code": 1,
+                "message": "assemble request missing required field 'id'",
+                "details": {"field": "id", "reason": "missing_required_field"},
+            }
+        },
+    )
+
+
+async def _api_assemble_persona(request: Request) -> Any:
+    """Assemble a persona from canonical packaged REST component selectors."""
+    body = await _read_request_object(request)
+    if isinstance(body, JSONResponse):
+        return body
+    allowed_fields = frozenset(
+        {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
+    )
+    unknown_fields = sorted(set(body.keys()) - allowed_fields)
+    if unknown_fields:
+        return _assemble_unknown_field_response(unknown_fields)
+    if "id" not in body:
+        return _assemble_missing_id_response()
+    try:
+        spec = _web_api().assemble(
+            cast("str", body["id"]),
+            body.get("description"),
+            body.get("prompts"),
+            body.get("toolsets"),
+            body.get("constraints"),
+            body.get("model"),
+            body.get("overrides"),
+        )
+        return {"data": spec}
+    except LarvaApiError as e:
+        return _api_error_response(e)
+
+
+async def _api_list_components() -> Any:
+    """Return all component names through the packaged REST envelope."""
+    try:
+        return {"data": _web_api().component_list()}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
+
+
+async def _api_get_component(component_type: str, name: str) -> Any:
+    """Return one component through the packaged REST envelope."""
+    try:
+        return {"data": _web_api().component_show(component_type, name)}
+    except LarvaApiError as e:
+        return _component_api_error_response(e)
+
+
+async def _api_components_projection() -> Any:
+    """Return web-facing component projection metadata."""
+    from larva.shell.web import get_component_projections
+
+    return {"data": get_component_projections()}
+
+
+def _make_serve_index(static_dir: Path, index_file: str) -> Callable[[], Awaitable[FileResponse]]:
+    """Create the route handler that serves the packaged HTML UI artifact."""
+
+    async def _serve_index() -> FileResponse:
+        return FileResponse(static_dir / index_file, media_type="text/html")
+
+    return _serve_index
+
+
 def register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
     """Register the packaged web REST routes on ``app``.
 
@@ -203,182 +400,19 @@ def register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> None:
         static_dir: Directory containing the packaged HTML UI artifact.
         index_file: HTML filename served at ``/``.
     """
-
-    async def api_list_personas() -> Any:
-        try:
-            return {"data": list_personas()}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_get_persona(persona_id: str) -> Any:
-        try:
-            return {"data": resolve(persona_id, None)}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_register_persona(request: Request) -> Any:
-        body = await _read_request_object(request)
-        if isinstance(body, JSONResponse):
-            return body
-        spec = body.get("spec", body)
-        if "spec" in body:
-            spec_result = require_type(body, "spec", dict, "object")
-            if isinstance(spec_result, Failure):
-                issue = spec_result.failure()
-                return _invalid_input_response(issue.reason, issue.details)
-        try:
-            report = validate(cast("PersonaSpec", spec))
-            if not report["valid"]:
-                return _validation_error_response(report)
-            result = register(spec)
-            return {"data": result}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_export_personas(request: Request) -> Any:
-        body = await _read_request_object(request)
-        if isinstance(body, JSONResponse):
-            return body
-        target = _validate_export_request(body)
-        if isinstance(target, JSONResponse):
-            return target
-        use_all, ids = target
-        try:
-            result = export_all() if use_all else export_ids(ids)
-            return {"data": result}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_update_batch_personas(request: Request) -> Any:
-        body = await _read_request_object(request)
-        if isinstance(body, JSONResponse):
-            return body
-        update_request = _validate_update_batch_request(body)
-        if isinstance(update_request, JSONResponse):
-            return update_request
-        where, patches, dry_run = update_request
-        try:
-            return {"data": update_batch(where, patches, dry_run)}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_update_persona(persona_id: str, request: Request) -> Any:
-        patches = await _read_request_object(request)
-        if isinstance(patches, JSONResponse):
-            return patches
-        try:
-            return {"data": update(persona_id, patches)}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_delete_persona(persona_id: str) -> Any:
-        try:
-            result = delete(persona_id)
-            return {"data": result}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_clear_personas(request: Request) -> Any:
-        body = await _read_request_object(request)
-        if isinstance(body, JSONResponse):
-            return body
-        confirm = body.get("confirm", "")
-        try:
-            count = clear(confirm=confirm)
-            return {"data": {"cleared": True, "count": count}}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_validate_persona(request: Request) -> Any:
-        spec = await _read_request_object(request)
-        if isinstance(spec, JSONResponse):
-            return spec
-        try:
-            report = validate(cast("PersonaSpec", spec))
-            return {"data": report}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_assemble_persona(request: Request) -> Any:
-        body = await _read_request_object(request)
-        if isinstance(body, JSONResponse):
-            return body
-        allowed_fields = frozenset(
-            {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
-        )
-        unknown_fields = sorted(set(body.keys()) - allowed_fields)
-        if unknown_fields:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": {
-                        "code": "INVALID_INPUT",
-                        "numeric_code": 1,
-                        "message": (
-                            f"assemble request field '{unknown_fields[0]}' is not permitted "
-                            "at canonical boundary"
-                        ),
-                        "details": {"field": unknown_fields[0], "unknown_fields": unknown_fields},
-                    }
-                },
-            )
-        if "id" not in body:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error": {
-                        "code": "INVALID_INPUT",
-                        "numeric_code": 1,
-                        "message": "assemble request missing required field 'id'",
-                        "details": {"field": "id", "reason": "missing_required_field"},
-                    }
-                },
-            )
-        try:
-            spec = assemble(
-                cast("str", body["id"]),
-                body.get("description"),
-                body.get("prompts"),
-                body.get("toolsets"),
-                body.get("constraints"),
-                body.get("model"),
-                body.get("overrides"),
-            )
-            return {"data": spec}
-        except LarvaApiError as e:
-            return _api_error_response(e)
-
-    async def api_list_components() -> Any:
-        try:
-            return {"data": component_list()}
-        except LarvaApiError as e:
-            return _component_api_error_response(e)
-
-    async def api_get_component(component_type: str, name: str) -> Any:
-        try:
-            return {"data": component_show(component_type, name)}
-        except LarvaApiError as e:
-            return _component_api_error_response(e)
-
-    async def api_components_projection() -> Any:
-        from larva.shell.web import get_component_projections
-
-        return {"data": get_component_projections()}
-
-    async def serve_index() -> FileResponse:
-        return FileResponse(static_dir / index_file, media_type="text/html")
-
-    app.add_api_route("/api/personas", api_list_personas, methods=["GET"])
-    app.add_api_route("/api/personas/{persona_id}", api_get_persona, methods=["GET"])
-    app.add_api_route("/api/personas", api_register_persona, methods=["POST"])
-    app.add_api_route("/api/personas/export", api_export_personas, methods=["POST"])
-    app.add_api_route("/api/personas/update_batch", api_update_batch_personas, methods=["POST"])
-    app.add_api_route("/api/personas/{persona_id}", api_update_persona, methods=["PATCH"])
-    app.add_api_route("/api/personas/{persona_id}", api_delete_persona, methods=["DELETE"])
-    app.add_api_route("/api/personas/clear", api_clear_personas, methods=["POST"])
-    app.add_api_route("/api/personas/validate", api_validate_persona, methods=["POST"])
-    app.add_api_route("/api/personas/assemble", api_assemble_persona, methods=["POST"])
-    app.add_api_route("/api/components", api_list_components, methods=["GET"])
-    app.add_api_route("/api/components/{component_type}/{name}", api_get_component, methods=["GET"])
-    app.add_api_route("/api/components/projection", api_components_projection, methods=["GET"])
-    app.add_api_route("/", serve_index, methods=["GET"])
+    app.add_api_route("/api/personas", _api_list_personas, methods=["GET"])
+    app.add_api_route("/api/personas/{persona_id}", _api_get_persona, methods=["GET"])
+    app.add_api_route("/api/personas", _api_register_persona, methods=["POST"])
+    app.add_api_route("/api/personas/export", _api_export_personas, methods=["POST"])
+    app.add_api_route("/api/personas/update_batch", _api_update_batch_personas, methods=["POST"])
+    app.add_api_route("/api/personas/{persona_id}", _api_update_persona, methods=["PATCH"])
+    app.add_api_route("/api/personas/{persona_id}", _api_delete_persona, methods=["DELETE"])
+    app.add_api_route("/api/personas/clear", _api_clear_personas, methods=["POST"])
+    app.add_api_route("/api/personas/validate", _api_validate_persona, methods=["POST"])
+    app.add_api_route("/api/personas/assemble", _api_assemble_persona, methods=["POST"])
+    app.add_api_route("/api/components", _api_list_components, methods=["GET"])
+    app.add_api_route(
+        "/api/components/{component_type}/{name}", _api_get_component, methods=["GET"]
+    )
+    app.add_api_route("/api/components/projection", _api_components_projection, methods=["GET"])
+    app.add_api_route("/", _make_serve_index(static_dir, index_file), methods=["GET"])

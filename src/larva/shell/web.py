@@ -38,7 +38,43 @@ from typing import TypedDict
 import uvicorn
 from fastapi import FastAPI
 
+from larva.shell import python_api as _python_api
 from larva.shell.web_routes import register_routes
+
+assemble = _python_api.assemble
+clear = _python_api.clear
+component_list = _python_api.component_list
+component_show = _python_api.component_show
+delete = _python_api.delete
+export_all = _python_api.export_all
+export_ids = _python_api.export_ids
+list_personas = _python_api.list
+register = _python_api.register
+resolve = _python_api.resolve
+update = _python_api.update
+update_batch = _python_api.update_batch
+validate = _python_api.validate
+
+__all__ = [
+    "app",
+    "assemble",
+    "clear",
+    "component_list",
+    "component_show",
+    "create_app",
+    "delete",
+    "export_all",
+    "export_ids",
+    "get_component_projections",
+    "list_personas",
+    "main",
+    "register",
+    "resolve",
+    "run_web_app",
+    "update",
+    "update_batch",
+    "validate",
+]
 
 STATIC_DIR = Path(__file__).parent
 
