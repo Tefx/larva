@@ -56132,6 +56132,128 @@ phases:
   status: pending
   depends_on:
   - merge_debt_20260425_review
+  steps:
+  - id: fresh_cleanup_20260425_impl.mcp-validation-residue-cleanup
+    name: MCP validation residue cleanup
+    status: pending
+    description: 'Implement and verify a bounded MCP parameter-validation cleanup.
+
+
+      Scope:
+
+      - In `src/larva/shell/mcp_update_batch.py`, add `dry_run` to `validate_mcp_params(...
+      typed_keys=...)`.
+
+      - Delete the local `dry_run` `require_type` block from `mcp_update_batch.py`.
+
+      - In `src/larva/shell/mcp_params.py`, remove unused wrappers only: `_require_params_object`,
+      `_reject_unknown_params`, `_require_param`, `_require_type`, `_require_list_of_strings`.
+
+      - Preserve necessary helpers: `_malformed_params_error`, `_validated_params`,
+      `_unwrap_result`.
+
+      - You may remove a now-empty mixin only if it is truly unused after the wrapper
+      deletion; do not widen the cleanup.
+
+
+      VETO:
+
+      - Do NOT introduce a Boolean Trap or generic parameter interpreter.
+
+      - Do NOT build a unified transport renderer, schema interpreter, generic workflow,
+      compatibility alias, or accept-and-clean layer.
+
+      - Do NOT merge core and shell concerns.
+
+
+      Falsifiability before implementation:
+
+      - First confirm an adversarial malformed `dry_run` envelope is covered. If no
+      existing focused test fails without the typed_keys change, add the minimal shell
+      test first and capture the expected-red/failing output before changing product
+      code.
+
+      - If the exact regression is already present and green before implementation,
+      paste the current output and explain why this is a preservation cleanup rather
+      than a new behavior test.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      result must remove dead validation wrappers while preserving public MCP malformed-parameter
+      behavior.'
+    verification: '- Targeted shell tests for MCP update_batch malformed `dry_run`
+      behavior pass.
+
+      - Invalid `dry_run` malformed envelope behavior is unchanged.
+
+      - Wrapper names `_require_params_object`, `_reject_unknown_params`, `_require_param`,
+      `_require_type`, `_require_list_of_strings` no longer remain in production code
+      unless evidence justifies a live reference.
+
+      - No core files are modified in this shell cleanup step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/mcp_update_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_params.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red / Falsifiability Proof
+
+      - Test or coverage checked before implementation:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+      - If already green, explain preservation status:
+
+      ```
+
+      <explanation>
+
+      ```
+
+
+      ## Implementation Evidence
+
+      - Files changed:
+
+      - Wrappers removed:
+
+      - `dry_run` validation path now owned by `validate_mcp_params(... typed_keys=...)`:
+
+
+      ## Verification Evidence
+
+      Commands and outputs:
+
+      ```
+
+      <paste targeted shell test output>
+
+      ```
+
+
+      ## Guardrails
+
+      - Boolean Trap introduced? NO
+
+      - Unified transport renderer/schema interpreter/generic workflow introduced?
+      NO
+
+      - Core/shell boundary preserved? YES'
+    agent: python-executor
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
   status: locked
