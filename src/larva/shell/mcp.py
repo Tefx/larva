@@ -24,7 +24,7 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from returns.result import Failure, Success
 
@@ -64,15 +64,6 @@ if TYPE_CHECKING:
 # Each handler delegates to the corresponding LarvaFacade method.
 # -----------------------------------------------------------------------------
 
-_HandlerSuccessT = TypeVar("_HandlerSuccessT")
-
-
-class MCPHandler(Protocol[_HandlerSuccessT]):
-    """Typed MCP tool-handler callable contract."""
-
-    def __call__(self, params: object) -> _HandlerSuccessT | LarvaError: ...
-
-
 class MCPHandlers(MCPParamValidationMixin):
     """Container for MCP tool handlers.
 
@@ -110,10 +101,8 @@ class MCPHandlers(MCPParamValidationMixin):
     # Inlined implementation methods (formerly in mcp_handler_ops module)
     # -------------------------------------------------------------------------
 
-    def _handle_component_list_impl(
-        self, params: object
-    ) -> dict[str, list[str]] | LarvaError:
-        """Implementation for larva_component_list."""
+    def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
+        """Handle ``larva_component_list`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_component_list", params, allowed_keys=set()
         )
@@ -137,8 +126,8 @@ class MCPHandlers(MCPParamValidationMixin):
 
         return result.unwrap()
 
-    def _handle_component_show_impl(self, params: object) -> dict[str, object] | LarvaError:
-        """Implementation for larva_component_show."""
+    def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
+        """Handle ``larva_component_show`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_component_show",
             params,
@@ -172,8 +161,24 @@ class MCPHandlers(MCPParamValidationMixin):
 
         return cast("dict[str, object]", result.unwrap())
 
-    def _handle_assemble_impl(self, params: object) -> PersonaSpec | LarvaError:
-        """Implementation for larva_assemble."""
+    def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
+        """Handle ``larva_validate`` MCP tool call."""
+        validated_params = self._validated_params(
+            "larva_validate",
+            params,
+            allowed_keys={"spec"},
+            required_keys=("spec",),
+            typed_keys=(("spec", dict, "object"),),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked_params = validated_params.unwrap()
+        spec = checked_params["spec"]
+        facade = cast("Any", self._facade)
+        return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))
+
+    def handle_assemble(self, params: object) -> Union[PersonaSpec, LarvaError]:
+        """Handle ``larva_assemble`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_assemble",
             params,
@@ -215,8 +220,8 @@ class MCPHandlers(MCPParamValidationMixin):
         result = cast("Failure[LarvaError] | object", self._unwrap_result(facade.assemble(request)))
         return cast("PersonaSpec | LarvaError", result)
 
-    def _handle_resolve_impl(self, params: object) -> PersonaSpec | LarvaError:
-        """Implementation for larva_resolve."""
+    def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
+        """Handle ``larva_resolve`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_resolve",
             params,
@@ -234,42 +239,6 @@ class MCPHandlers(MCPParamValidationMixin):
         return cast(
             "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides))
         )
-
-    def _handle_validate_impl(self, params: object) -> ValidationReport | LarvaError:
-        """Implementation for larva_validate."""
-        validated_params = self._validated_params(
-            "larva_validate",
-            params,
-            allowed_keys={"spec"},
-            required_keys=("spec",),
-            typed_keys=(("spec", dict, "object"),),
-        )
-        if isinstance(validated_params, Failure):
-            return validated_params.failure()
-        checked_params = validated_params.unwrap()
-        spec = checked_params["spec"]
-        facade = cast("Any", self._facade)
-        return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))
-
-    def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
-        """Handle ``larva_component_list`` MCP tool call."""
-        return self._handle_component_list_impl(params)
-
-    def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
-        """Handle ``larva_component_show`` MCP tool call."""
-        return self._handle_component_show_impl(params)
-
-    def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
-        """Handle ``larva_validate`` MCP tool call."""
-        return self._handle_validate_impl(params)
-
-    def handle_assemble(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle ``larva_assemble`` MCP tool call."""
-        return self._handle_assemble_impl(params)
-
-    def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle ``larva_resolve`` MCP tool call."""
-        return self._handle_resolve_impl(params)
 
     def handle_register(self, params: object) -> Union[RegisteredPersona, LarvaError]:
         """Handle ``larva_register`` MCP tool call.

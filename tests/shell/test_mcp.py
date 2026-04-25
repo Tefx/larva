@@ -3078,14 +3078,14 @@ class TestMixinRemoval:
             assert "MCPHandlerOpsMixin" not in mcp_source
 
     def test_mcp_handlers_has_inlined_implementation_methods(self) -> None:
-        """MCPHandlers should have the implementation methods directly, not via mixin."""
+        """MCPHandlers should not have _handle_*_impl methods after inlining."""
         from larva.shell import mcp as mcp_module
 
         handlers = mcp_module.MCPHandlers
 
-        # Verify these methods exist directly on MCPHandlers (not inherited from mixin)
-        assert hasattr(handlers, "_handle_component_list_impl")
-        assert hasattr(handlers, "_handle_component_show_impl")
-        assert hasattr(handlers, "_handle_assemble_impl")
-        assert hasattr(handlers, "_handle_resolve_impl")
-        assert hasattr(handlers, "_handle_validate_impl")
+        # After inlining cleanup, _handle_*_impl methods should no longer exist
+        assert not hasattr(handlers, "_handle_component_list_impl")
+        assert not hasattr(handlers, "_handle_component_show_impl")
+        assert not hasattr(handlers, "_handle_assemble_impl")
+        assert not hasattr(handlers, "_handle_resolve_impl")
+        assert not hasattr(handlers, "_handle_validate_impl")
