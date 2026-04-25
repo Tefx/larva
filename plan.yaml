@@ -57310,3 +57310,10 @@ phases:
     semantics
   depends_on:
   - larva.operator_p2.red_tests
+- id: larva.operator_p2.gate
+  name: Operator P2 REST Verification Gate
+  status: locked
+  gate: Targeted REST tests, packaged serve smoke, repo-local full gate, and independent
+    review all pass
+  depends_on:
+  - larva.operator_p2.rest_endpoints
