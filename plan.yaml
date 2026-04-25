@@ -56534,13 +56534,13 @@ phases:
       beyond alias removal; core/shell separation preserved.
 - id: fresh_cleanup_20260425_verify
   name: Fresh Cleanup 2026-04-25 Verification and Review
-  status: pending
+  status: in_progress
   depends_on:
   - fresh_cleanup_20260425_impl
   steps:
   - id: fresh_cleanup_20260425_verify.aggregate-tests-and-full-guard
     name: Aggregate tests and full invar guard
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT TESTER, run aggregate verification for the fresh
       cleanup batch from a clean perspective.
 
@@ -56654,6 +56654,8 @@ phases:
 
       PASS | PASS_WITH_DEBT | FAIL'
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-04-25T12:19:41.414088+00:00'
   - id: fresh_cleanup_20260425_verify.independent-review-audit
     name: Independent review audit
     status: pending
