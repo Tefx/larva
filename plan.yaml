@@ -54864,3 +54864,121 @@ phases:
   status: pending
   depends_on:
   - post_prompt_opacity_debt_cleanup_20260419
+  steps:
+  - id: merge_debt_20260425.mcp-validation
+    name: Centralize MCP parameter validation
+    status: pending
+    description: 'Implement and verify the P0 MCP validation consolidation.
+
+
+      Purpose: route `src/larva/shell/mcp_update_batch.py` and `src/larva/shell/mcp_export.py`
+      through the existing `validate_mcp_params()` helper in `src/larva/shell/shared/mcp_handler_helpers.py`.
+
+
+      Scope:
+
+      - `mcp_update_batch.py`: remove local duplicate object/unknown/type validation;
+      preserve required-field semantics and `dry_run` type rejection.
+
+      - `mcp_export.py`: reuse only object/unknown/type validation; keep the local
+      XOR rule for `all` vs `ids` exactly as reviewed.
+
+      - Add characterization tests in `tests/shell/test_mcp.py` for unknown params,
+      missing required, wrong type, `dry_run` wrong type, export `all+ids`, export
+      neither `all` nor `ids`, and `all=False`.
+
+
+      VETO guardrails:
+
+      - Do NOT introduce a boolean-flag request builder.
+
+      - Do NOT invent new MCP parameter semantics.
+
+      - Do NOT merge core and shell validation concerns.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      shared validation path must be exercised by tests and produce input-dependent
+      envelopes/errors.
+
+
+      ## Mechanical adversary requirement
+
+      Before changing product code, add or strengthen the characterization tests and
+      run the focused MCP test target to capture Expected-Red output. Then make the
+      smallest implementation change and turn it green.'
+    verification: '- Expected-Red: focused MCP characterization tests fail before
+      product-code changes.
+
+      - Green: `tests/shell/test_mcp.py` passes after consolidation.
+
+      - Full guard: `invar_guard` passes for changed files (or full project if required
+      by tool output).
+
+      - Confirm export still enforces XOR (`all` vs `ids`) locally while reusing shared
+      object/unknown/type validation.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/shared/mcp_handler_helpers.py — key passage or "NOT READ:
+      <reason>"
+
+      - src/larva/shell/mcp_update_batch.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_export.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Test names added/changed:
+
+      - Command run before product-code changes:
+
+      ```text
+
+      <paste failing output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Shared validation call sites changed:
+
+      - Export XOR rule preservation evidence:
+
+
+      ## Green Proof
+
+      - `tests/shell/test_mcp.py` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - `invar_guard` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - No transport renderer unification:
+
+      - No boolean-flag request builder:
+
+      - Core/shell boundary preserved:'
+    agent: python-executor
