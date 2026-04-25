@@ -38,6 +38,8 @@ from typing import Any, TypeGuard
 
 from deal import post, pre, raises
 
+from larva.core._structured_error import _build_structured_exception
+
 PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
 DEEP_MERGE_KEYS = frozenset({"model_params", "capabilities"})
 DOT_KEY_SEPARATOR = "."
@@ -71,12 +73,18 @@ class PatchError(Exception):
         and isinstance(result.details, dict)
     )
 )
-def _patch_error(code: str, message: str, details: dict[str, Any] | None = None) -> PatchError:
-    error = PatchError(f"{code}: {message}")
-    error.code = code
-    error.message = message
-    error.details = {} if details is None else details
-    return error
+def _patch_error(
+    code: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> PatchError:
+    """Build a structured patch error.
+
+    >>> err = _patch_error("FORBIDDEN_FIELD", "patch field is forbidden", {"field": "id"})
+    >>> (err.code, err.message, err.details)
+    ('FORBIDDEN_FIELD', 'patch field is forbidden', {'field': 'id'})
+    """
+    return _build_structured_exception(PatchError, code, message, details)
 
 
 @post(lambda result: result is None)

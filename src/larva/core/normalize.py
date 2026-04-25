@@ -16,6 +16,7 @@ from typing import Any, cast
 
 from deal import post, pre, raises
 
+from larva.core._structured_error import _build_structured_exception
 from larva.core.spec import PersonaSpec
 
 
@@ -55,11 +56,16 @@ def _normalize_error(
     message: str,
     details: dict[str, Any] | None = None,
 ) -> NormalizeError:
-    error = NormalizeError(f"{code}: {message}")
-    error.code = code
-    error.message = message
-    error.details = {} if details is None else details
-    return error
+    """Build a structured normalization error.
+
+    >>> err = _normalize_error("MISSING_FIELD", "id is required")
+    >>> (err.code, err.message, err.details)
+    ('MISSING_FIELD', 'id is required', {})
+    >>> err = _normalize_error("BAD_FIELD", "invalid value", {"field": "spec_version"})
+    >>> err.details["field"]
+    'spec_version'
+    """
+    return _build_structured_exception(NormalizeError, code, message, details)
 
 
 @pre(lambda spec: isinstance(spec, dict) and _is_json_serializable_spec(spec))

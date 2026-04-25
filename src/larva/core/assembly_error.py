@@ -6,6 +6,8 @@ from typing import Any
 
 from deal import post, pre
 
+from larva.core._structured_error import _build_structured_exception
+
 
 class AssemblyError(Exception):
     code: str
@@ -43,8 +45,4 @@ def assembly_error(
     >>> (error.code, error.message, error.details)
     ('COMPONENT_CONFLICT', 'conflict', {})
     """
-    error = AssemblyError(f"{code}: {message}")
-    error.code = code
-    error.message = message
-    error.details = {} if details is None else details
-    return error
+    return _build_structured_exception(AssemblyError, code, message, details)
