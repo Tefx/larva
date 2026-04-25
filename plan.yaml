@@ -54982,3 +54982,121 @@ phases:
 
       - Core/shell boundary preserved:'
     agent: python-executor
+  - id: merge_debt_20260425.mcp-mixin-cleanup
+    name: Remove MCPHandlerOpsMixin indirection
+    status: pending
+    description: 'Implement and verify the P1 MCP handler-ops cleanup.
+
+
+      Purpose: delete or fully inline `MCPHandlerOpsMixin`, because `src/larva/shell/mcp_handler_ops.py`
+      is only used by `MCPHandlers`.
+
+
+      Scope:
+
+      - Inline the mixin behavior into `MCPHandlers` or convert narrowly to module-level
+      helpers, whichever keeps `src/larva/shell/mcp.py` under its `max_file_lines=500`
+      constraint.
+
+      - Remove the mixin inheritance/path without changing MCP tool behavior.
+
+      - Preserve the validation consolidation from `merge_debt_20260425.mcp-validation`.
+
+
+      VETO guardrails:
+
+      - Do NOT create a generic transport renderer.
+
+      - Do NOT move shell behavior into core.
+
+      - Do NOT keep a one-consumer mixin under a new name.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      real `MCPHandlers` runtime path must own or call the actual behavior, and the
+      obsolete mixin path must be gone.
+
+
+      ## Mechanical adversary requirement
+
+      Before product-code edits, add or strengthen a test/import assertion that exposes
+      the obsolete mixin path or single-consumer inheritance, then capture Expected-Red.
+      Then remove/inline the mixin and turn the MCP tests green.'
+    verification: '- Expected-Red: characterization/import test fails while `MCPHandlerOpsMixin`
+      still exists or is still inherited.
+
+      - Green: `tests/shell/test_mcp.py`, `tests/shell/test_mcp_server.py`, and `tests/shell/test_mcp_stdio_integration.py`
+      pass.
+
+      - Static/architecture: `invar_guard` passes and `src/larva/shell/mcp.py` remains
+      within `max_file_lines=500`.
+
+      - Proof: no remaining production dependency on `MCPHandlerOpsMixin`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - AGENTS.md — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/mcp_handler_ops.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp_server.py — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_mcp_stdio_integration.py — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Test/import assertion added:
+
+      - Command run before product-code changes:
+
+      ```text
+
+      <paste failing output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Inline/module-helper choice and why it respects `mcp.py` max_file_lines=500:
+
+      - Mixin removal evidence:
+
+
+      ## Green Proof
+
+      - MCP test outputs:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+      - `invar_guard` output:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Veto Confirmation
+
+      - No one-consumer mixin remains:
+
+      - No generic renderer introduced:
+
+      - Core/shell boundary preserved:'
+    depends_on:
+    - merge_debt_20260425.mcp-validation
+    agent: python-executor
