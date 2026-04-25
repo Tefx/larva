@@ -57422,7 +57422,7 @@ phases:
   - larva.operator_p2.rest_scope
 - id: larva.operator_p2.rest_endpoints
   name: Operator P2 Packaged REST Endpoints
-  status: pending
+  status: done
   gate: Packaged REST export/update_batch endpoints implemented through existing facade
     semantics
   depends_on:
