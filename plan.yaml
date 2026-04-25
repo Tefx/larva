@@ -55795,13 +55795,13 @@ phases:
       \ regressions."
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
-  status: pending
+  status: in_progress
   depends_on:
   - merge_debt_20260425_test
   steps:
   - id: merge_debt_20260425_review.audit
     name: Review aggregate evidence and diff
-    status: pending
+    status: claimed
     description: 'Perform an independent review of the merge_debt_20260425 follow-up
       evidence from the prior test phase. Review the aggregate test output, relevant
       diff/context, and Invar boundary implications. Produce a clear PASS/FAIL decision
@@ -55868,6 +55868,8 @@ phases:
       - If Decision=PASS and no trigger exists, the conditional fix step records no-op
       closure.'
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-25T09:59:05.885363+00:00'
   - id: merge_debt_20260425_review.conditional-fix
     name: Conditional repair and same-suite retest
     status: pending
