@@ -58165,7 +58165,7 @@ phases:
       \ chain per batched fix protocol."
   - id: larva.operator_p2.gate.fix_final_review_blockers_batch
     name: Batch fix final review blockers B1-B4
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -58324,6 +58324,8 @@ phases:
     depends_on:
     - larva.operator_p2.gate.final_review
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-25T21:20:18.600141+00:00'
   - id: larva.operator_p2.gate.retest_final_review_blockers_batch
     name: Retest final review blocker closure batch
     status: pending
