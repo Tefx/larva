@@ -59501,7 +59501,7 @@ phases:
       - no schema/contract compatibility aliases introduced'
 - id: larva.operator_p2.followup_web_routes_invar_20260426
   name: Operator P2 Follow-up Web Routes Invar Exception Removal
-  status: pending
+  status: in_progress
   gate: Temporary web_routes.py Invar exception removed, or a bounded replacement
     is explicitly justified; uv run --frozen invar guard passes; packaged REST regression
     checks remain green.
@@ -59510,7 +59510,7 @@ phases:
   steps:
   - id: larva.operator_p2.followup_web_routes_invar_20260426.contract
     name: Define acceptance contract for web_routes.py Invar exception removal
-    status: pending
+    status: claimed
     description: 'Contract/design step for the residual should-fix debt only.
 
 
@@ -59586,6 +59586,8 @@ phases:
 
       - Product code/config changed in this step: NO'
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-26T05:03:37.444209+00:00'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.implementation
     name: Remove temporary web_routes.py Invar exception safely
     status: pending
