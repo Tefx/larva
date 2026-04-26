@@ -59501,7 +59501,7 @@ phases:
       - no schema/contract compatibility aliases introduced'
 - id: larva.operator_p2.followup_web_routes_invar_20260426
   name: Operator P2 Follow-up Web Routes Invar Exception Removal
-  status: in_progress
+  status: done
   gate: Temporary web_routes.py Invar exception removed, or a bounded replacement
     is explicitly justified; uv run --frozen invar guard passes; packaged REST regression
     checks remain green.
@@ -60113,7 +60113,7 @@ phases:
       - Remediation limited to this phase debt; packaged REST behavior preserved.'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.retest_gate_after_fix
     name: Retest gate after web_routes.py full-tree Invar fix
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER, retest the gate after `larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers`.
 
 
@@ -60250,3 +60250,53 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-26T05:33:04.636057+00:00'
+    done_at: '2026-04-26T05:50:56.652782+00:00'
+    evidence: 'Independent retest gate after blocker remediation is GREEN.
+
+
+      Machine-readable closure fields:
+
+      - headline: PASS
+
+      - proof_gap_status: NONE
+
+      - blocking_status: CLOSED
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+
+      Required retest proofs:
+
+      - `uv run --frozen invar guard --all` → PASS (errors=0; warnings=6; infos=1)
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py` → 17 passed
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k "export or
+      update_batch"` → 12 passed, 5 deselected
+
+
+      Behavioral proof register (gate reviewer):
+
+      - P1: export route regression coverage PROVEN
+
+      - P2: update_batch route regression coverage PROVEN
+
+
+      Mode D liveness supplement (blind-tester-tacit):
+
+      - Packaged REST runtime launch/probe passed; endpoints responsive including
+      export/update_batch and canonical admission failures for invalid assemble inputs.
+
+      - No blocker observations.
+
+
+      Scope check:
+
+      - Retest indicates blocker family B1 closed for this phase; no new blocker-class
+      issues introduced by the fix.'
