@@ -59725,3 +59725,132 @@ phases:
     depends_on:
     - larva.operator_p2.followup_web_routes_invar_20260426.contract
     agent: python-senior-tacit
+  - id: larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
+    name: Verify and gate web_routes.py Invar exception removal
+    status: pending
+    description: 'As an INDEPENDENT REVIEWER, verify the narrow follow-up remediation
+      for the temporary `src/larva/shell/web_routes.py` Invar exception.
+
+
+      Verification scope: full-plan-check for this residual debt only. This protects
+      the completed Operator P2 gate from carrying the documented should-fix debt
+      forward.
+
+
+      Review criteria:
+
+      1. Exclusion disposition: the file-level `src/larva/shell/web_routes.py` Invar
+      exclusion is removed from `pyproject.toml`, OR any replacement is demonstrably
+      narrower, explicitly justified by the contract, and not a gate weakening.
+
+      2. Guard integrity: `uv run --frozen invar guard` passes as-is, with no disabled/broadened
+      Invar policy.
+
+      3. Packaged REST behavior: packaged REST export/update_batch regression checks
+      remain green.
+
+      4. Scope control: changes are limited to the residual should-fix debt; no unrelated
+      REST, Core, or contract-surface changes were introduced.
+
+      5. Behavioral proof register: record requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for each of the
+      three obligations above.
+
+
+      Finding a blocker is a successful review outcome, but gate decision must be
+      BLOCKED until the blocker has a remediation path.'
+    verification: '- Confirm `pyproject.toml` no longer contains a file-level Invar
+      exclusion for `src/larva/shell/web_routes.py`, unless a narrower replacement
+      is explicitly approved by the contract evidence.
+
+      - Run or review evidence for: `uv run --frozen invar guard`.
+
+      - Run or review evidence for packaged REST export/update_batch regression checks.
+
+      - Gate decision basis is OPEN only if all blocker-class obligations are PROVEN
+      or have explicit non-intersection evidence; otherwise BLOCKED with required
+      actions.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer-tacit (independent of implementation)
+
+      **Phase**: larva.operator_p2.followup_web_routes_invar_20260426
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - pyproject.toml — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/web_routes.py — key passage or "NOT READ: <reason>"
+
+      - tests — key packaged REST test location(s) or "NOT READ: <reason>"
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | pyproject.toml Invar config | file-level web_routes.py exclusion removed or
+      narrower replacement approved | config inspection | <line/output> | PROVEN/UNPROVEN
+      | <path> | OPEN/BLOCK |
+
+      | Invar guard | guard passes without gate weakening | `uv run --frozen invar
+      guard` | <output> | PROVEN/UNPROVEN | <path> | OPEN/BLOCK |
+
+      | packaged REST regressions | export/update_batch REST behavior remains green
+      | packaged REST regression commands | <output> | PROVEN/UNPROVEN | <path> |
+      OPEN/BLOCK |
+
+
+      ## Command Evidence
+
+      Invar:
+
+      ```
+
+      uv run --frozen invar guard
+
+      <paste output>
+
+      ```
+
+      Packaged REST:
+
+      ```
+
+      <paste exact commands and output>
+
+      ```
+
+
+      ## Scope Review
+
+      - File-level exclusion removed: yes/no
+
+      - Bounded replacement approved: n/a or details
+
+      - Global Invar weakening found: yes/no
+
+      - Unrelated changes found: yes/no
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: debt closed safely
+
+      - [ ] BLOCKED: remediation required
+
+      Blocking issues:
+
+      - <list or none>'
+    depends_on:
+    - larva.operator_p2.followup_web_routes_invar_20260426.implementation
+    agent: gate-reviewer-tacit
