@@ -59604,7 +59604,7 @@ phases:
       \ or update_batch\"`\n\nNo code/config changes were made in this contract step."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.implementation
     name: Remove temporary web_routes.py Invar exception safely
-    status: pending
+    status: claimed
     description: 'Implementation step for the residual should-fix debt only.
 
 
@@ -59741,6 +59741,8 @@ phases:
     depends_on:
     - larva.operator_p2.followup_web_routes_invar_20260426.contract
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-26T05:06:17.637809+00:00'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
     name: Verify and gate web_routes.py Invar exception removal
     status: pending
