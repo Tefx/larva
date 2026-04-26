@@ -59499,3 +59499,11 @@ phases:
       - no contrib imports/calls added
 
       - no schema/contract compatibility aliases introduced'
+- id: larva.operator_p2.followup_web_routes_invar_20260426
+  name: Operator P2 Follow-up Web Routes Invar Exception Removal
+  status: pending
+  gate: Temporary web_routes.py Invar exception removed, or a bounded replacement
+    is explicitly justified; uv run --frozen invar guard passes; packaged REST regression
+    checks remain green.
+  depends_on:
+  - larva.operator_p2.gate
