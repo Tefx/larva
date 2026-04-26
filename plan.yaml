@@ -59930,7 +59930,7 @@ phases:
       \ follow-up remediation path, per batched-fix protocol."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers
     name: Fix web_routes.py full-tree Invar blockers
-    status: claimed
+    status: done
     description: 'Fix ALL blocker debt reported by larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
       for the narrow web_routes.py Invar exception-removal follow-up.
 
@@ -60064,6 +60064,53 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-26T05:13:24.418632+00:00'
+    done_at: '2026-04-26T05:32:42.732195+00:00'
+    evidence: 'Implemented full blocker-family remediation for web_routes full-tree
+      Invar failures.
+
+
+      Root cause vs symptom:
+
+      - Root cause: `src/larva/shell/web_routes.py` used raw FastAPI/JSONResponse
+      returns through helper and endpoint internals, violating shell Result discipline
+      and consuming shell_result escape-hatch budget under full-tree checks.
+
+      - Symptom: `uv run --frozen invar guard --all` failed while changed-file guard/tests
+      still passed.
+
+
+      Changes:
+
+      - Mainline squashed branch `vectl/step-larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers`.
+
+      - Mainline commit: `[vectl] step-larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers
+      completed`.
+
+      - File changed: `src/larva/shell/web_routes.py`.
+
+      - Refactored web route helper/endpoint internals to produce `Result[T, JSONResponse]`
+      and unwrap only in route adapters.
+
+      - Removed web_routes shell_result escape hatches; kept only targeted complexity/orchestration
+      justifications as needed.
+
+      - No policy weakening and no file-level exclusion reintroduced.
+
+
+      Required verification (mainline final state):
+
+      - `uv run --frozen invar guard --all` → PASS (errors=0; warnings=6; infos=1;
+      no web_routes blocker errors)
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py` → 17 passed
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k "export or
+      update_batch"` → 12 passed, 5 deselected
+
+
+      Scope control:
+
+      - Remediation limited to this phase debt; packaged REST behavior preserved.'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.retest_gate_after_fix
     name: Retest gate after web_routes.py full-tree Invar fix
     status: pending
