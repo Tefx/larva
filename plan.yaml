@@ -59510,7 +59510,7 @@ phases:
   steps:
   - id: larva.operator_p2.followup_web_routes_invar_20260426.contract
     name: Define acceptance contract for web_routes.py Invar exception removal
-    status: claimed
+    status: done
     description: 'Contract/design step for the residual should-fix debt only.
 
 
@@ -59588,6 +59588,20 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-26T05:03:37.444209+00:00'
+    done_at: '2026-04-26T05:05:53.993352+00:00'
+    evidence: "Contract step completed with no product/config mutations (contract-purity\
+      \ satisfied).\n\nContract acceptance captured:\n- Current exclusion identified\
+      \ in `pyproject.toml` [tool.invar.guard] `exclude_paths` includes `src/larva/shell/web_routes.py`.\n\
+      - Target end state fixed: remove only `src/larva/shell/web_routes.py` from `exclude_paths`;\
+      \ no file-level replacement exclusion allowed.\n- FastAPI boundary strategy\
+      \ defined: keep request/response wiring and route registration in Shell; do\
+      \ not push framework/I/O into Core; any fallback must be narrower symbol/line-scoped\
+      \ with explicit reason and removal condition.\n- Guard integrity criteria defined:\
+      \ `uv run --frozen invar guard` must pass without broadening exclusions or weakening\
+      \ guard policy.\n- Packaged REST regression criteria defined with concrete downstream\
+      \ commands:\n  - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py`\n\
+      \  - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k \"export\
+      \ or update_batch\"`\n\nNo code/config changes were made in this contract step."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.implementation
     name: Remove temporary web_routes.py Invar exception safely
     status: pending
