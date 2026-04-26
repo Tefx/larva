@@ -65,17 +65,6 @@ testpaths = ["tests"]
 # wiring). This topology currently needs six justified `shell_result` hatches,
 # so raise the project cap/budget to the observed steady-state instead of
 # churning the boundary shape without a runtime win.
-# Approved B4 guard-integrity exception: `web_routes.py` is the FastAPI
-# transport adapter for `larva serve`, and route handlers/helper builders must
-# return framework-native response objects instead of `Result[T, E]`. Removing
-# this exclusion currently makes invar report 26 shell-result errors plus
-# FastAPI route-registration orchestration warnings, because guard has no
-# FastAPI route-boundary classifier. The exception is constrained to this file;
-# REST behavior remains covered by strict changed-surface mypy and packaged
-# runtime tests. Removal owner/path: larva web REST gate, by either teaching
-# invar FastAPI route-boundary classification or moving route-independent request
-# parsing into guarded Core helpers while leaving framework response projection
-# in Shell.
 core_paths = ["src/larva/core"]
 shell_paths = ["src/larva/shell"]
 max_file_lines = 500
@@ -83,7 +72,7 @@ max_function_lines = 50
 require_contracts = true
 require_doctests = true
 forbidden_imports = ["os", "sys", "socket", "requests", "urllib", "subprocess", "shutil", "io", "pathlib"]
-exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build", "src/larva/shell/web.py", "src/larva/shell/web_routes.py", "src/larva/shell/mcp_server.py", "contrib/web/server.py"]
+exclude_paths = ["tests", "test", ".invar", "scripts", ".venv", "venv", "__pycache__", ".pytest_cache", ".vectl", "node_modules", "dist", "build", "src/larva/shell/web.py", "src/larva/shell/mcp_server.py", "contrib/web/server.py"]
 escape_suppressible_per_project = 7
 escape_expensive_per_project = 7
 escape_budget_limit = 19
