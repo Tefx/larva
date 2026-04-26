@@ -59914,3 +59914,137 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-26T05:09:00.994557+00:00'
+  - id: larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers
+    name: Fix web_routes.py full-tree Invar blockers
+    status: pending
+    description: 'Fix ALL blocker debt reported by larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
+      for the narrow web_routes.py Invar exception-removal follow-up.
+
+
+      symbolic_testing: true
+
+      command_family_lock: uv run --frozen invar guard --all
+
+      scope_boundary: Keep scope limited to this phase debt. Do not expand unrelated
+      REST, Core, canonical contract, or non-web_routes behavior.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+
+      ### B1: Full-tree Invar guard failure after changed-file guard passed
+
+      Evidence summary:
+
+      - `uv run --frozen invar guard --all` reports `web_routes.py` shell_result failures
+      across route helpers.
+
+      - Escape hatch budget errors remain after the temporary file-level exception
+      removal.
+
+      - Shell complexity debt threshold is breached.
+
+      - REST regressions are green, so remediation must preserve packaged REST export
+      and update_batch behavior.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: web_routes.py still violates full-tree Invar Shell policy and/or
+      relies on exception-budget debt that changed-file guard did not expose.
+
+      - Symptom: full-tree guard fails even though changed-file guard and REST regressions
+      pass.
+
+      - Why this fix is not surface-level: it must close all `web_routes.py` shell_result,
+      escape-hatch budget, and shell complexity blocker classes under the authoritative
+      full-tree guard, not merely silence a single reported line.
+
+
+      ## Required Search / Remediation Instructions
+
+      - Inspect all route helper paths in `src/larva/shell/web_routes.py` that return
+      or compose shell results.
+
+      - Search for sibling shell_result and escape-hatch debt in the same file before
+      editing.
+
+      - Preserve existing REST semantics proven by `tests/shell/test_web_rest_gaps.py`,
+      especially packaged export and update_batch regressions.
+
+      - Do not weaken Invar policy, broaden exclusions, or add unrelated compatibility
+      aliases.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION fix step. Stub-only completion is NOT acceptable.
+      Each changed helper must contain substantive shell-compliant logic that preserves
+      runtime behavior and closes the full-tree guard blocker family.
+
+
+      ## Disposition Requirements
+
+      - provenance: gate blocker reported by `larva.operator_p2.followup_web_routes_invar_20260426.verify_gate`
+
+      - disposition: blocking-now for this phase gate
+
+      - closure path: green retest gate must confirm full-tree guard and targeted
+      REST regressions.'
+    verification: '- `uv run --frozen invar guard --all` PASS.
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py` PASS.
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k "export or
+      update_batch"` PASS.
+
+      - Evidence explains root cause vs symptom and confirms no Invar policy weakening
+      or unrelated scope expansion.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - src/larva/shell/web_routes.py — key passage or "NOT READ: <reason>"
+
+      - pyproject.toml — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_web_rest_gaps.py — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Fix Evidence
+
+      - Root cause vs symptom:
+
+      - Shell_result failures fixed:
+
+      - Escape hatch budget errors fixed:
+
+      - Shell complexity debt threshold disposition:
+
+      - Scope boundary confirmation:
+
+
+      ## Required Commands
+
+      ```text
+
+      uv run --frozen invar guard --all
+
+      uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py
+
+      uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k "export or update_batch"
+
+      ```
+
+
+      ## Actual Output
+
+      Paste command output for all three commands.'
+    depends_on:
+    - larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
+    agent: python-senior-tacit
