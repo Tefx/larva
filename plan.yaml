@@ -59785,7 +59785,7 @@ phases:
       - none'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
     name: Verify and gate web_routes.py Invar exception removal
-    status: pending
+    status: claimed
     description: 'As an INDEPENDENT REVIEWER, verify the narrow follow-up remediation
       for the temporary `src/larva/shell/web_routes.py` Invar exception.
 
@@ -59912,3 +59912,5 @@ phases:
     depends_on:
     - larva.operator_p2.followup_web_routes_invar_20260426.implementation
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-04-26T05:09:00.994557+00:00'
