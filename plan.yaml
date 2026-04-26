@@ -59507,3 +59507,82 @@ phases:
     checks remain green.
   depends_on:
   - larva.operator_p2.gate
+  steps:
+  - id: larva.operator_p2.followup_web_routes_invar_20260426.contract
+    name: Define acceptance contract for web_routes.py Invar exception removal
+    status: pending
+    description: 'Contract/design step for the residual should-fix debt only.
+
+
+      Scope: define the exact acceptance criteria for removing the temporary Invar
+      exclusion covering `src/larva/shell/web_routes.py` in `pyproject.toml`.
+
+
+      Required contract outputs:
+
+      - Identify the current `pyproject.toml` Invar exclusion entry for `src/larva/shell/web_routes.py`
+      and state the intended end state: exclusion removed.
+
+      - Define the FastAPI boundary handling strategy for this shell module: FastAPI
+      request/response wiring remains in Shell; Core contract rules are not bypassed
+      by moving I/O or framework code into Core; any Invar allow/exclude replacement
+      must be narrower than the existing file-level exclusion and explicitly justified.
+
+      - Define guard integrity criteria: `uv run --frozen invar guard` must pass without
+      disabling, broadening, or weakening Invar gates.
+
+      - Define packaged REST regression criteria: existing packaged REST export/update_batch
+      route behavior remains green after the config/code change.
+
+      - If removal is truly impossible in one safe step, specify the only acceptable
+      bounded replacement: a narrower, line/symbol-scoped Invar escape hatch with
+      a written reason, no file-level exclusion, and a follow-up removal condition.
+
+
+      Contract purity: ENFORCED. This step must not perform product code/config changes
+      beyond documenting acceptance in evidence.
+
+
+      Refs: read the current `pyproject.toml` Invar config, `src/larva/shell/web_routes.py`,
+      and packaged REST tests before writing evidence.'
+    verification: '- Evidence includes the exact current exclusion entry and the exact
+      target end state.
+
+      - Evidence states FastAPI boundary strategy and guard integrity criteria.
+
+      - Evidence lists packaged REST regression commands to be used by downstream
+      verification.
+
+      - No product code/config mutation is performed in this contract step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - pyproject.toml — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/web_routes.py — key passage or "NOT READ: <reason>"
+
+      - tests — key packaged REST test location(s) or "NOT READ: <reason>"
+
+
+      ## Acceptance Contract
+
+      - Current temporary exception:
+
+      - Target end state:
+
+      - FastAPI Shell boundary strategy:
+
+      - Guard integrity criteria:
+
+      - Packaged REST regression commands:
+
+      - Bounded replacement allowed only if removal impossible: yes/no, reason, exact
+      narrower form
+
+
+      ## Non-Changes Confirmation
+
+      - Product code/config changed in this step: NO'
+    agent: python-senior-tacit
