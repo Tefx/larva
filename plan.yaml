@@ -59604,7 +59604,7 @@ phases:
       \ or update_batch\"`\n\nNo code/config changes were made in this contract step."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.implementation
     name: Remove temporary web_routes.py Invar exception safely
-    status: claimed
+    status: done
     description: 'Implementation step for the residual should-fix debt only.
 
 
@@ -59743,6 +59743,46 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-04-26T05:06:17.637809+00:00'
+    done_at: '2026-04-26T05:08:32.990599+00:00'
+    evidence: 'Implementation completed on mainline.
+
+
+      Merge:
+
+      - Squash merged `vectl/step-larva.operator_p2.followup_web_routes_invar_20260426.implementation`.
+
+      - Mainline commit: `[vectl] step-larva.operator_p2.followup_web_routes_invar_20260426.implementation
+      completed`.
+
+      - Subagent commit in worktree: `dbe4880`.
+
+
+      Changes:
+
+      - File changed: `pyproject.toml`
+
+      - Removed `src/larva/shell/web_routes.py` from `[tool.invar.guard].exclude_paths`.
+
+      - No replacement file-level exclusion added.
+
+      - No narrower hatch added.
+
+      - No code changes to `src/larva/shell/web_routes.py`.
+
+
+      Verification (mainline final-state barrier):
+
+      - `uv run --frozen invar guard` → passed (errors=0, warnings=0)
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py` → 17 passed
+
+      - `uv run --frozen pytest -q tests/shell/test_web_rest_gaps.py -k "export or
+      update_batch"` → 12 passed, 5 deselected
+
+
+      Deviation records:
+
+      - none'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
     name: Verify and gate web_routes.py Invar exception removal
     status: pending
