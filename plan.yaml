@@ -59785,7 +59785,7 @@ phases:
       - none'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
     name: Verify and gate web_routes.py Invar exception removal
-    status: claimed
+    status: done
     description: 'As an INDEPENDENT REVIEWER, verify the narrow follow-up remediation
       for the temporary `src/larva/shell/web_routes.py` Invar exception.
 
@@ -59914,6 +59914,20 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-04-26T05:09:00.994557+00:00'
+    done_at: '2026-04-26T05:13:01.836496+00:00'
+    evidence: "Gate step executed and BLOCKED as intended; remediation ownership created\
+      \ before completion.\n\nMachine-readable closure fields from gate evidence:\n\
+      - headline: FAIL\n- proof_gap_status: NONE\n- blocking_status: OPEN\n- verdict:\
+      \ FAIL\n- blockers: [B1]\n- gate_open_allowed: false\n- orchestrator_action_hint:\
+      \ DO_NOT_COMPLETE\n\nKey outcomes:\n- Required checks passed:\n  - `uv run --frozen\
+      \ invar guard` (changed-file mode) PASS\n  - REST regressions PASS (`tests/shell/test_web_rest_gaps.py`\
+      \ and export/update_batch subset)\n- Blocking check failed:\n  - `uv run --frozen\
+      \ invar guard --all` FAIL with web_routes.py shell_result errors + escape-hatch\
+      \ budget errors + shell_complexity_debt threshold breach.\n\nBatched remediation\
+      \ created (single fix chain):\n- `larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers`\
+      \ (depends on this step)\n- `larva.operator_p2.followup_web_routes_invar_20260426.retest_gate_after_fix`\
+      \ (depends on fix step)\n\nThis step is completed as a failed gate with owned\
+      \ follow-up remediation path, per batched-fix protocol."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers
     name: Fix web_routes.py full-tree Invar blockers
     status: pending
