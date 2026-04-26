@@ -59586,3 +59586,142 @@ phases:
 
       - Product code/config changed in this step: NO'
     agent: python-senior-tacit
+  - id: larva.operator_p2.followup_web_routes_invar_20260426.implementation
+    name: Remove temporary web_routes.py Invar exception safely
+    status: pending
+    description: 'Implementation step for the residual should-fix debt only.
+
+
+      Fill in the remediation from the contract in step `larva.operator_p2.followup_web_routes_invar_20260426.contract`.
+
+
+      UPSTREAM ARTIFACTS (from contract step):
+
+      - `pyproject.toml` — current Invar exclusion and target end state are AUTHORITATIVE
+
+      - `src/larva/shell/web_routes.py` — FastAPI Shell boundary handling strategy
+      is AUTHORITATIVE
+
+      - packaged REST tests — regression commands are PROTECTED
+
+
+      YOUR SCOPE:
+
+      - Remove the temporary file-level Invar exclusion for `src/larva/shell/web_routes.py`
+      from `pyproject.toml`.
+
+      - Make only the minimal code/config changes needed for `uv run --frozen invar
+      guard` to pass.
+
+      - Preserve FastAPI wiring as Shell boundary code; do not move framework I/O
+      into Core to appease Invar.
+
+      - Do not weaken Invar globally, do not broaden excludes, and do not add compatibility
+      aliases or malformed-input cleanup.
+
+      - If complete removal proves truly impossible, replace only with the bounded
+      narrower escape hatch allowed by the contract step and document why removal
+      could not be completed now.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic/config cleanup that removes or narrows
+      the temporary guard exception while preserving packaged REST behavior.
+
+
+      ## Failure-mode checklist
+
+      - File-level exclusion is removed, not renamed or broadened.
+
+      - Any replacement escape hatch is narrower than the original file-level exclusion
+      and has explicit rationale.
+
+      - Guard command remains `uv run --frozen invar guard`; no gate weakening or
+      command substitution.
+
+      - Packaged REST export/update_batch behavior is not changed except as required
+      by safe boundary handling.
+
+
+      Out-of-scope: unrelated REST feature work, unrelated Invar cleanup, broad refactors,
+      documentation rewrites beyond evidence.'
+    verification: '- Main path: temporary `src/larva/shell/web_routes.py` file-level
+      Invar exclusion is absent from `pyproject.toml`.
+
+      - Failure path: if a bounded replacement is used, evidence proves it is narrower
+      than the removed file-level exclusion and approved by the contract criteria.
+
+      - Guard integrity: `uv run --frozen invar guard` passes without weakening Invar
+      gates.
+
+      - Regression: packaged REST export/update_batch checks identified by the contract
+      remain green.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - pyproject.toml — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/web_routes.py — key passage or "NOT READ: <reason>"
+
+      - tests — key packaged REST test location(s) or "NOT READ: <reason>"
+
+
+      ## Change Summary
+
+      - Exclusion removed: yes/no
+
+      - Bounded replacement used: yes/no; if yes, exact line/symbol and rationale
+
+      - Files changed:
+
+
+      ## Guard Integrity Evidence
+
+      Command:
+
+      ```
+
+      uv run --frozen invar guard
+
+      ```
+
+      Output summary:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Packaged REST Regression Evidence
+
+      Commands:
+
+      ```
+
+      <paste commands from contract step>
+
+      ```
+
+      Output summary:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## Scope Guard
+
+      - No global Invar weakening: confirmed/not confirmed
+
+      - No unrelated REST changes: confirmed/not confirmed'
+    depends_on:
+    - larva.operator_p2.followup_web_routes_invar_20260426.contract
+    agent: python-senior-tacit
