@@ -59930,7 +59930,7 @@ phases:
       \ follow-up remediation path, per batched-fix protocol."
   - id: larva.operator_p2.followup_web_routes_invar_20260426.fix_gate_blockers
     name: Fix web_routes.py full-tree Invar blockers
-    status: pending
+    status: claimed
     description: 'Fix ALL blocker debt reported by larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
       for the narrow web_routes.py Invar exception-removal follow-up.
 
@@ -60062,6 +60062,8 @@ phases:
     depends_on:
     - larva.operator_p2.followup_web_routes_invar_20260426.verify_gate
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-04-26T05:13:24.418632+00:00'
   - id: larva.operator_p2.followup_web_routes_invar_20260426.retest_gate_after_fix
     name: Retest gate after web_routes.py full-tree Invar fix
     status: pending
