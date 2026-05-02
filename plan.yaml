@@ -61597,3 +61597,93 @@ phases:
     only and removed surfaces absent in live-ish smoke checks.
   depends_on:
   - variants_surface_cutover_20260503
+  steps:
+  - id: variants_projection_smoke_20260503.opencode-red-smoke-tests
+    name: opencode-red-smoke-tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Write expected-red OpenCode projection and live smoke tests before implementation/fix.
+
+
+      Scope/touch_paths:
+
+      - tests/shell/test_opencode_cli.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+      - tests/repro/spec_verify_black_box_surfaces.py
+
+      - tests/shell/test_mcp_stdio_integration.py
+
+      - tests/repro/issue_web_liveness.py or focused live smoke tests
+
+
+      Hard requirements:
+
+      - OpenCode projection uses active variants only; inactive variants are not projected.
+
+      - Projection digest changes with active variant content.
+
+      - `larva mcp` tool listing/call smoke proves variant tools available and removed
+      tools absent if feasible.
+
+      - `larva serve` route smoke proves variant route and removed route 404 if feasible.
+
+      - CLI smoke with temp HOME/registry proves register/resolve/update --variant
+      and variant list/activate/delete.
+
+
+      Testing guardrails:
+
+      - Product code may not be modified.
+
+      - Live/smoke checks may be skipped only with a clear environment reason; if
+      skipped, include exact command that should run in a runnable environment.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Expected red: focused OpenCode/smoke tests expose missing active-only
+      projection or live surface gaps and collect cleanly.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      ```text
+
+      uv run pytest tests/shell/test_opencode_cli.py tests/shell/test_mcp_stdio_integration.py
+      tests/repro/cross_surface_consistency_verify.py tests/repro/spec_verify_black_box_surfaces.py
+      -q
+
+      <paste output>
+
+      ```
+
+
+      ## Smoke Plan
+
+      - CLI smoke command:
+
+      - MCP smoke command:
+
+      - Serve smoke command:
+
+      - Skips and reasons, if any:
+
+
+      ## Scope Check
+
+      - Product files changed: none / <explain>'
+    agent: python-executor
