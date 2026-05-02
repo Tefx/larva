@@ -19,9 +19,9 @@ Accepted authority basis for downstream remediation planning.
 |---|---|---|
 | PersonaSpec field set and semantics | opifex canonical prose/schema | consume, enforce, project |
 | Runtime admission verdict on larva surfaces | larva | apply upstream contract at ingress |
-| Projection into opencode agent/runtime shapes | larva contrib/plugin layer | derived projection only |
+| Projection into opencode agent/runtime shapes | larva shell wrapper + contrib/plugin layer | derived projection only |
 | Local Python typing (`larva.core.spec`) | larva | convenience typing, not authority |
-| Local docs (`README`, `INTERFACES`, `ARCHITECTURE`, `USAGE`) | larva | explanatory mirrors, must not drift |
+| Local docs (`README`, `INTERFACES`, `ARCHITECTURE`, `USAGE`, `USER_GUIDE`) | larva | explanatory mirrors, must not drift |
 
 ### Required contract pins
 
@@ -142,7 +142,7 @@ Accepted rule:
 
 - [Proven] Current repo materials still claim larva itself is canonical authority (`ARCHITECTURE.md`, `INTERFACES.md`, `README.md`), which is precisely the drift this basis collapses.
 - [Proven] Actual runtime wiring already converges on `DefaultLarvaFacade.validate()` -> `larva.core.validate.validate_spec()`.
-- [Proven] The opencode plugin is a projection layer, not a contract owner; it maps PersonaSpec into opencode agent/runtime constructs.
+- [Proven] The OpenCode wrapper/plugin path is a projection layer, not a contract owner; it maps PersonaSpec into OpenCode startup config and agent/runtime constructs.
 - [Proven] ADR-002 already established that runtime policy does not belong in PersonaSpec, supporting removal of `side_effect_policy`.
 
 ## Explicit Non-Goals

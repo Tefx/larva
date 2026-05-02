@@ -92,9 +92,17 @@ Representative CLI operations:
 - assemble a PersonaSpec from components
 - register a canonical persona
 - resolve or list canonical personas
+- launch OpenCode with registry personas projected as agents
 
 CLI is an operator interface over the same canonical contract. It does not add
 new persona semantics.
+
+`larva opencode [OPENCODE_ARG ...]` is a shell pass-through launcher. It exports
+registered personas through the application facade, builds a child-process
+`OPENCODE_CONFIG_CONTENT`, injects the larva OpenCode plugin, and then execs the
+real `opencode` binary. A leading `--` after `opencode` is accepted as an
+optional separator and stripped before forwarding. The command must not write
+`.opencode/opencode.json` or reinterpret PersonaSpec fields.
 
 ## Cross-Surface Authority Rules
 

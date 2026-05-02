@@ -5,10 +5,15 @@ Bridges larva's PersonaSpec registry to opencode's agent system.
 ## How it works
 
 ```
-Startup (config hook):
+Launcher (`larva opencode`):
+  1. Read registered personas through larva's normal facade/export path
+  2. Build a temporary OPENCODE_CONFIG_CONTENT with placeholder agents
+  3. Inject this plugin and exec the real opencode binary
+
+Plugin startup (config hook):
   1. Load tool-policy.json (optional deny/allow rules)
-  2. larva export --all --json → get all persona specs in one call
-  3. Register as opencode agents with permissions mapped
+  2. larva export --all --json → refresh persona specs in one call
+  3. Register/refresh opencode agents with permissions mapped
   4. Pre-cache prompts
 
 Runtime (per API call):
@@ -17,7 +22,31 @@ Runtime (per API call):
   (re-resolves from larva CLI only on cache expiry, 5 min)
 ```
 
+The launcher exists because some OpenCode versions validate `--agent` before
+plugin config hooks finish. Early `OPENCODE_CONFIG_CONTENT` injection makes
+`--agent <larva-id>` visible without writing `.opencode/opencode.json`.
+
 ## Install
+
+Preferred wrapper (no `.opencode/opencode.json` write required):
+
+```bash
+larva opencode
+larva opencode --agent python-senior
+larva opencode run "check this bug" --agent python-senior
+larva opencode -- run "check this bug" --agent python-senior
+```
+
+Arguments after `larva opencode` are forwarded to OpenCode. The explicit `--`
+separator is optional; when present, larva strips it before forwarding.
+
+The wrapper builds a temporary `OPENCODE_CONFIG_CONTENT` value from the larva
+registry, injects this plugin, and execs the real `opencode` process. Use
+`LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts` if automatic source-tree
+plugin discovery is not available.
+
+Manual plugin install remains possible for sessions that do not rely on early
+`--agent <larva-id>` validation:
 
 ```jsonc
 // .opencode/opencode.json (project) or ~/.config/opencode/opencode.json (global)
@@ -26,7 +55,7 @@ Runtime (per API call):
 }
 ```
 
-larva CLI resolution (zero config):
+larva CLI resolution inside the plugin:
 1. If cwd is a larva project (pyproject.toml with `name = "larva"`) → `uv run --project . larva`
 2. `larva` in PATH → direct
 3. Fallback → `uvx larva`
@@ -104,6 +133,12 @@ Every larva-loaded prompt includes:
 
 ## Limitations
 
-- Agent list is fixed at startup. New `larva register` requires opencode restart.
-- `capabilities` field is used for permission derivation but does not map 1:1 to opencode tool names.
+- Agent list is fixed at OpenCode startup. New `larva register` requires an
+  OpenCode restart.
+- The wrapper requires the real `opencode` executable to be available in `PATH`.
+- Manual plugin-only install may be too late for `--agent <larva-id>` validation
+  in OpenCode versions that validate agents before plugin config hooks finish;
+  prefer `larva opencode` for that path.
+- `capabilities` field is used for permission derivation but does not map 1:1 to
+  OpenCode tool names.
 - Temperature is only applied if larva persona explicitly sets it.

@@ -302,6 +302,23 @@ def run_cli(
     if not argv_list:
         parser.print_help(stdout)
         return EXIT_OK
+
+    # opencode is a pass-through launcher. Bypass argparse so OpenCode flags
+    # like `--agent` can appear immediately after `larva opencode` without an
+    # explicit separator.
+    if argv_list[0] == "opencode":
+        from larva.shell.opencode import opencode_command
+
+        return _emit_result(
+            opencode_command(
+                argv_list[1:],
+                facade=facade,
+            ),
+            as_json=False,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
     active_component_store = (
         component_store if component_store is not None else FilesystemComponentStore()
     )
@@ -333,6 +350,7 @@ def run_cli(
 
         run_mcp_stdio()
         return 0  # type: ignore[return-value]
+
     return _emit_result(
         _dispatch(args, facade=facade, component_store=active_component_store),
         as_json=cast("bool", getattr(args, "as_json", False)),

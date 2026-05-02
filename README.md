@@ -13,9 +13,11 @@ of ad hoc prompt files scattered across tools and repos.
 - Assemble personas from reusable components
 - Store canonical personas in a local registry under `~/.larva/`
 - Resolve, clone, update, delete, and export personas across tools
+- Project registered personas into OpenCode with a temporary wrapper config
 - Expose the same operations through MCP, CLI, Python, and a small web UI
 
 larva does not run agents, call LLMs, enforce gateway policy, or manage memory.
+`larva opencode` is only a launcher for the real OpenCode runtime.
 
 ## Install
 
@@ -196,7 +198,12 @@ larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constrain
 larva component list [--json]
 larva component show <type>/<name> [--json]
 larva doctor [--json]
+larva opencode [OPENCODE_ARG ...]
 ```
+
+`larva opencode` launches the real OpenCode CLI with a temporary dynamic config
+built from the larva registry. Arguments after `opencode` are forwarded to
+OpenCode; a leading `--` is optional and is stripped before forwarding.
 
 ## Repo-local CI gate
 
@@ -288,8 +295,35 @@ Scope note:
 
 ### OpenCode plugin
 
-larva also ships an OpenCode plugin that exposes larva personas as agents.
-See `contrib/opencode-plugin/README.md`.
+larva ships an OpenCode plugin plus a thin wrapper that exposes registered larva
+personas as OpenCode agents.
+
+```bash
+# TUI with every registry persona available as --agent <id>
+larva opencode
+
+# TUI pinned to a persona
+larva opencode --agent python-senior
+
+# Non-interactive OpenCode run
+larva opencode run "check this bug" --agent python-senior
+
+# Optional explicit separator; useful when a future larva flag could conflict
+larva opencode -- run "check this bug" --agent python-senior
+```
+
+The wrapper injects `OPENCODE_CONFIG_CONTENT` for the child OpenCode process, so
+personas are visible early enough for OpenCode's `--agent <persona-id>`
+validation. It does **not** write `.opencode/opencode.json`, and it does not run
+agents itself; after config assembly it execs the real `opencode` binary.
+
+Plugin path resolution:
+
+1. `LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts`
+2. source-tree lookup for `contrib/opencode-plugin/larva.ts`
+
+See `contrib/opencode-plugin/README.md` for plugin internals and tool-policy
+mapping.
 
 ## Architecture
 

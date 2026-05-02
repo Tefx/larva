@@ -65,6 +65,7 @@ I/O edges:
 - CLI
 - MCP
 - Python API surface
+- OpenCode launcher in `src/larva/shell/opencode.py`
 - packaged web runtime in `src/larva/shell/web.py`
 - contributor web runtime in `contrib/web/server.py`
 
@@ -83,6 +84,19 @@ I/O edges:
 - [Likely] Downstream tests should split normative packaged-web coverage from
   contrib-only convenience coverage so batch-update review helpers do not become
   accidental public API commitments.
+
+## OpenCode Launcher Boundary
+
+- [Proven] `src/larva/shell/opencode.py` is a shell adapter for launching the
+  real OpenCode CLI with larva registry personas projected into the child
+  process config.
+- [Proven] The launcher owns process/env concerns only: plugin path resolution,
+  `OPENCODE_CONFIG_CONTENT` assembly, argument forwarding, and `execvpe`.
+- [Proven] The launcher must not write `.opencode/opencode.json` and must not
+  redefine PersonaSpec semantics; persona data still flows through the app
+  facade and canonical registry/export paths.
+- [Proven] Runtime prompt replacement and tool-policy checks remain in
+  `contrib/opencode-plugin/larva.ts`, not in core/app code.
 
 ## Package-Root Policy
 

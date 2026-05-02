@@ -51,13 +51,21 @@ larva clear --confirm "CLEAR REGISTRY" [--json]
 larva component list [--json]
 larva component show <type>/<name> [--json]
 larva doctor [--json]
+larva opencode [OPENCODE_ARG ...]
 ```
 
-Use `--json` for machine-readable output on all commands. All CLI commands exit 0 (success), 1 (domain error), 2 (input/critical failure).
+Use `--json` for machine-readable output on canonical larva commands. Those
+commands exit 0 (success), 1 (domain error), 2 (input/critical failure).
 
 `larva doctor` always runs the registry diagnostic through the same
 facade-backed canonical validation path used by list/serve. There is no
 separate shallow mode.
+
+`larva opencode` is different: it is a launcher for the real OpenCode CLI, not a
+JSON-producing larva operation. It builds a temporary `OPENCODE_CONFIG_CONTENT`
+from the registry, injects the larva OpenCode plugin, and forwards remaining
+arguments to `opencode`. A leading `--` after `opencode` is optional and is
+stripped before forwarding.
 
 ### Fallback: Python API
 
@@ -467,6 +475,16 @@ All errors use a single envelope shape:
    larva_resolve(id, overrides={model: "..."}) → PersonaSpec with runtime patch
 2. Pass spec to anima or agent runner
 ```
+
+For OpenCode, use the wrapper instead of writing `.opencode/opencode.json`:
+
+```bash
+larva opencode --agent python-senior
+larva opencode run "check this bug" --agent python-senior
+```
+
+The wrapper only projects registered personas into OpenCode's startup config; it
+does not call the model or own runtime policy.
 
 ### Workflow D: Discover available personas
 

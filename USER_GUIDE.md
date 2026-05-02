@@ -435,7 +435,39 @@ Verified contract notes for downstream tests and reviews:
 - batch update is a contrib-only convenience surface, not part of `larva serve`
 - preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
 
-The repository also includes an OpenCode plugin in `contrib/opencode-plugin/`.
+### OpenCode wrapper
+
+The repository includes an OpenCode plugin in `contrib/opencode-plugin/` and a
+wrapper command that injects registry personas into OpenCode without writing
+project config:
+
+```bash
+larva opencode
+larva opencode --agent python-senior
+larva opencode run "check this bug" --agent python-senior
+larva opencode -- run "check this bug" --agent python-senior
+```
+
+What the wrapper does:
+
+- exports registered personas through larva's normal facade path
+- builds a temporary `OPENCODE_CONFIG_CONTENT` for the child process
+- injects `contrib/opencode-plugin/larva.ts`
+- forwards remaining arguments to the real `opencode` binary
+- strips a leading `--` after `opencode` when present
+
+What it does not do:
+
+- it does not write `.opencode/opencode.json`
+- it does not call an LLM itself
+- it does not turn PersonaSpec into runtime gateway policy
+
+If plugin auto-discovery fails, set:
+
+```bash
+LARVA_OPENCODE_PLUGIN=/absolute/path/to/contrib/opencode-plugin/larva.ts \
+  larva opencode --agent python-senior
+```
 
 ## 15. Troubleshooting
 

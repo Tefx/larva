@@ -306,6 +306,25 @@ def _add_server_commands(subparsers: argparse._SubParsersAction[_CliParser]) -> 
     _add_json_flag(doctor_parser)
 
 
+# @shell_orchestration: parser wiring for the OpenCode pass-through launcher
+def _add_opencode_command(subparsers: argparse._SubParsersAction[_CliParser]) -> None:
+    opencode_parser = subparsers.add_parser(
+        "opencode",
+        help="Launch OpenCode with larva personas as agents",
+        description=(
+            "Build a dynamic OpenCode config from the larva registry, inject the "
+            "larva OpenCode plugin, then exec the opencode CLI. Use '--' before "
+            "OpenCode arguments when you want an explicit separator."
+        ),
+    )
+    opencode_parser.add_argument(
+        "opencode_args",
+        nargs=argparse.REMAINDER,
+        metavar="OPENCODE_ARG",
+        help="arguments forwarded verbatim to opencode",
+    )
+
+
 # @shell_orchestration: parser composition only wires command definitions and flags
 def build_cli_parser() -> Result[_CliParser, object]:
     parser = _CliParser(
@@ -330,6 +349,7 @@ def build_cli_parser() -> Result[_CliParser, object]:
     _add_component_commands(subparsers)
     _add_registry_commands(subparsers)
     _add_server_commands(subparsers)
+    _add_opencode_command(subparsers)
     return Success(parser)
 
 
