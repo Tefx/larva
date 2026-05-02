@@ -60300,3 +60300,11 @@ phases:
 
       - Retest indicates blocker family B1 closed for this phase; no new blocker-class
       issues introduced by the fix.'
+- id: variants_core_contract_20260503
+  name: Registry-Local Variants Core Contract
+  status: pending
+  gate: Core variant contracts and pure helpers have falsifying tests, contracts/doctests,
+    and no canonical PersonaSpec metadata leakage.
+  depends_on:
+  - larva.operator_p2.followup_web_routes_invar_20260426
+  - meta.gate
