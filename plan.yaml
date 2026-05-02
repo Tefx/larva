@@ -61782,3 +61782,107 @@ phases:
     depends_on:
     - variants_projection_smoke_20260503.opencode-red-smoke-tests
     agent: python-executor
+  - id: variants_projection_smoke_20260503.live-liveness-probe
+    name: live-liveness-probe
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      As an independent tester, run runnable-surface liveness/smoke checks from a
+      fresh perspective.
+
+
+      Scope:
+
+      - CLI entrypoint with temp HOME/registry.
+
+      - MCP stdio entrypoint (`larva mcp`) tool listing/call smoke if feasible.
+
+      - REST serve entrypoint (`larva serve`) route smoke if feasible.
+
+      - OpenCode projection smoke.
+
+
+      Required proof:
+
+      - Entry point starts.
+
+      - At least one documented operation reaches the real entrypoint path end-to-end.
+
+      - Removed assembly/component surfaces are absent in live/listing/help/route
+      output.
+
+      - Active variant behavior is observable through public entrypoints.
+
+
+      Skips are allowed only for unavailable runtime constraints and must include
+      the exact command, observed blocker, and downstream closure path.'
+    verification: Independent liveness report with actual command output for CLI,
+      MCP, serve, and OpenCode where feasible. Handler-only proof is insufficient.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Liveness Evidence
+
+      ### CLI
+
+      ```text
+
+      <exact command and output>
+
+      ```
+
+      ### MCP stdio
+
+      ```text
+
+      <exact command/tool listing/call output or skip with reason>
+
+      ```
+
+      ### Serve/REST
+
+      ```text
+
+      <exact launch/request/output or skip with reason>
+
+      ```
+
+      ### OpenCode projection
+
+      ```text
+
+      <exact command/output>
+
+      ```
+
+
+      ## Removed Surface Absence
+
+      ```text
+
+      <help/tool-list/route proof>
+
+      ```
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Headline
+
+      PASS / PASS_WITH_DEBT / FAIL'
+    depends_on:
+    - variants_projection_smoke_20260503.opencode-active-projection
+    agent: blind-tester-tacit
