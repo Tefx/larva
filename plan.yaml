@@ -60411,6 +60411,17 @@ phases:
       - Product files changed: none / <explain violation>
 
       - Downstream implementation owner: variants_core_contract_20260503.core-pure-helpers'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    - INVAR.md
     agent: python-executor
   - id: variants_core_contract_20260503.core-pure-helpers
     name: core-pure-helpers
