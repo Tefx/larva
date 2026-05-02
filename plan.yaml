@@ -61253,7 +61253,17 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
-    - ../opifex/conformance/case_matrix/larva/*
+    - ../opifex/conformance/case_matrix/larva/larva.register.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.validate.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.export.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.update.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml
+    - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     agent: python-executor
   - id: variants_surface_cutover_20260503.mcp-cli-python-cutover
