@@ -60845,3 +60845,75 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-red-integration-tests
     agent: python-senior-tacit
+  - id: variants_registry_impl_20260503.registry-spec-conformance
+    name: registry-spec-conformance
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Independent spec conformance verification for registry-local storage and active
+      variant behavior. This is not ''tests pass''; it checks implementation against
+      the authoritative design/opifex boundary.
+
+
+      Scope:
+
+      - only registry/facade behavior implemented in this phase.
+
+      - cite spec requirement and implementation file:line for each verdict.
+
+
+      Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE.
+
+
+      Gate Decision Basis required for any NEEDS_TEST/UNPROVEN item.'
+    verification: Produce requirements register and evidence table covering storage
+      layout, manifest semantics, active selection, error codes, delete guards, list/export
+      active-only, and no canonical metadata leakage.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      |---|---|---|---|---|
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation | Verdict | Notes |
+
+      |---|---|---|---|---|---|
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Coverage Summary
+
+      - Total requirements:
+
+      - CONFORMS:
+
+      - DIVERGES/PARTIAL/NEEDS_TEST:
+
+
+      ## Headline
+
+      PASS / PASS_WITH_DEBT / FAIL'
+    depends_on:
+    - variants_registry_impl_20260503.registry-storage-implementation
+    agent: spec-verifier-tacit
