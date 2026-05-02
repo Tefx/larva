@@ -61957,3 +61957,90 @@ phases:
     deep review are complete.
   depends_on:
   - variants_projection_smoke_20260503
+  steps:
+  - id: variants_finalization_20260503.docs-parity-sync
+    name: docs-parity-sync
+    status: pending
+    description: 'step_type: implementation
+
+
+      Sync documentation to match implemented registry-local variants and removed
+      assembly/component surfaces.
+
+
+      Scope/touch_paths:
+
+      - docs/reference/INTERFACES.md
+
+      - docs/reference/ARCHITECTURE.md
+
+      - docs/guides/USAGE.md
+
+      - docs/guides/USER_GUIDE.md
+
+      - README.md if examples mention removed surfaces
+
+      - contrib/opencode-plugin/README.md if projection behavior changed
+
+
+      Required checks:
+
+      - Removed MCP/CLI/Python/REST/Web assembly/component surfaces are not documented
+      as public supported interfaces.
+
+      - Variant operations and optional variant parameters are documented as registry-local
+      operation parameters, never PersonaSpec fields.
+
+      - Storage docs match target: manifest.json {"active":"default"}; variants/<variant>.json;
+      no index.json; no auto-invent manifest.
+
+      - Error code docs include required variant errors consistently.
+
+      - Examples use exact canonical PersonaSpec without tools/side_effect_policy/variables/variant/_registry/active/manifest.
+
+
+      Do not edit opifex docs/schema in this repo step; if opifex conformance needs
+      changes, report it as a blocking external owner gap rather than mutating from
+      larva.'
+    verification: 'Docs parity proof: grep removed terms/surfaces, show updated examples,
+      and run docs-related tests if present plus `uv run invar guard --changed` if
+      docs affect checks.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Docs Parity Report
+
+      - Docs updated:
+
+      - Removed surface references eliminated or marked historical:
+
+      - Variant operation params documented outside PersonaSpec:
+
+      - Storage/error semantics documented:
+
+
+      ## Grep Evidence
+
+      ```text
+
+      <grep/search output for removed public surfaces and forbidden metadata examples>
+
+      ```
+
+
+      ## Commands
+
+      ```text
+
+      <docs tests if any>
+
+      uv run invar guard --changed
+
+      ```
+
+      <paste output or explain not applicable>'
+    agent: doc-reviewer-tacit
