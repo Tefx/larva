@@ -62492,6 +62492,16 @@ phases:
 
       Gate must block if:
 
+      - `vectl_validate(check_refs=true)` was not run and captured in `variants_finalization_20260503.full-plan-guard-and-conformance`.
+
+      - The baseline validation debt table is missing, incomplete, or conflates provenance
+      with disposition.
+
+      - Any new `variants_*_20260503` validation ERROR/WARN or any validation failure
+      intersecting variant/shared-surface behavior is hidden behind baseline debt.
+
+      - Any new/intersecting variant-surface validation failure remains unremediated.
+
       - Any full-plan guard/invar/opifex-conformance failure intersects this feature
       without remediation ownership.
 
@@ -62509,12 +62519,25 @@ phases:
       be PROVEN or have explicit non-intersection evidence. `pre-existing` alone is
       not a disposition.'
     verification: Final gate opens only with clean final verification or complete
-      blocker remediation ownership; no open residual risk for shared-surface boundary.
+      blocker remediation ownership; `vectl_validate(check_refs=true)` baseline table
+      proves no new/intersecting variants_* validation failures are hidden by baseline
+      debt; no open residual risk for shared-surface boundary.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
       - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Vectl Validate Baseline Review (MANDATORY)
+
+      - `vectl_validate(check_refs=true)` output reviewed from: <evidence ref>
+
+      - Baseline validation table reviewed: PASS/FAIL
+
+      - New/intersecting `variants_*_20260503` validation failures: NONE / <list>
+
+      - Remediation evidence for every new/intersecting item: <refs or none>
 
 
       ## Final Gate Review
@@ -62533,6 +62556,8 @@ phases:
 
       | Docs parity | | | |
 
+      | Vectl validation baseline | | | |
+
       | Opifex conformance | | | |
 
 
@@ -62547,6 +62572,18 @@ phases:
       ## Gate Decision
 
       OPEN / BLOCKED'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    - INVAR.md
     depends_on:
     - variants_finalization_20260503.docs-parity-sync
     - variants_finalization_20260503.full-plan-guard-and-conformance
