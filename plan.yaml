@@ -62044,3 +62044,88 @@ phases:
 
       <paste output or explain not applicable>'
     agent: doc-reviewer-tacit
+  - id: variants_finalization_20260503.full-plan-guard-and-conformance
+    name: full-plan-guard-and-conformance
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+
+      Run full-plan verification for registry-local variants and assembly/component
+      surface removal.
+
+
+      This is the first hard full-family closure gate for the feature. It may surface
+      pre-existing repository evidence-guard debt; classify provenance separately
+      from disposition. If any failure intersects this feature''s downstream gate
+      or shared-surface conformance, it is blocking regardless of provenance.
+
+
+      Required commands/evidence:
+
+      - Full larva unit/integration suite relevant to core/app/shell/web/opencode.
+
+      - `uv run invar guard --all` or MCP invar_guard full scan equivalent.
+
+      - Opifex repo-local conformance/gate if relevant and available; if not run,
+      record exact reason and non-intersection/owner.
+
+      - Shared-surface conformance against ../opifex canonical docs/schema/case matrix.
+
+
+      Behavioral proof register required for all open/blocked shared-surface obligations.'
+    verification: 'Full-plan check: all required tests and invar guard green, or explicit
+      blocker list with remediation ownership. No PASS with open problems/residual
+      risk except none.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Commands Run
+
+      ```text
+
+      uv run pytest -q
+
+      uv run invar guard --all
+
+      <opifex repo-local gate/conformance command if relevant>
+
+      ```
+
+      <paste output>
+
+
+      ## Shared Surface Conformance
+
+      | Source | Requirement | Evidence | Verdict |
+
+      |---|---|---|---|
+
+
+      ## Failure Disposition
+
+      | Failure | Provenance | Disposition | Gate intersection | Owner/closure path
+      |
+
+      |---|---|---|---|---|
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Headline
+
+      PASS / PASS_WITH_DEBT / FAIL'
+    depends_on:
+    - variants_finalization_20260503.docs-parity-sync
+    agent: integration-verifier-tacit
