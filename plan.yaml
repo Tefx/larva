@@ -62199,3 +62199,80 @@ phases:
     depends_on:
     - variants_finalization_20260503.full-plan-guard-and-conformance
     agent: gate-reviewer-tacit
+  - id: variants_finalization_20260503.final-gate
+    name: final-gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check
+
+
+      Final gate for registry-local variants and assembly/component public surface
+      removal.
+
+
+      Review depth: THOROUGH
+
+
+      Gate must block if:
+
+      - Any full-plan guard/invar/opifex-conformance failure intersects this feature
+      without remediation ownership.
+
+      - Any removed public surface remains reachable.
+
+      - Any registry-local metadata reaches canonical PersonaSpec.
+
+      - Any live/deployability proof is missing without explicit non-intersection
+      closure.
+
+      - Docs describe unsupported removed surfaces or omit required variant behavior/errors.
+
+
+      Gate Decision Basis required: every blocker-class behavioral obligation must
+      be PROVEN or have explicit non-intersection evidence. `pre-existing` alone is
+      not a disposition.'
+    verification: Final gate opens only with clean final verification or complete
+      blocker remediation ownership; no open residual risk for shared-surface boundary.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Final Gate Review
+
+      | Area | Evidence reviewed | Verdict | Concerns |
+
+      |---|---|---|---|
+
+      | Core contracts | | | |
+
+      | Registry behavior | | | |
+
+      | Public surfaces | | | |
+
+      | Projection/liveness | | | |
+
+      | Docs parity | | | |
+
+      | Opifex conformance | | | |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Gate Decision
+
+      OPEN / BLOCKED'
+    depends_on:
+    - variants_finalization_20260503.docs-parity-sync
+    - variants_finalization_20260503.full-plan-guard-and-conformance
+    - variants_finalization_20260503.deep-review
+    agent: gate-reviewer-tacit
