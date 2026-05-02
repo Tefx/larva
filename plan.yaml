@@ -60592,3 +60592,10 @@ phases:
     - variants_core_contract_20260503.core-red-contract-tests
     - variants_core_contract_20260503.core-pure-helpers
     agent: gate-reviewer-tacit
+- id: variants_registry_impl_20260503
+  name: Registry Storage and Active Variant Behavior
+  status: locked
+  gate: Registry storage implements manifest/variants semantics, activation/delete
+    guards, and active-only list/export without canonical metadata leakage.
+  depends_on:
+  - variants_core_contract_20260503
