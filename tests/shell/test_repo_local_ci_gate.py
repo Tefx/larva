@@ -28,7 +28,7 @@ def _write(path: Path, content: str) -> None:
 def _seed_repo_layout(tmp_path: Path) -> tuple[Path, Path]:
     larva_root = tmp_path / "larva"
     opifex_root = tmp_path / "opifex"
-    frozen_ref = "69b68603299a3d10cf09a25e12c7b9378312f76b"
+    frozen_ref = "450281eae8a481f2f63cf4540112c529cc976548"
     schema_payload = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -93,7 +93,11 @@ def _seed_repo_layout(tmp_path: Path) -> tuple[Path, Path]:
             "prompt is opaque executable text",
         )
     )
-    for relative_path in ("README.md", "USAGE.md", "INTERFACES.md"):
+    for relative_path in (
+        "README.md",
+        "docs/guides/USAGE.md",
+        "docs/reference/INTERFACES.md",
+    ):
         _write(larva_root / relative_path, docs_text)
 
     _write(
@@ -395,7 +399,7 @@ def test_run_verify_accepts_matching_repo_layout(tmp_path: Path) -> None:
     result = module.run_verify(module.GatePaths(larva_root=larva_root, opifex_root=opifex_root))
 
     assert result == [
-        "frozen authority packet pin: PASS (Tefx/opifex@69b68603299a3d10cf09a25e12c7b9378312f76b)",
+        "frozen authority packet pin: PASS (Tefx/opifex@450281eae8a481f2f63cf4540112c529cc976548)",
         "schema-authority parity: PASS",
         "capabilities-only admission metadata: PASS",
         "mcp snake_case naming: PASS (6 tools)",

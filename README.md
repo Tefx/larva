@@ -210,11 +210,11 @@ OpenCode; a leading `--` is optional and is stripped before forwarding.
 Source basis:
 
 - `design/opifex-frozen-authority-packet.json`
-- `opifex/design/final-canonical-contract.md`
-- `opifex/design/cross-repo-followup-packet.md`
-- `opifex/contracts/persona_spec.schema.json`
-- `opifex/conformance/shared_surfaces.yaml`
-- `opifex/conformance/case_matrix/larva/*`
+- `../opifex/design/final-canonical-contract.md`
+- `../opifex/design/cross-repo-followup-packet.md`
+- `../opifex/contracts/persona_spec.schema.json`
+- `../opifex/conformance/shared_surfaces.yaml`
+- `../opifex/conformance/case_matrix/larva/*`
 
 Trusted repo-local commands:
 
@@ -272,7 +272,7 @@ larva serve
 
 `larva serve` binds `127.0.0.1:7400` by default, accepts `--port` and
 `--no-open`, and serves the packaged single-file UI plus the normative REST
-surface documented in `INTERFACES.md`.
+surface documented in `docs/reference/INTERFACES.md`.
 
 The repository also includes a supported contributor convenience entrypoint for
 local review work:
@@ -345,15 +345,18 @@ Structural guardrails frozen for the remediation campaign:
 
 ## Read next
 
-If you are just getting started, read `README.md` then `USER_GUIDE.md`.
+If you are just getting started, read `README.md` then
+`docs/guides/USER_GUIDE.md`.
 
-- `USER_GUIDE.md` - detailed human-oriented usage guide
-- `USAGE.md` - agent-oriented operational guide
-- `INTERFACES.md` - public interface specification
-- `ARCHITECTURE.md` - module boundaries and dependency design
-- `ADR-001-spec-version-boundary.md` - `spec_version` design decision
-- `ADR-002-capability-intent-without-runtime-policy.md` - capability intent model
-- `ADR-004-empty-capabilities-and-unrestricted-semantics.md` - empty capability semantics and unrestricted boundary
+- `docs/README.md` - documentation map by category
+- `docs/guides/USER_GUIDE.md` - detailed human-oriented usage guide
+- `docs/guides/USAGE.md` - agent-oriented operational guide
+- `docs/reference/INTERFACES.md` - public interface specification
+- `docs/reference/ARCHITECTURE.md` - module boundaries and dependency design
+- `docs/adr/ADR-001-spec-version-boundary.md` - `spec_version` design decision
+- `docs/adr/ADR-002-capability-intent-without-runtime-policy.md` - capability intent model
+- `docs/adr/ADR-003-canonical-requiredness-authority.md` - canonical requiredness authority
+- `docs/adr/ADR-004-empty-capabilities-and-unrestricted-semantics.md` - empty capability semantics and unrestricted boundary
 
 ## License
 

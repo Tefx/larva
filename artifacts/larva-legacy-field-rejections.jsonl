@@ -1,1 +1,0 @@
-{"content": "\"or side_effect_policy are rejected.\"", "field": "side_effect_policy", "file": "src/larva/shell/mcp_contract.py", "line": 327, "reason": "Non-legitimate reference to forbidden field 'side_effect_policy'", "scan": "no_legacy_field_scan"}

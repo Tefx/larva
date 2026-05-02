@@ -2,9 +2,9 @@
 
 This guide is the human-oriented introduction to larva.
 
-If you want the shortest entrypoint, read `README.md` first. If you want the
-formal API contract, read `INTERFACES.md`. If you are integrating larva into an
-agent system, `USAGE.md` is the agent-facing companion.
+If you want the shortest entrypoint, read `../../README.md` first. If you want
+the formal API contract, read `../reference/INTERFACES.md`. If you are
+integrating larva into an agent system, `USAGE.md` is the agent-facing companion.
 
 ## 1. What larva does
 
@@ -387,7 +387,8 @@ larva_component_show(type, name)
 For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
 `side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
 
-If you need exact parameter and return contracts, read `INTERFACES.md`.
+If you need exact parameter and return contracts, read
+`../reference/INTERFACES.md`.
 
 Typical local startup commands:
 
@@ -425,7 +426,7 @@ python contrib/web/server.py
 Verified contract notes for downstream tests and reviews:
 
 - normative web API coverage belongs to the packaged `larva serve` surface
-- the normative endpoint inventory lives in `INTERFACES.md`
+- the normative endpoint inventory lives in `../reference/INTERFACES.md`
 - `python contrib/web/server.py` is supported as a contributor convenience entrypoint, not as the canonical packaged startup path
 - the prompt copy button is convenience UI behavior; docs do not promise more than the browser affordance exists
 - the packaged web UI uses an output-first **Compose Persona** flow: toolsets are
@@ -433,7 +434,7 @@ Verified contract notes for downstream tests and reviews:
   presets, and selecting a behavior preset may prefill `can_spawn` /
   `compaction_prompt` without changing the canonical backend assemble fields
 - batch update is a contrib-only convenience surface, not part of `larva serve`
-- preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
+- preserved runnable liveness proof for both entrypoints lives in `../../tests/shell/artifacts/web_runtime_liveness.md`
 
 ### OpenCode wrapper
 
@@ -520,13 +521,13 @@ resulting object or remove the offending override.
 
 If you are new to the repo:
 
-1. `README.md`
+1. `../../README.md`
 2. `USER_GUIDE.md`
-3. `INTERFACES.md`
-4. `ARCHITECTURE.md`
+3. `../reference/INTERFACES.md`
+4. `../reference/ARCHITECTURE.md`
 
 If you are integrating larva into another agent system:
 
-1. `README.md`
+1. `../../README.md`
 2. `USAGE.md`
-3. `INTERFACES.md`
+3. `../reference/INTERFACES.md`

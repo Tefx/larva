@@ -14,7 +14,7 @@ Accepted (2026-04-06)
 - reference schema encodes the same required set and rejects extra top-level fields
   (`contracts/persona_spec.schema.json`)
 - the interface document still described transition-era behavior where `tools`
-  was accepted and requiredness was under-specified (`INTERFACES.md`)
+  was accepted and requiredness was under-specified (`../reference/INTERFACES.md`)
 
 This mismatch created ambiguity about which surface is authoritative for
 requiredness and admission behavior.
@@ -29,7 +29,7 @@ Canonical requiredness authority for admission is:
 1. `src/larva/core/validate.py` (runtime admission enforcement)
 2. `contracts/persona_spec.schema.json` (reference mirror, must match authority)
 
-`INTERFACES.md` and MCP metadata are consumer documentation surfaces and must be
+`../reference/INTERFACES.md` and MCP metadata are consumer documentation surfaces and must be
 synchronized to that authority. They must not reintroduce transition-era
 acceptance semantics.
 

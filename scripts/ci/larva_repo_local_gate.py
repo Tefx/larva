@@ -31,7 +31,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-DOC_PATHS: tuple[str, ...] = ("README.md", "USAGE.md", "INTERFACES.md")
+DOC_PATHS: tuple[str, ...] = (
+    "README.md",
+    "docs/guides/USAGE.md",
+    "docs/reference/INTERFACES.md",
+)
 AUTHORITY_LOCK_PATH = Path("design/opifex-frozen-authority-packet.json")
 SHARED_SURFACES_PATH = Path("conformance/shared_surfaces.yaml")
 SCHEMA_PATH = Path("contracts/persona_spec.schema.json")

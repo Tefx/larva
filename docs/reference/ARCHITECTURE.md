@@ -161,7 +161,7 @@ architecture_basis:
       owner: src/larva/shell/web.py
       consumers:
         - README.md
-        - INTERFACES.md
+        - docs/reference/INTERFACES.md
         - larva serve
         - contrib/web/server.py
       rationale: >-

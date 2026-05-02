@@ -56,7 +56,7 @@ Vibe check: adding `PromptTemplate`, `TemplateResolver`, or prompt-mode strategy
 
 - [Proven] `UNRESOLVED_PLACEHOLDER` is retired from canonical validation. Its issue constructor path in `src/larva/core/validate.py` is removed rather than repurposed.
 - [Proven] `UNRESOLVED_PROMPT_TEXT` is retired from canonical assembly. Its raise path in `src/larva/core/assemble.py` is removed rather than repurposed.
-- [Proven] `VARIABLE_UNRESOLVED` numeric code `103` is retired from `src/larva/app/facade.py`, `USAGE.md`, and parity tests because it no longer corresponds to any live fail-closed behavior after prompt-text scanning is deleted.
+- [Proven] `VARIABLE_UNRESOLVED` numeric code `103` is retired from `src/larva/app/facade.py`, `docs/guides/USAGE.md`, and parity tests because it no longer corresponds to any live fail-closed behavior after prompt-text scanning is deleted.
 - [Proven] Placeholder-specific code names are fully purged from active docs and parity tables in this change; they are not reserved for reuse.
 - [Proven] `_PROMPT_PLACEHOLDER_PATTERN` is deleted from both `src/larva/core/validate.py` and `src/larva/core/assemble.py`; it has no remaining canonical contract role once brace scanning is removed.
 - [Likely] Numeric-code policy for unrelated assembly-only names such as `VARIABLES_NOT_ALLOWED` is outside this design change and must not be silently reinvented here.
@@ -72,10 +72,10 @@ Vibe check: adding `PromptTemplate`, `TemplateResolver`, or prompt-mode strategy
 
 The following surfaces must agree on the same rule: braces in canonical prompt text are data, not instructions.
 
-- [Proven] `core/validate.py`: delete unresolved-placeholder prompt rejection.
-- [Proven] `core/assemble.py`: delete unresolved-prompt-text rejection.
-- [Proven] `app/facade.py`: no special-case escape or rewrite path during register/list/resolve/update/clone/export.
-- [Proven] `shell/web.py`, `shell/mcp.py`, `shell/cli_commands.py`, `shell/python_api.py`: surface behavior inherits the same opaque-text rule with no transport-specific escaping.
+- [Proven] `src/larva/core/validate.py`: delete unresolved-placeholder prompt rejection.
+- [Proven] `src/larva/core/assemble.py`: delete unresolved-prompt-text rejection.
+- [Proven] `src/larva/app/facade.py`: no special-case escape or rewrite path during register/list/resolve/update/clone/export.
+- [Proven] `src/larva/shell/web.py`, `src/larva/shell/mcp.py`, `src/larva/shell/cli_commands.py`, `src/larva/shell/python_api.py`: surface behavior inherits the same opaque-text rule with no transport-specific escaping.
 - [Proven] Registry diagnostics should follow the same canonical validation path as `list` / `serve`; the public CLI now exposes a single `larva doctor` surface for that check.
 
 ## Migration Plan
@@ -84,10 +84,10 @@ The following surfaces must agree on the same rule: braces in canonical prompt t
 
 - [Proven] Remove brace-regex validation from core admission and assembly code.
 - [Proven] Update these exact doc targets:
-  - `USAGE.md:127` — replace the current bullet with: `Prompt text is opaque and may contain literal braces; {placeholder} style text is not interpreted as a template variable.`
-  - `USAGE.md:367-374` — replace the current placeholder policy with: larva rejects placeholder-map inputs such as `variables`, but does not interpret brace-shaped prompt text.
-  - `USAGE.md:406` — remove error-table row `103 | VARIABLE_UNRESOLVED | unresolved {placeholder} remains in canonical prompt text`.
-  - `INTERFACES.md:84-86` — no semantic change required; this section already documents `variables` as rejected unknown input and does not require brace-text rejection language.
+  - `docs/guides/USAGE.md:127` — replace the current bullet with: `Prompt text is opaque and may contain literal braces; {placeholder} style text is not interpreted as a template variable.`
+  - `docs/guides/USAGE.md:367-374` — replace the current placeholder policy with: larva rejects placeholder-map inputs such as `variables`, but does not interpret brace-shaped prompt text.
+  - `docs/guides/USAGE.md:406` — remove error-table row `103 | VARIABLE_UNRESOLVED | unresolved {placeholder} remains in canonical prompt text`.
+  - `docs/reference/INTERFACES.md:84-86` — no semantic change required; this section already documents `variables` as rejected unknown input and does not require brace-text rejection language.
 - [Proven] Keep `variables` / placeholder-map rejection unchanged.
 
 ### Stored-data migration
@@ -116,7 +116,7 @@ The following surfaces must agree on the same rule: braces in canonical prompt t
 | `_PROMPT_PLACEHOLDER_PATTERN` | `src/larva/core/validate.py` | DELETE | Remove constant; no remaining validator should scan prompt text for brace tokens. |
 | `_validate_prompt_semantics` | `src/larva/core/validate.py` | DELETE | Remove placeholder-specific function entirely. |
 | `_validate_prompt_semantics` callsite in `validate_spec` | `src/larva/core/validate.py` | DELETE | Remove `errors.extend(_validate_prompt_semantics(spec))`. |
-| `_REQUIRED_STRING_TYPE_FIELDS` | `src/larva/core/validation_field_shapes.py` | SIMPLIFY | Add `prompt` here so prompt type validation survives after deleting `_validate_prompt_semantics`; `id` and `spec_version` remain in `validate.py` because they already have specialized identity/version validators. |
+| `_REQUIRED_STRING_TYPE_FIELDS` | `src/larva/core/validation_field_shapes.py` | SIMPLIFY | Add `prompt` here so prompt type validation survives after deleting `_validate_prompt_semantics`; `id` and `spec_version` remain in `src/larva/core/validate.py` because they already have specialized identity/version validators. |
 | `_PROMPT_PLACEHOLDER_PATTERN` | `src/larva/core/assemble.py` | DELETE | Remove constant; no remaining assembly code should scan prompt text. |
 | `_find_unresolved_placeholders` | `src/larva/core/assemble.py` | DELETE | Delete helper and doctest because assembly no longer rejects brace text. |
 | `_collect_prompt_texts` | `src/larva/core/assemble.py` | SIMPLIFY | Keep function, but remove call to `_find_unresolved_placeholders` and append text directly after existing string coercion. |
@@ -223,7 +223,7 @@ Minimal code slice:
 1. Delete brace placeholder regex checks from `src/larva/core/validate.py` and `src/larva/core/assemble.py`.
 2. Preserve prompt type validation by moving `prompt` into `src/larva/core/validation_field_shapes.py` required string coverage.
 3. Remove dead placeholder-specific numeric code `VARIABLE_UNRESOLVED` from `src/larva/app/facade.py` and its parity tests/docs.
-4. Update `USAGE.md` placeholder policy and error table; no semantic `INTERFACES.md` change required beyond optional wording sync.
+4. Update `docs/guides/USAGE.md` placeholder policy and error table; no semantic `docs/reference/INTERFACES.md` change required beyond optional wording sync.
 5. Replace placeholder-rejection tests with literal-brace acceptance tests across `tests/core/`, `tests/app/`, `tests/shell/`, and `tests/repro/`.
 
 This is intentionally one deletion-heavy boundary correction, not a templating subsystem.

@@ -49,7 +49,7 @@ Normative shape:
 
 ### ToolPosture Values
 
-Valid capability posture values (from `ToolPosture` in `spec.py`):
+Valid capability posture values (from `ToolPosture` in `src/larva/core/spec.py`):
 - `"none"` — No tool access
 - `"read_only"` — Read-only tool operations
 - `"read_write"` — Read and write tool operations

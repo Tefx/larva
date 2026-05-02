@@ -21,11 +21,11 @@ should reflect the current MCP standard.
 
 | Component | Value | Location |
 |-----------|-------|----------|
-| `MCPTransportMode` | `Literal["stdio", "sse"]` | `mcp_contract.py:314` |
-| `MCPServerConfig` | TypedDict with transport, host, port | `mcp_contract.py:317-323` |
-| Implemented transport | stdio only | `mcp_server.py:175-182` |
-| CLI description | "Start the MCP server (stdio transport)" | `cli_parser.py` |
-| USAGE.md | "larva runs as an MCP server (stdio or SSE)" | `USAGE.md` |
+| `MCPTransportMode` | `Literal["stdio", "sse"]` | `src/larva/shell/mcp_contract.py:314` |
+| `MCPServerConfig` | TypedDict with transport, host, port | `src/larva/shell/mcp_contract.py:317-323` |
+| Implemented transport | stdio only | `src/larva/shell/mcp_server.py:175-182` |
+| CLI description | "Start the MCP server (stdio transport)" | `src/larva/shell/cli_parser.py` |
+| `docs/guides/USAGE.md` | "larva runs as an MCP server (stdio or SSE)" | `docs/guides/USAGE.md` |
 
 ## Proposed Changes
 
@@ -44,7 +44,7 @@ MCPTransportMode = Literal["stdio", "http", "sse"]
 
 ### 2. Update documentation
 
-USAGE.md:
+docs/guides/USAGE.md:
 
 ```markdown
 # Before
@@ -75,9 +75,9 @@ stdio is the default for CLI usage. HTTP is the standard remote transport
 ## Acceptance Criteria
 
 1. `MCPTransportMode` includes `"http"`.
-2. USAGE.md reflects all three transport modes with HTTP as recommended remote.
+2. `docs/guides/USAGE.md` reflects all three transport modes with HTTP as recommended remote.
 3. No runtime behavior changes.
 
 ## Rollback
 
-Revert `MCPTransportMode` to `Literal["stdio", "sse"]` and USAGE.md text.
+Revert `MCPTransportMode` to `Literal["stdio", "sse"]` and `docs/guides/USAGE.md` text.

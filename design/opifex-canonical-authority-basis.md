@@ -21,7 +21,7 @@ Accepted authority basis for downstream remediation planning.
 | Runtime admission verdict on larva surfaces | larva | apply upstream contract at ingress |
 | Projection into opencode agent/runtime shapes | larva shell wrapper + contrib/plugin layer | derived projection only |
 | Local Python typing (`larva.core.spec`) | larva | convenience typing, not authority |
-| Local docs (`README`, `INTERFACES`, `ARCHITECTURE`, `USAGE`, `USER_GUIDE`) | larva | explanatory mirrors, must not drift |
+| Local docs (`README.md`, `docs/reference/INTERFACES.md`, `docs/reference/ARCHITECTURE.md`, `docs/guides/USAGE.md`, `docs/guides/USER_GUIDE.md`) | larva | explanatory mirrors, must not drift |
 
 ### Required contract pins
 
@@ -55,7 +55,7 @@ Downstream contract for implementation and verification:
 
 Rationale:
 
-- [Proven] Current larva materials already distinguish canonical fields from runtime policy and derived digest/version fields (`ADR-002`, `USAGE.md`, `INTERFACES.md`).
+- [Proven] Current larva materials already distinguish canonical fields from runtime policy and derived digest/version fields (`docs/adr/ADR-002-capability-intent-without-runtime-policy.md`, `docs/guides/USAGE.md`, `docs/reference/INTERFACES.md`). Historical migration notes were removed after completion to avoid preserving stale transition-era guidance.
 - [Likely] The only stable way to stop schema drift is to make requiredness and field closure come from the upstream contract owner, not from a permissive local `TypedDict(total=False)` or ad hoc transport behavior.
 
 ## Runtime Contract
@@ -140,7 +140,7 @@ Accepted rule:
 
 ## Evidence
 
-- [Proven] Current repo materials still claim larva itself is canonical authority (`ARCHITECTURE.md`, `INTERFACES.md`, `README.md`), which is precisely the drift this basis collapses.
+- [Proven] Current repo materials still claim larva itself is canonical authority (`docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`, `README.md`), which is precisely the drift this basis collapses.
 - [Proven] Actual runtime wiring already converges on `DefaultLarvaFacade.validate()` -> `larva.core.validate.validate_spec()`.
 - [Proven] The OpenCode wrapper/plugin path is a projection layer, not a contract owner; it maps PersonaSpec into OpenCode startup config and agent/runtime constructs.
 - [Proven] ADR-002 already established that runtime policy does not belong in PersonaSpec, supporting removal of `side_effect_policy`.

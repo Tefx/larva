@@ -70,5 +70,5 @@ INFO:     Finished server process [14927]
 
 - `tests/shell/test_web.py` -> authoritative packaged runtime proof in this file
 - `tests/shell/test_contrib_web.py` -> contrib convenience runtime proof in this file
-- `README.md` and `USER_GUIDE.md` -> reviewer-facing docs that point back to this preserved test artifact
-- `INTERFACES.md` -> normative contract doc that points readers to this runnable proof artifact without changing the contract itself
+- `README.md` and `docs/guides/USER_GUIDE.md` -> reviewer-facing docs that point back to this preserved test artifact
+- `docs/reference/INTERFACES.md` -> normative contract doc that points readers to this runnable proof artifact without changing the contract itself
