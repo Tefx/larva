@@ -62460,6 +62460,18 @@ phases:
       ## Recommendation
 
       OPEN / BLOCKED'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    - INVAR.md
     depends_on:
     - variants_finalization_20260503.full-plan-guard-and-conformance
     agent: gate-reviewer-tacit
