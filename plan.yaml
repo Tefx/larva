@@ -61426,3 +61426,78 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.surface-red-contract-tests
     agent: frontend-engineer-tacit
+  - id: variants_surface_cutover_20260503.surface-gate
+    name: surface-gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Cross-surface gate for MCP/CLI/Python/REST/Web cutover.
+
+
+      Review depth: THOROUGH
+
+      Rationale: removed public APIs are high-risk resurrection paths and variant
+      params must remain outside canonical PersonaSpec.
+
+
+      Gate must inspect actual listings/help/import/routes, not only unit assertions:
+
+      - MCP tool list: new variant tools present; removed assembly/component tools
+      absent.
+
+      - CLI help: variant commands present; assemble/component commands absent/fail.
+
+      - Python API: removed exports absent; variant operations available.
+
+      - REST routes: removed endpoints absent/404; variant endpoints behave.
+
+      - Web UI: compose/component flows removed; variant flows do not inject metadata.
+
+
+      Gate Decision Basis required for every surface and for no-canonical-metadata-leak.'
+    verification: Gate opens only if removed surfaces are absent across all requested
+      public entry points, new variant operations work end-to-end, and changed files
+      pass invar guard.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Surface Gate Matrix
+
+      | Surface | Added variant proof | Removed surface proof | Metadata leakage proof
+      | Verdict |
+
+      |---|---|---|---|---|
+
+      | MCP | | | | |
+
+      | CLI | | | | |
+
+      | Python API | | | | |
+
+      | REST | | | | |
+
+      | Web | | | | |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Gate Decision
+
+      OPEN / BLOCKED'
+    depends_on:
+    - variants_surface_cutover_20260503.mcp-cli-python-cutover
+    - variants_surface_cutover_20260503.rest-web-cutover
+    agent: gate-reviewer-tacit
