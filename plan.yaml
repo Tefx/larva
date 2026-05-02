@@ -60519,3 +60519,76 @@ phases:
     depends_on:
     - variants_core_contract_20260503.core-red-contract-tests
     agent: python-executor
+  - id: variants_core_contract_20260503.core-gate
+    name: core-gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review for core variant contracts and helpers.
+
+
+      Review depth: STANDARD
+
+      Independence: gate-reviewer-tacit must be independent of python-executor implementation.
+
+
+      Gate must block if:
+
+      - tests are example-only with no Hypothesis/property or non-vacuous contracts
+      for new behavior.
+
+      - registry metadata appears in canonical PersonaSpec.
+
+      - Core contains I/O or lacks @pre/@post/doctest coverage for new helpers.
+
+      - opifex schema fields were mutated.
+
+
+      Gate Decision Basis required: map each core requirement to evidence_ref and
+      status PROVEN/BLOCKED, with closure path for any NEEDS_TEST/UNPROVEN item.'
+    verification: Gate opens only with green focused core tests, green invar guard
+      for changed files, non-vacuous contracts/doctests, and no canonical metadata
+      leakage.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Review Report
+
+      - Reviewer: gate-reviewer-tacit
+
+      - Phase: variants_core_contract_20260503
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Checks
+
+      - Expected-red evidence valid: PASS/FAIL
+
+      - Core contracts/doctests non-vacuous: PASS/FAIL
+
+      - Forbidden metadata rejected: PASS/FAIL
+
+      - Opifex schema unchanged: PASS/FAIL
+
+
+      ## Gate Decision
+
+      OPEN / BLOCKED'
+    depends_on:
+    - variants_core_contract_20260503.core-red-contract-tests
+    - variants_core_contract_20260503.core-pure-helpers
+    agent: gate-reviewer-tacit
