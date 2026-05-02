@@ -62129,3 +62129,73 @@ phases:
     depends_on:
     - variants_finalization_20260503.docs-parity-sync
     agent: integration-verifier-tacit
+  - id: variants_finalization_20260503.deep-review
+    name: deep-review
+    status: pending
+    description: 'step_type: review
+
+      verification_scope: full-plan-check
+
+
+      Independent deep review for systemic issues after implementation and full-plan
+      guard.
+
+
+      Review focus:
+
+      - Canonical PersonaSpec boundary: no variant/_registry/active/manifest/tools/side_effect_policy/variables
+      admitted anywhere.
+
+      - Surface removal completeness: no MCP/CLI/Python/REST/Web assembly/component
+      public surface remains reachable.
+
+      - Registry semantics: manifest fail-closed, active precedence, delete guards,
+      no index.json, no metadata leakage.
+
+      - Wiring: variant operations reachable through every intended public surface.
+
+      - Runtime: CLI/MCP/serve smoke evidence is real and not handler-only.
+
+      - Docs parity: user/reference docs match implemented behavior.
+
+
+      Output should rank blockers/should_fix/suggestions and explicitly distinguish
+      provenance from disposition.'
+    verification: Deep review report produced with no blocker-class gaps or explicit
+      remediation ownership before final gate.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Deep Review Findings
+
+      | Severity | Finding | Surface/File | Provenance | Disposition | Required action
+      |
+
+      |---|---|---|---|---|---|
+
+
+      ## Cross-Cutting Checks
+
+      - Canonical boundary:
+
+      - Surface removal:
+
+      - Registry semantics:
+
+      - Wiring/reachability:
+
+      - Runtime evidence:
+
+      - Docs parity:
+
+
+      ## Recommendation
+
+      OPEN / BLOCKED'
+    depends_on:
+    - variants_finalization_20260503.full-plan-guard-and-conformance
+    agent: gate-reviewer-tacit
