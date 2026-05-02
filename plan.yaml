@@ -61950,3 +61950,10 @@ phases:
     - variants_projection_smoke_20260503.opencode-active-projection
     - variants_projection_smoke_20260503.live-liveness-probe
     agent: gate-reviewer-tacit
+- id: variants_finalization_20260503
+  name: Variants Finalization, Docs Parity, and Deep Review
+  status: locked
+  gate: Full plan verification, docs parity, opifex boundary conformance, and independent
+    deep review are complete.
+  depends_on:
+  - variants_projection_smoke_20260503
