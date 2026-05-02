@@ -62247,13 +62247,33 @@ phases:
       surface removal.
 
 
-      This is the first hard full-family closure gate for the feature. It may surface
-      pre-existing repository evidence-guard debt; classify provenance separately
-      from disposition. If any failure intersects this feature''s downstream gate
-      or shared-surface conformance, it is blocking regardless of provenance.
+      This is the first hard full-family closure gate for the feature. It must explicitly
+      run `vectl_validate(check_refs=true)` and capture its output, then separate
+      known baseline plan debt from new/intersecting variant-surface failures.
+
+
+      Mandatory baseline handling:
+
+      - Create a baseline table for every known pre-existing `vectl_validate(check_refs=true)`
+      ERROR/WARN observed before or during this step.
+
+      - For each validation item, record provenance (`pre-existing` or `introduced_now`)
+      separately from disposition (`blocking-now`, `blocking-later`, `non-blocking`).
+
+      - Prove no new variant-surface failures are hidden behind baseline debt by filtering
+      for all `variants_*_20260503` step IDs and all newly added refs.
+
+      - Every new or intersecting variant-surface validation failure MUST be remediated
+      before this step can report PASS.
+
+      - `pre-existing` alone is not a disposition; if a baseline item intersects final
+      variant/shared-surface gates, it is blocking-now.
 
 
       Required commands/evidence:
+
+      - `vectl_validate(check_refs=true)` via MCP or CLI fallback; paste complete
+      relevant output.
 
       - Full larva unit/integration suite relevant to core/app/shell/web/opencode.
 
@@ -62266,14 +62286,55 @@ phases:
 
 
       Behavioral proof register required for all open/blocked shared-surface obligations.'
-    verification: 'Full-plan check: all required tests and invar guard green, or explicit
-      blocker list with remediation ownership. No PASS with open problems/residual
-      risk except none.'
+    verification: 'Full-plan check: `vectl_validate(check_refs=true)` output captured
+      with baseline table; no new/intersecting variants_* validation failures remain;
+      all required tests and invar guard green, or explicit blocker list with remediation
+      ownership. No PASS with open problems/residual risk except none.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
       - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Vectl Validate Evidence (MANDATORY)
+
+      Command/tool:
+
+      ```text
+
+      vectl_validate(check_refs=true)  # MCP preferred, CLI fallback allowed
+
+      ```
+
+      Relevant output:
+
+      ```text
+
+      <paste validation output, including all ERROR/WARN lines relevant to baseline
+      and every variants_*_20260503 item>
+
+      ```
+
+
+      ## Baseline Validation Debt Table (MANDATORY)
+
+      | validation_item | step_or_ref | provenance | disposition | variant_gate_intersection
+      | owner_or_closure_path |
+
+      |---|---|---|---|---|---|
+
+      | <ERROR/WARN> | <phase.step/ref> | pre-existing/introduced_now | blocking-now/blocking-later/non-blocking
+      | yes/no + why | <owner/action> |
+
+
+      ## New Variant-Surface Validation Failure Check (MANDATORY)
+
+      - Filter/check performed for `variants_*_20260503`: <command/tool output>
+
+      - New/intersecting failures found: <none or list>
+
+      - Remediation performed/required before PASS: <none or list>
 
 
       ## Commands Run
@@ -62317,6 +62378,18 @@ phases:
       ## Headline
 
       PASS / PASS_WITH_DEBT / FAIL'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    - INVAR.md
     depends_on:
     - variants_finalization_20260503.docs-parity-sync
     agent: integration-verifier-tacit
