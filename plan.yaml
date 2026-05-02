@@ -61501,3 +61501,91 @@ phases:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.rest-web-cutover
     agent: gate-reviewer-tacit
+  - id: variants_surface_cutover_20260503.surface-wiring-audit
+    name: surface-wiring-audit
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+
+      Wiring completeness audit: verify every new public symbol/command/tool/route
+      is reachable and every removed assembly/component surface is unreachable.
+
+
+      Required checks:
+
+      1. Export reachability: variant API symbols are exported where intended and
+      imported/called outside their own module.
+
+      2. CLI registration: variant subcommands are registered in the CLI entrypoint/help;
+      assemble/component commands are not registered.
+
+      3. MCP registration: variant tools appear in tool registry/listing; larva_assemble,
+      larva_component_list, larva_component_show do not.
+
+      4. REST/Web routes: variant routes reachable; /api/personas/assemble and /api/components*
+      absent/404.
+
+      5. Contract consumption: any @pre/@post contracts introduced reference real
+      parameters and contain comparisons.
+
+
+      Use grep/import-trace/tool-list/help output as evidence, not assertions only.'
+    verification: Produce wiring audit report with PASS/PASS_WITH_DEBT/FAIL. Orphan
+      new exports, registered removed commands/tools, or reachable removed routes
+      are blocking.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Wiring Audit Report
+
+      **Orphan exports**:
+
+      ```text
+
+      <grep/import-trace output or none found>
+
+      ```
+
+      **CLI registration/absence**:
+
+      ```text
+
+      <help/grep output>
+
+      ```
+
+      **MCP tool registration/absence**:
+
+      ```text
+
+      <tool-list/grep output>
+
+      ```
+
+      **REST/Web route reachability/absence**:
+
+      ```text
+
+      <request/route output>
+
+      ```
+
+      **Identity-lambda or vacuous contracts**:
+
+      ```text
+
+      <grep output or none found>
+
+      ```
+
+      **Headline**: PASS | PASS_WITH_DEBT | FAIL'
+    depends_on:
+    - variants_surface_cutover_20260503.mcp-cli-python-cutover
+    - variants_surface_cutover_20260503.rest-web-cutover
+    agent: wiring-auditor
