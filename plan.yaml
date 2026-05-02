@@ -60987,3 +60987,10 @@ phases:
     - variants_registry_impl_20260503.registry-storage-implementation
     - variants_registry_impl_20260503.registry-spec-conformance
     agent: gate-reviewer-tacit
+- id: variants_surface_cutover_20260503
+  name: Public Surface Cutover for Variants and Assembly Removal
+  status: locked
+  gate: MCP/CLI/Python/REST/Web public surfaces expose variants and remove assembly/component
+    surfaces consistently.
+  depends_on:
+  - variants_registry_impl_20260503
