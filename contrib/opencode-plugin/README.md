@@ -41,9 +41,13 @@ Arguments after `larva opencode` are forwarded to OpenCode. The explicit `--`
 separator is optional; when present, larva strips it before forwarding.
 
 The wrapper builds a temporary `OPENCODE_CONFIG_CONTENT` value from the larva
-registry, injects this plugin, and execs the real `opencode` process. Use
-`LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts` if automatic source-tree
-plugin discovery is not available.
+registry, injects this plugin, and execs the real `opencode` process.
+
+Plugin path resolution order:
+
+1. `LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts`
+2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
+3. source-tree fallback at `contrib/opencode-plugin/larva.ts`
 
 Manual plugin install remains possible for sessions that do not rely on early
 `--agent <larva-id>` validation:

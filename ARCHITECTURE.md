@@ -92,6 +92,9 @@ I/O edges:
   process config.
 - [Proven] The launcher owns process/env concerns only: plugin path resolution,
   `OPENCODE_CONFIG_CONTENT` assembly, argument forwarding, and `execvpe`.
+- [Proven] Plugin path resolution checks `LARVA_OPENCODE_PLUGIN`, then the
+  bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`, then the
+  source-tree fallback at `contrib/opencode-plugin/larva.ts`.
 - [Proven] The launcher must not write `.opencode/opencode.json` and must not
   redefine PersonaSpec semantics; persona data still flows through the app
   facade and canonical registry/export paths.

@@ -452,7 +452,7 @@ What the wrapper does:
 
 - exports registered personas through larva's normal facade path
 - builds a temporary `OPENCODE_CONFIG_CONTENT` for the child process
-- injects `contrib/opencode-plugin/larva.ts`
+- injects the bundled or source-tree `larva.ts` OpenCode plugin
 - forwards remaining arguments to the real `opencode` binary
 - strips a leading `--` after `opencode` when present
 
@@ -462,12 +462,11 @@ What it does not do:
 - it does not call an LLM itself
 - it does not turn PersonaSpec into runtime gateway policy
 
-If plugin auto-discovery fails, set:
+Plugin path resolution order:
 
-```bash
-LARVA_OPENCODE_PLUGIN=/absolute/path/to/contrib/opencode-plugin/larva.ts \
-  larva opencode --agent python-senior
-```
+1. `LARVA_OPENCODE_PLUGIN=/absolute/path/to/contrib/opencode-plugin/larva.ts`
+2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
+3. source-tree fallback at `contrib/opencode-plugin/larva.ts`
 
 ## 15. Troubleshooting
 

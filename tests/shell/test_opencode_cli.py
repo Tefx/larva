@@ -155,6 +155,35 @@ def test_resolve_opencode_plugin_path_rejects_missing_explicit_env(tmp_path: Pat
     assert "does not point to a file" in result.failure()["stderr"]
 
 
+def test_resolve_opencode_plugin_path_uses_packaged_plugin(tmp_path: Path) -> None:
+    shell_dir = tmp_path / "site-packages" / "larva" / "shell"
+    plugin = shell_dir / "opencode_plugin" / "larva.ts"
+    plugin.parent.mkdir(parents=True)
+    plugin.write_text("export default {};\n", encoding="utf-8")
+    module_path = shell_dir / "opencode.py"
+    module_path.write_text("", encoding="utf-8")
+
+    result = resolve_opencode_plugin_path({}, start_path=module_path)
+
+    assert isinstance(result, Success)
+    assert result.unwrap() == plugin
+
+
+def test_resolve_opencode_plugin_path_falls_back_to_source_tree(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    plugin = project / "contrib" / "opencode-plugin" / "larva.ts"
+    plugin.parent.mkdir(parents=True)
+    plugin.write_text("export default {};\n", encoding="utf-8")
+    module_path = project / "src" / "larva" / "shell" / "opencode.py"
+    module_path.parent.mkdir(parents=True)
+    module_path.write_text("", encoding="utf-8")
+
+    result = resolve_opencode_plugin_path({}, start_path=module_path)
+
+    assert isinstance(result, Success)
+    assert result.unwrap() == plugin
+
+
 def test_opencode_command_execs_with_dynamic_config_and_forwarded_args(tmp_path: Path) -> None:
     plugin = tmp_path / "larva.ts"
     plugin.write_text("export default {};\n", encoding="utf-8")

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 OPENCODE_CONFIG_ENV = "OPENCODE_CONFIG_CONTENT"
 OPENCODE_PLUGIN_ENV = "LARVA_OPENCODE_PLUGIN"
 OPENCODE_PLUGIN_RELATIVE_PATH = Path("contrib/opencode-plugin/larva.ts")
+PACKAGED_PLUGIN_RELATIVE_PATH = Path("opencode_plugin/larva.ts")
 OPENCODE_EXECUTABLE = "opencode"
 
 _READ_ONLY_POSTURES = frozenset({"none", "read_only"})
@@ -151,11 +152,28 @@ def build_opencode_config(
     return Success(config)
 
 
+# @shell_orchestration: derives wheel-installed plugin candidate from this shell module path
+def _packaged_plugin_candidate(start_path: Path) -> Result[Path, object]:
+    resolved = start_path.resolve()
+    shell_dir = resolved if resolved.is_dir() else resolved.parent
+    return Success(shell_dir / PACKAGED_PLUGIN_RELATIVE_PATH)
+
+
 # @shell_orchestration: derives source-tree plugin candidates from this shell module path
 def _source_tree_plugin_candidates(start_path: Path) -> Result[list[Path], object]:
     resolved = start_path.resolve()
     parents = [resolved if resolved.is_dir() else resolved.parent, *resolved.parents]
     return Success([parent / OPENCODE_PLUGIN_RELATIVE_PATH for parent in parents])
+
+
+# @shell_orchestration: orders packaged plugin before source-tree fallback
+def _plugin_candidates(start_path: Path) -> Result[list[Path], object]:
+    return Success(
+        [
+            _packaged_plugin_candidate(start_path).unwrap(),
+            *_source_tree_plugin_candidates(start_path).unwrap(),
+        ]
+    )
 
 
 # @shell_orchestration: resolves user override or source-tree plugin path for OpenCode
@@ -176,7 +194,7 @@ def resolve_opencode_plugin_path(
             ).unwrap()
         )
 
-    for candidate in _source_tree_plugin_candidates(start_path or Path(__file__)).unwrap():
+    for candidate in _plugin_candidates(start_path or Path(__file__)).unwrap():
         if candidate.is_file():
             return Success(candidate)
 

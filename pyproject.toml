@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "larva"
-version = "0.4.6"
+version = "0.4.7"
 description = "PersonaSpec toolkit for LLM agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,6 +38,9 @@ larva = "larva.shell.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/larva"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"contrib/opencode-plugin/larva.ts" = "larva/shell/opencode_plugin/larva.ts"
 
 [tool.mypy]
 python_version = "3.11"

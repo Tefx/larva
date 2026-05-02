@@ -320,7 +320,8 @@ agents itself; after config assembly it execs the real `opencode` binary.
 Plugin path resolution:
 
 1. `LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts`
-2. source-tree lookup for `contrib/opencode-plugin/larva.ts`
+2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
+3. source-tree lookup for `contrib/opencode-plugin/larva.ts`
 
 See `contrib/opencode-plugin/README.md` for plugin internals and tool-policy
 mapping.
