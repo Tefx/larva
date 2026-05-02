@@ -61112,3 +61112,163 @@ phases:
 
       - Product files changed: none / <explain>'
     agent: python-executor
+  - id: variants_surface_cutover_20260503.mcp-cli-python-cutover
+    name: mcp-cli-python-cutover
+    status: pending
+    description: 'step_type: implementation
+
+      tags: [integration]
+
+
+      Complete MCP, CLI, and Python API public surface cutover within existing architecture.
+
+
+      Scope/touch_paths:
+
+      - src/larva/shell/mcp.py
+
+      - src/larva/shell/mcp_contract.py
+
+      - src/larva/shell/mcp_params.py
+
+      - src/larva/shell/mcp_update_batch.py
+
+      - src/larva/shell/cli.py
+
+      - src/larva/shell/cli_parser.py
+
+      - src/larva/shell/cli_commands.py
+
+      - src/larva/shell/python_api.py
+
+      - src/larva/__init__.py
+
+      - related surface tests
+
+
+      Hard requirements:
+
+      - Remove MCP public tools larva_assemble, larva_component_list, larva_component_show.
+
+      - Add MCP variant_list, variant_activate, variant_delete; add optional variant
+      args to register/resolve/update schemas and handlers.
+
+      - Remove CLI assemble and component commands; add `variant list`, `variant activate`,
+      `variant delete`; add --variant to register/resolve/update.
+
+      - Remove Python API exports/dispatch for assemble, component_list, component_show;
+      add/pass variant support and variant operations.
+
+      - Preserve OpenCode projection behavior for now; do not modify projection in
+      this step except imports broken by removed APIs.
+
+      - Do not add compatibility aliases or accept-and-clean malformed shared input.
+
+      - All errors must preserve canonical boundary: variants are operation params/registry
+      metadata, never PersonaSpec fields.
+
+
+      Integration evidence required:
+
+      - One test/command that exercises CLI -> facade -> registry.
+
+      - One MCP handler/tool-list test proving removed tools absent and new tools
+      callable.
+
+      - One Python API test proving removed exports absent and variant args pass through.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Removed assembly/component surfaces still importable, listed, routed, or
+      help-visible.
+
+      2. Variant accepted as a PersonaSpec top-level field.
+
+      3. MCP/CLI/Python disagree about active vs explicit variant semantics.
+
+      4. Tests only mock handlers without exercising source-to-sink path.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Green proof: focused MCP/CLI/Python tests pass, plus `uv run invar
+      guard --changed`. Evidence must paste actual tool list/help/import outputs for
+      removed and new surfaces.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      <paste upstream red output>
+
+      ```
+
+
+      ## Surface Diff
+
+      - MCP removed:
+
+      - MCP added:
+
+      - CLI removed/added:
+
+      - Python API removed/added:
+
+
+      ## Integration Evidence
+
+      **CLI path exercised**: CLI -> facade -> registry
+
+      ```text
+
+      <command/output>
+
+      ```
+
+      **MCP path exercised**: tool list/call
+
+      ```text
+
+      <command or test output>
+
+      ```
+
+      **Python API path exercised**:
+
+      ```text
+
+      <test/import output>
+
+      ```
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_cli.py tests/shell/test_python_api.py -q
+
+      uv run invar guard --changed
+
+      ```
+
+      <paste output>'
+    depends_on:
+    - variants_surface_cutover_20260503.surface-red-contract-tests
+    agent: python-senior-tacit
