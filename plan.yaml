@@ -60308,3 +60308,107 @@ phases:
   depends_on:
   - larva.operator_p2.followup_web_routes_invar_20260426
   - meta.gate
+  steps:
+  - id: variants_core_contract_20260503.core-red-contract-tests
+    name: core-red-contract-tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Write expected-red tests and doctest targets for registry-local variant core
+      semantics before product implementation.
+
+
+      Scope/touch_paths:
+
+      - tests/core/test_spec.py
+
+      - tests/core/test_validate.py
+
+      - tests/core/test_patch.py
+
+      - new/focused tests/core/test_variants.py if clearer
+
+
+      Hard requirements to expose as failing proof:
+
+      - canonical validation rejects top-level tools, side_effect_policy, variables,
+      variant, _registry, active, manifest.
+
+      - variant names must match ^[a-z0-9]+(-[a-z0-9]+)*$ and length <= 64.
+
+      - variant PersonaSpec payloads remain canonical PersonaSpec with spec.id ==
+      base persona id; variant/active/manifest never enter PersonaSpec.
+
+      - patch/override behavior must not smuggle registry metadata into canonical
+      validation.
+
+      - digest recomputation changes when active variant content changes, not because
+      registry metadata was added.
+
+
+      Testing guardrails:
+
+      - Product code may not be modified in this step except test fixtures/helpers.
+
+      - Use Hypothesis/property-based tests for variant-name acceptance/rejection
+      and forbidden metadata rejection; do not rely only on example asserts.
+
+      - Expected-red evidence must include the failing command output before implementation.
+
+      - Invar Core discipline: any new Core helper signatures proposed by tests must
+      require @pre/@post and doctest in the downstream implementation step.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Expected red: run `uv run invar guard --changed` or focused `uv
+      run pytest tests/core/test_spec.py tests/core/test_validate.py tests/core/test_patch.py
+      tests/core/test_variants.py -q`; evidence must show tests fail because variant
+      core behavior is not implemented yet, not because tests are malformed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      - Command run:
+
+      ```text
+
+      <exact command>
+
+      ```
+
+      - Failing output proving the gap:
+
+      ```text
+
+      <paste output>
+
+      ```
+
+
+      ## Property/Contract Coverage
+
+      - Variant-name property tests added: <test names>
+
+      - Forbidden metadata property/contract tests added: <test names>
+
+      - Doctest targets for future Core helpers: <symbols or none>
+
+
+      ## Scope Check
+
+      - Product files changed: none / <explain violation>
+
+      - Downstream implementation owner: variants_core_contract_20260503.core-pure-helpers'
+    agent: python-executor
