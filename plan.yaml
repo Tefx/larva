@@ -60717,3 +60717,131 @@ phases:
 
       - Product files changed: none / <explain>'
     agent: python-executor
+  - id: variants_registry_impl_20260503.registry-storage-implementation
+    name: registry-storage-implementation
+    status: pending
+    description: 'step_type: implementation
+
+      symbolic_testing: true
+
+
+      Implement registry-local variant persistence and facade behavior to satisfy
+      variants_registry_impl_20260503.registry-red-integration-tests.
+
+
+      Scope/touch_paths:
+
+      - src/larva/shell/registry.py
+
+      - src/larva/shell/registry_fs.py
+
+      - src/larva/app/facade.py
+
+      - src/larva/app/facade_types.py
+
+      - related registry/facade tests
+
+
+      Hardened acceptance — persistence/state failure modes:
+
+      - Relative vs absolute path behavior: all tests use isolated temp HOME/registry;
+      never real ~/.larva.
+
+      - Missing-file fallback: missing/corrupt manifest or active variant missing
+      returns REGISTRY_CORRUPT; no auto-created manifest except initial new persona
+      register.
+
+      - Explicit clear/null overwrite: update may patch active or named variant only;
+      no registry metadata written into canonical spec.
+
+      - Stale-definition vs new-state precedence: omitted variant resolves active
+      from manifest; explicit variant bypasses active.
+
+      - Partial-write/activation path: variant_activate uses same-directory write-then-rename;
+      no cross-process lock; last write wins.
+
+      - State semantics: no index.json; directory scan is enumeration source; variant
+      count unbounded v1.
+
+      - Delete semantics: active variant and last variant rejected; deleting base
+      persona deletes all variants.
+
+
+      Module-level mutable state check:
+
+      - If registry caches or module-level stores are introduced, evidence must explain
+      concurrent access, cleanup/reset semantics, bounded growth, and isolation guarantees.
+      Prefer no module-level mutable singleton.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Mechanical adversary
+
+      First paste expected-red output from the upstream tests, then green focused
+      tests and invar guard. Do not self-certify without tool output.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Main path: focused registry/facade tests pass. Highest-risk failure
+      path: corrupt manifest, active missing, active delete, last delete, and activation
+      write-rename tests pass. Full proof: `uv run invar guard --changed`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      <paste upstream red output>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Files changed:
+
+      - Storage layout implemented:
+
+      - Error codes surfaced:
+
+
+      ## Failure-Mode Evidence
+
+      - REGISTRY_CORRUPT cases:
+
+      - active/last delete guards:
+
+      - activation write-then-rename:
+
+      - list/export active-only:
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_registry.py tests/app/test_facade/test_register.py
+      tests/app/test_facade/test_resolve.py tests/app/test_facade/test_update.py tests/app/test_facade/test_list.py
+      tests/app/test_facade/test_export.py tests/app/test_facade/test_delete.py -q
+
+      uv run invar guard --changed
+
+      ```
+
+      <paste output>'
+    depends_on:
+    - variants_registry_impl_20260503.registry-red-integration-tests
+    agent: python-senior-tacit
