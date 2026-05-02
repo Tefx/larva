@@ -60412,3 +60412,110 @@ phases:
 
       - Downstream implementation owner: variants_core_contract_20260503.core-pure-helpers'
     agent: python-executor
+  - id: variants_core_contract_20260503.core-pure-helpers
+    name: core-pure-helpers
+    status: pending
+    description: 'step_type: implementation
+
+
+      Implement only the pure Core helpers needed to satisfy variants_core_contract_20260503.core-red-contract-tests.
+
+
+      Scope/touch_paths:
+
+      - src/larva/core/spec.py
+
+      - src/larva/core/validate.py
+
+      - src/larva/core/patch.py
+
+      - optionally a tightly-scoped src/larva/core/variants.py if it avoids bloating
+      existing modules
+
+      - related tests from variants_core_contract_20260503.core-red-contract-tests
+
+
+      Hard requirements:
+
+      - Add pure validation/normalization helpers for variant name validation, PersonaSpec
+      id/base-id matching, forbidden registry metadata rejection, and digest recomputation
+      inputs.
+
+      - Do NOT alter opifex schema fields or add compatibility aliases.
+
+      - Do NOT add I/O, env, filesystem, time, randomness, subprocess, or registry
+      path logic to Core.
+
+      - Any new Core function MUST have @pre/@post contracts and at least one doctest
+      before implementation logic, per INVAR.md.
+
+      - Property-based tests must remain non-vacuous and fail on malformed names/metadata.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Mechanical adversary
+
+      You have autonomy to write code, but zero autonomy to self-certify. First paste
+      the expected-red output from the upstream tests, then paste green guard output
+      after implementation.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Green proof: `uv run invar guard --changed` plus focused core tests.
+      Evidence must include expected-red output from upstream, implemented symbols,
+      doctest names, and confirmation that forbidden metadata is rejected without
+      changing opifex schema.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      <paste upstream failing output observed before implementation>
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Core symbols added/changed:
+
+      - Contracts/doctests added:
+
+      - Opifex schema changed: MUST be no
+
+
+      ## Green Proof
+
+      ```text
+
+      uv run invar guard --changed
+
+      <paste output>
+
+      ```
+
+
+      ## Boundary Proof
+
+      - No Core I/O imports added: <evidence>
+
+      - Forbidden registry metadata rejected: <test names/output>
+
+      - Property tests used: <test names>'
+    depends_on:
+    - variants_core_contract_20260503.core-red-contract-tests
+    agent: python-executor
