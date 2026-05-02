@@ -61272,3 +61272,157 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.surface-red-contract-tests
     agent: python-senior-tacit
+  - id: variants_surface_cutover_20260503.rest-web-cutover
+    name: rest-web-cutover
+    status: pending
+    description: 'step_type: implementation
+
+      tags: [integration]
+
+
+      Complete REST and Web UI cutover for registry-local variants and assembly/component
+      removal.
+
+
+      Scope/touch_paths:
+
+      - src/larva/shell/web.py
+
+      - src/larva/shell/web_routes.py
+
+      - contrib/web/server.py
+
+      - contrib/web/index.html
+
+      - tests/shell/test_web.py
+
+      - tests/shell/test_contrib_web.py
+
+      - tests/shell/test_web_rest_gaps.py
+
+
+      Hard requirements:
+
+      - REST removed: /api/personas/assemble and /api/components* endpoints return
+      404/absent per target contract.
+
+      - REST target variant endpoints expose list/activate/delete and pass optional
+      variant through register/resolve/update without putting variant into canonical
+      PersonaSpec envelope.
+
+      - Web UI compose/component flows are removed, not hidden behind dead controls.
+
+      - Web UI variant flows preserve envelope separation: operation parameter outside
+      canonical spec; id mismatch and corrupt registry errors visible.
+
+      - No compatibility aliases; no accept-and-clean malformed shared input.
+
+
+      Frontend completion criteria:
+
+      - If contrib/web/index.html UI is changed, evidence must include rendered/DOM-level
+      proof that the variant controls are visible and removed compose/component controls
+      are absent. Data-only assertions are insufficient.
+
+
+      Integration evidence required:
+
+      - REST request/response proof for one variant happy path and one removed endpoint
+      404.
+
+      - Web route/UI proof for no compose/component flow and one variant operation.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Removed REST endpoints still reachable.
+
+      2. Web UI still contains compose/component affordances.
+
+      3. Variant field appears inside canonical PersonaSpec JSON.
+
+      4. Handler-only proof without an actual route/web request.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Green proof: focused REST/Web tests pass plus at least one actual
+      route-level request/response output. If UI changed, include rendered DOM/snapshot
+      proof. Run `uv run invar guard --changed`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      <paste relevant upstream red output>
+
+      ```
+
+
+      ## REST Evidence
+
+      - Removed endpoint 404:
+
+      ```text
+
+      <request/response>
+
+      ```
+
+      - Variant happy/error path:
+
+      ```text
+
+      <request/response>
+
+      ```
+
+
+      ## Web Evidence
+
+      - Compose/component controls absent:
+
+      ```text
+
+      <DOM/snapshot or route proof>
+
+      ```
+
+      - Variant operation visible/exercised:
+
+      ```text
+
+      <DOM/snapshot or request proof>
+
+      ```
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_web.py tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py
+      -q
+
+      uv run invar guard --changed
+
+      ```
+
+      <paste output>'
+    depends_on:
+    - variants_surface_cutover_20260503.surface-red-contract-tests
+    agent: frontend-engineer-tacit
