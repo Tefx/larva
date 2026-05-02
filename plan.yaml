@@ -60994,3 +60994,121 @@ phases:
     surfaces consistently.
   depends_on:
   - variants_registry_impl_20260503
+  steps:
+  - id: variants_surface_cutover_20260503.surface-red-contract-tests
+    name: surface-red-contract-tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      Write expected-red contract tests for public surface cutover before modifying
+      implementation.
+
+
+      Scope/touch_paths:
+
+      - tests/shell/test_mcp.py
+
+      - tests/shell/test_mcp_server.py
+
+      - tests/shell/test_mcp_stdio_integration.py
+
+      - tests/shell/test_cli.py
+
+      - tests/shell/test_python_api.py
+
+      - tests/shell/test_web.py
+
+      - tests/shell/test_contrib_web.py
+
+      - tests/shell/test_web_rest_gaps.py
+
+
+      Hard requirements:
+
+      - MCP tool list includes variant_list, variant_activate, variant_delete and
+      omits larva_assemble, larva_component_list, larva_component_show.
+
+      - MCP register/resolve/update schemas include optional variant parameter; call
+      behavior matches registry phase.
+
+      - CLI supports register/resolve/update --variant and variant list/activate/delete;
+      assemble and component commands are absent and help/call failures are explicit.
+
+      - Python API accepts/passes variant for register/resolve/update and exposes
+      variant_list/variant_activate/variant_delete; removed exports assemble/component_list/component_show
+      absent.
+
+      - REST removes /api/personas/assemble and /api/components* endpoints; adds target
+      variant endpoints with envelope separation, id mismatch, corrupt registry behavior.
+
+      - Web UI compose/component flows removed; variant flows target REST envelopes
+      without injecting variant metadata into canonical specs.
+
+      - Error codes surface consistently: PERSONA_ID_MISMATCH, INVALID_VARIANT_NAME,
+      REGISTRY_CORRUPT, VARIANT_NOT_FOUND, ACTIVE_VARIANT_DELETE_FORBIDDEN, LAST_VARIANT_DELETE_FORBIDDEN.
+
+
+      Spec-fixture conformance:
+
+      - At least one fixture per external surface must use exact documented formats
+      from docs/reference/INTERFACES.md and the opifex case matrix; no convenience
+      fields beyond spec.
+
+
+      Testing guardrails:
+
+      - Product code may not be modified.
+
+      - Use expected-red output as proof; tests must collect cleanly.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Expected red: focused surface tests fail because public surfaces
+      have not been cut over yet; failure output must show missing/extra tools/commands/routes/API
+      symbols rather than malformed tests.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Proof
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_cli.py tests/shell/test_python_api.py tests/shell/test_web.py
+      tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py -q
+
+      <paste output>
+
+      ```
+
+
+      ## Surface Coverage
+
+      - MCP removed/added:
+
+      - CLI removed/added:
+
+      - Python API removed/added:
+
+      - REST removed/added:
+
+      - Web removed/added:
+
+      - Spec-exact fixtures cited:
+
+
+      ## Scope Check
+
+      - Product files changed: none / <explain>'
+    agent: python-executor
