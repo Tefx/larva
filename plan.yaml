@@ -61687,3 +61687,98 @@ phases:
 
       - Product files changed: none / <explain>'
     agent: python-executor
+  - id: variants_projection_smoke_20260503.opencode-active-projection
+    name: opencode-active-projection
+    status: pending
+    description: 'step_type: implementation
+
+      tags: [integration]
+
+
+      Complete OpenCode projection behavior for registry-local variants if the red
+      tests show gaps.
+
+
+      Scope/touch_paths:
+
+      - src/larva/shell/opencode.py
+
+      - contrib/opencode-plugin/larva.ts if protocol expectations require sync
+
+      - tests/shell/test_opencode_cli.py
+
+      - tests/repro/cross_surface_consistency_verify.py
+
+
+      Hard requirements:
+
+      - Projection output includes active canonical specs only.
+
+      - Inactive variants are not projected.
+
+      - Digest changes with active content.
+
+      - Projection must not include registry metadata fields variant, _registry, active,
+      manifest.
+
+      - Do not resurrect assembly/component public surfaces.
+
+
+      If red tests already pass because implementation from earlier phases satisfied
+      this, do not churn code; record proof and mark no-op with evidence.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step when changes are needed. Stub-only completion
+      is NOT acceptable.
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      Executor must cite key passages from each ref listed on this step.'
+    verification: 'Green proof: OpenCode focused tests pass, projection sample shows
+      active-only canonical specs, and `uv run invar guard --changed` passes or is
+      not needed for no-op with justification.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Expected-Red Carryover or No-op Justification
+
+      ```text
+
+      <paste red output or proof tests were already green>
+
+      ```
+
+
+      ## Projection Evidence
+
+      - Active variant content projected:
+
+      - Inactive variant omitted:
+
+      - Digest changes with active content:
+
+      - Registry metadata absent:
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_opencode_cli.py tests/repro/cross_surface_consistency_verify.py
+      -q
+
+      uv run invar guard --changed
+
+      ```
+
+      <paste output>'
+    depends_on:
+    - variants_projection_smoke_20260503.opencode-red-smoke-tests
+    agent: python-executor
