@@ -61500,6 +61500,7 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.rest-web-cutover
+    - variants_surface_cutover_20260503.surface-wiring-audit
     agent: gate-reviewer-tacit
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
