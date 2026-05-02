@@ -61886,3 +61886,67 @@ phases:
     depends_on:
     - variants_projection_smoke_20260503.opencode-active-projection
     agent: blind-tester-tacit
+  - id: variants_projection_smoke_20260503.projection-smoke-gate
+    name: projection-smoke-gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+
+      Gate review for projection and runnable smoke/liveness checks.
+
+
+      Review depth: THOROUGH
+
+      Rationale: deployability-bearing surfaces `CLI`, `mcp`, and `serve` require
+      real entrypoint evidence.
+
+
+      Gate must block if:
+
+      - liveness evidence is handler-only or lacks actual commands/output.
+
+      - any live/listed surface still exposes assembly/component flows.
+
+      - OpenCode projection includes inactive variants or registry metadata.
+
+      - skipped live checks lack exact command, environment blocker, and closure path.'
+    verification: Gate opens only with live/smoke evidence or explicit non-intersection
+      closure for infeasible runtime checks, plus active-only projection proof.
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      ## Gate Checks
+
+      - CLI live proof: PASS/FAIL
+
+      - MCP live/listing proof: PASS/FAIL/SKIPPED_WITH_CLOSURE
+
+      - Serve route proof: PASS/FAIL/SKIPPED_WITH_CLOSURE
+
+      - OpenCode active-only proof: PASS/FAIL
+
+      - Removed surfaces absent: PASS/FAIL
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+
+      ## Gate Decision
+
+      OPEN / BLOCKED'
+    depends_on:
+    - variants_projection_smoke_20260503.opencode-red-smoke-tests
+    - variants_projection_smoke_20260503.opencode-active-projection
+    - variants_projection_smoke_20260503.live-liveness-probe
+    agent: gate-reviewer-tacit
