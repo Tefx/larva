@@ -49287,15 +49287,33 @@ phases:
   - id: hard_cut_finish_20260416_core.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for final hard-cut core
     status: pending
-    description: Resolve validate errors for completed steps hard_cut_finish_20260416_core.spec_schema_boundary,
+    description: 'Resolve validate errors for completed steps hard_cut_finish_20260416_core.spec_schema_boundary,
       hard_cut_finish_20260416_core.normalize_assemble_patch, and hard_cut_finish_20260416_core.gate.
-      Add later same-phase closure evidence proving current core boundary/gate verification
+      This is a proof-closure/evidence task, not product-code implementation. Produce
+      accepted same-phase closure evidence proving current core boundary/gate verification
       is green/OPEN with gate_open_allowed=true where applicable, or record explicit
       expected-red/non-blocking owner/lifecycle/gate-intersection disposition for
       all three failed historical records.
+
+
+      Required disposition fields for any non-green closure: provenance, disposition
+      (blocking-now/blocking-later/non-blocking), owner, lifecycle state, gate-intersection
+      rationale, remaining gate impact, and closure path. Do not edit completed historical
+      steps.'
     verification: Run vectl_validate(check_refs=true) and show all hard_cut_finish_20260416_core
-      completed-evidence guard errors are gone, or paste the accepted disposition
-      evidence that closes them.
+      completed-evidence guard errors are gone, or paste accepted disposition evidence
+      that closes them. Evidence must include exact validation output or accepted
+      disposition text.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Evidence Guard Closure Report\n- Historical\
+      \ completed steps reviewed: hard_cut_finish_20260416_core.spec_schema_boundary;\
+      \ hard_cut_finish_20260416_core.normalize_assemble_patch; hard_cut_finish_20260416_core.gate\n\
+      - Closure route used: GREEN_CURRENT_PROOF | ACCEPTED_NON_BLOCKING_DISPOSITION\n\
+      - gate_open_allowed: true | non-intersecting-disposition\n- vectl_validate(check_refs=true)\
+      \ output or accepted disposition evidence:\n  ```\n  <paste exact output/evidence>\n\
+      \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
+      \ not intersected>\n- Headline: PASS | BLOCKED"
+    agent: gate-reviewer
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: done
