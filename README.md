@@ -1,7 +1,7 @@
 # larva
 
 larva is a PersonaSpec toolkit for LLM agent systems. It gives you one place to
-validate, assemble, normalize, register, resolve, clone, update, and export
+validate, normalize, register, resolve, clone, update, and export
 canonical persona definitions.
 
 ## What larva is for
@@ -10,7 +10,6 @@ Use larva when you want a stable authority for agent persona definitions instead
 of ad hoc prompt files scattered across tools and repos.
 
 - Validate PersonaSpec JSON before it reaches runtime
-- Assemble personas from reusable components
 - Store canonical personas in a local registry under `~/.larva/`
 - Resolve, clone, update, delete, and export personas across tools
 - Project registered personas into OpenCode with a temporary wrapper config
@@ -75,8 +74,8 @@ larva list --json
 
 The main larva artifact is a flat JSON object called `PersonaSpec`.
 
-The canonical PersonaSpec schema is defined by `opifex`. larva validates,
-assembles, and normalizes PersonaSpec as a downstream admission and projection
+The canonical PersonaSpec schema is defined by `opifex`. larva validates
+and normalizes PersonaSpec as a downstream admission and projection
 layer, not the contract authority.
 
 ```json
@@ -102,35 +101,11 @@ Key rules:
 - `spec_digest` is recomputed by larva from canonical content
 - there is no inheritance or `base:` field in canonical output
 
-### Components
+### Registry-local variants
 
-larva can also assemble personas from reusable components stored in
-`~/.larva/components/`:
-
-```text
-~/.larva/
-  components/
-    prompts/
-    toolsets/
-    constraints/
-    models/
-  registry/
-```
-
-Example assembly command:
-
-```bash
-larva assemble --id code-reviewer \
-  --prompt code-reviewer \
-  --prompt careful-reasoning \
-  --toolset read-only \
-  --constraints strict \
-  --model gpt-5
-```
-
-Components are read from the user-managed shell boundary at
-`~/.larva/components/`. Those files are local input, not canonical larva state;
-only the assembled and validated `PersonaSpec` is authoritative at runtime.
+Registered personas can have registry-local variants. Variant names, active
+variant pointers, and registry metadata are shell/registry surfaces; they are
+not PersonaSpec fields and are never admitted into canonical PersonaSpec JSON.
 
 ## Interfaces
 
@@ -140,18 +115,18 @@ Primary programmatic surface:
 
 ```text
 larva_validate(spec)                    -> ValidationReport
-larva_assemble(components)              -> PersonaSpec
 larva_register(spec)                    -> {id, registered}
 larva_resolve(id, overrides?)           -> PersonaSpec
 larva_list()                            -> [{id, description, spec_digest, model}]
+larva_variant_list(id)                  -> {id, active, variants}
+larva_variant_activate(id, variant)     -> {id, active}
+larva_variant_delete(id, variant)       -> {id, deleted}
 larva_update(id, patches)               -> PersonaSpec
 larva_update_batch(where, patches, dry_run?) -> {items, matched, updated}
 larva_clone(source_id, new_id)          -> PersonaSpec
 larva_delete(id)                        -> {id, deleted}
 larva_clear(confirm)                    -> {cleared, count}
 larva_export(all?, ids?)                -> [PersonaSpec, ...]
-larva_component_list()                  -> {prompts, toolsets, constraints, models}
-larva_component_show(type, name)        -> component content
 ```
 
 For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
@@ -185,18 +160,18 @@ uvx larva serve
 
 ```bash
 larva validate <spec.json> [--json]
-larva register <spec.json> [--json]
-larva resolve <id> [--override key=value]... [--json]
+larva register <spec.json> [--variant <name>] [--json]
+larva resolve <id> [--variant <name>] [--override key=value]... [--json]
 larva list [--json]
+larva variant list <id> [--json]
+larva variant activate <id> <variant> [--json]
+larva variant delete <id> <variant> [--json]
 larva update <id> --set key=value [--set ...] [--json]
 larva clone <source-id> <new-id> [--json]
 larva delete <id> [--json]
 larva clear --confirm "CLEAR REGISTRY" [--json]
 larva export --all [--json]
 larva export --id <id> [--id <id>]... [--json]
-larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [-o output.json]
-larva component list [--json]
-larva component show <type>/<name> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
 ```

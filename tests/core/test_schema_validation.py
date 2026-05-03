@@ -30,9 +30,9 @@ SCHEMA = json.loads(SCHEMA_PATH.read_text())
 OPIFEX_SCHEMA_PATH = Path("/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json")
 OPIFEX_SCHEMA = json.loads(OPIFEX_SCHEMA_PATH.read_text())
 README_PATH = Path(__file__).parent.parent.parent / "README.md"
-USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "USER_GUIDE.md"
-USAGE_PATH = Path(__file__).parent.parent.parent / "USAGE.md"
-INTERFACES_PATH = Path(__file__).parent.parent.parent / "INTERFACES.md"
+USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "docs" / "guides" / "USER_GUIDE.md"
+USAGE_PATH = Path(__file__).parent.parent.parent / "docs" / "guides" / "USAGE.md"
+INTERFACES_PATH = Path(__file__).parent.parent.parent / "docs" / "reference" / "INTERFACES.md"
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -278,7 +278,6 @@ class TestMCPProjectionParity:
 
     def test_capabilities_required_tool_projections_include_both_terms(self) -> None:
         for tool_name in (
-            "larva_assemble",
             "larva_resolve",
             "larva_register",
             "larva_update",
@@ -348,9 +347,9 @@ class TestCanonicalTypingSurface:
         persona_spec_properties = mcp_contract._PERSONA_SPEC_INPUT_SCHEMA["properties"]
         assert "variables" not in persona_spec_properties
 
-        assemble_definition = _tool_definition("larva_assemble")
-        assemble_properties = assemble_definition["input_schema"]["properties"]
-        assert "variables" not in assemble_properties
+        for tool_definition in mcp_contract.LARVA_MCP_TOOLS:
+            tool_properties = tool_definition["input_schema"].get("properties", {})
+            assert "variables" not in tool_properties
 
     def test_historical_alias_is_not_exported_from_canonical_typing_module(self) -> None:
         assert "SideEffectPolicy" not in spec_module.__all__

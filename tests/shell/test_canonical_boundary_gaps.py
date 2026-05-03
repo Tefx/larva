@@ -18,21 +18,14 @@ Sources:
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any
 
 import pytest
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import DefaultLarvaFacade
-from larva.core import assemble as assemble_module
-from larva.core import normalize as normalize_module
-from larva.core import spec as spec_module
 from larva.core import validate as validate_module
-from larva.core.spec import PersonaSpec
-from larva.core.validate import ValidationReport
 from larva.shell import mcp as mcp_module
 from larva.shell import web as web_module
 from larva.shell.mcp_contract import LARVA_MCP_TOOLS
@@ -44,10 +37,6 @@ from tests.shell.fixture_taxonomy import (
     historical_persona_spec_with_legacy_fields,
     historical_toolset_fixture_with_legacy_fields,
 )
-
-if TYPE_CHECKING:
-    from larva.app.facade import LarvaFacade
-
 
 # -----------------------------------------------------------------------------
 # Regression 1: MCP tool descriptions advertise explicit rejection semantics
@@ -67,22 +56,11 @@ class TestMCPToolDescriptionSemantics:
             f"Current: {validate_tool['description']}"
         )
 
-    def test_assemble_tool_description_requires_capabilities_not_tools(self) -> None:
-        """MCP assemble tool description must state tools is rejected."""
-        assemble_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
-        description = assemble_tool["description"].lower()
+    def test_assemble_tool_is_absent_after_hard_cutover(self) -> None:
+        """MCP assemble tool must stay removed after canonical hard cutover."""
+        tool_names = {t["name"] for t in LARVA_MCP_TOOLS}
 
-        # Should explicitly mention tools is rejected
-        assert "rejected" in description and "tools" in description, (
-            f"assemble tool description must explicitly state tools is rejected. "
-            f"Current: {assemble_tool['description']}"
-        )
-
-    def test_assemble_tool_schema_excludes_variables(self) -> None:
-        """Shared assemble schema must not advertise removed variables input."""
-        assemble_tool = next(t for t in LARVA_MCP_TOOLS if t["name"] == "larva_assemble")
-
-        assert "variables" not in assemble_tool["input_schema"]["properties"]
+        assert "larva_assemble" not in tool_names
 
     def test_register_tool_description_states_tools_rejected(self) -> None:
         """MCP register tool description must explicitly state tools rejection."""
@@ -347,81 +325,9 @@ class TestCanonicalBoundaryRejection:
             "RESULT: validation accepts `tools` - canonical boundary not enforced."
         )
 
-    def test_assemble_rejects_tools_in_overrides(self) -> None:
-        """Assembly MUST reject overrides containing `tools` field.
-
-        Regression guard: assemble overrides must reject forbidden fields.
-        """
-
-        # Create a minimal facade with test doubles
-        @dataclass
-        class SimpleComponentStore:
-            prompts_by_name: dict[str, str] = field(default_factory=dict)
-            toolsets_by_name: dict[str, dict[str, Any]] = field(default_factory=dict)
-            constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
-            models_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
-
-            def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
-                return Success({"text": self.prompts_by_name.get(name, "")})
-
-            def load_toolset(self, name: str) -> Result[dict[str, Any], Exception]:
-                return Success(self.toolsets_by_name.get(name, {}))
-
-            def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
-                return Success(self.constraints_by_name.get(name, {}))
-
-            def load_model(self, name: str) -> Result[dict[str, object], Exception]:
-                return Success(self.models_by_name.get(name, {}))
-
-        @dataclass
-        class SimpleRegistryStore:
-            get_result: Result[PersonaSpec, Exception] = field(default_factory=lambda: Success({}))
-
-            def get(self, persona_id: str) -> Result[PersonaSpec, Exception]:
-                return self.get_result
-
-            def list(self) -> Result[list[PersonaSpec], Exception]:
-                return Success([])
-
-            def save(self, spec: PersonaSpec) -> Result[None, Exception]:
-                return Success(None)
-
-        components = SimpleComponentStore()
-        registry = SimpleRegistryStore()
-
-        facade = DefaultLarvaFacade(
-            spec=spec_module,
-            assemble=assemble_module,
-            validate=validate_module,
-            normalize=normalize_module,
-            components=components,
-            registry=registry,
-        )
-        handlers = mcp_module.MCPHandlers(facade)
-
-        # Try to assemble with tools in overrides
-        result = handlers.handle_assemble(
-            {
-                "id": "test-persona",
-                "overrides": {"tools": {"shell": "read_write"}},  # forbidden legacy field
-            }
-        )
-
-        # Verify: assemble should reject `tools` in overrides with error envelope
-        if isinstance(result, dict) and "code" in result:
-            # Error returned with code - tools was correctly rejected
-            assert result["code"] == "FORBIDDEN_OVERRIDE_FIELD", (
-                f"Expected FORBIDDEN_OVERRIDE_FIELD error, got: {result.get('code')}"
-            )
-            return  # Test passes - tools rejected with correct error
-        elif isinstance(result, dict) and "error" not in result:
-            # No error returned - tools was silently accepted or ignored
-            pytest.fail(
-                "Assemble accepted `tools` in overrides silently. Canonical boundary "
-                "must reject forbidden override fields with an error envelope."
-            )
-        else:
-            pytest.fail(f"Unexpected result type: {type(result)} - {result}")
+    def test_mcp_handlers_do_not_expose_assemble_handler(self) -> None:
+        """Shell MCP handlers must not retain the removed assemble surface."""
+        assert not hasattr(mcp_module.MCPHandlers, "handle_assemble")
 
 
 # -----------------------------------------------------------------------------
@@ -470,227 +376,32 @@ Covered categories:
 2. Historical invalid fixtures are explicit and distinct from canonical fixtures.
 3. Spec helper usage preserves the canonical vs forbidden-field distinction.
 4. Web API patch flow rejects forbidden fields through revalidation.
-5. Core validation and assemble overrides reject forbidden fields.
-6. CLI assemble surface rejects variables input (removed from canonical contract).
-7. CLI component projection examples remain canonical.
+5. Core validation rejects forbidden fields.
+6. CLI assemble/component surfaces stay removed.
 """
 
 
 # -----------------------------------------------------------------------------
-# Regression 6: CLI assemble surface no longer accepts --var / variables
+# Regression 6: CLI assemble/component surfaces stay removed
 # -----------------------------------------------------------------------------
-from tests.shell.fixture_taxonomy import canonical_persona_spec
 
 
-class TestCLIAssembleSurface:
-    """Verify CLI assemble command has removed variables input."""
+class TestRemovedCLISurfaces:
+    """Verify removed assemble/component CLI surfaces do not reappear."""
 
-    def test_cli_parser_assemble_excludes_var_flag(self) -> None:
-        """CLI assemble subcommand must not have --var flag."""
+    def test_cli_parser_rejects_assemble_command(self) -> None:
+        """CLI assemble subcommand must stay absent after hard cutover."""
         from larva.shell.cli_parser import build_cli_parser
 
         parser = build_cli_parser().unwrap()
-        # Parse just 'assemble --help' to get subparser
-        try:
-            args = parser.parse_args(["assemble", "--help"])
-        except SystemExit:
-            pass
+        with pytest.raises(Exception):
+            parser.parse_args(["assemble", "--id", "test"])
 
-        # Re-parse with minimal args to confirm var flag doesn't exist
-        # If --var still exists, this will NOT raise an error
-        error_found = False
-        try:
-            args = parser.parse_args(["assemble", "--id", "test", "--var", "foo=bar"])
-        except Exception:
-            error_found = True  # Expected: --var should be rejected
+    def test_cli_parser_rejects_component_command(self) -> None:
+        """CLI component subcommand must stay absent after hard cutover."""
+        from larva.shell.cli_parser import build_cli_parser
 
-        assert error_found, (
-            "CLI assemble still accepts --var flag. "
-            "Canonical assemble path no longer accepts variables input."
-        )
+        parser = build_cli_parser().unwrap()
 
-    def test_cli_assemble_request_excludes_variables_field(self) -> None:
-        """CLI _build_assemble_request must not include variables in request."""
-        import argparse
-        from larva.shell.cli import _build_assemble_request
-
-        # Create a Namespace that would have variables
-        args = argparse.Namespace(
-            id="test-persona",
-            prompts=[],
-            toolsets=[],
-            constraints=[],
-            model=None,
-            description=None,
-            overrides=[],
-            variables=[],  # This should be absent from canonical AssembleRequest
-            output=None,
-        )
-
-        result = _build_assemble_request(args)
-        assert isinstance(result, Success), f"Failed to build request: {result}"
-
-        request = result.unwrap()
-        assert "variables" not in request, (
-            f"AssembleRequest should not contain 'variables' field. Found: {request.keys()}"
-        )
-
-
-# -----------------------------------------------------------------------------
-# Regression 7: CLI component projection examples stay canonical
-# -----------------------------------------------------------------------------
-from dataclasses import dataclass, field
-from typing import Any
-
-
-class TestCLIComponentProjection:
-    """Verify CLI component show examples stay canonical."""
-
-    def test_component_show_toolset_uses_capabilities_without_tools_field(self) -> None:
-        """CLI component show toolset output uses canonical capabilities only."""
-        from returns.result import Success
-        from larva.shell.cli_commands import component_show_command
-
-        @dataclass
-        class SimpleComponentStore:
-            toolsets_by_name: dict[str, dict[str, Any]] = field(default_factory=dict)
-
-            def load_toolset(self, name: str):
-                return Success(self.toolsets_by_name.get(name, {}))
-
-            def load_prompt(self, name: str):
-                return Success({})
-
-            def load_constraint(self, name: str):
-                return Success({})
-
-            def load_model(self, name: str):
-                return Success({})
-
-        store = SimpleComponentStore(
-            toolsets_by_name={
-                "test": {
-                    "capabilities": {"shell": "read_only"},
-                }
-            }
-        )
-
-        result = component_show_command(
-            "toolsets/test",
-            as_json=True,
-            component_store=store,
-        )
-
-        assert isinstance(result, Success), f"Expected Success, got: {result}"
-        payload = result.unwrap()
-        data = payload["json"]["data"]
-        assert data["capabilities"] == {"shell": "read_only"}
-        assert "tools" not in data
-
-    def test_component_show_constraint_omits_side_effect_policy(self) -> None:
-        """CLI component show constraint output omits legacy runtime-policy fields."""
-        from returns.result import Success
-        from larva.shell.cli_commands import component_show_command
-
-        @dataclass
-        class SimpleComponentStore:
-            constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
-
-            def load_toolset(self, name: str):
-                return Success({})
-
-            def load_prompt(self, name: str):
-                return Success({})
-
-            def load_constraint(self, name: str):
-                return Success(self.constraints_by_name.get(name, {}))
-
-            def load_model(self, name: str):
-                return Success({})
-
-        store = SimpleComponentStore(
-            constraints_by_name={
-                "test": {
-                    "can_spawn": False,
-                }
-            }
-        )
-
-        result = component_show_command(
-            "constraints/test",
-            as_json=True,
-            component_store=store,
-        )
-
-        assert isinstance(result, Success), f"Expected Success, got: {result}"
-        payload = result.unwrap()
-        data = payload["json"]["data"]
-        assert data["can_spawn"] is False
-        assert "side_effect_policy" not in data
-
-
-# -----------------------------------------------------------------------------
-# Real CLI command/output path verification
-# -----------------------------------------------------------------------------
-
-
-class TestRealCLIAssembleOutput:
-    """Verify real CLI assemble output contains canonical-only fields."""
-
-    def test_cli_assemble_produces_capabilities_not_tools(self) -> None:
-        """Real CLI assemble via facade produces output with capabilities, not tools.
-
-        This exercises the full path: cli_parser -> cli command -> facade -> assemble
-        """
-        import json
-
-        from tests.shell.fixture_taxonomy import canonical_persona_spec
-
-        # Use the same pattern as test_mcp.py::TestMCPAssembleSuccessShape
-        # Create a mock facade that returns a fully-formed canonical persona
-        from unittest.mock import MagicMock
-
-        from larva.app.facade import DefaultLarvaFacade
-        from returns.result import Success
-
-        # Create a fully canonical assembled persona
-        canonical_assembled = canonical_persona_spec("test-persona")
-
-        # Create a mock facade that returns the canonical persona directly
-        mock_facade = MagicMock(spec=DefaultLarvaFacade)
-        mock_facade.assemble.return_value = Success(canonical_assembled)
-
-        # Import the CLI command to test
-        from larva.shell.cli_commands import assemble_command
-        from larva.app.facade import AssembleRequest
-
-        request: AssembleRequest = {
-            "id": "test-persona",
-            "prompts": [],
-            "toolsets": ["test-toolset"],
-            "constraints": [],
-            "overrides": {},
-        }
-
-        result = assemble_command(
-            request,
-            as_json=True,
-            facade=mock_facade,
-            output_path=None,
-        )
-
-        assert isinstance(result, Success), f"assemble_command failed: {result}"
-        payload = result.unwrap()
-        json_data = payload.get("json", {}).get("data", {})
-
-        # Output should have capabilities
-        assert "capabilities" in json_data, f"Output missing capabilities: {json_data.keys()}"
-
-        # Output must NOT have tools (forbidden legacy field)
-        assert "tools" not in json_data, (
-            f"CLI assemble output must not contain 'tools' field. Got: {json_data.keys()}"
-        )
-
-        # Also verify the JSON output is well-formed
-        assert "id" in json_data
-        assert json_data["id"] == "test-persona"
+        with pytest.raises(Exception):
+            parser.parse_args(["component", "list"])

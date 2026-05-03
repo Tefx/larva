@@ -29,6 +29,7 @@ from typing import Any
 import pytest
 
 from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
+from larva.shell.mcp_contract import LARVA_MCP_TOOLS
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -36,22 +37,11 @@ from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
 
 LARVA_SRC_ROOT = Path(__file__).resolve().parent.parent.parent / "src" / "larva"
 
-# MCP tool names as currently registered in mcp_contract.py
-CANONICAL_MCP_TOOL_NAMES: list[str] = [
-    "larva_validate",
-    "larva_assemble",
-    "larva_resolve",
-    "larva_register",
-    "larva_list",
-    "larva_component_list",
-    "larva_component_show",
-    "larva_delete",
-    "larva_clear",
-    "larva_clone",
-    "larva_export",
-    "larva_update",
-    "larva_update_batch",
-]
+# MCP tool names as currently registered in mcp_contract.py.  The hard-cutover
+# contract removed assemble/component tools and added registry-local variant
+# tools, so this readiness check must follow the exported tool inventory rather
+# than preserving the pre-cutover list in the test itself.
+CANONICAL_MCP_TOOL_NAMES: list[str] = [tool["name"] for tool in LARVA_MCP_TOOLS]
 
 # After hard cutover, MCP names must use snake_case (they already do).
 # This scan verifies that no non-snake_case names have crept in.
@@ -117,6 +107,10 @@ _LEGITIMATE_REFERENCE_PATTERNS: list[re.Pattern[str]] = [
     ),
 ]
 
+_REGISTRY_LOCAL_SURFACE_FIELDS: frozenset[str] = frozenset(
+    {"variant", "_registry", "active", "manifest"}
+)
+
 
 def _source_files() -> list[Path]:
     """Collect all .py source files under LARVA_SRC_ROOT."""
@@ -147,6 +141,13 @@ def _line_has_forbidden_field_reference(line: str, field: str) -> bool:
     The scan targets Python string literal references such as ``"tools"`` so
     it catches dict-key/data-path usage without flagging substrings in names.
     """
+    # Registry-local variant metadata is canonical shell/registry vocabulary.
+    # It remains forbidden inside PersonaSpec admission, but shell surfaces must
+    # be allowed to expose and persist it without being classified as legacy
+    # compatibility usage by this broad source scan.
+    if field in _REGISTRY_LOCAL_SURFACE_FIELDS:
+        return False
+
     # Strip comments for the check
     comment_idx = line.find("#")
     code_only = line[:comment_idx] if comment_idx >= 0 else line
