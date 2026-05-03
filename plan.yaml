@@ -67113,7 +67113,7 @@ phases:
       none'
   - id: variants_finalization_20260503.final-gate
     name: final-gate
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -67235,3 +67235,5 @@ phases:
     - variants_finalization_20260503.full-plan-guard-and-conformance
     - variants_finalization_20260503.deep-review
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-05-03T07:37:37.559728+00:00'
