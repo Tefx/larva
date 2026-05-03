@@ -64751,6 +64751,7 @@ phases:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.web-ui-remnant-remediation
     - variants_surface_cutover_20260503.surface-audit-blocker-remediation
+    - variants_surface_cutover_20260503.surface-audit-polish-remediation
     agent: wiring-auditor
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
