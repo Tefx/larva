@@ -67884,7 +67884,7 @@ phases:
   steps:
   - id: opencode_hardening_contract_tests_20260503
     name: Add expected-red OpenCode hardening contract tests
-    status: claimed
+    status: done
     description: Add focused tests around the existing OpenCode wrapper/plugin path
       before implementation. Cover per-request [larva:<id>] handling by selected id,
       cache miss/stale/digest-change single-id resolve, no export --all on selected-id
@@ -67905,6 +67905,25 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T13:40:28.599792+00:00'
+    done_at: '2026-05-03T13:47:58.984034+00:00'
+    evidence: "Artifact:\n- commit: ac6e3292696a053b3ae2df076d033aa2063751f9 (merged\
+      \ to main)\n\nVerification:\n- Run: uv run pytest -q tests/shell/test_opencode_plugin_contract.py\
+      \ -> expected-red: 8 failed, 1 passed\n- Failing tests:\n  - test_plugin_selected_id_main_path_does_not_export_all:\
+      \ current plugin still calls larva export --all --json.\n  - test_plugin_cache_miss_stale_and_digest_change_use_single_id_resolve:\
+      \ cache lacks spec_digest/single-id resolve/digest-change refresh seam.\n  -\
+      \ test_plugin_deduplicates_concurrent_same_id_resolves: no in-flight Promise\
+      \ map for concurrent same-id resolves.\n  - test_plugin_placeholder_never_leaks_when_prompt_unavailable:\
+      \ missing fail-closed placeholder replacement behavior.\n  - test_plugin_stale_last_known_good_fallback_warns_in_debug:\
+      \ no last-known-good fallback with debug warning.\n  - test_plugin_debug_and_ttl_are_controlled_by_environment:\
+      \ no LARVA_OPENCODE_DEBUG or LARVA_OPENCODE_CACHE_TTL_MS env behavior; TTL is\
+      \ hard-coded.\n  - test_plugin_hot_update_boundaries_are_explicit: no explicit\
+      \ HOT_UPDATE_FIELDS boundary for prompt/temperature/tool-policy/capabilities/can_spawn.\n\
+      \  - test_plugin_per_request_active_id_comes_from_selected_placeholder: uses\
+      \ module-global active state rather than per-request selectedId.\n\nSpec link:\n\
+      - contrib/opencode-plugin/README.md: How it works, Watermark, Other mappings,\
+      \ Limitations.\n- README.md: OpenCode plugin launcher/config behavior.\n- docs/reference/ARCHITECTURE.md:\
+      \ OpenCode Launcher Boundary.\n- docs/reference/INTERFACES.md: CLI/OpenCode\
+      \ pass-through launcher contract."
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
     status: pending
