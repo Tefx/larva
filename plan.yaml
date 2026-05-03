@@ -68167,7 +68167,7 @@ phases:
       afterward to avoid committing unrelated pre-existing user edits.'
   - id: opencode_hardening_final_gate_20260503
     name: Run final verification and self-review
-    status: claimed
+    status: done
     description: Run targeted OpenCode tests, full relevant test suite, invar guard,
       and a fresh self-review against the hardening contract. Fix any regressions
       discovered by the gate before completing.
@@ -68179,6 +68179,47 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T14:06:26.084016+00:00'
+    done_at: '2026-05-03T14:11:16.653152+00:00'
+    evidence: 'Artifact:
+
+      - commit: none
+
+
+      Verification:
+
+      - targeted: uv run --group dev python -m pytest tests/shell/test_opencode_cli.py
+      tests/shell/test_opencode_plugin_contract.py -> 19 passed in 0.41s
+
+      - full relevant/full repo: uv run --group dev python -m pytest -> 1071 passed,
+      8 failed. Failures: forbidden-field conformance scan; MCP assemble tool inventory/description/schema
+      expectations; README missing larva_variant_list; assemble handler/parser legacy
+      tests.
+
+      - invar guard: invar_guard full_scan -> ok true, errors 0, warnings 8, files_checked
+      47
+
+
+      Self-review:
+
+      - OpenCode hardening contract reviewed against wrapper/plugin/tests/docs.
+
+      - selected-id runtime resolve path uses larva resolve.
+
+      - startup export-all remains startup-only.
+
+      - placeholders fail closed.
+
+      - cache is per-id with in-flight dedupe and debug warnings.
+
+      - hot-update/restart boundaries documented and tested.
+
+      - No worktree changes; final git status clean.
+
+
+      Residual risk:
+
+      - bounded non-blocking: full repo failures are non-OpenCode canonical/assemble/doc
+      inventory surfaces; targeted OpenCode hardening suite stayed green.'
   - id: plan_ref_warning_hygiene_20260503
     name: Triage remaining vectl ref warnings
     status: done
