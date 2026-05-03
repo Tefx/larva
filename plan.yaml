@@ -65097,7 +65097,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.surface-audit-polish-remediation
     name: surface-audit-polish-remediation
-    status: claimed
+    status: done
     description: 'Fix remaining blockers from second surface wiring audit: remove
       stale core assembly_error module/vocabulary, remove stale web.py component/preset
       comments, document /api/personas/assemble as an explicit fail-closed 404 tombstone
@@ -65131,6 +65131,32 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T05:54:22.090095+00:00'
+    done_at: '2026-05-03T05:59:19.780624+00:00'
+    evidence: "## Polish blockers fixed\n- Deleted stale `src/larva/core/assembly_error.py`\
+      \ and removed assembly wrapper wording from `src/larva/core/_structured_error.py`.\n\
+      - Removed stale component/preset/compose comments from `src/larva/shell/web.py`;\
+      \ documented `/api/personas/assemble` as a fail-closed 404 tombstone in both\
+      \ `src/larva/shell/web.py` and `docs/reference/INTERFACES.md`.\n- Fixed packaged\
+      \ Web UI base-persona switching: `selectPersona()` now resets stale variant\
+      \ state, loads variants for the selected base id, then loads the selected variant\
+      \ detail before edit/save/delete flows can reuse stale state.\n- Removed minor\
+      \ stale “target/expected-red/implementation phase” wording from docs and affected\
+      \ surface tests.\n- Removed obsolete component conflict expectation from repro\
+      \ error-code list.\n\n## Verification\n```text\n- uv run python post-polish\
+      \ surface script -> surface import/static checks ok\n  * affected production/test\
+      \ modules import successfully\n  * Python API has variant_list/variant_activate/variant_delete\
+      \ and lacks assemble/component_list/component_show\n  * source MCP LARVA_MCP_TOOLS\
+      \ has larva_variant_* and lacks larva_assemble/larva_component_*\n  * CLI parser\
+      \ help includes variant and excludes assemble/component\n  * packaged route\
+      \ inventory has variant routes and no /api/components route\n- invar_guard(path=/Users/tefx/Projects/larva,\
+      \ changed=false) -> deferred run grd_220bae08964e42118fec70d3 complete: ok=true,\
+      \ errors=0, warnings=1, infos=3, files_checked=40\n- grep src/larva for assemble/component/preset/compose\
+      \ -> only documented /api/personas/assemble 404 tombstone in web.py/web_routes.py\n\
+      - grep web_ui.html and contrib/web/index.html for assemble/component/preset/compose\
+      \ -> No files found\n- grep docs/py for stale target/future phrases (`implementation\
+      \ phase removes|EXPECTED-RED|target behavior|target interface|released builds\
+      \ may|implementation lands|accepted target|TARGET-STATE|NOT been cut over`)\
+      \ -> No files found\n```\n\n## Residual risk\nnone"
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
