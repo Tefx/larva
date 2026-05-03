@@ -56401,15 +56401,32 @@ phases:
   - id: merge_debt_20260425_review.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for merge debt review
     status: pending
-    description: Resolve validate errors for completed steps merge_debt_20260425_review.audit
+    description: 'Resolve validate errors for completed steps merge_debt_20260425_review.audit
       and merge_debt_20260425_review.conditional-fix, including gate_open_allowed=false
-      and FAIL evidence. Add later same-phase closure evidence proving review/conditional-fix
+      and FAIL evidence. This is a proof-closure/evidence task, not product-code implementation.
+      Produce accepted same-phase closure evidence proving review/conditional-fix
       verification is now green/OPEN with gate_open_allowed=true, or record explicit
       expected-red/non-blocking owner/lifecycle/gate-intersection disposition for
       both historical records.
+
+
+      Required disposition fields for any non-green closure: provenance, disposition
+      (blocking-now/blocking-later/non-blocking), owner, lifecycle state, gate-intersection
+      rationale, remaining gate impact, and closure path. Do not edit completed historical
+      steps.'
     verification: Run vectl_validate(check_refs=true) and show both merge_debt_20260425_review
-      completed-evidence guard errors are gone, or paste the accepted disposition
-      evidence that closes them.
+      completed-evidence guard errors are gone, or paste accepted disposition evidence
+      that closes them. Evidence must include exact validation output or accepted
+      disposition text.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Evidence Guard Closure Report\n- Historical\
+      \ completed steps reviewed: merge_debt_20260425_review.audit; merge_debt_20260425_review.conditional-fix\n\
+      - Closure route used: GREEN_CURRENT_PROOF | ACCEPTED_NON_BLOCKING_DISPOSITION\n\
+      - gate_open_allowed: true | non-intersecting-disposition\n- vectl_validate(check_refs=true)\
+      \ output or accepted disposition evidence:\n  ```\n  <paste exact output/evidence>\n\
+      \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
+      \ not intersected>\n- Headline: PASS | BLOCKED"
+    agent: gate-reviewer
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
   status: done
