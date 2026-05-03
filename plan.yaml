@@ -67938,7 +67938,7 @@ phases:
       none'
 - id: opencode_hardening_20260503
   name: OpenCode Wrapper/Plugin Hardening
-  status: in_progress
+  status: done
   gate: Runtime and tests prove per-request single-id placeholder resolution, no export
     --all on the selected-id main path, no placeholder leakage, fail-closed/no-previous
     behavior, last-known-good stale fallback, in-flight dedup, debug/TTL env support,
@@ -68274,7 +68274,7 @@ phases:
       for this planner-only hygiene step.'
   - id: opencode_hardening_20260503.external-gate-review-for-opencode-hardening
     name: External gate review for OpenCode hardening
-    status: claimed
+    status: done
     description: 'Run an explicit independent gate review after implementation and
       final verification. Reviewer must assess the hardening contract against implementation,
       tests, docs, runtime failure modes, and UX boundaries. The review must explicitly
@@ -68295,3 +68295,29 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T14:11:48.185231+00:00'
+    done_at: '2026-05-03T14:15:48.555776+00:00'
+    evidence: "Reviewer: gate-reviewer\nResult: PASS\nMatrix:\n  selected-id resolve:\
+      \ PASS - Runtime transform derives the id from the selected [larva:<id>] placeholder\
+      \ and calls larva resolve <id> --json; chat.params also resolves the selected\
+      \ managed agent id.\n  no export-all main path: PASS - export --all is limited\
+      \ to launcher/startup registration projection; runtime prompt/temperature refresh\
+      \ path uses resolvePersona/getPersonaForRequest.\n  no placeholder leakage:\
+      \ PASS - selected placeholder is replaced with resolved prompt plus watermark\
+      \ or failClosed text when prompt unavailable.\n  fail-closed: PASS - missing\
+      \ resolve/no prompt with no previous cache returns [larva prompt unavailable\
+      \ for <id>; ...] instead of preserving placeholder.\n  stale fallback: PASS\
+      \ - stale last-known-good is used only when a previous CacheEntry exists; otherwise\
+      \ fail-closed.\n  in-flight dedup: PASS - same-id refreshes share an inFlight\
+      \ Map<string, Promise<ResolveOutcome>> and clear on finally.\n  env behavior:\
+      \ PASS - LARVA_OPENCODE_DEBUG gates warnings; LARVA_OPENCODE_CACHE_TTL_MS=0\
+      \ disables storing new cache entries; invalid TTL falls back to default with\
+      \ debug warning.\n  watermark: PASS - injected prompt includes <larva-persona\
+      \ id=\"${id}\" /> and the contractual “persona loaded from larva” identity sentence.\n\
+      \  docs boundary: PASS - README documents startup export-all boundary, runtime\
+      \ selected-id resolve, cache/fallback behavior, env knobs, watermark, and hot-update\
+      \ versus restart-required fields.\nCommands/tests: git status --short --branch\
+      \ clean; inspected contrib/opencode-plugin/larva.ts, contrib/opencode-plugin/README.md,\
+      \ src/larva/shell/opencode.py, tests/shell/test_opencode_plugin_contract.py,\
+      \ tests/shell/test_opencode_cli.py; invar_guard full scan run grd_1a41b3c0f7c54341a08939b8\
+      \ completed ok=true with 0 errors, 8 warnings; invar_guard changed-only passed\
+      \ with 0 changed files.\nBlocking issues: none"
