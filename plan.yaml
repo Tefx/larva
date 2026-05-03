@@ -33811,7 +33811,7 @@ phases:
       \ngate_open_allowed: true"
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
-  status: done
+  status: in_progress
   depends_on:
   - canonical_core_admission
   steps:
@@ -34567,6 +34567,17 @@ phases:
       \ ANY contract change (especially field removal) MUST update ALL test fixtures\
       \ and assertions\n- **Test-Contract Alignment**: Test expectations MUST match\
       \ authoritative contract definitions"
+  - id: canonical_shell_surfaces.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for canonical shell surfaces
+    status: pending
+    description: Resolve validate error for completed step canonical_shell_surfaces.gate,
+      whose evidence contains gate_open_allowed=false, failed tests, and FAIL. Add
+      later same-phase closure evidence proving canonical shell surfaces are now green/OPEN
+      with gate_open_allowed=true, or record explicit expected-red/non-blocking owner/lifecycle/gate-intersection
+      disposition.
+    verification: Run vectl_validate(check_refs=true) and show the canonical_shell_surfaces
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: done
