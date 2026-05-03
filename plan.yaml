@@ -11664,7 +11664,7 @@ phases:
     agent: gate-reviewer
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_assemble
@@ -12140,7 +12140,7 @@ phases:
       - INTERFACES.md larva.assemble + component library'
   - id: core_assemble.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for core assemble
-    status: claimed
+    status: done
     description: 'Resolve validate error for completed step core_assemble.core-assemble-verify.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence that proves the current assemble gate is
@@ -12166,6 +12166,35 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:48.028225+00:00'
+    done_at: '2026-05-03T13:30:15.593843+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Evidence Guard Closure Report\n- Historical completed step reviewed: core_assemble.core-assemble-verify\n\
+      - Closure route used: GREEN_CURRENT_PROOF\n- Commands/output or accepted disposition\
+      \ evidence:\n  ```\n  $ invar_invar_guard(path=/Users/tefx/Projects/larva/.vectl/worktrees/core_assemble.evidence_guard_closure_20260503,\
+      \ changed=false)\n  {\"status\":\"deferred\",\"run_id\":\"grd_fb2aeb6220bb42f8a6465d57\"\
+      ,\"mode\":\"full_scan\"}\n\n  $ invar_invar_guard_wait(run_id=grd_fb2aeb6220bb42f8a6465d57)\n\
+      \  status=complete; ok=true; errors=0; warnings=8; infos=4; files_checked=47;\
+      \ review_suggested=false\n\n  $ uv run --group dev python -m pytest tests/shell/test_mcp.py::TestMCPAssemblyComponentToolsRemoved\
+      \ tests/shell/test_mcp.py::TestMCPToolDefinitions::test_assemble_tool_is_removed\
+      \ tests/shell/test_mcp_server.py::TestMCPServerVariantTools::test_assemble_tool_removed_from_server\
+      \ tests/shell/test_mcp_stdio_integration.py::TestMCPStdioSurfaceCutover::test_assemble_tool_removed_over_stdio\
+      \ tests/shell/test_python_api.py::TestPythonAPIRemovedExports::test_assemble_is_not_exported\
+      \ tests/shell/test_web.py::TestWebSurfaceEndpoints::test_assemble_endpoint_absent\
+      \ tests/shell/test_web_rest_gaps.py::TestRESTAssembleEndpointRemoved::test_assemble_endpoint_removed\
+      \ tests/shell/test_cli.py::TestCLIAssemblyComponentCommandsRemoved\n  collected\
+      \ 11 items\n  tests/shell/test_mcp.py ....\n  tests/shell/test_mcp_server.py\
+      \ .\n  tests/shell/test_mcp_stdio_integration.py .\n  tests/shell/test_python_api.py\
+      \ .\n  tests/shell/test_web.py .\n  tests/shell/test_web_rest_gaps.py .\n  tests/shell/test_cli.py\
+      \ ..\n  11 passed in 1.84s\n\n  $ uv run --group dev larva --help\n  commands:\
+      \ validate register resolve list variant delete clear clone export update update-batch\
+      \ serve mcp doctor opencode\n\n  $ uv run --group dev larva assemble --help\n\
+      \  Argument parsing failed: argument COMMAND: invalid choice: 'assemble' (...)\n\
+      \n  $ git status --short --branch\n  ## vectl/step-core_assemble.evidence_guard_closure_20260503\n\
+      \  ```\n- Gate-intersection disposition: Current assemble-removal/runtime gate\
+      \ is green: MCP tool list/server/stdio, Python API export, web/REST route, and\
+      \ CLI command absence all passed; invar full scan also reports ok=true/errors=0.\
+      \ No plan/vectl state was inspected or modified.\n- Headline: PASS\n\nNo product-code\
+      \ changes were made; isolated branch was clean."
 - id: core_exec_remediation
   name: Core execution remediation
   status: done
