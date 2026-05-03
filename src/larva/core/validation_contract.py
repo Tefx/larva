@@ -22,7 +22,14 @@ CANONICAL_OPTIONAL_FIELDS: tuple[str, ...] = (
     "compaction_prompt",
     "spec_digest",
 )
-CANONICAL_FORBIDDEN_FIELDS: tuple[str, ...] = ("tools", "side_effect_policy")
+CANONICAL_FORBIDDEN_FIELDS: tuple[str, ...] = (
+    "tools",
+    "side_effect_policy",
+    "variant",
+    "_registry",
+    "active",
+    "manifest",
+)
 
 VALIDATION_ISSUE_KEYS: tuple[str, ...] = ("code", "message", "details")
 VALIDATION_REPORT_KEYS: tuple[str, ...] = ("valid", "errors", "warnings")

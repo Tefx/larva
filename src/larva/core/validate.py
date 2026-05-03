@@ -4,8 +4,10 @@ Errors block admission; warnings stay non-blocking.
 """
 
 import re
+from typing import cast
 
-from deal import post, pre
+from deal import post, pre, raises
+from larva.core._structured_error import _build_structured_exception
 from larva.core.validation_contract import (
     CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
     CANONICAL_CONTRACT_METADATA,
@@ -27,6 +29,8 @@ from larva.core.validation_field_shapes import validate_field_shapes
 from larva.core.validation_warnings import collect_non_blocking_warnings
 
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+_VARIANT_NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+_VARIANT_NAME_MAX_LENGTH = 64
 
 _JSON_SAFE_TYPES = (str, int, float, bool, type(None), list, dict)
 
@@ -96,6 +100,141 @@ def _validate_identity_fields(spec: dict[str, object]) -> list[ValidationIssue]:
         )
 
     return errors
+
+
+class VariantNameError(Exception):
+    """Variant name validation failure."""
+
+    code: str
+    message: str
+    details: dict[str, object]
+
+
+@pre(
+    lambda message, details=None: (
+        isinstance(message, str)
+        and len(message) > 0
+        and (details is None or isinstance(details, dict))
+    )
+)
+@post(
+    lambda result: (
+        isinstance(result, VariantNameError)
+        and isinstance(result.code, str)
+        and len(result.code) > 0
+        and isinstance(result.message, str)
+        and len(result.message) > 0
+        and isinstance(result.details, dict)
+    )
+)
+def _build_variant_name_error(
+    message: str,
+    details: dict[str, object] | None = None,
+) -> VariantNameError:
+    """Build a structured VariantNameError with INVALID_VARIANT_NAME code.
+
+    >>> err = _build_variant_name_error("bad name", {"field": "variant"})
+    >>> (err.code, err.details)
+    ('INVALID_VARIANT_NAME', {'field': 'variant'})
+    """
+    return cast(
+        "VariantNameError",
+        _build_structured_exception(VariantNameError, "INVALID_VARIANT_NAME", message, details),
+    )
+
+
+@pre(lambda name: isinstance(name, str))
+@post(lambda result: isinstance(result, str) and 0 < len(result) <= _VARIANT_NAME_MAX_LENGTH)
+@raises(VariantNameError)
+def validate_variant_name(name: str) -> str:
+    """Validate a variant name against canonical slug rules.
+
+    Variant names must match ``^[a-z0-9]+(-[a-z0-9]+)*$`` and be at most
+    64 characters.  Empty names, path separators, uppercase letters,
+    underscores, dots, ``..``, and names exceeding 64 characters are
+    rejected with ``INVALID_VARIANT_NAME``.
+
+    >>> validate_variant_name("default")
+    'default'
+    >>> validate_variant_name("tacit")
+    'tacit'
+    >>> validate_variant_name("code-reviewer")
+    'code-reviewer'
+    >>> validate_variant_name("a" * 64)  # exactly 64 chars is valid
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
+    >>> try:
+    ...     validate_variant_name("a" * 65)
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("MyVariant")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("my_variant")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("my.variant")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("a--b")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("-leading")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    >>> try:
+    ...     validate_variant_name("trailing-")
+    ... except VariantNameError as e:
+    ...     e.code
+    'INVALID_VARIANT_NAME'
+
+    Args:
+        name: Variant name candidate.
+
+    Returns:
+        The validated variant name string.
+
+    Raises:
+        VariantNameError: When the name violates the canonical slug rules.
+    """
+    if len(name) == 0 or len(name) > _VARIANT_NAME_MAX_LENGTH:
+        reason = (
+            "variant name must not be empty"
+            if len(name) == 0
+            else f"variant name exceeds maximum length of {_VARIANT_NAME_MAX_LENGTH} characters (got {len(name)})"
+        )
+        raise _build_variant_name_error(reason, {"field": "variant", "value": name, "max_length": _VARIANT_NAME_MAX_LENGTH})
+
+    if not _VARIANT_NAME_PATTERN.fullmatch(name):
+        raise _build_variant_name_error(
+            f"variant name must match ^[a-z0-9]+(-[a-z0-9]+)*$, got '{name}'",
+            {"field": "variant", "value": name},
+        )
+
+    return name
 
 
 @pre(lambda spec: _is_json_safe_dict(spec))

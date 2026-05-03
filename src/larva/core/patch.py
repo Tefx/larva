@@ -49,7 +49,15 @@ from larva.core._structured_error import _build_structured_exception
 PROTECTED_KEYS = frozenset({"id", "spec_digest", "spec_version"})
 DEEP_MERGE_KEYS = frozenset({"model_params", "capabilities"})
 DOT_KEY_SEPARATOR = "."
-FORBIDDEN_PATCH_FIELDS = frozenset({"tools", "side_effect_policy", "variables"})
+FORBIDDEN_PATCH_FIELDS = frozenset({
+    "tools",
+    "side_effect_policy",
+    "variables",
+    "variant",
+    "_registry",
+    "active",
+    "manifest",
+})
 
 
 class PatchError(Exception):
