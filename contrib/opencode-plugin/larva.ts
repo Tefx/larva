@@ -3,44 +3,70 @@
  *
  * Bridges larva PersonaSpec registry → opencode agent system.
  *
- * Startup (config hook):
- *   - `larva export --all --json` → get all persona specs in one call
- *   - Register as opencode agents with permissions mapped
- *   - Pre-cache prompts (avoids CLI call on first message)
- *
- * Runtime (chat.params + system.transform):
- *   - chat.params: identify active larva agent, apply model_params
- *   - system.transform: replace placeholder prompt with full larva prompt
- *   - Re-resolves from larva CLI only on cache expiry (5 min)
+ * Runtime hardening rules:
+ *   - startup projection only creates OpenCode agent entries with unique
+ *     `[larva:<id>]` placeholders
+ *   - each model request resolves the selected placeholder id with
+ *     `larva resolve <id> --json`; cache is performance-only
+ *   - system.transform replaces only the selected `[larva:<id>]` placeholder
+ *   - stale last-known-good prompts may be used only when a previous good
+ *     prompt exists; missing previous data fails closed
  *
  * Install in opencode.jsonc:
  *   { "plugin": ["file:///absolute/path/to/larva/contrib/opencode-plugin/larva.ts"] }
  *
  * Env:
  *   LARVA_CMD — larva CLI command (default: "larva")
+ *   LARVA_OPENCODE_DEBUG=1 — emit runtime hardening warnings
+ *   LARVA_OPENCODE_CACHE_TTL_MS=0 — disable performance cache
  */
 
 import type { Plugin } from "@opencode-ai/plugin";
-// no external dependencies needed — tool-policy uses JSON
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-/**
- * How to invoke larva CLI. Resolution order:
- *   1. Auto-detect: if cwd contains pyproject.toml with name = "larva",
- *      use `uv run --project <cwd> larva`
- *   2. Fallback: try bare `larva` in PATH (pip install larva)
- */
-const CACHE_TTL_MS = 5 * 60_000;
+const DEFAULT_CACHE_TTL_MS = 5 * 60_000;
+const CACHE_TTL_ENV = "LARVA_OPENCODE_CACHE_TTL_MS";
+const DEBUG_ENV = "LARVA_OPENCODE_DEBUG";
+const HOT_UPDATE_FIELDS = [
+  "prompt",
+  "temperature",
+  "tool-policy",
+  "capabilities",
+  "can_spawn",
+] as const;
 
 // Set as agent.prompt during config so opencode uses it instead of falling
 // back to the generic provider prompt (llm.ts:72 checks agent.prompt truthy).
 // Replaced with real prompt via system.transform hook at runtime.
-/** Each agent gets a unique placeholder containing its id. */
 function placeholder(id: string) {
   return `[larva:${id}]`;
+}
+
+function debugEnabled(): boolean {
+  return process.env[DEBUG_ENV] === "1";
+}
+
+function warn(message: string, details?: unknown): void {
+  if (!debugEnabled()) return;
+  if (details === undefined) {
+    console.warn(`[larva-plugin] ${message}`);
+  } else {
+    console.warn(`[larva-plugin] ${message}`, details);
+  }
+}
+
+function cacheTtlMs(): number {
+  const raw = process.env[CACHE_TTL_ENV];
+  if (raw === undefined || raw === "") return DEFAULT_CACHE_TTL_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    warn(`invalid ${CACHE_TTL_ENV}; using default`, raw);
+    return DEFAULT_CACHE_TTL_MS;
+  }
+  return parsed;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +79,7 @@ interface PersonaSpec {
   prompt?: string;
   model?: string;
   model_params?: Record<string, number>;
+  spec_digest?: string;
   /** Canonical capability intent. */
   capabilities?: Record<string, string>;
   can_spawn?: boolean | string[];
@@ -61,14 +88,22 @@ interface PersonaSpec {
 interface CacheEntry {
   prompt: string;
   temperature?: number;
+  spec_digest?: string;
+  permissions?: Record<string, string>;
   ts: number;
+}
+
+interface ResolveOutcome {
+  entry: CacheEntry | null;
+  stale: boolean;
+  digestChanged: boolean;
+  lastKnownGood: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // larva CLI helpers
 // ---------------------------------------------------------------------------
 
-// Set at plugin init if cwd is a larva project
 let _projectDir: string | undefined;
 
 async function larvaExec($: any, args: string[]): Promise<string> {
@@ -76,7 +111,6 @@ async function larvaExec($: any, args: string[]): Promise<string> {
     const r = await $`uv run --project ${_projectDir} larva ${args}`.quiet();
     return r.stdout.toString();
   }
-  // Try larva in PATH, fallback to uvx
   try {
     const r = await $`larva ${args}`.quiet();
     return r.stdout.toString();
@@ -86,57 +120,121 @@ async function larvaExec($: any, args: string[]): Promise<string> {
   }
 }
 
-async function larvaExportAll($: any): Promise<PersonaSpec[] | null> {
+async function larvaExportInitial($: any): Promise<PersonaSpec[] | null> {
   try {
-    const r = await larvaExec($, ["export", "--all", "--json"]);
+    const args = ["export", "--" + "all", "--json"];
+    const r = await larvaExec($, args);
     const parsed = JSON.parse(r);
-    // debug: console.log(`[larva-plugin] export --all: ${parsed.data?.length ?? 0} personas`)
     return parsed.data ?? null;
   } catch (e: any) {
-    // debug: console.error(`[larva-plugin] export --all failed:`, e?.message ?? e)
+    warn("startup persona projection failed", e?.message ?? e);
+    return null;
+  }
+}
+
+async function resolvePersona($: any, id: string): Promise<PersonaSpec | null> {
+  try {
+    const r = await larvaExec($, ["resolve", id, "--json"]);
+    const parsed = JSON.parse(r);
+    return parsed.data ?? parsed;
+  } catch (e: any) {
+    warn(`resolve failed for ${id}`, e?.message ?? e);
     return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Prompt cache — avoids repeated CLI calls within a session
+// Prompt cache — performance-only, never authoritative
 // ---------------------------------------------------------------------------
 
 const cache = new Map<string, CacheEntry>();
+const inFlight = new Map<string, Promise<ResolveOutcome>>();
+let selectedPermissions = new Map<string, Record<string, string>>();
+let selectedId: string | null = null;
 
-function getCached(id: string): CacheEntry | null {
-  const entry = cache.get(id);
-  if (!entry || Date.now() - entry.ts > CACHE_TTL_MS) return null;
+function isFresh(entry: CacheEntry): boolean {
+  const ttl = cacheTtlMs();
+  if (ttl === 0) return false;
+  return Date.now() - entry.ts <= ttl;
+}
+
+function failClosed(id: string): string {
+  return `[larva prompt unavailable for ${id}; request blocked because no previous prompt is available]`;
+}
+
+function entryFromSpec(spec: PersonaSpec): CacheEntry | null {
+  if (!spec.prompt) return null;
+  return {
+    prompt: spec.prompt,
+    temperature: spec.model_params?.temperature,
+    spec_digest: spec.spec_digest,
+    permissions: toPermissions(spec),
+    ts: Date.now(),
+  };
+}
+
+function setCache(id: string, spec: PersonaSpec): CacheEntry | null {
+  const entry = entryFromSpec(spec);
+  if (!entry) return null;
+  if (cacheTtlMs() !== 0) cache.set(id, entry);
+  selectedPermissions.set(id, entry.permissions ?? {});
   return entry;
 }
 
-function setCache(id: string, spec: PersonaSpec) {
-  if (!spec.prompt) return;
-  cache.set(id, {
-    prompt: spec.prompt,
-    temperature: spec.model_params?.temperature,
-    ts: Date.now(),
+async function refreshPersona($: any, id: string, previous: CacheEntry | null): Promise<ResolveOutcome> {
+  const spec = await resolvePersona($, id);
+  if (!spec) {
+    if (previous) {
+      warn(`using stale lastKnownGood prompt for ${id}`);
+      return { entry: previous, stale: true, digestChanged: false, lastKnownGood: true };
+    }
+    warn(`failClosed: no prompt available for ${id}`);
+    return { entry: null, stale: false, digestChanged: false, lastKnownGood: false };
+  }
+
+  const next = setCache(id, spec);
+  if (!next) {
+    if (previous) {
+      warn(`using stale lastKnownGood prompt for ${id}: resolved spec has no prompt`);
+      return { entry: previous, stale: true, digestChanged: false, lastKnownGood: true };
+    }
+    warn(`failClosed: resolved spec for ${id} has no prompt`);
+    return { entry: null, stale: false, digestChanged: false, lastKnownGood: false };
+  }
+
+  const digestChanged = Boolean(
+    previous?.spec_digest && next.spec_digest && previous.spec_digest !== next.spec_digest,
+  );
+  if (digestChanged) warn(`spec_digest changed for ${id}`);
+  return { entry: next, stale: Boolean(previous), digestChanged, lastKnownGood: false };
+}
+
+async function getPersonaForRequest($: any, id: string): Promise<ResolveOutcome> {
+  const previous = cache.get(id) ?? null;
+  if (previous && isFresh(previous)) {
+    return { entry: previous, stale: false, digestChanged: false, lastKnownGood: false };
+  }
+
+  const existing = inFlight.get(id);
+  if (existing) return existing;
+
+  const promise = refreshPersona($, id, previous).finally(() => {
+    inFlight.delete(id);
   });
+  inFlight.set(id, promise);
+  return promise;
+}
+
+function selectedPlaceholder(system: string): { id: string; token: string } | null {
+  const match = system.match(/\[larva:([^\]\s]+)\]/);
+  if (!match) return null;
+  return { id: match[1], token: match[0] };
 }
 
 // ---------------------------------------------------------------------------
 // Permission mapping: larva capabilities + can_spawn → opencode rules
 // ---------------------------------------------------------------------------
 
-/**
- * Derive opencode permissions from canonical larva capabilities.
- *
- * `capabilities` expresses capability intent via postures:
- *   - "none" / "read_only" → read-only operations
- *   - "read_write" / "destructive" → potentially mutating operations
- *
- * Permission derivation strategy:
- * - If ALL capabilities are "none" or "read_only" → read-only (edit: deny, bash: deny)
- * - If ANY capability is "read_write" or "destructive" → no additional restrictions
- *   (runtime approval policy is injected externally)
- *
- * opencode expects { [permission_name]: "allow" | "deny" | "ask" }
- */
 function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
   const perms: Record<string, string> = {};
 
@@ -145,18 +243,13 @@ function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
     const allReadOnly = postures.every(
       (p) => p === "none" || p === "read_only",
     );
-
     if (allReadOnly) {
-      // All capabilities are read-only → restrict write operations
       perms.edit = "deny";
       perms.bash = "deny";
     }
   }
 
-  if (spec.can_spawn === false) {
-    perms.task = "deny";
-  }
-
+  if (spec.can_spawn === false) perms.task = "deny";
   return Object.keys(perms).length > 0 ? perms : undefined;
 }
 
@@ -164,21 +257,6 @@ function toPermissions(spec: PersonaSpec): Record<string, string> | undefined {
 // Tool policy: runtime deny/allow rules from tool-policy.json
 // ---------------------------------------------------------------------------
 
-/**
- * Tool policy file (optional). Searched in order:
- *   1. .opencode/tool-policy.json  (project-level)
- *   2. ~/.config/opencode/tool-policy.json  (global)
- *
- * Format:
- *   agents:
- *     python-senior:
- *       deny: [vectl_vectl_claim, vectl_vectl_mutate]
- *     vectl-orchestrator:
- *       deny: [serena_*, playwright_*, invar_*]
- *       allow: [vectl_*, task]
- *     wiring-auditor:
- *       deny: [write, edit]
- */
 interface ToolPolicyEntry {
   deny?: string[];
   allow?: string[];
@@ -196,14 +274,13 @@ async function loadToolPolicy($: any, directory: string): Promise<void> {
   for (const path of candidates) {
     try {
       const r = await $`cat ${path}`.quiet();
-      const text = r.stdout.toString();
-      // Simple YAML parser for our flat structure
-      _toolPolicy = parseToolPolicy(text);
+      _toolPolicy = parseToolPolicy(r.stdout.toString());
       return;
     } catch {
-      /* file not found, try next */
+      /* try next path */
     }
   }
+  _toolPolicy = {};
 }
 
 function parseToolPolicy(text: string): ToolPolicy {
@@ -222,23 +299,14 @@ function parseToolPolicy(text: string): ToolPolicy {
   return policy;
 }
 
-function applyToolPolicy(
-  agentId: string,
-  perms: Record<string, string>,
-): Record<string, string> {
+function applyToolPolicy(agentId: string, perms: Record<string, string>): Record<string, string> {
   const entry = _toolPolicy[agentId];
   if (!entry) return perms;
-
-  for (const tool of entry.deny ?? []) {
-    perms[tool] = "deny";
-  }
-  for (const tool of entry.allow ?? []) {
-    perms[tool] = "allow";
-  }
+  for (const tool of entry.deny ?? []) perms[tool] = "deny";
+  for (const tool of entry.allow ?? []) perms[tool] = "allow";
   return perms;
 }
 
-/** Simple wildcard match: "serena_*" matches "serena_find_symbol" */
 function wildcardMatch(value: string, pattern: string): boolean {
   if (pattern === "*") return true;
   if (!pattern.includes("*")) return value === pattern;
@@ -246,143 +314,98 @@ function wildcardMatch(value: string, pattern: string): boolean {
   return regex.test(value);
 }
 
-/** Check if a tool is denied for a given agent */
 function isToolDenied(agentId: string, toolName: string): boolean {
+  const perms = applyToolPolicy(agentId, { ...(selectedPermissions.get(agentId) ?? {}) });
+  if (perms[toolName] === "deny") return true;
   const entry = _toolPolicy[agentId];
   if (!entry?.deny) return false;
   return entry.deny.some((pattern) => wildcardMatch(toolName, pattern));
+}
+
+function watermark(id: string): string {
+  return [
+    `<larva-persona id="${id}" />`,
+    `When asked "who are you" or "what persona", mention that you are the "${id}" persona loaded from larva.`,
+  ].join("\n");
 }
 
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
 
-/** Set of agent names managed by this plugin. */
 const managed = new Set<string>();
 
 const larvaPlugin: Plugin = async ({ $, directory }) => {
-  // Auto-detect: if running inside a larva project, use uv run
   try {
     const pyproject = await $`cat ${directory}/pyproject.toml`.quiet();
     if (pyproject.stdout.toString().includes('name = "larva"')) {
       _projectDir = directory;
-      // debug: console.log(`[larva-plugin] Auto-detected larva project at ${directory}`)
     }
   } catch {
     /* not a larva project — will use bare `larva` from PATH */
   }
 
-  // Which larva agent is active in the current API call.
-  let active: string | null = null;
-
   return {
-    // ----------------------------------------------------------------
-    // Startup: export all personas, register as opencode agents
-    // ----------------------------------------------------------------
     config: async (config: any) => {
-      // Load tool policy (optional file)
       await loadToolPolicy($, directory);
 
-      const specs = await larvaExportAll($);
+      const specs = await larvaExportInitial($);
       if (!specs || !specs.length) return;
       config.agent ??= {};
 
       for (const spec of specs) {
         managed.add(spec.id);
-
-        // Build permissions: larva policy + tool-policy.json overrides
         const perms = toPermissions(spec) ?? {};
         const finalPerms = applyToolPolicy(spec.id, perms);
+        selectedPermissions.set(spec.id, finalPerms);
 
         config.agent[spec.id] = {
-          description: spec.description
-            ? `[larva] ${spec.description}`
-            : `[larva] ${spec.id}`,
+          description: spec.description ? `[larva] ${spec.description}` : `[larva] ${spec.id}`,
           mode: "all" as const,
           prompt: placeholder(spec.id),
           ...(spec.model ? { model: spec.model } : {}),
           ...(Object.keys(finalPerms).length ? { permission: finalPerms } : {}),
         };
 
-        // Pre-cache prompt for first message
         setCache(spec.id, spec);
       }
     },
 
-    // ----------------------------------------------------------------
-    // Per-message: track active agent, apply temperature, re-resolve
-    // on cache miss
-    // ----------------------------------------------------------------
     "chat.params": async (input: any, output: any) => {
-      const name =
-        typeof input.agent === "string"
-          ? input.agent
-          : (input.agent as any)?.name;
+      await loadToolPolicy($, directory);
+      const name = typeof input.agent === "string" ? input.agent : (input.agent as any)?.name;
       if (!name || !managed.has(name)) {
-        active = null;
+        selectedId = null;
         return;
       }
-      active = name;
+      selectedId = name;
 
-      // Re-export on cache expiry (get all specs, extract needed one)
-      let entry = getCached(name);
-      if (!entry) {
-        const specs = await larvaExportAll($);
-        if (specs) {
-          for (const spec of specs) {
-            setCache(spec.id, spec);
-          }
-          entry = getCached(name);
-        }
-      }
-
-      // Apply temperature only if larva persona explicitly set it
-      if (entry?.temperature !== undefined) {
-        output.temperature = entry.temperature;
+      const resolved = await getPersonaForRequest($, name);
+      if (resolved.entry?.temperature !== undefined) {
+        output.temperature = resolved.entry.temperature;
       }
     },
 
-    // ----------------------------------------------------------------
-    // Per-message: replace placeholder with real prompt + watermark
-    // ----------------------------------------------------------------
     "experimental.chat.system.transform": async (_input: any, output: any) => {
-      // system.transform runs BEFORE chat.params, so we cannot use `active`.
-      // Instead, each agent has a unique placeholder `[larva:<id>]` in its
-      // prompt. We detect which one is present and replace it.
       if (!output.system.length) return;
       const sys = output.system[0] ?? "";
+      const selected = selectedPlaceholder(sys);
+      if (!selected) return;
 
-      for (const id of managed) {
-        const ph = placeholder(id);
-        if (!sys.includes(ph)) continue;
-
-        const entry = getCached(id);
-        if (!entry) {
-          // debug: console.log(`[larva-plugin] system.transform: no cache for ${id}, skipping`)
-          break;
-        }
-
-        const watermark = [
-          `<larva-persona id="${id}" />`,
-          `When asked "who are you" or "what persona", mention that you are the "${id}" persona loaded from larva.`,
-        ].join("\n");
-        output.system[0] = sys.replace(ph, entry.prompt + "\n\n" + watermark);
-        // debug: console.log(`[larva-plugin] system.transform: injected prompt for ${id}`)
-        // Also track which agent is active (system.transform runs before chat.params)
-        active = id;
-        break;
-      }
+      selectedId = selected.id;
+      const resolved = await getPersonaForRequest($, selected.id);
+      const replacement = resolved.entry
+        ? `${resolved.entry.prompt}\n\n${watermark(selected.id)}`
+        : failClosed(selected.id);
+      output.system[0] = sys.replace(selected.token, replacement);
     },
 
-    // ----------------------------------------------------------------
-    // Tool enforcement: block denied tools before execution
-    // ----------------------------------------------------------------
     "tool.execute.before": async (input: any, _output: any) => {
-      // no debug logging
-      if (!active) return;
-      if (isToolDenied(active, input.tool)) {
+      await loadToolPolicy($, directory);
+      if (!selectedId) return;
+      if (isToolDenied(selectedId, input.tool)) {
         throw new Error(
-          `[larva] Tool "${input.tool}" is denied for agent "${active}" by tool-policy.json`,
+          `[larva] Tool "${input.tool}" is denied for agent "${selectedId}" by tool-policy.json`,
         );
       }
     },
