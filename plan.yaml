@@ -65160,7 +65160,7 @@ phases:
       \ -> No files found\n```\n\n## Residual risk\nnone"
   - id: variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
     name: contrib-web-variant-parity-remediation
-    status: claimed
+    status: done
     description: 'Remediate final wiring-audit debt in contrib/web/index.html so the
       supported contributor convenience UI mirrors the packaged variant cutover: remove
       stale tools/side_effect_policy UI, initialize/reset/load selectedVariant and
@@ -65193,6 +65193,48 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-05-03T06:04:08.827253+00:00'
+    done_at: '2026-05-03T06:07:46.583617+00:00'
+    evidence: '## Contrib UI debt fixed
+
+      - `contrib/web/index.html` no longer exposes deprecated `tools` or `side_effect_policy`
+      UI and removed related `editingTools`, `toolEntries`, `toggleToolsEdit`, and
+      `syncTools` state/handlers.
+
+      - Added contributor UI variant state parity: `selectedVariant`, `variantList`,
+      `loadVariants()`, persona-switch variant reset/load, active/inactive badge based
+      on variant metadata, and save/delete paths guarded against missing/undefined
+      variant names.
+
+      - Aligned contributor variant save/delete/activate behavior with packaged UI:
+      selected variants save through `PUT /api/registry/personas/{id}/variants/{variant}`,
+      inactive variant deletion uses variant delete, base persona deletion remains
+      `/api/personas/{id}`.
+
+
+      ## Verification
+
+      ```text
+
+      - uv run pytest tests/shell/test_contrib_web.py tests/shell/test_web.py tests/shell/test_web_rest_gaps.py
+      -q -> 70 passed in 0.78s
+
+      - invar_guard(path=/Users/tefx/Projects/larva, changed=false) -> deferred run
+      grd_0d8e355271fb4105b2e3cb99 complete: ok=true, errors=0, warnings=1, infos=3,
+      files_checked=40
+
+      - grep contrib/web/index.html for tools|side_effect_policy|assemble|component|preset|compose|editingTools|toolEntries|syncTools|toggleToolsEdit
+      -> No files found
+
+      - grep contrib/web/index.html for selectedVariant/loadVariants/switchVariant
+      -> selectedVariant initialized; loadVariants used on persona load/switch/save/delete;
+      switchVariant used for variant detail
+
+      ```
+
+
+      ## Residual risk
+
+      none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
