@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 import json
-from typing import IO, cast
+from typing import IO, TYPE_CHECKING, cast
 
 from returns.result import Result, Success
 
 from larva.app import facade as facade_module
-from larva.app.facade import LarvaError, PersonaSummary
 from larva.core.component_error_projection import (
     component_invalid_kind_error,
     project_component_store_error,
 )
 from larva.core.component_kind import CANONICAL_COMPONENT_KINDS, invalid_component_kind_message
-from larva.core.validate import ValidationReport
-from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.cli_projection import render_validation_report_text
 from larva.shell.cli_types import (
     EXIT_CRITICAL,
@@ -27,6 +24,11 @@ from larva.shell.cli_types import (
     CommandName,
     JsonErrorEnvelope,
 )
+from larva.shell.components import ComponentStoreError
+
+if TYPE_CHECKING:
+    from larva.app.facade_types import LarvaError, PersonaSummary
+    from larva.core.validation_contract import ValidationReport
 
 
 def _map_facade_error(error: LarvaError) -> Result[JsonErrorEnvelope, object]:
@@ -75,7 +77,8 @@ def _render_payload_for_text(command: CommandName, payload: object) -> Result[st
     return Success(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True) + "\n")
 
 
-# @invar:allow shell_result: CLI exit-code projection is a pure transport helper returning a process code
+# @invar:allow shell_result: CLI exit-code projection is a pure transport helper
+# returning a process code
 def cli_exit_code_for_error(error: JsonErrorEnvelope) -> CliExitCode:
     """Return the CLI exit-code projection for a canonical error envelope."""
 
@@ -104,7 +107,8 @@ def _map_component_error(error: object) -> Result[tuple[JsonErrorEnvelope, CliEx
     )
 
 
-# @shell_complexity: CLI --set parsing intentionally preserves explicit bool/null/int/float/string coercion order for user-facing semantics.
+# @shell_complexity: CLI --set parsing intentionally preserves explicit bool/null/int/float/string
+# coercion order for user-facing semantics.
 def _infer_value_type(value: str) -> Result[object, object]:
     if value.lower() == "true":
         return Success(True)
@@ -132,7 +136,7 @@ def _emit_result(
             stdout.write(_json_line(command_result.get("json", {"data": None})).unwrap())
         else:
             stdout.write(command_result.get("stdout", ""))
-        return command_result.get("exit_code", EXIT_OK)
+        return cast("CliExitCode", command_result.get("exit_code", EXIT_OK))
 
     failure = result.failure()
     if as_json:

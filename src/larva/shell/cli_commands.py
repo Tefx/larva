@@ -11,12 +11,7 @@ from typing import TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import (
-    BatchUpdateResult,
-    ClearedRegistry,
-    DeletedPersona,
-    LarvaFacade,
-)
+from larva.shell.cli_doctor import doctor_registry_command as doctor_registry_command
 from larva.shell.cli_helpers import (
     EXIT_CRITICAL,
     EXIT_ERROR,
@@ -30,20 +25,25 @@ from larva.shell.cli_helpers import (
     _write_output_json,
     render_validation_report_text,
 )
-from larva.shell.cli_doctor import doctor_registry_command
-from larva.shell.components import ComponentStore
 from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
 from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
+    from larva.app.facade_types import (
+        AssembleRequest,
+        BatchUpdateResult,
+        ClearedRegistry,
+        DeletedPersona,
+        LarvaFacade,
+    )
     from larva.core.spec import PersonaSpec
-    from larva.core.validate import ValidationReport
-    from larva.app.facade import AssembleRequest
+    from larva.core.validation_contract import ValidationReport
     from larva.shell.cli_helpers import CliExitCode
+    from larva.shell.components import ComponentStore
 
 
 def _validation_success_result(
-    report: "ValidationReport", *, as_json: bool
+    report: ValidationReport, *, as_json: bool
 ) -> Result[CliCommandResult, CliFailure]:
     result: CliCommandResult = {
         "exit_code": EXIT_OK,
@@ -54,14 +54,14 @@ def _validation_success_result(
             "data": {
                 "valid": True,
                 "errors": [],
-                "warnings": cast("list[str]", report.get("warnings", [])),
+                "warnings": report.get("warnings", []),
             }
         }
     return Success(result)
 
 
 def _validation_failure_result(
-    report: "ValidationReport", *, as_json: bool
+    report: ValidationReport, *, as_json: bool
 ) -> Result[CliCommandResult, CliFailure]:
     errors = cast("list[dict[str, object]]", report.get("errors", []))
     message = "validation failed"
@@ -82,7 +82,7 @@ def _validation_failure_result(
 
 
 def validate_command(
-    spec: "PersonaSpec",
+    spec: PersonaSpec,
     *,
     as_json: bool,
     facade: LarvaFacade,
@@ -124,7 +124,7 @@ def _assemble_success_result(
 def _assemble_failure_result(
     error_envelope: JsonErrorEnvelope,
     *,
-    exit_code: "CliExitCode",
+    exit_code: CliExitCode,
     as_json: bool,
 ) -> Result[CliCommandResult, CliFailure]:
     failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
@@ -134,7 +134,7 @@ def _assemble_failure_result(
 
 
 def assemble_command(
-    request: "AssembleRequest",
+    request: AssembleRequest,
     *,
     as_json: bool,
     facade: LarvaFacade,
@@ -155,7 +155,7 @@ def assemble_command(
 
 
 def register_command(
-    spec: "PersonaSpec",
+    spec: PersonaSpec,
     *,
     as_json: bool,
     facade: LarvaFacade,
@@ -294,10 +294,10 @@ def export_command(
         return Success(cli_result)
 
     error_envelope = _map_facade_error(result.failure()).unwrap()
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    mapped_failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
-    return Failure(failure)
+        mapped_failure["stderr"] = f"Export failed: {error_envelope['message']}\n"
+    return Failure(mapped_failure)
 
 
 # @shell_complexity: command-level envelope mapping requires explicit text/json branches
@@ -358,10 +358,10 @@ def clear_command(
         return Success(cli_result)
 
     error_envelope = _map_facade_error(result.failure()).unwrap()
-    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    mapped_failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
-    return Failure(failure)
+        mapped_failure["stderr"] = f"Clear failed: {error_envelope['message']}\n"
+    return Failure(mapped_failure)
 
 
 # @shell_complexity: command-level envelope mapping requires explicit text/json branches
@@ -457,10 +457,10 @@ def component_list_command(
         return Success(cli_result)
 
     error_envelope, exit_code = _map_component_error(result.failure()).unwrap()
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
+    mapped_failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
     if not as_json:
-        failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
-    return Failure(failure)
+        mapped_failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
+    return Failure(mapped_failure)
 
 
 # @shell_complexity: target parsing + loader routing requires explicit branches
@@ -473,7 +473,6 @@ def component_show_command(
     """Show a specific component by ref (type/name)."""
     from larva.shell.cli_helpers import (
         _component_show_invalid_target,
-        _map_component_error,
         cli_exit_code_for_error,
     )
 
@@ -493,13 +492,13 @@ def component_show_command(
     )
     if isinstance(query_result, Failure):
         error_envelope = query_result.failure()
-        failure: CliFailure = {
+        mapped_failure: CliFailure = {
             "exit_code": cli_exit_code_for_error(error_envelope),
             "error": error_envelope,
         }
         if not as_json:
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
+            mapped_failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
+        return Failure(mapped_failure)
 
     payload = cast("dict[str, object]", dict(query_result.unwrap()))
 
@@ -510,4 +509,3 @@ def component_show_command(
     if as_json:
         cli_result["json"] = {"data": payload}
     return Success(cli_result)
-
