@@ -41,10 +41,7 @@ from fastapi import FastAPI
 from larva.shell import python_api as _python_api
 from larva.shell.web_routes import register_routes
 
-assemble = _python_api.assemble
 clear = _python_api.clear
-component_list = _python_api.component_list
-component_show = _python_api.component_show
 delete = _python_api.delete
 export_all = _python_api.export_all
 export_ids = _python_api.export_ids
@@ -53,25 +50,45 @@ register = _python_api.register
 resolve = _python_api.resolve
 update = _python_api.update
 update_batch = _python_api.update_batch
+variant_list = _python_api.variant_list
+variant_activate = _python_api.variant_activate
+variant_delete = _python_api.variant_delete
+variant_list = _python_api.variant_list
+variant_activate = _python_api.variant_activate
+variant_delete = _python_api.variant_delete
+variant_list = _python_api.variant_list
+variant_activate = _python_api.variant_activate
+variant_delete = _python_api.variant_delete
+variant_list = _python_api.variant_list
+variant_activate = _python_api.variant_activate
+variant_delete = _python_api.variant_delete
 validate = _python_api.validate
 
 __all__ = [
     "app",
-    "assemble",
     "clear",
-    "component_list",
-    "component_show",
     "create_app",
     "delete",
     "export_all",
     "export_ids",
-    "get_component_projections",
     "list_personas",
     "main",
     "register",
     "resolve",
     "run_web_app",
     "update",
+    "variant_list",
+    "variant_activate",
+    "variant_delete",
+    "variant_list",
+    "variant_activate",
+    "variant_delete",
+    "variant_list",
+    "variant_activate",
+    "variant_delete",
+    "variant_list",
+    "variant_activate",
+    "variant_delete",
     "update_batch",
     "validate",
 ]
@@ -86,85 +103,7 @@ STATIC_DIR = Path(__file__).parent
 #
 
 
-class ComponentTypeProjection(TypedDict):
-    """Web-facing projection for one canonical component kind.
 
-    Canonical inputs (prompts, toolsets, constraints, models) are preserved
-    as authoritative internal categories. This projection provides UI-only
-    display metadata so the web UI can render preset-library and compose-persona
-    wording without inventing new backend semantics.
-
-    Fields:
-        canonical_kind: Internal canonical name (e.g. 'toolsets'). MUST NOT be
-            changed by UI — this is the authoritative key for assemble requests.
-        display_label: User-facing singular name (e.g. 'Capability Preset').
-        plural_display_label: User-facing plural name (e.g. 'Capability Presets').
-        description: Human-readable description for UI tooltips and placeholders.
-        singular_alias: Legacy singular alias metadata for UI copy only. Public
-            ingress rejects this alias and requires canonical plural kinds.
-        assemble_field: The field name used in /api/personas/assemble requests.
-        ui_hint: UI-specific routing hint (e.g. 'preset' for toolsets).
-    """
-
-    canonical_kind: str
-    display_label: str
-    plural_display_label: str
-    description: str
-    singular_alias: str
-    assemble_field: str
-    ui_hint: str
-
-
-# Canonical kind -> web projection (order matters for /api/components/projection)
-_CANONICAL_KIND_PROJECTIONS: dict[str, ComponentTypeProjection] = {
-    "prompts": {
-        "canonical_kind": "prompts",
-        "display_label": "Prompt",
-        "plural_display_label": "Prompts",
-        "description": "System prompt fragments that define persona behavior",
-        "singular_alias": "prompt",
-        "assemble_field": "prompts",
-        "ui_hint": "prompt",
-    },
-    "toolsets": {
-        "canonical_kind": "toolsets",
-        "display_label": "Capability Preset",
-        "plural_display_label": "Capability Presets",
-        "description": "Bundles of tool capability declarations (read, write, destructive)",
-        "singular_alias": "toolset",
-        "assemble_field": "toolsets",
-        "ui_hint": "preset",
-    },
-    "constraints": {
-        "canonical_kind": "constraints",
-        "display_label": "Constraint",
-        "plural_display_label": "Constraints",
-        "description": "Persona constraints (spawn policy, compaction prompts)",
-        "singular_alias": "constraint",
-        "assemble_field": "constraints",
-        "ui_hint": "constraint",
-    },
-    "models": {
-        "canonical_kind": "models",
-        "display_label": "Model",
-        "plural_display_label": "Models",
-        "description": "Model configuration and parameters",
-        "singular_alias": "model",
-        "assemble_field": "model",
-        "ui_hint": "model",
-    },
-}
-
-
-def get_component_projections() -> list[ComponentTypeProjection]:
-    """Return web-facing projections for all canonical component kinds.
-
-    This projection is UI-only metadata — it does not change canonical inputs.
-    The web UI uses display_label and plural_display_label for preset-library
-    and compose-persona wording. assemble_field is the authoritative key for
-    assemble requests.
-    """
-    return list(_CANONICAL_KIND_PROJECTIONS.values())
 
 
 # ---------------------------------------------------------------------------

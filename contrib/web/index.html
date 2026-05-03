@@ -416,7 +416,6 @@
       <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Components</button>
       <button class="btn" @click="openBatchUpdate()">Batch Update</button>
       <button class="btn" @click="modals.import = true">Import</button>
-      <button class="btn btn-accent" @click="modals.assemble = true" style="width:32px;padding:0;justify-content:center;font-size:16px;">+</button>
     </div>
   </header>
 
@@ -432,7 +431,7 @@
             <div class="sidebar-item" :class="{ active: selected === p.id }" @click="selectPersona(p.id)">
               <div class="sidebar-item-id" x-text="p.id"></div>
               <div class="sidebar-item-meta">
-                <span x-text="p.model"></span> &middot; <span x-text="Object.keys(p.capabilities || {}).length + ' caps'"></span><span x-show="p.side_effect_policy"> &middot; <span x-text="p.side_effect_policy" style="text-decoration:line-through;opacity:0.6;" title="Deprecated: use capabilities"></span></span>
+                <span x-text="p._registry?.variant"></span> &middot; <span x-text="p.model"></span> &middot; <span x-text="Object.keys(p.capabilities || {}).length + ' caps'"></span><span x-show="p.side_effect_policy"> &middot; <span x-text="p.side_effect_policy" style="text-decoration:line-through;opacity:0.6;" title="Deprecated: use capabilities"></span></span>
               </div>
               <div class="sidebar-item-digest" x-text="(p.spec_digest || '').slice(0, 24) + '...'"></div>
             </div>
@@ -449,6 +448,21 @@
         <!-- Header -->
         <div class="detail-header">
           <h1 class="detail-title" x-text="selectedPersona?.id"></h1>
+          
+          <div style="margin-left:16px; display:flex; align-items:center; gap:8px;">
+            <select x-model="selectedVariant" @change="switchVariant($event.target.value)" style="padding:4px 8px; border-radius:4px; border:1px solid var(--border); background:var(--bg-primary);">
+              <template x-for="v in (selectedPersona?._variants || [])" :key="v">
+                <option :value="v" x-text="v" :selected="v === selectedPersona?._registry?.variant"></option>
+              </template>
+            </select>
+            <span style="font-size:12px; padding:2px 6px; border-radius:4px;" 
+                  :style="selectedPersona?._registry?.is_active ? 'background:var(--accent);color:#fff;' : 'background:var(--border);color:var(--text);'"
+                  x-text="selectedPersona?._registry?.is_active ? 'Active' : 'Inactive'"></span>
+            <button x-show="!selectedPersona?._registry?.is_active" class="btn" style="padding:2px 8px; font-size:12px;" @click="activateVariant()">Set Active</button>
+          </div>
+          
+          <div style="flex-grow:1;"></div>
+          
           <template x-if="!deleteConfirm">
             <button class="btn btn-danger" @click="deleteConfirm = true">Delete</button>
           </template>
@@ -731,51 +745,8 @@
       <p>Register your first persona to get started</p>
       <div class="empty-state-actions">
         <button class="btn" @click="modals.import = true">Import JSON</button>
-        <button class="btn btn-accent" @click="modals.assemble = true">Assemble New</button>
       </div>
     </div>
-
-    <!-- COMPONENT BROWSER -->
-    <div class="detail" x-show="view === 'components'" style="display:none;">
-      <div class="detail-inner">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-          <button class="btn" @click="view = 'detail'">&#8592; Back</button>
-          <h1 class="detail-title">Component Library</h1>
-        </div>
-        <template x-if="components">
-          <div>
-            <template x-for="type in ['prompts', 'toolsets', 'constraints', 'models']" :key="type">
-              <div class="comp-section">
-                <button class="comp-section-header" @click="compExpanded[type] = !compExpanded[type]">
-                  <span x-text="type.toUpperCase()"></span>
-                  <span x-text="compExpanded[type] ? '&#9660;' : '&#9654;'"></span>
-                </button>
-                <template x-if="compExpanded[type]">
-                  <div>
-                    <template x-for="name in (components[type] || [])" :key="name">
-                      <div>
-                        <button class="comp-item" @click="toggleCompItem(type, name)">
-                          <span x-text="name"></span>
-                          <span x-text="compItemExpanded[type+'/'+name] ? '&#9660;' : '&#9654;'" style="color:var(--text-muted);"></span>
-                        </button>
-                        <template x-if="compItemExpanded[type+'/'+name]">
-                          <div class="comp-content" x-text="compItemContent[type+'/'+name] || 'Loading...'"></div>
-                        </template>
-                      </div>
-                    </template>
-                    <div x-show="(components[type] || []).length === 0" style="padding:12px 16px;color:var(--text-muted);border-top:1px solid var(--border);">
-                      No components found
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </template>
-          </div>
-        </template>
-      </div>
-    </div>
-
-  </div>
 
   <!-- IMPORT MODAL -->
   <div class="modal-overlay" x-show="modals.import" @click.self="modals.import = false" @keydown.escape.window="modals.import = false" x-cloak>
@@ -817,75 +788,8 @@
     x-transition:enter="transition ease-out duration-200"
     x-transition:leave="transition ease-in duration-150"></div>
 
-  <!-- ASSEMBLE MODAL -->
-  <div class="modal-overlay" x-show="modals.assemble" @click.self="modals.assemble = false" @keydown.escape.window="modals.assemble = false" x-cloak>
-    <div class="modal">
-      <div class="modal-header">
-        <div class="modal-title">Assemble Persona</div>
-        <button class="modal-close" @click="modals.assemble = false">&times;</button>
-      </div>
-      <div class="modal-body">
-        <!-- ID -->
-        <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Persona ID</div>
-          <input class="inline-input" x-model="assembleForm.id" placeholder="e.g., my-custom-agent"
-            :style="assembleForm.id && !isValidId(assembleForm.id) ? 'box-shadow:0 0 0 1px var(--danger)' : ''">
-          <div x-show="assembleForm.id && !isValidId(assembleForm.id)" style="color:var(--danger);font-size:11px;margin-top:4px;">
-            ID must be lowercase kebab-case (e.g. my-agent-name)
-          </div>
-        </div>
-
-        <!-- Prompts -->
-        <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Prompts</div>
-          <template x-for="name in (components?.prompts || [])" :key="name">
-            <label class="option-item">
-              <input type="checkbox" :value="name" x-model="assembleForm.prompts">
-              <span x-text="name"></span>
-            </label>
-          </template>
-          <div x-show="!components?.prompts?.length" style="color:var(--text-muted);font-size:12px;">No prompt components found. Add .md files to ~/.larva/components/prompts/</div>
-        </div>
-
-        <!-- Toolsets -->
-        <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Toolsets</div>
-          <template x-for="name in (components?.toolsets || [])" :key="name">
-            <label class="option-item">
-              <input type="checkbox" :value="name" x-model="assembleForm.toolsets">
-              <span x-text="name"></span>
-            </label>
-          </template>
-          <div x-show="!components?.toolsets?.length" style="color:var(--text-muted);font-size:12px;">No toolset components found</div>
-        </div>
-
-        <!-- Constraints -->
-        <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Constraints</div>
-          <template x-for="name in (components?.constraints || [])" :key="name">
-            <label class="option-item">
-              <input type="checkbox" :value="name" x-model="assembleForm.constraints">
-              <span x-text="name"></span>
-            </label>
-          </template>
-          <div x-show="!components?.constraints?.length" style="color:var(--text-muted);font-size:12px;">No constraint components found</div>
-        </div>
-
-        <!-- Models -->
-        <div class="section" style="margin-bottom:16px;">
-          <div class="section-label">Model</div>
-          <template x-for="name in (components?.models || [])" :key="name">
-            <label class="option-item">
-              <input type="radio" name="asm-model" :value="name" x-model="assembleForm.model">
-              <span x-text="name"></span>
-            </label>
-          </template>
-          <div x-show="!components?.models?.length" style="color:var(--text-muted);font-size:12px;">No model components found</div>
-        </div>
-      </div>
+  
       <div class="modal-footer">
-        <button class="btn" @click="modals.assemble = false">Cancel</button>
-        <button class="btn btn-accent" :disabled="!assembleForm.id || !isValidId(assembleForm.id)" @click="doAssemble()">Assemble</button>
       </div>
     </div>
   </div>
@@ -1013,15 +917,14 @@ function larvaApp() {
     deleteText: '',
     showRawJson: false,
     showCompaction: false,
-    components: null,
+    
     compExpanded: {},
     compItemExpanded: {},
     compItemContent: {},
-    modals: { import: false, assemble: false },
+    modals: { import: false },
     importJson: '',
     importValidation: null,
-    assembleForm: { id: '', prompts: [], toolsets: [], constraints: [], model: '' },
-    batchUpdate: {
+        batchUpdate: {
       show: false,
       whereClauses: [{key: '', value: ''}],
       setClauses: [{key: '', value: ''}],
@@ -1049,8 +952,7 @@ function larvaApp() {
 
     async init() {
       await this.loadPersonas();
-      await this.loadComponents();
-
+      
       // Watch importJson for validation
       this.$watch('importJson', async (val) => {
         if (!val.trim()) { this.importValidation = null; return; }
@@ -1069,28 +971,135 @@ function larvaApp() {
       });
     },
 
+    async switchVariant(v) {
+      if (!this.selectedPersona) return;
+      try {
+        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
+        const d = await r.json();
+        if (d.data) {
+          const newP = {
+            ...d.data.spec,
+            _registry: d.data._registry,
+            _variants: this.selectedPersona._variants
+          };
+          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
+          this.selectedPersona = newP;
+          this.selectedVariant = v;
+        }
+      } catch(e) { alert('Failed to switch variant: ' + e.message); }
+    },
+    
+    async activateVariant() {
+      if (!this.selectedPersona) return;
+      const v = this.selectedPersona._registry.variant;
+      try {
+        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
+        await this.loadPersonas();
+      } catch(e) { alert('Failed to activate variant: ' + e.message); }
+    },
+
+    async switchVariant(v) {
+      if (!this.selectedPersona) return;
+      try {
+        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
+        const d = await r.json();
+        if (d.data) {
+          const newP = {
+            ...d.data.spec,
+            _registry: d.data._registry,
+            _variants: this.selectedPersona._variants
+          };
+          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
+          this.selectedPersona = newP;
+          this.selectedVariant = v;
+        }
+      } catch(e) { alert('Failed to switch variant: ' + e.message); }
+    },
+    
+    async activateVariant() {
+      if (!this.selectedPersona) return;
+      const v = this.selectedPersona._registry.variant;
+      try {
+        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
+        await this.loadPersonas();
+      } catch(e) { alert('Failed to activate variant: ' + e.message); }
+    },
+
+    async switchVariant(v) {
+      if (!this.selectedPersona) return;
+      try {
+        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
+        const d = await r.json();
+        if (d.data) {
+          const newP = {
+            ...d.data.spec,
+            _registry: d.data._registry,
+            _variants: this.selectedPersona._variants
+          };
+          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
+          this.selectedPersona = newP;
+          this.selectedVariant = v;
+        }
+      } catch(e) { alert('Failed to switch variant: ' + e.message); }
+    },
+    
+    async activateVariant() {
+      if (!this.selectedPersona) return;
+      const v = this.selectedPersona._registry.variant;
+      try {
+        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
+        await this.loadPersonas();
+      } catch(e) { alert('Failed to activate variant: ' + e.message); }
+    },
+
+    async switchVariant(v) {
+      if (!this.selectedPersona) return;
+      try {
+        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
+        const d = await r.json();
+        if (d.data) {
+          const newP = {
+            ...d.data.spec,
+            _registry: d.data._registry,
+            _variants: this.selectedPersona._variants
+          };
+          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
+          this.selectedPersona = newP;
+          this.selectedVariant = v;
+        }
+      } catch(e) { alert('Failed to switch variant: ' + e.message); }
+    },
+    
+    async activateVariant() {
+      if (!this.selectedPersona) return;
+      const v = this.selectedPersona._registry.variant;
+      try {
+        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
+        await this.loadPersonas();
+      } catch(e) { alert('Failed to activate variant: ' + e.message); }
+    },
+
     async loadPersonas() {
-      const resp = await fetch('/api/personas');
+      const resp = await fetch('/api/registry/personas');
       const data = await resp.json();
       const summaries = data.data || [];
-      // Load full specs
+      
       const full = await Promise.all(summaries.map(async s => {
-        const r = await fetch(`/api/personas/${s.id}`);
+        const active = s.active_variant || "default";
+        const r = await fetch(`/api/registry/personas/${s.id}/variants/${active}`);
+        if (!r.ok) return null;
         const d = await r.json();
-        return d.data;
+        if (!d.data) return null;
+        return {
+           ...d.data.spec,
+           _registry: d.data._registry,
+           _variants: s.variants
+        };
       }));
       this.personas = full.filter(Boolean);
       if (!this.selected && this.personas.length) {
         this.selected = this.personas[0].id;
       }
-    },
-
-    async loadComponents() {
-      try {
-        const resp = await fetch('/api/components');
-        const data = await resp.json();
-        this.components = data.data;
-      } catch { this.components = { prompts: [], toolsets: [], constraints: [], models: [] }; }
     },
 
     selectPersona(id) {
@@ -1241,13 +1250,19 @@ function larvaApp() {
     async saveChanges() {
       if (!this.selected || !this.stagedCount) return;
       const savedId = this.selected;
-      const patchBody = JSON.stringify(this.staged);
-      console.log('[larva] Saving patches for', savedId, ':', patchBody);
+      const v = this.selectedVariant;
+      
+      const fullSpec = Object.assign({}, this.selectedPersona);
+      delete fullSpec._registry;
+      delete fullSpec._variants;
+      Object.assign(fullSpec, this.staged);
+      
+      console.log('[larva] Saving variant', v, 'for', savedId, ':', fullSpec);
       try {
-        const resp = await fetch(`/api/personas/${savedId}`, {
-          method: 'PATCH',
+        const resp = await fetch(`/api/registry/personas/${savedId}/variants/${v}`, {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: patchBody,
+          body: JSON.stringify(fullSpec),
         });
         const data = await resp.json();
         console.log('[larva] Save response:', data);
@@ -1290,8 +1305,9 @@ function larvaApp() {
     // Delete
     async doDelete() {
       if (this.deleteText !== this.selectedPersona?.id) return;
+      const v = this.selectedVariant;
       try {
-        await fetch(`/api/personas/${this.selected}`, { method: 'DELETE' });
+        await fetch(`/api/registry/personas/${this.selected}/variants/${v}`, { method: 'DELETE' });
         this.selected = null;
         this.deleteConfirm = false;
         this.deleteText = '';
@@ -1326,39 +1342,7 @@ function larvaApp() {
       }
     },
 
-    // Assemble
-    async doAssemble() {
-      try {
-        const resp = await fetch('/api/personas/assemble', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.assembleForm),
-        });
-        const data = await resp.json();
-        if (data.error) {
-          alert('Assemble failed: ' + (data.error.message || JSON.stringify(data.error)));
-          return;
-        }
-        // Register the assembled spec
-        const regResp = await fetch('/api/personas', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ spec: data.data }),
-        });
-        const regData = await regResp.json();
-        if (regData.error) {
-          alert('Register failed: ' + (regData.error.message || JSON.stringify(regData.error)));
-          return;
-        }
-        this.modals.assemble = false;
-        this.assembleForm = { id: '', prompts: [], toolsets: [], constraints: [], model: '' };
-        await this.loadPersonas();
-        this.selected = data.data.id;
-      } catch (e) {
-        alert('Assemble failed: ' + e.message);
-      }
-    },
-
+    
     // Component browser
     async toggleCompItem(type, name) {
       const key = type + '/' + name;
