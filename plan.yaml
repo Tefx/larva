@@ -62231,7 +62231,7 @@ phases:
       review.'
   - id: variants_registry_impl_20260503.registry-spec-conformance
     name: registry-spec-conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -62320,6 +62320,8 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-storage-implementation
     agent: spec-verifier-tacit
+    claimed_by: spec-verifier-tacit
+    claimed_at: '2026-05-03T01:50:36.468321+00:00'
   - id: variants_registry_impl_20260503.registry-gate
     name: registry-gate
     status: pending
