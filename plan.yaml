@@ -11214,7 +11214,7 @@ phases:
       - ARCHITECTURE.md module larva.core.normalize'
   - id: core_normalize.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for core normalize
-    status: pending
+    status: claimed
     description: 'Resolve validate errors for completed steps core_normalize.core-normalize-verify
       and core_normalize.core-normalize-implement. This is a proof-closure/evidence
       task, not product-code implementation. Produce accepted same-phase closure evidence
@@ -11238,6 +11238,8 @@ phases:
       \  ```\n  <paste exact output/evidence>\n  ```\n- Gate-intersection disposition:\
       \ <why remaining gates are closed or not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:20:55.510354+00:00'
 - id: core_validate_exec
   name: larva.core.validate execution
   status: in_progress
