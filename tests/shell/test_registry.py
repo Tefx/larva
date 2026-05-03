@@ -594,17 +594,16 @@ class TestFileSystemRegistryStoreContract:
 
 
 # ===========================================================================
-# REGISTRY-LOCAL VARIANT TESTS (expected red until implementation lands)
+# REGISTRY-LOCAL VARIANT TESTS (implemented registry-local variant contract)
 # ===========================================================================
 
 
 class TestRegistryVariantStorageLayout:
     """Registry-local variant layout: manifest.json + variants/*.json.
 
-    These tests define the target-state filesystem contract for variant storage.
-    They are expected-RED because the current FileSystemRegistryStore uses
-    flat <id>.json files with index.json, not the new <id>/manifest.json +
-    <id>/variants/<variant>.json layout.
+    These tests verify the filesystem contract for implemented variant storage:
+    <id>/manifest.json stores the active variant pointer and
+    <id>/variants/<variant>.json stores each canonical PersonaSpec.
     """
 
     @pytest.fixture
@@ -650,16 +649,14 @@ class TestRegistryVariantStorageLayout:
         """manifest.json contains exactly {"active": "default"}, no extra keys."""
         store = FileSystemRegistryStore(root=variant_root)
         spec = self._make_spec("manifest-check")
-        # The target design: register creates <id>/manifest.json with {"active": "default"}
+        # Register creates <id>/manifest.json with {"active": "default"}.
         result = store.save(spec)
         assert isinstance(result, (Success, Failure))
 
         manifest = variant_root / "manifest-check" / "manifest.json"
-        # This test will RED because current code creates flat <id>.json + index.json,
-        # not the new directory layout with manifest.json
         assert manifest.exists(), (
             "Expected ~./larva/registry/<id>/manifest.json to exist after register; "
-            "current implementation uses flat <id>.json + index.json"
+            "registry-local variants require the manifest-backed directory layout"
         )
         manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
         assert manifest_data == {"active": "default"}
@@ -784,8 +781,8 @@ class TestRegistryVariantStorageLayout:
 class TestRegistryVariantInvalidName:
     """Variant name validation: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be <= 64 chars.
 
-    These tests are expected-RED because the current facade does not accept
-    a variant parameter and the registry has no variant name validation.
+    These tests verify that invalid variant names are rejected before registry
+    writes and that the maximum-length valid kebab-case name is accepted.
     """
 
     @pytest.fixture
@@ -810,8 +807,7 @@ class TestRegistryVariantInvalidName:
     def test_invalid_variant_name_rejected(self, invalid_name: str) -> None:
         """Invalid variant names must produce INVALID_VARIANT_NAME error.
 
-        This test calls the register facade method with an invalid variant
-        name, which does not exist in the current API.
+        This test calls the registry save method with an invalid variant name.
         """
         root = Path("/")
         store = FileSystemRegistryStore(root=root)
@@ -838,7 +834,7 @@ class TestRegistryVariantInvalidName:
 class TestRegistryVariantActivate:
     """variant_activate uses same-directory write-then-rename for manifest.json.
 
-    Expected-RED because variant_activate does not exist yet.
+    Activation switches the manifest active pointer without rewriting specs.
     """
 
     @pytest.fixture
@@ -883,7 +879,7 @@ class TestRegistryVariantActivate:
 class TestRegistryVariantDelete:
     """variant_delete: reject active, reject last variant, accept inactive.
 
-    Expected-RED because variant_delete does not exist yet.
+    Deletion preserves active and last-variant invariants.
     """
 
     def test_variant_delete_active_variant_rejected(self) -> None:
