@@ -60302,7 +60302,7 @@ phases:
       issues introduced by the fix.'
 - id: variants_core_contract_20260503
   name: Registry-Local Variants Core Contract
-  status: pending
+  status: in_progress
   gate: Core variant contracts and pure helpers have falsifying tests, contracts/doctests,
     and no canonical PersonaSpec metadata leakage.
   depends_on:
@@ -60311,7 +60311,7 @@ phases:
   steps:
   - id: variants_core_contract_20260503.core-red-contract-tests
     name: core-red-contract-tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -60431,6 +60431,8 @@ phases:
     - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T00:24:29.792692+00:00'
   - id: variants_core_contract_20260503.core-pure-helpers
     name: core-pure-helpers
     status: pending
