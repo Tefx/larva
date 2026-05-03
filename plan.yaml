@@ -68047,7 +68047,7 @@ phases:
       - Implemented hot-update refresh for prompt/temperature/tool-policy/capabilities/can_spawn.'
   - id: opencode_hardening_wrapper_startup_20260503
     name: Align wrapper startup registration with base ids and active variants
-    status: pending
+    status: claimed
     description: Ensure wrapper startup registers OpenCode agents using Larva base
       persona ids, backed by the current registry active variant per base id at startup.
       Agent prompts should contain only the [larva:<id>] placeholder for runtime projection.
@@ -68061,6 +68061,8 @@ phases:
     depends_on:
     - opencode_hardening_runtime_20260503
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T13:53:04.898544+00:00'
   - id: opencode_hardening_docs_and_matrix_20260503
     name: Sync tests, docs, and behavior matrix
     status: pending
