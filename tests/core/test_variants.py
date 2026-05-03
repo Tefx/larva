@@ -13,8 +13,6 @@ implementation step has not yet added:
 All failures must be caused by the product gap, not by malformed tests.
 """
 
-import hashlib
-import json
 import re
 
 import pytest
@@ -24,8 +22,8 @@ from hypothesis import strategies as st
 from larva.core import validate as validate_module
 from larva.core.normalize import compute_spec_digest
 from larva.core.patch import FORBIDDEN_PATCH_FIELDS, PatchError, apply_patches
+from larva.core.validate import VariantNameError
 from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
-
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -327,7 +325,7 @@ class TestVariantNameAcceptance:
         from larva.core.validate import validate_variant_name
 
         name_65 = "a" * 65
-        with pytest.raises(Exception) as excinfo:
+        with pytest.raises(VariantNameError) as excinfo:
             validate_variant_name(name_65)
         # The error must reference INVALID_VARIANT_NAME
         assert "INVALID_VARIANT_NAME" in str(excinfo.value) or getattr(
@@ -338,56 +336,56 @@ class TestVariantNameAcceptance:
         """Empty variant name is invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("")
 
     def test_invalid_variant_name_uppercase(self) -> None:
         """Uppercase letters are invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("MyVariant")
 
     def test_invalid_variant_name_underscore(self) -> None:
         """Underscores are invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("my_variant")
 
     def test_invalid_variant_name_dot(self) -> None:
         """Dots are invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("my.variant")
 
     def test_invalid_variant_name_slash(self) -> None:
         """Path separators are invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("path/variant")
 
     def test_invalid_variant_name_double_dash(self) -> None:
         """Double dashes are invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("a--b")
 
     def test_invalid_variant_name_leading_dash(self) -> None:
         """Leading dash is invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("-leading")
 
     def test_invalid_variant_name_trailing_dash(self) -> None:
         """Trailing dash is invalid."""
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception):
+        with pytest.raises(VariantNameError):
             validate_variant_name("trailing-")
 
     @given(name=valid_variant_names())
@@ -406,12 +404,12 @@ class TestVariantNameAcceptance:
         """
         from larva.core.validate import validate_variant_name
 
-        with pytest.raises(Exception) as excinfo:
+        with pytest.raises(VariantNameError) as excinfo:
             validate_variant_name(name)
         # Must reference INVALID_VARIANT_NAME in the error
         error_str = str(excinfo.value).upper()
         error_code = getattr(excinfo.value, "code", "")
-        assert "INVALID_VARIANT_NAME" in error_str or "INVALID_VARIANT_NAME" == error_code, (
+        assert "INVALID_VARIANT_NAME" in error_str or error_code == "INVALID_VARIANT_NAME", (
             f"Expected INVALID_VARIANT_NAME error for variant name '{name}', got: {excinfo.value}"
         )
 

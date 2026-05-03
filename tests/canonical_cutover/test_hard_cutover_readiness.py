@@ -157,12 +157,9 @@ def _line_has_forbidden_field_reference(line: str, field: str) -> bool:
     if not re.search(rf'["\']{re.escape(field)}["\']', code_only):
         return False
 
-    # Check if this is a legitimate reference pattern
-    for pattern in _LEGITIMATE_REFERENCE_PATTERNS:
-        if pattern.search(code_only):
-            return False
-
-    return True
+    return all(
+        not pattern.search(code_only) for pattern in _LEGITIMATE_REFERENCE_PATTERNS
+    )
 
 
 def scan_forbidden_field_regressions() -> list[dict[str, Any]]:
@@ -241,28 +238,38 @@ def scan_deep_merge_keys() -> list[dict[str, Any]]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "DEEP_MERGE_KEYS":
-                    # Find the frozenset literal
-                    if isinstance(node.value, ast.Call):
-                        func = node.value.func
-                        if isinstance(func, ast.Name) and func.id == "frozenset":
-                            for arg in node.value.args:
-                                if isinstance(arg, ast.Set):
-                                    for elt in arg.elts:
-                                        if isinstance(elt, ast.Constant) and isinstance(
-                                            elt.value, str
-                                        ):
-                                            if elt.value in CANONICAL_FORBIDDEN_FIELDS:
-                                                findings.append(
-                                                    {
-                                                        "key": elt.value,
-                                                        "reason": (
-                                                            f"DEEP_MERGE_KEYS contains forbidden field "
-                                                            f"'{elt.value}' — must be removed before "
-                                                            f"canonical cutover"
-                                                        ),
-                                                    }
-                                                )
+                is_deep_merge_assignment = (
+                    isinstance(target, ast.Name)
+                    and target.id == "DEEP_MERGE_KEYS"
+                    and isinstance(node.value, ast.Call)
+                )
+                if not is_deep_merge_assignment:
+                    continue
+
+                func = node.value.func
+                if not (isinstance(func, ast.Name) and func.id == "frozenset"):
+                    continue
+
+                for arg in node.value.args:
+                    if not isinstance(arg, ast.Set):
+                        continue
+                    for elt in arg.elts:
+                        if not (
+                            isinstance(elt, ast.Constant)
+                            and isinstance(elt.value, str)
+                            and elt.value in CANONICAL_FORBIDDEN_FIELDS
+                        ):
+                            continue
+                        findings.append(
+                            {
+                                "key": elt.value,
+                                "reason": (
+                                    "DEEP_MERGE_KEYS contains forbidden field "
+                                    f"'{elt.value}' — must be removed before canonical "
+                                    "cutover"
+                                ),
+                            }
+                        )
 
     return findings
 
@@ -288,18 +295,21 @@ def scan_normalize_forbidden_field_regressions() -> list[dict[str, Any]]:
     for line_no, line in enumerate(content.splitlines(), start=1):
         stripped = line.strip()
         # Look for forbidden-field acceptance patterns that must stay removed
-        if 'canonical_spec.get("tools")' in line or "canonical_spec.pop(" in line:
-            if "tools" in line or "side_effect_policy" in line:
-                findings.append(
-                    {
-                        "line": line_no,
-                        "content": stripped,
-                        "reason": (
-                            "Forbidden-field acceptance pattern in normalize.py — "
-                            "hard cutover must keep this removed"
-                        ),
-                    }
-                )
+        has_forbidden_acceptance_call = (
+            'canonical_spec.get("tools")' in line or "canonical_spec.pop(" in line
+        )
+        mentions_forbidden_field = "tools" in line or "side_effect_policy" in line
+        if has_forbidden_acceptance_call and mentions_forbidden_field:
+            findings.append(
+                {
+                    "line": line_no,
+                    "content": stripped,
+                    "reason": (
+                        "Forbidden-field acceptance pattern in normalize.py — "
+                        "hard cutover must keep this removed"
+                    ),
+                }
+            )
 
     return findings
 
@@ -475,7 +485,7 @@ class TestForbiddenFieldConformanceScan:
     def test_deep_merge_keys_excludes_tools(self) -> None:
         """DEEP_MERGE_KEYS must not contain 'tools' after hard cutover."""
         findings = scan_deep_merge_keys()
-        assert findings == [], f"DEEP_MERGE_KEYS contains forbidden field(s):\n" + "\n".join(
+        assert findings == [], "DEEP_MERGE_KEYS contains forbidden field(s):\n" + "\n".join(
             f"  key='{f['key']}': {f['reason']}" for f in findings
         )
 
@@ -483,7 +493,8 @@ class TestForbiddenFieldConformanceScan:
         """normalize_spec must not reintroduce forbidden-field acceptance after hard cutover."""
         findings = scan_normalize_forbidden_field_regressions()
         assert findings == [], (
-            f"normalize.py contains forbidden-field acceptance regressions ({len(findings)} finding(s)):\n"
+            "normalize.py contains forbidden-field acceptance regressions "
+            f"({len(findings)} finding(s)):\n"
             + "\n".join(f"  L{f['line']}: {f['content']}" for f in findings)
         )
 

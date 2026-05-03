@@ -294,7 +294,8 @@ class FileSystemRegistryStore(RegistryStore):
                 ),
                 Failure,
             ):
-                message = f"{message}; rollback failed while restoring index: {rollback_result.failure()['message']}"
+                rollback_message = rollback_result.failure()["message"]
+                message = f"{message}; rollback failed while restoring index: {rollback_message}"
             return Failure(
                 {
                     "code": "REGISTRY_DELETE_FAILED",

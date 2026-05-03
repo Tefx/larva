@@ -7,20 +7,21 @@ import re
 from typing import cast
 
 from deal import post, pre, raises
+
 from larva.core._structured_error import _build_structured_exception
 from larva.core.validation_contract import (
-    CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,
-    CANONICAL_CONTRACT_METADATA,
-    CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE,
-    CANONICAL_FORBIDDEN_FIELDS,
+    CANONICAL_CAPABILITIES_REQUIRED_CLAUSE,  # noqa: F401 # public re-export
+    CANONICAL_CONTRACT_METADATA,  # noqa: F401 # public re-export
     CANONICAL_FORBIDDEN_FIELD_MESSAGE,
+    CANONICAL_FORBIDDEN_FIELDS,
+    CANONICAL_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE,  # noqa: F401 # public re-export
     CANONICAL_OPTIONAL_FIELDS,
-    CANONICAL_REQUIRED_FIELDS,
     CANONICAL_REQUIRED_FIELD_MESSAGE,
-    CANONICAL_TOOLS_REJECTED_CLAUSE,
+    CANONICAL_REQUIRED_FIELDS,
+    CANONICAL_TOOLS_REJECTED_CLAUSE,  # noqa: F401 # public re-export
     CANONICAL_UNKNOWN_FIELD_MESSAGE,
-    VALIDATION_ISSUE_KEYS,
-    VALIDATION_REPORT_KEYS,
+    VALIDATION_ISSUE_KEYS,  # noqa: F401 # public re-export
+    VALIDATION_REPORT_KEYS,  # noqa: F401 # public re-export
     ValidationIssue,
     ValidationReport,
     validation_issue,
@@ -224,9 +225,15 @@ def validate_variant_name(name: str) -> str:
         reason = (
             "variant name must not be empty"
             if len(name) == 0
-            else f"variant name exceeds maximum length of {_VARIANT_NAME_MAX_LENGTH} characters (got {len(name)})"
+            else (
+                f"variant name exceeds maximum length of {_VARIANT_NAME_MAX_LENGTH} "
+                f"characters (got {len(name)})"
+            )
         )
-        raise _build_variant_name_error(reason, {"field": "variant", "value": name, "max_length": _VARIANT_NAME_MAX_LENGTH})
+        raise _build_variant_name_error(
+            reason,
+            {"field": "variant", "value": name, "max_length": _VARIANT_NAME_MAX_LENGTH},
+        )
 
     if not _VARIANT_NAME_PATTERN.fullmatch(name):
         raise _build_variant_name_error(
@@ -242,7 +249,9 @@ def validate_variant_name(name: str) -> str:
 def _validate_required_string_fields(spec: dict[str, object]) -> list[ValidationIssue]:
     """Validate whitespace-only required string fields.
 
-    >>> _validate_required_string_fields({"id": " ", "description": "ok", "prompt": "ok", "model": "ok", "spec_version": "0.1.0"})[0]["code"]
+    >>> spec = {"id": " ", "description": "ok", "prompt": "ok"}
+    >>> spec.update({"model": "ok", "spec_version": "0.1.0"})
+    >>> _validate_required_string_fields(spec)[0]["code"]
     'EMPTY_REQUIRED_FIELD'
     >>> _validate_required_string_fields({"description": "ok"})
     []
