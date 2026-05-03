@@ -47325,7 +47325,7 @@ phases:
       \ and documentation, not in acceptance paths"
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
-  status: done
+  status: in_progress
   gate: Docs, examples, scans, tests, and guard all prove canonical alignment
   depends_on:
   - canonical_cutover_impl
@@ -47692,6 +47692,17 @@ phases:
       \ != \"tools\"}` as legitimate canonical enforcement. Adding this pattern would\
       \ eliminate the 8 false positives and make test_scan_finds_no_new_legacy_field_references\
       \ pass."
+  - id: canonical_cutover_final.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for canonical cutover
+      final
+    status: pending
+    description: Resolve validate error for completed step canonical_cutover_final.gate,
+      whose evidence contains failed tests. Add later same-phase closure evidence
+      proving final cutover verification is now green/OPEN, or record explicit expected-red/non-blocking
+      owner/lifecycle/gate-intersection disposition.
+    verification: Run vectl_validate(check_refs=true) and show the canonical_cutover_final
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: post_cutover_debt_remediation
   name: Post-Cutover Debt Remediation
   status: done
