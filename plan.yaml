@@ -12138,7 +12138,7 @@ phases:
       - INTERFACES.md larva.assemble + component library'
   - id: core_assemble.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for core assemble
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step core_assemble.core-assemble-verify.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence that proves the current assemble gate is
@@ -12162,6 +12162,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:20:48.028225+00:00'
 - id: core_exec_remediation
   name: Core execution remediation
   status: done
