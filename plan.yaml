@@ -62432,7 +62432,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_registry_impl_20260503.registry-conformance-remediation
     name: registry-conformance-remediation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: HIGH
@@ -62695,6 +62695,113 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T01:56:43.120415+00:00'
+    done_at: '2026-05-03T02:02:26.979613+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — accepted design:
+      <persona-id>/manifest.json plus variants/<variant>.json; index.json not used;
+      malformed variant names reject INVALID_VARIANT_NAME; explicit base/path id mismatch
+      would be PERSONA_ID_MISMATCH.
+
+      - docs/reference/INTERFACES.md — larva is downstream admission/projection handler;
+      facade surfaces are canonical shared entrypoints.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — id_mismatch_rejected
+      expects persona_id_mismatch; variant metadata outside PersonaSpec; bad variant
+      names reject.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — malformed
+      variant delete names reject invalid_variant_name before not-found semantics.
+
+      - ../opifex/conformance/shared_surfaces.yaml — larva_register and larva_variant_delete
+      entrypoints are facade surfaces; downstream repos consume/conform.
+
+      - INVAR.md — shell code performs I/O and uv run invar guard --changed required.
+
+      - src/larva/shell/registry.py — legacy writer still wrote root <id>.json and
+      index.json; variant_delete called variant_list before variant-name validation.
+
+      - src/larva/app/facade.py — register(spec, variant=None) has no explicit base-id/path
+      parameter distinct from spec.id.
+
+      - tests/shell/test_registry.py — existing storage tests still asserted legacy
+      index/root projections; variant delete lacked invalid-name precedence proof.
+
+      - tests/app/test_facade/test_register.py — facade register covers variant delegation
+      and has fake registry error test for PERSONA_ID_MISMATCH but no real explicit-base
+      public API.
+
+      - tests/app/test_facade/test_delete.py — invalid variant names map to INVALID_VARIANT_NAME.
+
+
+      ## Batched Remediation Evidence
+
+
+      ### B1 Storage layout
+
+      Before proof showed save wrote: index.json, probe-agent.json, probe-agent/manifest.json,
+      and variants/default.json. After remediation new saves produce only probe-agent/manifest.json
+      and probe-agent/variants/default.json; index_exists=False and root_projection_exists=False;
+      list_result still succeeds from directory scan.
+
+      Changes: removed save-path legacy projection/index writes and unused _write_legacy_projection
+      writer; clear/delete cleanup retains read-only legacy cleanup where needed;
+      tests updated to accepted layout and stale index ignored.
+
+
+      ### B2 PERSONA_ID_MISMATCH / authority resolution
+
+      Surface search found real register/storage surfaces: facade.register(spec, variant=None),
+      registry.save(spec, variant=None), CLI/MCP/Python API delegates to facade.register(spec).
+      No public/storage surface accepts explicit base persona id or filesystem path
+      distinct from spec.id. Decision: spec-stale-non-intersecting; no ad-hoc API
+      added. Proposed opifex/plan update: mark id_mismatch_rejected not applicable
+      for current facade.register(spec, variant?) / MCP / CLI / Python API until a
+      PUT/register-by-path surface exists.
+
+
+      ### B3 variant_delete invalid-name guard
+
+      Before proof: malformed variant bad_variant returned VARIANT_NOT_FOUND. After
+      remediation: variant_delete validates persona id and variant name before metadata
+      lookup and returns INVALID_VARIANT_NAME for bad_variant.
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_registry.py tests/app/test_facade/test_register.py
+      tests/app/test_facade/test_delete.py -q
+
+      85 passed in 0.17s
+
+      ```
+
+      ```text
+
+      invar_guard(changed=true): passed; static errors=0 warnings=0 infos=0; doctest
+      passed; one existing file_size escape hatch in src/larva/shell/registry.py retained
+      with rollout/split rationale.
+
+      ```
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: 1086366874ecbe5593702d06ca242df92b36f73e.
+
+      - Main squash commit: 23395b0.
+
+
+      ## Gaps/Notes
+
+      - B2 was not implemented because no current explicit-base/path register surface
+      exists; resolution artifact proposes opifex case update rather than inventing
+      API.
+
+      - Full repository tests not run here; focused tests and invar guard changed
+      passed.'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
