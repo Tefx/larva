@@ -64867,7 +64867,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.web-ui-remnant-remediation
     name: web-ui-remnant-remediation
-    status: pending
+    status: claimed
     description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
       \ the repeated `variants_surface_cutover_20260503.surface-wiring-audit` blockers\
       \ by removing the final stale Web UI and web doc remnants from the assembly/component/preset-library\
@@ -64900,6 +64900,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.web-assembly-surface-remediation
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-05-03T04:58:05.704264+00:00'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
