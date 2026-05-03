@@ -64753,7 +64753,7 @@ phases:
     agent: wiring-auditor
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
-    status: pending
+    status: claimed
     description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
       \ failed `variants_surface_cutover_20260503.surface-wiring-audit` blockers before\
       \ rerunning the audit. This is one batched ownership step for removed assembly/component\
@@ -64786,6 +64786,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.rest-web-cutover
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-05-03T04:33:31.663302+00:00'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
