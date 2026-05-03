@@ -65546,7 +65546,7 @@ phases:
       none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
-  status: pending
+  status: in_progress
   gate: OpenCode projection and runnable MCP/CLI/serve paths prove active variants
     only and removed surfaces absent in live-ish smoke checks.
   depends_on:
@@ -65554,7 +65554,7 @@ phases:
   steps:
   - id: variants_projection_smoke_20260503.opencode-red-smoke-tests
     name: opencode-red-smoke-tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -65663,6 +65663,8 @@ phases:
     - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T06:23:52.270366+00:00'
   - id: variants_projection_smoke_20260503.opencode-active-projection
     name: opencode-active-projection
     status: pending
