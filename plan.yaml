@@ -46149,7 +46149,7 @@ phases:
   - id: canonical_cutover_prep.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical cutover
       prep
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step canonical_cutover_prep.gate.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence proving the prep gate is now green/OPEN
@@ -46174,6 +46174,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:20:39.436168+00:00'
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: done
