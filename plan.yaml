@@ -10749,7 +10749,7 @@ phases:
       - contracts/persona_spec.schema.json'
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_normalize
@@ -11214,7 +11214,7 @@ phases:
       - ARCHITECTURE.md module larva.core.normalize'
   - id: core_normalize.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for core normalize
-    status: claimed
+    status: done
     description: 'Resolve validate errors for completed steps core_normalize.core-normalize-verify
       and core_normalize.core-normalize-implement. This is a proof-closure/evidence
       task, not product-code implementation. Produce accepted same-phase closure evidence
@@ -11240,6 +11240,24 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:55.510354+00:00'
+    done_at: '2026-05-03T13:30:23.715322+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Evidence Guard Closure Report\n- Historical completed steps reviewed: core_normalize.core-normalize-verify;\
+      \ core_normalize.core-normalize-implement\n- Closure route used: GREEN_CURRENT_PROOF\n\
+      - Commands/output or accepted disposition evidence:\n  ```\n  $ uv run python\
+      \ -m pytest tests/core/test_normalize.py\n  22 passed in 0.64s\n\n  $ uv run\
+      \ python -m mypy src/larva/core/normalize.py\n  Success: no issues found in\
+      \ 1 source file\n\n  $ uv run invar guard src/larva/core/normalize.py --all\n\
+      \  status=passed; files_checked=1; errors=0; warnings=0; infos=0; doctest passed=true;\
+      \ crosshair status=verified; property_tests status=passed functions_tested=1\
+      \ functions_passed=1 functions_failed=0 total_examples=100\n\n  Commit merged\
+      \ to main:\n  7961aad docs: close core normalize evidence guard\n  ```\n- Gate-intersection\
+      \ disposition: Historical FAIL evidence is closed for the normalize gate by\
+      \ current green proof. Normalize runtime tests pass, src/larva/core/normalize.py\
+      \ type-checks, and Invar verifies contracts/doctest/CrossHair/property checks.\
+      \ Remaining targeted lint/type observations are confined to tests/core/test_normalize.py\
+      \ hygiene and do not intersect the core normalize implementation gate.\n- Headline:\
+      \ PASS"
 - id: core_validate_exec
   name: larva.core.validate execution
   status: in_progress
