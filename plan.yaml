@@ -61934,7 +61934,7 @@ phases:
       - Main squash commit: 6cb1818.'
   - id: variants_registry_impl_20260503.registry-storage-implementation
     name: registry-storage-implementation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       symbolic_testing: true
@@ -62079,6 +62079,8 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-red-integration-tests
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-03T01:37:57.035742+00:00'
   - id: variants_registry_impl_20260503.registry-spec-conformance
     name: registry-spec-conformance
     status: pending
