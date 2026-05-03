@@ -61141,6 +61141,119 @@ phases:
       file.
 
       - Full repo suite not run here; phase gate owns broader verification.'
+  - id: variants_core_contract_20260503.core-gate-remediation
+    name: core-gate-remediation
+    status: pending
+    description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
+      \ project\npriority: HIGH\n\nBatched remediation ownership for deferred gate\
+      \ `variants_core_contract_20260503.core-gate`.\n\nThis step owns ALL reported\
+      \ blockers/should-fix items from the failed gate before the gate is rerun:\n\
+      \n## Gate failure scope to remediate\n- B1 lint blocker: Ruff lint failed on\
+      \ reviewed files with 36 findings across:\n  - `src/larva/core/validate.py`\n\
+      \  - `src/larva/shell/registry.py`\n  - `tests/core/test_variants.py`\n  - `tests/canonical_cutover/test_hard_cutover_readiness.py`\n\
+      \  Fix style/test assertion hygiene only. Do NOT change behavior except where\
+      \ required by lint-safe assertion hygiene.\n- B2 external authority worktree\
+      \ blocker: `../opifex` is outside larva ownership. Do NOT modify `../opifex`\
+      \ or authorize opifex changes from this larva step. Produce bounded non-intersection\
+      \ evidence proving larva-owned changes did not modify opifex/shared authority\
+      \ files. Classify any remaining dirty state in `../opifex` as out-of-step-origin\
+      \ unless evidence shows a larva step modified it.\n- B3 design ref availability:\
+      \ verify `design/registry-local-variants-and-assembly-removal.md` exists in\
+      \ the current main workspace after commit `1caccf9`, is readable, and cite the\
+      \ key passage that governs registry-local variants / assembly removal.\n- S1\
+      \ contract-strength decision: assess the `validate_variant_name` type-only precondition\
+      \ warning. Prefer a safe contract improvement ONLY if it preserves public `VariantNameError`\
+      \ behavior for invalid user input. If strengthening would alter expected exception\
+      \ behavior, leave behavior unchanged and record explicit non-blocking rationale\
+      \ for the gate.\n\n## Root Cause vs Symptom\n- Root cause: gate evidence mixed\
+      \ true larva-owned remediation blockers (lint) with external authority worktree\
+      \ disposition and an isolated-worktree missing-ref condition.\n- Symptoms: Ruff\
+      \ reported 36 style/test findings; gate could not classify dirty `../opifex`;\
+      \ design ref was unavailable to the gate worktree; invar reported a type-only\
+      \ precondition warning.\n- Why this fix is not surface-level: it must both fix\
+      \ local lint and create a bounded evidence rule for authority-file non-intersection\
+      \ so the rerun gate can distinguish provenance from disposition.\n\n## Scope\
+      \ guardrails\n- Larva-owned editable scope is limited to the four B1 reviewed\
+      \ files and any minimal test/contract adjustment required for S1 behavior-preserving\
+      \ contract rationale.\n- `../opifex/**` is read-only evidence scope. Do not\
+      \ edit it.\n- Completed steps in this phase must not be altered.\n- Keep registry\
+      \ metadata forbidden from canonical PersonaSpec and downstream shared surfaces.\n\
+      \n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION/remediation\
+      \ step. Stub-only completion is NOT acceptable. Completion requires concrete\
+      \ lint remediation or documented non-change rationale where behavior preservation\
+      \ requires no code change.\n\n## Gate Preview (what the gate WILL reject)\n\
+      1. Ruff still reports findings in the reviewed files.\n2. Focused core/shell/canonical_cutover\
+      \ tests no longer pass.\n3. `invar guard --all` regresses from the failed gate\
+      \ baseline.\n4. Evidence claims opifex is dirty without proving whether larva-owned\
+      \ changes touched opifex/shared authority files.\n5. Design ref is not present/readable\
+      \ or lacks a cited key passage.\n6. S1 either changes invalid-input exception\
+      \ behavior without justification or leaves the type-only precondition warning\
+      \ with no non-blocking rationale."
+    verification: '- B1 main path: Ruff lint for the reviewed files reports no remaining
+      findings, with output pasted in evidence.
+
+      - B1 regression path: focused core variants tests, shell registry rejection
+      tests, and canonical_cutover hard-cut readiness scanner tests remain green.
+
+      - Guard path: `invar guard --all` is rerun and output is captured; warnings
+      are classified without introducing blockers.
+
+      - B2 authority disposition: evidence proves larva-owned changes do not modify
+      `../opifex` shared authority files; any unrelated external dirty state is explicitly
+      labeled out-of-step-origin with non-intersection rationale.
+
+      - B3 design ref: `design/registry-local-variants-and-assembly-removal.md` exists,
+      is readable, and evidence includes a key passage.
+
+      - S1 decision: evidence either shows a behavior-preserving precondition improvement
+      with invalid-user-input behavior unchanged, or records an explicit non-blocking
+      rationale for leaving the warning unchanged.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/registry-local-variants-and-assembly-removal.md — key passage\
+      \ or \"NOT READ: <reason>\"\n- docs/reference/INTERFACES.md — key passage or\
+      \ \"NOT READ: <reason>\"\n- ../opifex/design/final-canonical-contract.md — key\
+      \ passage or \"NOT READ: <reason>\"\n- ../opifex/contracts/persona_spec.schema.json\
+      \ — key passage or \"NOT READ: <reason>\"\n- ../opifex/conformance/shared_surfaces.yaml\
+      \ — key passage or \"NOT READ: <reason>\"\n- INVAR.md — key passage or \"NOT\
+      \ READ: <reason>\"\n\n## Gate Failure Reproduction / Citation\n- Failed gate\
+      \ step: `variants_core_contract_20260503.core-gate`\n- Cite the exact gate failure\
+      \ summary reviewed, including B1/B2/B3/S1.\n- Reviewed files for B1:\n  - `src/larva/core/validate.py`\n\
+      \  - `src/larva/shell/registry.py`\n  - `tests/core/test_variants.py`\n  - `tests/canonical_cutover/test_hard_cutover_readiness.py`\n\
+      \n## B1 Ruff Lint Output\nCommand(s) executed:\n```\n<paste exact lint command(s),\
+      \ scoped to the reviewed files>\n```\nActual output:\n```\n<paste full relevant\
+      \ output showing zero remaining findings or exact residuals>\n```\nBehavior-change\
+      \ statement: <confirm no behavior changes except lint-safe style/test assertion\
+      \ hygiene, or explain necessary exception>\n\n## Focused Verification\nFocused\
+      \ core tests:\n```\n<paste command and output; include 188-pass focused core\
+      \ result or updated exact count>\n```\nShell registry rejection tests:\n```\n\
+      <paste command and output; include 4-pass shell registry rejection result or\
+      \ updated exact count>\n```\nCanonical cutover scanner:\n```\n<paste command\
+      \ and output; include hard-cut readiness scanner result>\n```\n\n## Invar Guard\n\
+      Command executed:\n```\n<paste exact invar guard --all command used by project>\n\
+      ```\nActual output:\n```\n<paste output summary, including warnings if any>\n\
+      ```\nDisposition: <PASS | PASS_WITH_WARNINGS | FAIL; explain warnings and whether\
+      \ they intersect this gate>\n\n## B2 Opifex Non-Modification Evidence\nLarva-owned\
+      \ change proof:\n```\n<paste evidence that this larva remediation did not modify\
+      \ ../opifex shared authority files; use git/status/diff evidence limited to\
+      \ larva-owned changes and opifex path intersection>\n```\nExternal dirty status,\
+      \ if present:\n```\n<paste bounded status summary for ../opifex, without modifying\
+      \ it>\n```\nProvenance: <pre-existing | introduced_now | out-of-step-origin>\n\
+      Disposition: <blocking-now | blocking-later | non-blocking>\nNon-intersection\
+      \ rationale: <why external dirty state does or does not intersect this larva\
+      \ gate>\n\n## B3 Design Ref Presence / Readability Proof\nFile: `design/registry-local-variants-and-assembly-removal.md`\n\
+      Presence/readability evidence:\n```\n<paste command/output or file metadata\
+      \ proving readable in current workspace>\n```\nKey passage cited:\n> <quote\
+      \ the passage governing registry-local variants and assembly removal>\n\n##\
+      \ S1 validate_variant_name Contract Decision\nDecision: <safe contract improvement\
+      \ applied | no code change; non-blocking rationale>\nBehavior preservation proof\
+      \ for invalid user input / VariantNameError:\n```\n<paste targeted test or reasoning\
+      \ with command output if changed>\n```\nRationale: <why gate should treat remaining\
+      \ type-only warning as non-blocking, if unchanged>\n\n## Residual Risk\n- Open\
+      \ blockers: <none or list>\n- Should-fix deferred: <none or list with non-intersection\
+      \ evidence>\n- Ready for gate rerun: <yes/no>"
+    depends_on:
+    - variants_core_contract_20260503.core-downstream-forbidden-field-remediation
+    agent: python-senior-tacit
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
   status: locked
