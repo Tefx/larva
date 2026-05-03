@@ -68099,7 +68099,7 @@ phases:
       by stashing/popping them around the branch merge; no user changes were discarded.'
   - id: opencode_hardening_docs_and_matrix_20260503
     name: Sync tests, docs, and behavior matrix
-    status: claimed
+    status: done
     description: 'Update only the necessary docs and/or conformance notes to match
       implemented behavior. Capture cache semantics, resolve fallback matrix, watermark
       formats, debug/TTL env knobs, hot-update versus restart-required boundaries,
@@ -68112,6 +68112,59 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T14:00:14.188222+00:00'
+    done_at: '2026-05-03T14:06:20.287827+00:00'
+    evidence: 'Artifact:
+
+      - commit: 6dea30c (merged to main)
+
+
+      Verification:
+
+      - Run: /Users/tefx/Projects/larva/.venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+      tests/shell/test_opencode_cli.py -> 19 passed
+
+      - Run: git commit hooks -> INVAR.md Protection Passed; Invar Guard Passed
+
+      - Run: grep docs for export --all runtime authority -> docs explicitly say export
+      --all is startup projection only / not runtime semantic authority
+
+
+      Doc diff summary:
+
+      - Updated OpenCode plugin README, user guide, interfaces, and architecture notes.
+
+      - Refreshed plugin contract-test module docstring.
+
+      - Covered cache/fallback semantics, selected-id resolve path, watermark strings,
+      debug/cache env knobs, hot-update vs restart-required boundaries, and non-goals
+      for larva-active/global active variant.
+
+
+      Contract mapping:
+
+      - cache and fallback -> contrib/opencode-plugin/README.md plus tests/shell/test_opencode_plugin_contract.py
+      cache/failClosed/lastKnownGood tests.
+
+      - selected-id resolve and no export-all runtime authority -> README/USER_GUIDE/INTERFACES/ARCHITECTURE
+      plus test_plugin_selected_id_main_path_does_not_export_all.
+
+      - watermarks -> README/USER_GUIDE plus test_plugin_watermark_strings_remain_contractual.
+
+      - env knobs -> README/USER_GUIDE plus test_plugin_debug_and_ttl_are_controlled_by_environment.
+
+      - hot-update/restart boundaries -> README/USER_GUIDE/ARCHITECTURE plus test_plugin_hot_update_boundaries_are_explicit.
+
+      - no larva-active/global active variant -> README/USER_GUIDE/INTERFACES/ARCHITECTURE
+      plus startup/per-request active-id tests.
+
+
+      Merge/conflict note:
+
+      - After merge, preserved pre-existing local documentation edits by stash/pop.
+      Conflict-resolver merged both sides in contrib/opencode-plugin/README.md, docs/guides/USER_GUIDE.md,
+      docs/reference/ARCHITECTURE.md, docs/reference/INTERFACES.md; grep conflict
+      markers found none and diff --check passed. The resolved files were unstaged
+      afterward to avoid committing unrelated pre-existing user edits.'
   - id: opencode_hardening_final_gate_20260503
     name: Run final verification and self-review
     status: pending
