@@ -64644,7 +64644,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -64757,6 +64757,125 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-05-03T06:14:41.751297+00:00'
+    done_at: '2026-05-03T06:18:03.163864+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — assembly/component
+      subsystem removed; variants are registry-local; MCP/CLI/Python/Web variant operations
+      added; `/api/personas/assemble` only fail-closed.
+
+      - docs/reference/INTERFACES.md — implemented variant surface inventory; removed
+      MCP/Python/Web component/assemble surfaces; explicit `POST /api/personas/assemble`
+      404 tombstone.
+
+      - docs/reference/ARCHITECTURE.md — registry-local variant model and removed
+      subsystem boundary.
+
+      - docs/guides/USAGE.md — current MCP/CLI/Python variant usage and removed tools.
+
+      - docs/guides/USER_GUIDE.md — user-facing variant lifecycle and removed MCP
+      tool list.
+
+
+      ## Wiring Audit Report
+
+      **Orphan exports**:
+
+      ```text
+
+      - Deleted obsolete assembly/component modules from current worktree: core assemble/assembly_error/component_*
+      and shell components/python_api_components/shared component_queries.
+
+      - Source search found no active assemble/component/preset API exports except
+      allowed web_routes.py assemble_removed tombstone.
+
+      - Python API __all__ has validate/register/resolve/update/variant_* etc.; no
+      assemble/component exports.
+
+      - app facade/facade_types expose register/resolve/update/variant_list/variant_activate/variant_delete;
+      no assemble/component/preset methods.
+
+      ```
+
+      **CLI registration/absence**:
+
+      ```text
+
+      - uv run larva --help exposes validate, register, resolve, list, variant, delete,
+      clear, clone, export, update, update-batch, serve, mcp, doctor, opencode.
+
+      - uv run larva variant --help exposes list, activate, delete.
+
+      - register/resolve/update include --variant.
+
+      - assemble/component/components/preset rejected as invalid command choices.
+
+      ```
+
+      **MCP tool registration/absence**:
+
+      ```text
+
+      Current-worktree LARVA_MCP_TOOLS:
+
+      [''larva_validate'', ''larva_resolve'', ''larva_register'', ''larva_list'',
+      ''larva_variant_list'', ''larva_variant_activate'', ''larva_variant_delete'',
+      ''larva_delete'', ''larva_clear'', ''larva_clone'', ''larva_export'', ''larva_update'',
+      ''larva_update_batch'']
+
+      variant_present=True; removed_absent=True.
+
+      Local create_mcp_server() constructed from current source; handlers include
+      variant handlers and no assemble/component handlers.
+
+      ```
+
+      **REST/Web route reachability/absence**:
+
+      ```text
+
+      Packaged and contrib TestClient checks:
+
+      - GET /api/components -> 404
+
+      - GET /api/components/projection -> 404
+
+      - GET /api/components/prompts/test -> 404
+
+      - POST /api/personas/assemble -> 404 {"detail":"Assemble endpoint removed"}
+
+      - GET /api/registry/personas -> 200, summaries include active/variants
+
+      Route inventory includes registry variant list/detail/put/activate/delete routes.
+
+      Packaged and contrib UIs initialize/reset/load selectedVariant/variantList before
+      variant detail/save/delete; no /variants/undefined static hit; base delete separate.
+
+      ```
+
+      **Identity-lambda or vacuous contracts**:
+
+      ```text
+
+      Searches found no obvious @pre/@post identity/vacuous contracts or identity
+      lambdas masking admission behavior. Core contracts remain structural/shape/field
+      assertions with doctests.
+
+      ```
+
+      **Documentation parity**:
+
+      ```text
+
+      INTERFACES/ARCHITECTURE/USAGE/USER_GUIDE/README match implemented current surfaces:
+      variant operations present, assembly/component surfaces removed, /api/personas/assemble
+      documented as 404 tombstone only.
+
+      ```
+
+      **Open Problems / Residual Risk**: none
+
+      **Headline**: PASS'
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
     status: done
