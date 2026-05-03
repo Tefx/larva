@@ -67870,7 +67870,7 @@ phases:
       none'
 - id: opencode_hardening_20260503
   name: OpenCode Wrapper/Plugin Hardening
-  status: pending
+  status: in_progress
   gate: Runtime and tests prove per-request single-id placeholder resolution, no export
     --all on the selected-id main path, no placeholder leakage, fail-closed/no-previous
     behavior, last-known-good stale fallback, in-flight dedup, debug/TTL env support,
@@ -67880,7 +67880,7 @@ phases:
   steps:
   - id: opencode_hardening_contract_tests_20260503
     name: Add expected-red OpenCode hardening contract tests
-    status: pending
+    status: claimed
     description: Add focused tests around the existing OpenCode wrapper/plugin path
       before implementation. Cover per-request [larva:<id>] handling by selected id,
       cache miss/stale/digest-change single-id resolve, no export --all on selected-id
@@ -67899,6 +67899,8 @@ phases:
     - docs/reference/ARCHITECTURE.md
     - docs/reference/INTERFACES.md
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T13:40:28.599792+00:00'
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
     status: pending
