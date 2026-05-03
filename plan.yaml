@@ -64980,7 +64980,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.surface-audit-blocker-remediation
     name: surface-audit-blocker-remediation
-    status: pending
+    status: claimed
     description: 'Remediate blockers found by the fresh surface wiring audit before
       rerunning the audit. Required fixes: remove/privatize remaining assembly/component
       facade subsystem and unreachable CLI helper remnants from public paths; repair
@@ -65014,6 +65014,8 @@ phases:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.web-ui-remnant-remediation
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-05-03T05:14:40.263214+00:00'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
