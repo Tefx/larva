@@ -67411,3 +67411,82 @@ phases:
     watermark format, and documented hot-update/restart boundaries.
   depends_on:
   - variants_finalization_20260503
+  steps:
+  - id: opencode_hardening_contract_tests_20260503
+    name: Add expected-red OpenCode hardening contract tests
+    status: pending
+    description: Add focused tests around the existing OpenCode wrapper/plugin path
+      before implementation. Cover per-request [larva:<id>] handling by selected id,
+      cache miss/stale/digest-change single-id resolve, no export --all on selected-id
+      main path, placeholder non-leakage, fail-closed without previous prompt, stale
+      last-known-good fallback with debug warning, in-flight dedup for concurrent
+      same-id resolve, debug/TTL env behavior, watermark strings, and hot-update boundaries
+      for prompt/temperature/tool-policy/capabilities/can_spawn. Keep tests narrow
+      and tied to current implementation structure.
+    verification: Show the targeted test command(s) and expected-red failures demonstrating
+      the current startup/cache-export behavior violates the hardening contract. Include
+      exact failing test names and a brief reason for each failure.
+    refs:
+    - docs/opencode-wrapper.md
+    - docs/opencode-plugin-hardening-contract.md
+    agent: developer
+  - id: opencode_hardening_runtime_20260503
+    name: Implement per-request selected-id resolver and projection
+    status: pending
+    description: 'Implement the runtime hardening behavior in the OpenCode plugin/wrapper.
+      On each model request, replace only [larva:<selected id>] at the system transform
+      layer. Resolve cache miss/stale/digest-change via larva resolve <id> --json
+      or equivalent single-id API; do not call export --all for one selected-id main
+      path. Cache remains performance-only. Add last-known-good stale fallback, fail-closed
+      no-previous behavior, in-flight dedup, LARVA_OPENCODE_DEBUG=1 warnings, LARVA_OPENCODE_CACHE_TTL_MS=0
+      no-cache behavior, exact larva-spec watermarks, and no extra natural-language
+      identity injection from projection. Enforce runtime hot-update fields where
+      supported: prompt, temperature, tool-policy, capabilities/can_spawn.'
+    verification: Targeted tests from the previous step pass. Provide evidence that
+      selected-id runtime uses single-id resolve, export --all is not called on the
+      main path, placeholders are absent from transformed model system prompts, stale/fail-closed
+      paths behave as specified, and same-id concurrent resolves deduplicate.
+    depends_on:
+    - opencode_hardening_contract_tests_20260503
+    agent: developer
+  - id: opencode_hardening_wrapper_startup_20260503
+    name: Align wrapper startup registration with base ids and active variants
+    status: pending
+    description: Ensure wrapper startup registers OpenCode agents using Larva base
+      persona ids, backed by the current registry active variant per base id at startup.
+      Agent prompts should contain only the [larva:<id>] placeholder for runtime projection.
+      Do not introduce larva-active or any global active variant. Keep added/deleted
+      ids and most model/provider changes as restart-required behavior, while hot-update
+      fields remain runtime-enforced by the plugin.
+    verification: Show startup/export tests or smoke output proving OpenCode agent
+      ids equal Larva base persona ids, registered prompts contain placeholders, active
+      variant prompt changes are picked up by runtime transform without restart, and
+      new/deleted ids/model-provider changes are documented or asserted as restart-required.
+    depends_on:
+    - opencode_hardening_runtime_20260503
+    agent: developer
+  - id: opencode_hardening_docs_and_matrix_20260503
+    name: Sync tests, docs, and behavior matrix
+    status: pending
+    description: 'Update only the necessary docs and/or conformance notes to match
+      implemented behavior. Capture cache semantics, resolve fallback matrix, watermark
+      formats, debug/TTL env knobs, hot-update versus restart-required boundaries,
+      and the explicit non-goals: no larva-active and no global active variant.'
+    verification: Show doc diff summary and test/conformance references that map each
+      hardening contract bullet to implementation/test evidence. Confirm docs do not
+      describe export --all as runtime semantic authority.
+    depends_on:
+    - opencode_hardening_wrapper_startup_20260503
+    agent: developer
+  - id: opencode_hardening_final_gate_20260503
+    name: Run final verification and self-review
+    status: pending
+    description: Run targeted OpenCode tests, full relevant test suite, invar guard,
+      and a fresh self-review against the hardening contract. Fix any regressions
+      discovered by the gate before completing.
+    verification: Paste commands and green outputs for targeted tests, full repo tests,
+      invar guard, and self-review. State residual risks explicitly; PASS requires
+      residual risk none or clearly bounded non-blocking follow-up steps.
+    depends_on:
+    - opencode_hardening_docs_and_matrix_20260503
+    agent: developer
