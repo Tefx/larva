@@ -64644,7 +64644,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -64753,6 +64753,8 @@ phases:
     - variants_surface_cutover_20260503.surface-audit-blocker-remediation
     - variants_surface_cutover_20260503.surface-audit-polish-remediation
     agent: wiring-auditor
+    claimed_by: wiring-auditor
+    claimed_at: '2026-05-03T05:59:30.434512+00:00'
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
     status: done
