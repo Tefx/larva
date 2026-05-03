@@ -65921,7 +65921,7 @@ phases:
       none — no-op implementation because tests were already green.'
   - id: variants_projection_smoke_20260503.live-liveness-probe
     name: live-liveness-probe
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -66044,6 +66044,8 @@ phases:
     depends_on:
     - variants_projection_smoke_20260503.opencode-active-projection
     agent: blind-tester-tacit
+    claimed_by: blind-tester-tacit
+    claimed_at: '2026-05-03T06:47:18.545859+00:00'
   - id: variants_projection_smoke_20260503.projection-smoke-gate
     name: projection-smoke-gate
     status: pending
