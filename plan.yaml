@@ -65546,7 +65546,7 @@ phases:
       none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
-  status: in_progress
+  status: done
   gate: OpenCode projection and runnable MCP/CLI/serve paths prove active variants
     only and removed surfaces absent in live-ish smoke checks.
   depends_on:
@@ -66200,7 +66200,7 @@ phases:
       PASS'
   - id: variants_projection_smoke_20260503.projection-smoke-gate
     name: projection-smoke-gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -66285,9 +66285,59 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T06:58:33.248503+00:00'
+    done_at: '2026-05-03T07:09:35.620786+00:00'
+    evidence: 'Gate reviewer rerun returned OPEN with residual risk none after HOME-isolation
+      reload fix in tests/shell/test_variant_projection_smoke.py.
+
+
+      Gate checks:
+
+      - CLI live proof: PASS
+
+      - MCP live/listing proof: PASS
+
+      - Serve route proof: PASS
+
+      - OpenCode active-only proof: PASS
+
+      - Removed surfaces absent: PASS
+
+
+      Verification evidence:
+
+      1) Focused phase/repro suite:
+
+      uv run pytest tests/shell/test_variant_projection_smoke.py tests/shell/test_opencode_cli.py
+      tests/shell/test_mcp_stdio_integration.py tests/repro/spec_verify_black_box_surfaces.py
+      tests/repro/cross_surface_consistency_verify.py --tb=short -q -p no:cacheprovider
+
+      Result: 121 passed, 7 skipped in 4.32s (or 4.41s in reviewer rerun).
+
+
+      2) Focused surface smoke subset:
+
+      PYTHONDONTWRITEBYTECODE=1 uv run pytest tests/shell/test_mcp_stdio_integration.py::TestMCPStdioSurfaceCutover
+      tests/shell/test_variant_projection_smoke.py::TestRestRouteVariantSmoke tests/shell/test_opencode_cli.py::TestOpenCodeVariantProjection
+      -q -p no:cacheprovider
+
+      Result: 15 passed in 2.03s.
+
+
+      3) invar full scan:
+
+      invar_guard(path=/Users/tefx/Projects/larva, changed=false) run grd_d6e38954c2294c27906d3be9
+
+      Result: complete ok=true, errors=0, warnings=1, infos=3, files_checked=40.
+
+
+      Reviewer additionally confirmed live CLI temp HOME smoke: default/tacit registration,
+      variant list active default, resolve before/after activate, export active canonical
+      spec only, invalid variant field rejected with PERSONA_INVALID / EXTRA_FIELD_NOT_ALLOWED,
+      larva --help exposes variant/mcp/serve/opencode and removed assemble/component
+      commands absent.'
 - id: variants_finalization_20260503
   name: Variants Finalization, Docs Parity, and Deep Review
-  status: locked
+  status: pending
   gate: Full plan verification, docs parity, opifex boundary conformance, and independent
     deep review are complete.
   depends_on:
