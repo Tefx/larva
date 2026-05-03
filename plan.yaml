@@ -64865,6 +64865,41 @@ phases:
       ## Gaps/Notes
 
       none'
+  - id: variants_surface_cutover_20260503.web-ui-remnant-remediation
+    name: web-ui-remnant-remediation
+    status: pending
+    description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
+      \ the repeated `variants_surface_cutover_20260503.surface-wiring-audit` blockers\
+      \ by removing the final stale Web UI and web doc remnants from the assembly/component/preset-library\
+      \ cutover while preserving registry-local variant controls.\n\nBlockers to fix:\n\
+      1. Remove remaining preset/assemble/component UI remnants from `src/larva/shell/web_ui.html`,\
+      \ including but not limited to:\n   - stale `Checkbox/Radio lists in assemble`\
+      \ comment near the form control rendering area\n   - `Preset Library` button\
+      \ and any `view === 'components'` toggle/navigation path\n   - retained `toolsets`,\
+      \ `constraints`, and `models` preset-library metadata\n   - stale `// Assemble`\
+      \ and `// Preset library` comments\n2. Update the stale `src/larva/shell/web.py`\
+      \ docstring if it still documents removed assemble/component endpoints.\n3.\
+      \ Keep variant controls present, visible, and usable; do not reintroduce assemble/component/preset-library\
+      \ controls, fetches, routes, or canonical PersonaSpec variant fields.\n\nRequired\
+      \ verification evidence:\n- REST/Web focused tests covering removed endpoints\
+      \ and variant route/UI behavior.\n- Full surface tests relevant to MCP/CLI/Python/REST/Web\
+      \ cutover.\n- Product ruff for touched Python files.\n- DOM/static proof for\
+      \ `src/larva/shell/web_ui.html` showing removed preset/assemble/component tokens\
+      \ absent and variant controls/tokens still present.\n- `uv run invar guard --changed`.\n\
+      \nDo not alter completed step evidence. If uncertainty remains about canonical\
+      \ shared-surface meaning, cite the referenced opifex contract files and leave\
+      \ a SPEC QUESTION rather than guessing."
+    verification: Green proof must include REST/Web focused tests, full surface tests,
+      product ruff for touched Python files, DOM/static absent/present proof for web_ui
+      preset/assemble/component remnants versus variant controls, and `uv run invar
+      guard --changed`.
+    evidence_template: 'List exact UI/doc remnants removed; paste REST/Web focused
+      test output, full surface test output, ruff output, DOM/static absent/present
+      token proof, and `uv run invar guard --changed` result. Note any SPEC QUESTION
+      or gap explicitly; expected gaps: none.'
+    depends_on:
+    - variants_surface_cutover_20260503.web-assembly-surface-remediation
+    agent: frontend-engineer-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
