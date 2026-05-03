@@ -62856,7 +62856,7 @@ phases:
       passed.'
   - id: variants_registry_impl_20260503.registry-gate-blocker-remediation
     name: registry-gate-blocker-remediation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: HIGH
@@ -63100,6 +63100,52 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-05-03T02:33:10.799613+00:00'
+    done_at: '2026-05-03T02:44:42.941991+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Deferred Gate / Residual Failure Citation\n- Original deferred gate blockers\
+      \ B1/B2 were addressed by prior merged remediation commit `c6c5789d29d35a1d72e05f2d877c059639d690bc`:\n\
+      \  - B1: changed-file ruff/mypy failures on registry/facade production and related\
+      \ tests.\n  - B2: maintainability/file-size blockers for `src/larva/shell/registry.py`\
+      \ and `src/larva/app/facade.py`.\n- Mainline final-state gate initially failed\
+      \ after that merge:\n  - Command: `uvx invar-tools guard --all`\n  - Failure:\
+      \ `ImportError: cannot import name 'BatchUpdateResult' from 'larva.app.facade'`\
+      \ while collecting `src/larva/shell/cli_commands.py`.\n\n## B1 Type/Lint Closure\n\
+      - Initial remediation split registry/facade responsibilities and resolved changed-file\
+      \ ruff/mypy failures.\n- Residual fix updated internal shell import sites to\
+      \ import type-only facade names from `larva.app.facade_types` / canonical local\
+      \ modules instead of `larva.app.facade`, without adding shared-surface compatibility\
+      \ aliases.\n\nMainline ruff:\n```text\nuv run ruff check src/larva/app/facade.py\
+      \ src/larva/app/facade_registry_ops.py src/larva/shell/registry.py src/larva/shell/registry_types.py\
+      \ src/larva/shell/registry_extra_ops.py src/larva/shell/cli_commands.py src/larva/shell/cli_runtime.py\
+      \ src/larva/shell/python_api.py tests/shell/test_registry.py\nAll checks passed!\n\
+      ```\n\nMainline mypy/type:\n```text\nMYPYPATH=src uv run mypy src/larva/app/facade.py\
+      \ src/larva/app/facade_registry_ops.py src/larva/shell/registry.py src/larva/shell/registry_types.py\
+      \ src/larva/shell/registry_extra_ops.py src/larva/shell/cli_commands.py src/larva/shell/cli_runtime.py\
+      \ src/larva/shell/python_api.py tests/shell/test_registry.py\nSuccess: no issues\
+      \ found in 9 source files\n```\n\n## B2 Maintainability Closure\n- Immediate\
+      \ split performed: YES.\n- Extracted modules:\n  - `src/larva/app/facade_registry_ops.py`\n\
+      \  - `src/larva/shell/registry_types.py`\n  - `src/larva/shell/registry_extra_ops.py`\n\
+      - Reported line-count closure:\n  - `src/larva/app/facade.py`: 415 lines.\n\
+      \  - `src/larva/shell/registry.py`: 494 lines.\n- Removed `file_size` hatch\
+      \ from `src/larva/shell/registry.py`; no file-size hatch-only disposition remains.\n\
+      \n## Escape Hatch Audit\n- No new escape hatches added.\n- Removed registry\
+      \ file-size escape hatch.\n- Full guard reports only 5 existing `shell_result`\
+      \ hatches, all outside the B2 file-size blocker family.\n\n## Mainline Verification\n\
+      Focused behavioral tests:\n```text\nuv run pytest tests/shell/test_registry.py\n\
+      59 passed in 0.20s\n```\n\nChanged guard:\n```text\ninvar_invar_guard changed=true\n\
+      status: passed; static errors=0 warnings=0 infos=0; doctest passed\n```\n\n\
+      Full guard accepted path:\n```text\nuvx invar-tools guard --all\nstatus: passed\n\
+      static: errors=0, warnings=6, infos=2\ndoctest: passed\nproperty_tests: passed\
+      \ (15/15 functions, 1200 examples)\n```\nRemaining warnings/infos are pre-existing\
+      \ and non-intersecting with the registry/facade remediation (`src/larva/core/assemble.py`,\
+      \ `src/larva/core/validate.py`, `src/larva/shell/components.py`); no registry/facade/import\
+      \ blocker remains.\n\n## Files Changed\n- `src/larva/app/facade.py`\n- `src/larva/app/facade_types.py`\n\
+      - `src/larva/app/facade_registry_ops.py`\n- `src/larva/shell/registry.py`\n\
+      - `src/larva/shell/registry_extra_ops.py`\n- `src/larva/shell/registry_types.py`\n\
+      - `src/larva/shell/cli_commands.py`\n- `src/larva/shell/cli_runtime.py`\n- `src/larva/shell/python_api.py`\n\
+      - `tests/shell/test_registry.py`\n\n## Commit hash(es)\n- `c6c5789d29d35a1d72e05f2d877c059639d690bc`\n\
+      - `8d0780dcf2075cd7131fee3d45844921696e99ce`\n\n## Spec link\n- variants_registry_impl_20260503.registry-gate-blocker-remediation\n\
+      \n## Gaps/Notes\nnone"
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
