@@ -64204,7 +64204,7 @@ phases:
       `variants_surface_cutover_20260503.rest-web-cutover`. No scoped open problems.'
   - id: variants_surface_cutover_20260503.rest-web-cutover
     name: rest-web-cutover
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: [integration]
@@ -64379,6 +64379,172 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-05-03T03:59:24.821311+00:00'
+    done_at: '2026-05-03T04:27:46.693498+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - `design/registry-local-variants-and-assembly-removal.md` — confirms removal
+      of assembly/component system and registry-local variant REST/Web behavior.
+
+      - `docs/reference/INTERFACES.md` — target REST routes, removed endpoints, envelope
+      separation, and error codes.
+
+      - `docs/reference/ARCHITECTURE.md` — shell/web adapters project facade behavior
+      without redefining canonical semantics.
+
+      - `docs/guides/USAGE.md` — usage/error expectations for registry operations
+      and variant behavior.
+
+      - `docs/guides/USER_GUIDE.md` — user-facing entrypoint context.
+
+      - `../opifex/design/final-canonical-contract.md` — canonical PersonaSpec excludes
+      variant/_registry/active/manifest.
+
+      - `../opifex/contracts/persona_spec.schema.json` — PersonaSpec schema authority.
+
+      - `../opifex/conformance/shared_surfaces.yaml` — shared register/update/resolve/variant/list/export/delete
+      surface invariants.
+
+      - `../opifex/conformance/case_matrix/larva/larva.register.yaml` — register API
+      behavior.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml` — activation
+      API coverage.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_list.yaml` — variant
+      list API coverage.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml` — variant
+      delete API coverage.
+
+      - `../opifex/conformance/case_matrix/larva/larva.validate.yaml` — validate/forbidden
+      field behavior.
+
+      - `../opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml` — MCP
+      naming context.
+
+      - `../opifex/conformance/case_matrix/larva/larva.export.yaml` — active-only
+      export behavior.
+
+      - `../opifex/conformance/case_matrix/larva/larva.update.yaml` — update behavior
+      and variant operation parameter.
+
+      - `../opifex/conformance/case_matrix/larva/larva.resolve.yaml` — resolve behavior.
+
+      - `../opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml` —
+      shared naming docs context.
+
+      - `../opifex/conformance/case_matrix/larva/larva.delete.yaml` — base delete
+      behavior.
+
+      - `INVAR.md` — verification/contract discipline.
+
+
+      ## Expected-Red Carryover
+
+      REST/Web expected-red failures included `/api/personas/assemble` returning 400
+      instead of absent, `/api/components*` returning 200 instead of absent, `/api/registry/personas`
+      and variant routes returning 404, missing envelope/id mismatch behavior, and
+      contrib web assemble/components still present.
+
+
+      ## REST Evidence
+
+      - Removed endpoint proof: `POST /api/personas/assemble -> 405 Method Not Allowed`
+      (absent for POST target); `/api/components*` routes removed in focused tests.
+
+      - Variant happy path proof: `PUT /api/registry/personas/my-tester/variants/tacit
+      -> 200` with `{''data'': {''id'': ''my-tester'', ''registered'': True}}`.
+
+      - Envelope proof: `GET /api/registry/personas/my-tester/variants/tacit -> 200`
+      returned `{''data'': {''_registry'': {''variant'': ''tacit'', ''is_active'':
+      False}, ''spec'': {...}}}` with registry metadata outside spec and no `variant`
+      field inside PersonaSpec.
+
+      - PERSONA_ID_MISMATCH response bug fixed during remediation.
+
+
+      ## Web Evidence
+
+      - Initial implementation left component browser UI/JS; rejected by DOM proof.
+
+      - Remediation removed component browser UI affordance, `view === ''components''`
+      control, `/api/components` fetch path, and assemble/compose UI strings.
+
+      - Variant controls retained: `selectedVariant`, `switchVariant`, `activateVariant`.
+
+
+      DOM/static proof on mainline:
+
+      ```text
+
+      {''absent_ok'': {''/api/components'': True, ''toggleCompItem'': True, ''compItemExpanded'':
+      True, ''compItemContent'': True, ''compExpanded'': True, "view === ''components''":
+      True, ''assemble'': True, ''compose'': True}, ''present_ok'': {''selectedVariant'':
+      True, ''switchVariant'': True, ''activateVariant'': True}}
+
+      ```
+
+
+      ## Mainline Verification
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_cli.py tests/shell/test_python_api.py tests/shell/test_web.py
+      tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py -q
+
+      525 passed in 4.06s
+
+      ```
+
+      ```text
+
+      uv run ruff check src/larva/shell/web.py src/larva/shell/web_routes.py contrib/web/server.py
+
+      All checks passed!
+
+      ```
+
+      ```text
+
+      invar_invar_guard changed=true
+
+      status: passed; static errors=0 warnings=0 infos=0; doctest passed
+
+      ```
+
+
+      ## Files Changed
+
+      - `src/larva/shell/web.py`
+
+      - `src/larva/shell/web_routes.py`
+
+      - `contrib/web/server.py`
+
+      - `contrib/web/index.html`
+
+      - `tests/shell/test_contrib_web.py`
+
+      - `tests/shell/test_web.py`
+
+      - `tests/shell/test_web_rest_gaps.py`
+
+
+      ## Commit hash(es)
+
+      - `62fbd300c7ff3de768a4f660717ae2aa914a26ad` (worker)
+
+      - `3086d7e` (main squash)
+
+      - `5087df0` (main remediation)
+
+      - `92323fe` (main UI cleanup)
+
+
+      ## Gaps/Notes
+
+      none'
   - id: variants_surface_cutover_20260503.surface-gate
     name: surface-gate
     status: pending
