@@ -48412,7 +48412,7 @@ phases:
       \ --name-only --oneline 80c8068:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py"
 - id: hard_cut_finish_20260416_core
   name: Final Hard-Cut Core Boundary Alignment
-  status: done
+  status: in_progress
   gate: Core canonical admission is fail-closed with no variables path, no deferred
     legacy rejection, and core schema/validator semantics aligned to opifex canonical
     PersonaSpec.
@@ -49155,6 +49155,18 @@ phases:
 
       12 additional test failures in shell/app/facade are out of scope for this core
       gate and expected for hard_cut_finish_20260416_surfaces phase.'
+  - id: hard_cut_finish_20260416_core.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failures for final hard-cut core
+    status: pending
+    description: Resolve validate errors for completed steps hard_cut_finish_20260416_core.spec_schema_boundary,
+      hard_cut_finish_20260416_core.normalize_assemble_patch, and hard_cut_finish_20260416_core.gate.
+      Add later same-phase closure evidence proving current core boundary/gate verification
+      is green/OPEN with gate_open_allowed=true where applicable, or record explicit
+      expected-red/non-blocking owner/lifecycle/gate-intersection disposition for
+      all three failed historical records.
+    verification: Run vectl_validate(check_refs=true) and show all hard_cut_finish_20260416_core
+      completed-evidence guard errors are gone, or paste the accepted disposition
+      evidence that closes them.
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: done
