@@ -65715,7 +65715,7 @@ phases:
       none"
   - id: variants_projection_smoke_20260503.opencode-active-projection
     name: opencode-active-projection
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: [integration]
@@ -65832,6 +65832,93 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-03T06:45:36.820005+00:00'
+    done_at: '2026-05-03T06:46:52.289724+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — active-only persona
+      operations and OpenCode projection use active variants only.
+
+      - docs/reference/INTERFACES.md — list/export return active canonical specs without
+      registry metadata; variant metadata is separate.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode projection uses active variants
+      only and inactive variants are not separate agents.
+
+      - docs/guides/USAGE.md and USER_GUIDE.md — variant is an operation parameter,
+      not a PersonaSpec field; variant lifecycle and active behavior documented.
+
+      - contrib/opencode-plugin/README.md — OpenCode launcher consumes exported personas
+      and maps persona ids to agents.
+
+      - opifex canonical/schema/case matrices — canonical PersonaSpec forbids registry
+      metadata; export/resolve outputs must be canonical.
+
+      - INVAR.md — guard expectations.
+
+
+      ## Expected-Red Carryover or No-op Justification
+
+      ```text
+
+      Prior smoke definition step:
+
+      python -m pytest tests/shell/test_variant_projection_smoke.py tests/shell/test_opencode_cli.py
+      tests/shell/test_mcp_stdio_integration.py tests/repro/spec_verify_black_box_surfaces.py
+      tests/repro/cross_surface_consistency_verify.py --tb=short -q
+
+      121 passed, 7 skipped in 4.37s
+
+
+      Focused rerun for this implementation/no-op step:
+
+      uv run pytest tests/shell/test_opencode_cli.py tests/repro/cross_surface_consistency_verify.py
+      -q
+
+      50 passed, 7 skipped in 0.29s
+
+      ```
+
+      No product changes were needed: existing `opencode_command()` already projects
+      `facade.export_all()`, and registry export returns active canonical PersonaSpecs
+      only.
+
+
+      ## Projection Evidence
+
+      - Active variant content projected: `opencode_command()` calls `facade.export_all()`
+      and tests cover active-only export/projection.
+
+      - Inactive variant omitted: smoke tests assert inactive variants do not appear
+      as separate OpenCode agents.
+
+      - Digest changes with active content: smoke tests assert projection/config changes
+      when the active variant content/digest changes.
+
+      - Registry metadata absent: tests assert `_registry`, `variant`, `active`, and
+      `manifest` are absent from projected PersonaSpec/OpenCode agent payloads.
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_opencode_cli.py tests/repro/cross_surface_consistency_verify.py
+      -q
+
+      # 50 passed, 7 skipped in 0.29s
+
+
+      invar_guard(path=/Users/tefx/Projects/larva, changed=false)
+
+      # run grd_7a1d9426d224468b900fe424 complete: ok=true, errors=0, warnings=1,
+      infos=3, files_checked=40
+
+      ```
+
+
+      ## Product changes
+
+      none — no-op implementation because tests were already green.'
   - id: variants_projection_smoke_20260503.live-liveness-probe
     name: live-liveness-probe
     status: pending
