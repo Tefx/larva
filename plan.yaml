@@ -68331,7 +68331,7 @@ phases:
   steps:
   - id: non_opencode_red_cleanup_20260503.inventory
     name: Inventory non-OpenCode red failures
-    status: claimed
+    status: done
     description: Reproduce and inventory all currently known non-OpenCode red failures
       before changing code. Cover forbidden-field conformance scan; MCP assemble tool
       inventory/description/schema expectations; README larva_variant_list parity;
@@ -68345,6 +68345,71 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T14:35:01.928421+00:00'
+    done_at: '2026-05-03T14:37:57.981313+00:00'
+    evidence: 'Commands run:
+
+      - git status --short --branch && test -x .venv/bin/python && .venv/bin/python
+      --version: on branch vectl/step-non_opencode_red_cleanup_20260503.inventory;
+      Python 3.12.12; no initial changes shown.
+
+      - uv run python -m pytest -q tests/canonical_cutover/test_hard_cutover_readiness.py:
+      1 failed, 9 passed; forbidden-field conformance scan red.
+
+      - uv run --active python -m pytest -q tests/shell/test_mcp.py tests/shell/test_mcp_server.py
+      tests/shell/test_mcp_stdio_integration.py -k ''not opencode and (assemble or
+      variant_list or tool_inventory or registered or description or schema or parser
+      or legacy)'': 27 passed, 124 deselected.
+
+      - uv run --active python -m pytest -q tests/core/test_schema_validation.py:
+      3 failed, 27 passed.
+
+      - uv run --active python -m pytest -q tests/shell/test_canonical_boundary_gaps.py:
+      4 failed, 15 passed.
+
+      - uv run --active python -m pytest -q tests/shell/test_repo_local_ci_gate.py:
+      2 passed.
+
+      - uv run --active python -m pytest -q tests/shell/test_mcp.py::TestMCPAssembleSuccessShape
+      tests/shell/test_mcp.py::TestMCPAssembleConflictCodePreservation tests/shell/test_mcp.py::TestMCPToolsRoundTrip::test_assemble_tool_params_extraction
+      tests/shell/test_cli.py::TestAssembleCommand: 8 passed.
+
+      - uv run --active python -m pytest -q tests/shell/test_mcp.py: 109 passed.
+
+      - uv run --active python -m pytest -q -k ''not opencode'': 8 failed, 1052 passed,
+      19 deselected.
+
+      - git status --short: no output; worktree unchanged.
+
+
+      Failing groups observed:
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references:
+      scanner reports 53 non-legitimate forbidden-field references, mostly variant/active/manifest/_registry
+      references in shell CLI/MCP/registry/web files.
+
+      - tests/core/test_schema_validation.py::TestMCPProjectionParity::test_capabilities_required_tool_projections_include_both_terms:
+      StopIteration looking up removed larva_assemble in LARVA_MCP_TOOLS.
+
+      - tests/core/test_schema_validation.py::TestMCPProjectionParity::test_repo_docs_list_the_full_mcp_tool_inventory:
+      README.md missing MCP tool larva_variant_list.
+
+      - tests/core/test_schema_validation.py::TestCanonicalTypingSurface::test_mcp_contract_does_not_advertise_variables:
+      StopIteration looking up removed larva_assemble in LARVA_MCP_TOOLS.
+
+      - tests/shell/test_canonical_boundary_gaps.py::TestMCPToolDescriptionSemantics::test_assemble_tool_description_requires_capabilities_not_tools:
+      StopIteration looking up removed larva_assemble.
+
+      - tests/shell/test_canonical_boundary_gaps.py::TestMCPToolDescriptionSemantics::test_assemble_tool_schema_excludes_variables:
+      StopIteration looking up removed larva_assemble.
+
+      - tests/shell/test_canonical_boundary_gaps.py::TestCanonicalBoundaryRejection::test_assemble_rejects_tools_in_overrides:
+      MCPHandlers has no handle_assemble.
+
+      - tests/shell/test_canonical_boundary_gaps.py::TestCLIAssembleSurface::test_cli_parser_assemble_excludes_var_flag:
+      CLI parser rejects removed assemble command as invalid choice.
+
+
+      OpenCode excluded: yes'
   - id: non_opencode_red_cleanup_20260503.impl
     name: Fix non-OpenCode red failures
     status: pending
