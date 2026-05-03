@@ -67962,17 +67962,18 @@ phases:
   - id: plan_ref_warning_hygiene_20260503
     name: Triage remaining vectl ref warnings
     status: pending
-    description: Lightweight plan hygiene for vectl_validate(check_refs=true) warnings.
-      The OpenCode hardening contract-test refs were updated to existing docs; this
-      step should triage the remaining historical ref warnings as either repaired
-      refs, intentionally stale historical refs with explicit non-blocking disposition,
-      or out-of-scope legacy debt for a separate plan. Do not block the 16 completed-evidence
-      guard repairs on broad historical ref cleanup unless a missing ref affects active
-      OpenCode hardening work.
+    description: Lightweight planner-only plan hygiene for vectl_validate(check_refs=true)
+      warnings. The OpenCode hardening contract-test refs were updated to existing
+      docs; this step should triage the remaining historical ref warnings as either
+      repaired refs, intentionally stale historical refs with explicit non-blocking
+      disposition, or out-of-scope legacy debt for a separate plan. Do not block the
+      16 completed-evidence guard repairs on broad historical ref cleanup unless a
+      missing ref affects active OpenCode hardening work.
     verification: Run vectl_validate(check_refs=true). Confirm no OpenCode hardening
       step references docs/opencode-wrapper.md or docs/opencode-plugin-hardening-contract.md.
       Summarize remaining ref warnings and disposition; optionally reduce the warning
       count via vectl_mutate ref edits only.
+    agent: vectl-planner
   - id: opencode_hardening_20260503.external-gate-review-for-opencode-hardening
     name: External gate review for OpenCode hardening
     status: pending
