@@ -63612,7 +63612,7 @@ phases:
       none'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
-  status: in_progress
+  status: done
   gate: MCP/CLI/Python/REST/Web public surfaces expose variants and remove assembly/component
     surfaces consistently.
   depends_on:
@@ -64547,7 +64547,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.surface-gate
     name: surface-gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -64644,6 +64644,127 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T06:18:22.195786+00:00'
+    done_at: '2026-05-03T06:23:23.651796+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — variants are registry-local;
+      assembly/component tools/routes/UI removed; REST tombstone and variant routes
+      defined.
+
+      - docs/reference/INTERFACES.md — implemented MCP/CLI/Python/Web inventories
+      list variant operations and removed assembly/component surfaces.
+
+      - docs/reference/ARCHITECTURE.md — variants are registry metadata; `_registry`/`variant`
+      must never enter canonical PersonaSpec; assembly/components removed.
+
+      - docs/guides/USAGE.md — current variant usage; `variant` rejected inside PersonaSpec.
+
+      - docs/guides/USER_GUIDE.md — variant lifecycle and active canonical list/resolve/export
+      behavior.
+
+      - ../opifex design/schema/conformance case refs and INVAR.md — canonical fields
+      forbid tools/side_effect_policy/variables/variant/_registry/active; variant
+      case matrices require variant_list/activate/delete behavior and MCP naming;
+      full invar guard required.
+
+
+      ## Surface Gate Matrix
+
+      | Surface | Added variant proof | Removed surface proof | Metadata leakage proof
+      | Verdict |
+
+      |---|---|---|---|---|
+
+      | MCP | LARVA_MCP_TOOLS/local create_mcp_server registered larva_variant_list/activate/delete
+      | larva_assemble/component_list/component_show absent | variant is operation
+      param only; PersonaSpec schema forbids metadata | OPEN |
+
+      | CLI | `larva --help`, `larva variant --help`, temp CLI register/resolve/export
+      | `larva assemble/component --help` invalid choice exit 2 | CLI resolve/export
+      JSON has no `_registry`, `variant`, `active` | OPEN |
+
+      | Python API | __all__ includes variant ops; register/resolve/update accept
+      variant | assemble/component_list/component_show absent | validate rejects metadata;
+      resolve has no metadata keys | OPEN |
+
+      | REST | registry variant routes present; temp variant detail/activate/delete
+      worked | /api/components* 404; /api/personas/assemble documented 404 tombstone
+      | variant detail envelope keeps `_registry` outside spec; mismatch PUT returns
+      PERSONA_ID_MISMATCH | OPEN |
+
+      | Web | packaged/contrib initialize/reset/load selectedVariant and use variant
+      routes | no assembly/component flows | packaged/contrib strip metadata before
+      save; no side_effect_policy/tools UI | OPEN |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | larva.mcp_server_naming.yaml | MCP variant tools present, removed tools absent
+      | current-worktree constants/local server | MCP_TOOLS, CREATE_MCP_SERVER_REGISTERED
+      | pass | none | source-local tool registry green |
+
+      | larva.register/resolve/update/export | variant parameter stays outside PersonaSpec
+      | temp Python/CLI register/resolve/export | PY_* and CLI_* outputs | pass |
+      none | canonical outputs clean |
+
+      | INTERFACES.md Web inventory | removed REST endpoints fail closed; tombstone
+      exists | TestClient route/status checks | REST_REMOVED, ASSEMBLE_TOMBSTONE |
+      pass | none | 404 observed |
+
+      | Web UI behavior | variant state initialized/reset/loaded, no undefined variant
+      route | static packaged/contrib inspection | web_ui.html/contrib index lines
+      cited by reviewer | pass | none | guards and route usage verified |
+
+      | final-canonical-contract.md | metadata fields do not enter PersonaSpec | API/REST/CLI
+      validation and payload checks | PY_VALIDATE_METADATA, REST_METADATA_LEAK, CLI_EXPORT_METADATA_LEAK
+      | pass | none | no leaks found |
+
+      | INVAR.md | changed implementation remains guard-clean | full-scan invar guard
+      | grd_43030a5793354479a2f768df | pass | none | ok=true, errors=0 |
+
+
+      ## Verification
+
+      ```text
+
+      - uv run larva --help / uv run larva variant --help -> variant surface present
+
+      - uv run larva assemble --help and uv run larva component --help -> exit 2 invalid
+      choice
+
+      - Current-worktree MCP_TOOLS -> 13 tools with larva_variant_* present and removed
+      tools absent
+
+      - Local create_mcp_server() -> registered same 13 tool names
+
+      - Python API signature/export checks -> variant ops present; removed exports
+      absent
+
+      - Python/REST/CLI behavioral checks -> metadata rejected/absent from canonical
+      outputs; variant_list returns active/variants; id mismatch returns PERSONA_ID_MISMATCH
+
+      - REST removed endpoint checks -> /api/components* 404; POST /api/personas/assemble
+      404
+
+      - invar_guard full_scan run grd_43030a5793354479a2f768df -> ok=true, errors=0,
+      warnings=1, files_checked=40
+
+      ```
+
+
+      ## Residual Risk
+
+      none
+
+
+      ## Gate Decision
+
+      OPEN'
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
     status: done
@@ -65425,7 +65546,7 @@ phases:
       none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
-  status: locked
+  status: pending
   gate: OpenCode projection and runnable MCP/CLI/serve paths prove active variants
     only and removed surfaces absent in live-ish smoke checks.
   depends_on:
