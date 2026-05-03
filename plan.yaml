@@ -56463,7 +56463,7 @@ phases:
       - blockers: []'
   - id: merge_debt_20260425_review.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for merge debt review
-    status: pending
+    status: claimed
     description: 'Resolve validate errors for completed steps merge_debt_20260425_review.audit
       and merge_debt_20260425_review.conditional-fix, including gate_open_allowed=false
       and FAIL evidence. This is a proof-closure/evidence task, not product-code implementation.
@@ -56490,6 +56490,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:31:08.295597+00:00'
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
   status: done
