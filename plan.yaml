@@ -64753,6 +64753,7 @@ phases:
     - variants_surface_cutover_20260503.surface-audit-blocker-remediation
     - variants_surface_cutover_20260503.surface-audit-polish-remediation
     - variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
+    - variants_surface_cutover_20260503.registry-summary-parity-remediation
     agent: wiring-auditor
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
