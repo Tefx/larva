@@ -61193,7 +61193,7 @@ phases:
       - Full repo suite not run here; phase gate owns broader verification.'
   - id: variants_core_contract_20260503.core-gate-remediation
     name: core-gate-remediation
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
       \ project\npriority: HIGH\n\nBatched remediation ownership for deferred gate\
       \ `variants_core_contract_20260503.core-gate`.\n\nThis step owns ALL reported\
@@ -61306,6 +61306,154 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T00:58:20.286995+00:00'
+    done_at: '2026-05-03T01:08:32.790092+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — canonical PersonaSpec
+      shape does not change; variant is not a PersonaSpec field and belongs only to
+      larva registry boundary; variant names use kebab slug syntax max 64.
+
+      - docs/reference/INTERFACES.md — larva is downstream admission/projection handler;
+      opifex owns canonical schema; tools/side_effect_policy and unknown top-level
+      fields are rejected.
+
+      - ../opifex/design/final-canonical-contract.md — variant/_registry/active/manifest
+      are invalid inside PersonaSpec; registry metadata stays outside canonical spec.
+
+      - ../opifex/contracts/persona_spec.schema.json — canonical PersonaSpec required
+      fields and additionalProperties=false.
+
+      - ../opifex/conformance/shared_surfaces.yaml — opifex owns canonical authority;
+      larva is downstream conformance target; variant name invariants registered for
+      larva surfaces.
+
+      - INVAR.md — Core requires @pre/@post/doctest; Shell handles I/O and returns
+      Result.
+
+      - src/larva/core/validate.py — validate_variant_name raises VariantNameError
+      for invalid string inputs; type-only precondition left unchanged to preserve
+      behavior.
+
+      - src/larva/shell/registry.py — shell registry rejects forbidden canonical fields
+      on read; edits limited to line wrapping/behavior preservation.
+
+      - tests/core/test_variants.py — tests assert registry metadata forbidden and
+      invalid variants raise INVALID_VARIANT_NAME.
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py — scanner asserts no
+      non-legitimate forbidden-field references outside explicit exclusions.
+
+
+      ## Gate Failure Reproduction / Citation
+
+      - Failed gate step: variants_core_contract_20260503.core-gate.
+
+      - B1: prior Ruff lint failed on four reviewed files.
+
+      - B2: prior gate could not classify dirty opifex authority/conformance files.
+
+      - B3: prior gate worktree lacked design/registry-local-variants-and-assembly-removal.md.
+
+      - S1: validate_variant_name contract is type-only; invalid user input behavior
+      must remain VariantNameError.
+
+
+      ## B1 Lint Closure
+
+      ```text
+
+      /Users/tefx/.local/bin/ruff check src/larva/core/validate.py src/larva/shell/registry.py
+      tests/core/test_variants.py tests/canonical_cutover/test_hard_cutover_readiness.py
+
+      All checks passed!
+
+      ```
+
+      - Files changed for lint: src/larva/core/validate.py; src/larva/shell/registry.py;
+      tests/core/test_variants.py; tests/canonical_cutover/test_hard_cutover_readiness.py.
+
+      - Behavior-change risk: low; import hygiene, line wrapping, assertion specificity,
+      scanner-loop simplification, with validation re-export constants preserved via
+      justified noqa.
+
+
+      ## B2 Opifex Non-Intersection Evidence
+
+      - Larva branch/worktree changed only larva-owned files in this step.
+
+      - ../opifex remains a separate external repo and was not modified by this larva
+      remediation step.
+
+      - Provenance: opifex dirty state is out-of-step-origin relative to this larva
+      worktree.
+
+      - Disposition: non-blocking with non-intersection evidence for this phase gate
+      unless later evidence shows larva-owned work modified opifex.
+
+
+      ## B3 Design Ref Proof
+
+      ```text
+
+      test -r design/registry-local-variants-and-assembly-removal.md && git log -1
+      --oneline -- design/registry-local-variants-and-assembly-removal.md
+
+      1caccf9 [vectl] add registry variants design reference
+
+      ```
+
+      - Key passage: canonical PersonaSpec shape does not change; variant is not a
+      PersonaSpec field and variant state belongs only to larva registry boundary.
+
+
+      ## S1 Contract Decision
+
+      - Decision: left unchanged.
+
+      - Invalid-input behavior proof: tests/core/test_variants.py asserts invalid
+      variant strings raise VariantNameError and focused core regression suite passed.
+
+      - Non-blocking rationale: strengthening precondition to len(name) > 0 would
+      convert empty string handling from public VariantNameError to contract/precondition
+      failure; invar finding remains informational.
+
+
+      ## Regression Verification
+
+      ```text
+
+      uv run pytest tests/core/test_spec.py tests/core/test_validate.py tests/core/test_patch.py
+      tests/core/test_variants.py tests/shell/test_registry.py::TestFileSystemRegistryStoreContract::test_get_rejects_registry_metadata_fields_at_shell_boundary
+      tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references
+      -q
+
+      193 passed in 0.74s
+
+      ```
+
+      ```text
+
+      invar_guard(changed=false/full_scan): complete ok=true; errors=0 warnings=7
+      infos=2 files_checked=44 review_suggested=false.
+
+      ```
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: c1782265f742727fcca1013657be65e5abc3f292.
+
+      - Main squash commit: 45ecd98.
+
+
+      ## Gaps/Notes
+
+      - Did not modify ../opifex.
+
+      - Did not change validate_variant_name contract semantics because that would
+      risk changing invalid string input behavior.
+
+      - Did not alter plan.yaml, claims, or vectl state.'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
   status: locked
