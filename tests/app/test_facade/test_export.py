@@ -3,11 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Export use-case contracts)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (active-only export)
 """
 
 from __future__ import annotations
 
 from typing import cast
+
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -309,3 +312,42 @@ class TestFacadeExportIds:
         assert "tools" not in exported[0]
         assert "side_effect_policy" not in exported[0]
         assert exported[0]["spec_digest"] == _digest_for(exported[0])
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeExportActiveOnly:
+    """Export returns active canonical specs only, no registry metadata.
+
+    Target contract:
+    - export_all returns one active spec per base persona id
+    - export_ids returns the active spec per id
+    - No variant, _registry, active, or manifest metadata in exported specs
+    - Inactive variants are not included in any export
+
+    Expected-RED because variant-aware export is not implemented yet.
+    """
+
+    def test_export_all_returns_active_variants_only(self) -> None:
+        """export_all() returns one canonical PersonaSpec per base persona id (active only)."""
+        pytest.xfail(
+            "variant-aware export_all (active-only) does not exist yet; "
+            "expected to return one spec per base id after implementation"
+        )
+
+    def test_export_all_excludes_registry_metadata(self) -> None:
+        """Exported specs must not contain variant, _registry, active, or manifest fields."""
+        pytest.xfail(
+            "export metadata exclusion does not exist yet; "
+            "expected exports to lack registry metadata fields"
+        )
+
+    def test_export_ids_returns_active_variant(self) -> None:
+        """export_ids(ids) returns the active variant spec for each requested id."""
+        pytest.xfail(
+            "variant-aware export_ids (active-only) does not exist yet; "
+            "expected to return active variant per id after implementation"
+        )

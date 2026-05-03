@@ -3,12 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Registry read -> override -> revalidation)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (variant-aware register)
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from returns.result import Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -286,3 +288,84 @@ class TestFacadeRegisterCanonicalRejections:
         assert error["code"] == "PERSONA_INVALID"
         assert error["details"]["report"]["errors"][0]["code"] == "INVALID_MODEL_PARAMS"
         assert registry.save_inputs == []
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeRegisterVariant:
+    """Register with variant parameter: auto-activation and id mismatch contracts.
+
+    Expected-RED because facade.register(spec, variant=None) does not accept
+    a variant parameter yet. These tests will xfail until the variant-aware
+    register is implemented.
+    """
+
+    def test_register_default_variant_auto_activates_for_new_persona(self) -> None:
+        """New persona: register(spec) auto-activates the 'default' variant.
+
+        Target: when variant is None, register writes as 'default' variant.
+        For a new persona (no manifest.json yet), 'default' becomes active.
+        """
+        pytest.xfail(
+            "facade.register(spec, variant=None) does not exist yet; "
+            "expected to auto-activate default variant for new persona"
+        )
+
+    def test_register_named_variant_auto_activates_for_new_persona(self) -> None:
+        """New persona: register(spec, variant='tacit') auto-activates 'tacit'.
+
+        Target: first register for a new persona id auto-activates the
+        registered variant regardless of its name.
+        """
+        pytest.xfail(
+            "facade.register(spec, variant='tacit') does not exist yet; "
+            "expected to auto-activate named variant for new persona"
+        )
+
+    def test_register_existing_persona_does_not_auto_activate(self) -> None:
+        """Existing persona: register(spec, variant='other') does NOT change active.
+
+        Target: registering a new variant for an existing persona does not
+        change the active variant pointer.
+        """
+        pytest.xfail(
+            "facade.register(spec, variant='other') for existing persona "
+            "does not exist yet; expected NOT to auto-activate"
+        )
+
+    def test_register_spec_id_mismatch_rejected(self) -> None:
+        """spec.id != target base persona id => PERSONA_ID_MISMATCH.
+
+        Target: when registering under an explicit base persona id or using
+        the variant path, spec.id must equal the base persona id. Mismatch
+        produces PERSONA_ID_MISMATCH.
+        """
+        pytest.xfail(
+            "PERSONA_ID_MISMATCH error for spec.id mismatch does not exist yet; "
+            "expected after variant-aware register implementation"
+        )
+
+    def test_register_rejects_invalid_variant_name(self) -> None:
+        """Invalid variant name => INVALID_VARIANT_NAME.
+
+        Target: variant names matching ^[a-z0-9]+(-[a-z0-9]+)*$ and
+        at most 64 characters. Violations produce INVALID_VARIANT_NAME.
+        """
+        pytest.xfail(
+            "INVALID_VARIANT_NAME error does not exist yet; "
+            "expected after variant name validation implementation"
+        )
+
+    def test_register_variant_writes_to_variants_directory(self) -> None:
+        """Register with variant writes spec to <id>/variants/<variant>.json.
+
+        Target: the variant spec file is stored in the variants subdirectory,
+        not as a flat <id>.json.
+        """
+        pytest.xfail(
+            "variant directory layout does not exist yet; "
+            "expected to write to <id>/variants/<variant>.json"
+        )

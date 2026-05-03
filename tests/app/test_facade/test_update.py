@@ -3,12 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Registry read -> patch -> validation -> save)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (variant-aware update)
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -163,3 +165,56 @@ class TestFacadeUpdate:
         assert normalize_module.inputs == []
         assert len(validate_module.inputs) == 1
         assert registry.save_inputs == []
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeUpdateVariant:
+    """Update with variant parameter: variant-aware update contracts.
+
+    Target: update(persona_id, patches, variant=None) where:
+    - omitted variant => update active variant
+    - named variant => update that specific variant
+    - variant is operation parameter, not inside patches
+    - variant name must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be <= 64 chars
+
+    Expected-RED because facade.update() does not accept variant parameter yet.
+    """
+
+    def test_update_active_variant_by_default(self) -> None:
+        """update(id, patches) patches the active variant."""
+        pytest.xfail(
+            "facade.update(id, patches, variant=None) does not exist yet; "
+            "expected to patch active variant by default"
+        )
+
+    def test_update_named_variant(self) -> None:
+        """update(id, patches, variant='tacit') patches that specific variant."""
+        pytest.xfail(
+            "facade.update(id, patches, variant='tacit') does not exist yet; "
+            "expected to patch named variant"
+        )
+
+    def test_update_rejects_variant_inside_patches(self) -> None:
+        """variant field inside patches must be rejected as FORBIDDEN_PATCH_FIELD."""
+        pytest.xfail(
+            "FORBIDDEN_PATCH_FIELD for variant inside patches does not exist yet; "
+            "expected after variant-aware update implementation"
+        )
+
+    def test_update_invalid_variant_name_rejected(self) -> None:
+        """Invalid variant name => INVALID_VARIANT_NAME error."""
+        pytest.xfail(
+            "INVALID_VARIANT_NAME error for update does not exist yet; "
+            "expected after variant name validation implementation"
+        )
+
+    def test_update_unknown_variant_returns_variant_not_found(self) -> None:
+        """Named variant that does not exist => VARIANT_NOT_FOUND."""
+        pytest.xfail(
+            "VARIANT_NOT_FOUND error for update does not exist yet; "
+            "expected after variant-aware update implementation"
+        )

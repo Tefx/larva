@@ -3,12 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Delete use-case contract)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (variant delete contracts)
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import LarvaError
@@ -114,3 +116,66 @@ class TestFacadeDelete:
         assert error["details"]["persona_id"] == "stuck-persona"
         assert error["details"]["path"] == "/home/.larva/registry/stuck-persona.json"
         assert error["details"]["failed_spec_paths"] == ["/home/.larva/registry/stuck-persona.json"]
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeVariantDelete:
+    """variant_delete: reject active, reject last variant, accept inactive.
+
+    Target contract:
+    - variant_delete(id, variant) deletes an inactive, non-last variant
+    - Returns {id, variant, deleted: true}
+    - Reject active variant => ACTIVE_VARIANT_DELETE_FORBIDDEN
+    - Reject last variant => LAST_VARIANT_DELETE_FORBIDDEN
+    - Invalid variant name => INVALID_VARIANT_NAME
+    - variant is operation parameter, not inside spec
+    - delete(id) deletes base persona and ALL variants
+
+    Expected-RED because variant_delete does not exist yet.
+    """
+
+    def test_variant_delete_inactive_non_last_succeeds(self) -> None:
+        """variant_delete(id, variant) on inactive non-last returns {id, variant, deleted: true}."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "expected ACTIVE_VARIANT_DELETE_FORBIDDEN after implementation"
+        )
+
+    def test_variant_delete_active_variant_rejected(self) -> None:
+        """Deleting the active variant => ACTIVE_VARIANT_DELETE_FORBIDDEN."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "expected ACTIVE_VARIANT_DELETE_FORBIDDEN after implementation"
+        )
+
+    def test_variant_delete_last_variant_rejected(self) -> None:
+        """Deleting the last remaining variant => LAST_VARIANT_DELETE_FORBIDDEN."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "expected LAST_VARIANT_DELETE_FORBIDDEN after implementation"
+        )
+
+    def test_variant_delete_invalid_variant_name_rejected(self) -> None:
+        """Invalid variant name => INVALID_VARIANT_NAME."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "expected INVALID_VARIANT_NAME after implementation"
+        )
+
+    def test_variant_delete_unknown_variant_rejected(self) -> None:
+        """Variant not found under persona => VARIANT_NOT_FOUND."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "expected VARIANT_NOT_FOUND after implementation"
+        )
+
+    def test_delete_base_persona_removes_all_variants(self) -> None:
+        """delete(id) removes the entire persona directory including all variants."""
+        pytest.xfail(
+            "variant-aware delete(id) removing all variants does not exist yet; "
+            "expected to remove full <id>/ directory after implementation"
+        )

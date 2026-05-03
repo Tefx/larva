@@ -3,12 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Registry read -> override -> revalidation)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (variant-aware resolve)
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -211,3 +213,63 @@ class TestFacadeResolve:
         assert error["details"]["path"] == "/tmp/broken.json"
         assert validate_module.inputs == []
         assert normalize_module.inputs == []
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeResolveVariant:
+    """Resolve with variant parameter: variant-aware resolution contracts.
+
+    Target: resolve(id, overrides=None, variant=None) where:
+    - omitted variant => resolve active variant
+    - named variant => resolve that specific variant
+    - variant name must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be <= 64 chars
+    - resolved output is bare canonical PersonaSpec (no registry metadata)
+
+    Expected-RED because facade.resolve() does not accept variant parameter yet.
+    """
+
+    def test_resolve_active_variant_by_default(self) -> None:
+        """resolve(id) returns the active variant as bare canonical PersonaSpec."""
+        pytest.xfail(
+            "facade.resolve(id, variant=None) does not exist yet; "
+            "expected to resolve active variant by default"
+        )
+
+    def test_resolve_named_variant(self) -> None:
+        """resolve(id, variant='tacit') returns the named variant as canonical PersonaSpec."""
+        pytest.xfail(
+            "facade.resolve(id, variant='tacit') does not exist yet; "
+            "expected to resolve named variant"
+        )
+
+    def test_resolve_active_returns_no_registry_metadata(self) -> None:
+        """Resolved active variant must not contain _registry, variant, active, or manifest fields."""
+        pytest.xfail(
+            "variant-aware resolve does not exist yet; "
+            "expected to return bare canonical PersonaSpec without registry metadata"
+        )
+
+    def test_resolve_invalid_variant_name_rejected(self) -> None:
+        """Invalid variant name => INVALID_VARIANT_NAME error."""
+        pytest.xfail(
+            "INVALID_VARIANT_NAME error for resolve does not exist yet; "
+            "expected after variant-aware resolve implementation"
+        )
+
+    def test_resolve_unknown_variant_returns_variant_not_found(self) -> None:
+        """Named variant that does not exist under the persona => VARIANT_NOT_FOUND."""
+        pytest.xfail(
+            "VARIANT_NOT_FOUND error for resolve does not exist yet; "
+            "expected after variant-aware resolve implementation"
+        )
+
+    def test_resolve_corrupt_manifest_returns_registry_corrupt(self) -> None:
+        """Corrupt/missing manifest => REGISTRY_CORRUPT error, no auto-invent."""
+        pytest.xfail(
+            "REGISTRY_CORRUPT error for resolve does not exist in variant context yet; "
+            "expected after implementation"
+        )

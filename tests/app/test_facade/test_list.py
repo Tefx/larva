@@ -3,12 +3,14 @@
 Sources:
 - ARCHITECTURE.md section 7 (Registry listing)
 - INTERFACES.md section A/G (use-cases + app-level error codes)
+- design/registry-local-variants-and-assembly-removal.md (active-only listing)
 """
 
 from __future__ import annotations
 
 from typing import cast
 
+import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -132,3 +134,53 @@ class TestFacadeList:
         issue = error["details"]["report"]["errors"][0]
         assert issue["code"] == "INVALID_SPEC_DIGEST"
         assert issue["details"]["field"] == "spec_digest"
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# ===========================================================================
+
+
+class TestFacadeListActiveOnly:
+    """list() returns active canonical specs only, no registry metadata.
+
+    Target contract:
+    - list() shows base persona ids only
+    - Each summary comes from the active variant
+    - No variant, _registry, active, or manifest metadata in output
+    - variant_list(id) returns registry metadata separately
+
+    Expected-RED because the variant-aware listing is not implemented yet.
+    """
+
+    def test_list_returns_one_entry_per_base_persona_id(self) -> None:
+        """list() returns one PersonaSummary per base persona id (active variant only)."""
+        pytest.xfail(
+            "variant-aware list (one entry per base id) does not exist yet; "
+            "expected to return active-only summaries after implementation"
+        )
+
+    def test_list_does_not_include_variant_metadata(self) -> None:
+        """list() summaries must not contain variant, active, or _registry fields."""
+        pytest.xfail(
+            "variant metadata exclusion in list does not exist yet; "
+            "expected to return bare PersonaSummary without variant fields"
+        )
+
+    def test_variant_list_returns_registry_metadata_only(self) -> None:
+        """variant_list(id) returns {id, active, variants} without prompt/capabilities/spec fields.
+
+        Target: variant_list returns registry metadata (id, active variant name,
+        list of variant names) separate from PersonaSpec content.
+        """
+        pytest.xfail(
+            "variant_list(id) does not exist yet; "
+            "expected to return {id, active, variants} after implementation"
+        )
+
+    def test_variant_list_returns_complete_unbounded_variant_list(self) -> None:
+        """variant_list returns complete list of variants, no pagination in v1."""
+        pytest.xfail(
+            "variant_list unbounded listing does not exist yet; "
+            "expected to return all variants without pagination"
+        )

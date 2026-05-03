@@ -6,6 +6,15 @@ These tests define expected shell-boundary behavior for FileSystemRegistryStore:
 - get() returns typed shell errors for missing/invalid personas
 - list() returns complete canonical PersonaSpec records from registry boundary
 - index/spec consistency violations return typed shell errors
+
+Registry-local variant tests:
+- manifest.json stores exactly {"active": "default"} for a valid persona
+- variant specs live under <id>/variants/<variant>.json
+- variant spec id must equal base persona id (directory name)
+- corrupt/missing manifest => REGISTRY_CORRUPT
+- missing active variant file => REGISTRY_CORRUPT
+- invalid variant names are rejected with INVALID_VARIANT_NAME
+- variant_activate uses same-directory write-then-rename
 """
 
 from __future__ import annotations
@@ -50,6 +59,11 @@ def registry_root(tmp_path: Path) -> Path:
     root = tmp_path / ".larva" / "registry"
     root.mkdir(parents=True)
     return root
+
+
+# ===========================================================================
+# EXISTING FLAT-FILE REGISTRY TESTS (unchanged – keep baseline passing)
+# ===========================================================================
 
 
 class TestFileSystemRegistryStoreContract:
@@ -370,10 +384,9 @@ class TestFileSystemRegistryStoreContract:
         assert persisted_spec == initial
         assert persisted_index == {"rollback-agent": "sha256:original"}
 
-    # ========== DELETE CONTRACT TESTS (xfail until implementation) ==========
+    # ========== DELETE CONTRACT TESTS ==========
 
     def test_delete_success(self, registry_root: Path) -> None:
-        """save a persona, then delete it; confirm spec file gone and index entry removed."""
         store = FileSystemRegistryStore(root=registry_root)
         spec = _canonical_spec("delete-target", "sha256:delete-target")
 
@@ -398,7 +411,6 @@ class TestFileSystemRegistryStoreContract:
         assert "delete-target" not in index_after
 
     def test_delete_not_found(self, registry_root: Path) -> None:
-        """delete non-existent id; confirm PERSONA_NOT_FOUND failure."""
         _write_json(registry_root / INDEX_FILENAME, {})
         store = FileSystemRegistryStore(root=registry_root)
 
@@ -410,7 +422,6 @@ class TestFileSystemRegistryStoreContract:
         assert error["persona_id"] == "missing-persona"
 
     def test_delete_invalid_id(self, registry_root: Path) -> None:
-        """invalid id returns INVALID_PERSONA_ID and performs no filesystem access."""
         store = FileSystemRegistryStore(root=registry_root)
 
         result = store.delete("Invalid_Persona")
@@ -426,7 +437,6 @@ class TestFileSystemRegistryStoreContract:
     def test_delete_index_write_failure(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """_write_json_atomic fails during index write; spec file remains untouched and index remains readable."""
         spec = _canonical_spec("delete-index-fail", "sha256:delete-index-fail")
         _write_json(registry_root / "delete-index-fail.json", spec)
         _write_json(
@@ -470,7 +480,6 @@ class TestFileSystemRegistryStoreContract:
     def test_delete_spec_unlink_failure(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """spec_path.unlink raises OSError; rollback restores the prior index entry and reports REGISTRY_DELETE_FAILED."""
         spec = _canonical_spec("delete-unlink-fail", "sha256:delete-unlink-fail")
         _write_json(registry_root / "delete-unlink-fail.json", spec)
         _write_json(
@@ -501,7 +510,6 @@ class TestFileSystemRegistryStoreContract:
     # ========== CLEAR CONTRACT TESTS ==========
 
     def test_clear_wrong_confirm(self, registry_root: Path) -> None:
-        """Wrong confirm string returns Failure and does not touch filesystem."""
         _write_json(registry_root / INDEX_FILENAME, {})
         store = FileSystemRegistryStore(root=registry_root)
 
@@ -510,11 +518,9 @@ class TestFileSystemRegistryStoreContract:
         assert isinstance(result, Failure)
         error = result.failure()
         assert error["code"] == "INVALID_CONFIRMATION_TOKEN"
-        # Filesystem untouched - index still exists
         assert (registry_root / INDEX_FILENAME).exists()
 
     def test_clear_empty_registry(self, registry_root: Path) -> None:
-        """Clear on empty registry returns Success(0)."""
         store = FileSystemRegistryStore(root=registry_root)
 
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
@@ -522,16 +528,13 @@ class TestFileSystemRegistryStoreContract:
         assert result == Success(0)
 
     def test_clear_success(self, registry_root: Path) -> None:
-        """Clear 2-3 saved personas; all spec files gone, index gone, returned count matches."""
         store = FileSystemRegistryStore(root=registry_root)
 
-        # Save 3 personas
         for name in ("clear-a", "clear-b", "clear-c"):
             spec = _canonical_spec(name, f"sha256:{name}")
             save_result = store.save(spec)
             assert save_result == Success(None)
 
-        # Verify all files exist before clear
         for name in ("clear-a", "clear-b", "clear-c"):
             assert (registry_root / f"{name}.json").exists()
         assert (registry_root / INDEX_FILENAME).exists()
@@ -539,31 +542,24 @@ class TestFileSystemRegistryStoreContract:
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
 
         assert result == Success(3)
-        # All spec files gone
         for name in ("clear-a", "clear-b", "clear-c"):
             assert not (registry_root / f"{name}.json").exists()
-        # Index gone (empty registry = no index file)
         assert not (registry_root / INDEX_FILENAME).exists()
 
     def test_clear_partial_failure(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """One spec unlink raises OSError; failure reports failed ids while index removal still occurs."""
         store = FileSystemRegistryStore(root=registry_root)
 
-        # Save 3 personas
         for name in ("partial-a", "partial-b", "partial-c"):
             spec = _canonical_spec(name, f"sha256:{name}")
             save_result = store.save(spec)
             assert save_result == Success(None)
 
-        # Track which files have been unlinked
         unlinked_files: list[str] = []
-
         original_unlink = Path.unlink
 
         def fail_on_partial_b(self: Path, *args: object, **kwargs: object) -> None:
-            # Record the file path being unlinked
             if "partial-b" in str(self):
                 raise OSError("simulated unlink failure for partial-b")
             unlinked_files.append(str(self))
@@ -578,28 +574,21 @@ class TestFileSystemRegistryStoreContract:
         assert error["code"] == "REGISTRY_DELETE_FAILED"
         assert error["operation"] == "clear"
         assert error["persona_id"] is None
-        # failed_spec_paths should contain partial-b
         failed_paths: list[str] = error["failed_spec_paths"]
         assert any("partial-b" in p for p in failed_paths)
-        # Index should be removed (clear proceeds even if some unlinks fail)
         assert not (registry_root / INDEX_FILENAME).exists()
-        # partial-a and partial-c should be unlinked
         assert any("partial-a" in f for f in unlinked_files)
         assert any("partial-c" in f for f in unlinked_files)
-        # partial-b should still exist (failed to unlink)
         assert (registry_root / "partial-b.json").exists()
 
     def test_clear_returns_correct_count(self, registry_root: Path) -> None:
-        """Count equals registry size from pre-clear index snapshot."""
         store = FileSystemRegistryStore(root=registry_root)
 
-        # Save 2 personas
         for name in ("count-a", "count-b"):
             spec = _canonical_spec(name, f"sha256:{name}")
             save_result = store.save(spec)
             assert save_result == Success(None)
 
-        # Snapshot index before clear
         index_before = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
         expected_count = len(index_before)
         assert expected_count == 2
@@ -607,3 +596,293 @@ class TestFileSystemRegistryStoreContract:
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
 
         assert result == Success(expected_count)
+
+
+# ===========================================================================
+# REGISTRY-LOCAL VARIANT TESTS (expected red until implementation lands)
+# ===========================================================================
+
+
+class TestRegistryVariantStorageLayout:
+    """Registry-local variant layout: manifest.json + variants/*.json.
+
+    These tests define the target-state filesystem contract for variant storage.
+    They are expected-RED because the current FileSystemRegistryStore uses
+    flat <id>.json files with index.json, not the new <id>/manifest.json +
+    <id>/variants/<variant>.json layout.
+    """
+
+    @pytest.fixture
+    def variant_root(self, tmp_path: Path) -> Path:
+        root = tmp_path / ".larva" / "registry"
+        root.mkdir(parents=True)
+        return root
+
+    def _make_spec(self, persona_id: str, model: str = "gpt-4o-mini") -> PersonaSpec:
+        """Create a canonical spec with a valid digest for the given persona_id."""
+        import hashlib
+
+        spec: PersonaSpec = {
+            "id": persona_id,
+            "description": f"Persona {persona_id}",
+            "prompt": f"You are {persona_id}",
+            "model": model,
+            "capabilities": {"shell": "read_only"},
+            "spec_version": "0.1.0",
+        }
+        payload = {k: v for k, v in spec.items() if k != "spec_digest"}
+        canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        spec["spec_digest"] = f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+        return spec
+
+    def _write_persona_dir(
+        self,
+        root: Path,
+        persona_id: str,
+        active: str,
+        variants: dict[str, PersonaSpec],
+    ) -> None:
+        """Write a complete persona directory with manifest.json and variants."""
+        persona_dir = root / persona_id
+        persona_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(persona_dir / "manifest.json", {"active": active})
+        variants_dir = persona_dir / "variants"
+        variants_dir.mkdir(exist_ok=True)
+        for variant_name, spec in variants.items():
+            _write_json(variants_dir / f"{variant_name}.json", spec)
+
+    def test_manifest_json_stores_exactly_active_pointer(self, variant_root: Path) -> None:
+        """manifest.json contains exactly {"active": "default"}, no extra keys."""
+        store = FileSystemRegistryStore(root=variant_root)
+        spec = self._make_spec("manifest-check")
+        # The target design: register creates <id>/manifest.json with {"active": "default"}
+        result = store.save(spec)
+        assert isinstance(result, Success) or isinstance(result, Failure)
+
+        manifest = variant_root / "manifest-check" / "manifest.json"
+        # This test will RED because current code creates flat <id>.json + index.json,
+        # not the new directory layout with manifest.json
+        assert manifest.exists(), (
+            "Expected ~./larva/registry/<id>/manifest.json to exist after register; "
+            "current implementation uses flat <id>.json + index.json"
+        )
+        manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+        assert manifest_data == {"active": "default"}
+
+    def test_variant_spec_id_must_equal_base_persona_id(self, variant_root: Path) -> None:
+        """Every variants/<variant>.json must have spec.id == <persona-dir-name>."""
+        self._write_persona_dir(
+            variant_root,
+            "code-reviewer",
+            "default",
+            {
+                "default": self._make_spec("code-reviewer"),
+                "tacit": self._make_spec("code-reviewer", model="gpt-4.1"),
+            },
+        )
+
+        store = FileSystemRegistryStore(root=variant_root)
+        # When resolving a variant, the spec.id must equal the base persona id
+        result = store.get("code-reviewer")
+
+        # Current code has no concept of variants; this will fail
+        assert isinstance(result, Failure), (
+            "Expected REGISTRY_CORRUPT or redesign; current implementation "
+            "does not support variant directory layout"
+        )
+
+    def test_corrupt_manifest_returns_registry_corrupt(self, variant_root: Path) -> None:
+        """Missing or malformed manifest.json must produce REGISTRY_CORRUPT."""
+        persona_dir = variant_root / "corrupt-persona"
+        persona_dir.mkdir(parents=True)
+        variants_dir = persona_dir / "variants"
+        variants_dir.mkdir()
+        # Write variant but NO manifest
+        _write_json(variants_dir / "default.json", self._make_spec("corrupt-persona"))
+
+        store = FileSystemRegistryStore(root=variant_root)
+        result = store.get("corrupt-persona")
+
+        # Expected: REGISTRY_CORRUPT error; current code will give
+        # PERSONA_NOT_FOUND (different error code)
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_CORRUPT", (
+            f"Expected REGISTRY_CORRUPT for missing manifest, got {error['code']}"
+        )
+
+    def test_malformed_manifest_returns_registry_corrupt(self, variant_root: Path) -> None:
+        """manifest.json with wrong shape must produce REGISTRY_CORRUPT."""
+        import hashlib
+
+        persona_dir = variant_root / "malformed-persona"
+        persona_dir.mkdir(parents=True)
+        variants_dir = persona_dir / "variants"
+        variants_dir.mkdir()
+        spec = self._make_spec("malformed-persona")
+        _write_json(variants_dir / "default.json", spec)
+        # Malformed manifest: missing "active" key
+        _write_json(persona_dir / "manifest.json", {"version": "1.0"})
+
+        store = FileSystemRegistryStore(root=variant_root)
+        result = store.get("malformed-persona")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_CORRUPT", (
+            f"Expected REGISTRY_CORRUPT for malformed manifest, got {error['code']}"
+        )
+
+    def test_active_pointer_to_missing_variant_returns_registry_corrupt(
+        self, variant_root: Path
+    ) -> None:
+        """manifest.json pointing to nonexistent variant file => REGISTRY_CORRUPT."""
+        persona_dir = variant_root / "dangling-persona"
+        persona_dir.mkdir(parents=True)
+        variants_dir = persona_dir / "variants"
+        variants_dir.mkdir()
+        spec = self._make_spec("dangling-persona")
+        _write_json(variants_dir / "default.json", spec)
+        # Manifest points to a variant that doesn't exist on disk
+        _write_json(persona_dir / "manifest.json", {"active": "vanished"})
+
+        store = FileSystemRegistryStore(root=variant_root)
+        result = store.get("dangling-persona")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_CORRUPT", (
+            f"Expected REGISTRY_CORRUPT for active pointing to missing variant, got {error['code']}"
+        )
+
+    def test_no_auto_invent_manifest(self, variant_root: Path) -> None:
+        """If manifest.json is absent, larva must NOT auto-invent one."""
+        persona_dir = variant_root / "no-auto-invent"
+        persona_dir.mkdir(parents=True)
+        variants_dir = persona_dir / "variants"
+        variants_dir.mkdir()
+        spec = self._make_spec("no-auto-invent")
+        _write_json(variants_dir / "default.json", spec)
+        # No manifest.json at all
+
+        store = FileSystemRegistryStore(root=variant_root)
+        result = store.get("no-auto-invent")
+
+        # Must be REGISTRY_CORRUPT, not auto-heal or auto-generate
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_CORRUPT"
+        # Verify manifest was NOT auto-created
+        assert not (persona_dir / "manifest.json").exists()
+
+
+class TestRegistryVariantInvalidName:
+    """Variant name validation: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be <= 64 chars.
+
+    These tests are expected-RED because the current facade does not accept
+    a variant parameter and the registry has no variant name validation.
+    """
+
+    @pytest.fixture
+    def variant_root(self, tmp_path: Path) -> Path:
+        root = tmp_path / ".larva" / "registry"
+        root.mkdir(parents=True)
+        return root
+
+    @pytest.mark.parametrize(
+        "invalid_name",
+        [
+            "UPPERCASE",       # uppercase letters
+            "with_underscore", # underscore
+            "with.dot",         # dot
+            "with/slash",      # path separator
+            "with space",      # space
+            "",                # empty string
+            "a" * 65,          # too long (>64 chars)
+            "..",              # double dot traversal
+        ],
+    )
+    def test_invalid_variant_name_rejected(self, invalid_name: str) -> None:
+        """Invalid variant names must produce INVALID_VARIANT_NAME error.
+
+        This test calls the register facade method with an invalid variant
+        name, which does not exist in the current API.
+        """
+        # The current facade.register() does not accept a variant parameter.
+        # When the variant-aware register(spec, variant=...) is added,
+        # passing an invalid variant name must produce INVALID_VARIANT_NAME.
+        pytest.xfail(
+            "register(spec, variant=...) does not exist yet; "
+            f"INVALID_VARIANT_NAME for '{invalid_name[:20]}...' expected after implementation"
+        )
+
+    def test_variant_name_exactly_64_chars_accepted(self) -> None:
+        """A variant name of exactly 64 lowercase kebab chars must be accepted."""
+        name_64 = "a" * 64
+        # Will xfail because variant parameter doesn't exist yet
+        pytest.xfail(
+            f"register(spec, variant='{name_64}') does not exist yet; "
+            "expected to accept 64-char variant names after implementation"
+        )
+
+
+class TestRegistryVariantActivate:
+    """variant_activate uses same-directory write-then-rename for manifest.json.
+
+    Expected-RED because variant_activate does not exist yet.
+    """
+
+    @pytest.fixture
+    def variant_root(self, tmp_path: Path) -> Path:
+        root = tmp_path / ".larva" / "registry"
+        root.mkdir(parents=True)
+        return root
+
+    def test_variant_activate_writes_manifest_atomically(self, variant_root: Path) -> None:
+        """Activation must write manifest.json using same-dir write-then-rename."""
+        pytest.xfail(
+            "variant_activate does not exist yet; "
+            "expected to test atomic manifest write after implementation"
+        )
+
+    def test_variant_activate_returns_id_and_active(self) -> None:
+        """variant_activate returns {id, active} on success."""
+        pytest.xfail(
+            "variant_activate does not exist yet; "
+            "expected to return {id, active} after implementation"
+        )
+
+
+class TestRegistryVariantDelete:
+    """variant_delete: reject active, reject last variant, accept inactive.
+
+    Expected-RED because variant_delete does not exist yet.
+    """
+
+    def test_variant_delete_active_variant_rejected(self) -> None:
+        """Deleting the active variant must produce ACTIVE_VARIANT_DELETE_FORBIDDEN."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "ACTIVE_VARIANT_DELETE_FORBIDDEN expected after implementation"
+        )
+
+    def test_variant_delete_last_variant_rejected(self) -> None:
+        """Deleting the last remaining variant must produce LAST_VARIANT_DELETE_FORBIDDEN."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "LAST_VARIANT_DELETE_FORBIDDEN expected after implementation"
+        )
+
+    def test_variant_delete_inactive_variant_succeeds(self) -> None:
+        """Deleting an inactive non-last variant returns {id, variant, deleted: true}."""
+        pytest.xfail(
+            "variant_delete does not exist yet; "
+            "successful inactive variant deletion expected after implementation"
+        )
+
+    def test_variant_delete_base_persona_removes_directory(self) -> None:
+        """Deleting the base persona removes the entire directory including all variants."""
+        pytest.xfail(
+            "delete(persona_id) with variants does not exist yet; "
+            "expected to remove full <id>/ directory after implementation"
+        )
