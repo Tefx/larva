@@ -65238,7 +65238,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.registry-summary-parity-remediation
     name: registry-summary-parity-remediation
-    status: claimed
+    status: done
     description: 'Fix final audit documentation/implementation parity debt for GET
       /api/registry/personas summary metadata: align implementation with INTERFACES.md
       `{id, active, variants}` by emitting `active` rather than stale `active_variant`
@@ -65268,6 +65268,38 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T06:13:29.333640+00:00'
+    done_at: '2026-05-03T06:14:32.065152+00:00'
+    evidence: '## Registry summary parity fixed
+
+      - Updated `src/larva/shell/web_routes.py` so `GET /api/registry/personas` emits
+      `active` in registry metadata summaries, matching `docs/reference/INTERFACES.md`;
+      removed stale `active_variant` key from that route output.
+
+      - Contrib UI already accepts `s.active || s.active_variant`, so the route change
+      is compatible with the just-aligned contributor UI.
+
+
+      ## Verification
+
+      ```text
+
+      - uv run python FastAPI TestClient check for /api/registry/personas -> /api/registry/personas
+      summary key parity ok (`active` present, `active_variant` absent for returned
+      items)
+
+      - uv run pytest tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py
+      -q -> 50 passed in 0.77s
+
+      - invar_guard(path=/Users/tefx/Projects/larva, changed=false) -> deferred run
+      grd_5df05cc9505c4dd6b5099ffe complete: ok=true, errors=0, warnings=1, infos=3,
+      files_checked=40
+
+      ```
+
+
+      ## Residual risk
+
+      none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
