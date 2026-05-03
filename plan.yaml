@@ -67898,7 +67898,7 @@ phases:
     - README.md
     - docs/reference/ARCHITECTURE.md
     - docs/reference/INTERFACES.md
-    agent: developer
+    agent: python-senior
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
     status: pending
