@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Protocol, TypedDict
+from typing import TYPE_CHECKING, Protocol, TypeAlias, TypedDict
 
-from returns.result import Result
+if TYPE_CHECKING:
+    from returns.result import Result
 
-from larva.core.spec import AssemblyInput, PersonaSpec
-from larva.core.validate import ValidationReport
+    from larva.core.spec import AssemblyInput, PersonaSpec
+    from larva.core.validation_contract import ValidationReport
+
+PersonaSpecList: TypeAlias = list["PersonaSpec"]
+StrList: TypeAlias = list[str]
 
 
 class AssembleRequest(TypedDict, total=False):
@@ -109,7 +113,7 @@ class LarvaFacade(Protocol):
 
     def resolve(
         self,
-        id: str,
+        id: str,  # noqa: A002 - public API field name is canonical.
         overrides: dict[str, object] | None = None,
         variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]: ...
@@ -146,6 +150,6 @@ class LarvaFacade(Protocol):
 
     def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[ClearedRegistry, LarvaError]: ...
 
-    def export_all(self) -> Result[list[PersonaSpec], LarvaError]: ...
+    def export_all(self) -> Result[PersonaSpecList, LarvaError]: ...
 
-    def export_ids(self, ids: list[str]) -> Result[list[PersonaSpec], LarvaError]: ...
+    def export_ids(self, ids: StrList) -> Result[PersonaSpecList, LarvaError]: ...

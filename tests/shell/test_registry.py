@@ -137,7 +137,9 @@ class TestFileSystemRegistryStoreContract:
 
         assert result == Success(None)
         persisted_spec = json.loads(
-            (registry_root / "null-preserver" / "variants" / "default.json").read_text(encoding="utf-8")
+            (registry_root / "null-preserver" / "variants" / "default.json").read_text(
+                encoding="utf-8"
+            )
         )
         assert "description" in persisted_spec
         assert persisted_spec["description"] is None
@@ -553,11 +555,11 @@ class TestFileSystemRegistryStoreContract:
 
         original_rmtree = registry_module.shutil.rmtree
 
-        def fail_on_partial_b(path: Path, *args: object, **kwargs: object) -> None:
+        def fail_on_partial_b(path: Path, *_args: object, **_kwargs: object) -> None:
             if "partial-b" in str(path):
                 raise OSError("simulated rmtree failure for partial-b")
             removed_dirs.append(str(path))
-            original_rmtree(path, *args, **kwargs)
+            original_rmtree(path)
 
         monkeypatch.setattr(registry_module.shutil, "rmtree", fail_on_partial_b)
 
@@ -650,7 +652,7 @@ class TestRegistryVariantStorageLayout:
         spec = self._make_spec("manifest-check")
         # The target design: register creates <id>/manifest.json with {"active": "default"}
         result = store.save(spec)
-        assert isinstance(result, Success) or isinstance(result, Failure)
+        assert isinstance(result, (Success, Failure))
 
         manifest = variant_root / "manifest-check" / "manifest.json"
         # This test will RED because current code creates flat <id>.json + index.json,
@@ -702,7 +704,6 @@ class TestRegistryVariantStorageLayout:
 
     def test_malformed_manifest_returns_registry_corrupt(self, variant_root: Path) -> None:
         """manifest.json with wrong shape must produce REGISTRY_CORRUPT."""
-        import hashlib
 
         persona_dir = variant_root / "malformed-persona"
         persona_dir.mkdir(parents=True)
@@ -764,7 +765,9 @@ class TestRegistryVariantStorageLayout:
         # Verify manifest was NOT auto-created
         assert not (persona_dir / "manifest.json").exists()
 
-    def test_list_uses_directory_scan_not_index_json_for_variant_records(self, variant_root: Path) -> None:
+    def test_list_uses_directory_scan_not_index_json_for_variant_records(
+        self, variant_root: Path
+    ) -> None:
         """Variant records enumerate from persona directories, not legacy index.json."""
         store = FileSystemRegistryStore(root=variant_root)
         spec = self._make_spec("scan-source")
@@ -794,14 +797,14 @@ class TestRegistryVariantInvalidName:
     @pytest.mark.parametrize(
         "invalid_name",
         [
-            "UPPERCASE",       # uppercase letters
-            "with_underscore", # underscore
-            "with.dot",         # dot
-            "with/slash",      # path separator
-            "with space",      # space
-            "",                # empty string
-            "a" * 65,          # too long (>64 chars)
-            "..",              # double dot traversal
+            "UPPERCASE",  # uppercase letters
+            "with_underscore",  # underscore
+            "with.dot",  # dot
+            "with/slash",  # path separator
+            "with space",  # space
+            "",  # empty string
+            "a" * 65,  # too long (>64 chars)
+            "..",  # double dot traversal
         ],
     )
     def test_invalid_variant_name_rejected(self, invalid_name: str) -> None:
@@ -812,7 +815,9 @@ class TestRegistryVariantInvalidName:
         """
         root = Path("/")
         store = FileSystemRegistryStore(root=root)
-        result = store.save(_canonical_spec("variant-name-check", "sha256:variant"), variant=invalid_name)
+        result = store.save(
+            _canonical_spec("variant-name-check", "sha256:variant"), variant=invalid_name
+        )
 
         assert isinstance(result, Failure)
         assert result.failure()["code"] == "INVALID_VARIANT_NAME"
@@ -823,7 +828,9 @@ class TestRegistryVariantInvalidName:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir) / "registry"
             store = FileSystemRegistryStore(root=root)
-            result = store.save(_canonical_spec("variant-name-ok", "sha256:variant-ok"), variant=name_64)
+            result = store.save(
+                _canonical_spec("variant-name-ok", "sha256:variant-ok"), variant=name_64
+            )
             assert result == Success(None)
             assert (root / "variant-name-ok" / "variants" / f"{name_64}.json").exists()
 
@@ -884,7 +891,9 @@ class TestRegistryVariantDelete:
         with tempfile.TemporaryDirectory() as tmp_dir:
             store = FileSystemRegistryStore(root=Path(tmp_dir) / "registry")
             assert store.save(_canonical_spec("active-delete", "sha256:default")) == Success(None)
-            assert store.save(_canonical_spec("active-delete", "sha256:tacit"), variant="tacit") == Success(None)
+            assert store.save(
+                _canonical_spec("active-delete", "sha256:tacit"), variant="tacit"
+            ) == Success(None)
             result = store.variant_delete("active-delete", "default")
         assert isinstance(result, Failure)
         assert result.failure()["code"] == "ACTIVE_VARIANT_DELETE_FORBIDDEN"
@@ -904,7 +913,9 @@ class TestRegistryVariantDelete:
             root = Path(tmp_dir) / "registry"
             store = FileSystemRegistryStore(root=root)
             assert store.save(_canonical_spec("inactive-delete", "sha256:default")) == Success(None)
-            assert store.save(_canonical_spec("inactive-delete", "sha256:tacit"), variant="tacit") == Success(None)
+            assert store.save(
+                _canonical_spec("inactive-delete", "sha256:tacit"), variant="tacit"
+            ) == Success(None)
 
             result = store.variant_delete("inactive-delete", "tacit")
 
@@ -917,7 +928,9 @@ class TestRegistryVariantDelete:
             root = Path(tmp_dir) / "registry"
             store = FileSystemRegistryStore(root=root)
             assert store.save(_canonical_spec("base-delete", "sha256:default")) == Success(None)
-            assert store.save(_canonical_spec("base-delete", "sha256:tacit"), variant="tacit") == Success(None)
+            assert store.save(
+                _canonical_spec("base-delete", "sha256:tacit"), variant="tacit"
+            ) == Success(None)
 
             result = store.delete("base-delete")
 
