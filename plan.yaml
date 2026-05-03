@@ -64977,6 +64977,42 @@ phases:
       ## Gaps/Notes
 
       none'
+  - id: variants_surface_cutover_20260503.surface-audit-blocker-remediation
+    name: surface-audit-blocker-remediation
+    status: pending
+    description: 'Remediate blockers found by the fresh surface wiring audit before
+      rerunning the audit. Required fixes: remove/privatize remaining assembly/component
+      facade subsystem and unreachable CLI helper remnants from public paths; repair
+      packaged and contrib Web UI variant detail/edit/delete semantics so inactive
+      variants are edited/deleted through variant routes with correct active/last
+      safeguards; align current public-surface docs/comments with completed variants
+      cutover and assembly/component removal, including explicit tombstone/404 behavior
+      if retained.'
+    verification: Focused tests or static checks demonstrate removed public assembly/component
+      surfaces stay absent, variant CLI/MCP/Python/REST/Web surfaces remain reachable,
+      web variant edit/delete uses variant endpoints correctly, docs no longer present
+      stale current-surface warnings, and invar guard passes for changed files.
+    evidence_template: '## Audit blockers fixed
+
+      - <paths and summary>
+
+
+      ## Verification
+
+      ```text
+
+      <commands and outputs>
+
+      ```
+
+
+      ## Residual risk
+
+      none | <list>'
+    depends_on:
+    - variants_surface_cutover_20260503.mcp-cli-python-cutover
+    - variants_surface_cutover_20260503.web-ui-remnant-remediation
+    agent: frontend-engineer-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
