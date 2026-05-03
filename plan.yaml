@@ -68060,7 +68060,7 @@ phases:
       new/deleted ids/model-provider changes are documented or asserted as restart-required.
     depends_on:
     - opencode_hardening_runtime_20260503
-    agent: developer
+    agent: python-senior
   - id: opencode_hardening_docs_and_matrix_20260503
     name: Sync tests, docs, and behavior matrix
     status: pending
