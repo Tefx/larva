@@ -62390,7 +62390,7 @@ phases:
       Review depth: THOROUGH
 
       Rationale: persistence semantics, manifest corruption, active-state precedence,
-      and cross-surface downstream gates.
+      cross-surface downstream gates, and prior deferred gate blockers B1/B2.
 
 
       Gate must block if:
@@ -62405,42 +62405,58 @@ phases:
 
       - same-directory write-then-rename activation proof is missing.
 
-      - spec conformance has unresolved DIVERGES/PARTIAL without remediation ownership.'
-    verification: Gate opens only with expected-red proof, green implementation proof,
+      - spec conformance has unresolved DIVERGES/PARTIAL without remediation ownership.
+
+      - B1 changed-file automated type/lint gates are not green for src/larva/app/facade.py,
+      src/larva/app/facade_types.py, src/larva/shell/registry.py, and related changed
+      tests.
+
+      - B2 maintainability/file-size blockers for src/larva/shell/registry.py and
+      src/larva/app/facade.py are not closed by safe split/refactor or a concrete
+      gate-acceptable disposition beyond file_size escape hatches.
+
+      - escape hatch audit is missing or relies on file_size hatches alone for B2.'
+    verification: 'Gate opens only with expected-red proof, green implementation proof,
       spec conformance PASS/PASS_WITH_NONBLOCKING_DEBT with explicit non-intersection,
-      and no unresolved blocker-class behavioral obligations.
-    evidence_template: '## refs Read Confirmation (MANDATORY)
-
-      For each ref in this step:
-
-      - <filename> — key passage or "NOT READ: <reason>"
+      registry-gate-blocker-remediation evidence proving B1/B2 closure, and no unresolved
+      blocker-class behavioral obligations.
 
 
-      ## Gate Review Report
+      Required B1/B2 decision basis:
 
-      - Reviewer: gate-reviewer-tacit
+      - B1: ruff and mypy/type gates are green for changed registry/facade production
+      and related test files, with no broad suppressions or shared-surface compatibility
+      aliases.
 
-      - Phase: variants_registry_impl_20260503
+      - B2: oversized facade/registry responsibilities are safely split/reduced or
+      have a concrete gate-acceptable follow-up disposition recorded in the plan;
+      invar file_size escape hatches alone do not satisfy this criterion.
 
+      - Escape hatch audit reviewed and accepted.
 
-      ## Step-by-Step Review
-
-      | Step ID | Status | Evidence Quality | Concerns |
-
-      |---|---|---|---|
-
-
-      ## Behavioral Proof Register
-
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
-
-      |---|---|---|---|---|---|---|
-
-
-      ## Gate Decision
-
-      OPEN / BLOCKED'
+      - Focused registry variant behavioral probes and uv run invar guard --changed
+      remain green.'
+    evidence_template: "## Gate Review Report\n\n**Reviewer**: gate-reviewer-tacit\
+      \ (independent of phase implementation)\n**Phase**: variants_registry_impl_20260503\n\
+      **Timestamp**: <ISO 8601>\n\n### refs Read Confirmation (MANDATORY)\nFor each\
+      \ ref in this step:\n- <filename> — key passage or \"NOT READ: <reason>\"\n\n\
+      If no refs were provided, state: \"No refs for this step.\"\n\n### Step-by-Step\
+      \ Review\n| Step ID | Status | Evidence Quality | Concerns |\n|---|---|---|---|\n\
+      | variants_registry_impl_20260503.registry-red-integration-tests | ✅/⚠️/❌ |\
+      \ excellent/adequate/insufficient/missing | <notes> |\n| variants_registry_impl_20260503.registry-storage-implementation\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| variants_registry_impl_20260503.registry-spec-conformance\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| variants_registry_impl_20260503.registry-gate-blocker-remediation\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n\n### Behavioral\
+      \ Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n|---|---|---|---|---|---|---|\n\
+      \n### B1/B2 Remediation Review\n- B1 changed-file ruff/type gates green: YES/NO\n\
+      - B2 safe split/refactor or accepted concrete disposition: YES/NO\n- Escape\
+      \ hatch audit accepted: YES/NO\n- Focused behavioral probes still green: YES/NO\n\
+      - uv run invar guard --changed green: YES/NO\n\n### Issues Identified\n| Severity\
+      \ | Description | Related Step | Blocking? |\n|---|---|---|---|\n\n### Gate\
+      \ Decision\n- [ ] OPEN: Phase passes gate, proceed to next phase\n- [ ] BLOCKED:\
+      \ Issues must be resolved before proceeding\n  - Blocking issues: <list>\n \
+      \ - Required actions: <what needs to happen>"
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -62464,6 +62480,7 @@ phases:
     - variants_registry_impl_20260503.registry-red-integration-tests
     - variants_registry_impl_20260503.registry-storage-implementation
     - variants_registry_impl_20260503.registry-spec-conformance
+    - variants_registry_impl_20260503.registry-gate-blocker-remediation
     agent: gate-reviewer-tacit
   - id: variants_registry_impl_20260503.registry-conformance-remediation
     name: registry-conformance-remediation
