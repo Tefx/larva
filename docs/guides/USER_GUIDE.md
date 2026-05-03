@@ -370,18 +370,18 @@ Available tools:
 
 ```text
 larva_validate(spec)
-larva_assemble(components)
 larva_register(spec)
 larva_resolve(id, overrides?)
 larva_list()
+larva_variant_list(id)
+larva_variant_activate(id, variant)
+larva_variant_delete(id, variant)
 larva_update(id, patches)
 larva_update_batch(where, patches, dry_run?)
 larva_clone(source_id, new_id)
 larva_delete(id)
 larva_clear(confirm)
 larva_export(all?, ids?)
-larva_component_list()
-larva_component_show(type, name)
 ```
 
 For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and

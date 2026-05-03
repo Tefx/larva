@@ -68,18 +68,18 @@ Valid capability posture values (from `ToolPosture` in `src/larva/core/spec.py`)
 
 Primary MCP tools:
 - `larva_validate(spec)`
-- `larva_assemble(components)`
 - `larva_register(spec)`
 - `larva_resolve(id, overrides?)`
 - `larva_list()`
+- `larva_variant_list(id)`
+- `larva_variant_activate(id, variant)`
+- `larva_variant_delete(id, variant)`
 - `larva_update(id, patches)`
 - `larva_update_batch(where, patches, dry_run?)`
 - `larva_clone(source_id, new_id)`
 - `larva_delete(id)`
 - `larva_clear(confirm)`
 - `larva_export(all?, ids?)`
-- `larva_component_list()`
-- `larva_component_show(type, name)`
 
 All MCP PersonaSpec-bearing tools reject forbidden legacy vocabulary:
 `tools`, `side_effect_policy`. Unknown top-level fields such as `variables`
@@ -89,9 +89,8 @@ are also rejected.
 
 Representative CLI operations:
 - validate a PersonaSpec
-- assemble a PersonaSpec from components
 - register a canonical persona
-- resolve or list canonical personas
+- resolve or list canonical personas and registry-local variants
 - launch OpenCode with registry personas projected as agents
 
 CLI is an operator interface over the same canonical contract. It does not add

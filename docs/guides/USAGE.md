@@ -17,18 +17,18 @@ Prefer MCP for all programmatic access.
 Available tools:
 ```
 larva_validate(spec)                    → ValidationReport
-larva_assemble(components)              → PersonaSpec
 larva_register(spec)                    → {id, registered}
 larva_resolve(id, overrides?)           → PersonaSpec
 larva_list()                            → [{id, description, spec_digest, model}]
+larva_variant_list(id)                  → {id, active, variants}
+larva_variant_activate(id, variant)     → {id, active}
+larva_variant_delete(id, variant)       → {id, deleted}
 larva_update(id, patches)               → PersonaSpec
 larva_update_batch(where, patches, dry_run?) → {items, matched, updated}
 larva_clone(source_id, new_id)          → PersonaSpec
 larva_delete(id)                        → {id, deleted}
 larva_clear(confirm)                    → {cleared, count}
 larva_export(all?, ids?)                → [PersonaSpec, ...]
-larva_component_list()                  → {prompts, toolsets, constraints, models}
-larva_component_show(type, name)        → component content
 ```
 
 For `larva_export`, provide exactly one selector: `all=true` to export the
@@ -458,13 +458,13 @@ All errors use a single envelope shape:
 4. larva_resolve(id) → confirm round-trip
 ```
 
-### Workflow B: Compose from components
+### Workflow B: Manage registry-local variants
 
 ```
-1. larva_component_list() → discover available components
-2. larva_assemble({id, prompts, toolsets, constraints, model}) → PersonaSpec
-3. Inspect returned spec; adjust overrides if COMPONENT_CONFLICT
-4. larva_register(spec)
+1. larva_register(spec, variant="experiment") → store an alternate variant
+2. larva_variant_list(id) → inspect available variants and active pointer
+3. larva_variant_activate(id, "experiment") → make a variant active
+4. larva_resolve(id) → resolve the active canonical PersonaSpec
 ```
 
 ### Workflow C: Load for agent execution
