@@ -50275,7 +50275,7 @@ phases:
       \ mismatch in pre-existing core tests.\n\n### Decision\n- OPEN"
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
-  status: in_progress
+  status: done
   gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
     PersonaSpec semantics with no transition-era behavior remaining.
   depends_on:
@@ -51147,7 +51147,7 @@ phases:
       \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
   - id: hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for final hard-cut finalization
-    status: claimed
+    status: done
     description: 'Resolve validate error for completed step hard_cut_finish_20260416_finalization.batched_retest,
       whose evidence contains failed tests. This is a proof-closure/evidence task,
       not product-code implementation. Produce accepted same-phase closure evidence
@@ -51173,6 +51173,40 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:31:03.561700+00:00'
+    done_at: '2026-05-03T13:38:44.166038+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Evidence Guard Closure Report\n- Historical completed step reviewed: hard_cut_finish_20260416_finalization.batched_retest\n\
+      - Closure route used: ACCEPTED_NON_BLOCKING_DISPOSITION\n- Commands/output or\
+      \ accepted disposition evidence:\n  ```\n  $ git status --short --branch\n \
+      \ ## vectl/step-hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503\n\
+      \n  $ uv run pytest tests/app/test_facade/test_clone.py tests/app/test_facade/test_register.py\
+      \ tests/app/test_facade/test_list.py tests/core/test_spec.py -q\n  72 passed\
+      \ in 0.28s\n\n  $ uv run pytest tests -q\n  8 failed, 1059 passed in 21.28s\n\
+      \n  Current full-suite failures are not the historical batched_retest 3-failure\
+      \ facade/core debt:\n  - tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references\
+      \ (later registry-local variant surface references)\n  - tests/core/test_schema_validation.py::TestMCPProjectionParity::*\
+      \ / TestCanonicalTypingSurface::*\n  - tests/shell/test_canonical_boundary_gaps.py::TestMCPToolDescriptionSemantics::*\
+      \ / TestCanonicalBoundaryRejection::* / TestCLIAssembleSurface::*\n\n  Historical\
+      \ disposition provenance from plan evidence:\n  - batched_retest recorded 867\
+      \ passed, 3 failed, PASS_WITH_DEBT, gate_open_allowed=true.\n  - immediate successor\
+      \ bf1_bf4_retest recorded full suite 870 passed in 4.06s, BF1-BF4 CLOSED.\n\
+      \  - finalization gate recorded OPEN: BF1-BF5 closures explicit; no blocking\
+      \ findings.\n  - later variants_surface_cutover_20260503 explicitly required\
+      \ variant surfaces and removal of larva_assemble/component surfaces, matching\
+      \ current full-suite failure themes.\n  ```\n- Gate-intersection disposition:\
+      \ provenance=historical failed evidence belonged to finalization.batched_retest;\
+      \ disposition=non-blocking-now for this evidence guard because the same-phase\
+      \ successor retest and final gate closed the BF1-BF5/facade stale-failure debt;\
+      \ owner=variants_surface_cutover_20260503/current surface-test alignment owner\
+      \ for current unrelated red tests; lifecycle_state=historical batched_retest\
+      \ done with debt, bf1_bf4_retest done/green, finalization gate done/OPEN, current\
+      \ full-suite red belongs to later registry-local-variants surface cutover; gate_intersection_rationale=current\
+      \ failures are later variant/assemble-removal alignment failures, not historical\
+      \ batched_retest blockers; remaining_gate_impact=none for finalization evidence\
+      \ closure, but current repo-wide pytest remains red for separate later-surface\
+      \ cleanup; closure_path=keep historical step unchanged, accept successor retest+gate\
+      \ OPEN as closure, track/repair later surface test drift separately.\n- Headline:\
+      \ PASS"
 - id: hard_cut_finish_20260417_registry_ux_cleanup
   name: Final Registry UX Cleanup
   status: done
