@@ -60771,6 +60771,128 @@ phases:
     - variants_core_contract_20260503.core-red-contract-tests
     - variants_core_contract_20260503.core-pure-helpers
     agent: gate-reviewer-tacit
+  - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
+    name: core-downstream-forbidden-field-remediation
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      risk: cross-layer canonical admission/shell registry conformance
+
+      agent_source: default
+
+
+      Batched remediation for downstream blockers discovered by variants_core_contract_20260503.core-pure-helpers
+      evidence. Cover BOTH blockers in one coherent fix; do not split into serial
+      single-issue patches.
+
+
+      Blockers to close:
+
+      1. Shell registry forbidden-field drift: src/larva/shell/registry.py currently
+      has a local _CANONICAL_FORBIDDEN_FIELDS = {"tools", "side_effect_policy"} and
+      must reject the full canonical metadata leakage set used by core, including
+      registry metadata fields variant, _registry, active, and manifest. Preserve
+      shared/opifex authority: do not modify opifex schemas or shared contract meaning;
+      make larva stricter at its local admission/shell surface.
+
+      2. Hard-cutover scan false positives: tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references
+      reportedly fails after expanding CANONICAL_FORBIDDEN_FIELDS in src/larva/core/validation_contract.py.
+      Authorize the minimal robust fix that preserves the invariant. Acceptable approaches
+      include formatting the constant so the scanner does not misclassify authoritative
+      core definitions, or narrowly excluding the authoritative contract-definition
+      file only if the test still scans downstream consumers. Do NOT weaken the forbidden-field
+      invariant or broadly hide shell/registry consumers.
+
+
+      Root Cause vs Symptom:
+
+      - Root cause: canonical forbidden metadata policy was expanded in core without
+      aligning downstream shell registry rejection and without keeping the hard-cutover
+      conformance scanner robust against authoritative definition sites.
+
+      - Symptoms: shell registry still rejects only tools/side_effect_policy; canonical_cutover
+      scan flags the core definition itself.
+
+      - Why this fix is not surface-level: it must align the downstream rejection
+      surface and preserve an effective conformance scan that catches non-authoritative
+      forbidden-field references.
+
+
+      Known constraints:
+
+      - Shared contract meaning is authoritative in ../opifex; larva must not mutate
+      opifex schema or conformance fixtures for this remediation.
+
+      - Shell paths may perform I/O, but core validation_contract.py must remain pure
+      and must keep @pre/@post/doctest discipline for any touched core helper.
+
+      - Keep the canonical_cutover test meaningful: it must still fail on downstream
+      leakage references and must not become a blanket exclusion.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Shell registry still accepting or silently cleaning variant/_registry/active/manifest
+      metadata.
+
+      2. A scanner change that masks all forbidden-field references or removes coverage
+      for shell/registry leakage.
+
+      3. Any modification to ../opifex shared schema/contract files.
+
+      4. Core helper edits without non-vacuous contracts/doctests or with I/O imports.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      The fix must change real rejection/scan behavior and provide focused proof for
+      both blockers.'
+    verification: '- Reproduce or cite exact pre-fix failure evidence for BOTH blockers.
+
+      - Focused shell/registry verification proves registry metadata fields variant,
+      _registry, active, and manifest are rejected rather than leaked into canonical
+      PersonaSpec admission.
+
+      - Relevant canonical_cutover verification includes tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references
+      and preserves downstream forbidden-reference detection.
+
+      - Run uv run invar guard --changed and report result.
+
+      - Confirm no shared/opifex schema or conformance authority files were modified.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- src/larva/shell/registry.py — key passage or \"NOT READ: <reason>\"\
+      \n- src/larva/core/validation_contract.py — key passage or \"NOT READ: <reason>\"\
+      \n- tests/canonical_cutover/test_hard_cutover_readiness.py — key passage or\
+      \ \"NOT READ: <reason>\"\n- design/registry-local-variants-and-assembly-removal.md\
+      \ — key passage or \"NOT READ: <reason>\"\n- ../opifex/design/final-canonical-contract.md\
+      \ — key passage or \"NOT READ: <reason>\"\n- ../opifex/contracts/persona_spec.schema.json\
+      \ — key passage or \"NOT READ: <reason>\"\n- ../opifex/conformance/shared_surfaces.yaml\
+      \ — key passage or \"NOT READ: <reason>\"\n- INVAR.md — key passage or \"NOT\
+      \ READ: <reason>\"\n\n## Exact Blocker Reproduction\n- Blocker 1 shell registry\
+      \ drift reproduction/citation:\n  ```\n  <command/output or file:line evidence\
+      \ showing local forbidden set omitted variant/_registry/active/manifest>\n \
+      \ ```\n- Blocker 2 hard-cutover scan failure reproduction/citation:\n  ```\n\
+      \  <exact command and output for TestForbiddenFieldConformanceScan failure,\
+      \ or explicit reason reproduction was not possible before fix>\n  ```\n\n##\
+      \ Fix Summary\n- Shell registry forbidden-field alignment:\n  <files changed\
+      \ and behavior changed>\n- Hard-cutover scanner/invariant preservation:\n  <minimal\
+      \ robust approach used and why it does not weaken detection>\n\n## Focused Verification\n\
+      - Shell/registry focused tests or checks:\n  ```\n  <commands and output>\n\
+      \  ```\n- Core focused tests affected by validation_contract.py:\n  ```\n  <commands\
+      \ and output>\n  ```\n\n## canonical_cutover Verification\nRun the relevant\
+      \ hard-cutover scan test:\n```bash\n<exact command including tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references>\n\
+      ```\nActual output:\n```\n<paste output>\n```\n\n## Invar Guard\nRun:\n```bash\n\
+      uv run invar guard --changed\n```\nActual output:\n```\n<paste output>\n```\n\
+      \n## Shared Authority Statement\n- No shared/opifex schema or conformance authority\
+      \ files were modified: YES/NO\n- If NO, STOP and explain why this violated the\
+      \ step constraint.\n\n## Residual Risk\n- Remaining forbidden-field leakage\
+      \ risk: none/<describe>\n- Remaining scanner blind spot risk: none/<describe>"
+    depends_on:
+    - variants_core_contract_20260503.core-pure-helpers
+    agent: python-senior-tacit
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
   status: locked
