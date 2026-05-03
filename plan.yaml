@@ -55903,7 +55903,7 @@ phases:
       \ regressions."
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
-  status: done
+  status: in_progress
   depends_on:
   - merge_debt_20260425_test
   steps:
@@ -56235,6 +56235,18 @@ phases:
       - verdict: PASS
 
       - blockers: []'
+  - id: merge_debt_20260425_review.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failures for merge debt review
+    status: pending
+    description: Resolve validate errors for completed steps merge_debt_20260425_review.audit
+      and merge_debt_20260425_review.conditional-fix, including gate_open_allowed=false
+      and FAIL evidence. Add later same-phase closure evidence proving review/conditional-fix
+      verification is now green/OPEN with gate_open_allowed=true, or record explicit
+      expected-red/non-blocking owner/lifecycle/gate-intersection disposition for
+      both historical records.
+    verification: Run vectl_validate(check_refs=true) and show both merge_debt_20260425_review
+      completed-evidence guard errors are gone, or paste the accepted disposition
+      evidence that closes them.
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
   status: done
