@@ -62242,11 +62242,30 @@ phases:
       the authoritative design/opifex boundary.
 
 
+      This rerun MUST wait for `variants_registry_impl_20260503.registry-conformance-remediation`,
+      which owns the deferred FAIL blockers B1/B2/B3 from the prior spec-verifier
+      run:
+
+      - B1: no legacy `index.json` or root-level legacy spec projections on new registry
+      writes; directory scan over `<id>/manifest.json` plus `variants/<variant>.json`
+      is the correctness source.
+
+      - B2: `PERSONA_ID_MISMATCH` explicit-base/path guard implemented where a real
+      surface exists, or explicit spec-staleness/ambiguity resolution with non-intersection
+      evidence and proposed plan/spec update.
+
+      - B3: `variant_delete` validates malformed names before lookup and returns `INVALID_VARIANT_NAME`
+      rather than `VARIANT_NOT_FOUND`.
+
+
       Scope:
 
       - only registry/facade behavior implemented in this phase.
 
       - cite spec requirement and implementation file:line for each verdict.
+
+      - review remediation evidence before rerunning probes; unresolved NEEDS_TEST/UNPROVEN/AMBIGUOUS_SPEC
+      items require explicit closure path.
 
 
       Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
@@ -62256,7 +62275,9 @@ phases:
       Gate Decision Basis required for any NEEDS_TEST/UNPROVEN item.'
     verification: Produce requirements register and evidence table covering storage
       layout, manifest semantics, active selection, error codes, delete guards, list/export
-      active-only, and no canonical metadata leakage.
+      active-only, and no canonical metadata leakage. Specifically rerun conformance-relevant
+      probes for B1/B2/B3 after remediation and include a structured gate decision
+      basis for any unresolved behavioral/runtime obligation.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -62318,7 +62339,7 @@ phases:
     - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     depends_on:
-    - variants_registry_impl_20260503.registry-storage-implementation
+    - variants_registry_impl_20260503.registry-conformance-remediation
     agent: spec-verifier-tacit
   - id: variants_registry_impl_20260503.registry-gate
     name: registry-gate
