@@ -50000,7 +50000,7 @@ phases:
       \ mismatch in pre-existing core tests.\n\n### Decision\n- OPEN"
 - id: hard_cut_finish_20260416_finalization
   name: Final Hard-Cut Convergence and Verification
-  status: done
+  status: in_progress
   gate: Repo-local tests, fixtures, docs, and final independent audits all show canonical-only
     PersonaSpec semantics with no transition-era behavior remaining.
   depends_on:
@@ -50870,6 +50870,16 @@ phases:
       \ fix\n  - BF4 docstring confirmed uses reject semantics (no strip wording)\n\
       \  - full suite: `870 passed in 4.06s`\n- blocker_status:\n  - BF1 CLOSED\n\
       \  - BF2 CLOSED\n  - BF3 CLOSED\n  - BF4 CLOSED"
+  - id: hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for final hard-cut finalization
+    status: pending
+    description: Resolve validate error for completed step hard_cut_finish_20260416_finalization.batched_retest,
+      whose evidence contains failed tests. Add later same-phase closure evidence
+      proving current batched retest/finalization verification is green/OPEN, or record
+      explicit expected-red/non-blocking owner/lifecycle/gate-intersection disposition.
+    verification: Run vectl_validate(check_refs=true) and show the hard_cut_finish_20260416_finalization
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: hard_cut_finish_20260417_registry_ux_cleanup
   name: Final Registry UX Cleanup
   status: done
