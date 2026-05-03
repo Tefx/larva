@@ -60927,7 +60927,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     name: core-downstream-forbidden-field-remediation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -61049,6 +61049,98 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T00:45:24.826803+00:00'
+    done_at: '2026-05-03T00:49:08.636915+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - src/larva/shell/registry.py — _CANONICAL_FORBIDDEN_FIELDS was local to shell
+      registry and only contained tools/side_effect_policy; _read_spec rejects fields
+      in that set before returning stored PersonaSpec.
+
+      - src/larva/core/validation_contract.py — authoritative core CANONICAL_FORBIDDEN_FIELDS
+      includes tools, side_effect_policy, variant, _registry, active, manifest.
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py — scanner excluded
+      known rejection/definition hotspots but used a local forbidden-field tuple and
+      scanned authoritative definition sites as regressions.
+
+      - design/registry-local-variants-and-assembly-removal.md — NOT READ: file not
+      present in isolated worktree.
+
+      - ../opifex/design/final-canonical-contract.md — PersonaSpec rules state variant/_registry/active/manifest
+      are invalid inside PersonaSpec; registry-local routing metadata stays outside
+      canonical spec.
+
+      - ../opifex/contracts/persona_spec.schema.json — schema is closed with additionalProperties=false;
+      no registry metadata fields are canonical properties.
+
+      - ../opifex/conformance/shared_surfaces.yaml — opifex owns canonical authority
+      and downstream repos consume/conform; larva must not reinterpret shared meaning.
+
+      - INVAR.md — Core requires @pre/@post/doctest discipline; shell performs I/O
+      and returns Result.
+
+
+      ## Exact Blocker Reproduction
+
+      - Blocker 1 shell registry drift: worker reproduced variant/_registry/active/manifest
+      leaking through shell registry read as Success with metadata keys present.
+
+      - Blocker 2 hard-cutover scan: worker reproduced failure in tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references,
+      with false positives for src/larva/core/validation_contract.py lines defining
+      tools and side_effect_policy.
+
+
+      ## Fix Summary
+
+      - Files changed: src/larva/shell/registry.py; tests/canonical_cutover/test_hard_cutover_readiness.py;
+      tests/shell/test_registry.py.
+
+      - Behavior changed: shell registry now derives forbidden-field rejection from
+      core CANONICAL_FORBIDDEN_FIELDS, rejecting variant/_registry/active/manifest
+      at read boundary instead of leaking them; scanner imports authoritative forbidden-field
+      tuple and narrowly excludes only core/validation_contract.py as definition site.
+
+      - Scanner preservation proof: worker verified a synthetic downstream shell/leak_probe.py
+      containing payload["variant"] remains detected.
+
+      - Shared/opifex schema changed: no.
+
+
+      ## Verification
+
+      ```text
+
+      invar_guard(changed=true): passed; static errors=0 warnings=0 infos=0; doctest
+      passed; crosshair/property tests skipped because no core files found.
+
+      ```
+
+      ```text
+
+      uv run pytest tests/canonical_cutover/test_hard_cutover_readiness.py::TestForbiddenFieldConformanceScan::test_scan_finds_no_new_forbidden_field_references
+      tests/shell/test_registry.py::TestFileSystemRegistryStoreContract::test_get_rejects_registry_metadata_fields_at_shell_boundary
+      -q
+
+      5 passed in 0.16s
+
+      ```
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: cbf90cd2955b48d7d24a487b7a62c37a29538053.
+
+      - Main squash commit: 86013c1.
+
+
+      ## Gaps/Notes
+
+      - Did not modify opifex authority/schema/conformance files.
+
+      - Did not broaden scanner exclusions beyond the authoritative contract-definition
+      file.
+
+      - Full repo suite not run here; phase gate owns broader verification.'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
   status: locked
