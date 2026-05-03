@@ -62432,7 +62432,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_registry_impl_20260503.registry-conformance-remediation
     name: registry-conformance-remediation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       priority: HIGH
@@ -62693,6 +62693,8 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-storage-implementation
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-03T01:56:43.120415+00:00'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
