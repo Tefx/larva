@@ -30,14 +30,14 @@ from larva.shell.shared.component_queries import query_component, query_componen
 
 if TYPE_CHECKING:
     from larva.app.facade_types import (
+        ActivatedVariant,
         AssembleRequest,
         BatchUpdateResult,
         ClearedRegistry,
         DeletedPersona,
-        VariantMetadata,
-        ActivatedVariant,
         DeletedVariant,
         LarvaFacade,
+        VariantMetadata,
     )
     from larva.core.spec import PersonaSpec
     from larva.core.validation_contract import ValidationReport
@@ -165,7 +165,7 @@ def register_command(
     variant: str | None = None,
 ) -> Result[CliCommandResult, CliFailure]:
     """Register a persona spec."""
-    result = facade.register(spec, variant=variant)
+    result = facade.register(spec) if variant is None else facade.register(spec, variant=variant)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -192,7 +192,11 @@ def resolve_command(
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
     """Resolve a persona by ID."""
-    result = facade.resolve(persona_id, overrides=overrides, variant=variant)
+    result = (
+        facade.resolve(persona_id, overrides=overrides)
+        if variant is None
+        else facade.resolve(persona_id, overrides=overrides, variant=variant)
+    )
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -379,7 +383,11 @@ def update_command(
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
     """Update a persona with patches."""
-    result = facade.update(persona_id, patches=patches, variant=variant)
+    result = (
+        facade.update(persona_id, patches=patches)
+        if variant is None
+        else facade.update(persona_id, patches=patches, variant=variant)
+    )
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
