@@ -68478,7 +68478,7 @@ phases:
       afterward to avoid committing unrelated user edits.'
   - id: non_opencode_red_cleanup_20260503.focused_tests
     name: Run focused non-OpenCode regression tests
-    status: claimed
+    status: done
     description: Run focused regression coverage for every known non-OpenCode failure
       group after implementation. Include schema validation, canonical boundary gaps,
       hard cutover readiness, black-box surface verification, MCP assemble handler/parser
@@ -68493,6 +68493,18 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T14:48:43.502128+00:00'
+    done_at: '2026-05-03T14:50:12.095680+00:00'
+    evidence: 'Verification:
+
+      - PYTHONPATH=src pytest tests/canonical_cutover/test_hard_cutover_readiness.py
+      tests/core/test_schema_validation.py tests/shell/test_canonical_boundary_gaps.py:
+      PASS — 55 passed in 0.46s
+
+      - PYTHONPATH=src pytest -k ''not opencode'': PASS — 1056 passed, 19 deselected
+      in 6.03s
+
+
+      Deferred items: none'
   - id: non_opencode_red_cleanup_20260503.final_gate
     name: Final full gate and review
     status: pending
