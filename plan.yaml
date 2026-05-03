@@ -66345,7 +66345,7 @@ phases:
   steps:
   - id: variants_finalization_20260503.docs-parity-sync
     name: docs-parity-sync
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -66454,6 +66454,67 @@ phases:
     agent: doc-reviewer-tacit
     claimed_by: doc-reviewer-tacit
     claimed_at: '2026-05-03T07:10:00.750847+00:00'
+    done_at: '2026-05-03T07:15:34.734912+00:00'
+    evidence: "## refs Read Confirmation\n- design/registry-local-variants-and-assembly-removal.md\
+      \ — variants are registry-local only; assembly/component surfaces removed; manifest.json\
+      \ only {\"active\":\"default\"}; no index.json; no auto-invent manifest.\n-\
+      \ docs/reference/INTERFACES.md — public surfaces, variant endpoints/envelopes,\
+      \ removed surfaces, storage/error docs reviewed and updated.\n- docs/reference/ARCHITECTURE.md\
+      \ — registry-local variant architecture and removed subsystem reviewed and updated.\n\
+      - docs/guides/USAGE.md — examples, variant params, storage, and error table\
+      \ reviewed.\n- docs/guides/USER_GUIDE.md — examples, variants, OpenCode behavior,\
+      \ troubleshooting reviewed.\n- README.md — examples and public surface summary\
+      \ reviewed and updated; license corrected to AGPL-3.0-or-later to match LICENSE.\n\
+      - contrib/opencode-plugin/README.md — OpenCode projection reviewed; active export\
+      \ behavior and invalid legacy fields already documented.\n- ../opifex/design/final-canonical-contract.md\
+      \ — confirms tools, side_effect_policy, variables, variant, _registry, active,\
+      \ manifest state invalid in PersonaSpec.\n- ../opifex/contracts/persona_spec.schema.json\
+      \ — canonical required fields include capabilities; additionalProperties: false.\n\
+      - ../opifex/conformance/shared_surfaces.yaml — confirms larva variant surfaces\
+      \ and removed assembly/component MCP registrations.\n- ../opifex/conformance/case_matrix/larva/larva.register.yaml\
+      \ — variant operation parameter boundary and PERSONA_ID_MISMATCH.\n- ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml\
+      \ — activation changes manifest only; invalid/unknown variant cases.\n- ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml\
+      \ — response is registry metadata, not PersonaSpec.\n- ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml\
+      \ — active/last variant delete rejection.\n- ../opifex/conformance/case_matrix/larva/larva.validate.yaml\
+      \ — canonical examples and forbidden fields.\n- ../opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml\
+      \ — removed larva_assemble, larva_component_list, larva_component_show absent\
+      \ from registration.\n- ../opifex/conformance/case_matrix/larva/larva.export.yaml\
+      \ — exports active canonical PersonaSpecs only, no registry metadata.\n- ../opifex/conformance/case_matrix/larva/larva.update.yaml\
+      \ — variant is operation parameter, not spec field.\n- ../opifex/conformance/case_matrix/larva/larva.resolve.yaml\
+      \ — resolve returns canonical PersonaSpec; variant name validation.\n- ../opifex/conformance/case_matrix/larva/larva.shared_naming_docs.yaml\
+      \ — docs must use snake_case and mark noncanonical fields invalid only.\n- ../opifex/conformance/case_matrix/larva/larva.delete.yaml\
+      \ — delete removes base persona and all variants; variant is not delete selector.\n\
+      - INVAR.md — guard/check protocol reviewed.\n\n## Docs Parity Report\n- Docs\
+      \ updated: docs/reference/INTERFACES.md, docs/reference/ARCHITECTURE.md, README.md;\
+      \ pre-existing guide docs reviewed for parity.\n- Removed surface references\
+      \ eliminated or marked historical: remaining assembly/component mentions are\
+      \ only in explicit removed/tombstone/fail-closed contexts.\n- Variant operation\
+      \ params documented outside PersonaSpec: register/resolve/update/variant_list/variant_activate/variant_delete\
+      \ documented as operation parameters or registry metadata only.\n- Storage/error\
+      \ semantics documented: manifest.json {\"active\":\"default\"}; variants/<variant>.json;\
+      \ no index.json; no auto-invent/auto-repair manifest; variant error codes included\
+      \ consistently.\n\n## Grep Evidence\nCommands run:\n- rg -n \"larva_assemble|larva_component_list|larva_component_show|/api/personas/assemble|/api/components|assemble\\\
+      (|component_list\\(|component_show\\(\" README.md docs/reference/INTERFACES.md\
+      \ docs/reference/ARCHITECTURE.md docs/guides/USAGE.md docs/guides/USER_GUIDE.md\
+      \ contrib/opencode-plugin/README.md\n  Result: matches only in removed/tombstone\
+      \ sections.\n- rg -n '\"(tools|side_effect_policy|variables|variant|_registry|active|manifest)\"\
+      \\s*:' README.md docs/reference/INTERFACES.md docs/reference/ARCHITECTURE.md\
+      \ docs/guides/USAGE.md docs/guides/USER_GUIDE.md contrib/opencode-plugin/README.md\n\
+      \  Result: no forbidden PersonaSpec examples; matches are registry operation/envelope/storage\
+      \ examples.\n- rg -n \"index\\.json|auto-(invent|create|repair)|REGISTRY_CORRUPT|manifest\\\
+      .json|variants/|INVALID_VARIANT_NAME|VARIANT_NOT_FOUND|PERSONA_ID_MISMATCH|ACTIVE_VARIANT_DELETE_FORBIDDEN|LAST_VARIANT_DELETE_FORBIDDEN\"\
+      \ README.md docs/reference/INTERFACES.md docs/reference/ARCHITECTURE.md docs/guides/USAGE.md\
+      \ docs/guides/USER_GUIDE.md contrib/opencode-plugin/README.md\n  Result: target\
+      \ storage semantics and required variant error docs present.\n\n## Commands\n\
+      - uv run invar guard --changed / MCP invar_guard(changed=true): static/doctest/CrossHair\
+      \ passed; property discovery failed only on intentionally deleted assembly/component\
+      \ core files (assemble.py, component_error_projection.py, component_kind.py,\
+      \ assembly_error.py). Re-reviewed as a changed-file discovery limitation, not\
+      \ an implementation/docs risk.\n- Full guard after docs edits: invar_guard(path=/Users/tefx/Projects/larva,\
+      \ changed=false) run grd_d88cd77bf7864bf4afbb22aa completed ok=true, errors=0,\
+      \ warnings=1, infos=3, files_checked=40.\n- Independent doc-reviewer-tacit reassessment\
+      \ returned PASS, residual risk none, completion recommendation COMPLETE.\n\n\
+      ## Residual Risk\nnone"
   - id: variants_finalization_20260503.full-plan-guard-and-conformance
     name: full-plan-guard-and-conformance
     status: pending
