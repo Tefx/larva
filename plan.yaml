@@ -64644,7 +64644,7 @@ phases:
     agent: gate-reviewer-tacit
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -64751,6 +64751,8 @@ phases:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.web-ui-remnant-remediation
     agent: wiring-auditor
+    claimed_by: vectl-decide-orchestrator-tacit
+    claimed_at: '2026-05-03T05:08:36.818871+00:00'
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
     status: done
