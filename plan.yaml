@@ -62231,7 +62231,7 @@ phases:
       review.'
   - id: variants_registry_impl_20260503.registry-spec-conformance
     name: registry-spec-conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -62343,6 +62343,39 @@ phases:
     agent: spec-verifier-tacit
     claimed_by: spec-verifier-tacit
     claimed_at: '2026-05-03T02:02:53.100318+00:00'
+    done_at: '2026-05-03T02:08:29.788951+00:00'
+    evidence: "# Corrected Spec Conformance Disposition\n\n## refs Read Confirmation\n\
+      All required refs were read, including design/registry-local-variants-and-assembly-removal.md,\
+      \ docs reference/guides, opifex final canonical contract/schema/shared surfaces/case\
+      \ matrices for register, variant_activate, variant_list, variant_delete, validate,\
+      \ export, update, resolve, delete, and INVAR.md.\n\n## Machine-Readable Closure\n\
+      ```yaml\nheadline: PASS_WITH_DEBT\nproof_gap_status: NON_BLOCKING\nblocking_status:\
+      \ CLOSED\nverdict: PASS\nblockers: []\ngate_open_allowed: true\norchestrator_action_hint:\
+      \ COMPLETE\ndownstream_debt:\n  - id: B4\n    disposition: downstream_owned_non_blocking_for_current_phase\n\
+      \    owner_step_id: variants_surface_cutover_20260503.mcp-cli-python-cutover\n\
+      ```\n\n## Prior Proofs Summary\n- B1 storage layout: RESOLVED / current-phase\
+      \ PASS. Code writes manifest/variants layout only; probe showed no index.json\
+      \ and no root projection.\n- B2 PERSONA_ID_MISMATCH: SPEC_POSSIBLY_STALE / NON-INTERSECTING\
+      \ NON-BLOCKING DEBT. No real explicit-base/path register surface exists in current\
+      \ facade/MCP/CLI/Python API; future opifex/plan update proposed if such a surface\
+      \ is added.\n- B3 variant_delete invalid-name guard: RESOLVED / current-phase\
+      \ PASS. variant_delete validates malformed names before lookup and returns INVALID_VARIANT_NAME.\n\
+      - B4 MCP boundary variant tools/params: REAL DEBT, DOWNSTREAM-OWNED, NON-BLOCKING\
+      \ FOR THIS PHASE. Owner: variants_surface_cutover_20260503.mcp-cli-python-cutover.\n\
+      \n## Current-Phase Gate Basis\nRegistry/facade requirements verified as passing:\
+      \ accepted storage layout, no legacy index/root projection for new writes, manifest\
+      \ exactness/corruption behavior, active selection for resolve/list/export, registry/facade\
+      \ variant operations, active/last delete guards, invalid variant name precedence,\
+      \ and no canonical metadata leakage.\n\n## Commands / Probe Evidence\n```text\n\
+      .venv/bin/python -m pytest tests/shell/test_registry.py tests/core/test_variants.py\
+      \ -q\n119 passed in 1.45s\n```\nProbe evidence showed paths only probe-persona/manifest.json\
+      \ and probe-persona/variants/*.json; index_exists=False; root_projection_exists=False;\
+      \ malformed variant_delete returns INVALID_VARIANT_NAME; facade register signature\
+      \ is register(self, spec, variant: str | None = None); MCP variant tools absent\
+      \ and classified downstream-owned.\n\n## Gate Recommendation\n- gate_open_allowed:\
+      \ true\n- rationale: No registry/facade blocker remains for this phase. B4 is\
+      \ real but belongs to downstream public surface cutover ownership.\n\n## Commit\n\
+      - Commit hash(es): none (verify-only; worktree clean)."
   - id: variants_registry_impl_20260503.registry-gate
     name: registry-gate
     status: pending
