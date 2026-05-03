@@ -5,9 +5,12 @@
  *
  * Runtime hardening rules:
  *   - startup projection only creates OpenCode agent entries with unique
- *     `[larva:<id>]` placeholders
+ *     `[larva:<id>]` placeholders keyed by Larva base persona ids; Larva's
+ *     current active registry variant supplies startup metadata for that base id
+ *   - added/deleted base ids and model/provider startup fields require an
+ *     OpenCode restart because OpenCode agent registration happens at startup
  *   - each model request resolves the selected placeholder id with
- *     `larva resolve <id> --json`; cache is performance-only
+ *     `larva resolve <id> --json`; cache is last-known-good fallback only
  *   - system.transform replaces only the selected `[larva:<id>]` placeholder
  *   - stale last-known-good prompts may be used only when a previous good
  *     prompt exists; missing previous data fails closed
@@ -152,12 +155,6 @@ const inFlight = new Map<string, Promise<ResolveOutcome>>();
 let selectedPermissions = new Map<string, Record<string, string>>();
 let selectedId: string | null = null;
 
-function isFresh(entry: CacheEntry): boolean {
-  const ttl = cacheTtlMs();
-  if (ttl === 0) return false;
-  return Date.now() - entry.ts <= ttl;
-}
-
 function failClosed(id: string): string {
   return `[larva prompt unavailable for ${id}; request blocked because no previous prompt is available]`;
 }
@@ -211,9 +208,6 @@ async function refreshPersona($: any, id: string, previous: CacheEntry | null): 
 
 async function getPersonaForRequest($: any, id: string): Promise<ResolveOutcome> {
   const previous = cache.get(id) ?? null;
-  if (previous && isFresh(previous)) {
-    return { entry: previous, stale: false, digestChanged: false, lastKnownGood: false };
-  }
 
   const existing = inFlight.get(id);
   if (existing) return existing;

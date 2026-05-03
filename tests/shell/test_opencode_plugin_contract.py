@@ -104,6 +104,22 @@ def test_plugin_hot_update_boundaries_are_explicit() -> None:
     assert "model" not in re.search(
         r"HOT_UPDATE_FIELDS\s*=\s*[^;]+", source, re.DOTALL
     ).group(0), "model changes require OpenCode restart and must not hot-update"
+    assert "added/deleted base ids and model/provider startup fields require" in source
+
+
+def test_plugin_prompt_hot_updates_are_not_blocked_by_fresh_cache() -> None:
+    """Runtime transform must resolve active variants instead of trusting startup cache."""
+    source = _source()
+    get_persona = re.search(
+        r"async function getPersonaForRequest.*?\n}\n",
+        source,
+        re.DOTALL,
+    ).group(0)
+
+    assert "resolvePersona" in source
+    assert "previous = cache.get(id)" in get_persona
+    assert "isFresh" not in source
+    assert "return { entry: previous" not in get_persona
 
 
 def test_plugin_per_request_active_id_comes_from_selected_placeholder() -> None:
@@ -114,3 +130,12 @@ def test_plugin_per_request_active_id_comes_from_selected_placeholder() -> None:
     assert "active = id" not in source, (
         "module-global active id can bleed across concurrent OpenCode requests"
     )
+
+
+def test_plugin_startup_registration_has_no_global_active_variant() -> None:
+    """Startup registration uses base ids and placeholders, not larva-active state."""
+    source = _source()
+
+    assert "config.agent[spec.id]" in source
+    assert "prompt: placeholder(spec.id)" in source
+    assert "larva-active" not in source
