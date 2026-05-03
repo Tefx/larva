@@ -61934,7 +61934,7 @@ phases:
       - Main squash commit: 6cb1818.'
   - id: variants_registry_impl_20260503.registry-storage-implementation
     name: registry-storage-implementation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       symbolic_testing: true
@@ -62081,6 +62081,154 @@ phases:
     agent: python-senior-tacit
     claimed_by: python-senior-tacit
     claimed_at: '2026-05-03T01:37:57.035742+00:00'
+    done_at: '2026-05-03T01:50:22.284912+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — registry-local variants
+      use <id>/manifest.json plus <id>/variants/<variant>.json; manifest stores active
+      pointer only; registry metadata must not enter PersonaSpec.
+
+      - docs/reference/INTERFACES.md — larva is downstream consumer of opifex PersonaSpec;
+      canonical admission rejects unknown and legacy fields.
+
+      - docs/reference/ARCHITECTURE.md — shell owns registry I/O; app facade orchestrates
+      canonical persona operations.
+
+      - docs/guides/USAGE.md — registry operations return canonical PersonaSpec data;
+      falsey/null values are preserved.
+
+      - docs/guides/USER_GUIDE.md — PersonaSpec is flat/canonical and registry metadata
+      is forbidden.
+
+      - ../opifex/design/final-canonical-contract.md — variant/_registry/active/manifest
+      are invalid inside PersonaSpec and local registry metadata only.
+
+      - ../opifex/contracts/persona_spec.schema.json — required fields and additionalProperties=false
+      define canonical PersonaSpec.
+
+      - ../opifex/conformance/shared_surfaces.yaml — variant operations require validation
+      and fail-closed behavior.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — new persona
+      auto-activates; existing persona register does not auto-activate.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml — activation
+      changes manifest only and uses atomic rename.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml — variant_list
+      returns {id, active, variants} metadata only.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — active
+      and last variant deletes are rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.validate.yaml — registry metadata
+      inside PersonaSpec is rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.export.yaml — export returns
+      active canonical specs only.
+
+      - ../opifex/conformance/case_matrix/larva/larva.update.yaml — variant is an
+      operation parameter, not stored in PersonaSpec.
+
+      - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml — omitted variant
+      resolves active; explicit variant resolves named variant.
+
+      - ../opifex/conformance/case_matrix/larva/larva.delete.yaml — delete removes
+      base persona and variants.
+
+      - INVAR.md — shell code owns filesystem I/O and invar guard must pass.
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      5 failed, 81 passed, 45 xfailed.
+
+      Failure families: flat <id>.json/index.json storage instead of manifest/variants
+      layout; corrupt manifest paths returned PERSONA_NOT_FOUND instead of REGISTRY_CORRUPT;
+      variant-aware facade methods were xfailed/unimplemented.
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Files changed: src/larva/shell/registry.py; src/larva/app/facade.py; src/larva/app/facade_types.py;
+      tests/shell/test_registry.py; tests/app/test_facade/conftest.py; tests/app/test_facade/test_register.py;
+      tests/app/test_facade/test_resolve.py; tests/app/test_facade/test_update.py;
+      tests/app/test_facade/test_list.py; tests/app/test_facade/test_export.py; tests/app/test_facade/test_delete.py.
+
+      - Storage layout implemented: <id>/manifest.json plus <id>/variants/<variant>.json;
+      manifest exactly active pointer; variant enumeration scans variants/*.json;
+      activation uses same-directory temp + os.replace via write_json_atomic.
+
+      - Error codes surfaced: REGISTRY_CORRUPT, INVALID_VARIANT_NAME, VARIANT_NOT_FOUND,
+      ACTIVE_VARIANT_DELETE_FORBIDDEN, LAST_VARIANT_DELETE_FORBIDDEN.
+
+      - Deviation record accepted: corrected tests/shell/test_registry.py::test_variant_spec_id_must_equal_base_persona_id
+      from expecting Failure to expecting successful active variant resolution because
+      fixture wrote matching spec.id and authoritative design requires success.
+
+      - Module-level mutable state: none introduced.
+
+      - Xfail closure: all required focused variant-behavior xfails removed; no xfails
+      remain in focused command.
+
+
+      ## Failure-Mode Evidence
+
+      - REGISTRY_CORRUPT: focused tests cover missing, malformed, and dangling active
+      manifest cases.
+
+      - active/last delete guards: focused tests cover active delete and last variant
+      delete rejection.
+
+      - activation write-then-rename: variant_activate writes manifest.json through
+      write_json_atomic.
+
+      - list/export active-only: facade tests assert active-only list/export and no
+      registry metadata leakage.
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest tests/shell/test_registry.py tests/app/test_facade/test_register.py
+      tests/app/test_facade/test_resolve.py tests/app/test_facade/test_update.py tests/app/test_facade/test_list.py
+      tests/app/test_facade/test_export.py tests/app/test_facade/test_delete.py -q
+
+      131 passed in 0.28s
+
+      ```
+
+      ```text
+
+      invar_guard(changed=true): passed; static errors=0 warnings=1 infos=0; doctest
+      passed; crosshair/property skipped because no core files. Escape hatches: one
+      file_size hatch in src/larva/shell/registry.py justified for registry variant
+      rollout preserving existing public exports pending separate compatibility-safe
+      split.
+
+      ```
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commits: 00a62b8369510650324f51c7a297d51585b503f8; a9ae62f4cafd29c7224e960b17b75a06114b87b5;
+      860d3e0c13d61b9ef4b3e764c34996ef2c9d49ec.
+
+      - Main squash commit: 29885da.
+
+
+      ## Gaps/Notes
+
+      - Invar warning: src/larva/app/facade.py is 656/700 lines; non-blocking size
+      warning for this implementation step.
+
+      - Registry file_size escape hatch exists and must be audited by downstream gate/deep
+      review.'
   - id: variants_registry_impl_20260503.registry-spec-conformance
     name: registry-spec-conformance
     status: pending
