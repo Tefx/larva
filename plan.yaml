@@ -11260,7 +11260,7 @@ phases:
       \ PASS"
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: in_progress
+  status: done
   depends_on:
   - meta.gate
   - core_validate
@@ -11656,7 +11656,7 @@ phases:
       - INTERFACES.md larva.validate'
   - id: core_validate.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for core validate
-    status: claimed
+    status: done
     description: 'Resolve validate error for completed step core_validate.core-validate-verify.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence that proves the current validate gate is
@@ -11682,6 +11682,33 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:30:51.057716+00:00'
+    done_at: '2026-05-03T13:38:14.717190+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Evidence Guard Closure Report\n- Historical completed step reviewed: core_validate.core-validate-verify\n\
+      - Closure route used: GREEN_CURRENT_PROOF\n- Commands/output or accepted disposition\
+      \ evidence:\n  ```\n  $ git status --short --branch\n  ## vectl/step-core_validate.evidence_guard_closure_20260503\n\
+      \n  $ uv run python -m pytest -v tests/core/test_validate.py\n  collected 56\
+      \ items\n  ...\n  56 passed in 0.57s\n\n  $ uv run python - <<'PY'\n  from larva.core.validate\
+      \ import validate_spec\n  spec = {\"id\":\"audit-persona\",\"description\":\"\
+      Audit persona with enough description for validate closure evidence.\",\"prompt\"\
+      :\"Hello world\",\"model\":\"gpt-4o-mini\",\"spec_version\":\"0.1.0\",\"capabilities\"\
+      :{}}\n  report = validate_spec(spec)\n  print(report)\n  print(type(report).__name__,\
+      \ report[\"valid\"], report[\"errors\"], report[\"warnings\"])\n  PY\n  {'valid':\
+      \ True, 'errors': [], 'warnings': ['capabilities is empty; this is valid but\
+      \ likely under-specified']}\n  dict True [] ['capabilities is empty; this is\
+      \ valid but likely under-specified']\n\n  $ invar_invar_guard(path=/Users/tefx/Projects/larva/.vectl/worktrees/core_validate.evidence_guard_closure_20260503,\
+      \ changed=false, strict=true, coverage=true)\n  status: failed; classification:\
+      \ tooling_parity_wrapper_instability; accepted_verification_path.command: uvx\
+      \ invar-tools guard --all\n\n  $ uvx invar-tools guard --all\n  status=passed;\
+      \ files_checked=47; errors=0; warnings=8; infos=4; doctest passed=true; crosshair\
+      \ verified files_verified=11; property_tests passed functions_tested=15 functions_passed=15\
+      \ total_examples=1200\n\n  $ git status --short --branch\n  ## vectl/step-core_validate.evidence_guard_closure_20260503\n\
+      \  ```\n- Gate-intersection disposition: Current validate surface is green under\
+      \ focused validate tests, direct canonical validate_spec execution, and the\
+      \ accepted authoritative full-scan guard path. The historical FAIL evidence\
+      \ is closed as stale/non-current; the only current wrapper failure is classified\
+      \ by guard tooling as tooling-path instability with an explicit accepted verification\
+      \ path, which passed.\n- Headline: PASS"
 - id: core_assemble_exec
   name: larva.core.assemble execution
   status: done
