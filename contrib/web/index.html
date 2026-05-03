@@ -299,7 +299,7 @@
   .error-list { margin: 8px 0 0 16px; font-size: 12px; color: var(--danger); }
   .error-list li { margin-bottom: 4px; }
 
-  /* Checkbox/Radio lists in assemble */
+  
   .option-item {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 12px; background: var(--bg-elevated);
@@ -308,33 +308,6 @@
   }
   .option-item:hover { background: var(--bg-hover); }
   .option-item input { accent-color: var(--accent); }
-
-  /* Component browser */
-  .comp-section {
-    background: var(--bg-surface); border-radius: 4px; margin-bottom: 12px;
-  }
-  .comp-section-header {
-    width: 100%; padding: 16px; text-align: left;
-    background: none; border: none; color: var(--text-secondary);
-    font-family: inherit; font-size: 11px; text-transform: uppercase;
-    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-    transition: background 0.15s;
-  }
-  .comp-section-header:hover { background: var(--bg-elevated); }
-  .comp-item {
-    width: 100%; padding: 12px 16px; text-align: left;
-    background: none; border: none; border-top: 1px solid var(--border);
-    color: var(--text-primary); font-family: inherit; font-size: 13px;
-    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-    transition: background 0.15s;
-  }
-  .comp-item:hover { background: var(--bg-elevated); }
-  .comp-content {
-    padding: 0 16px 12px;
-    background: var(--bg-primary); margin: 0 12px 12px;
-    border-radius: 4px; font-size: 12px;
-    white-space: pre-wrap; padding: 16px;
-  }
 
   /* Empty state */
   .empty-state {
@@ -413,7 +386,6 @@
   <header class="header">
     <div class="header-title">LARVA</div>
     <div class="header-actions">
-      <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Components</button>
       <button class="btn" @click="openBatchUpdate()">Batch Update</button>
       <button class="btn" @click="modals.import = true">Import</button>
     </div>
@@ -918,9 +890,6 @@ function larvaApp() {
     showRawJson: false,
     showCompaction: false,
     
-    compExpanded: {},
-    compItemExpanded: {},
-    compItemContent: {},
     modals: { import: false },
     importJson: '',
     importValidation: null,
@@ -1339,30 +1308,6 @@ function larvaApp() {
         if (parsed.id) this.selected = parsed.id;
       } catch (e) {
         alert('Import failed: ' + e.message);
-      }
-    },
-
-    
-    // Component browser
-    async toggleCompItem(type, name) {
-      const key = type + '/' + name;
-      if (this.compItemExpanded[key]) {
-        this.compItemExpanded = { ...this.compItemExpanded, [key]: false };
-        return;
-      }
-      this.compItemExpanded = { ...this.compItemExpanded, [key]: true };
-      if (!this.compItemContent[key]) {
-        try {
-          const resp = await fetch(`/api/components/${type}/${name}`);
-          const data = await resp.json();
-          const content = data.data;
-          this.compItemContent = {
-            ...this.compItemContent,
-            [key]: typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content),
-          };
-        } catch {
-          this.compItemContent = { ...this.compItemContent, [key]: 'Failed to load' };
-        }
       }
     },
 
