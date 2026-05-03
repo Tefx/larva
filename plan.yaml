@@ -68006,7 +68006,7 @@ phases:
       paths behave as specified, and same-id concurrent resolves deduplicate.
     depends_on:
     - opencode_hardening_contract_tests_20260503
-    agent: developer
+    agent: python-senior
   - id: opencode_hardening_wrapper_startup_20260503
     name: Align wrapper startup registration with base ids and active variants
     status: pending
