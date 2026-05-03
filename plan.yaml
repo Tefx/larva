@@ -68274,7 +68274,7 @@ phases:
       for this planner-only hygiene step.'
   - id: opencode_hardening_20260503.external-gate-review-for-opencode-hardening
     name: External gate review for OpenCode hardening
-    status: pending
+    status: claimed
     description: 'Run an explicit independent gate review after implementation and
       final verification. Reviewer must assess the hardening contract against implementation,
       tests, docs, runtime failure modes, and UX boundaries. The review must explicitly
@@ -68293,3 +68293,5 @@ phases:
     depends_on:
     - opencode_hardening_final_gate_20260503
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T14:11:48.185231+00:00'
