@@ -65157,6 +65157,39 @@ phases:
       \ phase removes|EXPECTED-RED|target behavior|target interface|released builds\
       \ may|implementation lands|accepted target|TARGET-STATE|NOT been cut over`)\
       \ -> No files found\n```\n\n## Residual risk\nnone"
+  - id: variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
+    name: contrib-web-variant-parity-remediation
+    status: pending
+    description: 'Remediate final wiring-audit debt in contrib/web/index.html so the
+      supported contributor convenience UI mirrors the packaged variant cutover: remove
+      stale tools/side_effect_policy UI, initialize/reset/load selectedVariant and
+      variantList on base persona switches, save selected variants through correct
+      variant routes without undefined variant names, and keep variant/base delete
+      semantics aligned with packaged UI.'
+    verification: Static grep shows contrib web has no current tools/side_effect_policy
+      UI or assemble/component/preset remnants; variant selection is initialized and
+      loaded before detail/save/delete; focused contrib web tests pass; final audit
+      can return PASS with no residual risk.
+    evidence_template: '## Contrib UI debt fixed
+
+      - <paths and summary>
+
+
+      ## Verification
+
+      ```text
+
+      <commands and outputs>
+
+      ```
+
+
+      ## Residual risk
+
+      none | <list>'
+    depends_on:
+    - variants_surface_cutover_20260503.surface-audit-polish-remediation
+    agent: frontend-engineer-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
