@@ -67627,3 +67627,24 @@ phases:
       step references docs/opencode-wrapper.md or docs/opencode-plugin-hardening-contract.md.
       Summarize remaining ref warnings and disposition; optionally reduce the warning
       count via vectl_mutate ref edits only.
+  - id: opencode_hardening_20260503.external-gate-review-for-opencode-hardening
+    name: External gate review for OpenCode hardening
+    status: pending
+    description: 'Run an explicit independent gate review after implementation and
+      final verification. Reviewer must assess the hardening contract against implementation,
+      tests, docs, runtime failure modes, and UX boundaries. The review must explicitly
+      PASS/FAIL each contract item: selected-id resolve, no runtime export-all main
+      path, no placeholder leakage, fail-closed without cache, last-known-good stale
+      fallback, in-flight dedup, debug/cache env behavior, target watermark format,
+      and hot-update/restart boundary documentation. Any FAIL must become a follow-up
+      step or block phase completion.'
+    verification: Evidence includes reviewer identity, PASS/FAIL matrix for every
+      OpenCode hardening contract item, commands/tests inspected or run, and explicit
+      statement that no blocking issues remain before completing the phase.
+    evidence_template: 'Reviewer: <agent>. Result: PASS/FAIL. Matrix: selected-id
+      resolve=<>, no export-all main path=<>, no placeholder leakage=<>, fail-closed=<>,
+      stale fallback=<>, in-flight dedup=<>, env behavior=<>, watermark=<>, docs boundary=<>.
+      Commands/tests: <>. Blocking issues: none or linked follow-up step.'
+    depends_on:
+    - opencode_hardening_final_gate_20260503
+    agent: gate-reviewer-tacit
