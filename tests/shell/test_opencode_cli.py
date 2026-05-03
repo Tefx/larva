@@ -136,6 +136,31 @@ def test_build_opencode_config_injects_plugin_and_larva_agents() -> None:
     assert "permission" not in agents["writer"]
 
 
+def test_build_opencode_config_uses_active_variant_under_base_id() -> None:
+    """Exported active variants register with Larva base ids only."""
+    active_variant_spec = _persona("python-senior")
+    active_variant_spec["description"] = "active variant description"
+    active_variant_spec["prompt"] = "Active variant prompt must stay runtime-only."
+    active_variant_spec["model"] = "anthropic/claude-sonnet-4"
+
+    result = build_opencode_config(
+        [active_variant_spec],
+        plugin_uri="file:///tmp/larva.ts",
+        base_config=None,
+    )
+
+    assert isinstance(result, Success)
+    agents = cast("dict[str, dict[str, object]]", result.unwrap()["agent"])
+    assert set(agents) == {"python-senior"}
+    assert agents["python-senior"] == {
+        "description": "[larva] active variant description",
+        "mode": "all",
+        "prompt": "[larva:python-senior]",
+        "model": "anthropic/claude-sonnet-4",
+    }
+    assert "Active variant prompt" not in json.dumps(agents["python-senior"])
+
+
 def test_resolve_opencode_plugin_path_uses_explicit_env(tmp_path: Path) -> None:
     plugin = tmp_path / "larva.ts"
     plugin.write_text("export default {};\n", encoding="utf-8")
