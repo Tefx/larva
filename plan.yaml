@@ -62378,7 +62378,7 @@ phases:
       - Commit hash(es): none (verify-only; worktree clean)."
   - id: variants_registry_impl_20260503.registry-gate
     name: registry-gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -62484,6 +62484,224 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T02:45:28.587988+00:00'
+    done_at: '2026-05-03T02:57:37.449890+00:00'
+    evidence: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer-tacit (independent, adversarial)
+
+      **Phase**: variants_registry_impl_20260503
+
+
+      ## refs Read Confirmation
+
+      - `design/registry-local-variants-and-assembly-removal.md` — variants are registry-local
+      only; storage is `<id>/manifest.json` + `<id>/variants/<variant>.json`; no `index.json`;
+      missing/malformed manifest => REGISTRY_CORRUPT; list/export active specs only.
+
+      - `docs/reference/INTERFACES.md` — larva consumes opifex PersonaSpec; canonical
+      admission rejects tools/side_effect_policy/unknown fields.
+
+      - `docs/reference/ARCHITECTURE.md` — core/app/shell boundaries; registry is
+      shell persistence; app facade orchestrates; shell adapters must not redefine
+      canonical semantics.
+
+      - `docs/guides/USAGE.md` — user-facing CLI/API behavior and error envelopes;
+      note conflict: still documents legacy index.json and assembly surfaces, superseded
+      for this step by registry-local variant design/downstream docs debt.
+
+      - `docs/guides/USER_GUIDE.md` — human-facing register/resolve/list/export behavior;
+      variant CLI docs not yet reflected; covered by downstream surface-cutover debt.
+
+      - `../opifex/design/final-canonical-contract.md` — variant/_registry/active/manifest
+      forbidden inside PersonaSpec; MCP names snake_case; capabilities canonical.
+
+      - `../opifex/contracts/persona_spec.schema.json` — required id/description/prompt/model/capabilities/spec_version;
+      additionalProperties=false.
+
+      - `../opifex/conformance/shared_surfaces.yaml` — larva register/resolve/update/variant_list/variant_activate/variant_delete/export
+      are shared surfaces; variant params outside PersonaSpec.
+
+      - `../opifex/conformance/case_matrix/larva/larva.register.yaml` — existing persona
+      register must not auto-activate; variant in spec rejected; bad variant names
+      rejected.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml` — activation
+      changes manifest only; active variant must exist; same-directory atomic rename
+      required.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_list.yaml` — response
+      is registry metadata only, not PersonaSpec.
+
+      - `../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml` — active
+      and last variant deletes must be rejected.
+
+      - `../opifex/conformance/case_matrix/larva/larva.validate.yaml` — unknown/legacy
+      fields including variant/variables/_registry rejected.
+
+      - `../opifex/conformance/case_matrix/larva/larva.export.yaml` — export returns
+      active canonical PersonaSpecs only, no registry metadata.
+
+      - `../opifex/conformance/case_matrix/larva/larva.update.yaml` — variant is operation
+      parameter, protected fields rejected.
+
+      - `../opifex/conformance/case_matrix/larva/larva.resolve.yaml` — output must
+      match canonical PersonaSpec; bad variant name rejected.
+
+      - `../opifex/conformance/case_matrix/larva/larva.delete.yaml` — delete removes
+      base persona, not one variant.
+
+      - `INVAR.md` — shell owns I/O; core requires contracts/doctests; escape hatches
+      require reason.
+
+
+      ## Gate Decision
+
+      ```yaml
+
+      headline: PASS_WITH_DEBT
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NON_BLOCKING
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      ```
+
+
+      ## Automated Gate Results
+
+      - Focused registry/facade tests: `uv run pytest tests/shell/test_registry.py
+      tests/app/test_facade/test_register.py tests/app/test_facade/test_resolve.py
+      tests/app/test_facade/test_update.py tests/app/test_facade/test_list.py tests/app/test_facade/test_export.py
+      tests/app/test_facade/test_delete.py -q` -> `133 passed in 0.51s`.
+
+      - Ruff changed files: PASS, all checks passed.
+
+      - Mypy changed files: PASS, success/no issues in 9 source files.
+
+      - Invar changed: PASS, errors=0 warnings=0 infos=0.
+
+      - Full guard: PASS via `uvx invar-tools guard --all`, errors=0 warnings=6 infos=2;
+      warnings are pre-existing non-intersecting core/components warnings.
+
+      - Registry behavioral probe: PASS; facade-backed temp registry proved no `index.json`
+      on new write, exact manifest, existing register no auto-activate, active-only
+      list/export/resolve, variant activation, delete guards, and missing manifest
+      REGISTRY_CORRUPT/no auto-heal.
+
+      - CLI smoke: PASS; real CLI register -> list -> resolve -> update -> export
+      --all -> delete with temp HOME produced substantive JSON outputs.
+
+      - Python import smoke: PASS; `larva.shell.python_api` imports validate/register/resolve/list/update/export/delete/clear/clone.
+
+
+      ## Behavioral Proof Register
+
+      - P1 Registry storage layout uses manifest + variants, not new index.json —
+      PROVEN.
+
+      - P2 Missing/corrupt manifest fails REGISTRY_CORRUPT and does not auto-heal
+      — PROVEN.
+
+      - P3 Active selection controls resolve/list/export active-only behavior — PROVEN.
+
+      - P4 Register/update do not auto-activate existing personas incorrectly — PROVEN.
+
+      - P5 Activation uses same-directory write-then-rename — PROVEN via `registry_fs.py`
+      same-dir temp + `os.replace` and variant_activate manifest write path.
+
+      - P6 variant_delete guards active and last variants — PROVEN.
+
+      - P7 B1 type/lint gates green — PROVEN.
+
+      - P8 B2 maintainability blocker closed beyond file_size hatches — PROVEN_WITH_NONBLOCKING_DEBT;
+      facade.py 415, registry.py 494, no file_size hatch.
+
+      - P9 Escape hatch audit accepted — PROVEN; 5 shell_result hatches only.
+
+      - P10 CLI/Python shell import regression absent — PROVEN.
+
+      - P11 No shared-surface metadata leakage — PROVEN.
+
+      - P12 MCP/CLI/Python variant surface cutover — NON_BLOCKING_DEBT, owner `variants_surface_cutover_20260503.mcp-cli-python-cutover`.
+
+
+      ## Wiring Audit
+
+      - W1 design -> core validation: `validate_variant_name` enforces slug/max64
+      with failure doctests.
+
+      - W2 core -> shell registry: registry save/get/get_variant call variant validation
+      and manifest read paths.
+
+      - W3 shell storage -> facade: `DefaultLarvaFacade` register/resolve/update/variant_*
+      delegate to RegistryStore.
+
+      - W4 facade active-only projection: list/export_all normalize registry.list
+      active specs only.
+
+      - W5 registry metadata boundary: variant_list returns `{id, active, variants}`;
+      resolve/export return bare PersonaSpec.
+
+      - W6 CLI surface: existing persona commands registered in parser and dispatch;
+      CLI smoke reaches real registry.
+
+      - W7 Python surface: python_api imports remain intact after BatchUpdateResult
+      fix.
+
+      - W8 tests: focused tests cover shell registry and app facade register/resolve/update/list/export/delete.
+
+
+      ## CLI Surface Preservation
+
+      - Top-level commands observed: validate, assemble, register, resolve, list,
+      component, delete, clear, clone, export, update, update-batch, serve, mcp, doctor,
+      opencode.
+
+      - Component subcommands: list, show.
+
+      - Registry/persona command matrix: validate/register/resolve/list/update/export/delete/clone/clear/update-batch/component
+      list/show handlers exist and help works; register/resolve/list/update/export/delete
+      smoke passed where non-destructive or temp-HOME safe.
+
+      - Variant CLI group not listed; accepted as downstream-owned B4 for `variants_surface_cutover_20260503.mcp-cli-python-cutover`,
+      non-blocking for current registry storage gate.
+
+      - No relevant existing registry/persona command broken or falling back to top-level
+      help.
+
+
+      ## Escape Hatch Audit
+
+      - No `file_size` hatch; no `dead_export` hatches.
+
+      - Full guard reports 5 `shell_result` hatches with explicit reasons.
+
+
+      ## Findings and Follow-up Ownership
+
+      - Blockers: none.
+
+      - Should-fix S1: residual large modules (`src/larva/app/facade.py` 415 lines,
+      `src/larva/shell/registry.py` 494 lines) remain below hard threshold and no
+      file_size hatch remains. Planner created follow-up owner `variants_registry_impl_20260503.registry-post-gate-followup`
+      before gate completion.
+
+      - Suggestion G1: stale expected-red comments in now-green tests; also owned
+      by `variants_registry_impl_20260503.registry-post-gate-followup`.
+
+
+      ## Commit Hash(es)
+
+      none (verify-only; worktree clean)'
   - id: variants_registry_impl_20260503.registry-conformance-remediation
     name: registry-conformance-remediation
     status: done
