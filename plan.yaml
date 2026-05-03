@@ -49345,7 +49345,7 @@ phases:
       gate and expected for hard_cut_finish_20260416_surfaces phase.'
   - id: hard_cut_finish_20260416_core.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for final hard-cut core
-    status: pending
+    status: claimed
     description: 'Resolve validate errors for completed steps hard_cut_finish_20260416_core.spec_schema_boundary,
       hard_cut_finish_20260416_core.normalize_assemble_patch, and hard_cut_finish_20260416_core.gate.
       This is a proof-closure/evidence task, not product-code implementation. Produce
@@ -49373,6 +49373,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:30:56.935469+00:00'
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: done
