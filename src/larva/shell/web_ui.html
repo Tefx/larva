@@ -354,80 +354,6 @@
   .option-item:hover { background: var(--bg-hover); }
   .option-item input { accent-color: var(--accent); }
 
-  /* Component browser */
-  .comp-section {
-    background: var(--bg-surface); border-radius: 4px; margin-bottom: 12px;
-  }
-  .comp-section-header {
-    width: 100%; padding: 16px; text-align: left;
-    background: none; border: none; color: var(--text-secondary);
-    font-family: inherit; font-size: 11px; text-transform: uppercase;
-    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-    transition: background 0.15s;
-  }
-  .comp-section-header:hover { background: var(--bg-elevated); }
-  .comp-library-intro {
-    background: var(--bg-surface); border: 1px solid var(--border);
-    border-radius: 6px; padding: 16px; margin-bottom: 16px;
-  }
-  .comp-library-kicker {
-    color: var(--accent); font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.08em; margin-bottom: 8px;
-  }
-  .comp-library-copy {
-    color: var(--text-secondary); font-size: 13px; line-height: 1.5;
-    max-width: 72ch;
-  }
-  .comp-library-copy strong { color: var(--text-primary); font-weight: 500; }
-  .comp-section-copy {
-    display: flex; flex-direction: column; gap: 6px; align-items: flex-start;
-  }
-  .comp-section-title-row {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  }
-  .comp-section-title {
-    color: var(--text-primary); font-size: 13px; text-transform: none;
-    font-weight: 500;
-  }
-  .comp-section-description {
-    color: var(--text-muted); font-size: 12px; text-transform: none;
-    line-height: 1.4;
-  }
-  .comp-kind-badge {
-    background: rgba(56, 189, 248, 0.12); color: var(--accent);
-    border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 999px;
-    padding: 2px 8px; font-size: 10px; text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .comp-item {
-    width: 100%; padding: 12px 16px; text-align: left;
-    background: none; border: none; border-top: 1px solid var(--border);
-    color: var(--text-primary); font-family: inherit; font-size: 13px;
-    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
-    transition: background 0.15s;
-  }
-  .comp-item:hover { background: var(--bg-elevated); }
-  .comp-item-body {
-    display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
-  }
-  .comp-item-title { color: var(--text-primary); font-size: 13px; }
-  .comp-item-meta {
-    color: var(--text-muted); font-size: 11px; display: flex;
-    gap: 6px; align-items: center; flex-wrap: wrap;
-  }
-  .comp-item-meta strong { color: var(--text-secondary); font-weight: 500; }
-  .comp-content {
-    padding: 0 16px 12px;
-    background: var(--bg-primary); margin: 0 12px 12px;
-    border-radius: 4px; font-size: 12px;
-    white-space: pre-wrap; padding: 16px;
-  }
-  .comp-content-meta {
-    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;
-    color: var(--text-secondary); font-size: 11px;
-  }
-  .comp-content-meta strong { color: var(--text-primary); font-weight: 500; }
-
   /* Empty state */
   .empty-state {
     flex: 1; display: flex; flex-direction: column;
@@ -550,7 +476,17 @@
       <div class="detail-inner">
         <!-- Header -->
         <div class="detail-header">
-          <h1 class="detail-title" x-text="selectedPersona?.id"></h1>
+          <div style="display:flex; align-items:center; gap:16px;">
+            <h1 class="detail-title" x-text="selectedPersona?.id"></h1>
+            <div x-show="variantList.variants.length > 0" style="display:flex; align-items:center; gap:8px;">
+              <select class="inline-select" :value="selectedVariant" @change="switchVariant($event.target.value)">
+                <template x-for="v in variantList.variants" :key="v">
+                  <option :value="v" x-text="v + (v === variantList.active ? ' (active)' : '')"></option>
+                </template>
+              </select>
+              <button class="btn btn-sm" x-show="selectedVariant !== variantList.active" @click="activateVariant()">Activate</button>
+            </div>
+          </div>
           <template x-if="!deleteConfirm">
             <button class="btn btn-danger" @click="deleteConfirm = true">Delete</button>
           </template>
@@ -910,6 +846,10 @@ function larvaApp() {
     personaRegistryError: '',
     loadingPersonaId: null,
     selected: null,
+    selectedVariant: null,
+    variantList: { active: null, variants: [] },
+    selectedVariant: null,
+    variantList: { active: null, variants: [] },
     search: '',
     view: 'detail',
     staged: {},
@@ -976,6 +916,80 @@ get selectedPersonaSummary() {
       return Object.keys(this.staged).length;
     },
 
+
+    async loadVariants(id) {
+      if (!id) return;
+      try {
+        const resp = await fetch(`/api/registry/personas/${id}/variants`);
+        if (!resp.ok) throw new Error('Failed to load variants');
+        const data = await resp.json();
+        this.variantList = data.data || { active: null, variants: [] };
+        if (!this.selectedVariant || !this.variantList.variants.includes(this.selectedVariant)) {
+          this.selectedVariant = this.variantList.active;
+        }
+      } catch (e) {
+        this.variantList = { active: null, variants: [] };
+        this.selectedVariant = null;
+      }
+    },
+
+    async switchVariant(variant) {
+      if (this.selectedVariant === variant) return;
+      this.selectedVariant = variant;
+      await this.ensurePersonaDetail(this.selected, true, variant);
+    },
+
+    async activateVariant() {
+      if (!this.selected || !this.selectedVariant) return;
+      try {
+        const resp = await fetch(`/api/registry/personas/${this.selected}/variants/${this.selectedVariant}/activate`, {
+          method: 'POST'
+        });
+        if (!resp.ok) throw new Error('Failed to activate variant');
+        await this.loadVariants(this.selected);
+        this.showToast('Variant activated');
+      } catch (e) {
+        alert(e.message);
+      }
+    },
+
+
+    async loadVariants(id) {
+      if (!id) return;
+      try {
+        const resp = await fetch(`/api/registry/personas/${id}/variants`);
+        if (!resp.ok) throw new Error('Failed to load variants');
+        const data = await resp.json();
+        this.variantList = data.data || { active: null, variants: [] };
+        if (!this.selectedVariant || !this.variantList.variants.includes(this.selectedVariant)) {
+          this.selectedVariant = this.variantList.active;
+        }
+      } catch (e) {
+        this.variantList = { active: null, variants: [] };
+        this.selectedVariant = null;
+      }
+    },
+
+    async switchVariant(variant) {
+      if (this.selectedVariant === variant) return;
+      this.selectedVariant = variant;
+      await this.ensurePersonaDetail(this.selected, true, variant);
+    },
+
+    async activateVariant() {
+      if (!this.selected || !this.selectedVariant) return;
+      try {
+        const resp = await fetch(`/api/registry/personas/${this.selected}/variants/${this.selectedVariant}/activate`, {
+          method: 'POST'
+        });
+        if (!resp.ok) throw new Error('Failed to activate variant');
+        await this.loadVariants(this.selected);
+        this.showToast('Variant activated');
+      } catch (e) {
+        alert(e.message);
+      }
+    },
+
     async init() {
       await this.loadPersonas();
 // Watch importJson for validation
@@ -1023,7 +1037,8 @@ get selectedPersonaSummary() {
         }
         this.personaRegistryState = 'ready';
         if (this.selected) {
-          await this.ensurePersonaDetail(this.selected);
+          await this.loadVariants(this.selected);
+          await this.ensurePersonaDetail(this.selected, true, this.selectedVariant);
         }
       } catch (e) {
         this.personas = [];
@@ -1036,15 +1051,16 @@ get selectedPersonaSummary() {
       }
     },
 
-    async ensurePersonaDetail(id, force = false) {
+    async ensurePersonaDetail(id, force = false, variant = null) {
       if (!id) return null;
-      if (!force && this.personaDetails[id]) {
+      if (!force && this.personaDetails[id] && !variant) {
         return this.personaDetails[id];
       }
 
       this.loadingPersonaId = id;
       try {
-        const resp = await fetch(`/api/personas/${id}`);
+        const url = variant ? `/api/registry/personas/${id}/variants/${variant}` : `/api/personas/${id}`;
+        const resp = await fetch(url);
         const data = await resp.json();
         if (data.data) {
           this.syncSpawnSpecificDraftFromValue(data.data.can_spawn);
