@@ -3031,7 +3031,7 @@ phases:
       \ in the same subagent session and finalized strictly to step scope before completion."
 - id: shell_registry
   name: larva.shell.registry
-  status: in_progress
+  status: done
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -4041,7 +4041,7 @@ phases:
       \ for local import resolution."
   - id: shell_registry.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for shell registry
-    status: claimed
+    status: done
     description: 'Resolve validate errors for completed steps shell_registry.shell-registry-gate
       and shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2. This is a proof-closure/evidence
       task, not product-code implementation. Produce accepted same-phase closure evidence
@@ -4068,6 +4068,35 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:40:52.121612+00:00'
+    done_at: '2026-05-03T13:48:35.828039+00:00'
+    evidence: "## refs Read Confirmation (MANDATORY)\nNo refs for this step.\n\n##\
+      \ Evidence Guard Closure Report\n- Historical completed steps reviewed: shell_registry.shell-registry-gate;\
+      \ shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2\n- Closure route\
+      \ used: GREEN_CURRENT_PROOF\n- Commands/output or accepted disposition evidence:\n\
+      \  ```\n  Worktree: /Users/tefx/Projects/larva/.vectl/worktrees/shell_registry.evidence_guard_closure_20260503\n\
+      \  Branch: vectl/step-shell_registry.evidence_guard_closure_20260503\n\n  Historical\
+      \ evidence reviewed from plan.yaml:\n  - shell_registry.shell-registry-gate:\
+      \ status=done; recorded FAIL findings B1/B2/S1/S2 and remediation handoff.\n\
+      \  - shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2: status=done;\
+      \ recorded remediation evidence for B1/B2/S1/S2.\n  - shell_registry.retest-shell-registry-gate-blockers-b1-b2-s1-s2:\
+      \ status=done; recorded CLOSED decision for B1/B2/S1/S2.\n\n  $ uv run pytest\
+      \ -q tests/shell/test_registry.py\n  59 passed in 0.39s\n\n  $ uv run ruff check\
+      \ src/larva/shell/registry.py tests/shell/test_registry.py && MYPYPATH=src uv\
+      \ run mypy --python-executable .venv/bin/python src/larva/shell/registry.py\
+      \ tests/shell/test_registry.py\n  All checks passed!\n  Success: no issues found\
+      \ in 2 source files\n\n  $ uvx invar-tools guard --all\n  status=passed; files_checked=47;\
+      \ errors=0; warnings=8; infos=4; doctest=passed; crosshair.status=verified;\
+      \ property_tests.status=passed; property_tests.functions_passed=15; property_tests.functions_failed=0\n\
+      \n  $ invar_invar_guard(path=..., changed=false)\n  status=deferred; run_id=grd_32e4bcff65574b38a61c1a10\n\
+      \  $ invar_invar_guard_status(run_id=grd_32e4bcff65574b38a61c1a10)\n  status=complete;\
+      \ ok=true; errors=0; warnings=8; infos=4; files_checked=47\n\n  $ git status\
+      \ --short\n  <no output; worktree clean>\n  ```\n- Gate-intersection disposition:\
+      \ gate_open_allowed=true; current shell registry gate is green. The historical\
+      \ FAIL evidence intersects the gate only as already-remediated provenance: B1/B2/S1/S2\
+      \ were retested closed, current targeted registry tests pass, registry lint/type\
+      \ checks pass, and full invar guard has zero errors. Remaining invar warnings/infos\
+      \ are non-registry-gate warnings and do not block shell_registry gate opening.\n\
+      - Headline: PASS"
 - id: app_facade
   name: larva.app.facade
   status: done
