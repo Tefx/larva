@@ -66337,7 +66337,7 @@ phases:
       commands absent.'
 - id: variants_finalization_20260503
   name: Variants Finalization, Docs Parity, and Deep Review
-  status: in_progress
+  status: done
   gate: Full plan verification, docs parity, opifex boundary conformance, and independent
     deep review are complete.
   depends_on:
@@ -67113,7 +67113,7 @@ phases:
       none'
   - id: variants_finalization_20260503.final-gate
     name: final-gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -67237,3 +67237,168 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T07:37:37.559728+00:00'
+    done_at: '2026-05-03T07:39:20.849581+00:00'
+    evidence: '## refs Read Confirmation
+
+      Final gate reviewed the same refs from docs-parity, full-plan conformance, and
+      deep review:
+
+      - design/registry-local-variants-and-assembly-removal.md — registry-local variants,
+      no index target, removed assembly/component surfaces.
+
+      - docs/reference/INTERFACES.md, docs/reference/ARCHITECTURE.md, docs/guides/USAGE.md,
+      docs/guides/USER_GUIDE.md, README.md — docs parity evidence and repo-facing
+      conformance checked.
+
+      - ../opifex design/schema/shared_surfaces/case_matrix refs — current authority
+      used by repo-local conformance gate.
+
+      - INVAR.md — full invar guard used as verification gate.
+
+
+      ## Vectl Validate Baseline Review
+
+      - `vectl_validate(check_refs=true)` output reviewed from current final-gate
+      run plus `variants_finalization_20260503.full-plan-guard-and-conformance` evidence.
+
+      - Baseline validation table reviewed: PASS.
+
+      - New/intersecting `variants_*_20260503` validation failures: NONE.
+
+      - Remediation evidence for every new/intersecting item: none required; no current
+      variant/shared-surface validation item appears in the 16 errors / 60 warnings.
+
+
+      ## Final Gate Review
+
+      | Area | Evidence reviewed | Verdict | Concerns |
+
+      |---|---|---|---|
+
+      | Core contracts | Full pytest 525 passed; invar_guard full scan ok=true/errors=0;
+      deep-review canonical boundary PASS | PASS | none |
+
+      | Registry behavior | Registry tests, variant projection smoke, deep-review
+      registry semantics: manifest + variants layout, fail-closed, no index.json,
+      delete guards | PASS | none |
+
+      | Public surfaces | MCP stdio process tool list, source-removal review, web
+      rejection of `{spec, variant}`, CLI CRUD smoke | PASS | none |
+
+      | Projection/liveness | MCP stdio proof, subprocess CLI CRUD proof, serve process
+      HTTP 200 proof with uvicorn startup/shutdown | PASS | none |
+
+      | Docs parity | docs-parity-sync evidence, repo-local docs parity PASS, grep
+      evidence for removed/tombstone-only assembly/component references | PASS | none
+      |
+
+      | Vectl validation baseline | Current `vectl_validate(check_refs=true)` and
+      full-plan baseline table: 16 errors / 60 warnings are old non-intersecting debt
+      | PASS | none |
+
+      | Opifex conformance | `larva_repo_local_gate.py verify --opifex-root ../opifex`
+      PASS; expected-red PASS; case-matrix refs reviewed | PASS | none |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      |---|---|---|---|---|---|---|
+
+      | variants canonical boundary | Variant/registry metadata does not enter PersonaSpec;
+      forbidden fields rejected | Full tests + repo-local gate + web wrapper rejection
+      | pytest 525 passed; local gate metadata PASS; web wrapper rejection test |
+      PASS | closed | Metadata leakage blocker satisfied |
+
+      | removed assembly/component surfaces | Removed MCP/CLI/Python/REST/Web surfaces
+      are not reachable as public supported interfaces | MCP process list + source/docs
+      review | MCP stdio list excludes larva_assemble/component tools; docs grep tombstone-only
+      | PASS | closed | Removed surface reachability blocker satisfied |
+
+      | registry-local variants | Registry uses manifest + variants only; no index
+      fallback; active projection respected | Registry tests + projection smoke +
+      source review | targeted shell tests 123 passed; deep-review blocker #2 remediated
+      | PASS | closed | Registry behavior blocker satisfied |
+
+      | public liveness | Intended variant operations work through live/process surfaces
+      | MCP stdio, subprocess CLI CRUD, serve smoke | MCP tool list; process CLI CRUD
+      smoke; serve HTTP 200 | PASS | closed | Runtime proof requirement satisfied
+      |
+
+      | docs parity | Docs match removed surfaces, variant params, storage, errors,
+      canonical examples | Docs parity gate + repo-local CI docs check | docs-parity-sync;
+      local gate repo-facing docs parity PASS | PASS | closed | Docs parity blocker
+      satisfied |
+
+      | opifex conformance | Larva surfaces conform to canonical opifex schema/case
+      matrix | Repo-local conformance verify + expected-red | larva_repo_local_gate.py
+      verify PASS; expected-red PASS | PASS | closed | Shared-surface conformance
+      blocker satisfied |
+
+      | vectl baseline | Existing validation debt is old and non-intersecting | vectl_validate(check_refs=true)
+      + baseline table | current validate 16 errors / 60 warnings, no variants_*_20260503;
+      full-plan baseline table | PASS | future baseline cleanup only | No new/intersecting
+      validation failure remains |
+
+
+      ## Commands / Evidence
+
+      ```text
+
+      vectl_validate(check_refs=true)
+
+      # 16 errors / 60 warnings; old baseline only; no variants_*_20260503 IDs.
+
+
+      uv run pytest -q -p no:cacheprovider
+
+      # 525 passed in 6.87s
+
+
+      invar_guard(path=/Users/tefx/Projects/larva, changed=false)
+
+      # run grd_2da7e26f46e04da9b2a140b9 complete: ok=true, errors=0, warnings=1,
+      infos=3, files_checked=40
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
+
+      # frozen authority packet pin PASS; schema-authority parity PASS; capabilities-only
+      admission metadata PASS; mcp snake_case naming PASS (9 tools); repo-facing docs
+      parity PASS
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root
+      ../opifex
+
+      # 5 expected-red PASS lines
+
+
+      uv run pytest tests/shell/test_registry.py tests/shell/test_web.py tests/shell/test_variant_projection_smoke.py
+      tests/shell/test_repo_local_ci_gate.py -q -p no:cacheprovider --tb=short
+
+      # 123 passed in 2.13s
+
+
+      MCP stdio process list proof
+
+      # variant tools present; removed assembly/component tools absent
+
+
+      serve process proof
+
+      # HTTP 200 from /api/personas; uvicorn startup/shutdown logs observed
+
+      ```
+
+
+      ## Gate Decision
+
+      OPEN
+
+
+      ## Residual Risk
+
+      none'
