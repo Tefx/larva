@@ -42689,7 +42689,7 @@ phases:
       - tests/shell/test_mcp_server.py"
   - id: repair_dup_shared_foundations.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for duplicate repair foundations
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step repair_dup_guardrails.preservation_harness
       in phase repair_dup_shared_foundations, whose evidence contains failed tests.
       This is a proof-closure/evidence task, not product-code implementation. Produce
@@ -42714,6 +42714,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:40:45.746984+00:00'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: done
