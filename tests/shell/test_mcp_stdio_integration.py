@@ -118,3 +118,136 @@ class TestMCPStdioIntegration:
                     )
 
         anyio.run(_run)
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assembly/component
+# tools and adds variant tools.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: MCP Surface
+# Source authority: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.usefixtures("_require_mcp")
+class TestMCPStdioSurfaceCutover:
+    """EXPECTED-RED: MCP stdio integration must expose variant tools, not assembly/component."""
+
+    
+    def test_variant_list_tool_exists_over_stdio(self) -> None:
+        """larva_variant_list MUST be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 51; case_matrix larva.mcp_server_naming.yaml.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_variant_list" in tool_names, (
+                        f"larva_variant_list not found over stdio. "
+                        f"Available: {sorted(tool_names)}"
+                    )
+
+        anyio.run(_run)
+
+    def test_variant_activate_tool_exists_over_stdio(self) -> None:
+        """larva_variant_activate MUST be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 52.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_variant_activate" in tool_names, (
+                        f"larva_variant_activate not found over stdio. "
+                        f"Available: {sorted(tool_names)}"
+                    )
+
+        anyio.run(_run)
+
+    def test_variant_delete_tool_exists_over_stdio(self) -> None:
+        """larva_variant_delete MUST be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 53.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_variant_delete" in tool_names, (
+                        f"larva_variant_delete not found over stdio. "
+                        f"Available: {sorted(tool_names)}"
+                    )
+
+        anyio.run(_run)
+
+    def test_assemble_tool_removed_over_stdio(self) -> None:
+        """larva_assemble MUST NOT be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 57; design doc lines 125-129.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_assemble" not in tool_names, (
+                        f"larva_assemble still exposed over stdio. "
+                        f"Assembly removed per INTERFACES.md."
+                    )
+
+        anyio.run(_run)
+
+    def test_component_list_tool_removed_over_stdio(self) -> None:
+        """larva_component_list MUST NOT be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 58.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_component_list" not in tool_names, (
+                        f"larva_component_list still exposed over stdio. "
+                        f"Component subsystem removed per INTERFACES.md."
+                    )
+
+        anyio.run(_run)
+
+    def test_component_show_tool_removed_over_stdio(self) -> None:
+        """larva_component_show MUST NOT be exposed over MCP stdio transport after cutover.
+
+        Source: INTERFACES.md line 59.
+        """
+
+        async def _run() -> None:
+            async with stdio_client(LARVA_MCP_CMD) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
+                    result = await session.list_tools()
+                    tool_names = {t.name for t in result.tools}
+                    assert "larva_component_show" not in tool_names, (
+                        f"larva_component_show still exposed over stdio. "
+                        f"Component subsystem removed per INTERFACES.md."
+                    )
+
+        anyio.run(_run)

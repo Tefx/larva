@@ -261,5 +261,123 @@ class TestToolDelegation:
 
 
 # ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assembly/component
+# tools and adds variant tools.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: MCP Surface
+# Source authority: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+# ---------------------------------------------------------------------------
+
+
+class TestMCPServerVariantTools:
+    """EXPECTED-RED: MCP server must register variant tools and remove assembly/component tools.
+
+    Source: INTERFACES.md :: MCP Surface (lines 40-59)
+    Source: design/registry-local-variants-and-assembly-removal.md :: MCP surface (lines 117-143)
+    Source: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+    """
+
+    def test_variant_list_tool_registered_on_server(self) -> None:
+        """larva_variant_list MUST be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_variant_list" in registered, (
+            f"larva_variant_list not registered. "
+            f"Current tools: {sorted(registered)}. "
+            f"Expected per INTERFACES.md and case_matrix."
+        )
+
+    def test_variant_activate_tool_registered_on_server(self) -> None:
+        """larva_variant_activate MUST be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_variant_activate" in registered, (
+            f"larva_variant_activate not registered. "
+            f"Current tools: {sorted(registered)}. "
+            f"Expected per INTERFACES.md and case_matrix."
+        )
+
+    def test_variant_delete_tool_registered_on_server(self) -> None:
+        """larva_variant_delete MUST be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_variant_delete" in registered, (
+            f"larva_variant_delete not registered. "
+            f"Current tools: {sorted(registered)}. "
+            f"Expected per INTERFACES.md and case_matrix."
+        )
+
+    def test_assemble_tool_removed_from_server(self) -> None:
+        """larva_assemble MUST NOT be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_assemble" not in registered, (
+            f"larva_assemble still registered on MCP server. "
+            f"Assembly removed per INTERFACES.md and design doc."
+        )
+
+    def test_component_list_tool_removed_from_server(self) -> None:
+        """larva_component_list MUST NOT be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_component_list" not in registered, (
+            f"larva_component_list still registered on MCP server. "
+            f"Component subsystem removed per INTERFACES.md and design doc."
+        )
+
+    def test_component_show_tool_removed_from_server(self) -> None:
+        """larva_component_show MUST NOT be registered on the MCP server after cutover."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        assert "larva_component_show" not in registered, (
+            f"larva_component_show still registered on MCP server. "
+            f"Component subsystem removed per INTERFACES.md and design doc."
+        )
+
+    def test_server_tool_count_matches_cutover_contract(self) -> None:
+        """After cutover, server must have 13 tools (16 minus 3 removed plus 3 added)."""
+        server = create_mcp_server()
+        registered = set(server._tool_manager._tools.keys())
+        # Target: validate, register, resolve, list, update, delete, clear,
+        # clone, export, update_batch, variant_list, variant_activate, variant_delete = 13
+        # Current: 13 tools (including assemble, component_list, component_show,
+        #          lacking variant_* = 13)
+        # After cutover: still 13 (remove 3, add 3)
+        expected_count_after_cutover = 13
+        assert len(registered) == expected_count_after_cutover, (
+            f"Expected {expected_count_after_cutover} tools after cutover, "
+            f"got {len(registered)}: {sorted(registered)}"
+        )
+
+    def test_variant_handler_methods_exist(self) -> None:
+        """EXPECTED-RED: MCPHandlers must have variant handler methods."""
+        from larva.shell.mcp import MCPHandlers
+
+        for method_name in ["handle_variant_list", "handle_variant_activate", "handle_variant_delete"]:
+            assert hasattr(MCPHandlers, method_name), (
+                f"MCPHandlers missing {method_name}. "
+                f"Expected variant handler methods per INTERFACES.md."
+            )
+
+    def test_tool_name_mapping_includes_variant_tools(self) -> None:
+        """EXPECTED-RED: _tool_name_to_handler_attr must map variant tools."""
+        for expected_mapping in [
+            ("larva_variant_list", "handle_variant_list"),
+            ("larva_variant_activate", "handle_variant_activate"),
+            ("larva_variant_delete", "handle_variant_delete"),
+        ]:
+            tool_name, expected_attr = expected_mapping
+            result = _tool_name_to_handler_attr(tool_name)
+            assert result == expected_attr, (
+                f"_tool_name_to_handler_attr('{tool_name}') = '{result}', "
+                f"expected '{expected_attr}'"
+            )
+
+
+# ---------------------------------------------------------------------------
 # Import guard
 # ---------------------------------------------------------------------------

@@ -334,3 +334,60 @@ class TestContribMirrorEndpointInventory:
 
         assert signature.parameters["port"].default == 7400
         assert signature.parameters["no_open"].default is False
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions for contrib web
+#
+# Source authority: docs/reference/INTERFACES.md :: "larva serve is the authoritative
+# packaged runtime" (line 129). contrib/web/server.py is a convenience runtime,
+# not the canonical entrypoint. However, it should also not expose removed
+# assembly/component surfaces or omit variant surfaces.
+# ---------------------------------------------------------------------------
+
+
+class TestContribWebAssemblyRemoved:
+    """EXPECTED-RED: contrib web must not expose /api/personas/assemble."""
+
+    def test_contrib_assemble_endpoint_removed(self) -> None:
+        """POST /api/personas/assemble should not exist on contrib server."""
+        from larva.core.spec import PersonaSpec as ContribPersonaSpec
+
+        module = _load_contrib_module()
+        app = module.app
+        client = TestClient(app)
+        resp = client.post(
+            "/api/personas/assemble",
+            json={
+                "id": "test-assemble-removed",
+                "description": "test",
+                "prompt": "test",
+                "model": "test-model",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            },
+        )
+        assert resp.status_code in (404, 405), (
+            f"POST /api/personas/assemble should be removed from contrib. "
+            f"Got {resp.status_code}. Assembly removed per INTERFACES.md."
+        )
+
+
+class TestContribWebComponentEndpointsRemoved:
+    """EXPECTED-RED: contrib web must not expose /api/components* endpoints."""
+
+    def test_contrib_components_list_removed(self) -> None:
+        module = _load_contrib_module()
+        client = TestClient(module.app)
+        resp = client.get("/api/components")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components should be removed from contrib. Got {resp.status_code}."
+        )
+
+    def test_contrib_components_show_removed(self) -> None:
+        module = _load_contrib_module()
+        client = TestClient(module.app)
+        resp = client.get("/api/components/prompts/test")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components/prompts/test should be removed from contrib. Got {resp.status_code}."
+        )

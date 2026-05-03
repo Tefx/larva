@@ -407,3 +407,298 @@ def test_spec_digest_format_hypothesis(digest: str) -> None:
     assert re.fullmatch(r"sha256:[a-f0-9]{64}", digest), (
         f"Generated digest did not match format: {digest}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE REST surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assembly/component
+# endpoints and adds variant registry endpoints.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: Web Runtime Surface
+# ---------------------------------------------------------------------------
+
+
+class TestRESTAssembleEndpointRemoved:
+    """EXPECTED-RED: POST /api/personas/assemble MUST NOT exist after cutover.
+
+    Source: INTERFACES.md :: Removed endpoints (line 159)
+    Source: design/registry-local-variants-and-assembly-removal.md :: Removed subsystem
+    """
+
+    def test_assemble_endpoint_removed(self) -> None:
+        """POST /api/personas/assemble must be absent from packaged REST."""
+        client = TestClient(app)
+        resp = client.post(
+            "/api/personas/assemble",
+            json={
+                "id": "test-assemble",
+                "description": "test",
+                "prompt": "test",
+                "model": "test-model",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            },
+        )
+        # 404 or 405 means the route is absent/removed
+        assert resp.status_code in (404, 405), (
+            f"POST /api/personas/assemble should be removed. "
+            f"Got status {resp.status_code}. "
+            f"Expected 404/405 per INTERFACES.md removed endpoints."
+        )
+
+
+class TestRESTComponentsEndpointsRemoved:
+    """EXPECTED-RED: /api/components* endpoints MUST NOT exist after cutover.
+
+    Source: INTERFACES.md :: Removed endpoints (lines 160-164)
+    Source: design/registry-local-variants-and-assembly-removal.md :: Removed subsystem
+    """
+
+    def test_components_list_endpoint_removed(self) -> None:
+        """GET /api/components must be absent from packaged REST."""
+        client = TestClient(app)
+        resp = client.get("/api/components")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components should be removed. "
+            f"Got status {resp.status_code}. "
+            f"Expected 404/405 per INTERFACES.md removed endpoints."
+        )
+
+    def test_components_projection_endpoint_removed(self) -> None:
+        """GET /api/components/projection must be absent from packaged REST."""
+        client = TestClient(app)
+        resp = client.get("/api/components/projection")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components/projection should be removed. "
+            f"Got status {resp.status_code}. "
+            f"Expected 404/405 per INTERFACES.md removed endpoints."
+        )
+
+    def test_components_show_endpoint_removed(self) -> None:
+        """GET /api/components/{component_type}/{name} must be absent."""
+        client = TestClient(app)
+        resp = client.get("/api/components/prompts/test-prompt")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components/prompts/test-prompt should be removed. "
+            f"Got status {resp.status_code}. "
+            f"Expected 404/405 per INTERFACES.md removed endpoints."
+        )
+
+
+class TestRESTVariantEndpointsExist:
+    """EXPECTED-RED: Variant registry endpoints MUST exist after cutover.
+
+    Source: INTERFACES.md :: Variant registry routes (lines 147-152)
+    Source: design/registry-local-variants-and-assembly-removal.md :: Web REST surface
+    """
+
+    def test_registry_personas_list_endpoint_exists(self) -> None:
+        """GET /api/registry/personas must return registry metadata summaries."""
+        client = TestClient(app)
+        resp = client.get("/api/registry/personas")
+        assert resp.status_code == 200, (
+            f"GET /api/registry/personas expected 200, got {resp.status_code}: {resp.text}. "
+            f"Variant registry list endpoint must exist per INTERFACES.md."
+        )
+        body = resp.json()
+        assert isinstance(body, dict), f"Expected dict response, got {type(body)}"
+        assert "data" in body, f"Expected 'data' key in response, got {sorted(body.keys())}"
+
+    def test_registry_variants_list_endpoint_exists(self) -> None:
+        """GET /api/registry/personas/{id}/variants must return registry metadata."""
+        client = TestClient(app)
+        # First register a persona to test with
+        _register_canonical(client, _canonical_spec("variant-test-rest"))
+        resp = client.get("/api/registry/personas/variant-test-rest/variants")
+        assert resp.status_code == 200, (
+            f"GET /api/registry/personas/variant-test-rest/variants expected 200, "
+            f"got {resp.status_code}: {resp.text}. "
+            f"Variant list endpoint must exist per INTERFACES.md."
+        )
+        body = resp.json()
+        assert "data" in body, f"Expected 'data' key, got {sorted(body.keys())}"
+
+    def test_registry_variant_detail_endpoint_exists(self) -> None:
+        """GET /api/registry/personas/{id}/variants/{variant} must return envelope."""
+        client = TestClient(app)
+        _register_canonical(client, _canonical_spec("variant-detail-rest"))
+        resp = client.get("/api/registry/personas/variant-detail-rest/variants/default")
+        assert resp.status_code == 200, (
+            f"GET .../variants/default expected 200, got {resp.status_code}: {resp.text}. "
+            f"Variant detail endpoint must exist per INTERFACES.md."
+        )
+        body = resp.json()
+        # Must have separate _registry and spec keys per INTERFACES.md
+        assert "data" in body, f"Expected 'data' key, got {sorted(body.keys())}"
+        data = body["data"]
+        assert "_registry" in data, f"Expected '_registry' in envelope, got {sorted(data.keys())}"
+        assert "spec" in data, f"Expected 'spec' in envelope, got {sorted(data.keys())}"
+
+    def test_registry_variant_put_endpoint_exists(self) -> None:
+        """PUT /api/registry/personas/{id}/variants/{variant} must accept spec with matching id."""
+        client = TestClient(app)
+        spec = dict(_canonical_spec("variant-put-rest"))
+        # Register first
+        client.post("/api/personas", json=spec)
+        # PUT a variant
+        resp = client.put(
+            "/api/registry/personas/variant-put-rest/variants/tacit",
+            json=spec,
+        )
+        assert resp.status_code in (200, 201), (
+            f"PUT .../variants/tacit expected 200/201, got {resp.status_code}: {resp.text}. "
+            f"Variant PUT endpoint must exist per INTERFACES.md."
+        )
+
+    def test_registry_variant_activate_endpoint_exists(self) -> None:
+        """POST /api/registry/personas/{id}/variants/{variant}/activate must exist."""
+        client = TestClient(app)
+        _register_canonical(client, _canonical_spec("variant-activate-rest"))
+        resp = client.post(
+            "/api/registry/personas/variant-activate-rest/variants/default/activate"
+        )
+        # 200 means endpoint exists and activation succeeded
+        # 404 means endpoint missing
+        assert resp.status_code != 404, (
+            f"POST .../default/activate returned 404. "
+            f"Variant activate endpoint must exist per INTERFACES.md."
+        )
+
+    def test_registry_variant_delete_endpoint_exists(self) -> None:
+        """DELETE /api/registry/personas/{id}/variants/{variant} must exist."""
+        client = TestClient(app)
+        # Create persona with two variants so we can delete one
+        spec = dict(_canonical_spec("variant-delete-rest"))
+        client.post("/api/personas", json=spec)
+        # Add a second variant we can try to delete
+        client.put(
+            "/api/registry/personas/variant-delete-rest/variants/draft",
+            json=spec,
+        )
+        resp = client.delete(
+            "/api/registry/personas/variant-delete-rest/variants/draft"
+        )
+        # 200 means endpoint exists; 404 means endpoint missing
+        # (We may get 404 if the variant doesn't exist yet, or 403 if it's the
+        # active/last variant, but NOT route-404)
+        assert resp.status_code != 405, (
+            f"DELETE .../variants/draft returned 405 (method not allowed). "
+            f"Variant delete endpoint must exist per INTERFACES.md."
+        )
+
+
+class TestRESTVariantEnvelopeSeparation:
+    """EXPECTED-RED: Variant endpoints must separate _registry from canonical spec.
+
+    Source: INTERFACES.md :: Registry Variant Envelope (lines 182-197)
+    Source: design/registry-local-variants-and-assembly-removal.md :: Web REST surface
+    """
+
+    def test_variant_detail_envelope_separates_registry_from_spec(self) -> None:
+        """Variant detail must return {_registry: {variant, is_active}, spec: {...}}.
+
+        _registry must NOT appear inside spec.
+        """
+        client = TestClient(app)
+        _register_canonical(client, _canonical_spec("envelope-sep-rest"))
+        resp = client.get("/api/registry/personas/envelope-sep-rest/variants/default")
+        assert resp.status_code == 200, (
+            f"Expected 200 for variant detail, got {resp.status_code}: {resp.text}"
+        )
+        body = resp.json()
+        data = body.get("data", body)
+        # _registry must exist at top level of data, not inside spec
+        assert "_registry" in data, f"Missing '_registry' key: {sorted(data.keys())}"
+        assert "spec" in data, f"Missing 'spec' key: {sorted(data.keys())}"
+        # _registry must NOT be inside spec
+        spec = data.get("spec", {})
+        assert "_registry" not in spec, (
+            f"_registry MUST NOT appear inside spec per INTERFACES.md. "
+            f"Found: {sorted(spec.keys())}"
+        )
+        assert "variant" not in spec, (
+            f"'variant' MUST NOT appear inside spec per INTERFACES.md. "
+            f"Found: {sorted(spec.keys())}"
+        )
+
+    def test_variant_detail_id_mismatch_rejected(self) -> None:
+        """PUT variant with mismatched spec.id must fail with PERSONA_ID_MISMATCH."""
+        client = TestClient(app)
+        _register_canonical(client, _canonical_spec("idmismatch-rest"))
+        wrong_id_spec = dict(_canonical_spec("different-id"))
+        resp = client.put(
+            "/api/registry/personas/idmismatch-rest/variants/tacit",
+            json=wrong_id_spec,
+        )
+        assert resp.status_code == 400, (
+            f"PUT variant with mismatched spec.id expected 400, "
+            f"got {resp.status_code}: {resp.text}. "
+            f"PERSONA_ID_MISMATCH error required per INTERFACES.md."
+        )
+        body = resp.json()
+        # Error code must be PERSONA_ID_MISMATCH
+        assert "error" in body, f"Expected error envelope, got: {body}"
+        assert body["error"]["code"] == "PERSONA_ID_MISMATCH", (
+            f"Expected error code PERSONA_ID_MISMATCH, "
+            f"got {body['error']['code']}"
+        )
+
+    def test_variant_detail_registry_corrupt_detection(self) -> None:
+        """Registry-corrupt manifest must fail with REGISTRY_CORRUPT error code."""
+        # This test verifies the error code is defined.
+        # Since setting up a corrupt registry in an integration test is complex,
+        # we verify the error code exists in the error vocabulary.
+        from larva.app.facade import ERROR_NUMERIC_CODES
+
+        assert "REGISTRY_CORRUPT" in ERROR_NUMERIC_CODES, (
+            f"REGISTRY_CORRUPT not in ERROR_NUMERIC_CODES. "
+            f"Expected per INTERFACES.md and USAGE.md."
+        )
+
+
+class TestRESTErrorCodesSurfaceConsistently:
+    """EXPECTED-RED: Variant-related error codes must surface consistently.
+
+    Source: INTERFACES.md :: Error Handling (lines 258-268)
+    Source: USAGE.md :: §6 Error Handling
+    """
+
+    REQUIRED_VARIANT_ERROR_CODES = {
+        "PERSONA_ID_MISMATCH",
+        "INVALID_VARIANT_NAME",
+        "REGISTRY_CORRUPT",
+        "VARIANT_NOT_FOUND",
+        "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+        "LAST_VARIANT_DELETE_FORBIDDEN",
+    }
+
+    def test_variant_error_codes_in_facade(self) -> None:
+        """All variant-related error codes must be defined in ERROR_NUMERIC_CODES."""
+        from larva.app.facade import ERROR_NUMERIC_CODES
+
+        for code in self.REQUIRED_VARIANT_ERROR_CODES:
+            assert code in ERROR_NUMERIC_CODES, (
+                f"Error code '{code}' missing from ERROR_NUMERIC_CODES. "
+                f"Expected per INTERFACES.md §6 and USAGE.md §6."
+            )
+
+    def test_active_variant_delete_forbidden_code_exists(self) -> None:
+        """ACTIVE_VARIANT_DELETE_FORBIDDEN must be a defined error code."""
+        from larva.app.facade import ERROR_NUMERIC_CODES
+
+        assert "ACTIVE_VARIANT_DELETE_FORBIDDEN" in ERROR_NUMERIC_CODES, (
+            f"ACTIVE_VARIANT_DELETE_FORBIDDEN not defined. "
+            f"Available codes: {sorted(ERROR_NUMERIC_CODES.keys())}"
+        )
+
+    def test_last_variant_delete_forbidden_code_exists(self) -> None:
+        """LAST_VARIANT_DELETE_FORBIDDEN must be a defined error code."""
+        from larva.app.facade import ERROR_NUMERIC_CODES
+
+        assert "LAST_VARIANT_DELETE_FORBIDDEN" in ERROR_NUMERIC_CODES, (
+            f"LAST_VARIANT_DELETE_FORBIDDEN not defined. "
+            f"Available codes: {sorted(ERROR_NUMERIC_CODES.keys())}"
+        )

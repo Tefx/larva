@@ -37,9 +37,9 @@ from larva.app.facade import (
     AssembleRequest,
     DefaultLarvaFacade,
     LarvaError,
-    PersonaSummary,
     RegisteredPersona,
 )
+from larva.app.facade_types import PersonaSummary
 from larva import cli_facade
 from larva.core import assemble as assemble_module
 from larva.core import normalize as normalize_module
@@ -4421,3 +4421,278 @@ class TestDoctorRegistryCommand:
             cli_result = result.unwrap()
             assert cli_result["exit_code"] == EXIT_OK
             assert "DIAGNOSTIC OK" in cli_result["stdout"]
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE CLI surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assemble/component
+# commands and adds variant commands.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: CLI Surface
+# Source authority: docs/guides/USAGE.md :: §1 CLI
+# ---------------------------------------------------------------------------
+
+
+class TestCLIVariantCommandsExist:
+    """EXPECTED-RED: CLI must support variant list/activate/delete commands.
+
+    Source: INTERFACES.md :: CLI Surface (lines 88-101)
+    Source: USAGE.md :: §1 CLI
+    """
+
+    def test_variant_list_command_exists(self) -> None:
+        """CLI must support 'larva variant list <id>'."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        # Find the variant subparser
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        # Check if 'variant' is a subcommand
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        assert "variant" in subparsers_action.choices, (
+            f"CLI 'variant' subcommand not found. "
+            f"Available commands: {sorted(subparsers_action.choices.keys())}. "
+            f"Expected per INTERFACES.md and USAGE.md."
+        )
+
+    def test_variant_list_subcommand_exists(self) -> None:
+        """CLI variant subcommand must support 'list' sub-subcommand."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        # Navigate to variant subparser
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.skip("'variant' command not yet available")
+        variant_parser = subparsers_action.choices.get("variant")
+        if variant_parser is None:
+            pytest.fail("'variant' subcommand missing from CLI")
+        # Find sub-subparser for variant
+        variant_subparsers = None
+        for action in variant_parser._actions:
+            if hasattr(action, "choices") and action.dest == "variant_command":
+                variant_subparsers = action
+                break
+        if variant_subparsers is None:
+            pytest.fail("'variant' subparser has no sub-subcommands")
+        assert "list" in variant_subparsers.choices, (
+            f"CLI 'variant list' subcommand not found. "
+            f"Available variant subcommands: {sorted(variant_subparsers.choices.keys())}. "
+            f"Expected per USAGE.md."
+        )
+
+    def test_variant_activate_subcommand_exists(self) -> None:
+        """CLI variant subcommand must support 'activate' sub-subcommand."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.skip("'variant' command not yet available")
+        variant_parser = subparsers_action.choices.get("variant")
+        if variant_parser is None:
+            pytest.fail("'variant' subcommand missing from CLI")
+        variant_subparsers = None
+        for action in variant_parser._actions:
+            if hasattr(action, "choices") and action.dest == "variant_command":
+                variant_subparsers = action
+                break
+        if variant_subparsers is None:
+            pytest.fail("'variant' subparser has no sub-subcommands")
+        assert "activate" in variant_subparsers.choices, (
+            f"CLI 'variant activate' subcommand not found. "
+            f"Available: {sorted(variant_subparsers.choices.keys())}. "
+            f"Expected per USAGE.md."
+        )
+
+    def test_variant_delete_subcommand_exists(self) -> None:
+        """CLI variant subcommand must support 'delete' sub-subcommand."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.skip("'variant' command not yet available")
+        variant_parser = subparsers_action.choices.get("variant")
+        if variant_parser is None:
+            pytest.fail("'variant' subcommand missing from CLI")
+        variant_subparsers = None
+        for action in variant_parser._actions:
+            if hasattr(action, "choices") and action.dest == "variant_command":
+                variant_subparsers = action
+                break
+        if variant_subparsers is None:
+            pytest.fail("'variant' subparser has no sub-subcommands")
+        assert "delete" in variant_subparsers.choices, (
+            f"CLI 'variant delete' subcommand not found. "
+            f"Available: {sorted(variant_subparsers.choices.keys())}. "
+            f"Expected per USAGE.md."
+        )
+
+
+class TestCLIAssemblyComponentCommandsRemoved:
+    """EXPECTED-RED: CLI must NOT support assemble/component commands after cutover.
+
+    Source: INTERFACES.md :: Removed commands
+    Source: USAGE.md :: removed tools section
+    """
+
+    def test_assemble_command_does_not_exist(self) -> None:
+        """CLI 'assemble' command MUST NOT exist after cutover."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        assert "assemble" not in subparsers_action.choices, (
+            f"CLI 'assemble' command still exists. "
+            f"Assembly removed per INTERFACES.md."
+        )
+
+    def test_component_command_does_not_exist(self) -> None:
+        """CLI 'component' command MUST NOT exist after cutover."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        assert "component" not in subparsers_action.choices, (
+            f"CLI 'component' command still exists. "
+            f"Component subsystem removed per INTERFACES.md."
+        )
+
+
+class TestCLIVariantFlagOnResolve:
+    """EXPECTED-RED: CLI resolve command must accept --variant flag.
+
+    Source: USAGE.md §8 resolve with --variant
+    Source: INTERFACES.md :: CLI Surface
+    """
+
+    def test_resolve_accepts_variant_flag(self) -> None:
+        """CLI 'larva resolve <id> --variant <name>' must accept optional --variant."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        # Find the resolve subparser
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        resolve_parser = subparsers_action.choices.get("resolve")
+        if resolve_parser is None:
+            pytest.fail("'resolve' command missing from CLI")
+        option_strings = []
+        for action in resolve_parser._actions:
+            option_strings.extend(action.option_strings)
+        assert "--variant" in option_strings, (
+            f"CLI 'resolve' command does not accept --variant flag. "
+            f"Available flags: {option_strings}. "
+            f"Expected per USAGE.md §8."
+        )
+
+
+class TestCLIVariantFlagOnRegister:
+    """EXPECTED-RED: CLI register command must accept --variant flag.
+
+    Source: USAGE.md §8 register with --variant
+    Source: INTERFACES.md :: CLI Surface
+    """
+
+    def test_register_accepts_variant_flag(self) -> None:
+        """CLI 'larva register <spec.json> --variant <name>' must accept optional --variant."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        register_parser = subparsers_action.choices.get("register")
+        if register_parser is None:
+            pytest.fail("'register' command missing from CLI")
+        option_strings = []
+        for action in register_parser._actions:
+            option_strings.extend(action.option_strings)
+        assert "--variant" in option_strings, (
+            f"CLI 'register' command does not accept --variant flag. "
+            f"Available flags: {option_strings}. "
+            f"Expected per USAGE.md §8."
+        )
+
+
+class TestCLIVariantFlagOnUpdate:
+    """EXPECTED-RED: CLI update command must accept --variant flag.
+
+    Source: USAGE.md §9 update with --variant
+    Source: INTERFACES.md :: CLI Surface
+    """
+
+    def test_update_accepts_variant_flag(self) -> None:
+        """CLI 'larva update <id> --variant <name> --set key=value' must accept --variant."""
+        from larva.shell.cli_parser import build_cli_parser
+
+        result = build_cli_parser()
+        parser = result.unwrap()
+        subparsers_action = None
+        for action in parser._actions:
+            if hasattr(action, "choices") and action.dest == "command":
+                subparsers_action = action
+                break
+        if subparsers_action is None:
+            pytest.fail("No subcommand parser found in CLI")
+        update_parser = subparsers_action.choices.get("update")
+        if update_parser is None:
+            pytest.fail("'update' command missing from CLI")
+        option_strings = []
+        for action in update_parser._actions:
+            option_strings.extend(action.option_strings)
+        assert "--variant" in option_strings, (
+            f"CLI 'update' command does not accept --variant flag. "
+            f"Available flags: {option_strings}. "
+            f"Expected per USAGE.md §9."
+        )

@@ -1880,3 +1880,118 @@ class TestPythonApiUpdateBatch:
         assert result["matched"] == 1
         assert result["updated"] == 1
         assert result["items"][0]["id"] == "nested-match"
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assembly/component
+# exports and adds variant exports.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: Python API Surface
+# Source authority: docs/guides/USAGE.md :: §2 Python API
+# ---------------------------------------------------------------------------
+
+
+class TestPythonAPIVariantExports:
+    """EXPECTED-RED: Python API must expose variant_list, variant_activate, variant_delete.
+
+    Source: INTERFACES.md :: Python API Surface (lines 106-119)
+    Source: USAGE.md :: §2 Python API
+    """
+
+    def test_variant_list_is_exported(self) -> None:
+        """variant_list MUST be exported from python_api after cutover."""
+        assert hasattr(python_api, "variant_list"), (
+            "variant_list not exported from larva.shell.python_api. "
+            "Expected per INTERFACES.md :: Python API Surface."
+        )
+
+    def test_variant_activate_is_exported(self) -> None:
+        """variant_activate MUST be exported from python_api after cutover."""
+        assert hasattr(python_api, "variant_activate"), (
+            "variant_activate not exported from larva.shell.python_api. "
+            "Expected per INTERFACES.md :: Python API Surface."
+        )
+
+    def test_variant_delete_is_exported(self) -> None:
+        """variant_delete MUST be exported from python_api after cutover."""
+        assert hasattr(python_api, "variant_delete"), (
+            "variant_delete not exported from larva.shell.python_api. "
+            "Expected per INTERFACES.md :: Python API Surface."
+        )
+
+
+class TestPythonAPIRemovedExports:
+    """EXPECTED-RED: Python API must NOT export assemble, component_list, component_show.
+
+    Source: INTERFACES.md lines 121-126
+    Source: USAGE.md :: Removed Python API exports
+    """
+
+    def test_assemble_is_not_exported(self) -> None:
+        """assemble MUST NOT be exported from python_api after cutover."""
+        assert not hasattr(python_api, "assemble"), (
+            "assemble still exported from larva.shell.python_api. "
+            "Assembly removed per INTERFACES.md."
+        )
+
+    def test_component_list_is_not_exported(self) -> None:
+        """component_list MUST NOT be exported from python_api after cutover."""
+        assert not hasattr(python_api, "component_list"), (
+            "component_list still exported from larva.shell.python_api. "
+            "Component subsystem removed per INTERFACES.md."
+        )
+
+    def test_component_show_is_not_exported(self) -> None:
+        """component_show MUST NOT be exported from python_api after cutover."""
+        assert not hasattr(python_api, "component_show"), (
+            "component_show still exported from larva.shell.python_api. "
+            "Component subsystem removed per INTERFACES.md."
+        )
+
+
+class TestPythonAPIVariantParameters:
+    """EXPECTED-RED: register/resolve/update must accept optional variant parameter.
+
+    Source: INTERFACES.md lines 42-45
+    Source: USAGE.md §3.2, §3.3, §3.5
+    """
+
+    def test_register_accepts_variant_parameter(self) -> None:
+        """register(spec, variant=None) MUST accept optional variant parameter."""
+        import inspect
+
+        sig = inspect.signature(python_api.register)
+        param_names = list(sig.parameters.keys())
+        assert "variant" in param_names, (
+            f"register() does not accept 'variant' parameter. "
+            f"Current params: {param_names}. "
+            f"Expected per INTERFACES.md."
+        )
+
+    def test_resolve_accepts_variant_parameter(self) -> None:
+        """resolve(id, overrides=None, variant=None) MUST accept optional variant parameter."""
+        import inspect
+
+        sig = inspect.signature(python_api.resolve)
+        param_names = list(sig.parameters.keys())
+        assert "variant" in param_names, (
+            f"resolve() does not accept 'variant' parameter. "
+            f"Current params: {param_names}. "
+            f"Expected per INTERFACES.md."
+        )
+
+    def test_update_accepts_variant_parameter(self) -> None:
+        """update(id, patches, variant=None) MUST accept optional variant parameter."""
+        import inspect
+
+        sig = inspect.signature(python_api.update)
+        param_names = list(sig.parameters.keys())
+        assert "variant" in param_names, (
+            f"update() does not accept 'variant' parameter. "
+            f"Current params: {param_names}. "
+            f"Expected per INTERFACES.md."
+        )

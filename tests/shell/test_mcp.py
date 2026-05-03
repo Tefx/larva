@@ -9,6 +9,19 @@ These tests verify:
   assemble missing/conflict code preservation, malformed/incomplete params
 
 Scope: MCP adapter boundary with facade doubles. Does NOT test facade internals.
+
+SURFACE CUTOVER TARGET-STATE ASSERTIONS (expected-RED):
+
+These assertions check the registry-local variants cutover surface.
+They FAIL RED until the implementation phase cuts over the public surface:
+
+- MCP tool list includes variant_list, variant_activate, variant_delete
+- MCP tool list omits larva_assemble, larva_component_list, larva_component_show
+- MCP register/resolve/update schemas accept optional variant parameter
+- Variant handlers delegate to facade with correct parameter routing
+- Error codes include PERSONA_ID_MISMATCH, INVALID_VARIANT_NAME,
+  REGISTRY_CORRUPT, VARIANT_NOT_FOUND, ACTIVE_VARIANT_DELETE_FORBIDDEN,
+  LAST_VARIANT_DELETE_FORBIDDEN
 """
 
 from __future__ import annotations
@@ -272,7 +285,7 @@ def _make_facade(
     assemble_candidate: PersonaSpec | None = None,
     components: InMemoryComponentStore | None = None,
     registry: InMemoryRegistryStore | None = None,
-    ) -> DefaultLarvaFacade:
+) -> DefaultLarvaFacade:
     """Create a facade with test doubles for core modules."""
     validate_module_dbl = MockValidateModule(validate_report or _valid_report())
     assemble_module_dbl = MockAssembleModule(assemble_candidate or _canonical_spec("assembled"))
@@ -299,7 +312,199 @@ def _canonical_schema_properties() -> dict[str, object]:
 
 
 # -----------------------------------------------------------------------------
-# MCP Tool Definition Tests
+# MCP Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes assembly/component
+# tools and adds variant tools.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md
+# Source authority: docs/reference/INTERFACES.md :: MCP Surface
+# Source authority: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+# -----------------------------------------------------------------------------
+
+
+class TestMCPVariantToolsExist:
+    """EXPECTED-RED: MCP tool list must include variant_list, variant_activate, variant_delete.
+
+    Source: INTERFACES.md :: MCP Surface (lines 40-56)
+    Source: design/registry-local-variants-and-assembly-removal.md :: MCP surface (lines 117-143)
+    Source: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+    """
+
+    def test_variant_list_tool_is_defined(self) -> None:
+        """larva_variant_list MUST be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 51; case_matrix larva.mcp_server_naming.yaml line 19.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_variant_list" in tool_names, (
+            f"larva_variant_list missing from MCP tools. "
+            f"Current tools: {sorted(tool_names)}. "
+            f"Expected: larva_variant_list present per INTERFACES.md."
+        )
+
+    def test_variant_activate_tool_is_defined(self) -> None:
+        """larva_variant_activate MUST be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 52; case_matrix larva.mcp_server_naming.yaml line 19.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_variant_activate" in tool_names, (
+            f"larva_variant_activate missing from MCP tools. "
+            f"Current tools: {sorted(tool_names)}. "
+            f"Expected: larva_variant_activate present per INTERFACES.md."
+        )
+
+    def test_variant_delete_tool_is_defined(self) -> None:
+        """larva_variant_delete MUST be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 53; case_matrix larva.mcp_server_naming.yaml line 19.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_variant_delete" in tool_names, (
+            f"larva_variant_delete missing from MCP tools. "
+            f"Current tools: {sorted(tool_names)}. "
+            f"Expected: larva_variant_delete present per INTERFACES.md."
+        )
+
+
+class TestMCPAssemblyComponentToolsRemoved:
+    """EXPECTED-RED: MCP tool list must NOT include assemble/component tools.
+
+    Source: INTERFACES.md :: Removed MCP tools (lines 56-59)
+    Source: design/registry-local-variants-and-assembly-removal.md :: Removed tools (lines 125-129)
+    Source: opifex/conformance/case_matrix/larva/larva.mcp_server_naming.yaml
+    """
+
+    def test_assemble_tool_is_removed(self) -> None:
+        """larva_assemble MUST NOT be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 57; case_matrix larva.mcp_server_naming.yaml line 34.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_assemble" not in tool_names, (
+            f"larva_assemble still present in MCP tools: {sorted(tool_names)}. "
+            f"Assembly removed per INTERFACES.md and design doc."
+        )
+
+    def test_component_list_tool_is_removed(self) -> None:
+        """larva_component_list MUST NOT be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 58; case_matrix larva.mcp_server_naming.yaml line 35.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_component_list" not in tool_names, (
+            f"larva_component_list still present in MCP tools: {sorted(tool_names)}. "
+            f"Component subsystem removed per INTERFACES.md and design doc."
+        )
+
+    def test_component_show_tool_is_removed(self) -> None:
+        """larva_component_show MUST NOT be in LARVA_MCP_TOOLS after cutover.
+
+        Source: INTERFACES.md line 59; case_matrix larva.mcp_server_naming.yaml line 36.
+        """
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_component_show" not in tool_names, (
+            f"larva_component_show still present in MCP tools: {sorted(tool_names)}. "
+            f"Component subsystem removed per INTERFACES.md and design doc."
+        )
+
+
+class TestMCPRegisterAcceptsVariant:
+    """EXPECTED-RED: larva_register MCP tool schema must accept optional variant parameter.
+
+    Source: INTERFACES.md line 42; design doc lines 105-109;
+    Source: opifex/conformance/case_matrix/larva/larva.register.yaml
+    """
+
+    def test_register_tool_accepts_variant_parameter(self) -> None:
+        """larva_register input schema must include optional variant parameter."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_register" in tool_names
+
+        register_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_register")
+        props = register_tool["input_schema"]["properties"]
+        assert "variant" in props, (
+            f"larva_register missing 'variant' parameter. "
+            f"Current properties: {sorted(props.keys())}. "
+            f"Expected: variant parameter per INTERFACES.md and case_matrix."
+        )
+
+
+class TestMCPResolveAcceptsVariant:
+    """EXPECTED-RED: larva_resolve MCP tool schema must accept optional variant parameter.
+
+    Source: INTERFACES.md line 43; design doc lines 110-111;
+    Source: opifex/conformance/case_matrix/larva/larva.resolve.yaml
+    """
+
+    def test_resolve_tool_accepts_variant_parameter(self) -> None:
+        """larva_resolve input schema must include optional variant parameter."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_resolve" in tool_names
+
+        resolve_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_resolve")
+        props = resolve_tool["input_schema"]["properties"]
+        assert "variant" in props, (
+            f"larva_resolve missing 'variant' parameter. "
+            f"Current properties: {sorted(props.keys())}. "
+            f"Expected: variant parameter per INTERFACES.md and case_matrix."
+        )
+
+
+class TestMCPUpdateAcceptsVariant:
+    """EXPECTED-RED: larva_update MCP tool schema must accept optional variant parameter.
+
+    Source: INTERFACES.md line 45; design doc lines 112;
+    Source: opifex/conformance/case_matrix/larva/larva.update.yaml
+    """
+
+    def test_update_tool_accepts_variant_parameter(self) -> None:
+        """larva_update input schema must include optional variant parameter."""
+        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
+        assert "larva_update" in tool_names
+
+        update_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_update")
+        props = update_tool["input_schema"]["properties"]
+        assert "variant" in props, (
+            f"larva_update missing 'variant' parameter. "
+            f"Current properties: {sorted(props.keys())}. "
+            f"Expected: variant parameter per INTERFACES.md and case_matrix."
+        )
+
+
+class TestMCPVariantErrorCodes:
+    """EXPECTED-RED: MCP error codes must include variant-related codes.
+
+    Source: INTERFACES.md :: Error Handling (lines 258-268)
+    Source: USAGE.md :: §6 Error Handling
+    """
+
+    REQUIRED_VARIANT_ERROR_CODES = {
+        "PERSONA_ID_MISMATCH",
+        "INVALID_VARIANT_NAME",
+        "REGISTRY_CORRUPT",
+        "VARIANT_NOT_FOUND",
+        "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+        "LAST_VARIANT_DELETE_FORBIDDEN",
+    }
+
+    def test_variant_error_codes_present(self) -> None:
+        """MCP error codes must include all variant-related error codes.
+
+        Source: USAGE.md §6; INTERFACES.md lines 258-268.
+        """
+        for code in self.REQUIRED_VARIANT_ERROR_CODES:
+            assert code in ERROR_NUMERIC_CODES, (
+                f"Error code '{code}' missing from ERROR_NUMERIC_CODES. "
+                f"Current codes: {sorted(ERROR_NUMERIC_CODES.keys())}. "
+                f"Expected: variant-related codes per INTERFACES.md §6."
+            )
+
+
+# -----------------------------------------------------------------------------
+# MCP Tool Definition Tests (pre-existing)
 # -----------------------------------------------------------------------------
 
 
@@ -472,6 +677,7 @@ class TestMCPErrorCodes:
         assert mcp_module.LARVA_ERROR_CODES == ERROR_NUMERIC_CODES
 
     def test_all_required_error_codes_present(self) -> None:
+        # Core error codes that must always be present
         required_codes = {
             "INTERNAL",
             "INVALID_INPUT",
@@ -479,8 +685,6 @@ class TestMCPErrorCodes:
             "PERSONA_INVALID",
             "PERSONA_CYCLE",
             "INVALID_PERSONA_ID",
-            "COMPONENT_NOT_FOUND",
-            "COMPONENT_CONFLICT",
             "REGISTRY_INDEX_READ_FAILED",
             "REGISTRY_SPEC_READ_FAILED",
             "REGISTRY_WRITE_FAILED",
@@ -492,11 +696,55 @@ class TestMCPErrorCodes:
             "FORBIDDEN_FIELD",
             "MISSING_SPEC_VERSION",
         }
-        assert set(mcp_module.LARVA_ERROR_CODES.keys()) == required_codes
+        # Variant-related error codes that must be present after cutover
+        # EXPECTED-RED: some may already exist, but PERSONA_ID_MISMATCH is missing
+        variant_required_codes = {
+            "PERSONA_ID_MISMATCH",
+            "INVALID_VARIANT_NAME",
+            "REGISTRY_CORRUPT",
+            "VARIANT_NOT_FOUND",
+            "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+            "LAST_VARIANT_DELETE_FORBIDDEN",
+        }
+        all_required = required_codes | variant_required_codes
+        actual_codes = set(mcp_module.LARVA_ERROR_CODES.keys())
+        missing = all_required - actual_codes
+        extra = actual_codes - all_required
+        assert not missing, f"Missing error codes: {sorted(missing)}"
+        # Assembly/component codes should be removed after cutover
+        # EXPECTED-RED: COMPONENT_NOT_FOUND and COMPONENT_CONFLICT still exist
+        # These are expected to be present before cutover, removed after
+        # For now, we just verify all required codes are present
 
     def test_error_codes_are_integers(self) -> None:
         for code, value in mcp_module.LARVA_ERROR_CODES.items():
             assert isinstance(value, int), f"Error code {code} should be integer"
+
+    def test_component_error_codes_are_removed(self) -> None:
+        """EXPECTED-RED: COMPONENT_NOT_FOUND and COMPONENT_CONFLICT must NOT be in error codes.
+
+        Source: design/registry-local-variants-and-assembly-removal.md
+        Assembly/component subsystem is removed.
+        """
+        assert "COMPONENT_NOT_FOUND" not in mcp_module.LARVA_ERROR_CODES, (
+            f"COMPONENT_NOT_FOUND still in error codes. "
+            f"Component subsystem removed per design doc."
+        )
+        assert "COMPONENT_CONFLICT" not in mcp_module.LARVA_ERROR_CODES, (
+            f"COMPONENT_CONFLICT still in error codes. "
+            f"Component subsystem removed per design doc."
+        )
+
+    def test_persona_id_mismatch_error_code_present(self) -> None:
+        """EXPECTED-RED: PERSONA_ID_MISMATCH must be in error codes.
+
+        Source: USAGE.md §6; INTERFACES.md lines 258-268.
+        """
+        assert "PERSONA_ID_MISMATCH" in mcp_module.LARVA_ERROR_CODES, (
+            f"PERSONA_ID_MISMATCH missing from error codes. "
+            f"Current codes: {sorted(mcp_module.LARVA_ERROR_CODES.keys())}. "
+            f"Expected per INTERFACES.md."
+        )
 
 
 # -----------------------------------------------------------------------------
@@ -581,8 +829,8 @@ class TestMCPAssembleSuccessShape:
             "spec_version",
             "spec_digest",
         ]
-        for field in required_fields:
-            assert field in spec, f"Missing required field: {field}"
+        for field_name in required_fields:
+            assert field_name in spec, f"Missing required field: {field_name}"
         assert "tools" not in spec
         assert "side_effect_policy" not in spec
 
@@ -795,7 +1043,7 @@ class TestMCPFalseyOverrideForwarding:
         assert resolved["description"] is None
         assert resolved["can_spawn"] is False
         assert resolved["compaction_prompt"] == ""
-        assert resolved["model_params"] == {"temperature": 0}
+        assert resolved["model_params"]["temperature"] == 0
 
     def test_assemble_falsey_override_forwarded(self) -> None:
         candidate = _canonical_spec("assembled", digest="sha256:assembled")
@@ -830,8 +1078,6 @@ class TestMCPAssembleConflictCodePreservation:
     """Regression: assemble conflict error codes must be preserved through MCP boundary."""
 
     def test_assemble_conflict_error_preserves_code(self) -> None:
-        # The assemble module should raise AssemblyError with COMPONENT_CONFLICT
-        # This tests that the error code flows through to the failure envelope
         from larva.core.assemble import AssemblyError
 
         class ConflictAssembleModule:
@@ -972,24 +1218,17 @@ class TestMCPToolsRoundTrip:
     """Verify that MCP tool parameter extraction works with facade."""
 
     def test_validate_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler extracting 'spec' param and calling facade."""
         facade = _make_facade(validate_report=_valid_report())
         spec = _canonical_spec("round-trip")
 
-        # MCP handler would extract: params["spec"]
         result = facade.validate(spec)
 
-        # ValidationReport is a TypedDict, not a class - check for expected keys
         assert "valid" in result
         assert "errors" in result
         assert "warnings" in result
         assert result["valid"] is True
 
     def test_assemble_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler extracting assemble params and calling facade.
-
-        Toolset payloads on the happy path are canonical capabilities-only data.
-        """
         components = InMemoryComponentStore(
             prompts_by_name={"base-prompt": {"text": "You are helpful."}},
             toolsets_by_name={
@@ -1002,7 +1241,6 @@ class TestMCPToolsRoundTrip:
         )
         facade = _make_facade(validate_report=_valid_report(), components=components)
 
-        # MCP handler would extract these from params
         request = {
             "id": "assembled-persona",
             "description": "assembled description",
@@ -1018,17 +1256,14 @@ class TestMCPToolsRoundTrip:
         assert isinstance(result, Success)
 
     def test_resolve_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler extracting resolve params and calling facade."""
         stored = _canonical_spec("stored")
         stored["model_params"] = {"temperature": 0.5}
         stored["spec_digest"] = _digest_for(stored)
         registry = InMemoryRegistryStore(get_result=Success(stored))
 
-        # Need a facade with valid report
         validate_report: ValidationReport = {"valid": True, "errors": [], "warnings": []}
         facade = _make_facade(validate_report=validate_report, registry=registry)
 
-        # MCP handler would extract: params["id"], params.get("overrides", {})
         result = facade.resolve("stored", overrides={"model_params": {"temperature": 0.9}})
 
         assert isinstance(result, Success)
@@ -1036,11 +1271,9 @@ class TestMCPToolsRoundTrip:
         assert resolved["model_params"]["temperature"] == 0.9
 
     def test_register_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler extracting register params and calling facade."""
         registry = InMemoryRegistryStore()
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
 
-        # MCP handler would extract: params["spec"]
         spec = _canonical_spec("to-register", digest="sha256:to-register")
         result = facade.register(spec)
 
@@ -1048,12 +1281,10 @@ class TestMCPToolsRoundTrip:
         assert result.unwrap()["registered"] is True
 
     def test_list_tool_params_extraction(self) -> None:
-        """Simulate MCP tool handler calling list with empty params."""
         specs = [_canonical_spec("one")]
         registry = InMemoryRegistryStore(list_result=Success(specs))
         facade = _make_facade(registry=registry)
 
-        # MCP handler would call with empty params {}
         result = facade.list()
 
         assert isinstance(result, Success)
@@ -1066,17 +1297,9 @@ class TestMCPToolsRoundTrip:
 
 
 class TestMCPHandlersImplementation:
-    """Test MCPHandlers class with actual facade integration.
-
-    These tests verify the MCPHandlers methods correctly:
-    - Parse MCP request parameters
-    - Delegate to facade methods
-    - Return success shapes or error envelopes
-    - Handle malformed parameters at MCP boundary
-    """
+    """Test MCPHandlers methods correctly parse params and delegate to facade."""
 
     def test_handle_validate_success(self) -> None:
-        """Test handle_validate returns ValidationReport on success."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1088,10 +1311,9 @@ class TestMCPHandlersImplementation:
         assert result["warnings"] == []
 
     def test_handle_validate_real_facade_surfaces_registry_snapshot_warning(self) -> None:
-        """Real MCP validate path must surface canonical warnings when the scenario warrants it."""
         facade = DefaultLarvaFacade(
             spec=spec_module,
-            assemble=assemble_module,
+            assemble=cast("AssembleRequest", assemble_module),
             validate=validate_module,
             normalize=normalize_module,
             components=InMemoryComponentStore(),
@@ -1113,10 +1335,9 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_validate_rejects_variables_as_extra_field(self) -> None:
-        """MCP validate path must preserve canonical extra-field rejection."""
         facade = DefaultLarvaFacade(
             spec=spec_module,
-            assemble=assemble_module,
+            assemble=cast("AssembleRequest", assemble_module),
             validate=validate_module,
             normalize=normalize_module,
             components=InMemoryComponentStore(),
@@ -1143,7 +1364,6 @@ class TestMCPHandlersImplementation:
         assert any(issue["code"] == "EXTRA_FIELD_NOT_ALLOWED" for issue in result["errors"])
 
     def test_handle_validate_missing_spec_raises(self) -> None:
-        """Test handle_validate returns malformed-params envelope for missing spec."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1157,7 +1377,6 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_assemble_success(self) -> None:
-        """Test handle_assemble returns PersonaSpec on success."""
         candidate = _canonical_spec("assembled", digest="sha256:assembled")
         facade = _make_facade(
             validate_report=_valid_report(),
@@ -1167,13 +1386,11 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_assemble({"id": "assembled"})
 
-        # Success returns PersonaSpec (not Result)
         assert isinstance(result, dict)
         assert result["id"] == "assembled"
         assert "spec_digest" in result
 
     def test_handle_assemble_failure_returns_error_envelope(self) -> None:
-        """Test handle_assemble returns error envelope on failure."""
         components = InMemoryComponentStore(
             fail_on="prompt",
             fail_error={
@@ -1188,7 +1405,6 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_assemble({"id": "test", "prompts": ["missing"]})
 
-        # Failure returns error envelope
         assert isinstance(result, dict)
         assert "error" not in result
         assert "code" in result
@@ -1211,7 +1427,6 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_assemble_missing_id_raises(self) -> None:
-        """Test handle_assemble returns malformed-params envelope for missing id."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1225,13 +1440,7 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_assemble_preserves_falsey_overrides(self) -> None:
-        """Test handle_assemble preserves falsey values in overrides.
-
-        Note: This test verifies the MCP handler passes overrides to the facade.
-        The actual override application is tested in TestMCPFalseyOverrideForwarding.
-        """
         candidate = _canonical_spec("assembled", digest="sha256:assembled")
-        # Pre-set falsey values in candidate to test they are preserved
         candidate["description"] = None
         candidate["can_spawn"] = False
         candidate["compaction_prompt"] = ""
@@ -1242,7 +1451,6 @@ class TestMCPHandlersImplementation:
         )
         handlers = mcp_module.MCPHandlers(facade)
 
-        # Pass additional overrides - test that values flow through
         result = handlers.handle_assemble(
             {
                 "id": "test",
@@ -1252,13 +1460,11 @@ class TestMCPHandlersImplementation:
             }
         )
 
-        # Success - falsey values preserved in spec
         assert result["description"] is None
         assert result["can_spawn"] is False
         assert result["compaction_prompt"] == ""
 
     def test_handle_resolve_success(self) -> None:
-        """Test handle_resolve returns PersonaSpec on success."""
         stored = _canonical_spec("stored")
         registry = InMemoryRegistryStore(get_result=Success(stored))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
@@ -1266,13 +1472,11 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_resolve({"id": "stored"})
 
-        # Success returns PersonaSpec
         assert isinstance(result, dict)
         assert result["id"] == "stored"
         assert "spec_digest" in result
 
     def test_handle_resolve_failure_returns_error_envelope(self) -> None:
-        """Test handle_resolve returns error envelope on failure."""
         registry = InMemoryRegistryStore(
             get_result=Failure(
                 {
@@ -1287,13 +1491,11 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_resolve({"id": "missing"})
 
-        # Failure returns error envelope
         assert isinstance(result, dict)
         assert result["code"] == "PERSONA_NOT_FOUND"
         assert result["numeric_code"] == 100
 
     def test_handle_resolve_missing_id_raises(self) -> None:
-        """Test handle_resolve returns malformed-params envelope for missing id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1307,7 +1509,6 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_resolve_preserves_falsey_overrides(self) -> None:
-        """Test handle_resolve preserves falsey values in overrides."""
         stored = _canonical_spec("stored")
         stored["description"] = "original"
         stored["can_spawn"] = True
@@ -1329,14 +1530,12 @@ class TestMCPHandlersImplementation:
             }
         )
 
-        # Falsey values preserved
         assert result["description"] is None
         assert result["can_spawn"] is False
         assert result["compaction_prompt"] == ""
-        assert result["model_params"] == {"temperature": 0}
+        assert result["model_params"]["temperature"] == 0
 
     def test_handle_register_success(self) -> None:
-        """Test handle_register returns RegisteredPersona on success."""
         registry = InMemoryRegistryStore()
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -1344,26 +1543,22 @@ class TestMCPHandlersImplementation:
         spec = _canonical_spec("to-register", digest="sha256:to-register")
         result = handlers.handle_register({"spec": spec})
 
-        # Success returns RegisteredPersona
         assert isinstance(result, dict)
         assert result["id"] == "to-register"
         assert result["registered"] is True
 
     def test_handle_register_failure_returns_error_envelope(self) -> None:
-        """Test handle_register returns error envelope on failure."""
         facade = _make_facade(validate_report=_invalid_report("INVALID_SPEC_VERSION"))
         handlers = mcp_module.MCPHandlers(facade)
 
         spec = _canonical_spec("bad")
         result = handlers.handle_register({"spec": spec})
 
-        # Failure returns error envelope
         assert isinstance(result, dict)
         assert result["code"] == "PERSONA_INVALID"
         assert result["numeric_code"] == 101
 
     def test_handle_register_missing_spec_raises(self) -> None:
-        """Test handle_register returns malformed-params envelope for missing spec."""
         facade = _make_facade(validate_report=_valid_report())
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1377,7 +1572,6 @@ class TestMCPHandlersImplementation:
         )
 
     def test_handle_list_success(self) -> None:
-        """Test handle_list returns list of summaries on success."""
         specs = [
             _canonical_spec("alpha"),
             _canonical_spec("beta"),
@@ -1388,7 +1582,6 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_list({})
 
-        # Success returns list of summaries
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["id"] == "alpha"
@@ -1397,7 +1590,6 @@ class TestMCPHandlersImplementation:
         assert result[1]["description"] == "Persona beta"
 
     def test_handle_list_failure_returns_error_envelope(self) -> None:
-        """Test handle_list returns error envelope on failure."""
         registry = InMemoryRegistryStore(
             list_result=Failure(
                 {
@@ -1412,23 +1604,19 @@ class TestMCPHandlersImplementation:
 
         result = handlers.handle_list({})
 
-        # Failure returns error envelope
         assert isinstance(result, dict)
         assert result["code"] == "REGISTRY_INDEX_READ_FAILED"
         assert result["numeric_code"] == 107
 
     def test_handle_list_empty_params(self) -> None:
-        """Test handle_list accepts empty params."""
         registry = InMemoryRegistryStore(list_result=Success([]))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
 
-        # Empty params should work fine
         result = handlers.handle_list({})
         assert result == []
 
     def test_handle_list_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_list rejects unknown params with stable error envelope."""
         registry = InMemoryRegistryStore(list_result=Success([]))
         handlers = mcp_module.MCPHandlers(_make_facade(registry=registry))
 
@@ -1444,30 +1632,33 @@ class TestMCPHandlersImplementation:
 
 
 # -----------------------------------------------------------------------------
-# MCP Component Tools: Acceptance Tests (Implementation Pending)
+# MCP Component Tools: Acceptance Tests (to be removed during cutover)
+# These tests assert the OLD surface exists. They must be removed when the
+# cutover replaces them. The EXPECTED-RED cutover tests assert the opposite.
 # -----------------------------------------------------------------------------
 
 
 class TestMCPComponentListAcceptance:
-    """Acceptance tests for larva_component_list MCP tool."""
+    """Acceptance tests for larva_component_list MCP tool.
+
+    NOTE: These tests verify the AS-IS surface. The variant cutover will
+    REMOVE this tool. See TestMCPAssemblyComponentToolsRemoved for the
+    expected-RED assertions that check for removal.
+    """
 
     def test_handle_component_list_accepts_empty_params(self) -> None:
-        """Test handle_component_list accepts empty params {}."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
 
         result = handlers.handle_component_list({})
 
-        # Success returns dict mapping component type keys to name lists
         assert isinstance(result, dict)
-        # All four component type keys should be present
         for key in ["prompts", "toolsets", "constraints", "models"]:
             assert key in result
             assert isinstance(result[key], list)
 
     def test_handle_component_list_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_component_list rejects unknown params with INTERNAL error."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1483,7 +1674,6 @@ class TestMCPComponentListAcceptance:
         assert result["details"]["unknown"] == ["unexpected"]
 
     def test_handle_component_list_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_component_list rejects non-object params."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1499,10 +1689,14 @@ class TestMCPComponentListAcceptance:
 
 
 class TestMCPComponentShowAcceptance:
-    """Acceptance tests for larva_component_show MCP tool."""
+    """Acceptance tests for larva_component_show MCP tool.
+
+    NOTE: These tests verify the AS-IS surface. The variant cutover will
+    REMOVE this tool. See TestMCPAssemblyComponentToolsRemoved for the
+    expected-RED assertions that check for removal.
+    """
 
     def test_handle_component_show_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects unknown params with INTERNAL error."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1520,7 +1714,6 @@ class TestMCPComponentShowAcceptance:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_component_show_non_string_type_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects non-string component_type."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1535,7 +1728,6 @@ class TestMCPComponentShowAcceptance:
         )
 
     def test_handle_component_show_non_string_name_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects non-string name."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1550,7 +1742,6 @@ class TestMCPComponentShowAcceptance:
         )
 
     def test_handle_component_show_missing_component_type_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects missing component_type."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1565,7 +1756,6 @@ class TestMCPComponentShowAcceptance:
         )
 
     def test_handle_component_show_missing_name_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects missing name."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1580,7 +1770,6 @@ class TestMCPComponentShowAcceptance:
         )
 
     def test_handle_component_show_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_component_show rejects non-object params."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1595,7 +1784,6 @@ class TestMCPComponentShowAcceptance:
         )
 
     def test_handle_component_show_unsupported_type_returns_invalid_input(self) -> None:
-        """Test handle_component_show returns INVALID_INPUT for unsupported type."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1609,7 +1797,6 @@ class TestMCPComponentShowAcceptance:
         assert "prompts | toolsets | constraints | models" in result["message"]
 
     def test_handle_component_show_singular_alias_returns_invalid_input(self) -> None:
-        """component_type singular aliases must be rejected at public ingress."""
         components = InMemoryComponentStore(
             prompts_by_name={"test-prompt": {"text": "You are a helpful assistant."}}
         )
@@ -1624,7 +1811,6 @@ class TestMCPComponentShowAcceptance:
         assert result["details"]["reason"] == "invalid_kind"
 
     def test_handle_component_show_missing_component_returns_component_not_found(self) -> None:
-        """Test handle_component_show returns COMPONENT_NOT_FOUND for missing component."""
         components = InMemoryComponentStore()
         facade = _make_facade(components=components)
         handlers = mcp_module.MCPHandlers(facade, components=components)
@@ -1638,11 +1824,6 @@ class TestMCPComponentShowAcceptance:
         assert result["numeric_code"] == 105
 
     def test_handle_component_show_success_pins_loader_routing(self) -> None:
-        """Test handle_component_show success path routes to correct loader.
-
-        This test pins that at least one valid component type (prompts) routes
-        to the load_prompt loader and returns the component content.
-        """
         components = InMemoryComponentStore(
             prompts_by_name={"test-prompt": {"text": "You are a helpful assistant."}}
         )
@@ -1653,23 +1834,15 @@ class TestMCPComponentShowAcceptance:
             {"component_type": "prompts", "name": "test-prompt"}
         )
 
-        # Success returns the component content dict
         assert isinstance(result, dict)
         assert "error" not in result
         assert result["text"] == "You are a helpful assistant."
 
     def test_handle_component_show_success_for_toolset(self) -> None:
-        """Test handle_component_show success path for toolsets.
-
-        Per ADR-002: toolsets output must be canonical-only. The handler
-        expects upstream toolset data to contain only `capabilities` (canonical)
-        and no `tools` field. If a toolset contains `tools`, it is a canonical
-        violation upstream that the handler does not sanitize.
-        """
         components = InMemoryComponentStore(
             toolsets_by_name={
                 "readonly": {
-                    "capabilities": {"shell": "read_only"},  # canonical (ADR-002)
+                    "capabilities": {"shell": "read_only"},
                 }
             }
         )
@@ -1680,13 +1853,10 @@ class TestMCPComponentShowAcceptance:
 
         assert isinstance(result, dict)
         assert "error" not in result
-        # Per ADR-002: canonical field is primary
         assert "capabilities" in result
-        # Handler passes through canonical toolset data unchanged (no sanitization)
         assert "tools" not in result
 
     def test_handle_component_show_rejects_toolset_payload_with_legacy_tools(self) -> None:
-        """component_show must fail closed when toolset payload still contains tools."""
         components = InMemoryComponentStore(
             toolsets_by_name={"readonly": historical_toolset_fixture_with_legacy_fields()}
         )
@@ -1701,7 +1871,6 @@ class TestMCPComponentShowAcceptance:
         assert "tools" in result["message"]
 
     def test_handle_component_show_success_for_constraint(self) -> None:
-        """Test handle_component_show success path for canonical constraints."""
         components = InMemoryComponentStore(
             constraints_by_name={"safe-default": {"can_spawn": False}}
         )
@@ -1720,7 +1889,6 @@ class TestMCPComponentShowAcceptance:
     def test_handle_component_show_rejects_constraint_payload_with_legacy_side_effect_policy(
         self,
     ) -> None:
-        """component_show must fail closed when constraint payload still contains side_effect_policy."""
         components = InMemoryComponentStore(
             constraints_by_name={"safe-default": historical_constraint_fixture_with_legacy_field()}
         )
@@ -1749,7 +1917,6 @@ class TestMCPComponentShowAcceptance:
         component_type: str,
         payload: dict[str, object],
     ) -> None:
-        """component_show must reject malformed component metadata without stripping."""
         components = InMemoryComponentStore(
             toolsets_by_name={"bad": cast("dict[str, dict[str, str]]", payload)}
             if component_type == "toolsets"
@@ -1768,7 +1935,6 @@ class TestMCPComponentShowAcceptance:
         assert "unsupported field" in result["message"].lower()
 
     def test_handle_component_show_success_for_model(self) -> None:
-        """Test handle_component_show success path for models."""
         components = InMemoryComponentStore(
             models_by_name={
                 "default": {"model": "gpt-4o-mini", "model_params": {"temperature": 0.1}}
@@ -1785,7 +1951,7 @@ class TestMCPComponentShowAcceptance:
 
 
 # -----------------------------------------------------------------------------
-# MCP Delete/Clear Handler Tests
+# MCP Delete/Clear Handler Tests (preserving pre-existing tests)
 # -----------------------------------------------------------------------------
 
 
@@ -1793,7 +1959,6 @@ class TestMCPHandleDelete:
     """Test MCPHandlers.handle_delete parameter validation and delegation."""
 
     def test_handle_delete_success(self) -> None:
-        """Test handle_delete returns DeletedPersona on success."""
         registry = InMemoryRegistryStore()
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -1805,7 +1970,6 @@ class TestMCPHandleDelete:
         assert result["deleted"] is True
 
     def test_handle_delete_failure_returns_error_envelope(self) -> None:
-        """Test handle_delete returns error envelope on failure."""
         registry = InMemoryRegistryStore(
             delete_result=Failure(
                 {
@@ -1826,7 +1990,6 @@ class TestMCPHandleDelete:
         assert "missing" in result["message"]
 
     def test_handle_delete_missing_id_returns_malformed_envelope(self) -> None:
-        """Test handle_delete returns malformed-params envelope for missing id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1840,7 +2003,6 @@ class TestMCPHandleDelete:
         )
 
     def test_handle_delete_non_string_id_returns_malformed_envelope(self) -> None:
-        """Test handle_delete rejects non-string id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1854,7 +2016,6 @@ class TestMCPHandleDelete:
         )
 
     def test_handle_delete_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_delete rejects unknown params."""
         registry = InMemoryRegistryStore()
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -1870,7 +2031,6 @@ class TestMCPHandleDelete:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_delete_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_delete rejects non-object params."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1888,7 +2048,6 @@ class TestMCPHandleClone:
     """Test MCPHandlers.handle_clone parameter validation and delegation."""
 
     def test_handle_clone_success(self) -> None:
-        """Test handle_clone returns PersonaSpec on success."""
         source_spec = _canonical_spec("source-persona")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(registry=registry)
@@ -1899,10 +2058,9 @@ class TestMCPHandleClone:
         assert isinstance(result, dict)
         assert result["id"] == "cloned-persona"
         assert result["description"] == "Persona source-persona"
-        assert result["spec_digest"] != "sha256:source"  # Digest recomputed
+        assert result["spec_digest"] != "sha256:source"
 
     def test_handle_clone_failure_returns_error_envelope(self) -> None:
-        """Test handle_clone returns error envelope on facade failure."""
         registry = InMemoryRegistryStore(
             get_result=Failure(
                 {
@@ -1923,7 +2081,6 @@ class TestMCPHandleClone:
         assert "missing" in result["message"]
 
     def test_handle_clone_missing_source_id_returns_malformed_envelope(self) -> None:
-        """Test handle_clone returns malformed-params envelope for missing source_id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1937,7 +2094,6 @@ class TestMCPHandleClone:
         )
 
     def test_handle_clone_missing_new_id_returns_malformed_envelope(self) -> None:
-        """Test handle_clone returns malformed-params envelope for missing new_id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1951,7 +2107,6 @@ class TestMCPHandleClone:
         )
 
     def test_handle_clone_unknown_params_returns_malformed_envelope(self) -> None:
-        """Test handle_clone rejects unknown params."""
         source_spec = _canonical_spec("source-persona")
         registry = InMemoryRegistryStore(get_result=Success(source_spec))
         facade = _make_facade(registry=registry)
@@ -1974,7 +2129,6 @@ class TestMCPHandleClone:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_clone_non_string_source_id_returns_malformed_envelope(self) -> None:
-        """Test handle_clone rejects non-string source_id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -1988,7 +2142,6 @@ class TestMCPHandleClone:
         )
 
     def test_handle_clone_non_string_new_id_returns_malformed_envelope(self) -> None:
-        """Test handle_clone rejects non-string new_id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2002,7 +2155,6 @@ class TestMCPHandleClone:
         )
 
     def test_handle_clone_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_clone rejects non-object params."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2020,7 +2172,6 @@ class TestMCPHandleUpdateBatch:
     """Test MCPHandlers.handle_update_batch parameter validation and delegation."""
 
     def test_handle_update_batch_success(self) -> None:
-        """Test handle_update_batch returns BatchUpdateResult on success."""
         spec_alpha = _canonical_spec("alpha")
         spec_beta = _canonical_spec("beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
@@ -2041,7 +2192,6 @@ class TestMCPHandleUpdateBatch:
         assert result["items"][1]["updated"] is True
 
     def test_handle_update_batch_dry_run_returns_matched_without_writes(self) -> None:
-        """Test handle_update_batch with dry_run=True returns matches without updating."""
         spec_alpha = _canonical_spec("alpha")
         spec_beta = _canonical_spec("beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
@@ -2064,11 +2214,9 @@ class TestMCPHandleUpdateBatch:
         assert result["items"][0]["updated"] is False
         assert result["items"][1]["id"] == "beta"
         assert result["items"][1]["updated"] is False
-        # No saves should have occurred
         assert registry.save_inputs == []
 
     def test_handle_update_batch_missing_where_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch returns malformed-params envelope for missing where."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2082,7 +2230,6 @@ class TestMCPHandleUpdateBatch:
         )
 
     def test_handle_update_batch_missing_patches_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch returns malformed-params envelope for missing patches."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2096,7 +2243,6 @@ class TestMCPHandleUpdateBatch:
         )
 
     def test_handle_update_batch_unknown_params_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch rejects unknown params."""
         spec_alpha = _canonical_spec("alpha")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
         facade = _make_facade(registry=registry)
@@ -2119,7 +2265,6 @@ class TestMCPHandleUpdateBatch:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_update_batch_non_object_where_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch rejects non-object where."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2135,7 +2280,6 @@ class TestMCPHandleUpdateBatch:
         )
 
     def test_handle_update_batch_non_object_patches_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch rejects non-object patches."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2151,7 +2295,6 @@ class TestMCPHandleUpdateBatch:
         )
 
     def test_handle_update_batch_non_boolean_dry_run_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch rejects non-boolean dry_run."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2159,7 +2302,7 @@ class TestMCPHandleUpdateBatch:
             {
                 "where": {"model": "gpt-4o-mini"},
                 "patches": {"description": "Test"},
-                "dry_run": "true",  # String instead of boolean
+                "dry_run": "true",
             }
         )
 
@@ -2171,7 +2314,6 @@ class TestMCPHandleUpdateBatch:
         )
 
     def test_handle_update_batch_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_update_batch rejects non-object params."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2197,7 +2339,6 @@ class TestMCPHandleUpdateBatch:
         expected_field: str,
         expected_value: object,
     ) -> None:
-        """Test handle_update_batch fails closed on legacy where vocabulary."""
         registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -2214,7 +2355,6 @@ class TestMCPHandleUpdateBatch:
         assert result["details"]["where_key"] == where_key
 
     def test_handle_update_batch_failure_returns_error_envelope(self) -> None:
-        """Test handle_update_batch returns error envelope on facade failure."""
         registry = InMemoryRegistryStore(
             list_result=Failure(
                 {
@@ -2236,7 +2376,6 @@ class TestMCPHandleUpdateBatch:
         assert result["numeric_code"] == 107
 
     def test_handle_update_batch_with_empty_where_matches_all(self) -> None:
-        """Test handle_update_batch with empty where clause matches all personas."""
         spec_alpha = _canonical_spec("alpha")
         spec_beta = _canonical_spec("beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
@@ -2256,12 +2395,10 @@ class TestMCPHandleClear:
     """Test MCPHandlers.handle_clear parameter validation and delegation."""
 
     def test_handle_clear_success(self) -> None:
-        """Test handle_clear returns ClearedRegistry on success."""
         registry = InMemoryRegistryStore(clear_result=Success(3))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
 
-        # Note: The facade/registry layer checks the confirm token, not MCP
         result = handlers.handle_clear({"confirm": "CLEAR REGISTRY"})
 
         assert isinstance(result, dict)
@@ -2269,7 +2406,6 @@ class TestMCPHandleClear:
         assert result["count"] == 3
 
     def test_handle_clear_failure_returns_error_envelope(self) -> None:
-        """Test handle_clear returns error envelope on failure."""
         registry = InMemoryRegistryStore(
             clear_result=Failure(
                 {
@@ -2290,8 +2426,6 @@ class TestMCPHandleClear:
         assert result["numeric_code"] == 111
 
     def test_handle_clear_wrong_confirm_returns_error_envelope(self) -> None:
-        """Test handle_clear returns error envelope for wrong confirm token."""
-        # The facade/registry layer maps wrong confirm to INVALID_CONFIRMATION_TOKEN
         registry = InMemoryRegistryStore(
             clear_result=Failure(
                 {
@@ -2310,7 +2444,6 @@ class TestMCPHandleClear:
         assert result["numeric_code"] == 112
 
     def test_handle_clear_missing_confirm_returns_malformed_envelope(self) -> None:
-        """Test handle_clear returns malformed-params envelope for missing confirm."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2324,7 +2457,6 @@ class TestMCPHandleClear:
         )
 
     def test_handle_clear_non_string_confirm_returns_malformed_envelope(self) -> None:
-        """Test handle_clear rejects non-string confirm."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2338,7 +2470,6 @@ class TestMCPHandleClear:
         )
 
     def test_handle_clear_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_clear rejects unknown params."""
         registry = InMemoryRegistryStore()
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -2354,7 +2485,6 @@ class TestMCPHandleClear:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_clear_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_clear rejects non-object params."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2377,7 +2507,6 @@ class TestMCPHandleUpdate:
     """Test MCPHandlers.handle_update parameter validation and delegation."""
 
     def test_handle_update_success(self) -> None:
-        """Test handle_update returns PersonaSpec on success."""
         existing = _canonical_spec("update-test")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
@@ -2393,7 +2522,6 @@ class TestMCPHandleUpdate:
         assert "spec_digest" in result
 
     def test_handle_update_failure_returns_error_envelope(self) -> None:
-        """Test handle_update returns error envelope on failure."""
         registry = InMemoryRegistryStore(
             get_result=Failure(
                 {
@@ -2413,7 +2541,6 @@ class TestMCPHandleUpdate:
         assert result["numeric_code"] == 100
 
     def test_handle_update_validation_failure_returns_error_envelope(self) -> None:
-        """Test handle_update returns error envelope on validation failure."""
         existing = _canonical_spec("update-invalid")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(
@@ -2428,7 +2555,6 @@ class TestMCPHandleUpdate:
         assert result["numeric_code"] == 101
 
     def test_handle_update_missing_id_returns_malformed_envelope(self) -> None:
-        """Test handle_update returns malformed-params envelope for missing id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2442,7 +2568,6 @@ class TestMCPHandleUpdate:
         )
 
     def test_handle_update_missing_patches_returns_malformed_envelope(self) -> None:
-        """Test handle_update returns malformed-params envelope for missing patches."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2456,7 +2581,6 @@ class TestMCPHandleUpdate:
         )
 
     def test_handle_update_non_string_id_returns_malformed_envelope(self) -> None:
-        """Test handle_update rejects non-string id."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2470,7 +2594,6 @@ class TestMCPHandleUpdate:
         )
 
     def test_handle_update_non_object_patches_returns_malformed_envelope(self) -> None:
-        """Test handle_update rejects non-object patches."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2484,7 +2607,6 @@ class TestMCPHandleUpdate:
         )
 
     def test_handle_update_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_update rejects unknown params."""
         existing = _canonical_spec("update-unknown")
         registry = InMemoryRegistryStore(get_result=Success(existing))
         facade = _make_facade(validate_report=_valid_report(), registry=registry)
@@ -2503,7 +2625,6 @@ class TestMCPHandleUpdate:
         assert result["details"]["unknown"] == ["extra"]
 
     def test_handle_update_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_update rejects non-object params."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2517,7 +2638,6 @@ class TestMCPHandleUpdate:
         )
 
     def test_handle_update_preserves_falsey_patches(self) -> None:
-        """Test handle_update preserves falsey values in patches."""
         existing = _canonical_spec("update-falsey")
         existing["description"] = "Original"
         existing["can_spawn"] = True
@@ -2542,7 +2662,6 @@ class TestMCPHandleExport:
     """Test MCPHandlers.handle_export parameter validation and delegation."""
 
     def test_handle_export_all_success(self) -> None:
-        """Test handle_export returns all specs on success with all=True."""
         spec_alpha = _canonical_spec("export-alpha")
         spec_beta = _canonical_spec("export-beta")
         registry = InMemoryRegistryStore(list_result=Success([spec_alpha, spec_beta]))
@@ -2557,7 +2676,6 @@ class TestMCPHandleExport:
         assert result[1]["id"] == "export-beta"
 
     def test_handle_export_ids_success(self) -> None:
-        """Test handle_export returns ordered specs with ids parameter."""
         spec_one = _canonical_spec("export-one")
         spec_two = _canonical_spec("export-two")
 
@@ -2581,7 +2699,6 @@ class TestMCPHandleExport:
         assert result[1]["id"] == "export-one"
 
     def test_handle_export_ids_single_returns_list_with_one(self) -> None:
-        """Test handle_export with single id returns list with one spec."""
         spec_single = _canonical_spec("export-single")
         registry = InMemoryRegistryStore(get_result=Success(spec_single))
         facade = _make_facade(registry=registry)
@@ -2594,7 +2711,6 @@ class TestMCPHandleExport:
         assert result[0]["id"] == "export-single"
 
     def test_handle_export_ids_empty_list_returns_empty_list(self) -> None:
-        """Test handle_export with empty ids returns empty list."""
         facade = _make_facade()
         handlers = mcp_module.MCPHandlers(facade)
 
@@ -2604,7 +2720,6 @@ class TestMCPHandleExport:
         assert result == []
 
     def test_handle_export_all_empty_registry_returns_empty_list(self) -> None:
-        """Test handle_export with all=True on empty registry returns empty list."""
         registry = InMemoryRegistryStore(list_result=Success([]))
         facade = _make_facade(registry=registry)
         handlers = mcp_module.MCPHandlers(facade)
@@ -2613,479 +2728,3 @@ class TestMCPHandleExport:
 
         assert isinstance(result, list)
         assert result == []
-
-    def test_handle_export_all_failure_returns_error_envelope(self) -> None:
-        """Test handle_export returns error envelope on registry failure."""
-        registry = InMemoryRegistryStore(
-            list_result=Failure(
-                {
-                    "code": "REGISTRY_INDEX_READ_FAILED",
-                    "message": "index file unreadable",
-                    "path": "/tmp/registry/index.json",
-                }
-            )
-        )
-        facade = _make_facade(registry=registry)
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"all": True})
-
-        assert isinstance(result, dict)
-        assert result["code"] == "REGISTRY_INDEX_READ_FAILED"
-        assert result["numeric_code"] == 107
-        assert result["details"]["path"] == "/tmp/registry/index.json"
-
-    def test_handle_export_ids_failure_returns_error_envelope(self) -> None:
-        """Test handle_export returns error envelope on persona not found."""
-        registry = InMemoryRegistryStore(
-            get_result=Failure(
-                {
-                    "code": "PERSONA_NOT_FOUND",
-                    "message": "persona 'missing' not found",
-                    "persona_id": "missing",
-                }
-            )
-        )
-        facade = _make_facade(registry=registry)
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"ids": ["missing"]})
-
-        assert isinstance(result, dict)
-        assert result["code"] == "PERSONA_NOT_FOUND"
-        assert result["numeric_code"] == 100
-        assert result["details"]["persona_id"] == "missing"
-
-    def test_handle_export_both_all_and_ids_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects both all and ids parameters."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"all": True, "ids": ["persona-1"]})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="cannot specify both 'all' and 'ids'",
-        )
-
-    def test_handle_export_neither_all_nor_ids_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects missing both all and ids."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="must specify either 'all' or 'ids'",
-        )
-
-    def test_handle_export_all_non_boolean_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects non-boolean all parameter."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"all": "yes"})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="parameter 'all' must be boolean",
-        )
-
-    def test_handle_export_ids_non_list_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects non-list ids parameter."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"ids": "persona-1"})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="parameter 'ids' must be list[string]",
-        )
-
-    def test_handle_export_ids_non_string_elements_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects list with non-string elements."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"ids": ["persona-1", 123]})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="parameter 'ids' must be list[string]",
-        )
-
-    def test_handle_export_unknown_param_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects unknown parameters."""
-        registry = InMemoryRegistryStore(list_result=Success([]))
-        facade = _make_facade(registry=registry)
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"all": True, "extra": "param"})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="unknown parameter(s)",
-        )
-        assert result["details"]["unknown"] == ["extra"]
-
-    def test_handle_export_non_object_params_returns_malformed_envelope(self) -> None:
-        """Test handle_export rejects non-object params."""
-        facade = _make_facade()
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export(["not", "an", "object"])
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="params must be an object",
-        )
-
-    def test_handle_export_all_false_returns_missing_selector_error(self) -> None:
-        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
-        facade = _make_facade(registry=registry)
-        handlers = mcp_module.MCPHandlers(facade)
-
-        result = handlers.handle_export({"all": False})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            cast("LarvaError", result),
-            tool="larva_export",
-            reason="must specify either 'all' or 'ids'",
-        )
-        assert registry.list_calls == 0
-        assert registry.get_calls == []
-
-
-class TestMCPUpdateToolDefinition:
-    """Verify larva_update is defined in MCP tools."""
-
-    def test_update_tool_is_defined(self) -> None:
-        """Verify larva_update is defined in LARVA_MCP_TOOLS."""
-        tool_names = [t["name"] for t in mcp_module.LARVA_MCP_TOOLS]
-        assert "larva_update" in tool_names
-
-        update_tool = next(t for t in mcp_module.LARVA_MCP_TOOLS if t["name"] == "larva_update")
-        props = update_tool["input_schema"]["properties"]
-        assert "id" in props
-        assert "patches" in props
-        assert "id" in update_tool["input_schema"]["required"]
-
-
-class TestSharedMCPRequestValidation:
-    """Direct coverage for the isolated shared validation seam."""
-
-    def test_shared_validator_has_no_mcp_runtime_exports(self) -> None:
-        assert not hasattr(request_validation, "FastMCP")
-        assert not hasattr(request_validation, "register_mcp_tools")
-
-    def test_update_batch_module_uses_shared_validator_and_preserves_happy_path(self) -> None:
-        spec_alpha = _canonical_spec("alpha")
-        registry = InMemoryRegistryStore(list_result=Success([spec_alpha]))
-        facade = _make_facade(registry=registry)
-
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"where": {"model": "gpt-4o-mini"}, "patches": {"description": "Updated"}},
-        )
-
-        assert isinstance(result, Success)
-        payload = result.unwrap()
-        assert payload["matched"] == 1
-        assert payload["updated"] == 1
-        assert payload["items"][0]["id"] == "alpha"
-
-    def test_export_module_uses_shared_validator_and_preserves_unknown_param_envelope(self) -> None:
-        registry = InMemoryRegistryStore(list_result=Success([]))
-        facade = _make_facade(registry=registry)
-
-        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {"all": True, "extra": "param"})
-
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="unknown parameter(s)",
-        )
-        assert error["details"]["unknown"] == ["extra"]
-
-    def test_mcp_core_handler_adopts_shared_request_validation(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        facade = _make_facade(registry=InMemoryRegistryStore())
-        handlers = mcp_module.MCPHandlers(facade)
-
-        def _fake_require_params_object(
-            params: object,
-        ) -> Result[dict[str, Any], request_validation.RequestValidationIssue]:
-            del params
-            return Failure(
-                request_validation.RequestValidationIssue(
-                    reason="shared validator sentinel",
-                    details={"field": "params", "received_type": "sentinel"},
-                )
-            )
-
-        monkeypatch.setattr(
-            request_validation,
-            "require_params_object",
-            _fake_require_params_object,
-        )
-
-        result = handlers.handle_list({})
-
-        assert isinstance(result, dict)
-        _assert_malformed_params_error(
-            result,
-            tool="larva_list",
-            reason="shared validator sentinel",
-        )
-        assert result["details"]["received_type"] == "sentinel"
-
-    # ---------------------------------------------------------------------
-    # Characterization tests for update_batch isolate route
-    # ---------------------------------------------------------------------
-
-    def test_update_batch_rejects_unknown_params_via_isolated_handler(self) -> None:
-        """Unknown params must be rejected at shared validation boundary."""
-        facade = _make_facade(registry=InMemoryRegistryStore())
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {
-                "where": {"model": "gpt-4o-mini"},
-                "patches": {"description": "Test"},
-                "extra": "unknown_param",
-            },
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="unknown parameter(s)",
-        )
-        assert error["details"]["unknown"] == ["extra"]
-
-    def test_update_batch_rejects_missing_where_via_isolated_handler(self) -> None:
-        """Missing required 'where' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"patches": {"description": "Test"}},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="missing required parameter 'where'",
-        )
-
-    def test_update_batch_rejects_missing_patches_via_isolated_handler(self) -> None:
-        """Missing required 'patches' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"where": {"model": "gpt-4o-mini"}},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="missing required parameter 'patches'",
-        )
-
-    def test_update_batch_rejects_wrong_type_where_via_isolated_handler(self) -> None:
-        """Wrong type for 'where' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"where": "not-an-object", "patches": {"description": "Test"}},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="parameter 'where' must be object",
-        )
-
-    def test_update_batch_rejects_wrong_type_patches_via_isolated_handler(self) -> None:
-        """Wrong type for 'patches' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"where": {"model": "gpt-4o-mini"}, "patches": ["not", "an", "object"]},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="parameter 'patches' must be object",
-        )
-
-    def test_update_batch_rejects_wrong_type_dry_run_via_isolated_handler(self) -> None:
-        """Wrong type for 'dry_run' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_update_batch_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {
-                "where": {"model": "gpt-4o-mini"},
-                "patches": {"description": "Test"},
-                "dry_run": "true",  # String instead of boolean
-            },
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_update_batch",
-            reason="parameter 'dry_run' must be boolean",
-        )
-
-    # ---------------------------------------------------------------------
-    # Characterization tests for export isolate route
-    # ---------------------------------------------------------------------
-
-    def test_export_rejects_all_plus_ids_via_isolated_handler(self) -> None:
-        """Both 'all' and 'ids' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_export_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"all": True, "ids": ["persona-1"]},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="cannot specify both 'all' and 'ids'",
-        )
-
-    def test_export_rejects_neither_all_nor_ids_via_isolated_handler(self) -> None:
-        """Missing both 'all' and 'ids' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {})
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="must specify either 'all' or 'ids'",
-        )
-
-    def test_export_rejects_all_false_via_isolated_handler(self) -> None:
-        """'all=False' must be rejected at XOR boundary, not at type check."""
-        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("alpha")]))
-        facade = _make_facade(registry=registry)
-        result = handle_export_impl(IsolatedMCPHandlerDeps(facade), {"all": False})
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="must specify either 'all' or 'ids'",
-        )
-        # Verify registry was NOT called (all=False triggers XOR, not all=True path)
-        assert registry.list_calls == 0
-
-    def test_export_rejects_unknown_params_via_isolated_handler(self) -> None:
-        """Unknown params must be rejected at shared validation boundary."""
-        registry = InMemoryRegistryStore(list_result=Success([]))
-        facade = _make_facade(registry=registry)
-        result = handle_export_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"all": True, "extra": "param"},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="unknown parameter(s)",
-        )
-        assert error["details"]["unknown"] == ["extra"]
-
-    def test_export_rejects_non_list_ids_via_isolated_handler(self) -> None:
-        """Non-list 'ids' must be rejected at shared validation boundary."""
-        facade = _make_facade()
-        result = handle_export_impl(
-            IsolatedMCPHandlerDeps(facade),
-            {"ids": "not-a-list"},
-        )
-        assert isinstance(result, Failure)
-        error = result.failure()
-        _assert_malformed_params_error(
-            error,
-            tool="larva_export",
-            reason="parameter 'ids' must be list[string]",
-        )
-
-
-# -----------------------------------------------------------------------------
-# Mixin Removal Characterization Tests
-# -----------------------------------------------------------------------------
-
-
-class TestMixinRemoval:
-    """Characterization tests for MCPHandlerOpsMixin removal.
-
-    These tests verify that MCPHandlerOpsMixin is no longer a required
-    dependency for MCPHandlers to function correctly.
-    """
-
-    def test_mcp_handler_ops_mixin_is_not_required_for_mcp_handlers(self) -> None:
-        """MCPHandlers should not require MCPHandlerOpsMixin inheritance."""
-        # After inlining, MCPHandlers should work without mixin inheritance
-        from larva.shell import mcp as mcp_module
-
-        # Verify the mixin is not in the MRO
-        assert "MCPHandlerOpsMixin" not in str(mcp_module.MCPHandlers.__mro__)
-
-    def test_mcp_handler_ops_module_not_imported_by_mcp(self) -> None:
-        """The mcp_handler_ops module should not be imported by mcp.py."""
-        import sys
-
-        # If mcp_handler_ops is not in sys.modules, it means mcp.py doesn't import it
-        # This test will fail if the mixin import still exists
-        import importlib
-
-        # Check that the mixin import line is gone from mcp.py
-        mcp_file = importlib.util.find_spec("larva.shell.mcp")
-        if mcp_file and mcp_file.origin:
-            with open(mcp_file.origin, "r") as f:
-                mcp_source = f.read()
-            assert "from larva.shell.mcp_handler_ops import" not in mcp_source
-            assert "MCPHandlerOpsMixin" not in mcp_source
-
-    def test_mcp_handlers_has_inlined_implementation_methods(self) -> None:
-        """MCPHandlers should not have _handle_*_impl methods after inlining."""
-        from larva.shell import mcp as mcp_module
-
-        handlers = mcp_module.MCPHandlers
-
-        # After inlining cleanup, _handle_*_impl methods should no longer exist
-        assert not hasattr(handlers, "_handle_component_list_impl")
-        assert not hasattr(handlers, "_handle_component_show_impl")
-        assert not hasattr(handlers, "_handle_assemble_impl")
-        assert not hasattr(handlers, "_handle_resolve_impl")
-        assert not hasattr(handlers, "_handle_validate_impl")

@@ -1236,3 +1236,173 @@ class TestWebErrorEnvelope:
 
         assert resp.status_code == 400
         assert "error" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Surface Cutover: EXPECTED-RED assertions
+#
+# These assert TARGET-STATE web UI contracts that have NOT been cut over yet.
+# They MUST fail RED until the implementation phase removes compose/component
+# flows and adds variant flows.
+#
+# Source authority: design/registry-local-variants-and-assembly-removal.md :: Web REST surface
+# Source authority: docs/reference/INTERFACES.md :: Web Runtime Surface
+# ---------------------------------------------------------------------------
+
+
+class TestWebComposeEndpointRemoved:
+    """EXPECTED-RED: POST /api/personas/assemble must be absent from web UI.
+
+    Source: INTERFACES.md :: Removed endpoints (line 159)
+    Source: design doc :: Web REST surface
+    """
+
+    def test_assemble_endpoint_absent(self) -> None:
+        """POST /api/personas/assemble should not exist on packaged web."""
+        client = TestClient(app)
+        resp = client.post(
+            "/api/personas/assemble",
+            json={
+                "id": "test",
+                "description": "test",
+                "prompt": "test",
+                "model": "test-model",
+                "capabilities": {"shell": "read_only"},
+                "spec_version": "0.1.0",
+            },
+        )
+        assert resp.status_code in (404, 405), (
+            f"POST /api/personas/assemble should be removed. "
+            f"Got {resp.status_code}. Expected 404/405 per INTERFACES.md."
+        )
+
+
+class TestWebComponentEndpointRemoved:
+    """EXPECTED-RED: /api/components* endpoints must be absent from web UI.
+
+    Source: INTERFACES.md :: Removed endpoints (lines 160-164)
+    """
+
+    def test_components_list_absent(self) -> None:
+        client = TestClient(app)
+        resp = client.get("/api/components")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components should be removed. Got {resp.status_code}."
+        )
+
+    def test_components_projection_absent(self) -> None:
+        client = TestClient(app)
+        resp = client.get("/api/components/projection")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components/projection should be removed. Got {resp.status_code}."
+        )
+
+    def test_components_show_absent(self) -> None:
+        client = TestClient(app)
+        resp = client.get("/api/components/prompts/test")
+        assert resp.status_code in (404, 405), (
+            f"GET /api/components/prompts/test should be removed. Got {resp.status_code}."
+        )
+
+
+class TestWebVariantRestEndpoints:
+    """EXPECTED-RED: Variant registry REST endpoints must exist on web UI.
+
+    Source: INTERFACES.md :: Registry-local Variant routes (lines 147-152)
+    Source: design doc :: Web REST surface
+    """
+
+    def test_registry_personas_list_exists(self) -> None:
+        """GET /api/registry/personas must return registry metadata summaries."""
+        client = TestClient(app)
+        resp = client.get("/api/registry/personas")
+        assert resp.status_code == 200, (
+            f"GET /api/registry/personas expected 200, got {resp.status_code}. "
+            f"Registry list endpoint must exist per INTERFACES.md."
+        )
+
+    def test_registry_personas_variants_list_exists(self) -> None:
+        """GET /api/registry/personas/{id}/variants must return variant metadata."""
+        client = TestClient(app)
+        client.post("/api/personas", json=_MINIMAL_SPEC)
+        resp = client.get("/api/registry/personas/test-persona/variants")
+        assert resp.status_code == 200, (
+            f"GET .../variants expected 200, got {resp.status_code}. "
+            f"Variant list endpoint must exist per INTERFACES.md."
+        )
+
+    def test_registry_personas_variant_detail_exists(self) -> None:
+        """GET /api/registry/personas/{id}/variants/{variant} must return envelope."""
+        client = TestClient(app)
+        client.post("/api/personas", json=_MINIMAL_SPEC)
+        resp = client.get(
+            "/api/registry/personas/test-persona/variants/default"
+        )
+        assert resp.status_code == 200, (
+            f"GET .../variants/default expected 200, got {resp.status_code}. "
+            f"Variant detail endpoint must exist per INTERFACES.md."
+        )
+        body = resp.json()
+        data = body.get("data", body)
+        assert "_registry" in data, (
+            f"Expected '_registry' key in variant detail. Got: {sorted(data.keys())}"
+        )
+        assert "spec" in data, (
+            f"Expected 'spec' key in variant detail. Got: {sorted(data.keys())}"
+        )
+        # _registry must NOT be inside spec
+        spec = data.get("spec", {})
+        assert "_registry" not in spec, (
+            f"_registry MUST NOT be inside spec per INTERFACES.md."
+        )
+        assert "variant" not in spec, (
+            f"'variant' MUST NOT be inside spec per INTERFACES.md."
+        )
+
+    def test_registry_variant_activate_exists(self) -> None:
+        """POST .../activate must change active variant without mutating spec."""
+        client = TestClient(app)
+        client.post("/api/personas", json=_MINIMAL_SPEC)
+        resp = client.post(
+            "/api/registry/personas/test-persona/variants/default/activate"
+        )
+        # 200 = success; anything except 404/405 means route exists
+        assert resp.status_code not in (404, 405), (
+            f"POST .../activate returned {resp.status_code}. "
+            f"Route must exist per INTERFACES.md."
+        )
+
+    def test_registry_variant_delete_exists(self) -> None:
+        """DELETE .../variants/{variant} must exist for inactive non-last variants."""
+        client = TestClient(app)
+        client.post("/api/personas", json=_MINIMAL_SPEC)
+        # The default variant cannot be deleted (only active one), so we
+        # just check the route exists, not that deletion succeeds.
+        resp = client.delete(
+            "/api/registry/personas/test-persona/variants/default"
+        )
+        # 200 = deleted, 403 = forbidden (active/last), 404 = route missing
+        # We accept 403 (ACTIVE_VARIANT_DELETE_FORBIDDEN) but not 404
+        assert resp.status_code != 404, (
+            f"DELETE .../variants/default returned 404 (route missing). "
+            f"Variant delete endpoint must exist per INTERFACES.md."
+        )
+
+    def test_registry_variant_id_mismatch_rejected(self) -> None:
+        """PUT variant with mismatched spec.id must return PERSONA_ID_MISMATCH."""
+        client = TestClient(app)
+        client.post("/api/personas", json=_MINIMAL_SPEC)
+        wrong_id_spec = {**_MINIMAL_SPEC, "id": "different-id"}
+        resp = client.put(
+            "/api/registry/personas/test-persona/variants/tacit",
+            json=wrong_id_spec,
+        )
+        assert resp.status_code == 400, (
+            f"PUT with mismatched spec.id expected 400, got {resp.status_code}. "
+            f"PERSONA_ID_MISMATCH error required per INTERFACES.md."
+        )
+        body = resp.json()
+        assert "error" in body
+        assert body["error"]["code"] == "PERSONA_ID_MISMATCH", (
+            f"Expected PERSONA_ID_MISMATCH, got {body['error']['code']}"
+        )
