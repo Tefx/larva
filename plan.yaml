@@ -67990,7 +67990,7 @@ phases:
       \ pass-through launcher contract."
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
-    status: claimed
+    status: done
     description: 'Implement the runtime hardening behavior in the OpenCode plugin/wrapper.
       On each model request, replace only [larva:<selected id>] at the system transform
       layer. Resolve cache miss/stale/digest-change via larva resolve <id> --json
@@ -68009,6 +68009,42 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T13:49:11.773164+00:00'
+    done_at: '2026-05-03T13:51:54.778307+00:00'
+    evidence: 'Artifact:
+
+      - commit: a2fecf2 (merged to main)
+
+
+      Verification:
+
+      - Run: uv run pytest tests/shell/test_opencode_plugin_contract.py tests/shell/test_opencode_cli.py
+      -> 16 passed
+
+      - Run: invar_guard changed=true -> passed
+
+
+      Selected-id single resolve / no export-all proof:
+
+      - Runtime refresh uses resolvePersona() with `larva resolve <id> --json`.
+
+      - Selected-id refresh path no longer uses export-all.
+
+
+      Placeholder/fallback/dedup/debug/TTL/hot-update proof:
+
+      - Implemented selected placeholder replacement.
+
+      - Implemented fail-closed no-previous behavior.
+
+      - Implemented stale last-known-good debug warnings.
+
+      - Implemented inFlight Promise map.
+
+      - Implemented env TTL/debug controls.
+
+      - Implemented exact larva watermark strings.
+
+      - Implemented hot-update refresh for prompt/temperature/tool-policy/capabilities/can_spawn.'
   - id: opencode_hardening_wrapper_startup_20260503
     name: Align wrapper startup registration with base ids and active variants
     status: pending
