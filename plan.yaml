@@ -66517,7 +66517,7 @@ phases:
       ## Residual Risk\nnone"
   - id: variants_finalization_20260503.full-plan-guard-and-conformance
     name: full-plan-guard-and-conformance
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -66685,6 +66685,198 @@ phases:
     agent: integration-verifier-tacit
     claimed_by: integration-verifier-tacit
     claimed_at: '2026-05-03T07:15:56.618302+00:00'
+    done_at: '2026-05-03T07:24:41.642648+00:00'
+    evidence: '## refs Read Confirmation
+
+      - design/registry-local-variants-and-assembly-removal.md — authority for registry-local
+      variants, active-only projection, assembly/component removal, manifest layout.
+
+      - docs/reference/INTERFACES.md — public interface docs updated/reviewed for
+      variants, removed surfaces, storage, errors.
+
+      - docs/reference/ARCHITECTURE.md — architecture docs updated/reviewed for variant
+      storage and removed subsystem.
+
+      - docs/guides/USAGE.md — operational examples reviewed for variant operation
+      params and storage semantics.
+
+      - docs/guides/USER_GUIDE.md — human docs reviewed for variants/troubleshooting.
+
+      - README.md — quickstart/interface summary reviewed; prompt opacity wording
+      restored; license aligned with LICENSE.
+
+      - ../opifex/design/final-canonical-contract.md — canonical field authority and
+      invalid local metadata boundary.
+
+      - ../opifex/contracts/persona_spec.schema.json — schema authority; local mirror
+      synced.
+
+      - ../opifex/conformance/shared_surfaces.yaml and larva case matrices — current
+      opifex variant/removal conformance authority used by repo-local gate.
+
+      - INVAR.md — guard protocol and core/shell boundary expectations reviewed.
+
+
+      ## Vectl Validate Evidence
+
+      Command/tool:
+
+      ```text
+
+      vectl_validate(check_refs=true)
+
+      ```
+
+      Relevant output summary:
+
+      ```text
+
+      16 error(s), 60 warning(s).
+
+      Errors are completed-evidence guard debt in old phases/steps only:
+
+      - shell_registry.shell-registry-gate
+
+      - shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2
+
+      - core_normalize.core-normalize-verify / core-normalize-implement
+
+      - core_validate.core-validate-verify
+
+      - core_assemble.core-assemble-verify
+
+      - canonical_shell_surfaces.gate
+
+      - repair_dup_guardrails.preservation_harness
+
+      - canonical_cutover_prep.gate / canonical_cutover_final.gate
+
+      - hard_cut_finish_20260416_core.* / hard_cut_finish_20260416_finalization.batched_retest
+
+      - merge_debt_20260425_review.audit / conditional-fix
+
+      Warnings are old missing refs to root docs names, removed assembly/component
+      source/test files, and old opifex handover/glob refs.
+
+      No output mentions variants_core_contract_20260503, variants_registry_impl_20260503,
+      variants_surface_cutover_20260503, variants_projection_smoke_20260503, or variants_finalization_20260503.
+
+      ```
+
+
+      ## Baseline Validation Debt Table
+
+      | validation_item | step_or_ref | provenance | disposition | variant_gate_intersection
+      | owner_or_closure_path |
+
+      |---|---|---|---|---|---|
+
+      | completed evidence guard errors | shell_registry.*, core_*_exec.*, canonical_shell_surfaces.gate,
+      repair_dup_shared_foundations.preservation_harness, canonical_cutover_*, hard_cut_finish_20260416_*,
+      merge_debt_20260425_review.* | pre-existing old phases | baseline debt only
+      / non-blocking for this variants gate | no; no variants_*_20260503 IDs or refs
+      mentioned | existing phase owners / future baseline cleanup |
+
+      | missing root docs refs | ARCHITECTURE.md, INTERFACES.md, USAGE.md, USER_GUIDE.md
+      legacy refs | pre-existing old plan refs to relocated docs | baseline warning
+      debt / non-blocking | no | docs/plan ref cleanup |
+
+      | missing old source/test refs | deleted assembly/component files/tests including
+      src/larva/core/assemble.py, src/larva/shell/components.py, tests/core/test_assemble.py,
+      tests/shell/test_components.py | pre-existing / intentional removal layout refs
+      | baseline warning debt / non-blocking | no; removal is expected and current
+      variants refs resolve | historical ref cleanup |
+
+      | missing old opifex handover/case refs | ../opifex/conformance/handovers/02-to-larva.md
+      and old glob refs | pre-existing old opifex conformance layout | baseline warning
+      debt / non-blocking | no | opifex ref migration cleanup |
+
+
+      ## New Variant-Surface Validation Failure Check
+
+      - Filter/check performed for variants_*_20260503 via vectl_validate output inspection.
+
+      - New/intersecting failures found: none. No variants_*_20260503 step IDs appear
+      in validation errors/warnings.
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest -q -p no:cacheprovider
+
+      # 523 passed in 5.64s
+
+
+      invar_guard(path=/Users/tefx/Projects/larva, changed=false)
+
+      # run grd_9ef76a314c93485c8dd009a7 complete: ok=true, errors=0, warnings=1,
+      infos=3, files_checked=40
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
+
+      # frozen authority packet pin: PASS (Tefx/opifex@21cd74e6e9abbcc4d3ef9f0e574d33554309c6da)
+
+      # schema-authority parity: PASS
+
+      # capabilities-only admission metadata: PASS
+
+      # mcp snake_case naming: PASS (9 tools)
+
+      # repo-facing docs parity: PASS
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root
+      ../opifex
+
+      # 5 expected-red PASS lines
+
+
+      uv run pytest tests/shell/test_repo_local_ci_gate.py -q -p no:cacheprovider
+
+      # 2 passed in 0.16s
+
+
+      uv run pytest tests/shell/test_variant_projection_smoke.py tests/shell/test_web.py::TestWebSurfaceEndpoints::test_patch_api_personas_updates_and_revalidates
+      tests/shell/test_web.py::TestWebSurfaceEndpoints::test_post_api_personas_clear_requires_confirmation
+      tests/repro/cross_surface_consistency_verify.py::TestCrossSurfaceValidationConsistency::test_bad_stored_digest_fails_closed_across_resolve_surfaces
+      --tb=short -q -p no:cacheprovider
+
+      # 43 passed in 1.36s
+
+      ```
+
+
+      ## Fixes made during verification
+
+      - HOME-isolation test helper now refreshes registry/facade factory state without
+      reloading python_api/web/web_routes globally, preventing LarvaApiError class
+      identity mismatches in full-suite order.
+
+      - Repo-local gate updated for current opifex variant authority: operation required
+      fields no longer break capabilities admission metadata check; registry-local
+      metadata forbidden fields are permitted as local exclusions.
+
+      - design/opifex-frozen-authority-packet.json pinned to current opifex authority
+      SHA 21cd74e6e9abbcc4d3ef9f0e574d33554309c6da.
+
+      - contracts/persona_spec.schema.json mirror synced to opifex canonical schema
+      description.
+
+      - README restored prompt opaque executable text wording for docs conformance.
+
+
+      ## Independent Review
+
+      integration-verifier-tacit returned all gate checks PASS and completion recommendation
+      COMPLETE with residual risk none.
+
+
+      ## Residual Risk
+
+      none'
   - id: variants_finalization_20260503.deep-review
     name: deep-review
     status: pending
