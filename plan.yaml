@@ -65094,6 +65094,40 @@ phases:
       ## Residual risk
 
       none'
+  - id: variants_surface_cutover_20260503.surface-audit-polish-remediation
+    name: surface-audit-polish-remediation
+    status: pending
+    description: 'Fix remaining blockers from second surface wiring audit: remove
+      stale core assembly_error module/vocabulary, remove stale web.py component/preset
+      comments, document /api/personas/assemble as an explicit fail-closed 404 tombstone
+      or remove it consistently, repair packaged Web UI persona-switch variant state
+      reset/load behavior, clean minor docs target/stale text, and provide source-local
+      MCP tool-list evidence that excludes the ambient preloaded stale MCP provider.'
+    verification: Fresh source/static checks show only documented /api/personas/assemble
+      tombstone remains for assembly text in production, stale docs target warnings
+      removed, web UI selectPersona resets/loads variants before detail/save/delete,
+      local source MCP tool registry contains variant tools and no removed tools,
+      and relevant guard/import checks pass.
+    evidence_template: '## Polish blockers fixed
+
+      - <paths and summary>
+
+
+      ## Verification
+
+      ```text
+
+      <commands and outputs>
+
+      ```
+
+
+      ## Residual risk
+
+      none | <list>'
+    depends_on:
+    - variants_surface_cutover_20260503.surface-audit-blocker-remediation
+    agent: python-senior-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
