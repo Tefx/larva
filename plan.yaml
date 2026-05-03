@@ -60824,7 +60824,7 @@ phases:
       before gate.'
   - id: variants_core_contract_20260503.core-gate
     name: core-gate
-    status: claimed
+    status: pending
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -60925,8 +60925,6 @@ phases:
     - variants_core_contract_20260503.core-pure-helpers
     - variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     agent: gate-reviewer-tacit
-    claimed_by: gate-reviewer-tacit
-    claimed_at: '2026-05-03T00:49:30.937451+00:00'
   - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     name: core-downstream-forbidden-field-remediation
     status: done
