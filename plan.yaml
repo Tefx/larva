@@ -68323,7 +68323,7 @@ phases:
       \ with 0 changed files.\nBlocking issues: none"
 - id: non_opencode_red_cleanup_20260503
   name: Non-OpenCode Red Test Cleanup
-  status: in_progress
+  status: done
   gate: All currently known non-OpenCode red failures are fixed with focused red/green
     evidence, full repo tests, invar guard, and final reviewer PASS.
   depends_on:
@@ -68507,7 +68507,7 @@ phases:
       Deferred items: none'
   - id: non_opencode_red_cleanup_20260503.final_gate
     name: Final full gate and review
-    status: claimed
+    status: done
     description: Perform final independent review of the non-OpenCode cleanup. Verify
       focused evidence, run/confirm full repo tests and invar guard, inspect changed
       shared surfaces for canonical strictness, and ensure there are no Open Problems
@@ -68521,3 +68521,23 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T14:50:25.954269+00:00'
+    done_at: '2026-05-03T14:52:53.683249+00:00'
+    evidence: 'Verification:
+
+      - uv run --frozen pytest: PASS, 1075 passed in 9.28s.
+
+      - invar guard full scan: PASS, ok=true, errors=0, warnings=8, infos=4, files_checked=47.
+
+      - contract alignment inspection: PASS, assemble/component tests assert capabilities-only
+      canonical behavior, reject tools/side_effect_policy, and no xfail/expected-red
+      stale assemble/component expectations remain.
+
+      - git status --short: clean.
+
+
+      Review verdict: PASS - full gate is green and canonical shared-surface expectations
+      are aligned.
+
+      Open Problems: none
+
+      Residual Risk: none'
