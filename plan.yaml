@@ -3031,7 +3031,7 @@ phases:
       \ in the same subagent session and finalized strictly to step scope before completion."
 - id: shell_registry
   name: larva.shell.registry
-  status: done
+  status: in_progress
   depends_on:
   - core_assemble_exec
   - core_exec_remediation
@@ -4039,6 +4039,18 @@ phases:
       \ counterexample_found in core modules; out of scope for this registry retest\
       \ chain.\nGaps/Notes:\n- mypy invocation in this environment required `MYPYPATH=src`\
       \ for local import resolution."
+  - id: shell_registry.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failures for shell registry
+    status: pending
+    description: Resolve validate errors for completed steps shell_registry.shell-registry-gate
+      and shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2. Add later same-phase
+      closure evidence that either proves the current shell registry gate is green/OPEN
+      with gate_open_allowed=true, or records an explicit expected-red/non-blocking
+      disposition with owner, lifecycle state, and gate-intersection rationale for
+      each historical FAIL.
+    verification: Run vectl_validate(check_refs=true) and show that both shell_registry
+      completed-evidence guard errors are gone, or paste the accepted non-blocking
+      disposition evidence that closes them.
 - id: app_facade
   name: larva.app.facade
   status: done
