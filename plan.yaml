@@ -68073,7 +68073,7 @@ phases:
       describe export --all as runtime semantic authority.
     depends_on:
     - opencode_hardening_wrapper_startup_20260503
-    agent: developer
+    agent: python-senior
   - id: opencode_hardening_final_gate_20260503
     name: Run final verification and self-review
     status: pending
