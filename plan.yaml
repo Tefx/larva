@@ -64547,7 +64547,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.surface-gate
     name: surface-gate
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -64642,6 +64642,8 @@ phases:
     - variants_surface_cutover_20260503.rest-web-cutover
     - variants_surface_cutover_20260503.surface-wiring-audit
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-05-03T06:18:22.195786+00:00'
   - id: variants_surface_cutover_20260503.surface-wiring-audit
     name: surface-wiring-audit
     status: done
