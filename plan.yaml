@@ -66517,7 +66517,7 @@ phases:
       ## Residual Risk\nnone"
   - id: variants_finalization_20260503.full-plan-guard-and-conformance
     name: full-plan-guard-and-conformance
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -66683,6 +66683,8 @@ phases:
     depends_on:
     - variants_finalization_20260503.docs-parity-sync
     agent: integration-verifier-tacit
+    claimed_by: integration-verifier-tacit
+    claimed_at: '2026-05-03T07:15:56.618302+00:00'
   - id: variants_finalization_20260503.deep-review
     name: deep-review
     status: pending
