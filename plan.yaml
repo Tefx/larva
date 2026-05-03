@@ -65160,7 +65160,7 @@ phases:
       \ -> No files found\n```\n\n## Residual risk\nnone"
   - id: variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
     name: contrib-web-variant-parity-remediation
-    status: pending
+    status: claimed
     description: 'Remediate final wiring-audit debt in contrib/web/index.html so the
       supported contributor convenience UI mirrors the packaged variant cutover: remove
       stale tools/side_effect_policy UI, initialize/reset/load selectedVariant and
@@ -65191,6 +65191,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.surface-audit-polish-remediation
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-05-03T06:04:08.827253+00:00'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
