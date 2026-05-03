@@ -93,10 +93,10 @@ class TestFileSystemRegistryStoreContract:
         delete_doc = RegistryStore.delete.__doc__ or ""
         clear_doc = RegistryStore.clear.__doc__ or ""
 
-        assert "no dangling index entry" in delete_doc
-        assert "best-effort rollback" in delete_doc
+        assert "Delete one persona directory" in delete_doc
+        assert "Legacy flat-file records" in delete_doc
         assert "exactly equal ``CLEAR_CONFIRMATION_TOKEN``" in clear_doc
-        assert "Partial spec-file deletion failures" in clear_doc
+        assert "Partial deletion failures" in clear_doc
 
     def test_filesystem_clear_is_implemented(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
@@ -105,7 +105,7 @@ class TestFileSystemRegistryStoreContract:
 
         assert result == Success(0)
 
-    def test_save_persists_spec_and_updates_index_digest_mapping(self, registry_root: Path) -> None:
+    def test_save_persists_spec_to_registry_local_variant_layout(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
         spec = _canonical_spec("ops-analyst", "sha256:ops-analyst")
 
@@ -113,15 +113,18 @@ class TestFileSystemRegistryStoreContract:
 
         assert result == Success(None)
 
-        spec_path = registry_root / "ops-analyst.json"
+        spec_path = registry_root / "ops-analyst" / "variants" / "default.json"
+        manifest_path = registry_root / "ops-analyst" / "manifest.json"
         index_path = registry_root / INDEX_FILENAME
         assert spec_path.exists()
-        assert index_path.exists()
+        assert manifest_path.exists()
+        assert not index_path.exists()
+        assert not (registry_root / "ops-analyst.json").exists()
 
         persisted_spec = json.loads(spec_path.read_text(encoding="utf-8"))
-        persisted_index = json.loads(index_path.read_text(encoding="utf-8"))
+        persisted_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         assert persisted_spec == spec
-        assert persisted_index == {"ops-analyst": "sha256:ops-analyst"}
+        assert persisted_manifest == {"active": "default"}
 
     def test_save_preserves_explicit_null_values(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
@@ -134,7 +137,7 @@ class TestFileSystemRegistryStoreContract:
 
         assert result == Success(None)
         persisted_spec = json.loads(
-            (registry_root / "null-preserver.json").read_text(encoding="utf-8")
+            (registry_root / "null-preserver" / "variants" / "default.json").read_text(encoding="utf-8")
         )
         assert "description" in persisted_spec
         assert persisted_spec["description"] is None
@@ -152,6 +155,7 @@ class TestFileSystemRegistryStoreContract:
         assert error["persona_id"] == "empty-digest"
         assert "spec_digest" in error["message"]
         assert not (registry_root / "empty-digest.json").exists()
+        assert not (registry_root / "empty-digest" / "variants" / "default.json").exists()
 
     def test_get_rejects_spec_with_empty_spec_digest(self, registry_root: Path) -> None:
         spec = _canonical_spec("bad-digest", "sha256:good")
@@ -340,29 +344,25 @@ class TestFileSystemRegistryStoreContract:
         assert error["persona_id"] == "missing-agent"
         assert error["path"].endswith("missing-agent.json")
 
-    def test_save_rolls_back_spec_when_index_update_fails(
+    def test_save_rolls_back_spec_when_manifest_update_fails(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        initial = _canonical_spec("rollback-agent", "sha256:original")
-        _write_json(registry_root / "rollback-agent.json", initial)
-        _write_json(registry_root / INDEX_FILENAME, {"rollback-agent": "sha256:original"})
-
         store = FileSystemRegistryStore(root=registry_root)
-        updated = _canonical_spec("rollback-agent", "sha256:updated")
+        spec = _canonical_spec("rollback-agent", "sha256:updated")
 
         original_write_json_atomic = store._write_json_atomic
 
         def fail_index_write(
             path: Path,
             payload: object,
-            kind: Literal["spec", "index"],
+            kind: Literal["spec", "index", "manifest"],
             persona_id: str,
         ) -> object:
-            if kind == "index":
+            if kind == "manifest":
                 return Failure(
                     {
                         "code": "REGISTRY_UPDATE_FAILED",
-                        "message": "simulated index update failure",
+                        "message": "simulated manifest update failure",
                         "persona_id": persona_id,
                         "path": str(path),
                     }
@@ -371,19 +371,14 @@ class TestFileSystemRegistryStoreContract:
 
         monkeypatch.setattr(store, "_write_json_atomic", fail_index_write)
 
-        result = store.save(updated)
+        result = store.save(spec)
 
         assert isinstance(result, Failure)
         error = result.failure()
         assert error["code"] == "REGISTRY_UPDATE_FAILED"
-        assert "index" in error["path"]
+        assert "manifest" in error["path"]
 
-        persisted_spec = json.loads(
-            (registry_root / "rollback-agent.json").read_text(encoding="utf-8")
-        )
-        persisted_index = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
-        assert persisted_spec == initial
-        assert persisted_index == {"rollback-agent": "sha256:original"}
+        assert not (registry_root / "rollback-agent" / "variants" / "default.json").exists()
 
     # ========== DELETE CONTRACT TESTS ==========
 
@@ -394,22 +389,18 @@ class TestFileSystemRegistryStoreContract:
         save_result = store.save(spec)
         assert save_result == Success(None)
 
-        spec_path = registry_root / "delete-target.json"
+        spec_path = registry_root / "delete-target" / "variants" / "default.json"
         index_path = registry_root / INDEX_FILENAME
 
         assert spec_path.exists()
         assert spec_path.read_text(encoding="utf-8")
-        assert index_path.exists()
-        index_before = json.loads(index_path.read_text(encoding="utf-8"))
-        assert index_before == {"delete-target": "sha256:delete-target"}
+        assert not index_path.exists()
 
         delete_result = store.delete("delete-target")
 
         assert delete_result == Success(None)
         assert not spec_path.exists()
-
-        index_after = json.loads(index_path.read_text(encoding="utf-8"))
-        assert "delete-target" not in index_after
+        assert not (registry_root / "delete-target").exists()
 
     def test_delete_not_found(self, registry_root: Path) -> None:
         _write_json(registry_root / INDEX_FILENAME, {})
@@ -537,14 +528,14 @@ class TestFileSystemRegistryStoreContract:
             assert save_result == Success(None)
 
         for name in ("clear-a", "clear-b", "clear-c"):
-            assert (registry_root / f"{name}.json").exists()
-        assert (registry_root / INDEX_FILENAME).exists()
+            assert (registry_root / name / "variants" / "default.json").exists()
+        assert not (registry_root / INDEX_FILENAME).exists()
 
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
 
         assert result == Success(3)
         for name in ("clear-a", "clear-b", "clear-c"):
-            assert not (registry_root / f"{name}.json").exists()
+            assert not (registry_root / name).exists()
         assert not (registry_root / INDEX_FILENAME).exists()
 
     def test_clear_partial_failure(
@@ -557,16 +548,18 @@ class TestFileSystemRegistryStoreContract:
             save_result = store.save(spec)
             assert save_result == Success(None)
 
-        unlinked_files: list[str] = []
-        original_unlink = Path.unlink
+        removed_dirs: list[str] = []
+        import larva.shell.registry as registry_module
 
-        def fail_on_partial_b(self: Path, *args: object, **kwargs: object) -> None:
-            if "partial-b" in str(self):
-                raise OSError("simulated unlink failure for partial-b")
-            unlinked_files.append(str(self))
-            original_unlink(self)
+        original_rmtree = registry_module.shutil.rmtree
 
-        monkeypatch.setattr(Path, "unlink", fail_on_partial_b)
+        def fail_on_partial_b(path: Path, *args: object, **kwargs: object) -> None:
+            if "partial-b" in str(path):
+                raise OSError("simulated rmtree failure for partial-b")
+            removed_dirs.append(str(path))
+            original_rmtree(path, *args, **kwargs)
+
+        monkeypatch.setattr(registry_module.shutil, "rmtree", fail_on_partial_b)
 
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
 
@@ -578,9 +571,9 @@ class TestFileSystemRegistryStoreContract:
         failed_paths: list[str] = error["failed_spec_paths"]
         assert any("partial-b" in p for p in failed_paths)
         assert not (registry_root / INDEX_FILENAME).exists()
-        assert any("partial-a" in f for f in unlinked_files)
-        assert any("partial-c" in f for f in unlinked_files)
-        assert (registry_root / "partial-b.json").exists()
+        assert any("partial-a" in f for f in removed_dirs)
+        assert any("partial-c" in f for f in removed_dirs)
+        assert (registry_root / "partial-b").exists()
 
     def test_clear_returns_correct_count(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
@@ -590,8 +583,7 @@ class TestFileSystemRegistryStoreContract:
             save_result = store.save(spec)
             assert save_result == Success(None)
 
-        index_before = json.loads((registry_root / INDEX_FILENAME).read_text(encoding="utf-8"))
-        expected_count = len(index_before)
+        expected_count = len([path for path in registry_root.iterdir() if path.is_dir()])
         assert expected_count == 2
 
         result = store.clear(confirm=CLEAR_CONFIRMATION_TOKEN)
@@ -772,6 +764,19 @@ class TestRegistryVariantStorageLayout:
         # Verify manifest was NOT auto-created
         assert not (persona_dir / "manifest.json").exists()
 
+    def test_list_uses_directory_scan_not_index_json_for_variant_records(self, variant_root: Path) -> None:
+        """Variant records enumerate from persona directories, not legacy index.json."""
+        store = FileSystemRegistryStore(root=variant_root)
+        spec = self._make_spec("scan-source")
+
+        assert store.save(spec) == Success(None)
+        _write_json(variant_root / INDEX_FILENAME, {"stale-entry": "sha256:stale"})
+
+        result = store.list()
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == [spec]
+
 
 class TestRegistryVariantInvalidName:
     """Variant name validation: must match ^[a-z0-9]+(-[a-z0-9]+)*$ and be <= 64 chars.
@@ -918,3 +923,14 @@ class TestRegistryVariantDelete:
 
             assert result == Success(None)
             assert not (root / "base-delete").exists()
+
+    def test_variant_delete_invalid_name_rejected_before_lookup(self) -> None:
+        """Malformed variant names produce INVALID_VARIANT_NAME, not VARIANT_NOT_FOUND."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            store = FileSystemRegistryStore(root=Path(tmp_dir) / "registry")
+            assert store.save(_canonical_spec("invalid-delete", "sha256:default")) == Success(None)
+
+            result = store.variant_delete("invalid-delete", "bad_variant")
+
+        assert isinstance(result, Failure)
+        assert result.failure()["code"] == "INVALID_VARIANT_NAME"

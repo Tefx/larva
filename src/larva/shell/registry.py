@@ -207,13 +207,11 @@ class RegistryStore(Protocol):
         ...
 
     def delete(self, persona_id: str) -> Result[None, RegistryError]:
-        """Delete one persona using index-first safety ordering.
+        """Delete one persona directory, including all registry-local variants.
 
         Behavioral contract:
-        - MUST update ``index.json`` first so the highest-risk invariant is
-          ``no dangling index entry``.
-        - If spec-file unlink fails after index update, implementation MUST
-          perform best-effort rollback restoring the prior index entry.
+        - New registry-local storage removes the whole ``<id>/`` directory.
+        - Legacy flat-file records may be removed as read-only migration cleanup.
         - Missing ids MUST surface ``PERSONA_NOT_FOUND``.
         """
 
@@ -228,9 +226,9 @@ class RegistryStore(Protocol):
         - ``confirm`` must exactly equal ``CLEAR_CONFIRMATION_TOKEN``.
         - Wrong confirmation token returns ``INVALID_CONFIRMATION_TOKEN`` error
           without any filesystem mutation.
-        - Index removal is ordered before per-spec file deletions.
-        - Partial spec-file deletion failures after index removal MUST be
-          reported as ``REGISTRY_DELETE_FAILED`` with remaining failed paths.
+        - Registry-local persona directories are deleted as whole records.
+        - Partial deletion failures MUST be reported as
+          ``REGISTRY_DELETE_FAILED`` with remaining failed paths.
         """
 
         ...
@@ -259,8 +257,7 @@ class FileSystemRegistryStore(RegistryStore):
             return Failure(variant_error)
 
         spec_path = self._variant_path(persona_id, variant_name)
-        spec_digest = self._require_non_empty_digest(spec.get("spec_digest"))
-        if spec_digest is None:
+        if self._require_non_empty_digest(spec.get("spec_digest")) is None:
             return Failure(
                 self._write_failed(
                     persona_id,
@@ -312,16 +309,6 @@ class FileSystemRegistryStore(RegistryStore):
                 if rollback_error is not None:
                     return Failure(rollback_error)
                 return manifest_write
-
-        legacy_result = self._write_legacy_projection(persona_id, spec, spec_digest)
-        if isinstance(legacy_result, Failure):
-            if persona_is_new:
-                with suppress(OSError):
-                    manifest_path.unlink()
-            rollback_error = self._rollback_spec_write(spec_path, old_spec_bytes, spec_existed, persona_id)
-            if rollback_error is not None:
-                return Failure(rollback_error)
-            return legacy_result
 
         if active_before is None and not persona_is_new:
             return Failure(self._registry_corrupt(persona_id, persona_dir, "manifest active pointer missing"))
@@ -462,7 +449,11 @@ class FileSystemRegistryStore(RegistryStore):
             return index_result
 
         index = index_result.unwrap()
-        clear_count = len(index)
+        persona_dirs: list[Path] = []
+        if self._root.exists():
+            persona_dirs = sorted(path for path in self._root.iterdir() if path.is_dir())
+        legacy_only_ids = set(index) - {path.name for path in persona_dirs}
+        clear_count = len(persona_dirs) + len(legacy_only_ids)
         index_path = self._index_path()
 
         if index_path.exists():
@@ -481,12 +472,11 @@ class FileSystemRegistryStore(RegistryStore):
                 )
 
         failed_spec_paths: list[str] = []
-        if self._root.exists():
-            for persona_dir in sorted(path for path in self._root.iterdir() if path.is_dir()):
-                try:
-                    shutil.rmtree(persona_dir)
-                except OSError as exc:
-                    failed_spec_paths.append(f"{persona_dir}: {exc}")
+        for persona_dir in persona_dirs:
+            try:
+                shutil.rmtree(persona_dir)
+            except OSError as exc:
+                failed_spec_paths.append(f"{persona_dir}: {exc}")
         for persona_id in sorted(index):
             spec_path = self._spec_path(persona_id)
             try:
@@ -558,6 +548,10 @@ class FileSystemRegistryStore(RegistryStore):
         return self.variant_list(persona_id)
 
     def variant_delete(self, persona_id: str, variant: str) -> Result[None, RegistryError]:
+        if (invalid := self._invalid_id_error(persona_id)) is not None:
+            return Failure(invalid)
+        if (variant_error := self._invalid_variant_error(variant)) is not None:
+            return Failure(variant_error)
         metadata = self.variant_list(persona_id)
         if isinstance(metadata, Failure):
             return metadata
@@ -742,33 +736,6 @@ class FileSystemRegistryStore(RegistryStore):
         if not variants:
             return Failure(self._registry_corrupt(persona_id, variants_dir, "persona has no variants"))
         return Success(variants)
-
-    def _write_legacy_projection(self, persona_id: str, spec: PersonaSpec, spec_digest: str) -> Result[None, RegistryError]:
-        legacy_spec = self._spec_path(persona_id)
-        old_spec_bytes: bytes | None = None
-        spec_existed = legacy_spec.exists()
-        if spec_existed:
-            try:
-                old_spec_bytes = legacy_spec.read_bytes()
-            except OSError as exc:
-                return Failure(self._write_failed(persona_id, legacy_spec, f"failed to snapshot legacy spec: {exc}"))
-        spec_result = self._write_json_atomic(legacy_spec, spec, "spec", persona_id)
-        if isinstance(spec_result, Failure):
-            return spec_result
-        index_result = self._read_index()
-        if isinstance(index_result, Failure):
-            rollback_error = self._rollback_spec_write(legacy_spec, old_spec_bytes, spec_existed, persona_id)
-            if rollback_error is not None:
-                return Failure(rollback_error)
-            return index_result
-        index = dict(index_result.unwrap())
-        index[persona_id] = spec_digest
-        index_write = self._write_json_atomic(self._index_path(), index, "index", persona_id)
-        if isinstance(index_write, Failure):
-            rollback_error = self._rollback_spec_write(legacy_spec, old_spec_bytes, spec_existed, persona_id)
-            if rollback_error is not None:
-                return Failure(rollback_error)
-        return index_write
 
     def _variant_not_found(self, persona_id: str, variant: str) -> VariantNotFoundError:
         return {"code": "VARIANT_NOT_FOUND", "message": f"variant '{variant}' not found for persona '{persona_id}'", "persona_id": persona_id, "variant": variant}
