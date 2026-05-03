@@ -60830,8 +60830,8 @@ phases:
       verification_scope: phase-check
 
 
-      Gate review for core variant contracts, pure helpers, and downstream forbidden-field
-      remediation.
+      Gate review for core variant contracts, pure helpers, downstream forbidden-field
+      remediation, and the batched gate-remediation evidence from `variants_core_contract_20260503.core-gate-remediation`.
 
 
       Review depth: STANDARD
@@ -60854,53 +60854,102 @@ phases:
 
       - Core contains I/O or lacks @pre/@post/doctest coverage for new helpers.
 
-      - opifex schema fields were mutated.
+      - Ruff lint still fails on the reviewed B1 files after remediation.
+
+      - the design ref `design/registry-local-variants-and-assembly-removal.md` is
+      missing, unreadable, or not cited with a key passage.
+
+      - opifex/shared authority files were modified by larva-owned work or by this
+      phase''s remediation.
 
 
-      Gate Decision Basis required: map each core and downstream forbidden-field requirement
-      to evidence_ref and status PROVEN/BLOCKED, with closure path for any NEEDS_TEST/UNPROVEN
-      item.'
-    verification: Gate opens only with green focused core tests, green invar guard
-      for changed files, non-vacuous contracts/doctests, proof that shell/registry
-      rejects registry metadata leakage fields, relevant canonical_cutover scan verification,
-      and confirmation that no shared/opifex schema or conformance authority files
-      were modified.
+      Gate must NOT block solely because external `../opifex` has pre-existing or
+      out-of-step dirty files, provided the remediation evidence proves non-intersection:
+      larva-owned commits/worktree changes did not modify `../opifex` shared authority
+      files and the dirty state is classified with provenance and disposition.
+
+
+      For S1, gate should accept either: (a) a safe `validate_variant_name` precondition
+      improvement that preserves public `VariantNameError` behavior for invalid user
+      input, or (b) explicit non-blocking rationale that strengthening would change
+      expected behavior and therefore should be deferred/non-blocking.
+
+
+      Gate Decision Basis required: map each core/downstream forbidden-field requirement
+      plus B1/B2/B3/S1 remediation item to evidence_ref and status PROVEN/BLOCKED/NON_INTERSECTING,
+      with closure path for any NEEDS_TEST/UNPROVEN item. For B2, record both provenance
+      and disposition; do not use `pre-existing` or `out-of-scope` as a disposition.'
+    verification: Gate opens only with green focused core tests, green focused shell
+      registry rejection tests, green canonical_cutover hard-cut readiness scanner,
+      Ruff lint clean for the reviewed B1 files, green or non-regressive `invar guard
+      --all` evidence, non-vacuous contracts/doctests, proof that shell/registry rejects
+      registry metadata leakage fields, proof the design ref exists/readable with
+      key passage cited, and confirmation that no larva-owned work modified shared/opifex
+      schema or conformance authority files. External `../opifex` dirty state is blocking
+      only if non-intersection evidence is absent or if larva-owned work modified
+      opifex/shared authority; otherwise classify as out-of-step-origin/non-blocking
+      for this larva gate.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
-      - <filename> — key passage or "NOT READ: <reason>"
+      - design/registry-local-variants-and-assembly-removal.md — key passage or "NOT
+      READ: <reason>"
+
+      - docs/reference/INTERFACES.md — key passage or "NOT READ: <reason>"
+
+      - docs/reference/ARCHITECTURE.md — key passage or "NOT READ: <reason>"
+
+      - docs/guides/USAGE.md — key passage or "NOT READ: <reason>"
+
+      - docs/guides/USER_GUIDE.md — key passage or "NOT READ: <reason>"
+
+      - ../opifex/design/final-canonical-contract.md — key passage or "NOT READ: <reason>"
+
+      - ../opifex/contracts/persona_spec.schema.json — key passage or "NOT READ: <reason>"
+
+      - ../opifex/conformance/shared_surfaces.yaml — key passage or "NOT READ: <reason>"
+
+      - ../opifex/conformance/case_matrix/larva/* — key passage(s) or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
 
 
-      ## Gate Review Report
+      ## Gate Decision Basis
 
-      - Reviewer: gate-reviewer-tacit
+      Map each requirement/remediation item to evidence_ref and status PROVEN/BLOCKED/NON_INTERSECTING:
 
-      - Phase: variants_core_contract_20260503
+      - core variant contracts
+
+      - pure helper contracts/doctests
+
+      - downstream forbidden-field remediation
+
+      - B1 Ruff lint remediation
+
+      - B2 opifex non-modification/non-intersection evidence
+
+      - B3 design ref availability/key passage
+
+      - S1 validate_variant_name contract-strength decision
 
 
-      ## Behavioral Proof Register
+      ## B2 Authority Disposition Rule
 
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
+      - Block if larva-owned work modified `../opifex` shared authority files.
 
-      |---|---|---|---|---|---|---|
+      - Block if non-intersection evidence is missing.
 
-
-      ## Checks
-
-      - Expected-red evidence valid: PASS/FAIL
-
-      - Core contracts/doctests non-vacuous: PASS/FAIL
-
-      - Forbidden metadata rejected: PASS/FAIL
-
-      - Opifex schema unchanged: PASS/FAIL
+      - Do not block solely for pre-existing/out-of-step-origin dirty files in external
+      `../opifex` when evidence proves larva-owned changes did not modify opifex/shared
+      authority and records a non-blocking disposition.
 
 
       ## Gate Decision
 
-      OPEN / BLOCKED'
+      - [ ] OPEN: evidence supports all blocker-class obligations or explicit non-intersection.
+
+      - [ ] BLOCKED: list blockers and required actions.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -60924,6 +60973,7 @@ phases:
     - variants_core_contract_20260503.core-red-contract-tests
     - variants_core_contract_20260503.core-pure-helpers
     - variants_core_contract_20260503.core-downstream-forbidden-field-remediation
+    - variants_core_contract_20260503.core-gate-remediation
     agent: gate-reviewer-tacit
   - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     name: core-downstream-forbidden-field-remediation
