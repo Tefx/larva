@@ -402,15 +402,21 @@ def _register_persona_routes(app: FastAPI) -> WebResult[None]:
     async def variant_delete_route(persona_id: str, variant: str) -> Any:
         return _send(await _api_variant_delete(persona_id, variant))
 
+    async def assemble_removed() -> Any:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Assemble endpoint removed")
+
     app.add_api_route("/api/personas", list_personas, methods=["GET"])
-    app.add_api_route("/api/personas/{persona_id}", get_persona, methods=["GET"])
     app.add_api_route("/api/personas", register_persona, methods=["POST"])
     app.add_api_route("/api/personas/export", export_personas, methods=["POST"])
     app.add_api_route("/api/personas/update_batch", update_batch_personas, methods=["POST"])
-    app.add_api_route("/api/personas/{persona_id}", update_persona, methods=["PATCH"])
-    app.add_api_route("/api/personas/{persona_id}", delete_persona, methods=["DELETE"])
     app.add_api_route("/api/personas/clear", clear_personas, methods=["POST"])
     app.add_api_route("/api/personas/validate", validate_persona, methods=["POST"])
+    app.add_api_route("/api/personas/assemble", assemble_removed, methods=["POST"])
+
+    app.add_api_route("/api/personas/{persona_id}", get_persona, methods=["GET"])
+    app.add_api_route("/api/personas/{persona_id}", update_persona, methods=["PATCH"])
+    app.add_api_route("/api/personas/{persona_id}", delete_persona, methods=["DELETE"])
 
     app.add_api_route("/api/registry/personas", registry_personas, methods=["GET"])
     app.add_api_route("/api/registry/personas/{persona_id}/variants", variant_list, methods=["GET"])
