@@ -65715,7 +65715,7 @@ phases:
       none"
   - id: variants_projection_smoke_20260503.opencode-active-projection
     name: opencode-active-projection
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: [integration]
@@ -65830,6 +65830,8 @@ phases:
     depends_on:
     - variants_projection_smoke_20260503.opencode-red-smoke-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T06:45:36.820005+00:00'
   - id: variants_projection_smoke_20260503.live-liveness-probe
     name: live-liveness-probe
     status: pending
