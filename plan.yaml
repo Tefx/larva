@@ -61656,7 +61656,7 @@ phases:
       - Did not alter plan.yaml, claims, or vectl state.'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
-  status: pending
+  status: in_progress
   gate: Registry storage implements manifest/variants semantics, activation/delete
     guards, and active-only list/export without canonical metadata leakage.
   depends_on:
@@ -61664,7 +61664,7 @@ phases:
   steps:
   - id: variants_registry_impl_20260503.registry-red-integration-tests
     name: registry-red-integration-tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -61798,6 +61798,8 @@ phases:
     - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T01:15:08.076764+00:00'
   - id: variants_registry_impl_20260503.registry-storage-implementation
     name: registry-storage-implementation
     status: pending
