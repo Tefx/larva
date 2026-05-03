@@ -67425,10 +67425,13 @@ phases:
       and tied to current implementation structure.
     verification: Show the targeted test command(s) and expected-red failures demonstrating
       the current startup/cache-export behavior violates the hardening contract. Include
-      exact failing test names and a brief reason for each failure.
+      exact failing test names and a brief reason for each failure. Confirm refs resolve
+      under vectl_validate(check_refs=true).
     refs:
-    - docs/opencode-wrapper.md
-    - docs/opencode-plugin-hardening-contract.md
+    - contrib/opencode-plugin/README.md
+    - README.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/reference/INTERFACES.md
     agent: developer
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
