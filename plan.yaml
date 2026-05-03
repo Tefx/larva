@@ -68412,7 +68412,7 @@ phases:
       OpenCode excluded: yes'
   - id: non_opencode_red_cleanup_20260503.impl
     name: Fix non-OpenCode red failures
-    status: claimed
+    status: done
     description: 'Implement the minimal strict fixes for the inventoried non-OpenCode
       reds. Align forbidden-field conformance behavior, MCP assemble inventory/description/schema
       projections, README/API inventory parity including larva_variant_list, assemble
@@ -68429,6 +68429,53 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T14:38:05.280346+00:00'
+    done_at: '2026-05-03T14:48:35.131011+00:00'
+    evidence: 'Changed files:
+
+      - README.md, docs/guides/USAGE.md, docs/guides/USER_GUIDE.md, docs/reference/INTERFACES.md:
+      removed stale assemble/component MCP/CLI docs and added/currentized variant
+      tool inventory.
+
+      - tests/canonical_cutover/test_hard_cutover_readiness.py: derives MCP tool names
+      from current contract and treats registry-local variant metadata as canonical
+      shell vocabulary.
+
+      - tests/core/test_schema_validation.py: removed stale assemble expectations
+      and pointed doc inventory checks at current doc paths.
+
+      - tests/shell/test_canonical_boundary_gaps.py: replaced stale assemble/component
+      assertions with removal/current-inventory guards.
+
+
+      Canonical rationale:
+
+      - assemble/component surfaces remain removed.
+
+      - registry-local variants are canonical shell/registry surfaces, not PersonaSpec
+      admission aliases.
+
+      - tests/docs now assert current hard-cut contract instead of restoring removed
+      compatibility surfaces.
+
+
+      Verification:
+
+      - Implementation branch: uv run pytest tests/canonical_cutover/test_hard_cutover_readiness.py
+      tests/core/test_schema_validation.py tests/shell/test_canonical_boundary_gaps.py
+      -q -> 55 passed; invar_guard changed=true -> passed; commit c29e0e5 align cleanup
+      tests with hard cutover.
+
+      - Main conflict resolution after merge/stash-pop: git diff --check -- <seven
+      files> -> passed; uv run pytest tests/canonical_cutover/test_hard_cutover_readiness.py
+      tests/core/test_schema_validation.py tests/shell/test_canonical_boundary_gaps.py
+      -> 44 passed; git diff --name-only --diff-filter=U -> no unmerged files.
+
+
+      Merge note:
+
+      - Branch c29e0e5 merged to main. Pre-existing local edits in overlapping files
+      were preserved via stash/pop and conflict resolution; resolved files were unstaged
+      afterward to avoid committing unrelated user edits.'
   - id: non_opencode_red_cleanup_20260503.focused_tests
     name: Run focused non-OpenCode regression tests
     status: pending
