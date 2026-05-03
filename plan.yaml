@@ -11615,7 +11615,7 @@ phases:
       that closes it.
 - id: core_assemble_exec
   name: larva.core.assemble execution
-  status: done
+  status: in_progress
   depends_on:
   - meta.gate
   - core_assemble
@@ -12089,6 +12089,16 @@ phases:
       - ARCHITECTURE.md larva.core.assemble
 
       - INTERFACES.md larva.assemble + component library'
+  - id: core_assemble.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for core assemble
+    status: pending
+    description: Resolve validate error for completed step core_assemble.core-assemble-verify.
+      Add later same-phase closure evidence that proves the current assemble gate
+      is green/OPEN, or records explicit expected-red/non-blocking owner/lifecycle/gate-intersection
+      disposition for the historical FAIL record.
+    verification: Run vectl_validate(check_refs=true) and show the core_assemble_exec
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: core_exec_remediation
   name: Core execution remediation
   status: done
