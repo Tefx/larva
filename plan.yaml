@@ -64980,7 +64980,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.surface-audit-blocker-remediation
     name: surface-audit-blocker-remediation
-    status: claimed
+    status: done
     description: 'Remediate blockers found by the fresh surface wiring audit before
       rerunning the audit. Required fixes: remove/privatize remaining assembly/component
       facade subsystem and unreachable CLI helper remnants from public paths; repair
@@ -65016,6 +65016,84 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-05-03T05:14:40.263214+00:00'
+    done_at: '2026-05-03T05:49:25.097195+00:00'
+    evidence: '## Audit blockers fixed
+
+      - Removed remaining public assembly/component subsystem wiring from app facade,
+      facade protocols/types, default facade factory, CLI command/runtime/type layers,
+      MCP handler constructor/docs, Python API exports, and canonical spec typing
+      surface.
+
+      - Deleted obsolete assembly/component modules and obsolete tests: core assemble/component
+      helper modules, shell components/python API component helpers/shared component
+      queries, assembly/component test suites.
+
+      - Repaired packaged and contrib Web UI variant semantics: inactive variant detail/edit
+      uses variant envelopes/routes; delete controls distinguish base persona deletion
+      from inactive variant deletion; compose/preset/component CSS/UI remnants removed.
+
+      - Updated docs/comments for implemented variants cutover and explicit removed/tombstone
+      behavior; stale “implementation may not have landed / released builds may expose
+      old assembly surfaces” text removed.
+
+      - Updated affected CLI/MCP/Python/facade/core tests to preserve non-assembly
+      coverage and assert removed-surface absence.
+
+
+      ## Verification
+
+      ```text
+
+      python-senior-tacit verification:
+
+      - python -m pytest --collect-only tests/app/test_facade tests/shell/test_cli.py
+      tests/shell/test_python_api.py tests/shell/test_mcp.py -q -> 52 tests collected
+
+      - python -m pytest tests/app/test_facade tests/shell/test_cli.py tests/shell/test_python_api.py
+      tests/shell/test_mcp.py tests/shell/test_web.py tests/shell/test_web_rest_gaps.py
+      tests/core/test_variants.py -q -> 165 passed
+
+      - python -m pytest -q -> 480 passed
+
+      - import check for affected production/test modules -> import ok: 11 modules
+
+
+      orchestrator verification:
+
+      - invar_guard(path=/Users/tefx/Projects/larva, changed=false) -> deferred run
+      grd_9d6f8339871a4ce588a9f1ea complete: ok=true, errors=0, warnings=1, infos=3,
+      files_checked=41
+
+      - uv run python surface static check -> surface import/static checks ok; Python
+      API removed assemble/component exports absent and variant exports present; MCP
+      removed tools absent and variant tools present; CLI help contains variant and
+      not assemble/component
+
+      - grep src/larva "larva_assemble|larva_component|component_list_command|component_show_command|assemble_command|ComponentStore|AssemblyInput|PromptComponent|ToolsetComponent|ConstraintComponent|ModelComponent|from
+      larva\.core import assemble|larva\.shell\.components|/api/components" -> No
+      files found
+
+      - grep src/larva "assemble|component|preset|compose" -> only documented REST
+      404 tombstone in src/larva/shell/web_routes.py for /api/personas/assemble
+
+      - grep src/larva/shell/web_ui.html and contrib/web/index.html for assemble/component/preset/compose
+      -> No files found
+
+      - grep markdown for stale status phrases (implementation may not have landed/released
+      builds may/target behavior/target interface) -> No files found
+
+      ```
+
+
+      Note: `invar_guard(changed=true)` reports property-test file-not-found entries
+      for intentionally deleted core modules (assemble/component_kind/component_error_projection);
+      full-scan guard is green and is the authoritative guard evidence for this deletion-heavy
+      cutover.
+
+
+      ## Residual risk
+
+      none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
