@@ -68099,7 +68099,7 @@ phases:
       by stashing/popping them around the branch merge; no user changes were discarded.'
   - id: opencode_hardening_docs_and_matrix_20260503
     name: Sync tests, docs, and behavior matrix
-    status: pending
+    status: claimed
     description: 'Update only the necessary docs and/or conformance notes to match
       implemented behavior. Capture cache semantics, resolve fallback matrix, watermark
       formats, debug/TTL env knobs, hot-update versus restart-required boundaries,
@@ -68110,6 +68110,8 @@ phases:
     depends_on:
     - opencode_hardening_wrapper_startup_20260503
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T14:00:14.188222+00:00'
   - id: opencode_hardening_final_gate_20260503
     name: Run final verification and self-review
     status: pending
