@@ -61656,7 +61656,7 @@ phases:
       - Did not alter plan.yaml, claims, or vectl state.'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
-  status: in_progress
+  status: done
   gate: Registry storage implements manifest/variants semantics, activation/delete
     guards, and active-only list/export without canonical metadata leakage.
   depends_on:
@@ -63368,7 +63368,7 @@ phases:
       \n## Gaps/Notes\nnone"
   - id: variants_registry_impl_20260503.registry-post-gate-followup
     name: Post-gate should-fix and comment hygiene
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: MEDIUM
@@ -63519,9 +63519,100 @@ phases:
     agent: python-refactor-master-tacit
     claimed_by: python-refactor-master-tacit
     claimed_at: '2026-05-03T02:58:02.240646+00:00'
+    done_at: '2026-05-03T03:00:50.213336+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - `tests/shell/test_registry.py` — registry-local variant tests now exercise
+      implemented manifest + variants storage, variant-name validation, activation,
+      and deletion invariants; stale expected-red comments were present in now-green
+      sections.
+
+      - `src/larva/app/facade.py` — facade variant methods delegate to the registry
+      (`register`, `resolve`, `update`, `variant_activate`, `variant_delete`) without
+      owning storage behavior.
+
+      - `src/larva/shell/registry.py` — `FileSystemRegistryStore` implements manifest-backed
+      variant storage and validation while remaining below the gate threshold at 494
+      lines.
+
+      - `INVAR.md` — “Run `invar guard` after changes. Fix errors before committing.”
+
+
+      ## Post-Gate Follow-up Evidence
+
+
+      ### S1 Maintainability Disposition
+
+      - `facade.py` line count before/after: 415 / 415.
+
+      - `registry.py` line count before/after: 494 / 494.
+
+      - No `file_size` hatches added/retained for closure: YES.
+
+      - Extraction performed: NO.
+
+      - Non-blocking rationale/future trigger: only comment hygiene was required;
+      no obvious safe behavior-preserving extraction was within scope. Future ownership
+      should trigger if `facade.py` or `registry.py` grows back toward blocker-class
+      file-size limits or accumulates mixed responsibilities.
+
+      - Line counts worsened: N/A.
+
+
+      ### G1 Comment Hygiene
+
+      - `tests/shell/test_registry.py:601-608` stale expected-red wording: refreshed
+      to describe implemented manifest-backed variant storage.
+
+      - `tests/shell/test_registry.py:784-842` stale expected-red wording: refreshed
+      invalid-name and activation comments to describe now-implemented behavior.
+
+      - Also refreshed adjacent `variant_delete` stale expected-red docstring.
+
+
+      ## Mainline Verification
+
+      ```text
+
+      uv run ruff check tests/shell/test_registry.py
+
+      All checks passed!
+
+      ```
+
+      ```text
+
+      uv run pytest tests/shell/test_registry.py
+
+      59 passed in 0.19s
+
+      ```
+
+      ```text
+
+      invar_invar_guard changed=true
+
+      status: passed; static errors=0 warnings=0 infos=0; doctest passed
+
+      ```
+
+
+      ## Files Changed
+
+      - `tests/shell/test_registry.py`
+
+
+      ## Commit hash(es)
+
+      - `62406f2`
+
+
+      ## Gaps/Notes
+
+      none'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
-  status: locked
+  status: pending
   gate: MCP/CLI/Python/REST/Web public surfaces expose variants and remove assembly/component
     surfaces consistently.
   depends_on:
