@@ -10734,7 +10734,7 @@ phases:
       - contracts/persona_spec.schema.json'
 - id: core_normalize_exec
   name: larva.core.normalize execution
-  status: done
+  status: in_progress
   depends_on:
   - meta.gate
   - core_normalize
@@ -11197,6 +11197,16 @@ phases:
       - INTERFACES.md normalization section
 
       - ARCHITECTURE.md module larva.core.normalize'
+  - id: core_normalize.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failures for core normalize
+    status: pending
+    description: Resolve validate errors for completed steps core_normalize.core-normalize-verify
+      and core_normalize.core-normalize-implement. Add later same-phase closure evidence
+      that proves the current normalize gate is green/OPEN, or records explicit expected-red/non-blocking
+      owner/lifecycle/gate-intersection disposition for both historical FAIL records.
+    verification: Run vectl_validate(check_refs=true) and show both core_normalize_exec
+      completed-evidence guard errors are gone, or paste the accepted disposition
+      evidence that closes them.
 - id: core_validate_exec
   name: larva.core.validate execution
   status: done
