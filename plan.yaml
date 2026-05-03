@@ -61664,7 +61664,7 @@ phases:
   steps:
   - id: variants_registry_impl_20260503.registry-red-integration-tests
     name: registry-red-integration-tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -61800,6 +61800,138 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-03T01:15:08.076764+00:00'
+    done_at: '2026-05-03T01:37:38.991042+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — storage layout ~/.larva/registry/<id>/manifest.json
+      plus variants/<variant>.json; manifest exactly {"active":"default"}; variant
+      spec id equals base persona id; corrupt/missing manifest => REGISTRY_CORRUPT;
+      register/resolve/update/list/export/activate/delete variant semantics and error
+      codes specified.
+
+      - docs/reference/INTERFACES.md — variant-aware surfaces include register/resolve/update/variant_list/variant_activate/variant_delete;
+      list/export active canonical specs only; surface errors include PERSONA_ID_MISMATCH,
+      INVALID_VARIANT_NAME, REGISTRY_CORRUPT, VARIANT_NOT_FOUND, ACTIVE_VARIANT_DELETE_FORBIDDEN,
+      LAST_VARIANT_DELETE_FORBIDDEN.
+
+      - docs/reference/ARCHITECTURE.md — registry I/O belongs to Shell; manifest.json
+      is correctness source for active variant; index.json not used in target design.
+
+      - docs/guides/USAGE.md — register(spec, variant=None), variant name rules, REGISTRY_CORRUPT,
+      ACTIVE_VARIANT_DELETE_FORBIDDEN, LAST_VARIANT_DELETE_FORBIDDEN.
+
+      - docs/guides/USER_GUIDE.md — variant contracts, manual migration workflow,
+      error codes.
+
+      - ../opifex/design/final-canonical-contract.md — variant invalid inside PersonaSpec;
+      capabilities required; tools/side_effect_policy/variables forbidden.
+
+      - ../opifex/contracts/persona_spec.schema.json — additionalProperties=false;
+      no variant field.
+
+      - ../opifex/conformance/shared_surfaces.yaml — register/activate/delete/export
+      invariants for variant names, atomic activation, active-only export, no registry
+      metadata.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — new_persona_auto_activates_default,
+      existing_persona_no_auto_activate, bad_variant_name, id_mismatch_rejected, variant_inside_spec_rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml — activate_existing_variant
+      returns {id, active}; manifest_write_is_atomic; bad variant names rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml — returns
+      {id, active, variants}; registry metadata not PersonaSpec.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — delete
+      inactive returns {id, variant, deleted}; active/last delete rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.validate.yaml — variant_inside_spec_rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.export.yaml — export active
+      variants only; absent variant/_registry/active/manifest.
+
+      - ../opifex/conformance/case_matrix/larva/larva.update.yaml — update_named_variant;
+      patch_variant_field_rejected; bad_variant_name rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml — bad_variant_name
+      rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.delete.yaml — delete base persona
+      deletes all variants; variant is not delete selector.
+
+      - INVAR.md — Core/Shell zones and Shell Result discipline.
+
+
+      ## Expected-Red Proof
+
+      ```text
+
+      uv run pytest tests/shell/test_registry.py tests/app/test_facade/test_register.py
+      tests/app/test_facade/test_resolve.py tests/app/test_facade/test_update.py tests/app/test_facade/test_list.py
+      tests/app/test_facade/test_export.py tests/app/test_facade/test_delete.py -q
+
+      5 failed, 81 passed, 45 xfailed in 0.36s
+
+      ```
+
+      Failures all match declared product gap: current registry uses flat <id>.json
+      + index.json rather than manifest.json plus variants/<variant>.json, and returns
+      PERSONA_NOT_FOUND instead of REGISTRY_CORRUPT for missing/malformed manifest
+      or dangling active variant.
+
+
+      ## Coverage Map
+
+      - register default/named: xfail tests for default/named register, auto-activation,
+      no auto-activation on existing persona, id mismatch, invalid variant name, directory
+      layout.
+
+      - activation/no-auto-activate: register no-auto-activate and variant_activate
+      atomic/return-shape tests.
+
+      - resolve/update active/named: xfail tests for active/default/named variants,
+      no metadata, invalid variant, missing variant, corrupt registry.
+
+      - list/export active-only: xfail tests for active-only list/export, no metadata,
+      variant_list complete registry metadata.
+
+      - delete active/last/base: xfail tests for inactive delete success, active/last
+      rejection, invalid variant, missing variant, base delete all variants.
+
+      - corrupt manifest/active missing: 5 hard failures for layout and REGISTRY_CORRUPT
+      behavior.
+
+      - atomic activation path: xfail tests for same-directory write-rename and return
+      shape.
+
+
+      ## Scope Check
+
+      - Product files changed: none.
+
+      - Files changed: tests only (7 test files).
+
+
+      ## Semantic Test Report
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: matches declared product gap
+
+      - verdict: PASS_EXPECTED_RED
+
+      - blockers: []
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: ea5868b20b8d5a31cb174fa64a420c875243c9ad.
+
+      - Main squash commit: 6cb1818.'
   - id: variants_registry_impl_20260503.registry-storage-implementation
     name: registry-storage-implementation
     status: pending
