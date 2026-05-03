@@ -68085,7 +68085,7 @@ phases:
       residual risk none or clearly bounded non-blocking follow-up steps.
     depends_on:
     - opencode_hardening_docs_and_matrix_20260503
-    agent: developer
+    agent: python-senior
   - id: plan_ref_warning_hygiene_20260503
     name: Triage remaining vectl ref warnings
     status: done
