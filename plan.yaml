@@ -60553,7 +60553,7 @@ phases:
       gap and no product implementation files were changed.'
   - id: variants_core_contract_20260503.core-pure-helpers
     name: core-pure-helpers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
 
@@ -60679,6 +60679,149 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-03T00:30:43.414399+00:00'
+    done_at: '2026-05-03T00:44:59.575304+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — variant is registry-local
+      and not a PersonaSpec field; variant names use lower-kebab slug pattern ^[a-z0-9]+(-[a-z0-9]+)*$
+      and max 64.
+
+      - docs/reference/INTERFACES.md — larva must reject unknown top-level fields
+      including variant, _registry, active, manifest; invalid variant names return
+      INVALID_VARIANT_NAME.
+
+      - docs/reference/ARCHITECTURE.md — variant/_registry are registry-local metadata
+      and must never enter canonical PersonaSpec; Core must not read/write registry
+      files.
+
+      - docs/guides/USAGE.md — variant is rejected inside PersonaSpec and is only
+      registry-local metadata.
+
+      - docs/guides/USER_GUIDE.md — variant, _registry, active, manifest are not PersonaSpec
+      fields.
+
+      - ../opifex/design/final-canonical-contract.md — registry-local metadata stays
+      outside canonical spec; variant/_registry/active/manifest are invalid in PersonaSpec.
+
+      - ../opifex/contracts/persona_spec.schema.json — additionalProperties=false;
+      no variant/_registry/active/manifest fields allowed.
+
+      - ../opifex/conformance/shared_surfaces.yaml — larva_validate reject_forbidden_legacy_fields/reject_unknown_fields;
+      larva_register variant name lower-kebab max-64.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — variant_inside_spec_rejected,
+      registry_metadata_inside_spec_rejected, bad_variant_name cases.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml — invalid
+      variant names, 64 accepted, 65 rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml — response
+      is registry metadata, not PersonaSpec.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — bad variant
+      names and active/last variant constraints.
+
+      - ../opifex/conformance/case_matrix/larva/larva.validate.yaml — variant/registry
+      metadata inside spec rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.export.yaml — exported PersonaSpec
+      omits variant/_registry/active/manifest.
+
+      - ../opifex/conformance/case_matrix/larva/larva.update.yaml — patch_variant_field_rejected
+      and bad_variant_name.
+
+      - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml — bad variant name
+      invalid_variant_name.
+
+      - ../opifex/conformance/case_matrix/larva/larva.delete.yaml — variant is not
+      delete selector.
+
+      - INVAR.md — new Core functions require @pre/@post and doctest; Core must not
+      do I/O.
+
+
+      ## Expected-Red Carryover
+
+      ```text
+
+      33 failed, 155 passed.
+
+      Failure families: missing forbidden metadata in CANONICAL_FORBIDDEN_FIELDS;
+      missing validate_variant_name; patch logic not rejecting registry metadata;
+      FORBIDDEN_PATCH_FIELDS missing variant/_registry/active/manifest.
+
+      ```
+
+
+      ## Implementation Summary
+
+      - Core symbols changed/added: CANONICAL_FORBIDDEN_FIELDS expanded; FORBIDDEN_PATCH_FIELDS
+      expanded; VariantNameError added; _build_variant_name_error added; validate_variant_name(name:
+      str) added with contracts/doctests; variant name constants added.
+
+      - Contracts/doctests: _build_variant_name_error and validate_variant_name include
+      @pre/@post/@raises/doctest coverage per INVAR discipline.
+
+      - Opifex schema changed: no.
+
+      - Deviation records: none.
+
+
+      ## Green Proof
+
+      ```text
+
+      invar_guard(changed=true): passed; static errors=0 warnings=1 infos=1; doctest
+      passed; crosshair verified 3 files; property_tests passed 3/3 functions with
+      300 examples.
+
+      ```
+
+      Focused core tests:
+
+      ```text
+
+      uv run pytest tests/core/test_spec.py tests/core/test_validate.py tests/core/test_patch.py
+      tests/core/test_variants.py -q
+
+      188 passed in 0.64s
+
+      ```
+
+
+      ## Boundary Proof
+
+      - No Core I/O imports added: worker AST scan reported no os/pathlib/io/subprocess/socket/http/urllib/requests
+      imports in changed core files; invar guard passed.
+
+      - Forbidden registry metadata rejected by new tests covering variant/_registry/active/manifest
+      in canonical validation and patch paths.
+
+      - Property tests used: registry metadata rejection, valid/invalid variant names,
+      patch metadata rejection, dot-notation metadata rejection, digest-change property.
+
+
+      ## Downstream Blocker Ownership
+
+      - Evidence identified downstream shell registry forbidden-field drift and a
+      hard-cutover scanner false positive risk.
+
+      - Planner added batched remediation step: variants_core_contract_20260503.core-downstream-forbidden-field-remediation,
+      and core-gate now depends on it.
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: b2b9f361a0d3cd9816bac36da13e170ddc6b0988.
+
+      - Main squash commit: 019992b.
+
+
+      ## Gaps/Notes
+
+      - Direct step criteria satisfied. Residual downstream blockers are not ignored;
+      they are owned by variants_core_contract_20260503.core-downstream-forbidden-field-remediation
+      before gate.'
   - id: variants_core_contract_20260503.core-gate
     name: core-gate
     status: pending
