@@ -68047,7 +68047,7 @@ phases:
       - Implemented hot-update refresh for prompt/temperature/tool-policy/capabilities/can_spawn.'
   - id: opencode_hardening_wrapper_startup_20260503
     name: Align wrapper startup registration with base ids and active variants
-    status: claimed
+    status: done
     description: Ensure wrapper startup registers OpenCode agents using Larva base
       persona ids, backed by the current registry active variant per base id at startup.
       Agent prompts should contain only the [larva:<id>] placeholder for runtime projection.
@@ -68063,6 +68063,40 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-03T13:53:04.898544+00:00'
+    done_at: '2026-05-03T14:00:04.565268+00:00'
+    evidence: 'Artifact:
+
+      - commit: 6bb5c0f7f2edf41c76edd598ec291613c62793da (merged to main)
+
+
+      Verification:
+
+      - Run: uv run python -m pytest tests/shell/test_opencode_cli.py tests/shell/test_opencode_plugin_contract.py
+      -> 19 passed
+
+      - Run: invar_guard changed=true -> passed
+
+      - Run: invar_guard changed=false -> complete, ok=true
+
+
+      Startup proof:
+
+      - OpenCode startup config registers agents under Larva base ids with only [larva:<id>]
+      prompts.
+
+      - Plugin runtime resolves selected base id every request so active variant prompt
+      changes are picked up without restart.
+
+      - Tests assert no larva-active/global active variant.
+
+      - Tests document/assert restart-required added/deleted ids plus model/provider
+      startup fields.
+
+
+      Merge note:
+
+      - Orchestrator preserved pre-existing local edits in tests/shell/test_opencode_cli.py
+      by stashing/popping them around the branch merge; no user changes were discarded.'
   - id: opencode_hardening_docs_and_matrix_20260503
     name: Sync tests, docs, and behavior matrix
     status: pending
