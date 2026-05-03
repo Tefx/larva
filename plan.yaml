@@ -60311,7 +60311,7 @@ phases:
   steps:
   - id: variants_core_contract_20260503.core-red-contract-tests
     name: core-red-contract-tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -60433,6 +60433,124 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-03T00:24:29.792692+00:00'
+    done_at: '2026-05-03T00:30:20.877715+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — variant is not a
+      PersonaSpec field; variant state belongs only to larva registry boundary; variant
+      names use lower kebab slug style and max length 64.
+
+      - docs/reference/INTERFACES.md — larva must reject unknown top-level fields
+      including variant, _registry, active, manifest; variant names must match ^[a-z0-9]+(-[a-z0-9]+)*$
+      and be at most 64 chars.
+
+      - docs/reference/ARCHITECTURE.md — variant and _registry are registry-local
+      metadata and must never enter canonical PersonaSpec.
+
+      - docs/guides/USAGE.md — variant is rejected inside PersonaSpec and is registry-local
+      metadata; INVALID_VARIANT_NAME is the documented error.
+
+      - docs/guides/USER_GUIDE.md — variant, _registry, active, and manifest state
+      are not PersonaSpec fields.
+
+      - ../opifex/design/final-canonical-contract.md — variant/_registry/active/manifest
+      are invalid inside PersonaSpec; registry-local routing metadata stays outside
+      canonical spec.
+
+      - ../opifex/contracts/persona_spec.schema.json — additionalProperties=false
+      closes the PersonaSpec schema.
+
+      - ../opifex/conformance/shared_surfaces.yaml — larva register/update invariants
+      require lower-kebab max-64 variant names and treat variant as an operation parameter,
+      not PersonaSpec field.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — variant_inside_spec_rejected,
+      variables_inside_spec_rejected, registry_metadata_inside_spec_rejected, bad_variant_name
+      cases.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml — bad
+      variant name, exactly-64 accepted, 65 rejected cases.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml — response
+      is registry metadata, not PersonaSpec.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — bad variant
+      name pattern/max length.
+
+      - ../opifex/conformance/case_matrix/larva/larva.validate.yaml — variant_inside_spec_rejected,
+      variables_inside_spec_rejected, registry metadata fields rejected.
+
+      - ../opifex/conformance/case_matrix/larva/larva.export.yaml — exported PersonaSpec
+      must omit variant, _registry, active, manifest.
+
+      - ../opifex/conformance/case_matrix/larva/larva.update.yaml — patch_variant_field_rejected
+      and bad_variant_name.
+
+      - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml — bad variant name
+      pattern/max length.
+
+      - ../opifex/conformance/case_matrix/larva/larva.delete.yaml — variant is not
+      a delete selector.
+
+      - INVAR.md — Core requires @pre/@post + doctest and no I/O imports.
+
+
+      ## Expected-Red Proof
+
+      - Command run by worker in isolated worktree:
+
+      ```text
+
+      .venv/bin/python -m pytest tests/core/test_spec.py tests/core/test_validate.py
+      tests/core/test_patch.py tests/core/test_variants.py -q
+
+      ```
+
+      - Result: 33 failed, 155 passed. Failures match declared product gaps: CANONICAL_FORBIDDEN_FIELDS
+      lacks variant/_registry/active/manifest; validate_variant_name is not implemented/importable;
+      patch logic does not reject variant/_registry/active/manifest or dot-notation
+      metadata patches; FORBIDDEN_PATCH_FIELDS lacks those fields.
+
+      - Mainline verification after squash merge:
+
+      ```text
+
+      uv run pytest tests/core/test_spec.py tests/core/test_validate.py tests/core/test_patch.py
+      tests/core/test_variants.py -q
+
+      ```
+
+      Result: 33 failed, 155 passed, with the same expected-red failure families.
+
+
+      ## Property/Contract Coverage
+
+      - Added expected-red variant-name property tests using Hypothesis for valid
+      and invalid names.
+
+      - Added forbidden metadata property/contract tests for canonical validation
+      and patch rejection.
+
+      - Doctest target for downstream implementation: validate_variant_name must be
+      implemented with @pre/@post and doctest per INVAR.md.
+
+
+      ## Scope Check
+
+      - Worker changed only tests/core/test_variants.py; product implementation files
+      unchanged.
+
+      - Downstream implementation owner: variants_core_contract_20260503.core-pure-helpers.
+
+
+      ## Merge/Commit Evidence
+
+      - Worker commit: 5b9c13b538af36a1b01e3659b74ef793a5be2667.
+
+      - Main squash commit: fbd7d17.
+
+      - Expected-red semantic completion accepted: observed red matches declared pre-implementation
+      gap and no product implementation files were changed.'
   - id: variants_core_contract_20260503.core-pure-helpers
     name: core-pure-helpers
     status: pending
