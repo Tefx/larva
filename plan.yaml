@@ -11209,7 +11209,7 @@ phases:
       evidence that closes them.
 - id: core_validate_exec
   name: larva.core.validate execution
-  status: done
+  status: in_progress
   depends_on:
   - meta.gate
   - core_validate
@@ -11603,6 +11603,16 @@ phases:
       - ARCHITECTURE.md module larva.core.validate
 
       - INTERFACES.md larva.validate'
+  - id: core_validate.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for core validate
+    status: pending
+    description: Resolve validate error for completed step core_validate.core-validate-verify.
+      Add later same-phase closure evidence that proves the current validate gate
+      is green/OPEN, or records explicit expected-red/non-blocking owner/lifecycle/gate-intersection
+      disposition for the historical FAIL record.
+    verification: Run vectl_validate(check_refs=true) and show the core_validate_exec
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: core_assemble_exec
   name: larva.core.assemble execution
   status: done
