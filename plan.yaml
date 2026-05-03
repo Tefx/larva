@@ -64751,6 +64751,41 @@ phases:
     - variants_surface_cutover_20260503.mcp-cli-python-cutover
     - variants_surface_cutover_20260503.rest-web-cutover
     agent: wiring-auditor
+  - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
+    name: web-assembly-surface-remediation
+    status: pending
+    description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
+      \ failed `variants_surface_cutover_20260503.surface-wiring-audit` blockers before\
+      \ rerunning the audit. This is one batched ownership step for removed assembly/component\
+      \ surface remnants and related web export debt.\n\nBlockers to fix:\n1. Remove\
+      \ lingering Web UI assemble/component affordances and fetches from `src/larva/shell/web_ui.html`,\
+      \ including:\n   - Compose Persona button and `openComposeModal`\n   - `modals.assemble`\n\
+      \   - fetch `/api/components`\n   - fetch `/api/components/constraints/${name}`\n\
+      \   - fetch `/api/personas/assemble`\n   - fetch `/api/components/${type}/${name}`\n\
+      2. Make `POST /api/personas/assemble` return absent/404 rather than 405; fix\
+      \ the dynamic route collision or route ordering that causes the 405.\n3. Dedupe\
+      \ `web.__all__` variant exports if they are still duplicated.\n4. Keep variant\
+      \ controls visible and usable; do not regress registry-local variant flows or\
+      \ put variant inside canonical PersonaSpec.\n\nRequired verification evidence:\n\
+      - REST/Web focused tests covering removed endpoints and variant route/UI behavior.\n\
+      - Full surface tests relevant to MCP/CLI/Python/REST/Web cutover.\n- Product\
+      \ ruff for touched Python files.\n- DOM/static proof showing removed compose/component\
+      \ controls and fetch strings absent from `src/larva/shell/web_ui.html` and variant\
+      \ controls still visible/present.\n- `uv run invar guard --changed`.\n\nDo not\
+      \ alter completed step evidence. If uncertainty remains about canonical shared-surface\
+      \ meaning, cite the referenced opifex contract files and leave a SPEC QUESTION\
+      \ rather than guessing."
+    verification: Green proof must include REST/Web focused tests, full surface tests,
+      product ruff for touched Python files, DOM/static proof that removed compose/component
+      affordances/fetches are absent and variant controls remain visible, plus `uv
+      run invar guard --changed`.
+    evidence_template: Summarize each blocker fixed; list touched files; paste REST/Web
+      focused test output, full surface test output, ruff output for touched Python
+      files, DOM/static proof for web_ui.html, and `uv run invar guard --changed`
+      output.
+    depends_on:
+    - variants_surface_cutover_20260503.rest-web-cutover
+    agent: frontend-engineer-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
