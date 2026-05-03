@@ -47808,7 +47808,7 @@ phases:
   - id: canonical_cutover_final.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical cutover
       final
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step canonical_cutover_final.gate,
       whose evidence contains failed tests. This is a proof-closure/evidence task,
       not product-code implementation. Produce accepted same-phase closure evidence
@@ -47832,6 +47832,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:20:34.723761+00:00'
 - id: post_cutover_debt_remediation
   name: Post-Cutover Debt Remediation
   status: done
