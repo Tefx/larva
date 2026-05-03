@@ -45707,7 +45707,7 @@ phases:
       \ (non-user-facing)"
 - id: canonical_cutover_prep
   name: Canonical Hard-Cut Prep
-  status: done
+  status: in_progress
   gate: Policy pinned and red-first readiness harness defined
   depends_on:
   - web_preset_redesign_followup
@@ -46050,6 +46050,17 @@ phases:
       \ know the target, but harness would not auto-detect removal.\"\n  intersection_with_remaining_gate:\
       \ no\n\n## Gate Decision\nheadline: PASS_WITH_DEBT\nproof_gap_status: NON_BLOCKING\n\
       blocking_status: CLOSED\ngate_open_allowed: true"
+  - id: canonical_cutover_prep.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for canonical cutover
+      prep
+    status: pending
+    description: Resolve validate error for completed step canonical_cutover_prep.gate.
+      Add later same-phase closure evidence proving the prep gate is now green/OPEN
+      with gate_open_allowed=true where applicable, or record explicit expected-red/non-blocking
+      owner/lifecycle/gate-intersection disposition for the historical FAIL.
+    verification: Run vectl_validate(check_refs=true) and show the canonical_cutover_prep
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: canonical_cutover_readiness
   name: Canonical Hard-Cut Readiness Re-Review
   status: done
