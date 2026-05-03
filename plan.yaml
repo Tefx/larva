@@ -60687,12 +60687,14 @@ phases:
       verification_scope: phase-check
 
 
-      Gate review for core variant contracts and helpers.
+      Gate review for core variant contracts, pure helpers, and downstream forbidden-field
+      remediation.
 
 
       Review depth: STANDARD
 
-      Independence: gate-reviewer-tacit must be independent of python-executor implementation.
+      Independence: gate-reviewer-tacit must be independent of python-executor and
+      python-senior-tacit implementation/remediation work.
 
 
       Gate must block if:
@@ -60702,16 +60704,24 @@ phases:
 
       - registry metadata appears in canonical PersonaSpec.
 
+      - shell/registry rejection remains narrower than core forbidden metadata policy.
+
+      - canonical_cutover forbidden-field scan was weakened or broadly excluded downstream
+      consumers.
+
       - Core contains I/O or lacks @pre/@post/doctest coverage for new helpers.
 
       - opifex schema fields were mutated.
 
 
-      Gate Decision Basis required: map each core requirement to evidence_ref and
-      status PROVEN/BLOCKED, with closure path for any NEEDS_TEST/UNPROVEN item.'
+      Gate Decision Basis required: map each core and downstream forbidden-field requirement
+      to evidence_ref and status PROVEN/BLOCKED, with closure path for any NEEDS_TEST/UNPROVEN
+      item.'
     verification: Gate opens only with green focused core tests, green invar guard
-      for changed files, non-vacuous contracts/doctests, and no canonical metadata
-      leakage.
+      for changed files, non-vacuous contracts/doctests, proof that shell/registry
+      rejects registry metadata leakage fields, relevant canonical_cutover scan verification,
+      and confirmation that no shared/opifex schema or conformance authority files
+      were modified.
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -60770,6 +60780,7 @@ phases:
     depends_on:
     - variants_core_contract_20260503.core-red-contract-tests
     - variants_core_contract_20260503.core-pure-helpers
+    - variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     agent: gate-reviewer-tacit
   - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     name: core-downstream-forbidden-field-remediation
