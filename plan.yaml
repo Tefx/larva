@@ -34632,7 +34632,7 @@ phases:
       \ authoritative contract definitions"
   - id: canonical_shell_surfaces.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical shell surfaces
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step canonical_shell_surfaces.gate,
       whose evidence contains gate_open_allowed=false, failed tests, and FAIL. This
       is a proof-closure/evidence task, not product-code implementation. Produce accepted
@@ -34658,6 +34658,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:20:43.642345+00:00'
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: done
