@@ -65238,7 +65238,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.registry-summary-parity-remediation
     name: registry-summary-parity-remediation
-    status: pending
+    status: claimed
     description: 'Fix final audit documentation/implementation parity debt for GET
       /api/registry/personas summary metadata: align implementation with INTERFACES.md
       `{id, active, variants}` by emitting `active` rather than stale `active_variant`
@@ -65266,6 +65266,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-03T06:13:29.333640+00:00'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
