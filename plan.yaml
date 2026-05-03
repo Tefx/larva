@@ -62409,6 +62409,269 @@ phases:
     - variants_registry_impl_20260503.registry-storage-implementation
     - variants_registry_impl_20260503.registry-spec-conformance
     agent: gate-reviewer-tacit
+  - id: variants_registry_impl_20260503.registry-conformance-remediation
+    name: registry-conformance-remediation
+    status: pending
+    description: 'step_type: implementation
+
+      priority: HIGH
+
+      symbolic_testing: true
+
+
+      Batched remediation for the deferred registry spec-conformance blockers. Cover
+      B1, B2, and B3 together; do not split into serial fixes.
+
+
+      Failure context from variants_registry_impl_20260503.registry-spec-conformance:
+
+
+      B1 — Storage layout divergence:
+
+      - Focused tests passed 191/191, but verifier found storage still writes legacy
+      `index.json` and root-level legacy spec projections.
+
+      - Accepted design requires NO `index.json`; registry persistence source of truth
+      is directory scan over `<id>/manifest.json` plus `variants/<variant>.json`.
+
+      - Required remediation: remove or disable legacy `index.json` writes and root-level
+      legacy projections for the registry-local variants path, while preserving any
+      documented backward-compatible read-only migration behavior only if explicitly
+      required by the design.
+
+      - Conformance probes must demonstrate new writes produce only the accepted manifest/variant
+      layout and that directory scan, not `index.json`, is the correctness source.
+
+
+      B2 — Persona id mismatch guard / authority ambiguity:
+
+      - Verifier found no `PERSONA_ID_MISMATCH` symbol and no obvious register surface
+      accepting an explicit base id/path.
+
+      - This intersects `../opifex/conformance/case_matrix/larva/larva.register.yaml`
+      case `id_mismatch_rejected`.
+
+      - Prefer implementation when a real surface exists: if any register/import/store
+      path accepts an explicit base id or filesystem path distinct from the spec payload
+      id, implement the required `PERSONA_ID_MISMATCH` rejection on that surface and
+      add focused proof.
+
+      - If no such real surface exists and the opifex case is genuinely stale/ambiguous
+      for larva''s current public contract, DO NOT invent an ad-hoc API. Produce an
+      explicit resolution artifact in evidence with: authoritative refs read, searched
+      surfaces, why no implementable surface exists, non-intersection evidence for
+      remaining gates, and the exact plan/spec update proposed for acceptance.
+
+
+      B3 — `variant_delete` malformed-name guard:
+
+      - Verifier found malformed variant names return `VARIANT_NOT_FOUND` instead
+      of `INVALID_VARIANT_NAME`.
+
+      - Required remediation: validate bad variant names before lookup so malformed
+      names consistently reject with `INVALID_VARIANT_NAME`.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: cross-layer registry storage/API semantics drifted from authoritative
+      design and opifex conformance cases despite focused tests passing.
+
+      - Symptoms: legacy storage artifacts remain, id-mismatch authority is unresolved
+      or unimplemented, and delete validation precedence is wrong.
+
+      - Why this fix is not surface-level: it must close the storage source-of-truth,
+      public error semantics, and spec-authority disposition together before conformance
+      reruns.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      Each deliverable MUST contain substantive logic that processes its inputs and
+      produces outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Evidence requirements
+
+      For EACH blocker B1/B2/B3 provide:
+
+      1. Before proof: the pre-fix failure or conformance-relevant probe showing the
+      blocker.
+
+      2. Change summary: files/surfaces changed and why they close the root cause.
+
+      3. After proof: focused test/probe output demonstrating the corrected behavior.
+
+      4. Conformance-relevant probe: evidence mapped to the authoritative design/opifex
+      case.
+
+      5. Regression coverage: exact focused tests added/updated.
+
+
+      Also provide:
+
+      - `uv run invar guard --changed` output.
+
+      - Focused test command output for registry storage/delete/register surfaces.
+
+      - For B2 if classified stale/ambiguous: explicit resolution artifact and non-intersection
+      evidence; no ad-hoc behavior added.'
+    verification: '- B1: new registry writes produce `<id>/manifest.json` plus `variants/<variant>.json`
+      and do not write `index.json` or root-level legacy projections for the accepted
+      registry-local variants path.
+
+      - B2: either `PERSONA_ID_MISMATCH` is implemented on a real explicit-base/path
+      register surface with focused red/green proof, or evidence includes an explicit
+      spec-staleness/ambiguity resolution artifact with non-intersection proof and
+      proposed plan/spec update.
+
+      - B3: malformed `variant_delete` variant names reject with `INVALID_VARIANT_NAME`
+      before not-found lookup.
+
+      - Focused registry tests/probes pass and include before/after evidence for all
+      three blockers.
+
+      - `uv run invar guard --changed` completes successfully.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - design/registry-local-variants-and-assembly-removal.md — key passage or "NOT
+      READ: <reason>"
+
+      - docs/reference/INTERFACES.md — key passage or "NOT READ: <reason>"
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — key passage
+      or "NOT READ: <reason>"
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — key passage
+      or "NOT READ: <reason>"
+
+      - ../opifex/conformance/shared_surfaces.yaml — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      ## Batched Remediation Evidence
+
+
+      ### B1 Storage layout
+
+      - Before proof:
+
+      ```text
+
+      <paste failure/probe showing legacy index.json/root projections>
+
+      ```
+
+      - Changes made:
+
+      ```text
+
+      <files and semantic change summary>
+
+      ```
+
+      - After proof:
+
+      ```text
+
+      <paste probe showing manifest/variants layout and no index.json>
+
+      ```
+
+      - Focused tests:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+
+      ### B2 PERSONA_ID_MISMATCH / authority resolution
+
+      - Surface search:
+
+      ```text
+
+      <searched register/import/store surfaces>
+
+      ```
+
+      - Disposition: IMPLEMENTED | SPEC_STALE_AMBIGUOUS
+
+      - If IMPLEMENTED, before/after proof and error symbol evidence:
+
+      ```text
+
+      <proof>
+
+      ```
+
+      - If SPEC_STALE_AMBIGUOUS, resolution artifact:
+
+      ```text
+
+      <authoritative refs, why no implementable surface exists, non-intersection evidence,
+      proposed plan/spec update>
+
+      ```
+
+
+      ### B3 variant_delete bad-name precedence
+
+      - Before proof:
+
+      ```text
+
+      <paste malformed-name returning VARIANT_NOT_FOUND>
+
+      ```
+
+      - After proof:
+
+      ```text
+
+      <paste malformed-name returning INVALID_VARIANT_NAME>
+
+      ```
+
+      - Focused tests:
+
+      ```text
+
+      <commands and output>
+
+      ```
+
+
+      ### Required command outputs
+
+      ```text
+
+      uv run invar guard --changed
+
+      <paste output>
+
+      ```
+
+
+      ### Headline
+
+      PASS | FAIL
+
+
+      ### Residual risk
+
+      none | <explain>'
+    depends_on:
+    - variants_registry_impl_20260503.registry-storage-implementation
+    agent: python-senior-tacit
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
