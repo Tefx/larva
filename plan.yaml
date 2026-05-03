@@ -65235,6 +65235,36 @@ phases:
       ## Residual risk
 
       none'
+  - id: variants_surface_cutover_20260503.registry-summary-parity-remediation
+    name: registry-summary-parity-remediation
+    status: pending
+    description: 'Fix final audit documentation/implementation parity debt for GET
+      /api/registry/personas summary metadata: align implementation with INTERFACES.md
+      `{id, active, variants}` by emitting `active` rather than stale `active_variant`
+      from web_routes, preserving UI compatibility as needed.'
+    verification: Static/source check and focused web tests show `/api/registry/personas`
+      returns `active` metadata consistent with docs; final wiring audit can return
+      PASS with no residual risk.
+    evidence_template: '## Registry summary parity fixed
+
+      - <paths and summary>
+
+
+      ## Verification
+
+      ```text
+
+      <commands and outputs>
+
+      ```
+
+
+      ## Residual risk
+
+      none | <list>'
+    depends_on:
+    - variants_surface_cutover_20260503.contrib-web-variant-parity-remediation
+    agent: python-senior-tacit
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
