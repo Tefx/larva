@@ -68292,4 +68292,4 @@ phases:
       Commands/tests: <>. Blocking issues: none or linked follow-up step.'
     depends_on:
     - opencode_hardening_final_gate_20260503
-    agent: gate-reviewer-tacit
+    agent: gate-reviewer
