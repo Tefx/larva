@@ -41,14 +41,6 @@ class InvalidConfirmError(TypedDict):
     message: str
 
 
-class IndexReadError(TypedDict):
-    """Failure reading or decoding ``index.json`` from registry root."""
-
-    code: Literal["REGISTRY_INDEX_READ_FAILED"]
-    message: str
-    path: str
-
-
 class SpecReadError(TypedDict):
     """Failure reading or decoding stored PersonaSpec data."""
 
@@ -68,7 +60,7 @@ class WriteFailureError(TypedDict):
 
 
 class UpdateFailureError(TypedDict):
-    """Failure updating ``index.json`` for persisted persona digest."""
+    """Failure updating registry-local metadata for a persisted persona."""
 
     code: Literal["REGISTRY_UPDATE_FAILED"]
     message: str
@@ -143,7 +135,6 @@ RegistryError: TypeAlias = (
     MissingPersonaError
     | InvalidPersonaIdError
     | InvalidConfirmError
-    | IndexReadError
     | SpecReadError
     | WriteFailureError
     | UpdateFailureError
@@ -156,15 +147,11 @@ RegistryError: TypeAlias = (
 )
 """Typed shell error surface for registry persistence operations."""
 
-RegistryIndex: TypeAlias = dict[str, str]
-"""Canonical ``index.json`` mapping from persona id to spec_digest."""
-
-
 class RegistryStore(Protocol):
     """Authoritative shell-side contract for canonical PersonaSpec storage."""
 
     def save(self, spec: PersonaSpec, variant: str | None = None) -> Result[None, RegistryError]:
-        """Persist one canonical PersonaSpec and update digest index."""
+        """Persist one canonical PersonaSpec variant and manifest metadata."""
         ...
 
     def get_variant(self, persona_id: str, variant: str) -> Result[PersonaSpec, RegistryError]:
@@ -196,7 +183,6 @@ class RegistryStore(Protocol):
 
         Behavioral contract:
         - New registry-local storage removes the whole ``<id>/`` directory.
-        - Legacy flat-file records may be removed as read-only migration cleanup.
         - Missing ids MUST surface ``PERSONA_NOT_FOUND``.
         """
         ...

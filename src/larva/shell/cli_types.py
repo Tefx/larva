@@ -17,7 +17,6 @@ EXIT_CRITICAL: CliExitCode = 2
 
 CommandName = Literal[
     "validate",
-    "assemble",
     "register",
     "resolve",
     "clone",
@@ -27,8 +26,6 @@ CommandName = Literal[
     "export",
     "update",
     "update-batch",
-    "component list",
-    "component show",
 ]
 
 

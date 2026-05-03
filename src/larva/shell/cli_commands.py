@@ -22,16 +22,12 @@ from larva.shell.cli_helpers import (
     _critical_error,
     _map_facade_error,
     _render_payload_for_text,
-    _write_output_json,
     render_validation_report_text,
 )
 from larva.shell.registry import CLEAR_CONFIRMATION_TOKEN
-from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
     from larva.app.facade_types import (
-        ActivatedVariant,
-        AssembleRequest,
         BatchUpdateResult,
         ClearedRegistry,
         DeletedPersona,
@@ -41,8 +37,6 @@ if TYPE_CHECKING:
     )
     from larva.core.spec import PersonaSpec
     from larva.core.validation_contract import ValidationReport
-    from larva.shell.cli_helpers import CliExitCode
-    from larva.shell.components import ComponentStore
 
 
 def _validation_success_result(
@@ -95,66 +89,6 @@ def validate_command(
     if report["valid"]:
         return _validation_success_result(report, as_json=as_json)
     return _validation_failure_result(report, as_json=as_json)
-
-
-# @shell_complexity: shell boundary coordinates optional file output and dual text/json projections.
-def _assemble_success_result(
-    payload: dict[str, object],
-    *,
-    as_json: bool,
-    output_path: str | None,
-) -> Result[CliCommandResult, CliFailure]:
-    if output_path is not None:
-        write_result = _write_output_json(output_path, payload)
-        if isinstance(write_result, Failure):
-            return _assemble_failure_result(
-                write_result.failure(),
-                exit_code=EXIT_ERROR,
-                as_json=as_json,
-            )
-
-    cli_result: CliCommandResult = {
-        "exit_code": EXIT_OK,
-        "stdout": ""
-        if output_path is not None
-        else _render_payload_for_text("assemble", payload).unwrap(),
-    }
-    if as_json:
-        cli_result["json"] = {"data": payload}
-    return Success(cli_result)
-
-
-def _assemble_failure_result(
-    error_envelope: JsonErrorEnvelope,
-    *,
-    exit_code: CliExitCode,
-    as_json: bool,
-) -> Result[CliCommandResult, CliFailure]:
-    failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        failure["stderr"] = f"Assembly failed: {error_envelope['message']}\n"
-    return Failure(failure)
-
-
-def assemble_command(
-    request: AssembleRequest,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-    output_path: str | None = None,
-) -> Result[CliCommandResult, CliFailure]:
-    """Assemble a persona from components."""
-    result = facade.assemble(request)
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        return _assemble_success_result(
-            payload,
-            as_json=as_json,
-            output_path=output_path,
-        )
-
-    error_envelope = _map_facade_error(result.failure()).unwrap()
-    return _assemble_failure_result(error_envelope, exit_code=EXIT_ERROR, as_json=as_json)
 
 
 def register_command(
@@ -516,84 +450,3 @@ def update_batch_command(
 
 
 # @shell_complexity: command-level envelope mapping requires explicit text/json branches
-def component_list_command(
-    *, as_json: bool, component_store: ComponentStore
-) -> Result[CliCommandResult, CliFailure]:
-    """List available components."""
-    from larva.shell.cli_helpers import _map_component_error
-
-    try:
-        result = query_component_list(
-            component_store,
-            operation="cli.component_list",
-        )
-    except Exception as error:
-        error_envelope, exit_code = _map_component_error(error).unwrap()
-        failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-        if not as_json:
-            failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    if isinstance(result, Success):
-        payload = dict(result.unwrap())
-        cli_result: CliCommandResult = {
-            "exit_code": EXIT_OK,
-            "stdout": _render_payload_for_text("component list", payload).unwrap(),
-        }
-        if as_json:
-            cli_result["json"] = {"data": payload}
-        return Success(cli_result)
-
-    error_envelope, exit_code = _map_component_error(result.failure()).unwrap()
-    mapped_failure: CliFailure = {"exit_code": exit_code, "error": error_envelope}
-    if not as_json:
-        mapped_failure["stderr"] = f"Component list failed: {error_envelope['message']}\n"
-    return Failure(mapped_failure)
-
-
-# @shell_complexity: target parsing + loader routing requires explicit branches
-def component_show_command(
-    component_ref: str,
-    *,
-    as_json: bool,
-    component_store: ComponentStore,
-) -> Result[CliCommandResult, CliFailure]:
-    """Show a specific component by ref (type/name)."""
-    from larva.shell.cli_helpers import (
-        _component_show_invalid_target,
-        cli_exit_code_for_error,
-    )
-
-    component_type, separator, component_name = component_ref.partition("/")
-    if separator == "" or component_type == "" or component_name == "":
-        failure = _component_show_invalid_target(component_ref).unwrap()
-        if not as_json:
-            error_envelope = failure.get("error", _critical_error("unknown error").unwrap())
-            failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(failure)
-
-    query_result = query_component(
-        component_store,
-        component_type=component_type,
-        component_name=component_name,
-        operation="cli.component_show",
-    )
-    if isinstance(query_result, Failure):
-        error_envelope = query_result.failure()
-        mapped_failure: CliFailure = {
-            "exit_code": cli_exit_code_for_error(error_envelope),
-            "error": error_envelope,
-        }
-        if not as_json:
-            mapped_failure["stderr"] = f"Component show failed: {error_envelope['message']}\n"
-        return Failure(mapped_failure)
-
-    payload = cast("dict[str, object]", dict(query_result.unwrap()))
-
-    cli_result: CliCommandResult = {
-        "exit_code": EXIT_OK,
-        "stdout": _render_payload_for_text("component show", payload).unwrap(),
-    }
-    if as_json:
-        cli_result["json"] = {"data": payload}
-    return Success(cli_result)

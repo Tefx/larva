@@ -1,8 +1,13 @@
 # larva
 
-larva is a PersonaSpec toolkit for LLM agent systems. It gives you one place to
-validate, normalize, register, resolve, clone, update, and export
-canonical persona definitions.
+`larva` is the PersonaSpec toolkit for the opifex stack. It validates,
+normalizes, registers, resolves, updates, exports, and projects persona specs.
+
+> Status: this document describes the implemented registry-local variants
+> surface. Assembly/component public surfaces have been removed.
+
+The canonical PersonaSpec contract authority is `../opifex`. larva consumes that
+contract; it does not redefine it.
 
 ## What larva is for
 
@@ -11,8 +16,9 @@ of ad hoc prompt files scattered across tools and repos.
 
 - Validate PersonaSpec JSON before it reaches runtime
 - Store canonical personas in a local registry under `~/.larva/`
+- Manage registry-local variants without changing the PersonaSpec schema
 - Resolve, clone, update, delete, and export personas across tools
-- Project registered personas into OpenCode with a temporary wrapper config
+- Project the active variant of each registered persona into OpenCode
 - Expose the same operations through MCP, CLI, Python, and a small web UI
 
 larva does not run agents, call LLMs, enforce gateway policy, or manage memory.
@@ -20,52 +26,38 @@ larva does not run agents, call LLMs, enforce gateway policy, or manage memory.
 
 ## Install
 
-Install into your Python environment:
-
 ```bash
 pip install larva
 ```
 
-Or run larva without a persistent install:
+Development checkout:
 
 ```bash
-uvx larva --help
+uv sync
+uv run larva --help
 ```
 
 ## Quick start
 
-The example below creates a minimal persona, validates it, stores it in the
-local registry, and resolves the canonical output back out.
+Create a complete PersonaSpec JSON file:
 
-Create a minimal persona:
-
-```bash
-cat <<'EOF' > code-reviewer.json
+```json
 {
+  "spec_version": "0.1.0",
   "id": "code-reviewer",
-  "description": "Reviews code for correctness and style",
+  "description": "Reviews code changes with read-focused tooling.",
   "prompt": "You are a senior code reviewer.",
-  "model": "openai/gpt-5.4",
-  "capabilities": {"shell": "read_only"},
-  "spec_version": "0.1.0"
+  "model": "openai/gpt-5.5",
+  "capabilities": {"shell": "read_only"}
 }
-EOF
 ```
 
-Validate, register, and resolve it:
+Then validate, register, and resolve:
 
 ```bash
 larva validate code-reviewer.json
 larva register code-reviewer.json
-larva resolve code-reviewer
-```
-
-Clone and modify it for experimentation:
-
-```bash
-larva clone code-reviewer code-reviewer-exp
-larva update code-reviewer-exp --set model=openai/gpt-5.4-pro
-larva list --json
+larva resolve code-reviewer --json
 ```
 
 ## Core concepts
@@ -74,86 +66,75 @@ larva list --json
 
 The main larva artifact is a flat JSON object called `PersonaSpec`.
 
-The canonical PersonaSpec schema is defined by `opifex`. larva validates
-and normalizes PersonaSpec as a downstream admission and projection
-layer, not the contract authority.
-
-```json
-{
-  "spec_version": "0.1.0",
-  "id": "code-reviewer",
-  "description": "Reviews code changes with read-focused tooling.",
-  "prompt": "You are a senior code reviewer...",
-  "model": "openai/gpt-5.4",
-  "capabilities": {
-    "shell": "read_only",
-    "filesystem": "read_write"
-  },
-  "spec_digest": "sha256:..."
-}
-```
-
 Key rules:
 
 - `id` is required and must be flat kebab-case
+- `prompt` is opaque executable text; larva stores and validates it as text and
+  does not parse placeholders or infer runtime behavior from it
 - `spec_version` is schema identity, not persona revisioning
 - v1 pins `spec_version` to `"0.1.0"`
 - `spec_digest` is recomputed by larva from canonical content
-- there is no inheritance or `base:` field in canonical output
+- there is no inheritance, `base:`, or `variant` field in canonical output
 
 ### Registry-local variants
 
-Registered personas can have registry-local variants. Variant names, active
-variant pointers, and registry metadata are shell/registry surfaces; they are
-not PersonaSpec fields and are never admitted into canonical PersonaSpec JSON.
+Variants are local registry metadata, not PersonaSpec fields. They let one base
+persona id have multiple stored configurations while agent-facing list/resolve
+surfaces keep the base id stable.
+
+```text
+~/.larva/
+  registry/
+    code-reviewer/
+      manifest.json          # {"active": "default"}
+      variants/
+        default.json         # PersonaSpec with id == "code-reviewer"
+        tacit.json           # PersonaSpec with id == "code-reviewer"
+```
+
+Important behavior:
+
+- `larva list` shows base persona ids, not variant metadata
+- `larva resolve code-reviewer` returns the active variant as a canonical PersonaSpec
+- `larva resolve code-reviewer --variant tacit` returns a specific variant
+- `variant` is passed as an operation parameter or registry envelope metadata;
+  it is never accepted inside a PersonaSpec object
+- `manifest.json` stores only the active pointer (`{"active": "default"}`);
+  missing or corrupt manifests fail closed instead of being auto-created
+- assembly/component inputs are removed; register full canonical PersonaSpecs directly
 
 ## Interfaces
 
 ### MCP
 
-Primary programmatic surface:
-
 ```text
 larva_validate(spec)                    -> ValidationReport
-larva_register(spec)                    -> {id, registered}
-larva_resolve(id, overrides?)           -> PersonaSpec
+larva_register(spec, variant?)          -> {id, registered}
+larva_resolve(id, overrides?, variant?) -> PersonaSpec
 larva_list()                            -> [{id, description, spec_digest, model}]
-larva_variant_list(id)                  -> {id, active, variants}
-larva_variant_activate(id, variant)     -> {id, active}
-larva_variant_delete(id, variant)       -> {id, deleted}
-larva_update(id, patches)               -> PersonaSpec
+larva_update(id, patches, variant?)     -> PersonaSpec
 larva_update_batch(where, patches, dry_run?) -> {items, matched, updated}
 larva_clone(source_id, new_id)          -> PersonaSpec
 larva_delete(id)                        -> {id, deleted}
 larva_clear(confirm)                    -> {cleared, count}
 larva_export(all?, ids?)                -> [PersonaSpec, ...]
+larva_variant_list(id)                  -> registry variant metadata
+larva_variant_activate(id, variant)     -> {id, active}
+larva_variant_delete(id, variant)       -> {id, variant, deleted}
 ```
 
-For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
-`side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
+Removed MCP tools:
 
-Start larva as an MCP server over stdio:
+```text
+larva_assemble
+larva_component_list
+larva_component_show
+```
+
+Start larva as an MCP server:
 
 ```bash
 larva mcp
-```
-
-Or with `uvx`:
-
-```bash
-uvx larva mcp
-```
-
-If you want the packaged local web UI/runtime instead of stdio, start:
-
-```bash
-larva serve
-```
-
-Or with `uvx`:
-
-```bash
-uvx larva serve
 ```
 
 ### CLI
@@ -163,143 +144,66 @@ larva validate <spec.json> [--json]
 larva register <spec.json> [--variant <name>] [--json]
 larva resolve <id> [--variant <name>] [--override key=value]... [--json]
 larva list [--json]
-larva variant list <id> [--json]
-larva variant activate <id> <variant> [--json]
-larva variant delete <id> <variant> [--json]
-larva update <id> --set key=value [--set ...] [--json]
+larva update <id> [--variant <name>] --set key=value [--set ...] [--json]
 larva clone <source-id> <new-id> [--json]
 larva delete <id> [--json]
 larva clear --confirm "CLEAR REGISTRY" [--json]
 larva export --all [--json]
 larva export --id <id> [--id <id>]... [--json]
+larva variant list <id> [--json]
+larva variant activate <id> <variant> [--json]
+larva variant delete <id> <variant> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
 ```
-
-`larva opencode` launches the real OpenCode CLI with a temporary dynamic config
-built from the larva registry. Arguments after `opencode` are forwarded to
-OpenCode; a leading `--` is optional and is stripped before forwarding.
-
-## Repo-local CI gate
-
-Source basis:
-
-- `design/opifex-frozen-authority-packet.json`
-- `../opifex/design/final-canonical-contract.md`
-- `../opifex/design/cross-repo-followup-packet.md`
-- `../opifex/contracts/persona_spec.schema.json`
-- `../opifex/conformance/shared_surfaces.yaml`
-- `../opifex/conformance/case_matrix/larva/*`
-
-Trusted repo-local commands:
-
-```bash
-uv run pytest -q tests/shell/test_repo_local_ci_gate.py
-uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root ../opifex
-uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
-```
-
-These checks are intentionally opifex-authoritative. They fail closed on:
-
-- floating or mismatched frozen `opifex` authority refs
-- canonical PersonaSpec schema mirror drift
-- capabilities-only admission drift as derived from `opifex` `shared_surfaces` + `case_matrix` authority (`capabilities` required; `tools` and `side_effect_policy` forbidden)
-- authority-derived shared MCP surface drift, including missing shared tool registration
-- dotted or non-`snake_case` MCP tool naming
-- repo-facing docs drift away from shared naming and invalid-field wording
 
 ### Python API
 
 ```python
 from larva.shell.python_api import (
-    assemble,
-    clear,
-    clone,
-    component_list,
-    component_show,
-    delete,
-    export_all,
-    export_ids,
-    list,
+    validate,
     register,
     resolve,
     update,
-    validate,
+    variant_list,
+    variant_activate,
+    variant_delete,
 )
 ```
 
-The Python API mirrors the main CLI and MCP operations and returns the same
-canonical PersonaSpec shapes.
-
-The package root is not the authoritative Python API surface. Keep imports on
-`larva.shell.python_api`; `larva.__init__` remains metadata-only (`__version__`)
-unless guard policy and architecture docs are updated together.
-
-## Other surfaces
-
-### Web UI
-
-The authoritative packaged startup path is:
+## Web UI
 
 ```bash
 larva serve
 ```
 
-`larva serve` binds `127.0.0.1:7400` by default, accepts `--port` and
-`--no-open`, and serves the packaged single-file UI plus the normative REST
-surface documented in `docs/reference/INTERFACES.md`.
+The packaged web UI shows base persona ids and active variant state for human
+management. Registry variant endpoints return `{_registry, spec}` envelopes;
+`_registry` is local metadata and `spec` is canonical PersonaSpec.
 
-The repository also includes a supported contributor convenience entrypoint for
-local review work:
-
-```bash
-pip install fastapi uvicorn
-python contrib/web/server.py
-```
-
-Scope note:
-
-- `larva serve` is the canonical packaged web runtime users should target
-- `python contrib/web/server.py` is supported for contributor/local-review use, not the canonical packaged entrypoint
-- documented REST endpoints are the verified contract surface
-- the prompt copy button is documented only as browser convenience UI behavior
-- batch update is documented only for the contrib runtime, not for `larva serve`
-- component query semantics are shared across transports and should be centralized outside adapter-local envelopes
-- CLI, MCP, Web, and Python API keep their own rendering, error envelopes, and runtime hooks
-- preserved runnable liveness proof for both entrypoints lives in `tests/shell/artifacts/web_runtime_liveness.md`
-
-### OpenCode plugin
-
-larva ships an OpenCode plugin plus a thin wrapper that exposes registered larva
-personas as OpenCode agents.
+## OpenCode plugin
 
 ```bash
-# TUI with every registry persona available as --agent <id>
 larva opencode
-
-# TUI pinned to a persona
 larva opencode --agent python-senior
-
-# Non-interactive OpenCode run
-larva opencode run "check this bug" --agent python-senior
-
-# Optional explicit separator; useful when a future larva flag could conflict
-larva opencode -- run "check this bug" --agent python-senior
 ```
 
-The wrapper injects `OPENCODE_CONFIG_CONTENT` for the child OpenCode process, so
-personas are visible early enough for OpenCode's `--agent <persona-id>`
-validation. It does **not** write `.opencode/opencode.json`, and it does not run
-agents itself; after config assembly it execs the real `opencode` binary.
+`larva opencode` launches the real OpenCode CLI with a temporary dynamic config
+built from the active variant of each base persona id in the larva registry. The
+OpenCode agent name is the Larva base persona id; inactive registry-local
+variants are not projected as separate OpenCode agents.
 
-Plugin path resolution:
+The wrapper/plugin path uses placeholder agents at startup and replaces each
+`[larva:<id>]` placeholder inside OpenCode's system-prompt transform before a
+model request. This gives persona prompts system-prompt strength rather than
+ordinary MCP/tool-result context.
 
-1. `LARVA_OPENCODE_PLUGIN=/absolute/path/to/larva.ts`
-2. bundled wheel resource at `larva/shell/opencode_plugin/larva.ts`
-3. source-tree lookup for `contrib/opencode-plugin/larva.ts`
-
-See `contrib/opencode-plugin/README.md` for plugin internals and tool-policy
-mapping.
+The hardening contract for this path is: existing persona ids refresh by
+re-resolving the selected id, cache is performance-only, raw placeholders must
+never reach the model, and no `/larva refresh` command is required. Adding or
+deleting persona ids still requires restarting `larva opencode` so OpenCode can
+see the new agent list. See `contrib/opencode-plugin/README.md` for current
+behavior, target refresh semantics, and failure handling.
 
 ## Architecture
 
@@ -311,23 +215,14 @@ larva uses a strict layered structure enforced by Invar.
 | App | `src/larva/app/` | Use-case orchestration |
 | Shell | `src/larva/shell/` | CLI, MCP, filesystem, web adapters |
 
-Structural guardrails frozen for the remediation campaign:
-
-- `src/larva/shell/web.py` is the authoritative packaged REST surface
-- `contrib/web/server.py` is an extension consumer, not the contract owner
-- `src/larva/core/patch.py` dotted-path patch semantics stay separate from
-  `src/larva/app/facade.py` dotted lookup semantics unless later evidence says otherwise
-
 ## Read next
-
-If you are just getting started, read `README.md` then
-`docs/guides/USER_GUIDE.md`.
 
 - `docs/README.md` - documentation map by category
 - `docs/guides/USER_GUIDE.md` - detailed human-oriented usage guide
 - `docs/guides/USAGE.md` - agent-oriented operational guide
 - `docs/reference/INTERFACES.md` - public interface specification
 - `docs/reference/ARCHITECTURE.md` - module boundaries and dependency design
+- `design/registry-local-variants-and-assembly-removal.md` - accepted design for variant routing and assembly removal
 - `docs/adr/ADR-001-spec-version-boundary.md` - `spec_version` design decision
 - `docs/adr/ADR-002-capability-intent-without-runtime-policy.md` - capability intent model
 - `docs/adr/ADR-003-canonical-requiredness-authority.md` - canonical requiredness authority

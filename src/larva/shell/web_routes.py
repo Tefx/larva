@@ -189,6 +189,9 @@ async def _api_register_persona(request: Request) -> WebResult[dict[str, Any]]:
     request_body = body.unwrap()
     spec = request_body.get("spec", request_body)
     if "spec" in request_body:
+        unknown_wrapper = reject_unknown_params(request_body, {"spec"})
+        if isinstance(unknown_wrapper, Failure):
+            return Failure(_validation_issue_response(unknown_wrapper).unwrap())
         spec_result = require_type(request_body, "spec", dict, "object")
         if isinstance(spec_result, Failure):
             issue = spec_result.failure()
@@ -280,7 +283,7 @@ async def _api_registry_personas() -> WebResult[dict[str, Any]]:
                 "id": p["id"],
                 "description": p.get("description", ""),
                 "model": p.get("model", ""),
-                "active_variant": meta["active"],
+                "active": meta["active"],
                 "variants": meta["variants"],
             })
         return Success({"data": summaries})
@@ -403,6 +406,7 @@ def _register_persona_routes(app: FastAPI) -> WebResult[None]:
         return _send(await _api_variant_delete(persona_id, variant))
 
     async def assemble_removed() -> Any:
+        """Explicit 404 tombstone for removed assembly endpoint to fail-closed."""
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Assemble endpoint removed")
 

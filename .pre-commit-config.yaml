@@ -16,10 +16,10 @@ repos:
     args:
     - -c
     - "RULE_FILES=\"rule_meta.py rules.py contracts.py purity.py pyproject.toml\"\n\
-      STAGED=$(git diff --cached --name-only)\nFULL=false\nfor f in $RULE_FILES; do\n\
+      STAGED=$(git diff --cached --name-only)\nDELETED=$(git diff --cached --name-only --diff-filter=D)\nFULL=false\nif [ -n \"$DELETED\" ]; then FULL=true; fi\nfor f in $RULE_FILES; do\n\
       \  if echo \"$STAGED\" | grep -qE \"(^|/)${f}$\"; then FULL=true; break; fi\n\
       done\nif [ \"$FULL\" = true ]; then\n  echo \"\u26A0\uFE0F  Rule change detected\
-      \ - running FULL guard\"\n  invar guard\nelse\n  invar guard --changed\nfi\n"
+      \ - running FULL guard\"\n  invar guard --all\nelse\n  invar guard --changed\nfi\n"
     language: system
     pass_filenames: false
     stages:

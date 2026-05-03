@@ -13,7 +13,7 @@ Out of scope for this contract step:
 - MCP server runtime startup (stdio/SSE)
 - MCP protocol frame handling
 - facade invocation implementation
-- registry/component logic
+- registry logic
 
 Boundary citations:
 - ARCHITECTURE.md :: Module: ``larva.shell.mcp``
@@ -51,7 +51,6 @@ if TYPE_CHECKING:
         VariantMetadata,
     )
     from larva.core.spec import PersonaSpec
-    from larva.shell.components import ComponentStore
 
 
 # -----------------------------------------------------------------------------
@@ -73,26 +72,19 @@ class MCPHandlers(MCPParamValidationMixin):
     3. Delegates to the appropriate facade method
     4. Returns MCP-formatted response or error envelope
 
-    The handlers preserve falsey/null override values in resolve/assemble
+    The handlers preserve falsey/null override values in resolve
     and ensure error envelopes have: code, numeric_code, message, details.
-
-    Boundary Split (pinned for component operations):
-    - Malformed/unknown/type-invalid params => _malformed_params_error (INTERNAL, numeric 10)
-    - Unsupported component type or component lookup failures => COMPONENT_NOT_FOUND (numeric 105)
     """
 
     _facade: Any
-    _components: ComponentStore | None
 
-    def __init__(self, facade: LarvaFacade, components: ComponentStore | None = None) -> None:
-        """Initialize handlers with a facade instance and optional component store.
+    def __init__(self, facade: LarvaFacade) -> None:
+        """Initialize handlers with a facade instance.
 
         Args:
             facade: The app-layer facade to delegate operations to.
-            components: Optional component store for component operations.
         """
         self._facade = facade
-        self._components = components
 
     # -------------------------------------------------------------------------
     # Inlined implementation methods (formerly in mcp_handler_ops module)

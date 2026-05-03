@@ -7,21 +7,11 @@ from typing import TYPE_CHECKING, Protocol, TypeAlias, TypedDict
 if TYPE_CHECKING:
     from returns.result import Result
 
-    from larva.core.spec import AssemblyInput, PersonaSpec
+    from larva.core.spec import PersonaSpec
     from larva.core.validation_contract import ValidationReport
 
 PersonaSpecList: TypeAlias = list["PersonaSpec"]
 StrList: TypeAlias = list[str]
-
-
-class AssembleRequest(TypedDict, total=False):
-    id: str
-    description: str
-    prompts: list[str]
-    toolsets: list[str]
-    constraints: list[str]
-    model: str
-    overrides: dict[str, object]
 
 
 class RegisteredPersona(TypedDict):
@@ -83,11 +73,6 @@ class LarvaError(TypedDict):
 
 class SpecModule(Protocol):
     PersonaSpec: type[PersonaSpec]
-    AssemblyInput: type[AssemblyInput]
-
-
-class AssembleModule(Protocol):
-    def assemble_candidate(self, data: AssemblyInput) -> PersonaSpec: ...
 
 
 class ValidateModule(Protocol):
@@ -104,8 +89,6 @@ class NormalizeModule(Protocol):
 
 class LarvaFacade(Protocol):
     def validate(self, spec: PersonaSpec) -> ValidationReport: ...
-
-    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]: ...
 
     def register(
         self, spec: PersonaSpec, variant: str | None = None

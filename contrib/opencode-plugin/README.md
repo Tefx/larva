@@ -2,12 +2,13 @@
 
 Bridges larva's PersonaSpec registry to opencode's agent system.
 
-## How it works
+## Current behavior
 
 ```
 Launcher (`larva opencode`):
   1. Read currently active registered personas through larva's normal facade/export path
-  2. Build a temporary OPENCODE_CONFIG_CONTENT with placeholder agents keyed by Larva base ids
+  2. Build a temporary OPENCODE_CONFIG_CONTENT with one placeholder agent per
+     Larva base persona id
   3. Inject this plugin and exec the real opencode binary
 
 Plugin startup (config hook):
@@ -20,6 +21,7 @@ Runtime (per API call):
   chat.params → detect selected larva agent → resolve that id → apply temperature (if set)
   system.transform → replace placeholder with full prompt + watermark
   tool.execute.before → apply current tool-policy/permission denial for the selected id
+  cache refresh → last-known-good performance state only; see the hardening contract below
 ```
 
 `export --all` is **not** runtime semantic authority for prompt contents. It is
@@ -30,6 +32,62 @@ permission refreshes use `larva resolve <id> --json` for the selected base id.
 The launcher exists because some OpenCode versions validate `--agent` before
 plugin config hooks finish. Early `OPENCODE_CONFIG_CONTENT` injection makes
 `--agent <larva-id>` visible without writing `.opencode/opencode.json`.
+
+There is no `larva-active` alias and no process-global active persona. The
+OpenCode agent name is the Larva base persona id. Registry-local variants remain
+Larva registry metadata: `larva resolve <id>` returns that id's active variant as
+a canonical PersonaSpec, and the OpenCode wrapper projects the active variant for
+each base persona id.
+
+## Runtime refresh hardening contract
+
+This section is the implementation contract for hardening the wrapper/plugin
+path. Persona prompts must be injected at OpenCode's system-prompt transform
+layer, not as MCP/tool-result context. The plugin must treat caching only as a
+performance optimization:
+
+1. Each model request identifies the selected Larva id from the placeholder
+   already present in the OpenCode system prompt.
+2. The plugin checks whether the cached spec for that id is still current. Prefer
+   a cheap digest/mtime/stat check; if that is unavailable, use a very short
+   cache window or allow disabling the cache for development.
+3. On cache miss, stale cache, or digest change, resolve only the selected id
+   (`larva resolve <id> --json` or equivalent). Do not refresh one selected id by
+   running `larva export --all --json` unless this is a fallback path.
+4. If resolve succeeds, inject the latest `prompt` and update request-scoped
+   state such as supported `model_params`, capability-derived runtime policy,
+   and tool-policy data.
+5. If resolve fails but a last-known-good prompt exists, inject that prompt with
+   a stale watermark and write a debug warning.
+6. If resolve fails and no last-known-good prompt exists, fail closed. Never send
+   the raw `[larva:<id>]` placeholder to the model.
+
+Concurrent requests for the same id must share one in-flight resolve operation
+instead of spawning multiple Larva CLI processes.
+
+### Acceptance criteria
+
+| ID | Criterion |
+|----|-----------|
+| AC-Per-Id-Resolve | Runtime cache miss, stale cache, or digest change resolves the selected id only, using `larva resolve <id> --json` or an equivalent single-id API. Startup may still use `export --all`. |
+| AC-Placeholder-Never-Leaks | No final system prompt sent to OpenCode's model provider contains a raw `[larva:<id>]` placeholder. |
+| AC-Last-Known-Good | If latest resolve fails and a previous prompt exists for the id, inject that last-known-good prompt with a stale watermark and write a debug warning. |
+| AC-Fail-Closed | If latest resolve fails and no previous prompt exists, prevent the model request from proceeding with a degraded prompt. The plugin should halt the request pipeline with an explicit Larva resolve error, or use an equally safe fail-closed mechanism that cannot be mistaken for persona instructions. |
+| AC-In-Flight-Dedup | Concurrent runtime resolves for the same id share one in-flight operation. |
+| AC-Watermark | Normal prompts use `<!-- larva-spec: <id>@<short-digest> -->`; stale prompts use `<!-- larva-spec: <id>@<short-digest> stale -->`. The projection layer does not add extra identity instructions. |
+| AC-Cache-Control | If a time-based cache fallback remains, `LARVA_OPENCODE_CACHE_TTL_MS=0` disables it for development. Digest/mtime/stat invalidation is preferred over TTL. |
+
+### Hot-update boundary
+
+| PersonaSpec / policy input | Runtime refresh target | Notes |
+|----------------------------|------------------------|-------|
+| `prompt` | yes | Injected via `system.transform`. |
+| `model_params.temperature` | yes, if OpenCode exposes the request field | Applied via `chat.params` when explicitly set. |
+| `tool-policy.json` | yes | Re-read when its mtime/digest changes. |
+| `capabilities` / `can_spawn` runtime enforcement | target yes | Runtime hooks can block tools; startup OpenCode permission metadata may remain stale. |
+| `description` | no | OpenCode displays startup agent metadata. |
+| `model` / provider | usually no | Treat as startup-bound unless OpenCode supports per-request model override for the selected agent. |
+| Added or deleted persona ids | no | Requires restarting `larva opencode` so OpenCode sees the new agent list. |
 
 ## Install
 
@@ -116,6 +174,11 @@ Explicit non-goals:
 - no global active variant shared across concurrent requests
 - no use of `larva export --all` as runtime semantic authority for prompt refresh
 
+Debug logging should remain opt-in. The hardening implementation should use
+`LARVA_OPENCODE_DEBUG=1` for injection evidence such as selected id,
+digest/source, stale fallback, or resolve errors. Normal successful refreshes
+should be silent.
+
 ## Permission mapping
 
 ### From PersonaSpec (larva)
@@ -124,6 +187,7 @@ Explicit non-goals:
 |-------------|---------------------|-------|
 | `capabilities: {fs: "read_only", git: "read_only"}` | `edit: deny, bash: deny` | If ALL capabilities are none/read_only |
 | `capabilities: {fs: "read_write"}` | no restrictions | ANY read_write/destructive = no restriction |
+| `capabilities: {}` or absent | no restrictions | No postures declared; external runtime policy may still apply |
 | `can_spawn: false` | `task: deny` | |
 
 `side_effect_policy` is not a live PersonaSpec input here. Larva rejects it at
@@ -179,12 +243,22 @@ larva canonical boundary and must not be treated as PersonaSpec input.
 | `model_params.max_tokens` | opencode manages per-provider |
 | `compaction_prompt` | opencode has its own compaction system |
 
-## Watermark
+## Target watermark format
 
-Every larva-loaded prompt includes both contractual identity strings:
+Every larva-loaded prompt includes a low-noise marker near the end of the
+injected system prompt plus the contractual identity instruction. Prefer
+comment-style metadata so the marker is useful for debugging without becoming
+user-facing instruction text:
 
-```xml
-<larva-persona id="python-senior" />
+```html
+<!-- larva-spec: python-senior@abc123 -->
+```
+
+If the plugin must use last-known-good content because the latest resolve failed,
+mark it explicitly:
+
+```html
+<!-- larva-spec: python-senior@abc123 stale -->
 ```
 
 ```text
@@ -193,8 +267,13 @@ When asked "who are you" or "what persona", mention that you are the "python-sen
 
 ## Limitations
 
-- Agent list is fixed at OpenCode startup. New `larva register` requires an
-  OpenCode restart.
+- Agent list is fixed at OpenCode startup. Adding or deleting a persona id
+  requires restarting `larva opencode` so the wrapper can project the new agent
+  list. Editing the active variant behind an already-projected id is the runtime
+  re-resolve target in the hardening contract above.
+- Most `model`/provider changes are startup-bound in OpenCode. Request-scoped
+  `model_params` such as temperature may be refreshed only when OpenCode exposes
+  a matching hook field.
 - The wrapper requires the real `opencode` executable to be available in `PATH`.
 - Manual plugin-only install may be too late for `--agent <larva-id>` validation
   in OpenCode versions that validate agents before plugin config hooks finish;
@@ -202,3 +281,7 @@ When asked "who are you" or "what persona", mention that you are the "python-sen
 - `capabilities` field is used for permission derivation but does not map 1:1 to
   OpenCode tool names.
 - Temperature is only applied if larva persona explicitly sets it.
+- There is no `/larva refresh` or `/larva status` command in the minimal design.
+  Runtime refresh should be automatic after the hardening contract above is
+  implemented. Troubleshooting should use fail-closed errors, opt-in debug logs,
+  and ordinary Larva CLI commands such as `larva resolve <id> --json`.

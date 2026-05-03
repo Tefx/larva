@@ -159,7 +159,7 @@
   }
   .pill-remove:hover { color: var(--danger); }
 
-  /* Editable tools/params row */
+  /* Editable key/value rows */
   .kv-row {
     display: flex; gap: 8px; align-items: center; margin-bottom: 6px;
   }
@@ -403,7 +403,7 @@
             <div class="sidebar-item" :class="{ active: selected === p.id }" @click="selectPersona(p.id)">
               <div class="sidebar-item-id" x-text="p.id"></div>
               <div class="sidebar-item-meta">
-                <span x-text="p._registry?.variant"></span> &middot; <span x-text="p.model"></span> &middot; <span x-text="Object.keys(p.capabilities || {}).length + ' caps'"></span><span x-show="p.side_effect_policy"> &middot; <span x-text="p.side_effect_policy" style="text-decoration:line-through;opacity:0.6;" title="Deprecated: use capabilities"></span></span>
+                <span x-text="p._registry?.variant"></span> &middot; <span x-text="p.model"></span> &middot; <span x-text="Object.keys(p.capabilities || {}).length + ' caps'"></span>
               </div>
               <div class="sidebar-item-digest" x-text="(p.spec_digest || '').slice(0, 24) + '...'"></div>
             </div>
@@ -423,26 +423,26 @@
           
           <div style="margin-left:16px; display:flex; align-items:center; gap:8px;">
             <select x-model="selectedVariant" @change="switchVariant($event.target.value)" style="padding:4px 8px; border-radius:4px; border:1px solid var(--border); background:var(--bg-primary);">
-              <template x-for="v in (selectedPersona?._variants || [])" :key="v">
-                <option :value="v" x-text="v" :selected="v === selectedPersona?._registry?.variant"></option>
+              <template x-for="v in variantList.variants" :key="v">
+                <option :value="v" x-text="v + (v === variantList.active ? ' (active)' : '')"></option>
               </template>
             </select>
             <span style="font-size:12px; padding:2px 6px; border-radius:4px;" 
-                  :style="selectedPersona?._registry?.is_active ? 'background:var(--accent);color:#fff;' : 'background:var(--border);color:var(--text);'"
-                  x-text="selectedPersona?._registry?.is_active ? 'Active' : 'Inactive'"></span>
-            <button x-show="!selectedPersona?._registry?.is_active" class="btn" style="padding:2px 8px; font-size:12px;" @click="activateVariant()">Set Active</button>
+                  :style="selectedVariant === variantList.active ? 'background:var(--accent);color:#fff;' : 'background:var(--border);color:var(--text);'"
+                  x-text="selectedVariant === variantList.active ? 'Active' : 'Inactive'"></span>
+            <button x-show="selectedVariant !== variantList.active" class="btn" style="padding:2px 8px; font-size:12px;" @click="activateVariant()">Set Active</button>
           </div>
           
           <div style="flex-grow:1;"></div>
           
           <template x-if="!deleteConfirm">
-            <button class="btn btn-danger" @click="deleteConfirm = true">Delete</button>
+            <button class="btn btn-danger" @click="deleteConfirm = true" x-text="canDeleteVariant ? 'Delete Variant' : 'Delete Persona'"></button>
           </template>
           <template x-if="deleteConfirm">
             <div class="delete-confirm">
-              <input type="text" :placeholder="'Type &quot;' + selectedPersona.id + '&quot; to confirm'" x-model="deleteText" x-ref="deleteInput"
-                @keydown.enter="deleteText === selectedPersona.id && doDelete()" @keydown.escape="deleteConfirm = false; deleteText = ''">
-              <button class="btn" style="background:var(--danger);color:var(--bg-primary);" :disabled="deleteText !== selectedPersona.id" @click="doDelete()">Confirm</button>
+              <input type="text" :placeholder="deletePromptText" x-model="deleteText" x-ref="deleteInput"
+                @keydown.enter="deleteText === deleteExpectedText && doDelete()" @keydown.escape="deleteConfirm = false; deleteText = ''">
+              <button class="btn" style="background:var(--danger);color:var(--bg-primary);" :disabled="deleteText !== deleteExpectedText" @click="doDelete()">Confirm</button>
               <button class="btn" @click="deleteConfirm = false; deleteText = ''">Cancel</button>
             </div>
           </template>
@@ -535,56 +535,6 @@
               <button class="btn btn-sm" style="margin-top:4px;" @click="capabilityEntries.push({key:'',val:'read_only'})">+ Add Capability</button>
             </div>
           </template>
-        </div>
-
-        <!-- Tools (DEPRECATED) -->
-        <div class="section" style="opacity:0.7;">
-          <div class="section-header">
-            <div class="section-label" style="text-decoration:line-through;" title="Deprecated: use capabilities. tools mirrors capabilities for backward compatibility.">TOOLS (deprecated)</div>
-            <button class="btn btn-sm" @click="toggleToolsEdit()" x-text="editingTools ? 'Done' : 'Edit'"></button>
-          </div>
-          <template x-if="!editingTools">
-            <div class="pills" :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
-              <template x-for="[k, v] in Object.entries(getVal('tools') || {})" :key="k">
-                <div class="pill">
-                  <span class="pill-key" x-text="k"></span>
-                  <span class="pill-sep">:</span>
-                  <span class="pill-val" x-text="v"></span>
-                </div>
-              </template>
-              <template x-if="Object.keys(getVal('tools') || {}).length === 0 && Object.keys(getVal('capabilities') || {}).length === 0">
-                <span style="color:var(--text-muted);font-style:italic;">No tools defined</span>
-              </template>
-            </div>
-          </template>
-          <template x-if="editingTools">
-            <div :style="staged.tools !== undefined ? 'border-left:2px solid var(--warning);padding-left:8px' : ''">
-              <template x-for="(entry, i) in toolEntries" :key="i">
-                <div class="kv-row">
-                  <input type="text" :value="entry.key" @input="entry.key = $event.target.value; syncTools()" style="width:180px;" placeholder="tool name">
-                  <select :value="entry.val" @change="entry.val = $event.target.value; syncTools()">
-                    <option value="read_only">read_only</option>
-                    <option value="read_write">read_write</option>
-                    <option value="enabled">enabled</option>
-                    <option value="disabled">disabled</option>
-                  </select>
-                  <button class="pill-remove" @click="toolEntries.splice(i, 1); syncTools()">&times;</button>
-                </div>
-              </template>
-              <button class="btn btn-sm" style="margin-top:4px;" @click="toolEntries.push({key:'',val:'read_only'})">+ Add Tool</button>
-            </div>
-          </template>
-        </div>
-
-        <!-- side_effect_policy (DEPRECATED - read-only display only) -->
-        <div class="section" style="opacity:0.5;">
-          <div class="section-label" style="text-decoration:line-through;" title="Deprecated per ADR-002: runtime policy moved out of persona spec">SIDE EFFECT POLICY (deprecated)</div>
-          <div class="meta-chip readonly" style="margin-top:8px;">
-            <div class="meta-value" style="display:flex;align-items:center;gap:8px;">
-              <span x-text="getVal('side_effect_policy') || 'not set'"></span>
-              <span style="color:var(--warning);font-size:11px;">⚠ Use capabilities instead</span>
-            </div>
-          </div>
         </div>
 
         <!-- Model Params -->
@@ -880,15 +830,15 @@ function larvaApp() {
     editValue: '',
     editingPrompt: false,
     editingCapabilities: false,
-    editingTools: false,
     editingParams: false,
     capabilityEntries: [],
-    toolEntries: [],
     paramEntries: [],
     deleteConfirm: false,
     deleteText: '',
     showRawJson: false,
     showCompaction: false,
+    selectedVariant: null,
+    variantList: { active: null, variants: [] },
     
     modals: { import: false },
     importJson: '',
@@ -903,6 +853,17 @@ function larvaApp() {
     },
     batchUpdateDebounce: null,
 
+    get canDeleteVariant() {
+      if (!this.selectedVariant || !this.variantList) return false;
+      return this.selectedVariant !== this.variantList.active;
+    },
+    get deletePromptText() {
+      if (this.canDeleteVariant) return `Type "${this.selectedVariant}" to confirm variant deletion`;
+      return `Type "${this.selectedPersona?.id}" to confirm persona deletion`;
+    },
+    get deleteExpectedText() {
+      return this.canDeleteVariant ? this.selectedVariant : this.selectedPersona?.id;
+    },
     get selectedPersona() {
       return this.personas.find(p => p.id === this.selected) || null;
     },
@@ -941,111 +902,47 @@ function larvaApp() {
     },
 
     async switchVariant(v) {
-      if (!this.selectedPersona) return;
+      if (!this.selected || !v) return;
       try {
-        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
+        const r = await fetch(`/api/registry/personas/${this.selected}/variants/${v}`);
         const d = await r.json();
         if (d.data) {
           const newP = {
             ...d.data.spec,
             _registry: d.data._registry,
-            _variants: this.selectedPersona._variants
+            _variants: this.variantList.variants
           };
-          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
-          this.selectedPersona = newP;
+          this.personas = this.personas.map(p => p.id === this.selected ? newP : p);
           this.selectedVariant = v;
         }
       } catch(e) { alert('Failed to switch variant: ' + e.message); }
     },
     
     async activateVariant() {
-      if (!this.selectedPersona) return;
-      const v = this.selectedPersona._registry.variant;
+      if (!this.selected || !this.selectedVariant) return;
+      const v = this.selectedVariant;
       try {
-        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
+        await fetch(`/api/registry/personas/${this.selected}/variants/${v}/activate`, { method: 'POST' });
+        await this.loadVariants(this.selected);
         await this.loadPersonas();
+        await this.switchVariant(v);
       } catch(e) { alert('Failed to activate variant: ' + e.message); }
     },
 
-    async switchVariant(v) {
-      if (!this.selectedPersona) return;
+    async loadVariants(id) {
+      if (!id) return;
       try {
-        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
-        const d = await r.json();
-        if (d.data) {
-          const newP = {
-            ...d.data.spec,
-            _registry: d.data._registry,
-            _variants: this.selectedPersona._variants
-          };
-          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
-          this.selectedPersona = newP;
-          this.selectedVariant = v;
+        const resp = await fetch(`/api/registry/personas/${id}/variants`);
+        if (!resp.ok) throw new Error('Failed to load variants');
+        const data = await resp.json();
+        this.variantList = data.data || { active: null, variants: [] };
+        if (!this.selectedVariant || !this.variantList.variants.includes(this.selectedVariant)) {
+          this.selectedVariant = this.variantList.active;
         }
-      } catch(e) { alert('Failed to switch variant: ' + e.message); }
-    },
-    
-    async activateVariant() {
-      if (!this.selectedPersona) return;
-      const v = this.selectedPersona._registry.variant;
-      try {
-        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
-        await this.loadPersonas();
-      } catch(e) { alert('Failed to activate variant: ' + e.message); }
-    },
-
-    async switchVariant(v) {
-      if (!this.selectedPersona) return;
-      try {
-        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
-        const d = await r.json();
-        if (d.data) {
-          const newP = {
-            ...d.data.spec,
-            _registry: d.data._registry,
-            _variants: this.selectedPersona._variants
-          };
-          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
-          this.selectedPersona = newP;
-          this.selectedVariant = v;
-        }
-      } catch(e) { alert('Failed to switch variant: ' + e.message); }
-    },
-    
-    async activateVariant() {
-      if (!this.selectedPersona) return;
-      const v = this.selectedPersona._registry.variant;
-      try {
-        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
-        await this.loadPersonas();
-      } catch(e) { alert('Failed to activate variant: ' + e.message); }
-    },
-
-    async switchVariant(v) {
-      if (!this.selectedPersona) return;
-      try {
-        const r = await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}`);
-        const d = await r.json();
-        if (d.data) {
-          const newP = {
-            ...d.data.spec,
-            _registry: d.data._registry,
-            _variants: this.selectedPersona._variants
-          };
-          this.personas = this.personas.map(p => p.id === this.selectedPersona.id ? newP : p);
-          this.selectedPersona = newP;
-          this.selectedVariant = v;
-        }
-      } catch(e) { alert('Failed to switch variant: ' + e.message); }
-    },
-    
-    async activateVariant() {
-      if (!this.selectedPersona) return;
-      const v = this.selectedPersona._registry.variant;
-      try {
-        await fetch(`/api/registry/personas/${this.selectedPersona.id}/variants/${v}/activate`, { method: 'POST' });
-        await this.loadPersonas();
-      } catch(e) { alert('Failed to activate variant: ' + e.message); }
+      } catch (e) {
+        this.variantList = { active: null, variants: [] };
+        this.selectedVariant = null;
+      }
     },
 
     async loadPersonas() {
@@ -1054,7 +951,7 @@ function larvaApp() {
       const summaries = data.data || [];
       
       const full = await Promise.all(summaries.map(async s => {
-        const active = s.active_variant || "default";
+        const active = s.active || s.active_variant || "default";
         const r = await fetch(`/api/registry/personas/${s.id}/variants/${active}`);
         if (!r.ok) return null;
         const d = await r.json();
@@ -1069,9 +966,13 @@ function larvaApp() {
       if (!this.selected && this.personas.length) {
         this.selected = this.personas[0].id;
       }
+      if (this.selected) {
+        await this.loadVariants(this.selected);
+      }
     },
 
-    selectPersona(id) {
+    async selectPersona(id) {
+      const previous = this.selected;
       this.selected = id;
       this.view = 'detail';
       this.discardChanges();
@@ -1079,9 +980,14 @@ function larvaApp() {
       this.deleteText = '';
       this.editingPrompt = false;
       this.editingCapabilities = false;
-      this.editingTools = false;
       this.editingParams = false;
       this.showRawJson = false;
+      if (previous !== id) {
+        this.variantList = { active: null, variants: [] };
+        this.selectedVariant = null;
+      }
+      await this.loadVariants(id);
+      await this.switchVariant(this.selectedVariant);
     },
 
     getVal(field) {
@@ -1142,27 +1048,6 @@ function larvaApp() {
       this.stageChange('capabilities', obj);
     },
 
-    // Tools editing (deprecated - mirrors capabilities)
-    toggleToolsEdit() {
-      if (this.editingTools) {
-        this.syncTools();
-        this.editingTools = false;
-      } else {
-        const tools = this.getVal('tools') || {};
-        this.toolEntries = Object.entries(tools).map(([key, val]) => ({ key, val }));
-        this.editingTools = true;
-      }
-    },
-
-    syncTools() {
-      const obj = {};
-      for (const e of this.toolEntries) {
-        if (e.key.trim()) obj[e.key.trim()] = e.val;
-      }
-      // Note: 'tools' is deprecated; changes here also sync to 'capabilities' during normalization
-      this.stageChange('tools', obj);
-    },
-
     // Params editing
     toggleParamsEdit() {
       if (this.editingParams) {
@@ -1219,7 +1104,11 @@ function larvaApp() {
     async saveChanges() {
       if (!this.selected || !this.stagedCount) return;
       const savedId = this.selected;
-      const v = this.selectedVariant;
+      const v = this.selectedVariant || this.variantList.active || this.selectedPersona?._registry?.variant;
+      if (!v) {
+        alert('Save failed: no selected variant');
+        return;
+      }
       
       const fullSpec = Object.assign({}, this.selectedPersona);
       delete fullSpec._registry;
@@ -1241,12 +1130,13 @@ function larvaApp() {
         }
         this.staged = {};
         this.editingCapabilities = false;
-        this.editingTools = false;
         this.editingParams = false;
         this.editingPrompt = false;
         this.editing = null;
         await this.loadPersonas();
         this.selected = savedId;
+        await this.loadVariants(savedId);
+        await this.switchVariant(v);
         this.showToast('Saved successfully');
       } catch (e) {
         alert('Save failed: ' + e.message);
@@ -1267,16 +1157,25 @@ function larvaApp() {
       this.editing = null;
       this.editingPrompt = false;
       this.editingCapabilities = false;
-      this.editingTools = false;
       this.editingParams = false;
     },
 
     // Delete
     async doDelete() {
-      if (this.deleteText !== this.selectedPersona?.id) return;
+      if (this.deleteText !== this.deleteExpectedText) return;
       const v = this.selectedVariant;
       try {
-        await fetch(`/api/registry/personas/${this.selected}/variants/${v}`, { method: 'DELETE' });
+        if (this.canDeleteVariant) {
+          await fetch(`/api/registry/personas/${this.selected}/variants/${v}`, { method: 'DELETE' });
+          this.deleteConfirm = false;
+          this.deleteText = '';
+          await this.loadVariants(this.selected);
+          await this.loadPersonas();
+          await this.switchVariant(this.variantList.active);
+          return;
+        } else {
+          await fetch(`/api/personas/${this.selected}`, { method: 'DELETE' });
+        }
         this.selected = null;
         this.deleteConfirm = false;
         this.deleteText = '';

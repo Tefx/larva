@@ -5,7 +5,6 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from larva.shell.components import FilesystemComponentStore
 from larva.shell.shared.facade_factory import build_default_facade
 
 
@@ -21,6 +20,5 @@ def main(argv: Sequence[str] | None = None) -> int:
             facade=build_default_facade(),
             stdout=sys.stdout,
             stderr=sys.stderr,
-            component_store=FilesystemComponentStore(),
         )
     )

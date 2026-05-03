@@ -19,10 +19,11 @@ project documentation lives here by category.
 
 ## Design bases
 
-- `../design/` — current and implemented design/adjudication bases that explain
-  contract authority, hard-cut behavior, component vocabulary, error projection,
-  prompt text opacity, and transport decisions
-
+- `../design/registry-local-variants-and-assembly-removal.md` — accepted design
+  for removing assembly/component surfaces and adding registry-local variants
+  without changing PersonaSpec
+- `../design/` — design and adjudication history. Older component/assembly docs
+  are historical unless restated by the accepted registry-local variants design.
 ## Still intentionally at repo root
 
 - `../README.md` — project entrypoint for GitHub and package metadata

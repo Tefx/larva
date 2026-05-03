@@ -119,14 +119,14 @@ class TestFacadeDelete:
 
 
 # ===========================================================================
-# REGISTRY-LOCAL VARIANT TESTS (expected-red until implementation lands)
+# REGISTRY-LOCAL VARIANT TESTS
 # ===========================================================================
 
 
 class TestFacadeVariantDelete:
     """variant_delete: reject active, reject last variant, accept inactive.
 
-    Target contract:
+    Contract:
     - variant_delete(id, variant) deletes an inactive, non-last variant
     - Returns {id, variant, deleted: true}
     - Reject active variant => ACTIVE_VARIANT_DELETE_FORBIDDEN

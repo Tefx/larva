@@ -261,3 +261,70 @@ def test_run_cli_opencode_dispatches_launcher(monkeypatch: Any) -> None:
     assert calls == [["run", "fix this", "--agent", "python-senior"]]
     assert stdout.getvalue() == ""
     assert stderr.getvalue() == ""
+
+
+# ---------------------------------------------------------------------------
+# Active-variant projection smoke tests
+#
+# Source: design/registry-local-variants-and-assembly-removal.md lines 93-99
+# Source: docs/reference/ARCHITECTURE.md line 98
+# Source: contrib/opencode-plugin/README.md lines 7-9
+# ---------------------------------------------------------------------------
+
+
+class TestOpenCodeVariantProjection:
+    """OpenCode must project active variants only; inactive variants must not
+    appear as separate agent entries.
+
+    This class tests the build_opencode_config projection function directly,
+    without requiring a running opencode binary.
+    """
+
+    def test_projection_creates_one_agent_per_spec(self) -> None:
+        """Each spec in export_all maps to exactly one agent key."""
+        specs = [
+            _persona("code-reviewer", capabilities={"shell": "read_only"}),
+            _persona("writer", capabilities={"shell": "read_write"}),
+        ]
+        result = build_opencode_config(
+            specs,
+            plugin_uri="file:///tmp/larva.ts",
+        )
+        assert isinstance(result, Success)
+        config = result.unwrap()
+        agents = cast("dict[str, dict[str, object]]", config.get("agent", {}))
+        assert len(agents) == 2
+        assert "code-reviewer" in agents
+        assert "writer" in agents
+
+    def test_projection_no_forbidden_keys_in_agent_entry(self) -> None:
+        """Agent entries must not contain variant, _registry, or active keys."""
+        spec = _persona("projection-leak")
+        result = build_opencode_config(
+            [spec],
+            plugin_uri="file:///tmp/larva.ts",
+        )
+        assert isinstance(result, Success)
+        config = result.unwrap()
+        agents = cast("dict[str, dict[str, object]]", config.get("agent", {}))
+        for _agent_id, entry in agents.items():
+            assert "variant" not in entry, "Agent entry must not contain 'variant'"
+            assert "_registry" not in entry, "Agent entry must not contain '_registry'"
+            assert "active" not in entry, "Agent entry must not contain 'active'"
+
+    def test_projection_uses_spec_id_as_agent_key(self) -> None:
+        """Agent key must be the base persona id, not any variant suffix.
+
+        Source: contrib/opencode-plugin/README.md line 114.
+        """
+        spec = _persona("my-persona")
+        result = build_opencode_config(
+            [spec],
+            plugin_uri="file:///tmp/larva.ts",
+        )
+        assert isinstance(result, Success)
+        config = result.unwrap()
+        agents = cast("dict[str, dict[str, object]]", config.get("agent", {}))
+        assert "my-persona" in agents
+        # No variant-suffixed keys
+        assert "my-persona-tacit" not in agents

@@ -120,11 +120,10 @@ class TestMCPStdioIntegration:
 
 
 # ---------------------------------------------------------------------------
-# Surface Cutover: EXPECTED-RED assertions
+# Surface Cutover: implemented cutover assertions
 #
-# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
-# They MUST fail RED until the implementation phase removes assembly/component
-# tools and adds variant tools.
+# These guard implemented surface contracts: assembly/component tools stay
+# removed and variant tools stay registered.
 #
 # Source authority: design/registry-local-variants-and-assembly-removal.md
 # Source authority: docs/reference/INTERFACES.md :: MCP Surface
@@ -134,7 +133,7 @@ class TestMCPStdioIntegration:
 
 @pytest.mark.usefixtures("_require_mcp")
 class TestMCPStdioSurfaceCutover:
-    """EXPECTED-RED: MCP stdio integration must expose variant tools, not assembly/component."""
+    """MCP stdio integration must expose variant tools, not assembly/component."""
 
 
     def test_variant_list_tool_exists_over_stdio(self) -> None:

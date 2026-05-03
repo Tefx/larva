@@ -1,8 +1,8 @@
 # larva — Agent Usage Guide
 
-**Audience:** AI agents (nervus, anima, and other opifex components) consuming larva as a tool.
-**larva does:** validate, assemble, normalize, register, resolve PersonaSpec JSON.
-**larva does NOT do:** call LLMs, execute agents, enforce runtime tool policy, store memory across runs.
+**Audience:** AI agents and operators consuming larva as a tool.
+**larva does:** validate, normalize, register, resolve, update, export, and manage registry-local PersonaSpec variants.
+**larva does NOT do:** call LLMs, execute agents, enforce runtime tool policy, store memory across runs, or change the opifex PersonaSpec schema.
 
 ---
 
@@ -10,69 +10,72 @@
 
 ### Primary: MCP Server
 
-larva runs as an MCP server (stdio, HTTP, or SSE). stdio is the default for CLI
-usage. HTTP is the standard remote transport (MCP spec 2025-03-26+). SSE is legacy.
-Prefer MCP for all programmatic access.
+Prefer MCP for programmatic access.
 
 Available tools:
-```
-larva_validate(spec)                    → ValidationReport
-larva_register(spec)                    → {id, registered}
-larva_resolve(id, overrides?)           → PersonaSpec
-larva_list()                            → [{id, description, spec_digest, model}]
-larva_variant_list(id)                  → {id, active, variants}
-larva_variant_activate(id, variant)     → {id, active}
-larva_variant_delete(id, variant)       → {id, deleted}
-larva_update(id, patches)               → PersonaSpec
-larva_update_batch(where, patches, dry_run?) → {items, matched, updated}
-larva_clone(source_id, new_id)          → PersonaSpec
-larva_delete(id)                        → {id, deleted}
-larva_clear(confirm)                    → {cleared, count}
-larva_export(all?, ids?)                → [PersonaSpec, ...]
+
+```text
+larva_validate(spec)                         -> ValidationReport
+larva_register(spec, variant?)               -> {id, registered}
+larva_resolve(id, overrides?, variant?)      -> PersonaSpec
+larva_list()                                 -> [{id, description, spec_digest, model}]
+larva_update(id, patches, variant?)          -> PersonaSpec
+larva_update_batch(where, patches, dry_run?) -> {items, matched, updated}
+larva_clone(source_id, new_id)               -> PersonaSpec
+larva_delete(id)                             -> {id, deleted}
+larva_clear(confirm)                         -> {cleared, count}
+larva_export(all?, ids?)                     -> [PersonaSpec, ...]
+larva_variant_list(id)                       -> registry metadata
+larva_variant_activate(id, variant)          -> {id, active}
+larva_variant_delete(id, variant)            -> {id, variant, deleted}
 ```
 
-For `larva_export`, provide exactly one selector: `all=true` to export the
-full registry, or `ids=[...]` to export specific personas. `{all:false}` is
-rejected as a missing selector.
+Removed tools:
 
-For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
-`side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
+```text
+larva_assemble
+larva_component_list
+larva_component_show
+```
+
+For every PersonaSpec input, forbidden legacy vocabulary is `tools` and
+`side_effect_policy`. Unknown top-level fields, including `variant`, are rejected
+as non-canonical. Pass `variant` as an operation parameter, never inside `spec`.
 
 ### Fallback: CLI
 
 ```bash
 larva validate <spec.json> [--json]
-larva assemble --id <id> [--prompt <name>]... [--toolset <name>]... [--constraints <name>]... [--model <name>] [--override key=value]... [-o output.json]
-larva register <spec.json> [--json]
-larva resolve <id> [--override key=value]... [--json]
+larva register <spec.json> [--variant <name>] [--json]
+larva resolve <id> [--variant <name>] [--override key=value]... [--json]
 larva list [--json]
+larva update <id> [--variant <name>] --set key=value [--set ...] [--json]
+larva clone <source-id> <new-id> [--json]
 larva delete <id> [--json]
 larva clear --confirm "CLEAR REGISTRY" [--json]
-larva component list [--json]
-larva component show <type>/<name> [--json]
+larva export --all [--json]
+larva export --id <id> [--id <id>]... [--json]
+larva variant list <id> [--json]
+larva variant activate <id> <variant> [--json]
+larva variant delete <id> <variant> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
 ```
-
-Use `--json` for machine-readable output on canonical larva commands. Those
-commands exit 0 (success), 1 (domain error), 2 (input/critical failure).
-
-`larva doctor` always runs the registry diagnostic through the same
-facade-backed canonical validation path used by list/serve. There is no
-separate shallow mode.
-
-`larva opencode` is different: it is a launcher for the real OpenCode CLI, not a
-JSON-producing larva operation. It builds a temporary `OPENCODE_CONFIG_CONTENT`
-from the registry, injects the larva OpenCode plugin, and forwards remaining
-arguments to `opencode`. A leading `--` after `opencode` is optional and is
-stripped before forwarding.
 
 ### Fallback: Python API
 
 ```python
 from larva.shell.python_api import (
-    assemble, validate, register, resolve, list,
-    delete, clear, component_list, component_show,
+    validate,
+    register,
+    resolve,
+    update,
+    list,
+    delete,
+    clear,
+    variant_list,
+    variant_activate,
+    variant_delete,
 )
 ```
 
@@ -80,7 +83,8 @@ from larva.shell.python_api import (
 
 ## 2. PersonaSpec — The Core Data Structure
 
-A PersonaSpec is a flat, self-contained JSON object. All larva operations produce or consume this shape.
+A PersonaSpec is a flat, self-contained JSON object. All canonical larva outputs
+produce or consume this shape.
 
 ```json
 {
@@ -88,30 +92,22 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
   "id": "code-reviewer",
   "description": "Reviews code changes with read-focused tooling.",
   "prompt": "You are a senior code reviewer...",
-  "model": "claude-opus-4-20250514",
-  "model_params": {
-    "temperature": 0.3,
-    "max_tokens": 4096
-  },
-  "capabilities": {
-    "filesystem": "read_write",
-    "shell": "read_only",
-    "git": "read_only"
-  },
+  "model": "openai/gpt-5.5",
+  "model_params": {"temperature": 0.3},
+  "capabilities": {"filesystem": "read_write", "shell": "read_only"},
   "can_spawn": false,
   "compaction_prompt": "Summarize working context into concise carry-forward notes.",
   "spec_digest": "sha256:e3b0c442..."
 }
 ```
 
-**Field constraints:**
-- `id`: required, must match `^[a-z0-9]+(-[a-z0-9]+)*$` (flat kebab-case, no namespaces)
-- `spec_version`: required on canonical input and must be `"0.1.0"`
-- `spec_digest`: computed by larva during normalization (SHA-256 of canonical JSON, sorted keys, no whitespace, excluding spec_digest itself). Do not set manually.
-- `capabilities`: required canonical capability map. `capabilities: {}` means no declared capability postures, not unrestricted access.
-- `can_spawn`: boolean or list of persona ids the persona may spawn
+Field constraints:
 
-**No assembly metadata in output.** No `base:`, no component references. Output is always flat.
+- `id`: required flat kebab-case; no namespaces.
+- `spec_version`: canonical input must use `"0.1.0"`.
+- `spec_digest`: computed by larva from canonical JSON, excluding itself.
+- `capabilities`: required canonical capability map.
+- `variant`: not a PersonaSpec field; registry-local only.
 
 ---
 
@@ -119,331 +115,175 @@ A PersonaSpec is a flat, self-contained JSON object. All larva operations produc
 
 ### 3.1 validate
 
-Check a PersonaSpec for schema conformance and semantic validity.
+Validate a PersonaSpec candidate.
 
-**MCP:**
-```json
-{ "spec": { "id": "my-agent", "spec_version": "0.1.0", "prompt": "You are..." } }
-```
-
-**Returns:** `ValidationReport`
 ```json
 {
-  "valid": true,
-  "errors": [],
-  "warnings": [
-    "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
-    "description looks like prompt text instead of a short operational summary",
-    "can_spawn references ids outside the current registry snapshot: missing-child"
-  ]
+  "spec": {
+    "id": "my-agent",
+    "description": "Reviews code changes.",
+    "prompt": "You are a senior code reviewer.",
+    "model": "openai/gpt-5.5",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0"
+  }
 }
 ```
 
-- `errors` is always present (empty list when valid).
-- `warnings` is always present and is non-blocking.
-- Canonical warning conditions include: unknown model identifiers; empty/all-`none` capability posture; descriptions outside the guidance range; prompt-like descriptions; unknown capability-family identifiers; read-focused reviewer/auditor identities paired with `read_write`/`destructive` capability postures; and `can_spawn` targets missing from the current registry snapshot.
-- Prompt text is treated as opaque data; `{placeholder}` style text is not rejected or interpreted as a template variable.
-- `model_params` is an optional canonical field and remains valid across validate/register/resolve/update flows.
+Returns `ValidationReport` with `valid`, `errors`, and `warnings`.
 
-**Decision:** Use `valid` field to gate next action.
+### 3.2 register
 
----
+Store a PersonaSpec in the registry.
 
-### 3.2 assemble
-
-Compose a PersonaSpec from named components stored in `~/.larva/components/`.
-
-**MCP:**
 ```json
 {
-  "id": "code-reviewer",
-  "prompts": ["code-reviewer", "careful-reasoning"],
-  "toolsets": ["code-tools"],
-  "constraints": ["strict"],
-  "model": "claude-opus-4",
-  "overrides": { "description": "Custom description" }
+  "spec": {
+    "id": "code-reviewer",
+    "description": "Reviews code changes.",
+    "prompt": "You are a stricter senior code reviewer.",
+    "model": "openai/gpt-5.5",
+    "capabilities": {"shell": "read_only"},
+    "spec_version": "0.1.0"
+  },
+  "variant": "tacit"
 }
 ```
 
-All fields except `id` are optional.
+- `variant` is optional and defaults to `default`.
+- New persona: the registered variant becomes active automatically.
+- Existing persona: register writes/replaces the named variant but does not auto-activate it.
+- `spec.id` must equal the base persona id.
 
-**Returns:** Complete, validated, normalized PersonaSpec JSON (ready to register or use directly).
+### 3.3 resolve
 
-**Error triggers:**
-- `COMPONENT_NOT_FOUND` — named component does not exist in `~/.larva/components/`
-- `COMPONENT_CONFLICT` — two components set the same scalar field without an `overrides` key resolving it
-- `VARIABLES_NOT_ALLOWED` — non-canonical placeholder-map input is rejected at the assembly boundary
+Fetch a registered persona by id.
 
-**Conflict resolution:** Use `overrides` to explicitly win over conflicting component values.
-
----
-
-### 3.3 register
-
-Store a PersonaSpec in the global registry at `~/.larva/registry/`.
-
-**MCP:**
 ```json
-{ "spec": { <PersonaSpec> } }
+{ "id": "code-reviewer", "variant": "tacit", "overrides": { "model": "openai/gpt-5.5" } }
 ```
 
-**Returns:**
-```json
-{ "id": "code-reviewer", "registered": true }
-```
+- Without `variant`, resolve uses the active variant.
+- With `variant`, resolve returns that variant.
+- Runtime overrides apply after variant selection and trigger revalidation.
+- Return value is a bare canonical PersonaSpec, never a registry envelope.
 
-- Spec must pass validation. larva revalidates before writing.
-- Overwrites existing registration for the same `id`.
-- Registry index at `~/.larva/registry/index.json` maps `id → spec_digest`.
+### 3.4 list
 
----
+List base personas only.
 
-### 3.4 resolve
-
-Fetch a registered persona by id, optionally patching fields at call time.
-
-**MCP:**
-```json
-{ "id": "code-reviewer", "overrides": { "model": "claude-opus-4-20250514" } }
-```
-
-**Returns:** PersonaSpec with overrides applied. `spec_digest` is recomputed after override.
-
-**Error triggers:**
-- `PERSONA_NOT_FOUND` — id not in registry
-
-**Key behavior:** Overrides trigger revalidation and renormalization. A null/falsey override value is applied as-is (not ignored).
-
----
-
-### 3.5 list
-
-Enumerate all registered personas.
-
-**MCP:** no parameters
-
-**Returns:**
 ```json
 [
-  {
-    "id": "code-reviewer",
-    "description": "Reviews code changes with read-focused tooling.",
-    "spec_digest": "sha256:e3b0c442...",
-    "model": "claude-opus-4-20250514"
-  }
+  {"id": "code-reviewer", "description": "...", "spec_digest": "sha256:...", "model": "openai/gpt-5.5"}
 ]
 ```
 
----
+`larva_list` intentionally does not return variant metadata.
 
-### 3.6 delete
+### 3.5 update
 
-Remove a registered persona from the registry.
+Patch fields in the active or a named variant.
 
-**MCP:**
 ```json
-{ "id": "old-persona" }
+{ "id": "code-reviewer", "variant": "tacit", "patches": { "model": "openai/gpt-5.5-pro" } }
 ```
 
-**Returns:**
+Without `variant`, update patches the active variant. Protected fields such as
+`id`, `spec_version`, and `spec_digest` are rejected.
+
+### 3.6 variant operations
+
 ```json
-{ "id": "old-persona", "deleted": true }
+{ "id": "code-reviewer" }
 ```
 
-**Error triggers:**
-- `PERSONA_NOT_FOUND` (100) — id not in registry
-- `INVALID_PERSONA_ID` (104) — id format invalid
-- `REGISTRY_DELETE_FAILED` (111) — file system deletion failed
+`larva_variant_list` returns registry metadata:
 
-**Key behavior:** Deletion is atomic (index-first). If deletion partially fails, the registry remains consistent for `list()`.
-
----
-
-### 3.7 clear
-
-Remove ALL registered personas from the registry. Irreversible.
-
-**MCP:**
 ```json
-{ "confirm": "CLEAR REGISTRY" }
+{ "id": "code-reviewer", "active": "tacit", "variants": ["default", "tacit"] }
 ```
 
-**Returns:**
-```json
-{ "cleared": true, "count": 7 }
-```
+`larva_variant_activate(id, variant)` changes only registry manifest state.
+`larva_variant_delete(id, variant)` deletes only an inactive, non-last variant.
 
-**Safety guard:** The `confirm` parameter must be exactly `"CLEAR REGISTRY"`. Any other value is rejected immediately without touching the file system.
+### 3.7 delete and clear
 
-**Error triggers:**
-- `INVALID_CONFIRMATION_TOKEN` (112) — confirm string does not match
-- `REGISTRY_DELETE_FAILED` (111) — file system deletion failed (partial failure possible; `details.failed_ids` lists which ids could not be removed)
-
-**Python API:** `confirm` is keyword-only: `clear(confirm="CLEAR REGISTRY")`
+`larva_delete(id)` deletes the base persona and all variants.
+`larva_clear(confirm="CLEAR REGISTRY")` removes the whole registry and requires
+the exact confirmation token.
 
 ---
 
-### 3.8 component_list
+## 4. Registry-local Variants
 
-Discover all available components by type. Call this before `assemble` to know what component names are valid.
+Variants live under the registry and are selected by operation parameter. They
+are not PersonaSpec fields.
 
-**MCP:** no parameters
-
-**Returns:**
-```json
-{
-  "prompts": ["code-reviewer", "architect"],
-  "toolsets": ["readonly", "readwrite"],
-  "constraints": ["strict", "autonomous"],
-  "models": ["default", "claude-opus"]
-}
+```text
+~/.larva/registry/<id>/
+  manifest.json              # {"active": "default"}
+  variants/
+    default.json             # canonical PersonaSpec, id == <id>
+    tacit.json               # canonical PersonaSpec, id == <id>
 ```
 
----
+Rules:
 
-### 3.9 component_show
-
-Inspect a specific component's content.
-
-**MCP:**
-```json
-{ "component_type": "prompts", "name": "code-reviewer" }
-```
-
-**Returns:** Component content dict. Shape varies by type:
-- Prompt: `{"text": "You are a senior code reviewer..."}`
-- Toolset: `{"capabilities": {"filesystem": "read_write", ...}}`
-- Constraint: `{"can_spawn": false, "compaction_prompt": "...", ...}`
-- Model: `{"model": "claude-opus-4-20250514", "model_params": {...}}`
-
-**Error triggers:**
-- `COMPONENT_NOT_FOUND` (105) — component does not exist or type is invalid
-
-**Note:** Components are read-only through larva. larva does not create or delete components — they are managed as files in `~/.larva/components/`.
-
----
-
-## 4. Component Library
-
-Components live in `~/.larva/components/` organized by type. Component names are bare filenames without extensions.
-
-| Type | Directory | File format | Contributes to |
-|------|-----------|-------------|----------------|
-| Prompt | `prompts/` | `.md` (plain text) | `prompt` |
-| Toolset | `toolsets/` | `.yaml` | `capabilities` |
-| Constraint | `constraints/` | `.yaml` | `can_spawn`, `compaction_prompt` |
-| Model | `models/` | `.yaml` | `model`, `model_params` |
-
-### Prompt Component (`prompts/code-reviewer.md`)
-```markdown
-You are a senior code reviewer. Focus on correctness over style.
-Always cite specific line numbers when pointing out issues.
-```
-
-### Toolset Component (`toolsets/code-tools.yaml`)
-```yaml
-capabilities:
-  filesystem: read_write
-  shell: read_only
-  git: read_only
-```
-
-### Constraint Component (`constraints/strict.yaml`)
-```yaml
-can_spawn: false
-compaction_prompt: |
-  Summarize the working context into concise carry-forward notes.
-```
-
-### Model Component (`models/claude-opus-4.yaml`)
-```yaml
-model: "claude-opus-4-20250514"
-model_params:
-  temperature: 0.3
-  max_tokens: 4096
-```
-
-### Assembly Rules
-
-- **Prompts**: Concatenated in declared order, `\n\n` separator → single `prompt` string.
-- **Scalars** (`model`, `can_spawn`): Multiple component sources for same field → `COMPONENT_CONFLICT`. Resolve with `overrides`.
-- **capabilities**: Multiple toolsets may merge only if no contradictory posture for same tool family. Contradiction → `COMPONENT_CONFLICT`.
-- **model_params**: Deep-merged from model component. `overrides` can patch individual keys.
-
-### Browsing Components via CLI
-
-```bash
-larva component list                          # list all components
-larva component show prompts/code-reviewer    # show a prompt component
-larva component show toolsets/code-tools      # show a toolset component
-larva component show --json prompts/base      # machine-readable
-```
+- default resolve/list/export/OpenCode behavior uses the active variant
+- `larva_resolve(id, variant="name")` returns a specific variant as canonical PersonaSpec
+- `larva_register(spec, variant="name")` creates or replaces a named variant
+- active and last variants cannot be deleted through `variant_delete`
+- `index.json` is not used by the target variant registry; directory scan is the enumeration source
 
 ---
 
 ## 5. Placeholder policy
 
-Canonical larva does not support non-canonical placeholder-map inputs on PersonaSpec or assembly requests.
-
-- Placeholder-map inputs at validate/register/assemble/update boundaries are rejected as extra/forbidden fields.
-- Prompt text must already be fully composed before admission.
-- Prompt text is opaque; `{placeholder}` style text is not interpreted as a template variable.
+Prompt text must already be fully composed before admission. Placeholder-map
+inputs at validate/register/update boundaries are rejected as extra/forbidden
+fields. Prompt text is opaque; `{placeholder}` style text is preserved as text,
+not interpreted as variable injection.
 
 ---
 
 ## 6. Error Handling
 
-All errors use a single envelope shape:
+Every error is a structured envelope with `code`, `numeric_code`, `message`, and
+`details`.
 
-```json
-{
-  "code": "COMPONENT_CONFLICT",
-  "numeric_code": 106,
-  "message": "Field 'can_spawn' set by both 'constraints/strict' and 'constraints/autonomous'",
-  "details": {
-    "field": "can_spawn",
-    "sources": ["constraints/strict", "constraints/autonomous"]
-  }
-}
-```
+Common codes:
 
-**Transport wrapping:**
-- MCP: error payload returned directly as above
-- CLI `--json`: payload wrapped as `{ "error": <above> }`
-
-**Error code table:**
-
-| Code | Name | Typical cause |
-|------|------|---------------|
-| 10 | `INTERNAL` | Unmapped fallback |
-| 100 | `PERSONA_NOT_FOUND` | `resolve` id not in registry |
-| 101 | `PERSONA_INVALID` | validation failed |
-| 102 | `PERSONA_CYCLE` | circular reference (reserved) |
-| 104 | `INVALID_PERSONA_ID` | id violates kebab-case rules |
-| 105 | `COMPONENT_NOT_FOUND` | named component not on disk |
-| 106 | `COMPONENT_CONFLICT` | two components set same scalar field |
-| 107 | `REGISTRY_INDEX_READ_FAILED` | `~/.larva/registry/index.json` unreadable |
-| 108 | `REGISTRY_SPEC_READ_FAILED` | `<id>.json` unreadable |
-| 109 | `REGISTRY_WRITE_FAILED` | cannot write spec file |
-| 110 | `REGISTRY_UPDATE_FAILED` | cannot update index |
-| 111 | `REGISTRY_DELETE_FAILED` | persona file deletion failed |
-| 112 | `INVALID_CONFIRMATION_TOKEN` | confirm token for `clear` does not match |
+| Code | Meaning |
+|------|---------|
+| `INVALID_INPUT` | malformed request or unsupported field |
+| `PERSONA_NOT_FOUND` | base persona id not present |
+| `VARIANT_NOT_FOUND` | named variant not present |
+| `INVALID_VARIANT_NAME` | variant name is not lower-kebab slug or exceeds 64 characters |
+| `PERSONA_ID_MISMATCH` | `spec.id` does not match the target base persona id |
+| `REGISTRY_CORRUPT` | manifest is absent, malformed, or points at a missing variant |
+| `ACTIVE_VARIANT_DELETE_FORBIDDEN` | attempted to delete active variant |
+| `LAST_VARIANT_DELETE_FORBIDDEN` | attempted to delete only remaining variant |
+| `PERSONA_INVALID` | validation failed after override/update |
+| `FORBIDDEN_FIELD` | legacy or unknown canonical field such as `tools` or `variant` |
 
 ---
 
 ## 7. File System Layout
 
-```
+```text
 ~/.larva/
-  components/
-    prompts/<name>.md          # prompt fragments
-    toolsets/<name>.yaml       # tool posture maps
-    constraints/<name>.yaml    # can_spawn + compaction_prompt
-    models/<name>.yaml         # model + model_params
   registry/
-    <id>.json                  # one file per registered persona
-    index.json                 # {id: spec_digest} mapping
+    <id>/
+      manifest.json              # {"active": "default"}
+      variants/
+        <variant>.json           # canonical PersonaSpec, spec.id == <id>
 ```
+
+`manifest.json` is the only correctness source for active variant selection.
+Variant lists are read from `variants/*.json`. Variant names match
+`^[a-z0-9]+(-[a-z0-9]+)*$`, are at most 64 characters, and the v1 registry
+returns the complete variant list without pagination. Corrupt or missing
+manifests fail closed with `REGISTRY_CORRUPT`; larva does not auto-repair them.
 
 ---
 
@@ -451,71 +291,59 @@ All errors use a single envelope shape:
 
 ### Workflow A: Generate and register a new persona
 
-```
-1. Build PersonaSpec JSON (LLM-generated or hand-written)
-2. larva_validate(spec) → check valid=true
-3. larva_register(spec) → get id back
-4. larva_resolve(id) → confirm round-trip
+```text
+1. Build PersonaSpec JSON
+2. larva_validate(spec) -> check valid=true
+3. larva_register(spec) -> writes default variant
+4. larva_resolve(id) -> confirm active round-trip
 ```
 
-### Workflow B: Manage registry-local variants
+### Workflow B: Add a named variant
 
-```
-1. larva_register(spec, variant="experiment") → store an alternate variant
-2. larva_variant_list(id) → inspect available variants and active pointer
-3. larva_variant_activate(id, "experiment") → make a variant active
-4. larva_resolve(id) → resolve the active canonical PersonaSpec
+```text
+1. Build a complete PersonaSpec with the same base id
+2. larva_validate(spec) -> check valid=true
+3. larva_register(spec, variant="tacit") -> create/replace named variant
+4. larva_variant_list(id) -> confirm it exists
+5. larva_variant_activate(id, "tacit") -> make it active when explicitly desired
 ```
 
 ### Workflow C: Load for agent execution
 
-```
-1. larva_resolve(id) → PersonaSpec
-   OR
-   larva_resolve(id, overrides={model: "..."}) → PersonaSpec with runtime patch
+```text
+1. larva_resolve(id) -> active PersonaSpec
+   OR larva_resolve(id, variant="tacit") -> explicit variant PersonaSpec
 2. Pass spec to anima or agent runner
 ```
 
-For OpenCode, use the wrapper instead of writing `.opencode/opencode.json`:
+### Workflow D: OpenCode
 
 ```bash
 larva opencode --agent python-senior
 larva opencode run "check this bug" --agent python-senior
 ```
 
-The wrapper only projects registered personas into OpenCode's startup config; it
-does not call the model or own runtime policy.
+`--agent python-senior` selects the Larva base persona id `python-senior` as the
+OpenCode agent. The wrapper projects active variants only; inactive variants are
+not separate OpenCode agents.
 
-### Workflow D: Discover available personas
-
-```
-1. larva_list() → [{id, description, spec_digest, model}, ...]
-2. larva_resolve(id) → full spec for chosen persona
-```
-
-### Workflow E: Remove a persona
-
-```
-1. larva_delete(id) → {id, deleted: true}
-```
-
-### Workflow F: Reset registry
-
-```
-1. larva_clear(confirm="CLEAR REGISTRY") → {cleared: true, count: N}
-```
+The plugin replaces the selected `[larva:<id>]` placeholder at OpenCode's
+system-prompt transform layer. The hardening contract is selected-id re-resolve
+on runtime cache miss/staleness, no raw placeholder leakage, and fail-closed
+behavior when no prompt can be resolved. Adding or deleting a persona id changes
+the OpenCode agent list and requires restarting `larva opencode`.
 
 ---
 
 ## 9. Critical Constraints
 
-- **No LLM calls.** larva is pure persona management. It does not execute or call any model.
-- **No inheritance.** There is no `base:` field. Composition is explicit.
-- **Error-on-conflict.** Conflicting scalar fields from multiple components always error. Use `overrides` to resolve.
-- **Ids are global and flat.** No namespacing in v1. Ids must be kebab-case: `^[a-z0-9]+(-[a-z0-9]+)*$`.
-- **spec_version is schema identity, not persona revisioning.** Canonical PersonaSpec input requires `spec_version: "0.1.0"`; public canonical admission/update paths do not treat it as optional, and patch/update attempts to mutate it are rejected.
-- **spec_digest is always recomputed.** Do not pass stale digest values; larva overwrites them.
-- **Override revalidation is mandatory.** When overrides are applied via `resolve`, the result is revalidated and renormalized. Invalid overrides produce `PERSONA_INVALID`.
-- **No cross-run persona memory.** Persona changes require explicit `register`. There is no hidden mutable state.
-- **Components are read-only.** larva reads components from `~/.larva/components/` but does not create, modify, or delete them. Component file management is external.
-- **`clear` requires confirmation.** The confirm token `"CLEAR REGISTRY"` must be passed exactly. This is irreversible.
+- **No LLM calls.** larva is pure persona management.
+- **No inheritance.** There is no `base:` field.
+- **No assembly/components.** Register complete PersonaSpec JSON directly.
+- **Ids are global and flat.** Ids must be kebab-case.
+- **Variants are registry metadata.** `variant` is rejected inside PersonaSpec.
+- **spec_version is schema identity, not persona revisioning.**
+- **spec_digest is always recomputed.** Active variant switches must change resolved digest when canonical content changes.
+- **Override revalidation is mandatory.** Invalid overrides produce `PERSONA_INVALID`.
+- **Active and last variants are protected.** Use `variant_activate` before deleting a former active variant; delete the base persona to remove the last variant.
+- **`clear` requires confirmation.** The token `"CLEAR REGISTRY"` must match exactly.

@@ -8,11 +8,8 @@ from returns.result import Failure, Result, Success
 
 from larva.cli_entrypoint import main  # noqa: F401  # compatibility re-export
 from larva.shell.cli_commands import (
-    assemble_command,
     clear_command,
     clone_command,
-    component_list_command,
-    component_show_command,
     delete_command,
     doctor_registry_command,
     export_command,
@@ -42,45 +39,16 @@ from larva.shell.cli_helpers import (
     _read_spec_json,
 )
 from larva.shell.cli_parser import build_cli_parser
-from larva.shell.components import FilesystemComponentStore
 from larva.shell.shared.facade_factory import build_default_facade  # noqa: F401
 
 PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
-COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
 
 if TYPE_CHECKING:
     import argparse
     from collections.abc import Callable, Sequence
 
-    from larva.app.facade import AssembleRequest, LarvaFacade
+    from larva.app.facade import LarvaFacade
     from larva.shell.cli_helpers import CliExitCode
-    from larva.shell.components import ComponentStore
-
-
-def _dispatch_component(
-    args: argparse.Namespace,
-    *,
-    as_json: bool,
-    component_store: ComponentStore,
-) -> Result[CliCommandResult, CliFailure]:
-    component_command = cast("str", getattr(args, "component_command", ""))
-    if component_command == "list":
-        return component_list_command(as_json=as_json, component_store=component_store)
-    if component_command == "show":
-        return component_show_command(
-            cast("str", args.ref),
-            as_json=as_json,
-            component_store=component_store,
-        )
-    return Failure(
-        {
-            "exit_code": EXIT_CRITICAL,
-            "stderr": f"Unsupported component command: {component_command}\n",
-            "error": _critical_error(
-                "unsupported component command", {"command": component_command}
-            ).unwrap(),
-        }
-    )
 
 
 def _dispatch_validate(
@@ -95,49 +63,6 @@ def _dispatch_validate(
             _operation_failure("Validate", loaded_spec.failure(), as_json=as_json).unwrap()
         )
     return validate_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
-
-
-def _build_assemble_request(
-    args: argparse.Namespace,
-) -> Result[AssembleRequest, JsonErrorEnvelope]:
-
-    overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
-    if isinstance(overrides, Failure):
-        return Failure(overrides.failure())
-
-    request: AssembleRequest = {
-        "id": cast("str", args.id),
-        "prompts": cast("list[str]", args.prompts),
-        "toolsets": cast("list[str]", args.toolsets),
-        "constraints": cast("list[str]", args.constraints),
-        "overrides": overrides.unwrap(),
-    }
-    description = cast("str | None", args.description)
-    if description is not None:
-        request["description"] = description
-    model = cast("str | None", args.model)
-    if model is not None:
-        request["model"] = model
-    return Success(request)
-
-
-def _dispatch_assemble(
-    args: argparse.Namespace,
-    *,
-    as_json: bool,
-    facade: LarvaFacade,
-) -> Result[CliCommandResult, CliFailure]:
-    request_result = _build_assemble_request(args)
-    if isinstance(request_result, Failure):
-        return Failure(
-            _operation_failure("Assemble", request_result.failure(), as_json=as_json).unwrap()
-        )
-    return assemble_command(
-        request_result.unwrap(),
-        as_json=as_json,
-        facade=facade,
-        output_path=cast("str | None", args.output),
-    )
 
 
 def _dispatch_register(
@@ -280,7 +205,6 @@ def _dispatch(
     args: argparse.Namespace,
     *,
     facade: LarvaFacade,
-    component_store: ComponentStore,
 ) -> Result[CliCommandResult, CliFailure]:
     command = cast("str", args.command)
     as_json = cast("bool", getattr(args, "as_json", False))
@@ -330,7 +254,6 @@ def run_cli(
     facade: LarvaFacade,
     stdout: IO[str],
     stderr: IO[str],
-    component_store: ComponentStore | None = None,
 ) -> CliExitCode:
 
     parser = build_cli_parser().unwrap()
@@ -355,9 +278,6 @@ def run_cli(
             stderr=stderr,
         )
 
-    active_component_store = (
-        component_store if component_store is not None else FilesystemComponentStore()
-    )
     try:
         args = parser.parse_args(argv_list)
     except _CliParseError as error:
@@ -388,7 +308,7 @@ def run_cli(
         return 0  # type: ignore[return-value]
 
     return _emit_result(
-        _dispatch(args, facade=facade, component_store=active_component_store),
+        _dispatch(args, facade=facade),
         as_json=cast("bool", getattr(args, "as_json", False)),
         stdout=stdout,
         stderr=stderr,

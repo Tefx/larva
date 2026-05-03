@@ -21,12 +21,19 @@ from larva.app.facade_types import (
 )
 from larva.core.spec import PersonaSpec
 from larva.core.validation_contract import ValidationReport
-from larva.shell.python_api_components import LarvaApiError
 from larva.shell.shared import facade_factory
 
 if TYPE_CHECKING:
     import builtins
     from collections.abc import Callable
+
+
+class LarvaApiError(Exception):
+    """Exception raised when facade operations fail."""
+
+    def __init__(self, error: LarvaError) -> None:
+        self.error = error
+        super().__init__(error["message"])
 
 
 class _FacadeAccessor:

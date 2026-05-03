@@ -2,8 +2,8 @@
 
 This module provides the canonical implementation for structured exception
 construction across core modules. Each module that needs a structured exception
-defines its own wrapper (e.g., `_normalize_error`, `_patch_error`,
-`assembly_error`) that delegates to the shared helper.
+defines its own wrapper (for example, `_normalize_error` or `_patch_error`)
+that delegates to the shared helper.
 
 See:
 - ARCHITECTURE.md :: Module: larva.core

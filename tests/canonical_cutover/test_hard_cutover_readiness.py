@@ -519,6 +519,15 @@ class TestSnakeCaseMCPNameScan:
             + "\n".join(f"  {f['tool_name']}: {f['reason']}" for f in findings)
         )
 
+    def test_mcp_inventory_tracks_variant_cutover_surface(self) -> None:
+        """Inventory scan follows canonical variant tools and removed legacy tools."""
+        names = set(CANONICAL_MCP_TOOL_NAMES)
+
+        assert {"larva_variant_list", "larva_variant_activate", "larva_variant_delete"} <= names
+        assert "larva_assemble" not in names
+        assert "larva_component_list" not in names
+        assert "larva_component_show" not in names
+
 
 class TestJSONLTallyGeneration:
     """JSONL tally artifact: generation plan and smoke test."""

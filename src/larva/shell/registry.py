@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 from pathlib import Path
@@ -16,14 +15,12 @@ from larva.shell.registry_fs import read_spec_payload, rollback_spec_write, writ
 from larva.shell.registry_types import (
     CLEAR_CONFIRMATION_TOKEN,
     DeleteFailureError,
-    IndexReadError,
     InvalidConfirmError,
     InvalidPersonaIdError,
     InvalidVariantNameError,
     MissingPersonaError,
     RegistryCorruptError,
     RegistryError,
-    RegistryIndex,
     RegistryStore,
     SpecReadError,
     UpdateFailureError,
@@ -36,11 +33,9 @@ if TYPE_CHECKING:
 
 
 DEFAULT_REGISTRY_ROOT = Path("~/.larva/registry").expanduser()
-INDEX_FILENAME = "index.json"
 MANIFEST_FILENAME = "manifest.json"
 VARIANTS_DIRNAME = "variants"
 DEFAULT_VARIANT = "default"
-SPEC_FILENAME_TEMPLATE = "{id}.json"
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _VARIANT_NAME_PATTERN = _PERSONA_ID_PATTERN
 _MAX_VARIANT_NAME_LENGTH = 64
@@ -147,45 +142,23 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
                 return manifest_result
             return self.get_variant(persona_id, manifest_result.unwrap())
 
-        spec_path = self._spec_path(persona_id)
-        if not spec_path.exists():
-            return Failure(self._not_found(persona_id))
-
-        return self._read_spec(persona_id, expected_digest=None)
+        return Failure(self._not_found(persona_id))
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
-        if self._root.exists():
-            variant_specs: list[PersonaSpec] = []
-            variant_persona_dirs = sorted(
-                path
-                for path in self._root.iterdir()
-                if path.is_dir() and self._invalid_id_error(path.name) is None
-            )
-            if variant_persona_dirs:
-                for persona_dir in variant_persona_dirs:
-                    result = self.get(persona_dir.name)
-                    if isinstance(result, Failure):
-                        return result
-                    variant_specs.append(result.unwrap())
-                return Success(variant_specs)
-
-        index_result = self._read_index()
-        if isinstance(index_result, Failure):
-            return index_result
-
-        index = index_result.unwrap()
-        specs: list[PersonaSpec] = []
-        for persona_id, expected_digest in sorted(index.items()):
-            invalid = self._invalid_id_error(persona_id)
-            if invalid is not None:
-                return Failure(invalid)
-
-            spec_result = self._read_spec(persona_id, expected_digest)
-            if isinstance(spec_result, Failure):
-                return spec_result
-            specs.append(spec_result.unwrap())
-
-        return Success(specs)
+        if not self._root.exists():
+            return Success([])
+        variant_specs: list[PersonaSpec] = []
+        variant_persona_dirs = sorted(
+            path
+            for path in self._root.iterdir()
+            if path.is_dir() and self._invalid_id_error(path.name) is None
+        )
+        for persona_dir in variant_persona_dirs:
+            result = self.get(persona_dir.name)
+            if isinstance(result, Failure):
+                return result
+            variant_specs.append(result.unwrap())
+        return Success(variant_specs)
 
     def delete(self, persona_id: str) -> Result[None, RegistryError]:
         if (invalid := self._invalid_id_error(persona_id)) is not None:
@@ -205,63 +178,8 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
                         "failed_spec_paths": [str(persona_dir)],
                     }
                 )
-            legacy_path = self._spec_path(persona_id)
-            try:
-                legacy_path.unlink(missing_ok=True)
-                index_result = self._read_index()
-                if isinstance(index_result, Success):
-                    updated_index = dict(index_result.unwrap())
-                    updated_index.pop(persona_id, None)
-                    self._write_json_atomic(self._index_path(), updated_index, "index", persona_id)
-            except OSError:
-                return Success(None)
             return Success(None)
-        spec_path = self._spec_path(persona_id)
-        if not spec_path.exists():
-            return Failure(self._not_found(persona_id))
-        index_result = self._read_index()
-        if isinstance(index_result, Failure):
-            return index_result
-        old_index = index_result.unwrap()
-        updated_index = dict(old_index)
-        updated_index.pop(persona_id, None)
-        index_path = self._index_path()
-        if isinstance(
-            index_write_result := self._write_json_atomic(
-                index_path, updated_index, "index", persona_id
-            ),
-            Failure,
-        ):
-            return index_write_result
-        try:
-            spec_path.unlink()
-        except OSError as exc:
-            message = f"failed to unlink spec file: {exc}"
-            if isinstance(
-                rollback_result := self._write_json_atomic(
-                    index_path, old_index, "index", persona_id
-                ),
-                Failure,
-            ):
-                rollback_message = rollback_result.failure()["message"]
-                message = f"{message}; rollback failed while restoring index: {rollback_message}"
-            return Failure(
-                {
-                    "code": "REGISTRY_DELETE_FAILED",
-                    "message": message,
-                    "operation": "delete",
-                    "persona_id": persona_id,
-                    "path": str(spec_path),
-                    "failed_spec_paths": [str(spec_path)],
-                }
-            )
-        return Success(None)
-
-    def _index_path(self) -> Path:
-        return self._root / INDEX_FILENAME
-
-    def _spec_path(self, persona_id: str) -> Path:
-        return self._root / SPEC_FILENAME_TEMPLATE.format(id=persona_id)
+        return Failure(self._not_found(persona_id))
 
     def _persona_dir(self, persona_id: str) -> Path:
         return self._root / persona_id
@@ -312,60 +230,7 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
                 persona_id, self._root, f"failed to create registry root: {exc}"
             )
 
-    def _read_index(self) -> Result[RegistryIndex, RegistryError]:
-        index_path = self._index_path()
-        if not index_path.exists():
-            return Success({})
-
-        try:
-            payload = json.loads(index_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            return Failure(
-                {
-                    "code": "REGISTRY_INDEX_READ_FAILED",
-                    "message": f"failed to read registry index: {exc}",
-                    "path": str(index_path),
-                }
-            )
-
-        if not isinstance(payload, dict):
-            return Failure(
-                {
-                    "code": "REGISTRY_INDEX_READ_FAILED",
-                    "message": "registry index must be a JSON object",
-                    "path": str(index_path),
-                }
-            )
-
-        index: RegistryIndex = {}
-        for key, value in payload.items():
-            if not isinstance(key, str) or not isinstance(value, str):
-                return Failure(
-                    {
-                        "code": "REGISTRY_INDEX_READ_FAILED",
-                        "message": "registry index must map string ids to string digests",
-                        "path": str(index_path),
-                    }
-                )
-            if self._require_non_empty_digest(value) is None:
-                return Failure(
-                    {
-                        "code": "REGISTRY_INDEX_READ_FAILED",
-                        "message": "registry index digest values must be non-empty strings",
-                        "path": str(index_path),
-                    }
-                )
-            index[key] = value
-
-        return Success(index)
-
     _CANONICAL_FORBIDDEN_FIELDS: ClassVar[frozenset[str]] = frozenset(CANONICAL_FORBIDDEN_FIELDS)
-
-    def _read_spec(
-        self, persona_id: str, expected_digest: str | None
-    ) -> Result[PersonaSpec, RegistryError]:
-        spec_path = self._spec_path(persona_id)
-        return self._read_spec_at(persona_id, spec_path, expected_digest)
 
     def _read_spec_at(
         self, persona_id: str, spec_path: Path, expected_digest: str | None
@@ -425,7 +290,7 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
         self,
         path: Path,
         payload: object,
-        kind: Literal["spec", "index", "manifest"],
+        kind: Literal["spec", "manifest"],
         persona_id: str,
     ) -> Result[None, RegistryError]:
         result = write_json_atomic(path, payload)
@@ -477,15 +342,11 @@ __all__ = [
     "CLEAR_CONFIRMATION_TOKEN",
     "DEFAULT_REGISTRY_ROOT",
     "DeleteFailureError",
-    "INDEX_FILENAME",
     "InvalidConfirmError",
-    "SPEC_FILENAME_TEMPLATE",
     "FileSystemRegistryStore",
-    "IndexReadError",
     "InvalidPersonaIdError",
     "MissingPersonaError",
     "RegistryError",
-    "RegistryIndex",
     "RegistryStore",
     "SpecReadError",
     "UpdateFailureError",

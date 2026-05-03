@@ -72,11 +72,9 @@ def _registry_file_hashes(home: Path) -> dict[str, str]:
 def isolated_web_registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
     """Run packaged REST tests against an isolated registry, never the user's default one."""
     from larva.app.facade import DefaultLarvaFacade
-    from larva.core import assemble as assemble_module
     from larva.core import normalize as normalize_module
     from larva.core import spec as spec_module
     from larva.core import validate as validate_module
-    from larva.shell.components import FilesystemComponentStore
     from larva.shell.registry import FileSystemRegistryStore
 
     default_home = Path.home()
@@ -88,10 +86,8 @@ def isolated_web_registry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> It
     def build_isolated_facade() -> LarvaFacade:
         return DefaultLarvaFacade(
             spec=spec_module,
-            assemble=cast("AssembleModule", assemble_module),
             validate=cast("ValidateModule", validate_module),
             normalize=cast("NormalizeModule", normalize_module),
-            components=FilesystemComponentStore(),
             registry=FileSystemRegistryStore(root=isolated_registry_root),
         )
 
@@ -410,11 +406,10 @@ def test_spec_digest_format_hypothesis(digest: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Surface Cutover: EXPECTED-RED assertions
+# Surface Cutover: implemented cutover assertions
 #
-# These assert TARGET-STATE REST surface contracts that have NOT been cut over yet.
-# They MUST fail RED until the implementation phase removes assembly/component
-# endpoints and adds variant registry endpoints.
+# These guard implemented REST surface contracts: assembly/component endpoints
+# stay removed and variant registry endpoints stay wired.
 #
 # Source authority: design/registry-local-variants-and-assembly-removal.md
 # Source authority: docs/reference/INTERFACES.md :: Web Runtime Surface
@@ -422,7 +417,7 @@ def test_spec_digest_format_hypothesis(digest: str) -> None:
 
 
 class TestRESTAssembleEndpointRemoved:
-    """EXPECTED-RED: POST /api/personas/assemble MUST NOT exist after cutover.
+    """POST /api/personas/assemble MUST NOT be a working endpoint after cutover.
 
     Source: INTERFACES.md :: Removed endpoints (line 159)
     Source: design/registry-local-variants-and-assembly-removal.md :: Removed subsystem
@@ -451,7 +446,7 @@ class TestRESTAssembleEndpointRemoved:
 
 
 class TestRESTComponentsEndpointsRemoved:
-    """EXPECTED-RED: /api/components* endpoints MUST NOT exist after cutover.
+    """/api/components* endpoints MUST NOT exist after cutover.
 
     Source: INTERFACES.md :: Removed endpoints (lines 160-164)
     Source: design/registry-local-variants-and-assembly-removal.md :: Removed subsystem
@@ -489,7 +484,7 @@ class TestRESTComponentsEndpointsRemoved:
 
 
 class TestRESTVariantEndpointsExist:
-    """EXPECTED-RED: Variant registry endpoints MUST exist after cutover.
+    """Variant registry endpoints MUST exist after cutover.
 
     Source: INTERFACES.md :: Variant registry routes (lines 147-152)
     Source: design/registry-local-variants-and-assembly-removal.md :: Web REST surface
@@ -591,7 +586,7 @@ class TestRESTVariantEndpointsExist:
 
 
 class TestRESTVariantEnvelopeSeparation:
-    """EXPECTED-RED: Variant endpoints must separate _registry from canonical spec.
+    """Variant endpoints must separate _registry from canonical spec.
 
     Source: INTERFACES.md :: Registry Variant Envelope (lines 182-197)
     Source: design/registry-local-variants-and-assembly-removal.md :: Web REST surface
@@ -660,7 +655,7 @@ class TestRESTVariantEnvelopeSeparation:
 
 
 class TestRESTErrorCodesSurfaceConsistently:
-    """EXPECTED-RED: Variant-related error codes must surface consistently.
+    """Variant-related error codes must surface consistently.
 
     Source: INTERFACES.md :: Error Handling (lines 258-268)
     Source: USAGE.md :: §6 Error Handling

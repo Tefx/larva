@@ -13,8 +13,6 @@ from larva.app.facade_registry_ops import RegistryFacadeOps
 from larva.app.facade_strictness import spec_digest_issues
 from larva.app.facade_types import (
     ActivatedVariant,
-    AssembleModule,
-    AssembleRequest,
     LarvaError,
     LarvaFacade,
     NormalizeModule,
@@ -22,16 +20,13 @@ from larva.app.facade_types import (
     SpecModule,
     ValidateModule,
 )
-from larva.core.assembly_error import AssemblyError
-from larva.core.component_error_projection import project_component_store_error
 from larva.core.normalize import NormalizeError
 from larva.core.patch import PatchError, apply_patches
 
 if TYPE_CHECKING:
     from larva.app.facade_types import DeletedVariant, VariantMetadata
-    from larva.core.spec import AssemblyInput, PersonaSpec
+    from larva.core.spec import PersonaSpec
     from larva.core.validation_contract import ValidationReport
-    from larva.shell.components import ComponentStore
     from larva.shell.registry import RegistryError, RegistryStore
 
 ERROR_NUMERIC_CODES: dict[str, int] = {
@@ -41,8 +36,6 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
     "PERSONA_INVALID": 101,
     "PERSONA_CYCLE": 102,
     "INVALID_PERSONA_ID": 104,
-    "COMPONENT_NOT_FOUND": 105,
-    "COMPONENT_CONFLICT": 106,
     "REGISTRY_INDEX_READ_FAILED": 107,
     "REGISTRY_SPEC_READ_FAILED": 108,
     "REGISTRY_WRITE_FAILED": 109,
@@ -62,9 +55,6 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
 }
 
 
-_ASSEMBLE_REQUEST_ALLOWED_FIELDS = frozenset(
-    {"id", "description", "prompts", "toolsets", "constraints", "model", "overrides"}
-)
 _RESOLVE_FORBIDDEN_OVERRIDE_FIELDS = frozenset({"id", "tools", "side_effect_policy", "variables"})
 
 
@@ -75,17 +65,13 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
         self,
         *,
         spec: SpecModule,
-        assemble: AssembleModule,
         validate: ValidateModule,
         normalize: NormalizeModule,
-        components: ComponentStore,
         registry: RegistryStore,
     ) -> None:
         self._spec = spec
-        self._assemble = assemble
         self._validate = validate
         self._normalize = normalize
-        self._components = components
         self._registry = registry
 
     def _registry_persona_ids_for_warnings(self) -> frozenset[str] | None:
@@ -176,105 +162,6 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
             code=error.code,
             message=error.message,
             details=cast("dict[str, object]", dict(error.details)),
-        )
-
-    def _validate_assemble_request(self, request: AssembleRequest) -> Result[None, LarvaError]:
-        unknown_fields = sorted(set(request) - _ASSEMBLE_REQUEST_ALLOWED_FIELDS)
-        if unknown_fields:
-            field = unknown_fields[0]
-            return Failure(
-                self._error(
-                    code="INVALID_INPUT",
-                    message=(
-                        f"assemble request field '{field}' is not permitted at canonical boundary"
-                    ),
-                    details={"field": field, "unknown_fields": unknown_fields},
-                )
-            )
-        return Success(None)
-
-    def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]:
-        request_validation = self._validate_assemble_request(request)
-        if isinstance(request_validation, Failure):
-            return request_validation
-        assemble_input: AssemblyInput = {
-            "id": request.get("id", ""),
-            "prompts": [],
-            "toolsets": [],
-            "constraints": [],
-            "overrides": request.get("overrides", {}),
-        }
-        description = request.get("description")
-        if isinstance(description, str):
-            assemble_input["description"] = description
-
-        prompt_names = request.get("prompts", [])
-        for prompt_name in prompt_names:
-            prompt_result = self._components.load_prompt(prompt_name)
-            if isinstance(prompt_result, Failure):
-                return Failure(
-                    self._component_error(prompt_result.failure(), prompt_name, "prompt")
-                )
-            cast("list[dict[str, str]]", assemble_input["prompts"]).append(
-                cast("dict[str, str]", prompt_result.unwrap())
-            )
-
-        toolset_names = request.get("toolsets", [])
-        for toolset_name in toolset_names:
-            toolset_result = self._components.load_toolset(toolset_name)
-            if isinstance(toolset_result, Failure):
-                return Failure(
-                    self._component_error(toolset_result.failure(), toolset_name, "toolset")
-                )
-            cast("list[dict[str, dict[str, str]]]", assemble_input["toolsets"]).append(
-                cast("dict[str, dict[str, str]]", toolset_result.unwrap())
-            )
-
-        constraint_names = request.get("constraints", [])
-        for constraint_name in constraint_names:
-            constraint_result = self._components.load_constraint(constraint_name)
-            if isinstance(constraint_result, Failure):
-                return Failure(
-                    self._component_error(
-                        constraint_result.failure(), constraint_name, "constraint"
-                    )
-                )
-            cast("list[dict[str, object]]", assemble_input["constraints"]).append(
-                cast("dict[str, object]", constraint_result.unwrap())
-            )
-
-        model_name = request.get("model")
-        if model_name:
-            model_result = self._components.load_model(model_name)
-            if isinstance(model_result, Failure):
-                return Failure(self._component_error(model_result.failure(), model_name, "model"))
-            assemble_input["model"] = model_result.unwrap()
-
-        try:
-            candidate = self._assemble.assemble_candidate(assemble_input)
-        except AssemblyError as error:
-            return Failure(self._assembly_error(error))
-
-        normalized_result = self._normalize_and_validate(candidate)
-        if isinstance(normalized_result, Failure):
-            return normalized_result
-        return Success(normalized_result.unwrap())
-
-    def _component_error(
-        self, error: Exception, component_name: str, component_type: str
-    ) -> LarvaError:
-        return project_component_store_error(
-            operation="assemble",
-            error=error,
-            default_component_type=component_type,
-            default_component_name=component_name,
-        )
-
-    def _assembly_error(self, error: AssemblyError) -> LarvaError:
-        return self._error(
-            code=error.code,
-            message=error.message,
-            details=dict(error.details),
         )
 
     def _validation_error(self, report: ValidationReport) -> LarvaError:

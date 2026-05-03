@@ -1,10 +1,7 @@
 # larva User Guide
 
-This guide is the human-oriented introduction to larva.
-
-If you want the shortest entrypoint, read `../../README.md` first. If you want
-the formal API contract, read `../reference/INTERFACES.md`. If you are
-integrating larva into an agent system, `USAGE.md` is the agent-facing companion.
+This guide explains how to use larva as the local authority for PersonaSpec
+validation, registry storage, and registry-local variant routing.
 
 ## 1. What larva does
 
@@ -14,9 +11,9 @@ LLM agent personas.
 larva can:
 
 - validate persona specs
-- assemble personas from reusable components
 - register personas in a local registry
-- resolve a persona by id
+- manage registry-local variants for a base persona id
+- resolve a persona by id, using the active variant by default
 - clone, update, delete, clear, and export personas
 - expose the same model through MCP, CLI, Python, and a small web UI
 
@@ -27,25 +24,19 @@ larva does not:
 - manage agent memory
 - own runtime tool enforcement
 - define provider-specific gateway behavior
+- change the canonical PersonaSpec contract owned by opifex
 
 ## 2. Installation
-
-Install from Python:
 
 ```bash
 pip install larva
 ```
 
-Confirm the CLI is available:
+Development checkout:
 
 ```bash
-larva --help
-```
-
-If you prefer ephemeral execution, you can also run larva with `uvx`:
-
-```bash
-uvx larva --help
+uv sync
+uv run larva --help
 ```
 
 ## 3. Directory layout
@@ -54,408 +45,293 @@ larva stores state under `~/.larva/`.
 
 ```text
 ~/.larva/
-  components/
-    prompts/
-    toolsets/
-    constraints/
-    models/
   registry/
+    <persona-id>/
+      manifest.json
+      variants/
+        default.json
+        tacit.json
 ```
 
-- `components/` holds reusable building blocks for assembly
-- `registry/` holds registered canonical persona specs
-
-Component boundary note:
-
-- `~/.larva/components/` is user-managed local input, not canonical larva state
-- larva reads prompt markdown and YAML component files from that root but does
-  not treat them as trusted until assembly, normalization, and validation finish
-- larva does not create, migrate, or enforce ownership outside that documented
-  directory layout in this release
+- `registry/` holds registered canonical persona specs and registry-local variant metadata.
+- Each variant file is a full canonical PersonaSpec whose `id` equals `<persona-id>`.
+- `manifest.json` stores only the active variant pointer, for example `{"active": "default"}`.
+- Variant names are registry-local metadata and are never PersonaSpec fields.
 
 ## 4. PersonaSpec basics
 
-The canonical larva artifact is `PersonaSpec`.
+PersonaSpec is flat and self-contained:
 
 ```json
 {
   "spec_version": "0.1.0",
   "id": "code-reviewer",
-  "description": "Reviews code changes with read-focused tooling.",
+  "description": "Reviews code for correctness and style",
   "prompt": "You are a senior code reviewer.",
-  "model": "openai/gpt-5.4",
-  "capabilities": {
-    "shell": "read_only",
-    "filesystem": "read_write"
-  },
-  "model_params": {
-    "temperature": 0.2,
-    "max_tokens": 4096
-  },
+  "model": "openai/gpt-5.5",
+  "capabilities": {"shell": "read_only"},
   "can_spawn": false,
-  "compaction_prompt": "Summarize working context into concise carry-forward notes.",
   "spec_digest": "sha256:..."
 }
 ```
 
-### Required mental model
+Important field rules:
 
-- `id` is the stable persona identity
-- `spec_version` is schema compatibility metadata
-- `spec_version` is not persona revisioning
-- v1 pins `spec_version` to `"0.1.0"`
-- `spec_digest` is the content fingerprint for canonical output
-- canonical output is flat and self-contained
-
-### Important field rules
-
-- `id` must match `^[a-z0-9]+(-[a-z0-9]+)*$`
-- `capabilities` is required; `capabilities: {}` means no declared capability postures, not unrestricted access
-- `model_params` is an optional canonical field; nested `model_params.*` update patches deep-merge instead of replacing the whole object
-- `tools` and `side_effect_policy` are forbidden legacy PersonaSpec vocabulary at every canonical admission surface
-- `side_effect_policy` is **not a PersonaSpec field** — runtime approval policy belongs to anima runtime controls, not larva
-- `can_spawn` is either `false`, `true`, or a list of persona ids
-- `spec_digest` is computed by larva and should not be authored manually
+- `id` must be flat kebab-case.
+- `spec_version` is schema identity and is pinned to `"0.1.0"`.
+- `spec_digest` is recomputed by larva.
+- `capabilities` is the canonical capability declaration surface.
+- `variant`, `_registry`, `active`, and manifest state are not PersonaSpec fields.
 
 ## 5. Your first persona
 
-Create a minimal persona file:
-
-```bash
-cat <<'EOF' > code-reviewer.json
-{
-  "id": "code-reviewer",
-  "description": "Reviews code for correctness and style",
-  "prompt": "You are a senior code reviewer.",
-  "model": "openai/gpt-5.4",
-  "capabilities": {"shell": "read_only"},
-  "can_spawn": false,
-  "spec_version": "0.1.0"
-}
-EOF
-```
-
-Validate it:
+Validate and register a complete PersonaSpec:
 
 ```bash
 larva validate code-reviewer.json
-```
-
-Register it:
-
-```bash
 larva register code-reviewer.json
+larva resolve code-reviewer --json
 ```
 
-Resolve it from the registry:
-
-```bash
-larva resolve code-reviewer
-```
+The first registration creates the `default` variant and makes it active.
 
 ## 6. Typical lifecycle
 
-The most common larva workflow is:
-
-1. author or assemble a candidate persona
-2. validate it
-3. register it
-4. resolve it by id when you need the canonical form
-5. clone or update it for experiments
-6. export it when another system needs the spec
-
-### Example lifecycle
-
 ```bash
 larva validate code-reviewer.json
 larva register code-reviewer.json
-larva clone code-reviewer code-reviewer-exp
-larva update code-reviewer-exp --set model=openai/gpt-5.4-pro
-larva resolve code-reviewer-exp --json
-larva export --id code-reviewer-exp --json
+larva register code-reviewer-tacit.json --variant tacit
+larva variant activate code-reviewer tacit
+larva update code-reviewer --set model=openai/gpt-5.5
+larva resolve code-reviewer --json
+larva export --id code-reviewer --json
 ```
 
 ## 7. Validation
 
-Validation checks both schema shape and semantic rules.
-
 ```bash
+larva validate code-reviewer.json
 larva validate code-reviewer.json --json
 ```
 
-Typical outcomes:
-
-- `valid: true` and no warnings
-- `valid: true` with warnings, such as:
-  - unknown model ids
-  - empty/all-`none` capabilities
-  - read-focused reviewer/auditor personas that still declare `read_write`/`destructive` capability postures
-  - `can_spawn` targets missing from the current registry snapshot
-  - descriptions that read like prompt text instead of short operational summaries
-  - unknown capability-family identifiers outside the local vocabulary snapshot
-- `valid: false` with one or more structured errors
-
-Example validation response:
-
-```json
-{
-  "valid": true,
-  "errors": [],
-  "warnings": [
-    "unknown model identifier 'custom-model-x' is outside the known-model snapshot",
-    "can_spawn references ids outside the current registry snapshot: missing-child"
-  ]
-}
-```
-
-Warnings are advisory only; they do not relax canonical admission.
+Validation rejects unknown canonical fields, including `variant`. Pass variant
+names as CLI/MCP/API parameters instead.
 
 ## 8. Register and resolve
 
-`register` writes a validated persona into the local registry.
+Register default variant:
 
 ```bash
 larva register code-reviewer.json
 ```
 
-`resolve` fetches a registered persona by id and returns canonical output.
+Register a named variant:
+
+```bash
+larva register code-reviewer-tacit.json --variant tacit
+```
+
+Resolve active variant:
 
 ```bash
 larva resolve code-reviewer
 ```
 
-You can apply temporary overrides during resolve:
+Resolve a specific variant:
 
 ```bash
-larva resolve code-reviewer --override model=openai/gpt-5.4-pro
+larva resolve code-reviewer --variant tacit
 ```
 
-Important behavior:
+Apply temporary overrides during resolve:
 
-- overrides trigger revalidation
-- the returned `spec_digest` is recomputed
-- invalid overrides fail with `PERSONA_INVALID`
+```bash
+larva resolve code-reviewer --override model=openai/gpt-5.5-pro
+```
 
-## 9. Clone and update
+## 9. Clone, update, and variants
 
-Use clone when you want a safe branch for experimentation.
+Use clone when you want a separate base persona id:
 
 ```bash
 larva clone code-reviewer code-reviewer-exp
 ```
 
-Use update to patch selected fields in a registered persona.
+Use variants when you want several configurations behind one base id.
+
+Patch the active variant:
 
 ```bash
-larva update code-reviewer-exp --set model=openai/gpt-5.4-pro
-larva update code-reviewer-exp --set model_params.temperature=0.4
+larva update code-reviewer --set model=openai/gpt-5.5
 ```
 
-Important behavior:
+Patch a named variant:
 
-- `id` cannot be changed through update patches
-- `spec_version` is protected and cannot be bumped through update
-- `spec_digest` is always recomputed after successful changes
-- clone preserves source content, but still returns canonical v1 schema output
+```bash
+larva update code-reviewer --variant tacit --set model=openai/gpt-5.5-pro
+```
 
 ## 10. Listing, deleting, clearing, and exporting
 
-List registered personas:
+List base personas:
 
 ```bash
 larva list
 larva list --json
 ```
 
-Delete one persona:
+List variants for one persona:
+
+```bash
+larva variant list code-reviewer
+```
+
+Activate a variant:
+
+```bash
+larva variant activate code-reviewer tacit
+```
+
+Delete an inactive, non-last variant:
+
+```bash
+larva variant delete code-reviewer draft
+```
+
+Delete a base persona and all variants:
 
 ```bash
 larva delete code-reviewer-exp
 ```
 
-Clear the entire registry:
-
-```bash
-larva clear --confirm "CLEAR REGISTRY"
-```
-
-Export personas:
+Export active canonical personas:
 
 ```bash
 larva export --all --json
-larva export --id code-reviewer --id code-reviewer-exp --json
+larva export --id code-reviewer --json
 ```
 
-## 11. Working with components
+Export does not include registry metadata.
 
-Components let you build personas from reusable parts instead of copying large
-prompt files.
+## 11. Working with registry-local variants
 
-Component categories:
+Variants replace name-based persona proliferation when the business role stays
+the same but the preferred prompt/model/capability configuration changes.
 
-- `prompts/` for prompt text fragments
-- `toolsets/` for tool posture maps
-- `constraints/` for policy fields such as `can_spawn` and `compaction_prompt`
-- `models/` for model name and inference parameter bundles
+Rules:
 
-List available components:
+- every variant is a complete canonical PersonaSpec
+- every variant for `code-reviewer` must have `"id": "code-reviewer"`
+- variant names are lower-kebab slugs matching `^[a-z0-9]+(-[a-z0-9]+)*$`
+  and at most 64 characters
+- `variant` is registry metadata and must not appear inside PersonaSpec JSON
+- `larva list`, `larva export`, and OpenCode projection use active variants only
+- deleting the active variant and deleting the last variant are rejected
+
+Manual migration from an old variant-like id:
 
 ```bash
-larva component list
+larva export --id code-reviewer-tacit --json > code-reviewer-tacit.json
+# edit JSON so "id" becomes "code-reviewer"
+larva register code-reviewer-tacit.json --variant tacit
+larva variant activate code-reviewer tacit
+larva delete code-reviewer-tacit
 ```
-
-Inspect one component:
-
-```bash
-larva component show prompts/code-reviewer
-larva component show toolsets/read-only
-```
-
-Assemble a persona from components:
-
-```bash
-larva assemble --id code-reviewer \
-  --prompt code-reviewer \
-  --prompt careful-reasoning \
-  --toolset read-only \
-  --constraints strict \
-  --model gpt-5 \
-  --override description="Reviews code changes with strict reasoning"
-```
-
-Assembly rules to remember:
-
-- prompts concatenate in order
-- conflicting scalar fields fail assembly unless you resolve them with `--override`
-- canonical output contains concrete fields, not component references
-- component files are shell-boundary input; the assembled result becomes
-  authoritative only after larva accepts the normalized `PersonaSpec`
 
 ## 12. Python API
 
-The Python API mirrors the main persona operations.
-
 ```python
-from larva.shell.python_api import clone, register, resolve, update, validate
+from larva.shell.python_api import (
+    register,
+    resolve,
+    update,
+    validate,
+    variant_activate,
+    variant_list,
+)
 
-report = validate({
+spec = {
     "id": "code-reviewer",
     "description": "Reviews code for correctness and style",
     "prompt": "You are a senior code reviewer.",
-    "model": "openai/gpt-5.4",
+    "model": "openai/gpt-5.5",
     "capabilities": {"shell": "read_only"},
     "can_spawn": False,
-})
+    "spec_version": "0.1.0",
+}
 
+report = validate(spec)
 if report["valid"]:
-    register({
-        "id": "code-reviewer",
-        "description": "Reviews code for correctness and style",
-        "prompt": "You are a senior code reviewer.",
-        "model": "openai/gpt-5.4",
-        "capabilities": {"shell": "read_only"},
-        "can_spawn": False,
-    })
+    register(spec)
+    register({**spec, "prompt": "You are a stricter senior code reviewer."}, variant="tacit")
 
-spec = resolve("code-reviewer")
-clone("code-reviewer", "code-reviewer-exp")
-updated = update("code-reviewer-exp", {"model": "openai/gpt-5.4-pro"})
+variant_activate("code-reviewer", "tacit")
+active_spec = resolve("code-reviewer")
+default_spec = resolve("code-reviewer", variant="default")
+variants = variant_list("code-reviewer")
+updated = update("code-reviewer", {"model": "openai/gpt-5.5-pro"})
 ```
 
 ## 13. MCP surface
 
-larva's primary programmatic interface is MCP.
-
-Available tools:
-
 ```text
 larva_validate(spec)
-larva_register(spec)
-larva_resolve(id, overrides?)
+larva_register(spec, variant?)
+larva_resolve(id, overrides?, variant?)
 larva_list()
-larva_variant_list(id)
-larva_variant_activate(id, variant)
-larva_variant_delete(id, variant)
-larva_update(id, patches)
+larva_update(id, patches, variant?)
 larva_update_batch(where, patches, dry_run?)
 larva_clone(source_id, new_id)
 larva_delete(id)
 larva_clear(confirm)
 larva_export(all?, ids?)
+larva_variant_list(id)
+larva_variant_activate(id, variant)
+larva_variant_delete(id, variant)
 ```
 
-For every MCP PersonaSpec input, forbidden legacy vocabulary is `tools` and
-`side_effect_policy`. Unknown top-level fields are rejected as non-canonical.
+Removed tools:
 
-If you need exact parameter and return contracts, read
-`../reference/INTERFACES.md`.
-
-Typical local startup commands:
-
-```bash
-larva mcp
-larva serve
-uvx larva mcp
-uvx larva serve
+```text
+larva_assemble
+larva_component_list
+larva_component_show
 ```
 
 ## 14. Web UI and plugin
 
-The authoritative packaged web runtime entrypoint is:
+Start the packaged Web UI:
 
 ```bash
 larva serve
 larva serve --port 7400 --no-open
 ```
 
-Runtime assumptions:
+The Web UI may show active variant state for human management. Registry variant
+endpoints return `{_registry, spec}` envelopes where `_registry` is local
+metadata and `spec` is canonical PersonaSpec.
 
-- binds `127.0.0.1` by default
-- uses port `7400` unless `--port` is provided
-- auto-opens the browser unless `--no-open` is provided
-- serves the packaged single-file UI from `src/larva/shell/web_ui.html`
-
-The repository also includes a supported contributor convenience entrypoint in
-`contrib/web/` for local review of the same general UI surface:
-
-```bash
-pip install fastapi uvicorn
-python contrib/web/server.py
-```
-
-Verified contract notes for downstream tests and reviews:
-
-- normative web API coverage belongs to the packaged `larva serve` surface
-- the normative endpoint inventory lives in `../reference/INTERFACES.md`
-- `python contrib/web/server.py` is supported as a contributor convenience entrypoint, not as the canonical packaged startup path
-- the prompt copy button is convenience UI behavior; docs do not promise more than the browser affordance exists
-- the packaged web UI uses an output-first **Compose Persona** flow: toolsets are
-  shown as capability presets, constraints are represented as optional behavior
-  presets, and selecting a behavior preset may prefill `can_spawn` /
-  `compaction_prompt` without changing the canonical backend assemble fields
-- batch update is a contrib-only convenience surface, not part of `larva serve`
-- preserved runnable liveness proof for both entrypoints lives in `../../tests/shell/artifacts/web_runtime_liveness.md`
-
-### OpenCode wrapper
-
-The repository includes an OpenCode plugin in `contrib/opencode-plugin/` and a
-wrapper command that injects registry personas into OpenCode without writing
-project config:
+OpenCode wrapper:
 
 ```bash
 larva opencode
 larva opencode --agent python-senior
-larva opencode run "check this bug" --agent python-senior
-larva opencode -- run "check this bug" --agent python-senior
 ```
 
-What the wrapper does:
+OpenCode projection uses the active variant of each base persona id. Inactive
+variants do not appear as separate OpenCode agents, and there is no global
+`larva-active` agent.
 
 - exports currently active registered personas through larva's normal facade path
 - builds a temporary `OPENCODE_CONFIG_CONTENT` with `[larva:<id>]` placeholder agents keyed by Larva base id
 - injects the bundled or source-tree `larva.ts` OpenCode plugin
 - forwards remaining arguments to the real `opencode` binary
 - strips a leading `--` after `opencode` when present
+
+At startup, the wrapper projects current base persona ids as OpenCode agents with
+placeholder prompts. Before model requests, the plugin replaces the selected
+`[larva:<id>]` placeholder through OpenCode's system-prompt transform, so persona
+instructions are stronger than ordinary MCP/tool-result context.
 
 What it does not do:
 
@@ -498,20 +374,6 @@ Plugin path resolution order:
 
 Your id is missing or not kebab-case.
 
-Valid example:
-
-```text
-code-reviewer
-```
-
-Invalid examples:
-
-```text
-CodeReviewer
-code_reviewer
-team/code-reviewer
-```
-
 ### `INVALID_SPEC_VERSION`
 
 You supplied a non-v1 schema version. In current larva, `spec_version` must be
@@ -520,37 +382,58 @@ You supplied a non-v1 schema version. In current larva, `spec_version` must be
 ### `PERSONA_NOT_FOUND`
 
 You resolved, cloned, updated, deleted, or exported an id that is not present in
-the local registry.
+the registry.
 
-### `COMPONENT_NOT_FOUND`
+### `VARIANT_NOT_FOUND`
 
-One of the component names in an assemble request does not exist under
-`~/.larva/components/`.
+You requested a named variant that does not exist under the base persona id.
+Use `larva variant list <id>` to see local variants.
 
-### `PERSONA_INVALID` after resolve or update
+### `PERSONA_ID_MISMATCH`
 
-Your overrides or patches produced an invalid PersonaSpec. Validate the full
-resulting object or remove the offending override.
+You tried to write a variant under one base persona id while the PersonaSpec
+contains a different `id`. Edit the PersonaSpec so `spec.id` matches the target
+base id.
+
+### `INVALID_VARIANT_NAME`
+
+Variant names must be lower-kebab slugs up to 64 characters, for example
+`default` or `tacit-review`.
+
+### `REGISTRY_CORRUPT`
+
+The registry manifest is absent, malformed, or points at a missing variant.
+Inspect `~/.larva/registry/<id>/manifest.json` and verify that the `active`
+variant file exists under `variants/`.
+
+### `ACTIVE_VARIANT_DELETE_FORBIDDEN`
+
+You tried to delete the active variant. Activate another variant first.
+
+### `LAST_VARIANT_DELETE_FORBIDDEN`
+
+You tried to delete the only remaining variant. Delete the base persona instead.
+
+### `variant` rejected in PersonaSpec
+
+`variant` is registry-local metadata. Pass it as a CLI/MCP/API parameter, not as
+a key inside PersonaSpec JSON.
 
 ## 16. Design notes worth remembering
 
 - larva is an authority for persona definitions, not a runtime
 - canonical output is flat and self-contained
 - `spec_version` describes schema compatibility, not release cadence
-- `spec_digest` tracks canonical content changes
-- no hidden mutable state is applied to personas between calls
+- `spec_digest` tracks canonical content changes, including active variant switches
+- registry-local variants are named files plus an active pointer
+- `variant` and `_registry` are not PersonaSpec fields
+- no hidden mutable state is applied to personas between calls except explicit registry operations
 
 ## 17. Recommended reading order
 
-If you are new to the repo:
-
 1. `../../README.md`
 2. `USER_GUIDE.md`
-3. `../reference/INTERFACES.md`
-4. `../reference/ARCHITECTURE.md`
-
-If you are integrating larva into another agent system:
-
-1. `../../README.md`
-2. `USAGE.md`
-3. `../reference/INTERFACES.md`
+3. `USAGE.md`
+4. `../reference/INTERFACES.md`
+5. `../reference/ARCHITECTURE.md`
+6. `../../design/registry-local-variants-and-assembly-removal.md`

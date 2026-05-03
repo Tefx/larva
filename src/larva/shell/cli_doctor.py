@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from larva.app.facade import LarvaFacade
 
 
-# @shell_complexity: diagnostic branching mirrors probe outcomes across index/read checks
+# @shell_complexity: diagnostic branching mirrors probe outcomes across registry/read checks
 def doctor_registry_command(
     *, as_json: bool, facade: LarvaFacade | None = None
 ) -> Result[CliCommandResult, CliFailure]:
@@ -22,31 +22,22 @@ def doctor_registry_command(
     (via _normalize_and_validate) to match the same checks that list/serve use.
     Without facade, performs shallow filesystem diagnostics only.
     """
-    from larva.shell.registry import INDEX_FILENAME, FileSystemRegistryStore
+    from larva.shell.registry import FileSystemRegistryStore
 
     diagnostics: list[str] = []
     issues: list[str] = []
     fs_store = FileSystemRegistryStore()
-    index_result = fs_store._read_index()
+    list_result = fs_store.list()
 
-    if isinstance(index_result, Failure):
-        index_diagnostic = f"  [FAIL] Cannot read registry index: {index_result.failure()}"
-        issues.append(index_diagnostic)
-        diagnostics.append(index_diagnostic)
+    if isinstance(list_result, Failure):
+        registry_diagnostic = f"  [FAIL] Cannot read registry variants: {list_result.failure()}"
+        issues.append(registry_diagnostic)
+        diagnostics.append(registry_diagnostic)
     else:
-        index = index_result.unwrap()
-        diagnostics.append(f"  [OK] Registry index read succeeded ({len(index)} entries)")
-        sample_ids = sorted(index.keys())[:3]
-        for persona_id in sample_ids:
-            spec_result = fs_store._read_spec(persona_id, index.get(persona_id))
-            if isinstance(spec_result, Failure):
-                spec_diagnostic = (
-                    f"  [FAIL] Spec read failed for '{persona_id}': {spec_result.failure()}"
-                )
-                issues.append(spec_diagnostic)
-                diagnostics.append(spec_diagnostic)
-                continue
-            spec = spec_result.unwrap()
+        specs = list_result.unwrap()
+        diagnostics.append(f"  [OK] Registry variant read succeeded ({len(specs)} active specs)")
+        for spec in specs[:3]:
+            persona_id = str(spec.get("id", ""))
             diagnostics.append(f"  [OK] Spec read succeeded for '{persona_id}'")
 
             # Facade-backed admission validation: catch the same failures that
@@ -71,7 +62,7 @@ def doctor_registry_command(
                 )
 
     diagnostics.append(f"  [INFO] Registry root: {fs_store.root}")
-    diagnostics.append(f"  [INFO] Index path: {fs_store.root / INDEX_FILENAME}")
+    diagnostics.append("  [INFO] Registry layout: manifest.json + variants/<variant>.json")
 
     if issues:
         stdout_lines = ["DIAGNOSTIC FAIL", *diagnostics, ""]

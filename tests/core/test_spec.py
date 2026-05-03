@@ -255,12 +255,7 @@ class TestImportConsumability:
         import larva.core.spec as spec_module
 
         expected_all = {
-            "AssemblyInput",
-            "ConstraintComponent",
-            "ModelComponent",
             "PersonaSpec",
-            "PromptComponent",
-            "ToolsetComponent",
             "ToolPosture",
         }
         assert set(spec_module.__all__) == expected_all
@@ -360,124 +355,28 @@ class TestCapabilitiesField:
 
 
 # ---------------------------------------------------------------------------
-# ToolsetComponent — canonical shape (capabilities-only)
+# Removed assembly/component typing surface
 # ---------------------------------------------------------------------------
 
 
-class TestToolsetComponentCanonicalShape:
-    """Tests for ToolsetComponent canonical shape — ADR-002 authority.
+class TestAssemblyComponentTypesRemoved:
+    """Assembly/component TypedDicts are not part of the variant-only surface."""
 
-    Per ADR-002 and spec.py docstring: ``ToolsetComponent`` has only the
-    ``capabilities`` field as Required. The ``tools`` key is a historical
-    non-canonical payload shape and is NOT part of the canonical TypedDict.
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "AssemblyInput",
+            "PromptComponent",
+            "ToolsetComponent",
+            "ConstraintComponent",
+            "ModelComponent",
+        ],
+    )
+    def test_removed_types_are_not_public_attributes(self, name: str) -> None:
+        import larva.core.spec as spec_module
 
-    Historical invalid payloads with a ``tools`` key may still appear in
-    rejection-path tests, but they are not part of the type definition.
-    """
-
-    def test_toolset_component_has_capabilities(self) -> None:
-        """Assert ToolsetComponent requires capabilities key."""
-        from larva.core.spec import ToolsetComponent, ToolPosture
-
-        capabilities: dict[str, ToolPosture] = {"search": "read_only", "fs": "read_write"}
-        toolset: ToolsetComponent = {"capabilities": capabilities}
-        assert toolset["capabilities"]["search"] == "read_only"
-
-    def test_toolset_component_capabilities_only_shape(self) -> None:
-        """Assert ToolsetComponent canonical shape is capabilities-only (ADR-002)."""
-        from larva.core.spec import ToolsetComponent, ToolPosture
-
-        # Per ADR-002: capabilities is the canonical field
-        capabilities: dict[str, ToolPosture] = {"filesystem": "read_write", "git": "read_only"}
-        toolset: ToolsetComponent = {"capabilities": capabilities}
-        assert "capabilities" in toolset
-        assert "tools" not in toolset
-
-    def test_toolset_component_required_keys_is_capabilities_only(self) -> None:
-        """Assert ToolsetComponent __required_keys__ is {'capabilities'}."""
-        from larva.core.spec import ToolsetComponent
-
-        assert ToolsetComponent.__required_keys__ == {"capabilities"}
-
-    def test_toolset_component_annotations_is_capabilities_only(self) -> None:
-        """Assert ToolsetComponent annotations contain only 'capabilities'.
-
-        The canonical ToolsetComponent has exactly one annotation key:
-        'capabilities'.  The 'tools' key is NOT part of this TypedDict.
-        """
-        from larva.core.spec import ToolsetComponent
-
-        assert set(ToolsetComponent.__annotations__.keys()) == {"capabilities"}
-
-    def test_toolset_component_has_no_tools_key(self) -> None:
-        """Assert 'tools' is NOT in ToolsetComponent annotations — canonical authority.
-
-        Per ADR-002: capabilities is the canonical surface; tools only appears
-        in historical invalid payload examples, not in ToolsetComponent.
-        """
-        from larva.core.spec import ToolsetComponent
-
-        assert "tools" not in ToolsetComponent.__annotations__, (
-            "'tools' must not appear in ToolsetComponent annotations; "
-            "use 'capabilities' per ADR-002"
-        )
-
-
-# ---------------------------------------------------------------------------
-# ConstraintComponent — canonical shape (can_spawn, compaction_prompt only)
-# ---------------------------------------------------------------------------
-
-
-class TestConstraintComponentCanonicalShape:
-    """Tests for ConstraintComponent canonical shape — ADR-002 authority.
-
-    Per spec.py docstring: ``ConstraintComponent`` has ``can_spawn`` and
-    ``compaction_prompt`` only (total=False).  The ``side_effect_policy``
-    key is NOT part of the canonical ConstraintComponent.
-    """
-
-    def test_constraint_component_accepts_can_spawn(self) -> None:
-        """Assert ConstraintComponent accepts can_spawn field."""
-        from larva.core.spec import ConstraintComponent
-
-        constraint: ConstraintComponent = {"can_spawn": True}
-        assert constraint["can_spawn"] is True
-
-        constraint_list: ConstraintComponent = {"can_spawn": ["child-a", "child-b"]}
-        assert constraint_list["can_spawn"] == ["child-a", "child-b"]
-
-    def test_constraint_component_accepts_compaction_prompt(self) -> None:
-        """Assert ConstraintComponent accepts compaction_prompt field."""
-        from larva.core.spec import ConstraintComponent
-
-        constraint: ConstraintComponent = {"compaction_prompt": "Summarize the state"}
-        assert constraint["compaction_prompt"] == "Summarize the state"
-
-    def test_constraint_component_annotations_are_canonical(self) -> None:
-        """Assert ConstraintComponent annotations match canonical shape.
-
-        Canonical: can_spawn and compaction_prompt only.
-        side_effect_policy is NOT in ConstraintComponent.
-        """
-        from larva.core.spec import ConstraintComponent
-
-        assert set(ConstraintComponent.__annotations__.keys()) == {
-            "can_spawn",
-            "compaction_prompt",
-        }
-
-    def test_constraint_component_has_no_side_effect_policy(self) -> None:
-        """Assert 'side_effect_policy' is NOT in ConstraintComponent annotations.
-
-        Per ADR-002: side_effect_policy is rejected at canonical admission.
-        It is NOT a ConstraintComponent field.
-        """
-        from larva.core.spec import ConstraintComponent
-
-        assert "side_effect_policy" not in ConstraintComponent.__annotations__, (
-            "'side_effect_policy' must not appear in ConstraintComponent; "
-            "rejected at canonical admission per ADR-002"
-        )
+        assert not hasattr(spec_module, name)
+        assert name not in spec_module.__all__
 
 
 # ---------------------------------------------------------------------------

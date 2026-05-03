@@ -213,7 +213,7 @@ def test_python_api_register_accepts_canonical():
 def test_python_api_register_rejects_tools():
     """Python API: register rejects spec with forbidden 'tools' field."""
     from larva.shell.python_api import register
-    from larva.shell.python_api_components import LarvaApiError
+    from larva.shell.python_api import LarvaApiError
 
     _clear_registry()
     try:
@@ -231,7 +231,7 @@ def test_python_api_register_rejects_tools():
 def test_python_api_register_rejects_side_effect_policy():
     """Python API: register rejects spec with forbidden 'side_effect_policy' field."""
     from larva.shell.python_api import register
-    from larva.shell.python_api_components import LarvaApiError
+    from larva.shell.python_api import LarvaApiError
 
     _clear_registry()
     try:
@@ -258,7 +258,7 @@ def test_python_api_validate_rejects_tools():
 def test_python_api_update_rejects_tools_patch():
     """Python API: update rejects patches containing 'tools' field."""
     from larva.shell.python_api import register, update
-    from larva.shell.python_api_components import LarvaApiError
+    from larva.shell.python_api import LarvaApiError
 
     _clear_registry()
     # Register a valid persona first
@@ -285,7 +285,7 @@ def test_python_api_update_rejects_tools_patch():
 def test_python_api_resolve_rejects_tools_override():
     """Python API: resolve rejects overrides containing 'tools' field."""
     from larva.shell.python_api import register, resolve
-    from larva.shell.python_api_components import LarvaApiError
+    from larva.shell.python_api import LarvaApiError
 
     _clear_registry()
     register(dict(CANONICAL_SUCCESS))
@@ -304,31 +304,73 @@ def test_python_api_resolve_rejects_tools_override():
         print("PASS: Python API resolve rejects 'tools' in overrides")
 
 
-def test_python_api_assembly_rejects_tools_override():
-    """Python API: assemble rejects overrides containing 'tools' field."""
-    from larva.shell.python_api import assemble
-    from larva.shell.python_api_components import LarvaApiError
+def test_python_api_assembly_removed():
+    """Python API: assemble has been removed; the symbol must not be importable
+    from the canonical Python API surface.
 
+    Source: INTERFACES.md lines 120-125; design doc lines 125-129.
+    Assemble is a removed subsystem per the registry-local variants cutover.
+    """
+    import larva.shell.python_api as pyapi
+
+    # The canonical Python API must not expose assemble
+    assert not hasattr(pyapi, "assemble") or not callable(getattr(pyapi, "assemble", None)), (
+        "assemble must be removed from the canonical Python API after cutover"
+    )
+    print("PASS: assemble is removed from Python API")
+
+
+def test_python_api_register_rejects_variant_in_spec():
+    """Python API: register rejects spec with 'variant' field as non-canonical."""
+    from larva.shell.python_api import register
+    from larva.shell.python_api import LarvaApiError
+
+    _clear_registry()
+    # 'variant' is a registry-local metadata field, not a PersonaSpec field
+    spec_with_variant = dict(CANONICAL_SUCCESS, variant="tacit")
     try:
-        result = assemble(
-            id="test-asm",
-            overrides={"tools": {"shell": "destructive"}},
-        )
-        if isinstance(result, dict):
-            # Check if it returned an error-like dict or a spec
-            if "tools" in result:
-                print(f"UNEXPECTED: assemble accepted 'tools' override: {result}")
-                assert False, "assemble must reject overrides with 'tools' field"
-        print(f"Assemble result type: {type(result)}")
+        result = register(spec_with_variant)
+        print(f"UNEXPECTED: register accepted spec with 'variant': {result}")
+        assert False, "register must reject spec with 'variant' field"
     except LarvaApiError as e:
         error = e.error
-        # Assembly may reject with FORBIDDEN_OVERRIDE_FIELD or COMPONENT_NOT_FOUND
-        assert error.get("code") in (
-            "FORBIDDEN_OVERRIDE_FIELD",
-            "PERSONA_INVALID",
-            "COMPONENT_NOT_FOUND",
-        ), f"Expected FORBIDDEN_OVERRIDE_FIELD or PERSONA_INVALID, got: {error.get('code')}"
-        print(f"PASS: Python API assemble rejects 'tools' override (code={error.get('code')})")
+        assert error.get("code") == "PERSONA_INVALID", (
+            f"Expected PERSONA_INVALID for 'variant' field, got: {error.get('code')}"
+        )
+        print("PASS: Python API register rejects 'variant' field in spec")
+
+
+def test_python_api_resolve_no_variant_metadata_leak():
+    """Python API: resolve output must not contain variant, _registry, or active."""
+    from larva.shell.python_api import register, resolve
+
+    _clear_registry()
+    register(dict(CANONICAL_SUCCESS))
+
+    resolved = resolve(CANONICAL_SUCCESS["id"])
+    forbidden_keys = {"variant", "_registry", "active"}
+    for key in forbidden_keys:
+        assert key not in resolved, (
+            f"Forbidden key '{key}' found in resolve output: {sorted(resolved.keys())}"
+        )
+    print("PASS: Python API resolve output has no registry metadata leak")
+
+
+def test_python_api_list_no_variant_metadata():
+    """Python API: list returns summaries without variant or active fields."""
+    from larva.shell.python_api import register
+    from larva.shell.python_api import list as list_personas
+
+    _clear_registry()
+    register(dict(CANONICAL_SUCCESS))
+
+    personas = list_personas()
+    assert isinstance(personas, list)
+    for p in personas:
+        assert "variant" not in p, f"'variant' must not appear in list summary: {sorted(p.keys())}"
+        assert "active" not in p, f"'active' must not appear in list summary: {sorted(p.keys())}"
+        assert "_registry" not in p, f"'_registry' must not appear in list summary: {sorted(p.keys())}"
+    print("PASS: Python API list has no variant metadata leak")
 
 
 def test_python_api_no_forbidden_fields_in_output():
@@ -377,7 +419,10 @@ if __name__ == "__main__":
         test_python_api_validate_rejects_tools,
         test_python_api_update_rejects_tools_patch,
         test_python_api_resolve_rejects_tools_override,
-        test_python_api_assembly_rejects_tools_override,
+        test_python_api_assembly_removed,
+        test_python_api_register_rejects_variant_in_spec,
+        test_python_api_resolve_no_variant_metadata_leak,
+        test_python_api_list_no_variant_metadata,
         test_python_api_no_forbidden_fields_in_output,
     ]
 

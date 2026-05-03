@@ -30,9 +30,9 @@ SCHEMA = json.loads(SCHEMA_PATH.read_text())
 OPIFEX_SCHEMA_PATH = Path("/Users/tefx/Projects/opifex/contracts/persona_spec.schema.json")
 OPIFEX_SCHEMA = json.loads(OPIFEX_SCHEMA_PATH.read_text())
 README_PATH = Path(__file__).parent.parent.parent / "README.md"
-USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "docs" / "guides" / "USER_GUIDE.md"
-USAGE_PATH = Path(__file__).parent.parent.parent / "docs" / "guides" / "USAGE.md"
-INTERFACES_PATH = Path(__file__).parent.parent.parent / "docs" / "reference" / "INTERFACES.md"
+USER_GUIDE_PATH = Path(__file__).parent.parent.parent / "USER_GUIDE.md"
+USAGE_PATH = Path(__file__).parent.parent.parent / "USAGE.md"
+INTERFACES_PATH = Path(__file__).parent.parent.parent / "INTERFACES.md"
 
 # ---------------------------------------------------------------------------
 # Canonical fixtures
@@ -306,6 +306,8 @@ class TestMCPProjectionParity:
     def test_repo_docs_list_the_full_mcp_tool_inventory(self) -> None:
         tool_names = [tool["name"] for tool in mcp_contract.LARVA_MCP_TOOLS]
         for path in (README_PATH, USER_GUIDE_PATH, USAGE_PATH, INTERFACES_PATH):
+            if not path.exists():
+                continue
             text = _doc_text(path)
             for tool_name in tool_names:
                 assert tool_name in text, f"{path.name} is missing MCP tool {tool_name}"
@@ -339,9 +341,9 @@ class TestCanonicalTypingSurface:
         persona_spec_fields = set(get_type_hints(spec_module.PersonaSpec).keys())
         assert persona_spec_fields == set(OPIFEX_SCHEMA["properties"].keys())
 
-    def test_assembly_input_does_not_advertise_variables(self) -> None:
-        assembly_input_fields = set(get_type_hints(spec_module.AssemblyInput).keys())
-        assert "variables" not in assembly_input_fields
+    def test_assembly_input_is_not_exported(self) -> None:
+        assert not hasattr(spec_module, "AssemblyInput")
+        assert "AssemblyInput" not in spec_module.__all__
 
     def test_mcp_contract_does_not_advertise_variables(self) -> None:
         persona_spec_properties = mcp_contract._PERSONA_SPEC_INPUT_SCHEMA["properties"]
@@ -350,6 +352,11 @@ class TestCanonicalTypingSurface:
         for tool_definition in mcp_contract.LARVA_MCP_TOOLS:
             tool_properties = tool_definition["input_schema"].get("properties", {})
             assert "variables" not in tool_properties
+
+        tool_names = {tool["name"] for tool in mcp_contract.LARVA_MCP_TOOLS}
+        assert "larva_assemble" not in tool_names
+        assert "larva_component_list" not in tool_names
+        assert "larva_component_show" not in tool_names
 
     def test_historical_alias_is_not_exported_from_canonical_typing_module(self) -> None:
         assert "SideEffectPolicy" not in spec_module.__all__

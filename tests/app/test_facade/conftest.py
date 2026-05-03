@@ -1,10 +1,4 @@
-"""Shared fixtures and helpers for facade tests.
-
-Sources:
-- ARCHITECTURE.md section 7 (Assembly -> Validation -> Normalization)
-- ARCHITECTURE.md section 7 (Registry read -> override -> revalidation)
-- INTERFACES.md section A/G (use-cases + app-level error codes)
-"""
+"""Shared fixtures and helpers for facade tests."""
 
 from __future__ import annotations
 
@@ -21,8 +15,6 @@ from larva.app.facade import LarvaError
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
-from larva.core.assemble import _assembly_error
-from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import RegistryError
 
 _VARIANT_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -84,18 +76,6 @@ def _digest_for(spec: PersonaSpec) -> str:
 
 
 @dataclass
-class SpyAssembleModule:
-    candidate: PersonaSpec
-    calls: list[str]
-    inputs: list[dict[str, object]] = field(default_factory=list)
-
-    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
-        self.calls.append("assemble")
-        self.inputs.append(data)
-        return dict(self.candidate)
-
-
-@dataclass
 class SpyValidateModule:
     report: ValidationReport
     calls: list[str]
@@ -125,69 +105,6 @@ class SpyNormalizeModule:
         normalized = real_normalize(dict(spec))
         self.inputs.append(normalized)
         return normalized
-
-
-@dataclass
-class RaisingAssembleModule:
-    calls: list[str]
-
-    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
-        self.calls.append("assemble")
-        raise _assembly_error(
-            code="COMPONENT_CONFLICT",
-            message="Multiple sources provide different values for 'can_spawn'",
-            details={"field": "can_spawn"},
-        )
-
-
-@dataclass
-class RaisingUnknownCodeAssembleModule:
-    calls: list[str]
-
-    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
-        self.calls.append("assemble")
-        raise _assembly_error(
-            code="UNMAPPED_ASSEMBLY_ERROR",
-            message="unmapped assembly failure",
-            details={"field": "model"},
-        )
-
-
-@dataclass
-class InMemoryComponentStore:
-    prompt_text: str = "Prompt body"
-    toolset: dict[str, str] = field(default_factory=lambda: {"shell": "read_only"})
-    constraint: dict[str, object] = field(default_factory=lambda: {"can_spawn": False})
-    model: dict[str, object] = field(default_factory=lambda: {"model": "gpt-4o-mini"})
-    prompts_by_name: dict[str, str] = field(default_factory=dict)
-    toolsets_by_name: dict[str, dict[str, str]] = field(default_factory=dict)
-    constraints_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
-    models_by_name: dict[str, dict[str, object]] = field(default_factory=dict)
-    fail_prompt: bool = False
-
-    def load_prompt(self, name: str) -> Result[dict[str, str], ComponentStoreError]:
-        if self.fail_prompt:
-            return Failure(
-                ComponentStoreError(
-                    f"Prompt not found: {name}",
-                    component_type="prompt",
-                    component_name=name,
-                )
-            )
-        return Success({"text": self.prompts_by_name.get(name, self.prompt_text)})
-
-    def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], ComponentStoreError]:
-        capabilities = self.toolsets_by_name.get(name, self.toolset)
-        return Success({"capabilities": capabilities})
-
-    def load_constraint(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
-        return Success(self.constraints_by_name.get(name, self.constraint))
-
-    def load_model(self, name: str) -> Result[dict[str, object], ComponentStoreError]:
-        return Success(self.models_by_name.get(name, self.model))
-
-    def list_components(self) -> Result[dict[str, list[str]], ComponentStoreError]:
-        return Success({"prompts": [], "toolsets": [], "constraints": [], "models": []})
 
 
 @dataclass
@@ -347,31 +264,26 @@ class InMemoryRegistryStore:
 def _facade(
     *,
     report: ValidationReport | None = None,
-    candidate: PersonaSpec | None = None,
-    components: InMemoryComponentStore | None = None,
     registry: InMemoryRegistryStore | None = None,
     calls: list[str] | None = None,
 ) -> tuple[
     "DefaultLarvaFacade",
-    SpyAssembleModule,
+    None,
     SpyValidateModule,
     SpyNormalizeModule,
 ]:
     from larva.app.facade import DefaultLarvaFacade
 
     order = [] if calls is None else calls
-    assemble_module = SpyAssembleModule(candidate or _canonical_spec("assembled"), order)
     validate_module = SpyValidateModule(report or _valid_report(), order)
     normalize_module = SpyNormalizeModule(order)
     facade = DefaultLarvaFacade(
         spec=spec_module,
-        assemble=assemble_module,
         validate=validate_module,
         normalize=normalize_module,
-        components=components or InMemoryComponentStore(),
         registry=registry or InMemoryRegistryStore(),
     )
-    return facade, assemble_module, validate_module, normalize_module
+    return facade, None, validate_module, normalize_module
 
 
 def _failure(result: Result[object, LarvaError]) -> LarvaError:

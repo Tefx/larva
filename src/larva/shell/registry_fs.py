@@ -39,7 +39,7 @@ def rollback_spec_write(
     old_spec_bytes: bytes | None,
     spec_existed: bool,
 ) -> Result[None, str]:
-    """Restore pre-save spec state after index update failure."""
+    """Restore pre-save spec state after metadata update failure."""
     if not spec_existed:
         try:
             if spec_path.exists():
@@ -95,9 +95,9 @@ def read_spec_payload(
     if expected_digest is not None:
         expected_digest_value = require_non_empty_digest(expected_digest)
         if expected_digest_value is None:
-            return Failure("index entry for persona must include a non-empty digest")
+            return Failure("expected persona digest must be non-empty")
         if actual_digest != expected_digest_value:
-            return Failure("digest mismatch between index.json and spec file")
+            return Failure("digest mismatch between expected digest and spec file")
 
     return Success(payload)
 

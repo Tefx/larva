@@ -13,9 +13,16 @@ Normative REST contract for ``larva serve``:
     PATCH  /api/personas/{id}           -> patch + revalidate + register persona
     DELETE /api/personas/{id}           -> delete persona
     POST   /api/personas/clear          -> clear registry with confirmation
-    POST   /api/personas/validate      -> validate candidate spec
-    POST   /api/personas/export        -> export all or selected personas
-    POST   /api/personas/update_batch  -> batch update by selector + patch
+    POST   /api/personas/validate       -> validate candidate spec
+    POST   /api/personas/export         -> export all or selected personas
+    POST   /api/personas/update_batch   -> batch update by selector + patch
+    POST   /api/personas/assemble       -> fail-closed 404 tombstone only
+    GET    /api/registry/personas       -> list personas with variant metadata
+    GET    /api/registry/personas/{id}/variants                   -> list variants
+    GET    /api/registry/personas/{id}/variants/{variant}         -> resolve variant spec
+    PUT    /api/registry/personas/{id}/variants/{variant}         -> replace variant spec
+    POST   /api/registry/personas/{id}/variants/{variant}/activate-> activate variant
+    DELETE /api/registry/personas/{id}/variants/{variant}         -> delete variant
 
 Convenience-only UI behavior such as browser auto-open and clipboard copy lives
 above the REST contract and should not be treated as a separate API guarantee.
@@ -48,15 +55,6 @@ update_batch = _python_api.update_batch
 variant_list = _python_api.variant_list
 variant_activate = _python_api.variant_activate
 variant_delete = _python_api.variant_delete
-variant_list = _python_api.variant_list
-variant_activate = _python_api.variant_activate
-variant_delete = _python_api.variant_delete
-variant_list = _python_api.variant_list
-variant_activate = _python_api.variant_activate
-variant_delete = _python_api.variant_delete
-variant_list = _python_api.variant_list
-variant_activate = _python_api.variant_activate
-variant_delete = _python_api.variant_delete
 validate = _python_api.validate
 
 __all__ = [
@@ -80,17 +78,6 @@ __all__ = [
 ]
 
 STATIC_DIR = Path(__file__).parent
-
-# -----------------------------------------------------------------------------
-# Web-Facing Component Projection
-# -----------------------------------------------------------------------------
-# Canonical inputs remain: prompts | toolsets | constraints | models
-# Web-facing UI layer uses: Prompts | Capability Presets | Constraints | Models
-#
-
-
-
-
 
 # ---------------------------------------------------------------------------
 # Persona endpoints (shared implementation pattern)

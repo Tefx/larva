@@ -37,11 +37,10 @@ class TestToolNameMapping:
     def test_validate(self) -> None:
         assert _tool_name_to_handler_attr("larva_validate") == "handle_validate"
 
-    def test_component_list(self) -> None:
-        assert _tool_name_to_handler_attr("larva_component_list") == "handle_component_list"
-
-    def test_component_show(self) -> None:
-        assert _tool_name_to_handler_attr("larva_component_show") == "handle_component_show"
+    def test_component_tools_are_not_in_contract(self) -> None:
+        tool_names = {tool["name"] for tool in LARVA_MCP_TOOLS}
+        assert "larva_component_list" not in tool_names
+        assert "larva_component_show" not in tool_names
 
     def test_update_batch(self) -> None:
         assert _tool_name_to_handler_attr("larva_update_batch") == "handle_update_batch"
@@ -162,9 +161,8 @@ class TestCreateMcpServer:
         recorded: dict[str, object] = {}
 
         class RecordingHandlers:
-            def __init__(self, facade: object, components: object) -> None:
+            def __init__(self, facade: object) -> None:
                 recorded["facade"] = facade
-                recorded["components"] = components
 
             def __getattr__(self, name: str) -> Any:
                 if name.startswith("handle_"):
@@ -180,7 +178,7 @@ class TestCreateMcpServer:
         create_mcp_server()
 
         assert recorded["facade"] is facade
-        assert recorded["components"].__class__.__name__ == "FilesystemComponentStore"
+        assert "components" not in recorded
 
 
 # ---------------------------------------------------------------------------
@@ -259,11 +257,10 @@ class TestToolDelegation:
 
 
 # ---------------------------------------------------------------------------
-# Surface Cutover: EXPECTED-RED assertions
+# Surface Cutover: implemented cutover assertions
 #
-# These assert TARGET-STATE surface contracts that have NOT been cut over yet.
-# They MUST fail RED until the implementation phase removes assembly/component
-# tools and adds variant tools.
+# These guard the implemented surface contracts: assembly/component tools stay
+# removed and variant tools stay registered.
 #
 # Source authority: design/registry-local-variants-and-assembly-removal.md
 # Source authority: docs/reference/INTERFACES.md :: MCP Surface
@@ -272,7 +269,7 @@ class TestToolDelegation:
 
 
 class TestMCPServerVariantTools:
-    """EXPECTED-RED: MCP server must register variant tools and remove assembly/component tools.
+    """MCP server must register variant tools and remove assembly/component tools.
 
     Source: INTERFACES.md :: MCP Surface (lines 40-59)
     Source: design/registry-local-variants-and-assembly-removal.md :: MCP surface (lines 117-143)
@@ -340,11 +337,9 @@ class TestMCPServerVariantTools:
         """After cutover, server must have 13 tools (16 minus 3 removed plus 3 added)."""
         server = create_mcp_server()
         registered = set(server._tool_manager._tools.keys())
-        # Target: validate, register, resolve, list, update, delete, clear,
+        # Contract: validate, register, resolve, list, update, delete, clear,
         # clone, export, update_batch, variant_list, variant_activate, variant_delete = 13
-        # Current: 13 tools (including assemble, component_list, component_show,
-        #          lacking variant_* = 13)
-        # After cutover: still 13 (remove 3, add 3)
+        # Cutover total remains 13 after removing 3 tools and adding 3 variant tools.
         expected_count_after_cutover = 13
         assert len(registered) == expected_count_after_cutover, (
             f"Expected {expected_count_after_cutover} tools after cutover, "
@@ -352,7 +347,7 @@ class TestMCPServerVariantTools:
         )
 
     def test_variant_handler_methods_exist(self) -> None:
-        """EXPECTED-RED: MCPHandlers must have variant handler methods."""
+        """MCPHandlers must have variant handler methods."""
         from larva.shell.mcp import MCPHandlers
 
         for method_name in ["handle_variant_list", "handle_variant_activate", "handle_variant_delete"]:
@@ -362,7 +357,7 @@ class TestMCPServerVariantTools:
             )
 
     def test_tool_name_mapping_includes_variant_tools(self) -> None:
-        """EXPECTED-RED: _tool_name_to_handler_attr must map variant tools."""
+        """_tool_name_to_handler_attr must map variant tools."""
         for expected_mapping in [
             ("larva_variant_list", "handle_variant_list"),
             ("larva_variant_activate", "handle_variant_activate"),

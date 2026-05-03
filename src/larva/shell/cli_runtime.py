@@ -8,11 +8,6 @@ from typing import IO, TYPE_CHECKING, cast
 from returns.result import Result, Success
 
 from larva.app import facade as facade_module
-from larva.core.component_error_projection import (
-    component_invalid_kind_error,
-    project_component_store_error,
-)
-from larva.core.component_kind import CANONICAL_COMPONENT_KINDS, invalid_component_kind_message
 from larva.shell.cli_projection import render_validation_report_text
 from larva.shell.cli_types import (
     EXIT_CRITICAL,
@@ -24,7 +19,6 @@ from larva.shell.cli_types import (
     CommandName,
     JsonErrorEnvelope,
 )
-from larva.shell.components import ComponentStoreError
 
 if TYPE_CHECKING:
     from larva.app.facade_types import LarvaError, PersonaSummary
@@ -85,28 +79,6 @@ def cli_exit_code_for_error(error: JsonErrorEnvelope) -> CliExitCode:
     return EXIT_CRITICAL if error["code"] == "INTERNAL" else EXIT_ERROR
 
 
-def _map_component_error(error: object) -> Result[tuple[JsonErrorEnvelope, CliExitCode], object]:
-    if isinstance(error, ComponentStoreError):
-        envelope = project_component_store_error(operation="cli.component", error=error)
-        exit_code = cli_exit_code_for_error(envelope)
-        return Success(
-            (
-                envelope,
-                exit_code,
-            )
-        )
-
-    return Success(
-        (
-            _critical_error(
-                "component operation failed",
-                {"error_type": type(error).__name__, "message": str(error)},
-            ).unwrap(),
-            EXIT_CRITICAL,
-        )
-    )
-
-
 # @shell_complexity: CLI --set parsing intentionally preserves explicit bool/null/int/float/string
 # coercion order for user-facing semantics.
 def _infer_value_type(value: str) -> Result[object, object]:
@@ -160,21 +132,3 @@ def _operation_failure(
     if not as_json:
         failure["stderr"] = f"{operation} failed: {error['message']}\n"
     return Success(failure)
-
-
-def _component_show_invalid_target(
-    component_ref: str,
-    *,
-    component_type: str | None = None,
-) -> Result[CliFailure, object]:
-    resolved_type = component_type if component_type is not None else ""
-    error_envelope = component_invalid_kind_error(
-        operation="cli.component_show",
-        component_type=resolved_type,
-        component_name=None,
-        valid_types=list(CANONICAL_COMPONENT_KINDS),
-    )
-    if component_type is not None:
-        error_envelope["message"] = invalid_component_kind_message(component_type)
-    error_envelope["details"]["component_ref"] = component_ref
-    return Success({"exit_code": EXIT_ERROR, "error": error_envelope})

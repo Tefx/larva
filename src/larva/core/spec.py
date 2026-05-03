@@ -19,7 +19,7 @@ These types express the contract surface only — no validation, normalization,
 assembly, registry, or I/O logic is implemented here.
 
 Files that must not widen the canonical contract: ``spec.py``, ``validate.py``,
-``assemble.py``, and ``facade.py``.
+and ``facade.py``.
 
 See:
 - ARCHITECTURE.md :: Module: larva.core.spec
@@ -88,60 +88,11 @@ class PersonaSpec(TypedDict):
     spec_digest: NotRequired[str]
 
 
-class PromptComponent(TypedDict):
-    """In-memory prompt component content for core assembly."""
-
-    text: str
-
-
-class ToolsetComponent(TypedDict):
-    """In-memory capability posture mapping for core assembly.
-
-    Canonical form: only ``capabilities`` field is used.
-    """
-
-    capabilities: dict[str, ToolPosture]
-
-
-class ConstraintComponent(TypedDict, total=False):
-    """In-memory constraint values for core assembly.
-
-    Canonical form: ``can_spawn`` and ``compaction_prompt`` only.
-    """
-
-    can_spawn: bool | list[str]
-    compaction_prompt: str
-
-
-class ModelComponent(TypedDict, total=False):
-    """In-memory model configuration for core assembly."""
-
-    model: str
-    model_params: dict[str, object]
-
-
-class AssemblyInput(TypedDict, total=False):
-    """Canonical in-memory input shape accepted by core assembly."""
-
-    id: str
-    description: str
-    prompts: list[PromptComponent]
-    toolsets: list[ToolsetComponent]
-    constraints: list[ConstraintComponent]
-    model: ModelComponent | str
-    overrides: dict[str, object]
-
-
 # -----------------------------------------------------------------------------
 # Public API
 # -----------------------------------------------------------------------------
 
 __all__ = [
-    "AssemblyInput",
-    "ConstraintComponent",
-    "ModelComponent",
     "PersonaSpec",
-    "PromptComponent",
-    "ToolsetComponent",
     "ToolPosture",
 ]

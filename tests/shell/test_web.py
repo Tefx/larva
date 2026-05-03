@@ -31,7 +31,6 @@ pytest.importorskip("httpx")
 from starlette.testclient import TestClient
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
-from larva.core import assemble as assemble_module
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
@@ -39,7 +38,7 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
 from larva.shell import python_api
 from larva.shell import web as web_module
-from larva.shell.python_api_components import LarvaApiError
+from larva.shell.python_api import LarvaApiError
 from larva.shell.web import app
 
 # -----------------------------------------------------------------------------
@@ -110,7 +109,6 @@ class MockFacade:
 
     _registry: CallRecordingRegistry
     _report_map: dict[str, ValidationReport] = field(default_factory=dict)
-    assemble_inputs: list[dict[str, Any]] = field(default_factory=list)
 
     def validate(self, spec: PersonaSpec) -> ValidationReport:
         return self._report_map.get(str(spec.get("id", "")), _valid_report())
@@ -170,33 +168,6 @@ class MockFacade:
             )
         return self._registry.clear()
 
-    def assemble(
-        self,
-        id: str,
-        prompts: list[str] | None = None,
-        toolsets: list[str] | None = None,
-        constraints: list[str] | None = None,
-        model: str | None = None,
-        overrides: dict[str, Any] | None = None,
-    ) -> PersonaSpec:
-        self.assemble_inputs.append(
-            {
-                "id": id,
-                "prompts": prompts,
-                "toolsets": toolsets,
-                "constraints": constraints,
-                "model": model,
-                "overrides": overrides,
-            }
-        )
-        spec: PersonaSpec = {
-            "id": id,
-            "prompt": "\n\n".join(prompts) if prompts else "",
-            "model": model or "default-model",
-            "capabilities": {},
-            "spec_version": "0.1.0",
-        }
-        return spec
 
 
 class MockApiError(Exception):
@@ -343,6 +314,21 @@ class TestWebSurfaceEndpoints:
         assert resp.status_code == 200
         assert resp.json()["data"]["id"] == "test-persona"
         assert len(mock_registry.save_inputs) == 1
+
+    def test_post_api_personas_rejects_unknown_spec_wrapper_keys(self) -> None:
+        """POST /api/personas rejects registry metadata beside wrapped spec."""
+
+        client = TestClient(app)
+
+        resp = client.post(
+            "/api/personas",
+            json={"spec": _MINIMAL_SPEC, "variant": "tacit"},
+        )
+
+        assert resp.status_code == 400
+        assert resp.json()["error"]["code"] == "INVALID_INPUT"
+        assert resp.json()["error"]["details"]["field"] == "params"
+        assert resp.json()["error"]["details"]["unknown"] == ["variant"]
 
     def test_post_api_personas_rejects_invalid_spec(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """POST /api/personas returns PERSONA_INVALID on validation failure.
@@ -541,10 +527,8 @@ class TestWebSurfaceEndpoints:
 
         facade = DefaultLarvaFacade(
             spec=spec_module,
-            assemble=assemble_module,
             validate=validate_module,
             normalize=normalize_module,
-            components=_Components(),
             registry=_Registry(
                 {
                     **_MINIMAL_SPEC,
@@ -590,7 +574,7 @@ class TestWebSurfaceEndpoints:
 
 
 class TestWebComponentEndpointRemoved:
-    """EXPECTED-RED: /api/components* endpoints must be absent from web UI.
+    """/api/components* endpoints must be absent from web UI.
 
     Source: INTERFACES.md :: Removed endpoints (lines 160-164)
     """
@@ -618,7 +602,7 @@ class TestWebComponentEndpointRemoved:
 
 
 class TestWebVariantRestEndpoints:
-    """EXPECTED-RED: Variant registry REST endpoints must exist on web UI.
+    """Variant registry REST endpoints must exist on web UI.
 
     Source: INTERFACES.md :: Registry-local Variant routes (lines 147-152)
     Source: design doc :: Web REST surface

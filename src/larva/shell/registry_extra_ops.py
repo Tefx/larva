@@ -15,7 +15,6 @@ from larva.shell.registry_types import (
     MissingPersonaError,
     RegistryCorruptError,
     RegistryError,
-    RegistryIndex,
     VariantList,
     VariantNotFoundError,
     WriteFailureError,
@@ -30,8 +29,6 @@ if TYPE_CHECKING:
 class _RegistryOpsHost(Protocol):
     _root: Path
 
-    def _index_path(self) -> Path: ...
-    def _spec_path(self, persona_id: str) -> Path: ...
     def _persona_dir(self, persona_id: str) -> Path: ...
     def _manifest_path(self, persona_id: str) -> Path: ...
     def _variants_dir(self, persona_id: str) -> Path: ...
@@ -39,7 +36,6 @@ class _RegistryOpsHost(Protocol):
     def _invalid_id_error(self, persona_id: str) -> InvalidPersonaIdError | None: ...
     def _invalid_variant_error(self, variant: str) -> InvalidVariantNameError | None: ...
     def _not_found(self, persona_id: str) -> MissingPersonaError: ...
-    def _read_index(self) -> Result[RegistryIndex, RegistryError]: ...
     def _read_spec_at(
         self, persona_id: str, spec_path: Path, expected_digest: str | None
     ) -> Result[PersonaSpec, RegistryError]: ...
@@ -47,7 +43,7 @@ class _RegistryOpsHost(Protocol):
         self,
         path: Path,
         payload: object,
-        kind: Literal["spec", "index", "manifest"],
+        kind: Literal["spec", "manifest"],
         persona_id: str,
     ) -> Result[None, RegistryError]: ...
     def _write_failed(self, persona_id: str, path: Path, message: str) -> WriteFailureError: ...
@@ -68,32 +64,10 @@ class RegistryExtraOps(_RegistryOpsHost):
                 }
             )
 
-        index_result = self._read_index()
-        if isinstance(index_result, Failure):
-            return index_result
-
-        index = index_result.unwrap()
         persona_dirs: list[Path] = []
         if self._root.exists():
             persona_dirs = sorted(path for path in self._root.iterdir() if path.is_dir())
-        legacy_only_ids = set(index) - {path.name for path in persona_dirs}
-        clear_count = len(persona_dirs) + len(legacy_only_ids)
-        index_path = self._index_path()
-
-        if index_path.exists():
-            try:
-                index_path.unlink()
-            except OSError as exc:
-                return Failure(
-                    {
-                        "code": "REGISTRY_DELETE_FAILED",
-                        "message": f"failed to remove registry index during clear: {exc}",
-                        "operation": "clear",
-                        "persona_id": None,
-                        "path": str(index_path),
-                        "failed_spec_paths": [],
-                    }
-                )
+        clear_count = len(persona_dirs)
 
         failed_spec_paths: list[str] = []
         for persona_dir in persona_dirs:
@@ -101,12 +75,6 @@ class RegistryExtraOps(_RegistryOpsHost):
                 shutil.rmtree(persona_dir)
             except OSError as exc:
                 failed_spec_paths.append(f"{persona_dir}: {exc}")
-        for persona_id in sorted(index):
-            spec_path = self._spec_path(persona_id)
-            try:
-                spec_path.unlink(missing_ok=True)
-            except OSError as exc:
-                failed_spec_paths.append(f"{spec_path}: {exc}")
 
         if failed_spec_paths:
             return Failure(
@@ -115,7 +83,7 @@ class RegistryExtraOps(_RegistryOpsHost):
                     "message": "failed to remove one or more persona specs during clear",
                     "operation": "clear",
                     "persona_id": None,
-                    "path": str(index_path),
+                    "path": str(self._root),
                     "failed_spec_paths": failed_spec_paths,
                 }
             )

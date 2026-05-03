@@ -44,6 +44,7 @@ VALIDATION_CONTRACT_PATH = Path("src/larva/core/validation_contract.py")
 SNAKE_CASE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 INVALID_FIELD_WORDS = ("reject", "invalid", "forbidden", "not permitted", "non-canonical")
+LOCAL_REGISTRY_METADATA_FORBIDDEN_FIELDS = ("variant", "_registry", "active", "manifest")
 COPYTREE_IGNORE = shutil.ignore_patterns(
     ".git",
     ".venv",
@@ -512,24 +513,32 @@ def check_capabilities_only_admission(paths: GatePaths, scope: AuthorityScope) -
         paths.larva_root / VALIDATION_CONTRACT_PATH,
         "CANONICAL_FORBIDDEN_FIELDS",
     )
-    if set(scope.required_fields) != {"capabilities"}:
+    if "capabilities" not in set(scope.required_fields):
         raise GateError(
-            "authority scope drift: larva shared cases must require exactly the "
-            "canonical field set {'capabilities'} for missing-required coverage, "
+            "authority scope drift: larva shared cases must include canonical "
+            "capabilities missing-required coverage, "
             f"got {set(scope.required_fields)}"
         )
-    if set(scope.forbidden_fields) != {"side_effect_policy", "tools"}:
+    authority_legacy_fields = {"side_effect_policy", "tools"}
+    if not authority_legacy_fields.issubset(set(scope.forbidden_fields)):
         raise GateError(
-            "authority scope drift: larva shared cases must reject exactly canonical "
+            "authority scope drift: larva shared cases must reject at least canonical "
             "legacy fields {'tools', 'side_effect_policy'}, "
             f"got {set(scope.forbidden_fields)}"
         )
     if "capabilities" not in required_fields:
         raise GateError("capabilities-only admission drift: capabilities is no longer required")
-    if set(forbidden_fields) != set(scope.forbidden_fields):
+    allowed_forbidden_fields = set(scope.forbidden_fields) | set(
+        LOCAL_REGISTRY_METADATA_FORBIDDEN_FIELDS
+    )
+    forbidden_field_set = set(forbidden_fields)
+    if not set(scope.forbidden_fields).issubset(forbidden_field_set) or not forbidden_field_set.issubset(
+        allowed_forbidden_fields
+    ):
         raise GateError(
             "legacy-field drift: forbidden canonical fields must stay aligned with "
-            f"authority-derived scope {set(scope.forbidden_fields)}"
+            "authority-derived scope plus registry-local metadata exclusions "
+            f"{allowed_forbidden_fields}"
         )
 
 

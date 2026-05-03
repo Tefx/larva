@@ -1,11 +1,11 @@
 """Contract-driven tests for ``larva.shell.registry`` filesystem behavior.
 
 These tests define expected shell-boundary behavior for FileSystemRegistryStore:
-- save() persists canonical PersonaSpec and updates index.json digest mapping
+- save() persists canonical PersonaSpec into registry-local variant layout
 - get() returns exact stored PersonaSpec by valid kebab-case id
 - get() returns typed shell errors for missing/invalid personas
 - list() returns complete canonical PersonaSpec records from registry boundary
-- index/spec consistency violations return typed shell errors
+- stale flat-file/index artifacts are ignored by the target variant registry
 
 Registry-local variant tests:
 - manifest.json stores exactly {"active": "default"} for a valid persona
@@ -30,7 +30,6 @@ from returns.result import Failure, Success
 
 from larva.shell.registry import (
     CLEAR_CONFIRMATION_TOKEN,
-    INDEX_FILENAME,
     DeleteFailureError,
     FileSystemRegistryStore,
     InvalidConfirmError,
@@ -38,6 +37,8 @@ from larva.shell.registry import (
     RegistryStore,
 )
 from tests.shell.fixture_taxonomy import canonical_persona_spec
+
+INDEX_FILENAME = "index.json"
 
 if TYPE_CHECKING:
     from larva.core.spec import PersonaSpec
@@ -63,7 +64,7 @@ def registry_root(tmp_path: Path) -> Path:
 
 
 # ===========================================================================
-# EXISTING FLAT-FILE REGISTRY TESTS (unchanged – keep baseline passing)
+# REGISTRY STORE CONTRACT TESTS
 # ===========================================================================
 
 
@@ -94,7 +95,7 @@ class TestFileSystemRegistryStoreContract:
         clear_doc = RegistryStore.clear.__doc__ or ""
 
         assert "Delete one persona directory" in delete_doc
-        assert "Legacy flat-file records" in delete_doc
+        assert "Missing ids MUST surface ``PERSONA_NOT_FOUND``" in delete_doc
         assert "exactly equal ``CLEAR_CONFIRMATION_TOKEN``" in clear_doc
         assert "Partial deletion failures" in clear_doc
 
@@ -162,7 +163,9 @@ class TestFileSystemRegistryStoreContract:
     def test_get_rejects_spec_with_empty_spec_digest(self, registry_root: Path) -> None:
         spec = _canonical_spec("bad-digest", "sha256:good")
         spec["spec_digest"] = ""
-        _write_json(registry_root / "bad-digest.json", spec)
+        (registry_root / "bad-digest" / "variants").mkdir(parents=True)
+        _write_json(registry_root / "bad-digest" / "manifest.json", {"active": "default"})
+        _write_json(registry_root / "bad-digest" / "variants" / "default.json", spec)
 
         store = FileSystemRegistryStore(root=registry_root)
         result = store.get("bad-digest")
@@ -187,8 +190,9 @@ class TestFileSystemRegistryStoreContract:
     ) -> None:
         spec = dict(_canonical_spec("metadata-leak", "sha256:metadata-leak"))
         spec[field] = value
-        _write_json(registry_root / "metadata-leak.json", spec)
-        _write_json(registry_root / INDEX_FILENAME, {"metadata-leak": spec["spec_digest"]})
+        (registry_root / "metadata-leak" / "variants").mkdir(parents=True)
+        _write_json(registry_root / "metadata-leak" / "manifest.json", {"active": "default"})
+        _write_json(registry_root / "metadata-leak" / "variants" / "default.json", spec)
 
         store = FileSystemRegistryStore(root=registry_root)
         result = store.get("metadata-leak")
@@ -203,20 +207,20 @@ class TestFileSystemRegistryStoreContract:
     def test_get_returns_exact_stored_spec_for_valid_kebab_case_id(
         self, registry_root: Path
     ) -> None:
-        spec = _canonical_spec("infra-reviewer", "sha256:infra-reviewer")
-        _write_json(registry_root / "infra-reviewer.json", spec)
-        _write_json(registry_root / INDEX_FILENAME, {"infra-reviewer": spec["spec_digest"]})
-
         store = FileSystemRegistryStore(root=registry_root)
+        spec = _canonical_spec("infra-reviewer", "sha256:infra-reviewer")
+        assert store.save(spec) == Success(None)
+
         result = store.get("infra-reviewer")
 
         assert result == Success(spec)
 
     def test_get_returns_spec_when_index_file_is_missing(self, registry_root: Path) -> None:
-        spec = _canonical_spec("indexless-agent", "sha256:indexless-agent")
-        _write_json(registry_root / "indexless-agent.json", spec)
-
         store = FileSystemRegistryStore(root=registry_root)
+        spec = _canonical_spec("indexless-agent", "sha256:indexless-agent")
+        assert store.save(spec) == Success(None)
+        assert not (registry_root / INDEX_FILENAME).exists()
+
         result = store.get("indexless-agent")
 
         assert result == Success(spec)
@@ -229,7 +233,10 @@ class TestFileSystemRegistryStoreContract:
         store = FileSystemRegistryStore(root=registry_root)
         result = store.get("stale-index-agent")
 
-        assert result == Success(spec)
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "PERSONA_NOT_FOUND"
+        assert error["persona_id"] == "stale-index-agent"
 
     def test_get_missing_persona_returns_typed_persona_not_found_error(
         self,
@@ -271,19 +278,12 @@ class TestFileSystemRegistryStoreContract:
         self,
         registry_root: Path,
     ) -> None:
+        store = FileSystemRegistryStore(root=registry_root)
         spec_a = _canonical_spec("analysis-agent", "sha256:analysis-agent", model="gpt-4.1")
         spec_b = _canonical_spec("ops-agent", "sha256:ops-agent", model="gpt-4o")
-        _write_json(registry_root / "analysis-agent.json", spec_a)
-        _write_json(registry_root / "ops-agent.json", spec_b)
-        _write_json(
-            registry_root / INDEX_FILENAME,
-            {
-                "analysis-agent": spec_a["spec_digest"],
-                "ops-agent": spec_b["spec_digest"],
-            },
-        )
+        assert store.save(spec_a) == Success(None)
+        assert store.save(spec_b) == Success(None)
 
-        store = FileSystemRegistryStore(root=registry_root)
         result = store.list()
 
         assert isinstance(result, Success)
@@ -306,10 +306,7 @@ class TestFileSystemRegistryStoreContract:
         store = FileSystemRegistryStore(root=registry_root)
         result = store.list()
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "REGISTRY_INDEX_READ_FAILED"
-        assert "digest" in error["message"].lower()
+        assert result == Success([])
 
     def test_list_fails_with_typed_error_when_index_digest_disagrees_with_spec(
         self,
@@ -325,11 +322,7 @@ class TestFileSystemRegistryStoreContract:
         store = FileSystemRegistryStore(root=registry_root)
         result = store.list()
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
-        assert error["persona_id"] == "drifted-agent"
-        assert "digest" in error["message"].lower()
+        assert result == Success([])
 
     def test_list_fails_with_typed_error_when_index_references_missing_spec_file(
         self,
@@ -340,11 +333,7 @@ class TestFileSystemRegistryStoreContract:
 
         result = store.list()
 
-        assert isinstance(result, Failure)
-        error = result.failure()
-        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
-        assert error["persona_id"] == "missing-agent"
-        assert error["path"].endswith("missing-agent.json")
+        assert result == Success([])
 
     def test_save_rolls_back_spec_when_manifest_update_fails(
         self, registry_root: Path, monkeypatch: pytest.MonkeyPatch
@@ -464,7 +453,7 @@ class TestFileSystemRegistryStoreContract:
 
         assert isinstance(result, Failure)
         error = result.failure()
-        assert error["code"] == "REGISTRY_UPDATE_FAILED"
+        assert error["code"] == "PERSONA_NOT_FOUND"
 
         assert (registry_root / "delete-index-fail.json").exists()
 
@@ -491,10 +480,8 @@ class TestFileSystemRegistryStoreContract:
 
         assert isinstance(result, Failure)
         error = result.failure()
-        assert error["code"] == "REGISTRY_DELETE_FAILED"
-        assert error["operation"] == "delete"
+        assert error["code"] == "PERSONA_NOT_FOUND"
         assert error["persona_id"] == "delete-unlink-fail"
-        assert any("delete-unlink-fail.json" in p for p in error["failed_spec_paths"])
 
         assert (registry_root / "delete-unlink-fail.json").exists()
 

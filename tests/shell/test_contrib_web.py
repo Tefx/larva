@@ -336,7 +336,7 @@ class TestContribMirrorEndpointInventory:
 
 
 # ---------------------------------------------------------------------------
-# Surface Cutover: EXPECTED-RED assertions for contrib web
+# Surface Cutover: implemented cutover assertions for contrib web
 #
 # Source authority: docs/reference/INTERFACES.md :: "larva serve is the authoritative
 # packaged runtime" (line 129). contrib/web/server.py is a convenience runtime,
@@ -346,7 +346,7 @@ class TestContribMirrorEndpointInventory:
 
 
 class TestContribWebAssemblyRemoved:
-    """EXPECTED-RED: contrib web must not expose /api/personas/assemble."""
+    """contrib web must not expose /api/personas/assemble as a working endpoint."""
 
     def test_contrib_assemble_endpoint_removed(self) -> None:
         """POST /api/personas/assemble should not exist on contrib server."""
@@ -372,7 +372,7 @@ class TestContribWebAssemblyRemoved:
 
 
 class TestContribWebComponentEndpointsRemoved:
-    """EXPECTED-RED: contrib web must not expose /api/components* endpoints."""
+    """contrib web must not expose /api/components* endpoints."""
 
     def test_contrib_components_list_removed(self) -> None:
         module = _load_contrib_module()

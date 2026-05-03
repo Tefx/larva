@@ -25,7 +25,6 @@ import pytest
 from returns.result import Failure, Result, Success
 
 from larva.app.facade import DefaultLarvaFacade, ERROR_NUMERIC_CODES, LarvaError, RegisteredPersona
-from larva.core import assemble as assemble_module
 from larva.core import normalize as normalize_module
 from larva.core import spec as spec_module
 from larva.core import validate as validate_module
@@ -33,19 +32,14 @@ from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport, validate_spec
 from larva.shell import cli as cli_module
 from larva.shell import python_api
-from larva.shell import python_api_components
-from larva.shell.shared.component_queries import query_component
 from larva.shell import web as web_module
 from larva.shell.cli import (
     EXIT_ERROR,
     EXIT_OK,
     validate_command,
-    assemble_command,
-    component_show_command,
     register_command,
     resolve_command,
 )
-from larva.shell.components import ComponentStoreError
 from larva.shell import mcp as mcp_module
 
 
@@ -166,16 +160,9 @@ def spec_with_invalid_capability_posture() -> PersonaSpec:
 # ============================================================================
 
 
-@dataclass
-class SpyAssembleModule:
-    candidate: PersonaSpec
-    calls: list[str] = field(default_factory=list)
-    inputs: list[dict[str, object]] = field(default_factory=list)
-
-    def assemble_candidate(self, data: dict[str, object]) -> PersonaSpec:
-        self.calls.append("assemble")
-        self.inputs.append(data)
-        return dict(self.candidate)
+# ============================================================================
+# Shared Doubles (post-cutover: assembly/component doubles removed)
+# ============================================================================
 
 
 @dataclass
@@ -237,57 +224,17 @@ class InMemoryRegistryStore:
         return self.clear_result
 
 
-@dataclass
-class InMemoryComponentStore:
-    """Component store double for cross-surface tests."""
+_in_memory_component_store_skip_reason = (
+    "Assembly/component subsystem removed per registry-local-variants cutover. "
+    "Component query surfaces (larva_component_list, larva_component_show, assemble) "
+    "have been replaced by direct variant registration. "
+    "Source: design/registry-local-variants-and-assembly-removal.md lines 125-129."
+)
 
-    list_result: Result[dict[str, list[str]], Exception] = field(
-        default_factory=lambda: Success(
-            {
-                "prompts": ["default-prompt"],
-                "toolsets": ["default-toolset"],
-                "constraints": ["default-constraint"],
-                "models": ["default-model"],
-            }
-        )
-    )
-    prompt_result: Result[dict[str, str], Exception] = field(
-        default_factory=lambda: Success({"text": "Prompt body"})
-    )
-    toolset_result: Result[dict[str, dict[str, str]], Exception] = field(
-        default_factory=lambda: Success(
-            {"capabilities": {"shell": "read_only"}, "tools": {"shell": "read_only"}}
-        )
-    )
-    constraint_result: Result[dict[str, object], Exception] = field(
-        default_factory=lambda: Success({"can_spawn": False})
-    )
-    model_result: Result[dict[str, object], Exception] = field(
-        default_factory=lambda: Success({"model": "gpt-4o-mini"})
-    )
 
-    def load_prompt(self, name: str) -> Result[dict[str, str], Exception]:
-        if name in {"missing", "nonexistent"}:
-            return Failure(ComponentStoreError(f"Prompt not found: {name}", "prompt", name))
-        return self.prompt_result
-
-    def load_toolset(self, name: str) -> Result[dict[str, dict[str, str]], Exception]:
-        if name in {"missing", "nonexistent"}:
-            return Failure(ComponentStoreError(f"Toolset not found: {name}", "toolset", name))
-        return self.toolset_result
-
-    def load_constraint(self, name: str) -> Result[dict[str, object], Exception]:
-        if name in {"missing", "nonexistent"}:
-            return Failure(ComponentStoreError(f"Constraint not found: {name}", "constraint", name))
-        return self.constraint_result
-
-    def load_model(self, name: str) -> Result[dict[str, object], Exception]:
-        if name in {"missing", "nonexistent"}:
-            return Failure(ComponentStoreError(f"Model not found: {name}", "model", name))
-        return self.model_result
-
-    def list_components(self) -> Result[dict[str, list[str]], Exception]:
-        return self.list_result
+# InMemoryComponentStore and ComponentStoreError have been removed.
+# Assembly/component query surfaces are no longer part of larva's public API.
+# Variant registration is the replacement for persona composition.
 
 
 def _valid_report() -> ValidationReport:
@@ -309,15 +256,12 @@ def make_facade(
     registry: InMemoryRegistryStore | None = None,
 ) -> DefaultLarvaFacade:
     """Create a facade with spy doubles wired up."""
-    assemble_module_dbl = SpyAssembleModule(candidate or canonical_spec("assembled"))
     validate_module_dbl = SpyValidateModule(report or _valid_report())
     normalize_module_dbl = SpyNormalizeModule()
     return DefaultLarvaFacade(
         spec=spec_module,
-        assemble=assemble_module_dbl,
         validate=validate_module_dbl,
         normalize=normalize_module_dbl,
-        components=InMemoryComponentStore(),
         registry=registry or InMemoryRegistryStore(),
     )
 
@@ -654,8 +598,8 @@ class TestCrossSurfaceErrorEnvelopeConsistency:
             ("PERSONA_NOT_FOUND", 100, {"persona_id": "x"}),
             ("PERSONA_INVALID", 101, {"report": {}}),
             ("INVALID_PERSONA_ID", 104, {"persona_id": "bad"}),
-            ("COMPONENT_NOT_FOUND", 105, {"component_type": "prompt", "component_name": "x"}),
-            ("REGISTRY_INDEX_READ_FAILED", 107, {"path": "/tmp/x"}),
+            ("INVALID_VARIANT_NAME", 118, {"variant": "BAD"}),
+            ("REGISTRY_CORRUPT", 117, {"path": "/tmp/x"}),
         ]
         from larva.app.facade import ERROR_NUMERIC_CODES
 
@@ -666,6 +610,7 @@ class TestCrossSurfaceErrorEnvelopeConsistency:
             )
 
 
+@pytest.mark.skip(reason=_in_memory_component_store_skip_reason)
 class TestCrossSurfaceComponentQueryConsistency:
     """Expose current cross-surface component query drift."""
 
@@ -838,6 +783,8 @@ class TestCrossSurfaceComponentQueryConsistency:
             python_api_components._component_store = original_py_store
 
 
+@pytest.mark.skip(reason="Assembly subsystem removed per registry-local-variants cutover. "
+    "assemble command is no longer a public surface.")
 class TestDefaultFacadeAssemblyEquivalence:
     """Preserve observable equivalence between default facade factories."""
 
@@ -891,6 +838,8 @@ class TestCrossSurfaceMalformedParams:
         assert result["numeric_code"] == 10
         assert "missing required parameter 'spec'" in result["message"]
 
+    @pytest.mark.skip(reason="Assembly MCP tool removed per registry-local-variants cutover. "
+        "handle_assemble is no longer a public surface.")
     def test_mcp_assemble_missing_id_parameter(self) -> None:
         """MCP assemble with missing id parameter returns malformed error."""
         facade = make_facade()
@@ -1053,10 +1002,8 @@ class TestRealFacadeValidationConsistency:
         """Create a real DefaultLarvaFacade with actual core modules."""
         return DefaultLarvaFacade(
             spec=spec_module,
-            assemble=assemble_module,
             validate=validate_module,
             normalize=normalize_module,
-            components=InMemoryComponentStore(),
             registry=InMemoryRegistryStore(),
         )
 
@@ -1124,10 +1071,8 @@ class TestRealFacadeValidationConsistency:
         """Real facade emits canonical warnings when the current snapshot warrants them."""
         facade = DefaultLarvaFacade(
             spec=spec_module,
-            assemble=assemble_module,
             validate=validate_module,
             normalize=normalize_module,
-            components=InMemoryComponentStore(),
             registry=InMemoryRegistryStore(
                 list_result=Success([canonical_spec("known-child")]),
             ),
@@ -1182,8 +1127,6 @@ class TestErrorCodeTableConsistency:
             "PERSONA_INVALID",
             "PERSONA_CYCLE",
             "INVALID_PERSONA_ID",
-            "COMPONENT_NOT_FOUND",
-            "COMPONENT_CONFLICT",
             "REGISTRY_INDEX_READ_FAILED",
             "REGISTRY_SPEC_READ_FAILED",
             "REGISTRY_WRITE_FAILED",
@@ -1191,6 +1134,12 @@ class TestErrorCodeTableConsistency:
             "REGISTRY_DELETE_FAILED",
             "INVALID_CONFIRMATION_TOKEN",
             "FORBIDDEN_OVERRIDE_FIELD",
+            "INVALID_VARIANT_NAME",
+            "VARIANT_NOT_FOUND",
+            "REGISTRY_CORRUPT",
+            "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+            "LAST_VARIANT_DELETE_FORBIDDEN",
+            "PERSONA_ID_MISMATCH",
         }
         facade_codes = set(ERROR_NUMERIC_CODES.keys())
         missing = required_codes - facade_codes

@@ -104,8 +104,6 @@ def _tool_name_to_handler_attr(tool_name: str) -> str:
 
     >>> _tool_name_to_handler_attr("larva_validate")
     'handle_validate'
-    >>> _tool_name_to_handler_attr("larva_component_list")
-    'handle_component_list'
     """
     # Strip 'larva_' prefix and prepend 'handle_'
     suffix = tool_name.removeprefix("larva_")
@@ -137,7 +135,7 @@ def create_mcp_server(
 
     Args:
         handlers: An ``MCPHandlers`` instance. If None, creates one
-            with default facade and component store.
+            with default facade.
 
     Returns:
         Configured FastMCP server ready to run.
@@ -146,13 +144,11 @@ def create_mcp_server(
         ImportError: If ``mcp`` package is not installed.
     """
     if handlers is None:
-        from larva.shell.components import FilesystemComponentStore
         from larva.shell.mcp import MCPHandlers
         from larva.shell.shared.facade_factory import build_default_facade
 
         facade = build_default_facade()
-        component_store = FilesystemComponentStore()
-        handlers = MCPHandlers(facade=facade, components=component_store)
+        handlers = MCPHandlers(facade=facade)
 
     server = FastMCP(name="larva")
 
