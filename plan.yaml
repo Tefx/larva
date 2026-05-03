@@ -62837,6 +62837,250 @@ phases:
 
       - Full repository tests not run here; focused tests and invar guard changed
       passed.'
+  - id: variants_registry_impl_20260503.registry-gate-blocker-remediation
+    name: registry-gate-blocker-remediation
+    status: pending
+    description: 'step_type: implementation
+
+      priority: HIGH
+
+
+      Batched remediation ownership for deferred registry gate blockers B1 and B2.
+      This step must address BOTH blockers together before registry-gate reruns; do
+      not split into serial B1/B2 fixes.
+
+
+      ## Required gate-failure reproduction and citation
+
+      - Read and cite the deferred registry gate failure evidence for B1 and B2.
+
+      - Reproduce the automated type/lint failures on the changed-file set before
+      fixing, including examples for undefined imports/types, list-method shadowing
+      annotation errors, registry variants.unwrap() typing, and the ruff finding family.
+
+      - Record the exact commands and representative pre-fix output snippets.
+
+
+      ## B1: changed-file type/lint closure
+
+      Scope includes changed production and test files related to the registry variants
+      work, including at minimum:
+
+      - src/larva/app/facade.py
+
+      - src/larva/app/facade_types.py
+
+      - src/larva/shell/registry.py
+
+      - related tests changed by the registry variants implementation
+
+
+      Fix ruff and mypy failures on the changed-file set without weakening shared-surface
+      strictness. Required attention areas:
+
+      - Restore or correct missing imports/types such as AssemblyInput and BatchUpdateItemResult
+      using canonical/local authority; do not invent compatibility aliases for shared
+      surfaces.
+
+      - Resolve list method name shadowing / annotation errors with an explicit, type-checkable
+      design.
+
+      - Fix registry variants.unwrap() typing by narrowing or restructuring so mypy
+      can prove safety.
+
+      - Resolve the ruff finding families rather than suppressing them broadly.
+
+
+      ## B2: maintainability/file-size blocker closure
+
+      The deferred gate rejected file_size escape hatches alone for:
+
+      - src/larva/shell/registry.py (~820 lines)
+
+      - src/larva/app/facade.py (~655 lines)
+
+
+      Prefer immediate safe split/refactor in this step. Reduce responsibilities and
+      file sizes by extracting cohesive helpers/modules while preserving public runtime
+      behavior and imports. If any residual size remains above gate threshold, evidence
+      must provide a gate-acceptable disposition explaining why the remaining size
+      is temporary and non-intersecting; however, do NOT rely on an invar file_size
+      escape hatch alone.
+
+
+      If immediate split is genuinely unsafe, STOP and report that a real follow-up
+      owner step must be added before gate acceptance; do not claim this remediation
+      complete with only a prose TODO.
+
+
+      ## Escape hatch audit
+
+      Audit all new or existing escape hatches touched by this work. Each hatch must
+      be justified by framework/runtime reachability or removed. File-size hatches
+      for the two oversized files are not sufficient by themselves to close B2.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only completion is NOT acceptable.
+      Each deliverable MUST contain substantive logic/refactoring that preserves behavior
+      and resolves blocker-class gate criteria.
+
+
+      ## Required verification commands
+
+      Run and paste output for:
+
+      - focused registry variant behavioral tests that previously passed in the gate
+      summary
+
+      - ruff on the changed-file set
+
+      - mypy/type gate on the changed-file set or project-standard type command for
+      these files
+
+      - uv run invar guard --changed
+
+
+      Completion requires B1 green, B2 closed by safe split or gate-acceptable explicit
+      disposition, behavioral probes still green, and no unresolved blocker-class
+      obligations for registry-gate.'
+    verification: '- Pre-fix reproduction evidence cites the deferred registry-gate
+      B1/B2 failure and representative command output.
+
+      - B1: ruff and mypy/type checks pass for src/larva/app/facade.py, src/larva/app/facade_types.py,
+      src/larva/shell/registry.py, and related changed tests without broad suppressions
+      or shared-surface compatibility aliases.
+
+      - B2: src/larva/shell/registry.py and src/larva/app/facade.py are safely split/reduced
+      below gate maintainability thresholds, or evidence documents a concrete gate-acceptable
+      disposition beyond file_size escape hatches; no prose-only TODO is acceptable.
+
+      - Focused registry variant behavioral tests still pass, covering no index/root
+      projection, REGISTRY_CORRUPT, active-only list/export, and same-directory activation.
+
+      - uv run invar guard --changed passes.
+
+      - Escape hatch audit lists every touched hatch, justification, and removal/disposition
+      status.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - <filename> — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Deferred Gate Failure Citation
+
+      - Gate step/evidence cited: <registry-gate failure ref>
+
+      - B1 cited failure examples: <paste representative type/lint failures>
+
+      - B2 cited maintainability finding: <paste gate size-threshold finding>
+
+
+      ## Pre-Fix Reproduction
+
+      Commands run before fixes:
+
+      ```
+
+      <paste commands>
+
+      ```
+
+      Representative output:
+
+      ```
+
+      <paste failures>
+
+      ```
+
+
+      ## B1 Type/Lint Closure
+
+      - Files checked: <list>
+
+      - Missing import/type fixes: <summary>
+
+      - list-method shadowing fix: <summary>
+
+      - variants.unwrap typing fix: <summary>
+
+      - Ruff families resolved: <summary>
+
+
+      Post-fix ruff output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+      Post-fix mypy/type output:
+
+      ```
+
+      <paste output>
+
+      ```
+
+
+      ## B2 Maintainability Closure
+
+      - Immediate split performed: YES/NO
+
+      - Extracted modules/helpers: <list>
+
+      - Final line counts for facade.py and registry.py: <counts>
+
+      - If any threshold remains exceeded, gate-acceptable disposition: <concrete
+      owner/evidence; file_size hatch alone is insufficient>
+
+
+      ## Escape Hatch Audit
+
+      | Hatch | File | Justification | Kept/Removed | Gate risk |
+
+      |---|---|---|---|---|
+
+
+      ## Behavioral Regression Proof
+
+      Focused registry variant tests:
+
+      ```
+
+      <paste command and output>
+
+      ```
+
+
+      ## Invar Proof
+
+      ```
+
+      uv run invar guard --changed
+
+      <paste output>
+
+      ```
+
+
+      ## Headline
+
+      - [ ] PASS: B1 and B2 closed, behavioral probes green, registry-gate may rerun.
+
+      - [ ] FAIL: unresolved blocker remains; specify blocker and required next owner.'
+    depends_on:
+    - variants_registry_impl_20260503.registry-spec-conformance
+    agent: python-refactor-master-tacit
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
