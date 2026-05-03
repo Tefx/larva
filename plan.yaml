@@ -63148,6 +63148,157 @@ phases:
       - `tests/shell/test_registry.py`\n\n## Commit hash(es)\n- `c6c5789d29d35a1d72e05f2d877c059639d690bc`\n\
       - `8d0780dcf2075cd7131fee3d45844921696e99ce`\n\n## Spec link\n- variants_registry_impl_20260503.registry-gate-blocker-remediation\n\
       \n## Gaps/Notes\nnone"
+  - id: variants_registry_impl_20260503.registry-post-gate-followup
+    name: Post-gate should-fix and comment hygiene
+    status: pending
+    description: 'step_type: implementation
+
+      priority: MEDIUM
+
+      provenance: gate finding from variants_registry_impl_20260503.registry-gate
+
+      position: post-gate follow-up; this step depends on the semantic-PASS gate and
+      must not prevent the gate itself from being completed.
+
+
+      Own S1 and G1 together without reopening completed implementation steps.
+
+
+      S1 disposition: non-blocking maintainability follow-up. src/larva/app/facade.py
+      (~415 lines) and src/larva/shell/registry.py (~494 lines) are below the gate''s
+      hard blocking threshold and no file_size hatch remains, so this is not blocker-class
+      debt for variants_registry_impl_20260503.registry-gate. However, it intersects
+      future maintainability if these files grow again. Record and, only if there
+      is an obvious safe extraction that does not churn behavior, continue bounded
+      extraction. Do NOT reintroduce file_size hatches as blocker closure.
+
+
+      G1 remediation: refresh stale expected-red comments in now-green tests at tests/shell/test_registry.py:601-608
+      and tests/shell/test_registry.py:784-842 so future reviewers are not misled.
+
+
+      Out-of-scope guardrails:
+
+      - Do not alter completed implementation step evidence.
+
+      - Do not change registry variant behavior unless a tiny safe extraction requires
+      moving unchanged logic.
+
+      - Do not add or rely on file_size escape hatches.
+
+      - If line counts rise above current values, justify why the increase is temporary
+      or necessary and identify downstream ownership.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION/comment-hygiene follow-up. Stub-only completion is
+      NOT acceptable for any code touched. Each code deliverable MUST preserve behavior
+      and either reduce or clearly justify maintainability risk.
+
+
+      ## Gate Preview (what a follow-up review WILL reject)
+
+      1. Reintroduced file_size hatches or hatch-only blocker closure.
+
+      2. Line counts worse than current without explicit justification.
+
+      3. Stale expected-red wording left in now-green registry tests.
+
+      4. Behavior changes without focused registry tests and changed-file ruff/invar
+      evidence.'
+    verification: '- S1 disposition recorded in evidence as non-blocking maintainability
+      ownership, with current line counts for src/larva/app/facade.py and src/larva/shell/registry.py
+      and a statement that no file_size hatches were added or retained for this closure.
+
+      - G1 comments at tests/shell/test_registry.py:601-608 and tests/shell/test_registry.py:784-842
+      are updated if still stale.
+
+      - If code is touched beyond comments, focused registry tests covering the touched
+      behavior pass.
+
+      - Changed-file ruff and invar checks are run for touched files; if only comments
+      changed, still provide changed-file ruff/invar applicability evidence.
+
+      - Line counts are not worse than current (~415 facade, ~494 registry) unless
+      explicitly justified with downstream ownership.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+
+      For each ref in this step:
+
+      - tests/shell/test_registry.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/app/facade.py — key passage or "NOT READ: <reason>"
+
+      - src/larva/shell/registry.py — key passage or "NOT READ: <reason>"
+
+      - INVAR.md — key passage or "NOT READ: <reason>"
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Post-Gate Follow-up Evidence
+
+
+      ### S1 Maintainability Disposition
+
+      - facade.py line count before/after:
+
+      - registry.py line count before/after:
+
+      - No file_size hatches added/retained for closure: YES/NO
+
+      - Extraction performed: YES/NO
+
+      - If NO extraction: non-blocking rationale and future growth trigger:
+
+      - If line counts worsened: justification and downstream ownership:
+
+
+      ### G1 Comment Hygiene
+
+      - tests/shell/test_registry.py:601-608 stale expected-red wording status:
+
+      - tests/shell/test_registry.py:784-842 stale expected-red wording status:
+
+      - Comment changes made:
+
+
+      ### Verification
+
+      - Focused tests run (if comments/code touched):
+
+      ```
+
+      <paste command/output or applicability rationale>
+
+      ```
+
+      - Ruff changed-file evidence:
+
+      ```
+
+      <paste command/output or applicability rationale>
+
+      ```
+
+      - Invar changed-file evidence:
+
+      ```
+
+      <paste command/output or applicability rationale>
+
+      ```
+
+
+      ### Headline
+
+      PASS | PASS_WITH_NONBLOCKING_DEBT | FAIL'
+    depends_on:
+    - variants_registry_impl_20260503.registry-gate
+    agent: python-refactor-master-tacit
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
