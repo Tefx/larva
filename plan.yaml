@@ -62856,7 +62856,7 @@ phases:
       passed.'
   - id: variants_registry_impl_20260503.registry-gate-blocker-remediation
     name: registry-gate-blocker-remediation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       priority: HIGH
@@ -63098,6 +63098,8 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-spec-conformance
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-05-03T02:18:38.093546+00:00'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
