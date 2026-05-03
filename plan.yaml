@@ -40845,7 +40845,7 @@ phases:
   - baseline_failure_finalization
 - id: repair_dup_shared_foundations
   name: Duplicate Repair Foundations (Guardrails + Shared Foundations)
-  status: done
+  status: in_progress
   gate: Extract shared abstractions behind stable boundaries before broad surface
     rebasing.
   context: 'work_type: technical_debt_remediation
@@ -42525,6 +42525,17 @@ phases:
       \ error preconditions)\n\nFiles changed\n- src/larva/core/component_error_projection.py\n\
       - src/larva/shell/mcp_contract.py\n- src/larva/shell/mcp_server.py\n- tests/shell/test_mcp.py\n\
       - tests/shell/test_mcp_server.py"
+  - id: repair_dup_shared_foundations.evidence_guard_closure_20260503
+    name: Close historical completed-evidence guard failure for duplicate repair foundations
+    status: pending
+    description: Resolve validate error for completed step repair_dup_guardrails.preservation_harness
+      in phase repair_dup_shared_foundations, whose evidence contains failed tests.
+      Add later same-phase closure evidence proving the preservation harness is now
+      green/OPEN, or record explicit expected-red/non-blocking owner/lifecycle/gate-intersection
+      disposition.
+    verification: Run vectl_validate(check_refs=true) and show the repair_dup_shared_foundations
+      completed-evidence guard error is gone, or paste the accepted disposition evidence
+      that closes it.
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: done
