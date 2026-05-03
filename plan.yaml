@@ -68412,7 +68412,7 @@ phases:
       OpenCode excluded: yes'
   - id: non_opencode_red_cleanup_20260503.impl
     name: Fix non-OpenCode red failures
-    status: pending
+    status: claimed
     description: 'Implement the minimal strict fixes for the inventoried non-OpenCode
       reds. Align forbidden-field conformance behavior, MCP assemble inventory/description/schema
       projections, README/API inventory parity including larva_variant_list, assemble
@@ -68427,6 +68427,8 @@ phases:
     depends_on:
     - non_opencode_red_cleanup_20260503.inventory
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T14:38:05.280346+00:00'
   - id: non_opencode_red_cleanup_20260503.focused_tests
     name: Run focused non-OpenCode regression tests
     status: pending
