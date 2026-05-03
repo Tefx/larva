@@ -68167,7 +68167,7 @@ phases:
       afterward to avoid committing unrelated pre-existing user edits.'
   - id: opencode_hardening_final_gate_20260503
     name: Run final verification and self-review
-    status: pending
+    status: claimed
     description: Run targeted OpenCode tests, full relevant test suite, invar guard,
       and a fresh self-review against the hardening contract. Fix any regressions
       discovered by the gate before completing.
@@ -68177,6 +68177,8 @@ phases:
     depends_on:
     - opencode_hardening_docs_and_matrix_20260503
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T14:06:26.084016+00:00'
   - id: plan_ref_warning_hygiene_20260503
     name: Triage remaining vectl ref warnings
     status: done
