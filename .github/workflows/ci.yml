@@ -33,6 +33,7 @@ jobs:
           repository: ${{ steps.opifex-authority.outputs.repository }}
           ref: ${{ steps.opifex-authority.outputs.ref }}
           path: opifex
+          token: ${{ secrets.OPIFEX_READ_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -75,6 +76,7 @@ jobs:
           repository: ${{ steps.opifex-authority.outputs.repository }}
           ref: ${{ steps.opifex-authority.outputs.ref }}
           path: opifex
+          token: ${{ secrets.OPIFEX_READ_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
