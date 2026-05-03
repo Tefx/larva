@@ -66879,7 +66879,7 @@ phases:
       none'
   - id: variants_finalization_20260503.deep-review
     name: deep-review
-    status: claimed
+    status: done
     description: 'step_type: review
 
       verification_scope: full-plan-check
@@ -66971,6 +66971,146 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T07:24:57.240762+00:00'
+    done_at: '2026-05-03T07:37:10.714533+00:00'
+    evidence: '## refs Read Confirmation
+
+      Initial gate-reviewer-tacit read confirmation covered all refs:
+
+      - design/registry-local-variants-and-assembly-removal.md — canonical spec unchanged;
+      variant/_registry/active/manifest forbidden in PersonaSpec; index.json not used;
+      removed MCP tools; variant API required.
+
+      - docs/reference/INTERFACES.md — assembly/component removal, variant tools/routes,
+      fail-closed manifest, no metadata in canonical specs.
+
+      - docs/reference/ARCHITECTURE.md — registry uses manifest.json + variants/*.json;
+      index.json not used; corrupt/missing manifest fail-closed.
+
+      - docs/guides/USAGE.md and docs/guides/USER_GUIDE.md — variant operation parameters,
+      storage, troubleshooting, removed tools.
+
+      - README.md — prompt opacity, active variants, removed assembly/components,
+      AGPL-3.0-or-later.
+
+      - ../opifex design/schema/shared_surfaces/case_matrix refs — current canonical
+      and variant/removal authority.
+
+      - INVAR.md — guard/contract discipline and Core/Shell boundary.
+
+
+      ## Deep Review Findings
+
+      | Severity | Finding | Surface/File | Provenance | Disposition | Required action
+      |
+
+      |---|---|---|---|---|---|
+
+      | — | No remaining blocking findings from reassessment. Prior blockers have
+      repo-local evidence of remediation. | Repo public surfaces | Source review +
+      fresh verification | OPEN | None |
+
+
+      ## Cross-Cutting Checks
+
+      - Canonical boundary: PASS — core rejects forbidden/unknown fields; Web `{spec:
+      ...}` wrapper now rejects unknown wrapper keys such as `variant`.
+
+      - Surface removal: PASS — source grep shows no runtime assembly/component public
+      surfaces; current repo MCP stdio proof lists variant tools and excludes removed
+      tools.
+
+      - Registry semantics: PASS — reachable `index.json`/flat-file fallback refs
+      removed; registry uses `manifest.json` + `variants/*.json`, fail-closed manifest
+      reads, active/last delete guards.
+
+      - Wiring/reachability: PASS — variant operations are wired through Python API,
+      CLI, MCP contract/handlers, Web REST routes, and process-level CLI smoke.
+
+      - Runtime evidence: PASS — full tests/guard/local gate green; repo MCP stdio,
+      subprocess CLI CRUD, and serve process smoke evidence provided.
+
+      - Docs parity: PASS — README/reference/guides match implemented registry-local
+      variants, removed assembly/components, prompt opacity, AGPL license, and no
+      `index.json` target use.
+
+
+      ## Remediation Evidence
+
+      Prior deep-review blockers and fixes:
+
+      1. Current repo MCP stdio list proof showed tools: larva_validate, larva_resolve,
+      larva_register, larva_list, larva_variant_list, larva_variant_activate, larva_variant_delete,
+      larva_delete, larva_clear, larva_clone, larva_export, larva_update, larva_update_batch;
+      removed larva_assemble/component tools absent. Session-connected tela_larva
+      provider is stale external deployment, not repo build evidence.
+
+      2. Removed reachable legacy flat-file/index fallback from src/larva/shell/registry.py,
+      registry_extra_ops.py, cli_doctor.py, and registry types/docs. Source grep no
+      longer finds runtime index.json, INDEX_FILENAME, SPEC_FILENAME_TEMPLATE, _read_index/_index_path/_spec_path,
+      RegistryIndex, or IndexReadError references.
+
+      3. POST /api/personas now rejects unknown keys when using `{spec: ...}` wrapper;
+      regression test added for `{spec, variant}` -> INVALID_INPUT.
+
+      4. Added process-level CLI variant CRUD smoke with temp HOME through `python
+      -c ''from larva.cli_entrypoint import main; ...''`.
+
+      5. Process-level `larva serve --no-open` smoke returned HTTP 200 from /api/personas
+      with uvicorn startup/shutdown logs.
+
+
+      ## Commands
+
+      ```text
+
+      uv run pytest -q -p no:cacheprovider
+
+      # 525 passed in 6.87s
+
+
+      invar_guard(path=/Users/tefx/Projects/larva, changed=false)
+
+      # run grd_2da7e26f46e04da9b2a140b9 complete: ok=true, errors=0, warnings=1,
+      infos=3, files_checked=40
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py verify --opifex-root ../opifex
+
+      # all PASS, 9 tools
+
+
+      uv run python scripts/ci/larva_repo_local_gate.py expected-red --opifex-root
+      ../opifex
+
+      # 5 expected-red PASS lines
+
+
+      uv run pytest tests/shell/test_registry.py tests/shell/test_web.py tests/shell/test_variant_projection_smoke.py
+      tests/shell/test_repo_local_ci_gate.py -q -p no:cacheprovider --tb=short
+
+      # 123 passed in 2.13s
+
+
+      MCP stdio process list proof
+
+      # variant tools present; removed assembly/component tools absent
+
+
+      serve process smoke
+
+      # HTTP 200 from /api/personas; uvicorn started and shut down cleanly after SIGTERM
+
+      ```
+
+
+      ## Recommendation
+
+      OPEN
+
+
+      ## Residual Risk
+
+      none'
   - id: variants_finalization_20260503.final-gate
     name: final-gate
     status: pending
