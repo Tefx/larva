@@ -61193,7 +61193,7 @@ phases:
       - Full repo suite not run here; phase gate owns broader verification.'
   - id: variants_core_contract_20260503.core-gate-remediation
     name: core-gate-remediation
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: proof_closure\nagent_source:\
       \ project\npriority: HIGH\n\nBatched remediation ownership for deferred gate\
       \ `variants_core_contract_20260503.core-gate`.\n\nThis step owns ALL reported\
@@ -61304,6 +61304,8 @@ phases:
     depends_on:
     - variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-03T00:58:20.286995+00:00'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
   status: locked
