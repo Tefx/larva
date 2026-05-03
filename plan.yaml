@@ -65921,7 +65921,7 @@ phases:
       none — no-op implementation because tests were already green.'
   - id: variants_projection_smoke_20260503.live-liveness-probe
     name: live-liveness-probe
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -66046,6 +66046,158 @@ phases:
     agent: blind-tester-tacit
     claimed_by: blind-tester-tacit
     claimed_at: '2026-05-03T06:47:18.545859+00:00'
+    done_at: '2026-05-03T06:58:13.730777+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — variant storage/operations,
+      removed assembly/component surfaces, MCP/CLI/REST changes.
+
+      - docs/reference/INTERFACES.md — normative variant routes/tools, removed endpoints,
+      variant envelope, error behavior.
+
+      - docs/reference/ARCHITECTURE.md — active variant resolution returns bare canonical
+      PersonaSpec; removed subsystem.
+
+      - docs/guides/USAGE.md and USER_GUIDE.md — variant CLI examples, variant as
+      registry metadata, removed tools.
+
+      - opifex canonical/schema/shared surfaces/case matrices — canonical metadata
+      fields forbidden; variant shared surfaces and MCP naming rules.
+
+      - INVAR.md — core/shell and guard rules.
+
+
+      ## Liveness Evidence
+
+      ### CLI
+
+      ```text
+
+      Temp HOME/registry CLI smoke:
+
+      - register default -> {"id":"liveness-test","registered":true}
+
+      - register --variant tacit -> {"id":"liveness-test","registered":true}
+
+      - resolve default -> canonical default spec, no metadata
+
+      - resolve --variant tacit -> canonical tacit spec, no metadata
+
+      - variant list -> {"id":"liveness-test","active":"default","variants":["default","tacit"]}
+
+      - variant activate tacit -> {"id":"liveness-test","active":"tacit"}
+
+      - resolve after activate -> tacit content/digest
+
+      - variant delete inactive default -> {"id":"liveness-test","variant":"default","deleted":true}
+
+      - list -> single base persona with active tacit description/model/digest
+
+      - active delete rejects ACTIVE_VARIANT_DELETE_FORBIDDEN
+
+      - last delete rejects LAST_VARIANT_DELETE_FORBIDDEN
+
+      - invalid variant name rejects INVALID_VARIANT_NAME
+
+      - variant inside PersonaSpec rejected as EXTRA_FIELD_NOT_ALLOWED
+
+      ```
+
+      ### MCP stdio
+
+      ```text
+
+      uv run larva mcp stdio smoke:
+
+      - initialize succeeded with serverInfo name=larva
+
+      - tools/list includes larva_variant_list/activate/delete
+
+      - tools/list excludes larva_assemble/component_list/component_show
+
+      - register default/tacit, resolve active/tacit, variant_list, variant_activate,
+      resolve active after activate all succeeded
+
+      ```
+
+      ### Serve/REST
+
+      ```text
+
+      Runtime route smoke:
+
+      - POST /api/personas -> 200 registered default
+
+      - PUT /api/registry/personas/rest-test/variants/tacit -> 200 registered tacit
+
+      - GET /api/registry/personas/rest-test/variants -> 200 {id, active, variants}
+
+      - GET /api/personas/rest-test -> 200 bare canonical active spec
+
+      - GET /api/registry/personas/rest-test/variants/tacit -> 200 {_registry, spec}
+
+      - POST /api/registry/personas/rest-test/variants/tacit/activate -> 200 active=tacit
+
+      - GET /api/components -> 404
+
+      - POST /api/personas/assemble -> 404 tombstone
+
+      - GET /api/registry/personas -> 200 summary with active/variants
+
+      - PUT id mismatch -> 400 PERSONA_ID_MISMATCH
+
+      ```
+
+      ### OpenCode projection
+
+      ```text
+
+      - Python API export_all returns only active canonical specs; no _registry key.
+
+      - opencode.py _agent_entry projects from canonical active PersonaSpec only.
+
+      - CLI resolve/list/export demonstrate active variant content and digest change
+      after activation.
+
+      - Full `larva opencode` exec not run because it launches external `opencode`
+      TUI; closure is covered by `build_opencode_config`/export_all and CLI/Python
+      active-only projection smoke.
+
+      ```
+
+
+      ## Removed Surface Absence
+
+      ```text
+
+      - CLI help: no assemble/component commands; register help has --variant and
+      no --component.
+
+      - MCP tools: removed larva_assemble/component_list/component_show absent; 13
+      snake_case tools present.
+
+      - REST: /api/components* -> 404; /api/personas/assemble -> documented 404 tombstone.
+
+      - Python API: no assemble/component_list/component_show exports.
+
+      - Source grep: no functional larva_assemble/component tools; only web tombstone
+      docs/routes.
+
+      ```
+
+
+      ## Behavioral Proof Register
+
+      All required public behaviors PASS: active-only resolve/list/export/projection;
+      register --variant does not auto-activate existing persona; variant_activate
+      changes active content/digest; active/last variant delete rejections; invalid
+      variant names; metadata rejection from PersonaSpec; REST envelope separation;
+      removed surfaces absent; MCP naming.
+
+
+      ## Headline
+
+      PASS'
   - id: variants_projection_smoke_20260503.projection-smoke-gate
     name: projection-smoke-gate
     status: pending
