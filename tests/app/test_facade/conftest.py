@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
@@ -23,6 +24,8 @@ from larva.core import validate as validate_module
 from larva.core.assemble import _assembly_error
 from larva.shell.components import ComponentStoreError, FilesystemComponentStore
 from larva.shell.registry import RegistryError
+
+_VARIANT_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -201,21 +204,140 @@ class InMemoryRegistryStore:
     clear_count: int = 0
     save_inputs: list[PersonaSpec] = field(default_factory=list)
     get_inputs: list[str] = field(default_factory=list)
+    variant_save_inputs: list[tuple[PersonaSpec, str | None]] = field(default_factory=list)
+    variants: dict[str, dict[str, PersonaSpec]] = field(default_factory=dict)
+    active_variants: dict[str, str] = field(default_factory=dict)
 
-    def save(self, spec: PersonaSpec) -> Result[None, RegistryError]:
+    def save(self, spec: PersonaSpec, variant: str | None = None) -> Result[None, RegistryError]:
         self.save_inputs.append(dict(spec))
+        self.variant_save_inputs.append((dict(spec), variant))
+        persona_id = cast("str", spec.get("id", ""))
+        variant_name = "default" if variant is None else variant
+        if persona_id:
+            self.variants.setdefault(persona_id, {})[variant_name] = dict(spec)
+            self.active_variants.setdefault(persona_id, variant_name)
         return self.save_result
 
     def get(self, persona_id: str) -> Result[PersonaSpec, RegistryError]:
         self.get_inputs.append(persona_id)
+        active = self.active_variants.get(persona_id)
+        if active is not None and persona_id in self.variants:
+            return Success(dict(self.variants[persona_id][active]))
         return self.get_result
+
+    def get_variant(self, persona_id: str, variant: str) -> Result[PersonaSpec, RegistryError]:
+        self.get_inputs.append(f"{persona_id}:{variant}")
+        if len(variant) > 64 or _VARIANT_PATTERN.fullmatch(variant) is None:
+            return Failure(
+                {
+                    "code": "INVALID_VARIANT_NAME",
+                    "message": "invalid variant name",
+                    "variant": variant,
+                }
+            )
+        if persona_id in self.variants and variant in self.variants[persona_id]:
+            return Success(dict(self.variants[persona_id][variant]))
+        return Failure(
+            {
+                "code": "VARIANT_NOT_FOUND",
+                "message": f"variant '{variant}' not found",
+                "persona_id": persona_id,
+                "variant": variant,
+            }
+        )
 
     def list(self) -> Result[list[PersonaSpec], RegistryError]:
         return self.list_result
 
     def delete(self, persona_id: str) -> Result[None, RegistryError]:
         """In-memory delete for facade testing."""
+        self.variants.pop(persona_id, None)
+        self.active_variants.pop(persona_id, None)
         return self.delete_result
+
+    def variant_list(self, persona_id: str) -> Result[dict[str, object], RegistryError]:
+        if persona_id not in self.variants:
+            return Failure(
+                {
+                    "code": "PERSONA_NOT_FOUND",
+                    "message": f"persona '{persona_id}' not found",
+                    "persona_id": persona_id,
+                }
+            )
+        return Success(
+            {
+                "id": persona_id,
+                "active": self.active_variants[persona_id],
+                "variants": sorted(self.variants[persona_id]),
+            }
+        )
+
+    def variant_activate(
+        self, persona_id: str, variant: str
+    ) -> Result[dict[str, object], RegistryError]:
+        if len(variant) > 64 or _VARIANT_PATTERN.fullmatch(variant) is None:
+            return Failure(
+                {
+                    "code": "INVALID_VARIANT_NAME",
+                    "message": "invalid variant name",
+                    "variant": variant,
+                }
+            )
+        if persona_id not in self.variants or variant not in self.variants[persona_id]:
+            return Failure(
+                {
+                    "code": "VARIANT_NOT_FOUND",
+                    "message": f"variant '{variant}' not found",
+                    "persona_id": persona_id,
+                    "variant": variant,
+                }
+            )
+        self.active_variants[persona_id] = variant
+        return self.variant_list(persona_id)
+
+    def variant_delete(self, persona_id: str, variant: str) -> Result[None, RegistryError]:
+        if len(variant) > 64 or _VARIANT_PATTERN.fullmatch(variant) is None:
+            return Failure(
+                {
+                    "code": "INVALID_VARIANT_NAME",
+                    "message": "invalid variant name",
+                    "variant": variant,
+                }
+            )
+        metadata = self.variant_list(persona_id)
+        if isinstance(metadata, Failure):
+            return metadata
+        payload = metadata.unwrap()
+        variants = cast("list[str]", payload["variants"])
+        if variant not in variants:
+            return Failure(
+                {
+                    "code": "VARIANT_NOT_FOUND",
+                    "message": f"variant '{variant}' not found",
+                    "persona_id": persona_id,
+                    "variant": variant,
+                }
+            )
+        if len(variants) == 1:
+            return Failure(
+                {
+                    "code": "LAST_VARIANT_DELETE_FORBIDDEN",
+                    "message": "cannot delete last variant",
+                    "persona_id": persona_id,
+                    "variant": variant,
+                }
+            )
+        if payload["active"] == variant:
+            return Failure(
+                {
+                    "code": "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+                    "message": "cannot delete active variant",
+                    "persona_id": persona_id,
+                    "variant": variant,
+                }
+            )
+        del self.variants[persona_id][variant]
+        return Success(None)
 
     def clear(self, confirm: str = "CLEAR REGISTRY") -> Result[int, RegistryError]:
         """In-memory clear for facade testing."""

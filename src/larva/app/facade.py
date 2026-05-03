@@ -24,6 +24,9 @@ from larva.app.facade_types import (
     RegisteredPersona,
     SpecModule,
     ValidateModule,
+    VariantMetadata,
+    ActivatedVariant,
+    DeletedVariant,
 )
 from larva.core.assemble import AssemblyError
 from larva.core.component_error_projection import project_component_store_error
@@ -54,6 +57,11 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
     "FORBIDDEN_PATCH_FIELD": 114,
     "FORBIDDEN_FIELD": 115,
     "MISSING_SPEC_VERSION": 116,
+    "REGISTRY_CORRUPT": 117,
+    "INVALID_VARIANT_NAME": 118,
+    "VARIANT_NOT_FOUND": 119,
+    "ACTIVE_VARIANT_DELETE_FORBIDDEN": 120,
+    "LAST_VARIANT_DELETE_FORBIDDEN": 121,
 }
 
 
@@ -354,12 +362,17 @@ class DefaultLarvaFacade(LarvaFacade):
             current = next_value
         return current
 
-    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]:
+    def register(
+        self, spec: PersonaSpec, variant: str | None = None
+    ) -> Result[RegisteredPersona, LarvaError]:
         normalized_result = self._normalize_and_validate(spec)
         if isinstance(normalized_result, Failure):
             return normalized_result
         normalized = normalized_result.unwrap()
-        save_result = self._registry.save(normalized)
+        if variant is None:
+            save_result = self._registry.save(normalized)
+        else:
+            save_result = self._registry.save(normalized, variant=variant)
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))
 
@@ -370,8 +383,9 @@ class DefaultLarvaFacade(LarvaFacade):
         self,
         id: str,
         overrides: dict[str, object] | None = None,
+        variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]:
-        get_result = self._registry.get(id)
+        get_result = self._registry.get(id) if variant is None else self._registry.get_variant(id, variant)
         if isinstance(get_result, Failure):
             return Failure(self._registry_failure_error(get_result.failure()))
 
@@ -394,8 +408,13 @@ class DefaultLarvaFacade(LarvaFacade):
         self,
         persona_id: str,
         patches: dict[str, object],
+        variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]:
-        get_result = self._registry.get(persona_id)
+        get_result = (
+            self._registry.get(persona_id)
+            if variant is None
+            else self._registry.get_variant(persona_id, variant)
+        )
         if isinstance(get_result, Failure):
             return Failure(self._registry_failure_error(get_result.failure()))
 
@@ -412,11 +431,38 @@ class DefaultLarvaFacade(LarvaFacade):
         if isinstance(normalized_result, Failure):
             return normalized_result
         normalized = normalized_result.unwrap()
-        save_result = self._registry.save(normalized)
+        if variant is None:
+            save_result = self._registry.save(normalized)
+        else:
+            save_result = self._registry.save(normalized, variant=variant)
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))
 
         return Success(normalized)
+
+    def variant_list(self, persona_id: str) -> Result[VariantMetadata, LarvaError]:
+        metadata_result = self._registry.variant_list(persona_id)
+        if isinstance(metadata_result, Failure):
+            return Failure(self._registry_failure_error(metadata_result.failure()))
+        metadata = metadata_result.unwrap()
+        return Success({"id": metadata["id"], "active": metadata["active"], "variants": metadata["variants"]})
+
+    def variant_activate(
+        self, persona_id: str, variant: str
+    ) -> Result[ActivatedVariant, LarvaError]:
+        activate_result = self._registry.variant_activate(persona_id, variant)
+        if isinstance(activate_result, Failure):
+            return Failure(self._registry_failure_error(activate_result.failure()))
+        metadata = activate_result.unwrap()
+        return Success({"id": metadata["id"], "active": metadata["active"]})
+
+    def variant_delete(
+        self, persona_id: str, variant: str
+    ) -> Result[DeletedVariant, LarvaError]:
+        delete_result = self._registry.variant_delete(persona_id, variant)
+        if isinstance(delete_result, Failure):
+            return Failure(self._registry_failure_error(delete_result.failure()))
+        return Success({"id": persona_id, "variant": variant, "deleted": True})
 
     def update_batch(
         self,

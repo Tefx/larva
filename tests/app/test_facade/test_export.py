@@ -333,21 +333,44 @@ class TestFacadeExportActiveOnly:
 
     def test_export_all_returns_active_variants_only(self) -> None:
         """export_all() returns one canonical PersonaSpec per base persona id (active only)."""
-        pytest.xfail(
-            "variant-aware export_all (active-only) does not exist yet; "
-            "expected to return one spec per base id after implementation"
-        )
+        active = _canonical_spec("export-active-only")
+        active["description"] = "Active export"
+        active["spec_digest"] = _digest_for(active)
+        registry = InMemoryRegistryStore(list_result=Success([active]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_all()
+
+        assert isinstance(result, Success)
+        assert [spec["id"] for spec in result.unwrap()] == ["export-active-only"]
+        assert result.unwrap()[0]["description"] == "Active export"
 
     def test_export_all_excludes_registry_metadata(self) -> None:
         """Exported specs must not contain variant, _registry, active, or manifest fields."""
-        pytest.xfail(
-            "export metadata exclusion does not exist yet; "
-            "expected exports to lack registry metadata fields"
-        )
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("export-clean")]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_all()
+
+        assert isinstance(result, Success)
+        exported = result.unwrap()[0]
+        assert "variant" not in exported
+        assert "_registry" not in exported
+        assert "active" not in exported
+        assert "manifest" not in exported
 
     def test_export_ids_returns_active_variant(self) -> None:
         """export_ids(ids) returns the active variant spec for each requested id."""
-        pytest.xfail(
-            "variant-aware export_ids (active-only) does not exist yet; "
-            "expected to return active variant per id after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("export-id-active"))
+        tacit = _canonical_spec("export-id-active")
+        tacit["description"] = "Active named variant"
+        tacit["spec_digest"] = _digest_for(tacit)
+        registry.save(tacit, variant="tacit")
+        registry.active_variants["export-id-active"] = "tacit"
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.export_ids(["export-id-active"])
+
+        assert isinstance(result, Success)
+        assert result.unwrap()[0]["description"] == "Active named variant"

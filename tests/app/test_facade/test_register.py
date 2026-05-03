@@ -298,9 +298,8 @@ class TestFacadeRegisterCanonicalRejections:
 class TestFacadeRegisterVariant:
     """Register with variant parameter: auto-activation and id mismatch contracts.
 
-    Expected-RED because facade.register(spec, variant=None) does not accept
-    a variant parameter yet. These tests will xfail until the variant-aware
-    register is implemented.
+    These tests close the expected-red facade.register(spec, variant=None)
+    behavior from the variant registry contract.
     """
 
     def test_register_default_variant_auto_activates_for_new_persona(self) -> None:
@@ -309,10 +308,14 @@ class TestFacadeRegisterVariant:
         Target: when variant is None, register writes as 'default' variant.
         For a new persona (no manifest.json yet), 'default' becomes active.
         """
-        pytest.xfail(
-            "facade.register(spec, variant=None) does not exist yet; "
-            "expected to auto-activate default variant for new persona"
-        )
+        registry = InMemoryRegistryStore()
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.register(_canonical_spec("variant-default"))
+
+        assert isinstance(result, Success)
+        assert registry.active_variants["variant-default"] == "default"
+        assert set(registry.variants["variant-default"]) == {"default"}
 
     def test_register_named_variant_auto_activates_for_new_persona(self) -> None:
         """New persona: register(spec, variant='tacit') auto-activates 'tacit'.
@@ -320,10 +323,14 @@ class TestFacadeRegisterVariant:
         Target: first register for a new persona id auto-activates the
         registered variant regardless of its name.
         """
-        pytest.xfail(
-            "facade.register(spec, variant='tacit') does not exist yet; "
-            "expected to auto-activate named variant for new persona"
-        )
+        registry = InMemoryRegistryStore()
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.register(_canonical_spec("variant-tacit"), variant="tacit")
+
+        assert isinstance(result, Success)
+        assert registry.active_variants["variant-tacit"] == "tacit"
+        assert set(registry.variants["variant-tacit"]) == {"tacit"}
 
     def test_register_existing_persona_does_not_auto_activate(self) -> None:
         """Existing persona: register(spec, variant='other') does NOT change active.
@@ -331,10 +338,15 @@ class TestFacadeRegisterVariant:
         Target: registering a new variant for an existing persona does not
         change the active variant pointer.
         """
-        pytest.xfail(
-            "facade.register(spec, variant='other') for existing persona "
-            "does not exist yet; expected NOT to auto-activate"
-        )
+        registry = InMemoryRegistryStore()
+        facade, _, _, _ = _facade(registry=registry)
+        assert isinstance(facade.register(_canonical_spec("variant-existing")), Success)
+
+        result = facade.register(_canonical_spec("variant-existing"), variant="other")
+
+        assert isinstance(result, Success)
+        assert registry.active_variants["variant-existing"] == "default"
+        assert set(registry.variants["variant-existing"]) == {"default", "other"}
 
     def test_register_spec_id_mismatch_rejected(self) -> None:
         """spec.id != target base persona id => PERSONA_ID_MISMATCH.
@@ -343,10 +355,23 @@ class TestFacadeRegisterVariant:
         the variant path, spec.id must equal the base persona id. Mismatch
         produces PERSONA_ID_MISMATCH.
         """
-        pytest.xfail(
-            "PERSONA_ID_MISMATCH error for spec.id mismatch does not exist yet; "
-            "expected after variant-aware register implementation"
+        registry = InMemoryRegistryStore(
+            save_result=Failure(
+                {
+                    "code": "PERSONA_ID_MISMATCH",
+                    "message": "spec.id must match base persona id",
+                    "persona_id": "target-id",
+                    "path": "/tmp/target-id/variants/tacit.json",
+                }
+            )
         )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.register(_canonical_spec("source-id"), variant="tacit")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "PERSONA_ID_MISMATCH"
+        assert error["details"]["persona_id"] == "target-id"
 
     def test_register_rejects_invalid_variant_name(self) -> None:
         """Invalid variant name => INVALID_VARIANT_NAME.
@@ -354,10 +379,23 @@ class TestFacadeRegisterVariant:
         Target: variant names matching ^[a-z0-9]+(-[a-z0-9]+)*$ and
         at most 64 characters. Violations produce INVALID_VARIANT_NAME.
         """
-        pytest.xfail(
-            "INVALID_VARIANT_NAME error does not exist yet; "
-            "expected after variant name validation implementation"
+        registry = InMemoryRegistryStore(
+            save_result=Failure(
+                {
+                    "code": "INVALID_VARIANT_NAME",
+                    "message": "invalid variant name",
+                    "variant": "bad_variant",
+                }
+            )
         )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.register(_canonical_spec("variant-invalid"), variant="bad_variant")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_VARIANT_NAME"
+        assert error["numeric_code"] == 118
+        assert error["details"]["variant"] == "bad_variant"
 
     def test_register_variant_writes_to_variants_directory(self) -> None:
         """Register with variant writes spec to <id>/variants/<variant>.json.
@@ -365,7 +403,12 @@ class TestFacadeRegisterVariant:
         Target: the variant spec file is stored in the variants subdirectory,
         not as a flat <id>.json.
         """
-        pytest.xfail(
-            "variant directory layout does not exist yet; "
-            "expected to write to <id>/variants/<variant>.json"
-        )
+        registry = InMemoryRegistryStore()
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.register(_canonical_spec("variant-write"), variant="tacit")
+
+        assert isinstance(result, Success)
+        saved_spec, saved_variant = registry.variant_save_inputs[0]
+        assert saved_spec["id"] == "variant-write"
+        assert saved_variant == "tacit"

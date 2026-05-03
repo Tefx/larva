@@ -186,35 +186,61 @@ class TestFacadeUpdateVariant:
 
     def test_update_active_variant_by_default(self) -> None:
         """update(id, patches) patches the active variant."""
-        pytest.xfail(
-            "facade.update(id, patches, variant=None) does not exist yet; "
-            "expected to patch active variant by default"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("update-active"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.update("update-active", {"description": "Updated active"})
+
+        assert isinstance(result, Success)
+        assert registry.variant_save_inputs[-1][1] is None
+        assert result.unwrap()["description"] == "Updated active"
 
     def test_update_named_variant(self) -> None:
         """update(id, patches, variant='tacit') patches that specific variant."""
-        pytest.xfail(
-            "facade.update(id, patches, variant='tacit') does not exist yet; "
-            "expected to patch named variant"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("update-named"))
+        registry.save(_canonical_spec("update-named"), variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.update("update-named", {"description": "Updated tacit"}, variant="tacit")
+
+        assert isinstance(result, Success)
+        assert registry.variant_save_inputs[-1][1] == "tacit"
+        assert result.unwrap()["description"] == "Updated tacit"
 
     def test_update_rejects_variant_inside_patches(self) -> None:
         """variant field inside patches must be rejected as FORBIDDEN_PATCH_FIELD."""
-        pytest.xfail(
-            "FORBIDDEN_PATCH_FIELD for variant inside patches does not exist yet; "
-            "expected after variant-aware update implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("update-patch-variant"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.update("update-patch-variant", {"variant": "tacit"})
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "FORBIDDEN_PATCH_FIELD"
+        assert error["details"]["field"] == "variant"
 
     def test_update_invalid_variant_name_rejected(self) -> None:
         """Invalid variant name => INVALID_VARIANT_NAME error."""
-        pytest.xfail(
-            "INVALID_VARIANT_NAME error for update does not exist yet; "
-            "expected after variant name validation implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("update-bad-variant"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.update("update-bad-variant", {"description": "unused"}, variant="bad_variant")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_VARIANT_NAME"
+        assert error["details"]["variant"] == "bad_variant"
 
     def test_update_unknown_variant_returns_variant_not_found(self) -> None:
         """Named variant that does not exist => VARIANT_NOT_FOUND."""
-        pytest.xfail(
-            "VARIANT_NOT_FOUND error for update does not exist yet; "
-            "expected after variant-aware update implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("update-missing-variant"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.update("update-missing-variant", {"description": "unused"}, variant="missing")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "VARIANT_NOT_FOUND"
+        assert error["details"]["variant"] == "missing"

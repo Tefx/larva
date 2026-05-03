@@ -234,42 +234,90 @@ class TestFacadeResolveVariant:
 
     def test_resolve_active_variant_by_default(self) -> None:
         """resolve(id) returns the active variant as bare canonical PersonaSpec."""
-        pytest.xfail(
-            "facade.resolve(id, variant=None) does not exist yet; "
-            "expected to resolve active variant by default"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("resolve-active"))
+        registry.save(_canonical_spec("resolve-active"), variant="tacit")
+        registry.active_variants["resolve-active"] = "tacit"
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-active")
+
+        assert isinstance(result, Success)
+        assert result.unwrap()["id"] == "resolve-active"
+        assert registry.get_inputs == ["resolve-active"]
 
     def test_resolve_named_variant(self) -> None:
         """resolve(id, variant='tacit') returns the named variant as canonical PersonaSpec."""
-        pytest.xfail(
-            "facade.resolve(id, variant='tacit') does not exist yet; "
-            "expected to resolve named variant"
-        )
+        registry = InMemoryRegistryStore()
+        default = _canonical_spec("resolve-named")
+        tacit = _canonical_spec("resolve-named")
+        tacit["model"] = "gpt-4.1"
+        tacit["spec_digest"] = _digest_for(tacit)
+        registry.save(default)
+        registry.save(tacit, variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-named", variant="tacit")
+
+        assert isinstance(result, Success)
+        assert result.unwrap()["model"] == "gpt-4.1"
+        assert registry.get_inputs == ["resolve-named:tacit"]
 
     def test_resolve_active_returns_no_registry_metadata(self) -> None:
         """Resolved active variant must not contain _registry, variant, active, or manifest fields."""
-        pytest.xfail(
-            "variant-aware resolve does not exist yet; "
-            "expected to return bare canonical PersonaSpec without registry metadata"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("resolve-clean"), variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-clean", variant="tacit")
+
+        assert isinstance(result, Success)
+        resolved = result.unwrap()
+        assert "_registry" not in resolved
+        assert "variant" not in resolved
+        assert "active" not in resolved
+        assert "manifest" not in resolved
 
     def test_resolve_invalid_variant_name_rejected(self) -> None:
         """Invalid variant name => INVALID_VARIANT_NAME error."""
-        pytest.xfail(
-            "INVALID_VARIANT_NAME error for resolve does not exist yet; "
-            "expected after variant-aware resolve implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("resolve-bad-variant"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-bad-variant", variant="bad_variant")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_VARIANT_NAME"
+        assert error["details"]["variant"] == "bad_variant"
 
     def test_resolve_unknown_variant_returns_variant_not_found(self) -> None:
         """Named variant that does not exist under the persona => VARIANT_NOT_FOUND."""
-        pytest.xfail(
-            "VARIANT_NOT_FOUND error for resolve does not exist yet; "
-            "expected after variant-aware resolve implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("resolve-missing-variant"))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-missing-variant", variant="missing")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "VARIANT_NOT_FOUND"
+        assert error["details"]["variant"] == "missing"
 
     def test_resolve_corrupt_manifest_returns_registry_corrupt(self) -> None:
         """Corrupt/missing manifest => REGISTRY_CORRUPT error, no auto-invent."""
-        pytest.xfail(
-            "REGISTRY_CORRUPT error for resolve does not exist in variant context yet; "
-            "expected after implementation"
+        registry = InMemoryRegistryStore(
+            get_result=Failure(
+                {
+                    "code": "REGISTRY_CORRUPT",
+                    "message": "manifest.json is missing",
+                    "persona_id": "resolve-corrupt",
+                    "path": "/tmp/resolve-corrupt/manifest.json",
+                }
+            )
         )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.resolve("resolve-corrupt")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "REGISTRY_CORRUPT"
+        assert error["details"]["persona_id"] == "resolve-corrupt"

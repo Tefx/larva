@@ -53,6 +53,23 @@ class BatchUpdateResult(TypedDict):
     updated: int
 
 
+class VariantMetadata(TypedDict):
+    id: str
+    active: str
+    variants: list[str]
+
+
+class ActivatedVariant(TypedDict):
+    id: str
+    active: str
+
+
+class DeletedVariant(TypedDict):
+    id: str
+    variant: str
+    deleted: bool
+
+
 class LarvaError(TypedDict):
     code: str
     numeric_code: int
@@ -86,19 +103,33 @@ class LarvaFacade(Protocol):
 
     def assemble(self, request: AssembleRequest) -> Result[PersonaSpec, LarvaError]: ...
 
-    def register(self, spec: PersonaSpec) -> Result[RegisteredPersona, LarvaError]: ...
+    def register(
+        self, spec: PersonaSpec, variant: str | None = None
+    ) -> Result[RegisteredPersona, LarvaError]: ...
 
     def resolve(
         self,
         id: str,
         overrides: dict[str, object] | None = None,
+        variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]: ...
 
     def update(
         self,
         persona_id: str,
         patches: dict[str, object],
+        variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]: ...
+
+    def variant_list(self, persona_id: str) -> Result[VariantMetadata, LarvaError]: ...
+
+    def variant_activate(
+        self, persona_id: str, variant: str
+    ) -> Result[ActivatedVariant, LarvaError]: ...
+
+    def variant_delete(
+        self, persona_id: str, variant: str
+    ) -> Result[DeletedVariant, LarvaError]: ...
 
     def update_batch(
         self,

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
@@ -685,11 +686,7 @@ class TestRegistryVariantStorageLayout:
         # When resolving a variant, the spec.id must equal the base persona id
         result = store.get("code-reviewer")
 
-        # Current code has no concept of variants; this will fail
-        assert isinstance(result, Failure), (
-            "Expected REGISTRY_CORRUPT or redesign; current implementation "
-            "does not support variant directory layout"
-        )
+        assert result == Success(self._make_spec("code-reviewer"))
 
     def test_corrupt_manifest_returns_registry_corrupt(self, variant_root: Path) -> None:
         """Missing or malformed manifest.json must produce REGISTRY_CORRUPT."""
@@ -808,22 +805,22 @@ class TestRegistryVariantInvalidName:
         This test calls the register facade method with an invalid variant
         name, which does not exist in the current API.
         """
-        # The current facade.register() does not accept a variant parameter.
-        # When the variant-aware register(spec, variant=...) is added,
-        # passing an invalid variant name must produce INVALID_VARIANT_NAME.
-        pytest.xfail(
-            "register(spec, variant=...) does not exist yet; "
-            f"INVALID_VARIANT_NAME for '{invalid_name[:20]}...' expected after implementation"
-        )
+        root = Path("/")
+        store = FileSystemRegistryStore(root=root)
+        result = store.save(_canonical_spec("variant-name-check", "sha256:variant"), variant=invalid_name)
+
+        assert isinstance(result, Failure)
+        assert result.failure()["code"] == "INVALID_VARIANT_NAME"
 
     def test_variant_name_exactly_64_chars_accepted(self) -> None:
         """A variant name of exactly 64 lowercase kebab chars must be accepted."""
         name_64 = "a" * 64
-        # Will xfail because variant parameter doesn't exist yet
-        pytest.xfail(
-            f"register(spec, variant='{name_64}') does not exist yet; "
-            "expected to accept 64-char variant names after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir) / "registry"
+            store = FileSystemRegistryStore(root=root)
+            result = store.save(_canonical_spec("variant-name-ok", "sha256:variant-ok"), variant=name_64)
+            assert result == Success(None)
+            assert (root / "variant-name-ok" / "variants" / f"{name_64}.json").exists()
 
 
 class TestRegistryVariantActivate:
@@ -840,17 +837,35 @@ class TestRegistryVariantActivate:
 
     def test_variant_activate_writes_manifest_atomically(self, variant_root: Path) -> None:
         """Activation must write manifest.json using same-dir write-then-rename."""
-        pytest.xfail(
-            "variant_activate does not exist yet; "
-            "expected to test atomic manifest write after implementation"
+        store = FileSystemRegistryStore(root=variant_root)
+        assert store.save(_canonical_spec("activate-target", "sha256:default")) == Success(None)
+        assert store.save(
+            _canonical_spec("activate-target", "sha256:tacit"), variant="tacit"
+        ) == Success(None)
+
+        result = store.variant_activate("activate-target", "tacit")
+
+        assert isinstance(result, Success)
+        manifest = json.loads(
+            (variant_root / "activate-target" / "manifest.json").read_text(encoding="utf-8")
         )
+        assert manifest == {"active": "tacit"}
 
     def test_variant_activate_returns_id_and_active(self) -> None:
         """variant_activate returns {id, active} on success."""
-        pytest.xfail(
-            "variant_activate does not exist yet; "
-            "expected to return {id, active} after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir) / "registry"
+            store = FileSystemRegistryStore(root=root)
+            assert store.save(_canonical_spec("activate-shape", "sha256:default")) == Success(None)
+            assert store.save(
+                _canonical_spec("activate-shape", "sha256:tacit"), variant="tacit"
+            ) == Success(None)
+
+            result = store.variant_activate("activate-shape", "tacit")
+
+        assert isinstance(result, Success)
+        assert result.unwrap()["id"] == "activate-shape"
+        assert result.unwrap()["active"] == "tacit"
 
 
 class TestRegistryVariantDelete:
@@ -861,28 +876,45 @@ class TestRegistryVariantDelete:
 
     def test_variant_delete_active_variant_rejected(self) -> None:
         """Deleting the active variant must produce ACTIVE_VARIANT_DELETE_FORBIDDEN."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "ACTIVE_VARIANT_DELETE_FORBIDDEN expected after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            store = FileSystemRegistryStore(root=Path(tmp_dir) / "registry")
+            assert store.save(_canonical_spec("active-delete", "sha256:default")) == Success(None)
+            assert store.save(_canonical_spec("active-delete", "sha256:tacit"), variant="tacit") == Success(None)
+            result = store.variant_delete("active-delete", "default")
+        assert isinstance(result, Failure)
+        assert result.failure()["code"] == "ACTIVE_VARIANT_DELETE_FORBIDDEN"
 
     def test_variant_delete_last_variant_rejected(self) -> None:
         """Deleting the last remaining variant must produce LAST_VARIANT_DELETE_FORBIDDEN."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "LAST_VARIANT_DELETE_FORBIDDEN expected after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            store = FileSystemRegistryStore(root=Path(tmp_dir) / "registry")
+            assert store.save(_canonical_spec("last-delete", "sha256:default")) == Success(None)
+            result = store.variant_delete("last-delete", "default")
+        assert isinstance(result, Failure)
+        assert result.failure()["code"] == "LAST_VARIANT_DELETE_FORBIDDEN"
 
     def test_variant_delete_inactive_variant_succeeds(self) -> None:
         """Deleting an inactive non-last variant returns {id, variant, deleted: true}."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "successful inactive variant deletion expected after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir) / "registry"
+            store = FileSystemRegistryStore(root=root)
+            assert store.save(_canonical_spec("inactive-delete", "sha256:default")) == Success(None)
+            assert store.save(_canonical_spec("inactive-delete", "sha256:tacit"), variant="tacit") == Success(None)
+
+            result = store.variant_delete("inactive-delete", "tacit")
+
+            assert result == Success(None)
+            assert not (root / "inactive-delete" / "variants" / "tacit.json").exists()
 
     def test_variant_delete_base_persona_removes_directory(self) -> None:
         """Deleting the base persona removes the entire directory including all variants."""
-        pytest.xfail(
-            "delete(persona_id) with variants does not exist yet; "
-            "expected to remove full <id>/ directory after implementation"
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir) / "registry"
+            store = FileSystemRegistryStore(root=root)
+            assert store.save(_canonical_spec("base-delete", "sha256:default")) == Success(None)
+            assert store.save(_canonical_spec("base-delete", "sha256:tacit"), variant="tacit") == Success(None)
+
+            result = store.delete("base-delete")
+
+            assert result == Success(None)
+            assert not (root / "base-delete").exists()

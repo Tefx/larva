@@ -140,42 +140,73 @@ class TestFacadeVariantDelete:
 
     def test_variant_delete_inactive_non_last_succeeds(self) -> None:
         """variant_delete(id, variant) on inactive non-last returns {id, variant, deleted: true}."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "expected ACTIVE_VARIANT_DELETE_FORBIDDEN after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete", "spec_digest": "sha256:default"})
+        registry.save({"id": "variant-delete", "spec_digest": "sha256:tacit"}, variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_delete("variant-delete", "tacit")
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == {"id": "variant-delete", "variant": "tacit", "deleted": True}
 
     def test_variant_delete_active_variant_rejected(self) -> None:
         """Deleting the active variant => ACTIVE_VARIANT_DELETE_FORBIDDEN."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "expected ACTIVE_VARIANT_DELETE_FORBIDDEN after implementation"
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete-active", "spec_digest": "sha256:default"})
+        registry.save(
+            {"id": "variant-delete-active", "spec_digest": "sha256:tacit"}, variant="tacit"
         )
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_delete("variant-delete-active", "default")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "ACTIVE_VARIANT_DELETE_FORBIDDEN"
 
     def test_variant_delete_last_variant_rejected(self) -> None:
         """Deleting the last remaining variant => LAST_VARIANT_DELETE_FORBIDDEN."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "expected LAST_VARIANT_DELETE_FORBIDDEN after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete-last", "spec_digest": "sha256:default"})
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_delete("variant-delete-last", "default")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "LAST_VARIANT_DELETE_FORBIDDEN"
 
     def test_variant_delete_invalid_variant_name_rejected(self) -> None:
         """Invalid variant name => INVALID_VARIANT_NAME."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "expected INVALID_VARIANT_NAME after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete-invalid", "spec_digest": "sha256:default"})
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_delete("variant-delete-invalid", "bad_variant")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "INVALID_VARIANT_NAME"
+        assert error["details"]["variant"] == "bad_variant"
 
     def test_variant_delete_unknown_variant_rejected(self) -> None:
         """Variant not found under persona => VARIANT_NOT_FOUND."""
-        pytest.xfail(
-            "variant_delete does not exist yet; "
-            "expected VARIANT_NOT_FOUND after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete-missing", "spec_digest": "sha256:default"})
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_delete("variant-delete-missing", "missing")
+
+        error = _failure(cast("Result[object, LarvaError]", result))
+        assert error["code"] == "VARIANT_NOT_FOUND"
+        assert error["details"]["variant"] == "missing"
 
     def test_delete_base_persona_removes_all_variants(self) -> None:
         """delete(id) removes the entire persona directory including all variants."""
-        pytest.xfail(
-            "variant-aware delete(id) removing all variants does not exist yet; "
-            "expected to remove full <id>/ directory after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save({"id": "variant-delete-base", "spec_digest": "sha256:default"})
+        registry.save({"id": "variant-delete-base", "spec_digest": "sha256:tacit"}, variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.delete("variant-delete-base")
+
+        assert isinstance(result, Success)
+        assert "variant-delete-base" not in registry.variants

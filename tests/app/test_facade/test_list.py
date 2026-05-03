@@ -24,6 +24,7 @@ from .conftest import (
     InMemoryComponentStore,
     InMemoryRegistryStore,
     _canonical_spec,
+    _digest_for,
     _facade,
     _failure,
 )
@@ -155,17 +156,29 @@ class TestFacadeListActiveOnly:
 
     def test_list_returns_one_entry_per_base_persona_id(self) -> None:
         """list() returns one PersonaSummary per base persona id (active variant only)."""
-        pytest.xfail(
-            "variant-aware list (one entry per base id) does not exist yet; "
-            "expected to return active-only summaries after implementation"
-        )
+        active = _canonical_spec("list-variant")
+        active["description"] = "Active description"
+        active["spec_digest"] = _digest_for(active)
+        registry = InMemoryRegistryStore(list_result=Success([active]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.list()
+
+        assert isinstance(result, Success)
+        assert [item["id"] for item in result.unwrap()] == ["list-variant"]
 
     def test_list_does_not_include_variant_metadata(self) -> None:
         """list() summaries must not contain variant, active, or _registry fields."""
-        pytest.xfail(
-            "variant metadata exclusion in list does not exist yet; "
-            "expected to return bare PersonaSummary without variant fields"
-        )
+        registry = InMemoryRegistryStore(list_result=Success([_canonical_spec("list-clean")]))
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.list()
+
+        assert isinstance(result, Success)
+        summary = result.unwrap()[0]
+        assert "variant" not in summary
+        assert "active" not in summary
+        assert "_registry" not in summary
 
     def test_variant_list_returns_registry_metadata_only(self) -> None:
         """variant_list(id) returns {id, active, variants} without prompt/capabilities/spec fields.
@@ -173,14 +186,29 @@ class TestFacadeListActiveOnly:
         Target: variant_list returns registry metadata (id, active variant name,
         list of variant names) separate from PersonaSpec content.
         """
-        pytest.xfail(
-            "variant_list(id) does not exist yet; "
-            "expected to return {id, active, variants} after implementation"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("variant-list"))
+        registry.save(_canonical_spec("variant-list"), variant="tacit")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_list("variant-list")
+
+        assert isinstance(result, Success)
+        assert result.unwrap() == {
+            "id": "variant-list",
+            "active": "default",
+            "variants": ["default", "tacit"],
+        }
 
     def test_variant_list_returns_complete_unbounded_variant_list(self) -> None:
         """variant_list returns complete list of variants, no pagination in v1."""
-        pytest.xfail(
-            "variant_list unbounded listing does not exist yet; "
-            "expected to return all variants without pagination"
-        )
+        registry = InMemoryRegistryStore()
+        registry.save(_canonical_spec("variant-list-many"))
+        for index in range(25):
+            registry.save(_canonical_spec("variant-list-many"), variant=f"v{index}")
+        facade, _, _, _ = _facade(registry=registry)
+
+        result = facade.variant_list("variant-list-many")
+
+        assert isinstance(result, Success)
+        assert len(result.unwrap()["variants"]) == 26
