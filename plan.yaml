@@ -64867,7 +64867,7 @@ phases:
       none'
   - id: variants_surface_cutover_20260503.web-ui-remnant-remediation
     name: web-ui-remnant-remediation
-    status: claimed
+    status: done
     description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
       \ the repeated `variants_surface_cutover_20260503.surface-wiring-audit` blockers\
       \ by removing the final stale Web UI and web doc remnants from the assembly/component/preset-library\
@@ -64902,6 +64902,81 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-05-03T04:58:05.704264+00:00'
+    done_at: '2026-05-03T05:01:46.000952+00:00'
+    evidence: '## Remnants Removed
+
+      - Removed stale `Checkbox/Radio lists in assemble` comment.
+
+      - Removed `Preset Library` button and `view === ''components''` path.
+
+      - Removed retained `toolsets`, `constraints`, and `models` preset metadata.
+
+      - Removed stale `// Assemble` and `// Preset library` comments.
+
+      - Updated `src/larva/shell/web.py` docstring to stop documenting removed assemble/component
+      endpoints.
+
+      - Preserved variant controls/tokens: `selectedVariant`, `switchVariant`, `activateVariant`.
+
+
+      ## Files Changed
+
+      - `src/larva/shell/web.py`
+
+      - `src/larva/shell/web_ui.html`
+
+
+      ## Mainline Verification
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_cli.py tests/shell/test_python_api.py tests/shell/test_web.py
+      tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py -q
+
+      525 passed in 4.13s
+
+      ```
+
+      ```text
+
+      uv run ruff check src/larva/shell/web.py src/larva/shell/web_routes.py contrib/web/server.py
+
+      All checks passed!
+
+      ```
+
+      ```text
+
+      invar_invar_guard changed=true
+
+      status: passed; static errors=0 warnings=0 infos=0; doctest passed
+
+      ```
+
+
+      ## DOM/static Proof
+
+      ```text
+
+      {''absent_ok'': {''Checkbox/Radio lists in assemble'': True, ''Preset Library'':
+      True, "view === ''components''": True, ''toolsets'': True, ''constraints'':
+      True, ''models'': True, ''// Assemble'': True, ''// Preset library'': True,
+      ''/api/components'': True, ''/api/personas/assemble'': True, ''openComposeModal'':
+      True, ''modals.assemble'': True}, ''present_ok'': {''selectedVariant'': True,
+      ''switchVariant'': True, ''activateVariant'': True}}
+
+      ```
+
+
+      ## Commit hash(es)
+
+      - `55f915e2e7b2a32e4f04f7501cfdb75f5c13d00a`
+
+
+      ## Gaps/Notes
+
+      none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
