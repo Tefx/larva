@@ -67990,7 +67990,7 @@ phases:
       \ pass-through launcher contract."
   - id: opencode_hardening_runtime_20260503
     name: Implement per-request selected-id resolver and projection
-    status: pending
+    status: claimed
     description: 'Implement the runtime hardening behavior in the OpenCode plugin/wrapper.
       On each model request, replace only [larva:<selected id>] at the system transform
       layer. Resolve cache miss/stale/digest-change via larva resolve <id> --json
@@ -68007,6 +68007,8 @@ phases:
     depends_on:
     - opencode_hardening_contract_tests_20260503
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-03T13:49:11.773164+00:00'
   - id: opencode_hardening_wrapper_startup_20260503
     name: Align wrapper startup registration with base ids and active variants
     status: pending
