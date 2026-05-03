@@ -68343,3 +68343,20 @@ phases:
     evidence_template: List commands run and paste failing test groups observed. Confirm
       OpenCode-specific failures were excluded.
     agent: python-senior
+  - id: non_opencode_red_cleanup_20260503.impl
+    name: Fix non-OpenCode red failures
+    status: pending
+    description: 'Implement the minimal strict fixes for the inventoried non-OpenCode
+      reds. Align forbidden-field conformance behavior, MCP assemble inventory/description/schema
+      projections, README/API inventory parity including larva_variant_list, assemble
+      handler/parser legacy expectations, canonical boundary/schema validation behavior,
+      and repo docs inventory expectations. Preserve canonical contract discipline:
+      no local compatibility aliases, no accept-and-clean of malformed shared input,
+      and shared surfaces at least as strict as main admission paths.'
+    verification: Previously red focused tests pass, with code/docs changes limited
+      to non-OpenCode red cleanup.
+    evidence_template: Summarize changed files, canonical-contract rationale, and
+      focused green outputs for each known failing group.
+    depends_on:
+    - non_opencode_red_cleanup_20260503.inventory
+    agent: python-senior
