@@ -63368,7 +63368,7 @@ phases:
       \n## Gaps/Notes\nnone"
   - id: variants_registry_impl_20260503.registry-post-gate-followup
     name: Post-gate should-fix and comment hygiene
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       priority: MEDIUM
@@ -63517,6 +63517,8 @@ phases:
     depends_on:
     - variants_registry_impl_20260503.registry-gate
     agent: python-refactor-master-tacit
+    claimed_by: python-refactor-master-tacit
+    claimed_at: '2026-05-03T02:58:02.240646+00:00'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
   status: locked
