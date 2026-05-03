@@ -68507,7 +68507,7 @@ phases:
       Deferred items: none'
   - id: non_opencode_red_cleanup_20260503.final_gate
     name: Final full gate and review
-    status: pending
+    status: claimed
     description: Perform final independent review of the non-OpenCode cleanup. Verify
       focused evidence, run/confirm full repo tests and invar guard, inspect changed
       shared surfaces for canonical strictness, and ensure there are no Open Problems
@@ -68519,3 +68519,5 @@ phases:
     depends_on:
     - non_opencode_red_cleanup_20260503.focused_tests
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T14:50:25.954269+00:00'
