@@ -67402,3 +67402,12 @@ phases:
       ## Residual Risk
 
       none'
+- id: opencode_hardening_20260503
+  name: OpenCode Wrapper/Plugin Hardening
+  status: pending
+  gate: Runtime and tests prove per-request single-id placeholder resolution, no export
+    --all on the selected-id main path, no placeholder leakage, fail-closed/no-previous
+    behavior, last-known-good stale fallback, in-flight dedup, debug/TTL env support,
+    watermark format, and documented hot-update/restart boundaries.
+  depends_on:
+  - variants_finalization_20260503
