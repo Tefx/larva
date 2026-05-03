@@ -63612,7 +63612,7 @@ phases:
       none'
 - id: variants_surface_cutover_20260503
   name: Public Surface Cutover for Variants and Assembly Removal
-  status: pending
+  status: in_progress
   gate: MCP/CLI/Python/REST/Web public surfaces expose variants and remove assembly/component
     surfaces consistently.
   depends_on:
@@ -63620,7 +63620,7 @@ phases:
   steps:
   - id: variants_surface_cutover_20260503.surface-red-contract-tests
     name: surface-red-contract-tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -63756,6 +63756,8 @@ phases:
     - ../opifex/conformance/case_matrix/larva/larva.delete.yaml
     - INVAR.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T03:01:12.823005+00:00'
   - id: variants_surface_cutover_20260503.mcp-cli-python-cutover
     name: mcp-cli-python-cutover
     status: pending
