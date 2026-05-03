@@ -64204,7 +64204,7 @@ phases:
       `variants_surface_cutover_20260503.rest-web-cutover`. No scoped open problems.'
   - id: variants_surface_cutover_20260503.rest-web-cutover
     name: rest-web-cutover
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: [integration]
@@ -64377,6 +64377,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.surface-red-contract-tests
     agent: frontend-engineer-tacit
+    claimed_by: frontend-engineer-tacit
+    claimed_at: '2026-05-03T03:59:24.821311+00:00'
   - id: variants_surface_cutover_20260503.surface-gate
     name: surface-gate
     status: pending
