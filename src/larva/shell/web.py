@@ -14,12 +14,8 @@ Normative REST contract for ``larva serve``:
     DELETE /api/personas/{id}           -> delete persona
     POST   /api/personas/clear          -> clear registry with confirmation
     POST   /api/personas/validate      -> validate candidate spec
-    POST   /api/personas/assemble      -> assemble candidate spec
     POST   /api/personas/export        -> export all or selected personas
     POST   /api/personas/update_batch  -> batch update by selector + patch
-    GET    /api/components             -> list component names
-    GET    /api/components/{t}/{n}      -> load one component
-    GET    /api/components/projection  -> component-kind projection metadata
 
 Convenience-only UI behavior such as browser auto-open and clipboard copy lives
 above the REST contract and should not be treated as a separate API guarantee.

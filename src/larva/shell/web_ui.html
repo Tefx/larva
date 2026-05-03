@@ -344,16 +344,6 @@
   .error-list { margin: 8px 0 0 16px; font-size: 12px; color: var(--danger); }
   .error-list li { margin-bottom: 4px; }
 
-  /* Checkbox/Radio lists in assemble */
-  .option-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 12px; background: var(--bg-elevated);
-    border-radius: 4px; margin-bottom: 6px; cursor: pointer;
-    transition: background 0.15s;
-  }
-  .option-item:hover { background: var(--bg-hover); }
-  .option-item input { accent-color: var(--accent); }
-
   /* Empty state */
   .empty-state {
     flex: 1; display: flex; flex-direction: column;
@@ -431,7 +421,6 @@
   <header class="header">
     <div class="header-title">LARVA</div>
     <div class="header-actions">
-      <button class="btn" @click="view = view === 'components' ? 'detail' : 'components'">Preset Library</button>
       <button class="btn" @click="modals.import = true">Import</button>
       
     </div>
@@ -848,8 +837,6 @@ function larvaApp() {
     selected: null,
     selectedVariant: null,
     variantList: { active: null, variants: [] },
-    selectedVariant: null,
-    variantList: { active: null, variants: [] },
     search: '',
     view: 'detail',
     staged: {},
@@ -865,23 +852,7 @@ function larvaApp() {
     deleteText: '',
     showRawJson: false,
     showCompaction: false,
-toolsets: {
-        sectionLabel: 'Capability Presets',
-        itemLabel: 'Capability Preset',
-        description: 'Reusable capability bundles that map to internal toolset sources.',
-      },
-      constraints: {
-        sectionLabel: 'Behavior & Policy Presets',
-        itemLabel: 'Behavior & Policy Preset',
-        description: 'Behavioral and policy presets that shape guardrails without exposing compose-only jargon.',
-      },
-      models: {
-        sectionLabel: 'Model Presets',
-        itemLabel: 'Model Preset',
-        description: 'Model configuration presets for runtime selection and parameters.',
-      },
-    },
-modals: { import: false },
+    modals: { import: false },
     importJson: '',
     importValidation: null,
 },
@@ -914,43 +885,6 @@ get selectedPersonaSummary() {
     },
     get stagedCount() {
       return Object.keys(this.staged).length;
-    },
-
-
-    async loadVariants(id) {
-      if (!id) return;
-      try {
-        const resp = await fetch(`/api/registry/personas/${id}/variants`);
-        if (!resp.ok) throw new Error('Failed to load variants');
-        const data = await resp.json();
-        this.variantList = data.data || { active: null, variants: [] };
-        if (!this.selectedVariant || !this.variantList.variants.includes(this.selectedVariant)) {
-          this.selectedVariant = this.variantList.active;
-        }
-      } catch (e) {
-        this.variantList = { active: null, variants: [] };
-        this.selectedVariant = null;
-      }
-    },
-
-    async switchVariant(variant) {
-      if (this.selectedVariant === variant) return;
-      this.selectedVariant = variant;
-      await this.ensurePersonaDetail(this.selected, true, variant);
-    },
-
-    async activateVariant() {
-      if (!this.selected || !this.selectedVariant) return;
-      try {
-        const resp = await fetch(`/api/registry/personas/${this.selected}/variants/${this.selectedVariant}/activate`, {
-          method: 'POST'
-        });
-        if (!resp.ok) throw new Error('Failed to activate variant');
-        await this.loadVariants(this.selected);
-        this.showToast('Variant activated');
-      } catch (e) {
-        alert(e.message);
-      }
     },
 
 
@@ -1351,13 +1285,7 @@ async selectPersona(id) {
       }
     },
 
-    // Assemble
-
-
-// Preset library
-
-
-isValidId(id) {
+    isValidId(id) {
       return /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
     },
 
