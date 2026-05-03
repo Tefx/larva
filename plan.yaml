@@ -63816,7 +63816,7 @@ phases:
       \ route — confirming this is already correctly absent"
   - id: variants_surface_cutover_20260503.mcp-cli-python-cutover
     name: mcp-cli-python-cutover
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: [integration]
@@ -63995,6 +63995,8 @@ phases:
     depends_on:
     - variants_surface_cutover_20260503.surface-red-contract-tests
     agent: python-senior-tacit
+    claimed_by: python-senior-tacit
+    claimed_at: '2026-05-03T03:38:24.828282+00:00'
   - id: variants_surface_cutover_20260503.rest-web-cutover
     name: rest-web-cutover
     status: pending
