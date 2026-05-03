@@ -68328,3 +68328,18 @@ phases:
     evidence, full repo tests, invar guard, and final reviewer PASS.
   depends_on:
   - opencode_hardening_20260503
+  steps:
+  - id: non_opencode_red_cleanup_20260503.inventory
+    name: Inventory non-OpenCode red failures
+    status: pending
+    description: Reproduce and inventory all currently known non-OpenCode red failures
+      before changing code. Cover forbidden-field conformance scan; MCP assemble tool
+      inventory/description/schema expectations; README larva_variant_list parity;
+      assemble handler/parser legacy failures; canonical_boundary_gaps / schema_validation
+      focused failures; and repo docs inventory failures. Do not broaden scope to
+      OpenCode wrapper/plugin issues.
+    verification: Focused failing commands are captured as red proof with exact test
+      names and failure summaries before implementation.
+    evidence_template: List commands run and paste failing test groups observed. Confirm
+      OpenCode-specific failures were excluded.
+    agent: python-senior
