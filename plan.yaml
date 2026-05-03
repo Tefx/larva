@@ -68321,3 +68321,10 @@ phases:
       \ tests/shell/test_opencode_cli.py; invar_guard full scan run grd_1a41b3c0f7c54341a08939b8\
       \ completed ok=true with 0 errors, 8 warnings; invar_guard changed-only passed\
       \ with 0 changed files.\nBlocking issues: none"
+- id: non_opencode_red_cleanup_20260503
+  name: Non-OpenCode Red Test Cleanup
+  status: pending
+  gate: All currently known non-OpenCode red failures are fixed with focused red/green
+    evidence, full repo tests, invar guard, and final reviewer PASS.
+  depends_on:
+  - opencode_hardening_20260503
