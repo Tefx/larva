@@ -28,10 +28,6 @@ from typing import TYPE_CHECKING, Any, Union, cast
 
 from returns.result import Failure, Success
 
-from larva.core.component_error_projection import (
-    component_store_unavailable_error,
-    project_component_store_error,
-)
 from larva.shell.components import ComponentStore
 from larva.shell.mcp_contract import (
     LARVA_ERROR_CODES,
@@ -43,7 +39,6 @@ from larva.shell.mcp_contract import (
 from larva.shell.mcp_export import handle_export as handle_export_tool
 from larva.shell.mcp_params import MCPParamValidationMixin
 from larva.shell.mcp_update_batch import handle_update_batch as handle_update_batch_tool
-from larva.shell.shared.component_queries import query_component, query_component_list
 
 if TYPE_CHECKING:
     from larva.app.facade import (
@@ -52,6 +47,9 @@ if TYPE_CHECKING:
         LarvaError,
         LarvaFacade,
         RegisteredPersona,
+        VariantMetadata,
+        ActivatedVariant,
+        DeletedVariant,
     )
     from larva.core.spec import PersonaSpec
     from larva.core.validate import ValidationReport
@@ -101,66 +99,6 @@ class MCPHandlers(MCPParamValidationMixin):
     # Inlined implementation methods (formerly in mcp_handler_ops module)
     # -------------------------------------------------------------------------
 
-    def handle_component_list(self, params: object) -> Union[dict[str, list[str]], LarvaError]:
-        """Handle ``larva_component_list`` MCP tool call."""
-        validated_params = self._validated_params(
-            "larva_component_list", params, allowed_keys=set()
-        )
-        if isinstance(validated_params, Failure):
-            return validated_params.failure()
-
-        if self._components is None:
-            return component_store_unavailable_error(
-                operation="mcp.component_list",
-                component_type=None,
-                component_name=None,
-                reason="Component store not available",
-            )
-
-        result = query_component_list(
-            self._components,
-            operation="mcp.component_list",
-        )
-        if isinstance(result, Failure):
-            return result.failure()
-
-        return result.unwrap()
-
-    def handle_component_show(self, params: object) -> Union[dict[str, object], LarvaError]:
-        """Handle ``larva_component_show`` MCP tool call."""
-        validated_params = self._validated_params(
-            "larva_component_show",
-            params,
-            allowed_keys={"component_type", "name"},
-            required_keys=("component_type", "name"),
-            typed_keys=(("component_type", str, "string"), ("name", str, "string")),
-        )
-        if isinstance(validated_params, Failure):
-            return validated_params.failure()
-        checked_params = validated_params.unwrap()
-
-        component_type = checked_params["component_type"]
-        name = checked_params["name"]
-
-        if self._components is None:
-            return component_store_unavailable_error(
-                operation="mcp.component_show",
-                component_type=component_type,
-                component_name=cast("str", name),
-                reason="Component store not available",
-            )
-
-        result = query_component(
-            self._components,
-            component_type=cast("str", component_type),
-            component_name=cast("str", name),
-            operation="mcp.component_show",
-        )
-        if isinstance(result, Failure):
-            return result.failure()
-
-        return cast("dict[str, object]", result.unwrap())
-
     def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
         """Handle ``larva_validate`` MCP tool call."""
         validated_params = self._validated_params(
@@ -177,57 +115,14 @@ class MCPHandlers(MCPParamValidationMixin):
         facade = cast("Any", self._facade)
         return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))
 
-    def handle_assemble(self, params: object) -> Union[PersonaSpec, LarvaError]:
-        """Handle ``larva_assemble`` MCP tool call."""
-        validated_params = self._validated_params(
-            "larva_assemble",
-            params,
-            allowed_keys={
-                "id",
-                "description",
-                "prompts",
-                "toolsets",
-                "constraints",
-                "model",
-                "overrides",
-            },
-            required_keys=("id",),
-            typed_keys=(
-                ("id", str, "string"),
-                ("description", str, "string"),
-                ("model", str, "string"),
-                ("overrides", dict, "object"),
-            ),
-            list_string_keys=("prompts", "toolsets", "constraints"),
-        )
-        if isinstance(validated_params, Failure):
-            return validated_params.failure()
-        checked_params = validated_params.unwrap()
-
-        from larva.app.facade import AssembleRequest
-
-        request: AssembleRequest = {
-            "id": checked_params["id"],
-            "prompts": checked_params.get("prompts", []),
-            "toolsets": checked_params.get("toolsets", []),
-            "constraints": checked_params.get("constraints", []),
-            "model": checked_params.get("model", ""),
-            "overrides": checked_params.get("overrides", {}),
-        }
-        if "description" in checked_params:
-            request["description"] = checked_params["description"]
-        facade = cast("Any", self._facade)
-        result = cast("Failure[LarvaError] | object", self._unwrap_result(facade.assemble(request)))
-        return cast("PersonaSpec | LarvaError", result)
-
     def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
         """Handle ``larva_resolve`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_resolve",
             params,
-            allowed_keys={"id", "overrides"},
+            allowed_keys={"id", "overrides", "variant"},
             required_keys=("id",),
-            typed_keys=(("id", str, "string"), ("overrides", dict, "object")),
+            typed_keys=(("id", str, "string"), ("overrides", dict, "object"), ("variant", str, "string")),
         )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
@@ -235,9 +130,10 @@ class MCPHandlers(MCPParamValidationMixin):
 
         persona_id = checked_params["id"]
         overrides: dict[str, object] | None = checked_params.get("overrides")
+        variant: str | None = checked_params.get("variant")
         facade = cast("Any", self._facade)
         return cast(
-            "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides))
+            "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides, variant=variant))
         )
 
     def handle_register(self, params: object) -> Union[RegisteredPersona, LarvaError]:
@@ -256,17 +152,18 @@ class MCPHandlers(MCPParamValidationMixin):
         validated_params = self._validated_params(
             "larva_register",
             params,
-            allowed_keys={"spec"},
+            allowed_keys={"spec", "variant"},
             required_keys=("spec",),
-            typed_keys=(("spec", dict, "object"),),
+            typed_keys=(("spec", dict, "object"), ("variant", str, "string")),
         )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
         checked_params = validated_params.unwrap()
         spec = checked_params["spec"]
+        variant: str | None = checked_params.get("variant")
         return cast(
             "RegisteredPersona | LarvaError",
-            self._unwrap_result(self._facade.register(cast("PersonaSpec", spec))),
+            self._unwrap_result(self._facade.register(cast("PersonaSpec", spec), variant=variant)),
         )
 
     def handle_list(self, params: object) -> Union[list[dict[str, str]], LarvaError]:
@@ -396,9 +293,9 @@ class MCPHandlers(MCPParamValidationMixin):
         validated_params = self._validated_params(
             "larva_update",
             params,
-            allowed_keys={"id", "patches"},
+            allowed_keys={"id", "patches", "variant"},
             required_keys=("id", "patches"),
-            typed_keys=(("id", str, "string"), ("patches", dict, "object")),
+            typed_keys=(("id", str, "string"), ("patches", dict, "object"), ("variant", str, "string")),
         )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
@@ -406,9 +303,60 @@ class MCPHandlers(MCPParamValidationMixin):
 
         persona_id = checked_params["id"]
         patches = checked_params["patches"]
+        variant: str | None = checked_params.get("variant")
         return cast(
             "PersonaSpec | LarvaError",
-            self._unwrap_result(self._facade.update(persona_id, patches)),
+            self._unwrap_result(self._facade.update(persona_id, patches, variant=variant)),
+        )
+
+    def handle_variant_list(self, params: object) -> Union["VariantMetadata", LarvaError]:
+        """Handle ``larva_variant_list`` MCP tool call."""
+        validated_params = self._validated_params(
+            "larva_variant_list",
+            params,
+            allowed_keys={"id"},
+            required_keys=("id",),
+            typed_keys=(("id", str, "string"),),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        return cast(
+            "VariantMetadata | LarvaError",
+            self._unwrap_result(self._facade.variant_list(validated_params.unwrap()["id"])),
+        )
+
+    def handle_variant_activate(self, params: object) -> Union["ActivatedVariant", LarvaError]:
+        """Handle ``larva_variant_activate`` MCP tool call."""
+        validated_params = self._validated_params(
+            "larva_variant_activate",
+            params,
+            allowed_keys={"id", "variant"},
+            required_keys=("id", "variant"),
+            typed_keys=(("id", str, "string"), ("variant", str, "string")),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked = validated_params.unwrap()
+        return cast(
+            "ActivatedVariant | LarvaError",
+            self._unwrap_result(self._facade.variant_activate(checked["id"], checked["variant"])),
+        )
+
+    def handle_variant_delete(self, params: object) -> Union["DeletedVariant", LarvaError]:
+        """Handle ``larva_variant_delete`` MCP tool call."""
+        validated_params = self._validated_params(
+            "larva_variant_delete",
+            params,
+            allowed_keys={"id", "variant"},
+            required_keys=("id", "variant"),
+            typed_keys=(("id", str, "string"), ("variant", str, "string")),
+        )
+        if isinstance(validated_params, Failure):
+            return validated_params.failure()
+        checked = validated_params.unwrap()
+        return cast(
+            "DeletedVariant | LarvaError",
+            self._unwrap_result(self._facade.variant_delete(checked["id"], checked["variant"])),
         )
 
     def handle_update_batch(self, params: object) -> Union[dict[str, object], LarvaError]:

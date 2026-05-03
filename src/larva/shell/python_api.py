@@ -8,18 +8,19 @@ from typing import TYPE_CHECKING, Any, cast
 from returns.result import Failure, Result
 
 from larva.app.facade_types import (
-    AssembleRequest,
+    ActivatedVariant,
     BatchUpdateResult,
     ClearedRegistry,
     DeletedPersona,
+    DeletedVariant,
     LarvaError,
     LarvaFacade,
     PersonaSummary,
     RegisteredPersona,
+    VariantMetadata,
 )
 from larva.core.spec import PersonaSpec
 from larva.core.validation_contract import ValidationReport
-from larva.shell import python_api_components
 from larva.shell.python_api_components import LarvaApiError
 from larva.shell.shared import facade_factory
 
@@ -55,34 +56,39 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
     facade = _get_facade()
     if op == "validate":
         return facade.validate(cast("PersonaSpec", args[0]))
-    if op == "assemble":
-        request_dict: dict[str, object] = {"id": cast("str", kwargs["id"])}
-        optional_fields: tuple[tuple[str, object | None], ...] = (
-            ("description", cast("str | None", kwargs.get("description"))),
-            ("prompts", cast("builtins.list[str] | None", kwargs.get("prompts"))),
-            ("toolsets", cast("builtins.list[str] | None", kwargs.get("toolsets"))),
-            ("constraints", cast("builtins.list[str] | None", kwargs.get("constraints"))),
-            ("model", cast("str | None", kwargs.get("model"))),
-            ("overrides", cast("dict[str, Any] | None", kwargs.get("overrides"))),
+    if op == "register":
+        result = cast(
+            "Result[object, LarvaError]",
+            facade.register(cast("PersonaSpec", args[0]), variant=cast("str | None", kwargs.get("variant"))),
         )
-        for key, value in optional_fields:
-            if value is not None:
-                request_dict[key] = value
-        request = cast("AssembleRequest", request_dict)
-        result = cast("Result[object, LarvaError]", facade.assemble(request))
-    elif op == "register":
-        result = cast("Result[object, LarvaError]", facade.register(cast("PersonaSpec", args[0])))
     elif op == "resolve":
         result = cast(
             "Result[object, LarvaError]",
             facade.resolve(
                 cast("str", args[0]), cast("dict[str, Any] | None", kwargs.get("overrides"))
+                , variant=cast("str | None", kwargs.get("variant"))
             ),
         )
     elif op == "update":
         result = cast(
             "Result[object, LarvaError]",
-            facade.update(cast("str", args[0]), cast("dict[str, Any]", kwargs["patches"])),
+            facade.update(
+                cast("str", args[0]),
+                cast("dict[str, Any]", kwargs["patches"]),
+                variant=cast("str | None", kwargs.get("variant")),
+            ),
+        )
+    elif op == "variant_list":
+        result = cast("Result[object, LarvaError]", facade.variant_list(cast("str", args[0])))
+    elif op == "variant_activate":
+        result = cast(
+            "Result[object, LarvaError]",
+            facade.variant_activate(cast("str", args[0]), cast("str", args[1])),
+        )
+    elif op == "variant_delete":
+        result = cast(
+            "Result[object, LarvaError]",
+            facade.variant_delete(cast("str", args[0]), cast("str", args[1])),
         )
     elif op == "update_batch":
         result = cast(
@@ -115,15 +121,6 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
         result = cast(
             "Result[object, LarvaError]", facade.export_ids(cast("builtins.list[str]", args[0]))
         )
-    elif op == "component_list":
-        result = cast("Result[object, LarvaError]", python_api_components._component_list_result())
-    elif op == "component_show":
-        result = cast(
-            "Result[object, LarvaError]",
-            python_api_components._component_show_result(
-                cast("str", args[0]), cast("str", args[1])
-            ),
-        )
     else:
         raise LarvaApiError(
             {
@@ -145,29 +142,22 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
 
 validate = cast("Callable[[PersonaSpec], ValidationReport]", partial(_invoke, "validate"))
 
-assemble = cast(
-    "Callable[..., PersonaSpec]",
-    lambda id, description=None, prompts=None, toolsets=None, constraints=None, model=None, overrides=None: _invoke(  # noqa: A006,E501
-        "assemble",
-        id=id,
-        description=description,
-        prompts=prompts,
-        toolsets=toolsets,
-        constraints=constraints,
-        model=model,
-        overrides=overrides,
-    ),
+register = cast(
+    "Callable[..., RegisteredPersona]",
+    lambda spec, variant=None: _invoke("register", spec, variant=variant),
 )
-register = cast("Callable[[PersonaSpec], RegisteredPersona]", partial(_invoke, "register"))
 
 resolve = cast(
-    "Callable[[str, dict[str, Any] | None], PersonaSpec]",
-    lambda id, overrides=None: _invoke("resolve", id, overrides=overrides),  # noqa: A006
+    "Callable[..., PersonaSpec]",
+    lambda id, overrides=None, variant=None: _invoke("resolve", id, overrides=overrides, variant=variant),  # noqa: A006,E501
 )
 update = cast(
-    "Callable[[str, dict[str, Any]], PersonaSpec]",
-    lambda persona_id, patches: _invoke("update", persona_id, patches=patches),
+    "Callable[..., PersonaSpec]",
+    lambda persona_id, patches, variant=None: _invoke("update", persona_id, patches=patches, variant=variant),
 )
+variant_list = cast("Callable[[str], VariantMetadata]", partial(_invoke, "variant_list"))
+variant_activate = cast("Callable[[str, str], ActivatedVariant]", partial(_invoke, "variant_activate"))
+variant_delete = cast("Callable[[str, str], DeletedVariant]", partial(_invoke, "variant_delete"))
 update_batch = cast(
     "Callable[[dict[str, Any], dict[str, Any], bool], BatchUpdateResult]",
     lambda where, patches, dry_run=False: _invoke(
@@ -187,25 +177,16 @@ export_all = cast("Callable[[], builtins.list[PersonaSpec]]", partial(_invoke, "
 export_ids = cast(
     "Callable[[builtins.list[str]], builtins.list[PersonaSpec]]", partial(_invoke, "export_ids")
 )
-component_list = cast(
-    "Callable[[], dict[str, builtins.list[str]]]", partial(_invoke, "component_list")
-)
-component_show = cast(
-    "Callable[[str, str], dict[str, object]]",
-    partial(_invoke, "component_show"),
-)
-
-
 __all__ = [
     "validate",
-    "assemble",
     "register",
     "resolve",
     "update",
+    "variant_list",
+    "variant_activate",
+    "variant_delete",
     "update_batch",
     "list",
-    "component_list",
-    "component_show",
     "delete",
     "clear",
     "clone",
@@ -213,9 +194,11 @@ __all__ = [
     "export_ids",
     "PersonaSpec",
     "ValidationReport",
-    "AssembleRequest",
     "RegisteredPersona",
     "PersonaSummary",
+    "VariantMetadata",
+    "ActivatedVariant",
+    "DeletedVariant",
     "LarvaError",
     "DeletedPersona",
     "ClearedRegistry",

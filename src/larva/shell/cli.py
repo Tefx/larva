@@ -41,6 +41,9 @@ from larva.shell.cli_commands import (
     resolve_command,
     update_batch_command,
     update_command,
+    variant_activate_command,
+    variant_delete_command,
+    variant_list_command,
     validate_command,
 )
 from larva.shell.shared.facade_factory import build_default_facade
@@ -147,7 +150,12 @@ def _dispatch_register(
         return Failure(
             _operation_failure("Register", loaded_spec.failure(), as_json=as_json).unwrap()
         )
-    return register_command(loaded_spec.unwrap(), as_json=as_json, facade=facade)
+    return register_command(
+        loaded_spec.unwrap(),
+        as_json=as_json,
+        facade=facade,
+        variant=cast("str | None", getattr(args, "variant", None)),
+    )
 
 
 def _dispatch_resolve(
@@ -162,6 +170,7 @@ def _dispatch_resolve(
     return resolve_command(
         cast("str", args.id),
         overrides=overrides.unwrap(),
+        variant=cast("str | None", getattr(args, "variant", None)),
         as_json=as_json,
         facade=facade,
     )
@@ -181,8 +190,37 @@ def _dispatch_update(
     return update_command(
         cast("str", args.id),
         patches=patches_result.unwrap(),
+        variant=cast("str | None", getattr(args, "variant", None)),
         as_json=as_json,
         facade=facade,
+    )
+
+
+def _dispatch_variant(
+    args: argparse.Namespace,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    variant_command = cast("str", getattr(args, "variant_command", ""))
+    if variant_command == "list":
+        return variant_list_command(cast("str", args.id), as_json=as_json, facade=facade)
+    if variant_command == "activate":
+        return variant_activate_command(
+            cast("str", args.id), cast("str", args.variant), as_json=as_json, facade=facade
+        )
+    if variant_command == "delete":
+        return variant_delete_command(
+            cast("str", args.id), cast("str", args.variant), as_json=as_json, facade=facade
+        )
+    return Failure(
+        {
+            "exit_code": EXIT_CRITICAL,
+            "stderr": f"Unsupported variant command: {variant_command}\n",
+            "error": _critical_error(
+                "unsupported variant command", {"command": variant_command}
+            ).unwrap(),
+        }
     )
 
 
@@ -248,7 +286,6 @@ def _dispatch(
 
     command_dispatchers: dict[str, Callable[[], Result[CliCommandResult, CliFailure]]] = {
         "validate": lambda: _dispatch_validate(args, as_json=as_json, facade=facade),
-        "assemble": lambda: _dispatch_assemble(args, as_json=as_json, facade=facade),
         "register": lambda: _dispatch_register(args, as_json=as_json, facade=facade),
         "resolve": lambda: _dispatch_resolve(args, as_json=as_json, facade=facade),
         "clone": lambda: clone_command(
@@ -267,9 +304,7 @@ def _dispatch(
         ),
         "update": lambda: _dispatch_update(args, as_json=as_json, facade=facade),
         "update-batch": lambda: _dispatch_update_batch(args, as_json=as_json, facade=facade),
-        "component": lambda: _dispatch_component(
-            args, as_json=as_json, component_store=component_store
-        ),
+        "variant": lambda: _dispatch_variant(args, as_json=as_json, facade=facade),
         "doctor": lambda: _dispatch_doctor(as_json=as_json, facade=facade),
     }
     dispatch = command_dispatchers.get(command)

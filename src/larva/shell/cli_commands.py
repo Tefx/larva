@@ -34,6 +34,9 @@ if TYPE_CHECKING:
         BatchUpdateResult,
         ClearedRegistry,
         DeletedPersona,
+        VariantMetadata,
+        ActivatedVariant,
+        DeletedVariant,
         LarvaFacade,
     )
     from larva.core.spec import PersonaSpec
@@ -159,9 +162,10 @@ def register_command(
     *,
     as_json: bool,
     facade: LarvaFacade,
+    variant: str | None = None,
 ) -> Result[CliCommandResult, CliFailure]:
     """Register a persona spec."""
-    result = facade.register(spec)
+    result = facade.register(spec, variant=variant)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -183,11 +187,12 @@ def resolve_command(
     persona_id: str,
     *,
     overrides: dict[str, object] | None = None,
+    variant: str | None = None,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
     """Resolve a persona by ID."""
-    result = facade.resolve(persona_id, overrides=overrides)
+    result = facade.resolve(persona_id, overrides=overrides, variant=variant)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -369,11 +374,12 @@ def update_command(
     persona_id: str,
     *,
     patches: dict[str, object],
+    variant: str | None = None,
     as_json: bool,
     facade: LarvaFacade,
 ) -> Result[CliCommandResult, CliFailure]:
     """Update a persona with patches."""
-    result = facade.update(persona_id, patches=patches)
+    result = facade.update(persona_id, patches=patches, variant=variant)
     if isinstance(result, Success):
         payload = dict(result.unwrap())
         cli_result: CliCommandResult = {
@@ -388,6 +394,80 @@ def update_command(
     failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
     if not as_json:
         failure["stderr"] = f"Update failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+def variant_list_command(
+    persona_id: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    """List registry-local variants for a base persona id."""
+    result = facade.variant_list(persona_id)
+    if isinstance(result, Success):
+        payload: VariantMetadata = result.unwrap()
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("variant list", payload).unwrap(),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+    error_envelope = _map_facade_error(result.failure()).unwrap()
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Variant list failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+def variant_activate_command(
+    persona_id: str,
+    variant: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    """Activate a registry-local variant."""
+    result = facade.variant_activate(persona_id, variant)
+    if isinstance(result, Success):
+        payload: ActivatedVariant = result.unwrap()
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("variant activate", payload).unwrap(),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+    error_envelope = _map_facade_error(result.failure()).unwrap()
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Variant activate failed: {error_envelope['message']}\n"
+    return Failure(failure)
+
+
+def variant_delete_command(
+    persona_id: str,
+    variant: str,
+    *,
+    as_json: bool,
+    facade: LarvaFacade,
+) -> Result[CliCommandResult, CliFailure]:
+    """Delete an inactive, non-last registry-local variant."""
+    result = facade.variant_delete(persona_id, variant)
+    if isinstance(result, Success):
+        payload: DeletedVariant = result.unwrap()
+        cli_result: CliCommandResult = {
+            "exit_code": EXIT_OK,
+            "stdout": _render_payload_for_text("variant delete", payload).unwrap(),
+        }
+        if as_json:
+            cli_result["json"] = {"data": payload}
+        return Success(cli_result)
+    error_envelope = _map_facade_error(result.failure()).unwrap()
+    failure: CliFailure = {"exit_code": EXIT_ERROR, "error": error_envelope}
+    if not as_json:
+        failure["stderr"] = f"Variant delete failed: {error_envelope['message']}\n"
     return Failure(failure)
 
 

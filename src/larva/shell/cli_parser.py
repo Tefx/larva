@@ -74,63 +74,13 @@ def _add_persona_read_commands(
     validate_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
     _add_json_flag(validate_parser)
 
-    assemble_parser = subparsers.add_parser(
-        "assemble",
-        help="Assemble a persona from components",
-        description="Build a complete persona by composing prompts, toolsets, constraints, and model settings.",
-    )
-    assemble_parser.add_argument("--id", required=True, help="persona identifier")
-    assemble_parser.add_argument(
-        "--description",
-        help="persona description for canonical required field",
-    )
-    assemble_parser.add_argument(
-        "--prompt",
-        dest="prompts",
-        action="append",
-        default=[],
-        metavar="NAME",
-        help="include a prompt component (repeatable)",
-    )
-    assemble_parser.add_argument(
-        "--toolset",
-        dest="toolsets",
-        action="append",
-        default=[],
-        metavar="NAME",
-        help="include a toolset component (repeatable)",
-    )
-    assemble_parser.add_argument(
-        "--constraints",
-        dest="constraints",
-        action="append",
-        default=[],
-        metavar="NAME",
-        help="include a constraint component (repeatable)",
-    )
-    assemble_parser.add_argument("--model", help="model configuration name")
-    assemble_parser.add_argument(
-        "--override",
-        dest="overrides",
-        action="append",
-        default=[],
-        metavar="KEY=VALUE",
-        help="override a field in the assembled persona (repeatable)",
-    )
-    assemble_parser.add_argument(
-        "-o",
-        "--output",
-        metavar="FILE",
-        help="write assembled persona to FILE instead of stdout",
-    )
-    _add_json_flag(assemble_parser)
-
     register_parser = subparsers.add_parser(
         "register",
         help="Register a persona spec in the registry",
         description="Parse a PersonaSpec file and add it to the local registry for later resolution.",
     )
     register_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
+    register_parser.add_argument("--variant", help="registry-local variant name")
     _add_json_flag(register_parser)
 
     resolve_parser = subparsers.add_parser(
@@ -139,6 +89,7 @@ def _add_persona_read_commands(
         description="Look up a persona from the registry by its ID and return the full spec.",
     )
     resolve_parser.add_argument("id", metavar="ID", help="persona identifier to resolve")
+    resolve_parser.add_argument("--variant", help="registry-local variant name")
     resolve_parser.add_argument(
         "--override",
         dest="overrides",
@@ -158,36 +109,34 @@ def _add_persona_read_commands(
 
 
 # @shell_orchestration: groups argparse command wiring into focused sections
-def _add_component_commands(
+def _add_variant_commands(
     subparsers: argparse._SubParsersAction[_CliParser],
 ) -> None:
-    component_parser = subparsers.add_parser(
-        "component",
-        help="Inspect available components",
-        description="Browse and inspect reusable persona components (prompts, toolsets, constraints, models).",
+    variant_parser = subparsers.add_parser(
+        "variant",
+        help="Manage registry-local persona variants",
+        description="List, activate, or delete registry-local variants for a base persona id.",
     )
-    component_subparsers = component_parser.add_subparsers(
-        dest="component_command",
+    variant_subparsers = variant_parser.add_subparsers(
+        dest="variant_command",
         required=True,
         title="subcommands",
         metavar="SUBCOMMAND",
     )
 
-    component_list_parser = component_subparsers.add_parser(
-        "list", help="List all available components"
-    )
-    _add_json_flag(component_list_parser)
+    variant_list_parser = variant_subparsers.add_parser("list", help="List variants for a persona")
+    variant_list_parser.add_argument("id", metavar="ID", help="base persona id")
+    _add_json_flag(variant_list_parser)
 
-    component_show_parser = component_subparsers.add_parser(
-        "show",
-        help="Show details of a specific component",
-    )
-    component_show_parser.add_argument(
-        "ref",
-        metavar="TYPE/NAME",
-        help="component reference (e.g. prompts/base, toolsets/web)",
-    )
-    _add_json_flag(component_show_parser)
+    variant_activate_parser = variant_subparsers.add_parser("activate", help="Activate a variant")
+    variant_activate_parser.add_argument("id", metavar="ID", help="base persona id")
+    variant_activate_parser.add_argument("variant", metavar="VARIANT", help="variant name")
+    _add_json_flag(variant_activate_parser)
+
+    variant_delete_parser = variant_subparsers.add_parser("delete", help="Delete an inactive variant")
+    variant_delete_parser.add_argument("id", metavar="ID", help="base persona id")
+    variant_delete_parser.add_argument("variant", metavar="VARIANT", help="variant name")
+    _add_json_flag(variant_delete_parser)
 
 
 # @shell_orchestration: groups argparse command wiring into focused sections
@@ -247,6 +196,7 @@ def _add_registry_commands(subparsers: argparse._SubParsersAction[_CliParser]) -
         description="Patch one or more fields on a registered persona.",
     )
     update_parser.add_argument("id", metavar="ID", help="persona identifier to update")
+    update_parser.add_argument("--variant", help="registry-local variant name")
     update_parser.add_argument(
         "--set",
         dest="set_values",
@@ -329,7 +279,7 @@ def _add_opencode_command(subparsers: argparse._SubParsersAction[_CliParser]) ->
 def build_cli_parser() -> Result[_CliParser, object]:
     parser = _CliParser(
         prog="larva",
-        description="PersonaSpec toolkit — manage, validate, and assemble LLM agent personas.",
+        description="PersonaSpec toolkit — manage, validate, and resolve LLM agent personas.",
         add_help=True,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -346,7 +296,7 @@ def build_cli_parser() -> Result[_CliParser, object]:
         metavar="COMMAND",
     )
     _add_persona_read_commands(subparsers)
-    _add_component_commands(subparsers)
+    _add_variant_commands(subparsers)
     _add_registry_commands(subparsers)
     _add_server_commands(subparsers)
     _add_opencode_command(subparsers)

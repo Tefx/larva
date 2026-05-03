@@ -155,52 +155,6 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva_assemble",
-        "description": (
-            "Assemble a PersonaSpec from named canonical components and already-composed prompt inputs "
-            "(prompts, toolsets, constraints, model). "
-            f"{_CAPABILITIES_REQUIRED_CLAUSE}; {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "id": {"type": "string", "description": "Persona id"},
-                "description": {
-                    "type": "string",
-                    "description": "Persona description for canonical required field",
-                },
-                "prompts": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Prompt component names (concatenated in order)",
-                },
-                "toolsets": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": (
-                        "Toolset component names. Toolsets provide capability posture data "
-                        "for canonical capabilities output."
-                    ),
-                },
-                "constraints": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Constraint component names",
-                },
-                "model": {"type": "string", "description": "Model component name"},
-                "overrides": {
-                    "description": (
-                        "Field overrides (wins over components). "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
-                    ),
-                    **_PERSONA_OVERRIDE_INPUT_SCHEMA,
-                },
-            },
-            "required": ["id"],
-            "additionalProperties": False,
-        },
-    },
-    {
         "name": "larva_resolve",
         "description": (
             "Resolve a pre-registered persona by id, optionally with runtime overrides. "
@@ -216,6 +170,10 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                         f"requires capabilities and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                     **_PERSONA_OVERRIDE_INPUT_SCHEMA,
+                },
+                "variant": {
+                    "type": "string",
+                    "description": "Optional registry-local variant name; never a PersonaSpec field",
                 },
             },
             "required": ["id"],
@@ -237,7 +195,11 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                         f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                     **_PERSONA_SPEC_INPUT_SCHEMA,
-                }
+                },
+                "variant": {
+                    "type": "string",
+                    "description": "Optional registry-local variant name; never a PersonaSpec field",
+                },
             },
             "required": ["spec"],
             "additionalProperties": False,
@@ -253,37 +215,38 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
         },
     },
     {
-        "name": "larva_component_list",
-        "description": (
-            "List all available components by type (prompts, toolsets, constraints, models). "
-            "Toolsets define capability posture data for canonical assembly."
-        ),
+        "name": "larva_variant_list",
+        "description": "List registry-local variants for a base persona id.",
         "input_schema": {
             "type": "object",
-            "properties": {},
+            "properties": {"id": {"type": "string", "description": "Base persona id"}},
+            "required": ["id"],
             "additionalProperties": False,
         },
     },
     {
-        "name": "larva_component_show",
-        "description": (
-            "Show content for a specific component by type and name. Toolsets define capability "
-            "posture data for canonical assembly."
-        ),
+        "name": "larva_variant_activate",
+        "description": "Set the active registry-local variant without mutating PersonaSpec content.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "component_type": {
-                    "type": "string",
-                    "enum": ["prompts", "toolsets", "constraints", "models"],
-                    "description": "Component type (prompts, toolsets, constraints, or models)",
-                },
-                "name": {
-                    "type": "string",
-                    "description": "Component name (without file extension)",
-                },
+                "id": {"type": "string", "description": "Base persona id"},
+                "variant": {"type": "string", "description": "Variant name to activate"},
             },
-            "required": ["component_type", "name"],
+            "required": ["id", "variant"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "larva_variant_delete",
+        "description": "Delete an inactive, non-last registry-local variant.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "Base persona id"},
+                "variant": {"type": "string", "description": "Variant name to delete"},
+            },
+            "required": ["id", "variant"],
             "additionalProperties": False,
         },
     },
@@ -378,6 +341,10 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                         "JSON merge patches to apply to the persona. "
                         f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
+                },
+                "variant": {
+                    "type": "string",
+                    "description": "Optional registry-local variant name; never a PersonaSpec field",
                 },
             },
             "required": ["id", "patches"],
