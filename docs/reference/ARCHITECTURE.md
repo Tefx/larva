@@ -100,6 +100,18 @@ I/O edges:
   facade and canonical registry/export paths.
 - [Proven] Runtime prompt replacement and tool-policy checks remain in
   `contrib/opencode-plugin/larva.ts`, not in core/app code.
+- [Proven] OpenCode `export --all` is startup projection only. Runtime prompt,
+  temperature, and permission refreshes use selected-id `resolve`, so export-all
+  output is not runtime semantic authority.
+- [Proven] Plugin cache state is last-known-good performance state keyed by
+  Larva base id, with same-id in-flight resolve deduplication, debug-gated stale
+  fallback warnings, and fail-closed behavior when no prior prompt exists.
+- [Proven] Hot updates are bounded to prompt, `model_params.temperature`,
+  tool-policy rules, `capabilities`, and `can_spawn`; added/deleted base ids and
+  model/provider startup fields require OpenCode restart.
+- [Proven] The OpenCode integration has no `larva-active` pseudo-agent and no
+  module-global active variant authority; selected request state is derived from
+  `[larva:<id>]` placeholders.
 
 ## Package-Root Policy
 
