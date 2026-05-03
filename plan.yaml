@@ -42608,14 +42608,30 @@ phases:
   - id: repair_dup_shared_foundations.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for duplicate repair foundations
     status: pending
-    description: Resolve validate error for completed step repair_dup_guardrails.preservation_harness
+    description: 'Resolve validate error for completed step repair_dup_guardrails.preservation_harness
       in phase repair_dup_shared_foundations, whose evidence contains failed tests.
-      Add later same-phase closure evidence proving the preservation harness is now
+      This is a proof-closure/evidence task, not product-code implementation. Produce
+      accepted same-phase closure evidence proving the preservation harness is now
       green/OPEN, or record explicit expected-red/non-blocking owner/lifecycle/gate-intersection
       disposition.
+
+
+      Required disposition fields for any non-green closure: provenance, disposition
+      (blocking-now/blocking-later/non-blocking), owner, lifecycle state, gate-intersection
+      rationale, remaining gate impact, and closure path. Do not edit completed historical
+      steps.'
     verification: Run vectl_validate(check_refs=true) and show the repair_dup_shared_foundations
-      completed-evidence guard error is gone, or paste the accepted disposition evidence
-      that closes it.
+      completed-evidence guard error is gone, or paste accepted disposition evidence
+      that closes it. Evidence must include exact validation output or accepted disposition
+      text.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Evidence Guard Closure Report\n- Historical\
+      \ completed step reviewed: repair_dup_guardrails.preservation_harness\n- Closure\
+      \ route used: GREEN_CURRENT_PROOF | ACCEPTED_NON_BLOCKING_DISPOSITION\n- vectl_validate(check_refs=true)\
+      \ output or accepted disposition evidence:\n  ```\n  <paste exact output/evidence>\n\
+      \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
+      \ not intersected>\n- Headline: PASS | BLOCKED"
+    agent: gate-reviewer
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: done
