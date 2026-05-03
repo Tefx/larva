@@ -451,8 +451,8 @@ larva opencode -- run "check this bug" --agent python-senior
 
 What the wrapper does:
 
-- exports registered personas through larva's normal facade path
-- builds a temporary `OPENCODE_CONFIG_CONTENT` for the child process
+- exports currently active registered personas through larva's normal facade path
+- builds a temporary `OPENCODE_CONFIG_CONTENT` with `[larva:<id>]` placeholder agents keyed by Larva base id
 - injects the bundled or source-tree `larva.ts` OpenCode plugin
 - forwards remaining arguments to the real `opencode` binary
 - strips a leading `--` after `opencode` when present
@@ -462,6 +462,29 @@ What it does not do:
 - it does not write `.opencode/opencode.json`
 - it does not call an LLM itself
 - it does not turn PersonaSpec into runtime gateway policy
+- it does not create a `larva-active` pseudo-agent
+- it does not maintain a global active variant for concurrent requests
+- it does not treat `export --all` as runtime semantic authority; `export --all` is startup projection only
+
+Runtime refresh behavior:
+
+- startup projection uses `larva export --all --json` only so OpenCode sees base ids before `--agent <larva-id>` validation
+- each selected request resolves the chosen base id with `larva resolve <id> --json`
+- cache entries are last-known-good performance data, keyed by base id, and remember prompt, optional temperature, optional `spec_digest`, derived permissions, and timestamp
+- same-id concurrent resolves share one in-flight request
+- if resolve fails and a previous good prompt exists, the stale prompt is used with a debug warning; without a previous good prompt, the plugin fails closed instead of leaking `[larva:<id>]`
+- prompts are watermarked with both `<larva-persona id="..." />` and an instruction to identify as the named persona loaded from larva
+
+Environment knobs:
+
+- `LARVA_OPENCODE_DEBUG=1` enables cache/fallback/hardening warnings
+- `LARVA_OPENCODE_CACHE_TTL_MS` defaults to `300000`; nonzero values allow last-known-good cache storage, `0` disables storing new cache entries, and invalid or negative values fall back to the default
+
+Hot-updated on the next selected-id runtime request: prompt text,
+`model_params.temperature`, tool-policy rules, permission derivation from
+`capabilities`, and `can_spawn` task denial. Added/deleted base ids and
+model/provider startup fields require restarting OpenCode because agent
+registration is a startup boundary.
 
 Plugin path resolution order:
 

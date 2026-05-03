@@ -104,6 +104,18 @@ real `opencode` binary. A leading `--` after `opencode` is accepted as an
 optional separator and stripped before forwarding. The command must not write
 `.opencode/opencode.json` or reinterpret PersonaSpec fields.
 
+OpenCode startup projection is not runtime semantic authority. `export --all`
+is used only to make current Larva base ids visible during OpenCode startup;
+per-request prompt, temperature, and permission refreshes resolve the selected
+placeholder id via `larva resolve <id> --json`. The plugin cache is
+last-known-good performance state keyed by base id, deduplicates concurrent
+same-id resolves, may fall back to a stale previous prompt only with debug-visible
+warning, and otherwise fails closed rather than leaking a `[larva:<id>]`
+placeholder. Hot-update scope is limited to prompt, temperature, tool-policy,
+`capabilities`, and `can_spawn`; added/deleted base ids and model/provider
+startup fields require an OpenCode restart. There is no `larva-active` agent and
+no global active variant state.
+
 ## Cross-Surface Authority Rules
 
 - [Proven] `src/larva/shell/web.py` is the authoritative packaged REST surface.

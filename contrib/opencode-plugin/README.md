@@ -6,21 +6,26 @@ Bridges larva's PersonaSpec registry to opencode's agent system.
 
 ```
 Launcher (`larva opencode`):
-  1. Read registered personas through larva's normal facade/export path
-  2. Build a temporary OPENCODE_CONFIG_CONTENT with placeholder agents
+  1. Read currently active registered personas through larva's normal facade/export path
+  2. Build a temporary OPENCODE_CONFIG_CONTENT with placeholder agents keyed by Larva base ids
   3. Inject this plugin and exec the real opencode binary
 
 Plugin startup (config hook):
   1. Load tool-policy.json (optional deny/allow rules)
-  2. larva export --all --json → refresh persona specs in one call
+  2. larva export --all --json → one-time startup projection of existing base ids
   3. Register/refresh opencode agents with permissions mapped
-  4. Pre-cache prompts
+  4. Seed the performance cache with last-known-good prompt data
 
 Runtime (per API call):
-  chat.params → detect larva agent → apply temperature (if set)
+  chat.params → detect selected larva agent → resolve that id → apply temperature (if set)
   system.transform → replace placeholder with full prompt + watermark
-  (re-resolves from larva CLI only on cache expiry, 5 min)
+  tool.execute.before → apply current tool-policy/permission denial for the selected id
 ```
+
+`export --all` is **not** runtime semantic authority for prompt contents. It is
+used only to satisfy OpenCode startup registration for the ids that must exist
+before `--agent <larva-id>` validation. Per-request prompt/temperature and
+permission refreshes use `larva resolve <id> --json` for the selected base id.
 
 The launcher exists because some OpenCode versions validate `--agent` before
 plugin config hooks finish. Early `OPENCODE_CONFIG_CONTENT` injection makes
@@ -63,6 +68,53 @@ larva CLI resolution inside the plugin:
 1. If cwd is a larva project (pyproject.toml with `name = "larva"`) → `uv run --project . larva`
 2. `larva` in PATH → direct
 3. Fallback → `uvx larva`
+
+## Runtime cache and refresh semantics
+
+The plugin cache is performance-only and stores last-known-good data by Larva
+base persona id: `prompt`, optional `temperature`, optional `spec_digest`,
+derived permissions, and a timestamp. Runtime requests are keyed from the
+selected `[larva:<id>]` placeholder, not from module-global active variant state.
+
+| Runtime condition | Behavior |
+|-------------------|----------|
+| Normal request | Resolve the selected id with `larva resolve <id> --json`; update cache when the resolved spec has a prompt |
+| Same-id concurrent refresh | Share the in-flight resolve promise for that id |
+| Digest change | Replace the cached entry and emit a debug warning when debug logging is enabled |
+| Resolve failure with previous good prompt | Use stale last-known-good prompt and emit a debug warning |
+| Resolve failure without previous good prompt | Fail closed with `[larva prompt unavailable for <id>; ...]` instead of leaking the placeholder |
+| Resolved spec without prompt and previous good prompt exists | Use stale last-known-good prompt and emit a debug warning |
+| Resolved spec without prompt and no previous good prompt | Fail closed |
+
+Environment knobs:
+
+| Env var | Default | Meaning |
+|---------|---------|---------|
+| `LARVA_OPENCODE_DEBUG=1` | unset/off | Emit cache/fallback/hardening warnings to stderr |
+| `LARVA_OPENCODE_CACHE_TTL_MS` | `300000` | Cache storage knob; nonzero values allow last-known-good entries to be stored, `0` disables storing new entries; invalid or negative values fall back to default with a debug warning |
+
+## Hot-update versus restart-required boundaries
+
+Hot-updated on the next selected-id runtime request:
+
+- prompt text
+- `model_params.temperature`
+- tool-policy deny/allow rules
+- permission derivation from `capabilities`
+- task denial from `can_spawn: false`
+
+Requires an OpenCode restart because agent registration/config happens at
+startup:
+
+- added or deleted Larva base ids
+- model/provider startup fields
+- changes that require a new OpenCode agent entry to exist before `--agent` validation
+
+Explicit non-goals:
+
+- no `larva-active` pseudo-agent or state channel
+- no global active variant shared across concurrent requests
+- no use of `larva export --all` as runtime semantic authority for prompt refresh
 
 ## Permission mapping
 
@@ -129,10 +181,14 @@ larva canonical boundary and must not be treated as PersonaSpec input.
 
 ## Watermark
 
-Every larva-loaded prompt includes:
+Every larva-loaded prompt includes both contractual identity strings:
 
 ```xml
 <larva-persona id="python-senior" />
+```
+
+```text
+When asked "who are you" or "what persona", mention that you are the "python-senior" persona loaded from larva.
 ```
 
 ## Limitations

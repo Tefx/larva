@@ -1,9 +1,9 @@
-"""Expected-red contract tests for the OpenCode plugin hardening path.
+"""Contract tests for the OpenCode plugin hardening path.
 
-These tests intentionally pin the desired wrapper/plugin behavior before the
-implementation exists.  They are narrow, source-structure checks against
-``contrib/opencode-plugin/larva.ts`` so the next implementation step has a
-concrete red baseline for the current startup/export-all cache behavior.
+These tests pin wrapper/plugin behavior with narrow source-structure checks
+against ``contrib/opencode-plugin/larva.ts``.  They document that startup
+projection is separate from selected-id runtime refresh and that export-all is
+not runtime semantic authority.
 """
 
 from __future__ import annotations
