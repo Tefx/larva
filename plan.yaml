@@ -62378,7 +62378,7 @@ phases:
       - Commit hash(es): none (verify-only; worktree clean)."
   - id: variants_registry_impl_20260503.registry-gate
     name: registry-gate
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -62465,6 +62465,8 @@ phases:
     - variants_registry_impl_20260503.registry-storage-implementation
     - variants_registry_impl_20260503.registry-spec-conformance
     agent: gate-reviewer-tacit
+    claimed_by: gate-reviewer-tacit
+    claimed_at: '2026-05-03T02:08:44.662153+00:00'
   - id: variants_registry_impl_20260503.registry-conformance-remediation
     name: registry-conformance-remediation
     status: done
