@@ -53,7 +53,19 @@ def _validation_error_response(report: ValidationReport) -> WebResult[JSONRespon
     )
 
 def _invalid_input_response(message: str, details: dict[str, object]) -> WebResult[JSONResponse]:
-    return Success(JSONResponse(status_code=400, content={"error": {"code": "INVALID_INPUT", "numeric_code": 1, "message": message, "details": details}}))
+    return Success(
+        JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "code": "INVALID_INPUT",
+                    "numeric_code": 1,
+                    "message": message,
+                    "details": details,
+                }
+            },
+        )
+    )
 
 async def _read_request_object(request: Request) -> WebResult[dict[str, Any]]:
     try:
@@ -77,7 +89,19 @@ def _validation_issue_response(result: Failure[Any]) -> WebResult[JSONResponse]:
     return _invalid_input_response(issue.reason, issue.details)
 
 def _patch_error_response(error: PatchError) -> WebResult[JSONResponse]:
-    return Success(JSONResponse(status_code=400, content={"error": {"code": error.code, "numeric_code": 114, "message": error.message, "details": error.details}}))
+    return Success(
+        JSONResponse(
+            status_code=400,
+            content={
+                "error": {
+                    "code": error.code,
+                    "numeric_code": 114,
+                    "message": error.message,
+                    "details": error.details,
+                }
+            },
+        )
+    )
 
 # @shell_complexity: Selector validation stays at REST boundary to preserve exact HTTP errors.
 def _validate_export_request(body: dict[str, Any]) -> WebResult[tuple[bool, list[str]]]:
@@ -283,222 +307,29 @@ async def _api_variant_detail(persona_id: str, variant: str) -> WebResult[dict[s
     except LarvaApiError as e:
         return Failure(_api_error_response(e).unwrap())
 
-async def _api_variant_put(persona_id: str, variant: str, request: Request) -> WebResult[dict[str, Any]]:
+async def _api_variant_put(
+    persona_id: str, variant: str, request: Request
+) -> WebResult[dict[str, Any]]:
     body = await _read_request_object(request)
     if isinstance(body, Failure):
         return Failure(body.failure())
-    
+
     spec = body.unwrap()
     if spec.get("id") != persona_id:
-        return Failure(JSONResponse(status_code=400, content={"error": {"code": "PERSONA_ID_MISMATCH", "numeric_code": 113, "message": "PUT variant spec id must match route id", "details": {"field": "id", "expected": persona_id, "got": spec.get("id")}}}))
-        
-    try:
-        api = _web_api().unwrap()
-        result = api.register(spec, variant=variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
+        return Failure(
+            JSONResponse(
+                status_code=400,
+                content={
+                    "error": {
+                        "code": "PERSONA_ID_MISMATCH",
+                        "numeric_code": 113,
+                        "message": "PUT variant spec id must match route id",
+                        "details": {"field": "id", "expected": persona_id, "got": spec.get("id")},
+                    }
+                },
+            )
+        )
 
-async def _api_variant_activate(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_activate(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_delete(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_delete(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_registry_personas() -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        personas = api.list_personas()
-        summaries = []
-        for p in personas:
-            meta = api.variant_list(p["id"])
-            summaries.append({
-                "id": p["id"],
-                "description": p.get("description", ""),
-                "model": p.get("model", ""),
-                "active_variant": meta["active"],
-                "variants": meta["variants"],
-            })
-        return Success({"data": summaries})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_list(persona_id: str) -> WebResult[dict[str, Any]]:
-    try:
-        return Success({"data": _web_api().unwrap().variant_list(persona_id)})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_detail(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        v_list = api.variant_list(persona_id)
-        is_active = (v_list.get("active") == variant)
-        spec = api.resolve(persona_id, None, variant=variant)
-        envelope = {
-            "_registry": {"variant": variant, "is_active": is_active},
-            "spec": spec
-        }
-        return Success({"data": envelope})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_put(persona_id: str, variant: str, request: Request) -> WebResult[dict[str, Any]]:
-    body = await _read_request_object(request)
-    if isinstance(body, Failure):
-        return Failure(body.failure())
-    
-    spec = body.unwrap()
-    if spec.get("id") != persona_id:
-        return Failure(JSONResponse(status_code=400, content={"error": {"code": "PERSONA_ID_MISMATCH", "numeric_code": 113, "message": "PUT variant spec id must match route id", "details": {"field": "id", "expected": persona_id, "got": spec.get("id")}}}))
-        
-    try:
-        api = _web_api().unwrap()
-        result = api.register(spec, variant=variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_activate(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_activate(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_delete(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_delete(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_registry_personas() -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        personas = api.list_personas()
-        summaries = []
-        for p in personas:
-            meta = api.variant_list(p["id"])
-            summaries.append({
-                "id": p["id"],
-                "description": p.get("description", ""),
-                "model": p.get("model", ""),
-                "active_variant": meta["active"],
-                "variants": meta["variants"],
-            })
-        return Success({"data": summaries})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_list(persona_id: str) -> WebResult[dict[str, Any]]:
-    try:
-        return Success({"data": _web_api().unwrap().variant_list(persona_id)})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_detail(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        v_list = api.variant_list(persona_id)
-        is_active = (v_list.get("active") == variant)
-        spec = api.resolve(persona_id, None, variant=variant)
-        envelope = {
-            "_registry": {"variant": variant, "is_active": is_active},
-            "spec": spec
-        }
-        return Success({"data": envelope})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_put(persona_id: str, variant: str, request: Request) -> WebResult[dict[str, Any]]:
-    body = await _read_request_object(request)
-    if isinstance(body, Failure):
-        return Failure(body.failure())
-    
-    spec = body.unwrap()
-    if spec.get("id") != persona_id:
-        return Failure(JSONResponse(status_code=400, content={"error": {"code": "PERSONA_ID_MISMATCH", "numeric_code": 113, "message": "PUT variant spec id must match route id", "details": {"field": "id", "expected": persona_id, "got": spec.get("id")}}}))
-        
-    try:
-        api = _web_api().unwrap()
-        result = api.register(spec, variant=variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_activate(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_activate(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_delete(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        result = _web_api().unwrap().variant_delete(persona_id, variant)
-        return Success({"data": result})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_registry_personas() -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        personas = api.list_personas()
-        summaries = []
-        for p in personas:
-            meta = api.variant_list(p["id"])
-            summaries.append({
-                "id": p["id"],
-                "description": p.get("description", ""),
-                "model": p.get("model", ""),
-                "active_variant": meta["active"],
-                "variants": meta["variants"],
-            })
-        return Success({"data": summaries})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_list(persona_id: str) -> WebResult[dict[str, Any]]:
-    try:
-        return Success({"data": _web_api().unwrap().variant_list(persona_id)})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_detail(persona_id: str, variant: str) -> WebResult[dict[str, Any]]:
-    try:
-        api = _web_api().unwrap()
-        v_list = api.variant_list(persona_id)
-        is_active = (v_list.get("active") == variant)
-        spec = api.resolve(persona_id, None, variant=variant)
-        envelope = {
-            "_registry": {"variant": variant, "is_active": is_active},
-            "spec": spec
-        }
-        return Success({"data": envelope})
-    except LarvaApiError as e:
-        return Failure(_api_error_response(e).unwrap())
-
-async def _api_variant_put(persona_id: str, variant: str, request: Request) -> WebResult[dict[str, Any]]:
-    body = await _read_request_object(request)
-    if isinstance(body, Failure):
-        return Failure(body.failure())
-    
-    spec = body.unwrap()
-    if spec.get("id") != persona_id:
-        return Failure(_invalid_input_response(
-            "PUT variant spec id must match route id",
-            {"field": "id", "expected": persona_id, "got": spec.get("id")}
-        ).unwrap())
-        
     try:
         api = _web_api().unwrap()
         result = api.register(spec, variant=variant)
@@ -530,13 +361,10 @@ def _make_serve_index(
 
     return Success(_serve_index)
 
+
+
 # @shell_orchestration: FastAPI route registration mutates the app routing table.
 def _register_persona_routes(app: FastAPI) -> WebResult[None]:
-    """Register packaged PersonaSpec REST routes on ``app``.
-
-    Args:
-        app: FastAPI application receiving the persona REST routes.
-    """
     def _send(result: WebResult[Any]) -> Any:
         if isinstance(result, Failure):
             return result.failure()
@@ -544,30 +372,35 @@ def _register_persona_routes(app: FastAPI) -> WebResult[None]:
 
     async def list_personas() -> Any:
         return _send(await _api_list_personas())
-
     async def get_persona(persona_id: str) -> Any:
         return _send(await _api_get_persona(persona_id))
-
     async def register_persona(request: Request) -> Any:
         return _send(await _api_register_persona(request))
-
     async def export_personas(request: Request) -> Any:
         return _send(await _api_export_personas(request))
-
     async def update_batch_personas(request: Request) -> Any:
         return _send(await _api_update_batch_personas(request))
-
     async def update_persona(persona_id: str, request: Request) -> Any:
         return _send(await _api_update_persona(persona_id, request))
-
     async def delete_persona(persona_id: str) -> Any:
         return _send(await _api_delete_persona(persona_id))
-
     async def clear_personas(request: Request) -> Any:
         return _send(await _api_clear_personas(request))
-
     async def validate_persona(request: Request) -> Any:
         return _send(await _api_validate_persona(request))
+
+    async def registry_personas() -> Any:
+        return _send(await _api_registry_personas())
+    async def variant_list(persona_id: str) -> Any:
+        return _send(await _api_variant_list(persona_id))
+    async def variant_detail(persona_id: str, variant: str) -> Any:
+        return _send(await _api_variant_detail(persona_id, variant))
+    async def variant_put(persona_id: str, variant: str, request: Request) -> Any:
+        return _send(await _api_variant_put(persona_id, variant, request))
+    async def variant_activate(persona_id: str, variant: str) -> Any:
+        return _send(await _api_variant_activate(persona_id, variant))
+    async def variant_delete_route(persona_id: str, variant: str) -> Any:
+        return _send(await _api_variant_delete(persona_id, variant))
 
     app.add_api_route("/api/personas", list_personas, methods=["GET"])
     app.add_api_route("/api/personas/{persona_id}", get_persona, methods=["GET"])
@@ -579,37 +412,39 @@ def _register_persona_routes(app: FastAPI) -> WebResult[None]:
     app.add_api_route("/api/personas/clear", clear_personas, methods=["POST"])
     app.add_api_route("/api/personas/validate", validate_persona, methods=["POST"])
 
+    app.add_api_route("/api/registry/personas", registry_personas, methods=["GET"])
+    app.add_api_route("/api/registry/personas/{persona_id}/variants", variant_list, methods=["GET"])
+    app.add_api_route(
+        "/api/registry/personas/{persona_id}/variants/{variant}",
+        variant_detail,
+        methods=["GET"],
+    )
+    app.add_api_route(
+        "/api/registry/personas/{persona_id}/variants/{variant}",
+        variant_put,
+        methods=["PUT"],
+    )
+    app.add_api_route(
+        "/api/registry/personas/{persona_id}/variants/{variant}/activate",
+        variant_activate,
+        methods=["POST"],
+    )
+    app.add_api_route(
+        "/api/registry/personas/{persona_id}/variants/{variant}",
+        variant_delete_route,
+        methods=["DELETE"],
+    )
+
     return Success(None)
 
 # @shell_orchestration: FastAPI route registration mutates the app routing table.
-# @shell_orchestration: FastAPI route registration mutates the app routing table.
-
-# @shell_orchestration: FastAPI route registration mutates the app routing table.
-# @shell_orchestration: FastAPI route registration mutates the app routing table.
-
-# @shell_orchestration: FastAPI route registration mutates the app routing table.
 def _register_static_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> WebResult[None]:
-    """Register packaged static UI routes on ``app``.
-
-    Args:
-        app: FastAPI application receiving static UI routes.
-        static_dir: Directory containing the packaged HTML UI artifact.
-        index_file: HTML filename served at ``/``.
-    """
     app.add_api_route("/", _make_serve_index(static_dir, index_file).unwrap(), methods=["GET"])
     return Success(None)
 
 # @shell_orchestration: FastAPI route registration mutates the app routing table.
 def _register_routes(app: FastAPI, *, static_dir: Path, index_file: str) -> WebResult[None]:
-    """Register the packaged web REST routes on ``app``.
-
-    Args:
-        app: FastAPI application receiving the canonical packaged routes.
-        static_dir: Directory containing the packaged HTML UI artifact.
-        index_file: HTML filename served at ``/``.
-    """
     _register_persona_routes(app).unwrap()
-    _register_variant_routes(app).unwrap()
     _register_static_routes(app, static_dir=static_dir, index_file=index_file).unwrap()
     return Success(None)
 

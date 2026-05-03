@@ -18,21 +18,16 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 from returns.result import Failure, Result, Success
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 # FastAPI/TestClient imports are optional at module load time
 # to allow tests to run without web dependencies installed
 pytest.importorskip("fastapi")
 pytest.importorskip("httpx")
 
-from httpx import AsyncClient
 from starlette.testclient import TestClient
 
 from larva.app.facade import DefaultLarvaFacade, LarvaError
@@ -42,11 +37,10 @@ from larva.core import spec as spec_module
 from larva.core import validate as validate_module
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.shell import web as web_module
 from larva.shell import python_api
-from larva.shell.web import app
+from larva.shell import web as web_module
 from larva.shell.python_api_components import LarvaApiError
-
+from larva.shell.web import app
 
 # -----------------------------------------------------------------------------
 # Spec-Fixture Conformance: authoritative minimal PersonaSpec
@@ -671,10 +665,10 @@ class TestWebVariantRestEndpoints:
         # _registry must NOT be inside spec
         spec = data.get("spec", {})
         assert "_registry" not in spec, (
-            f"_registry MUST NOT be inside spec per INTERFACES.md."
+            "_registry MUST NOT be inside spec per INTERFACES.md."
         )
         assert "variant" not in spec, (
-            f"'variant' MUST NOT be inside spec per INTERFACES.md."
+            "'variant' MUST NOT be inside spec per INTERFACES.md."
         )
 
     def test_registry_variant_activate_exists(self) -> None:
@@ -702,8 +696,8 @@ class TestWebVariantRestEndpoints:
         # 200 = deleted, 403 = forbidden (active/last), 404 = route missing
         # We accept 403 (ACTIVE_VARIANT_DELETE_FORBIDDEN) but not 404
         assert resp.status_code != 404, (
-            f"DELETE .../variants/default returned 404 (route missing). "
-            f"Variant delete endpoint must exist per INTERFACES.md."
+            "DELETE .../variants/default returned 404 (route missing). "
+            "Variant delete endpoint must exist per INTERFACES.md."
         )
 
     def test_registry_variant_id_mismatch_rejected(self) -> None:

@@ -563,8 +563,8 @@ class TestRESTVariantEndpointsExist:
         # 200 means endpoint exists and activation succeeded
         # 404 means endpoint missing
         assert resp.status_code != 404, (
-            f"POST .../default/activate returned 404. "
-            f"Variant activate endpoint must exist per INTERFACES.md."
+            "POST .../default/activate returned 404. "
+            "Variant activate endpoint must exist per INTERFACES.md."
         )
 
     def test_registry_variant_delete_endpoint_exists(self) -> None:
@@ -585,8 +585,8 @@ class TestRESTVariantEndpointsExist:
         # (We may get 404 if the variant doesn't exist yet, or 403 if it's the
         # active/last variant, but NOT route-404)
         assert resp.status_code != 405, (
-            f"DELETE .../variants/draft returned 405 (method not allowed). "
-            f"Variant delete endpoint must exist per INTERFACES.md."
+            "DELETE .../variants/draft returned 405 (method not allowed). "
+            "Variant delete endpoint must exist per INTERFACES.md."
         )
 
 
@@ -654,8 +654,8 @@ class TestRESTVariantEnvelopeSeparation:
         from larva.app.facade import ERROR_NUMERIC_CODES
 
         assert "REGISTRY_CORRUPT" in ERROR_NUMERIC_CODES, (
-            f"REGISTRY_CORRUPT not in ERROR_NUMERIC_CODES. "
-            f"Expected per INTERFACES.md and USAGE.md."
+            "REGISTRY_CORRUPT not in ERROR_NUMERIC_CODES. "
+            "Expected per INTERFACES.md and USAGE.md."
         )
 
 

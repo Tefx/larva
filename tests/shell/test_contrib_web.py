@@ -29,7 +29,6 @@ from starlette.testclient import TestClient
 
 from larva.core.spec import PersonaSpec
 from larva.core.validate import ValidationReport
-from larva.app.facade import LarvaError
 
 CONTRIB_WEB_PATH = Path(__file__).parent.parent.parent / "contrib" / "web" / "server.py"
 
@@ -39,7 +38,7 @@ def _load_contrib_module() -> Any:
     spec = importlib.util.spec_from_file_location("contrib_web_server", CONTRIB_WEB_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    loader = cast(Any, spec.loader)
+    loader = cast("Any", spec.loader)
     loader.exec_module(module)
     return module
 
@@ -351,7 +350,6 @@ class TestContribWebAssemblyRemoved:
 
     def test_contrib_assemble_endpoint_removed(self) -> None:
         """POST /api/personas/assemble should not exist on contrib server."""
-        from larva.core.spec import PersonaSpec as ContribPersonaSpec
 
         module = _load_contrib_module()
         app = module.app
