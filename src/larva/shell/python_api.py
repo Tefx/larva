@@ -59,14 +59,18 @@ def _invoke(op: str, *args: object, **kwargs: object) -> object:
     if op == "register":
         result = cast(
             "Result[object, LarvaError]",
-            facade.register(cast("PersonaSpec", args[0]), variant=cast("str | None", kwargs.get("variant"))),
+            facade.register(
+                cast("PersonaSpec", args[0]),
+                variant=cast("str | None", kwargs.get("variant")),
+            ),
         )
     elif op == "resolve":
         result = cast(
             "Result[object, LarvaError]",
             facade.resolve(
-                cast("str", args[0]), cast("dict[str, Any] | None", kwargs.get("overrides"))
-                , variant=cast("str | None", kwargs.get("variant"))
+                cast("str", args[0]),
+                cast("dict[str, Any] | None", kwargs.get("overrides")),
+                variant=cast("str | None", kwargs.get("variant")),
             ),
         )
     elif op == "update":
@@ -153,10 +157,17 @@ resolve = cast(
 )
 update = cast(
     "Callable[..., PersonaSpec]",
-    lambda persona_id, patches, variant=None: _invoke("update", persona_id, patches=patches, variant=variant),
+    lambda persona_id, patches, variant=None: _invoke(
+        "update",
+        persona_id,
+        patches=patches,
+        variant=variant,
+    ),
 )
 variant_list = cast("Callable[[str], VariantMetadata]", partial(_invoke, "variant_list"))
-variant_activate = cast("Callable[[str, str], ActivatedVariant]", partial(_invoke, "variant_activate"))
+variant_activate = cast(
+    "Callable[[str, str], ActivatedVariant]", partial(_invoke, "variant_activate")
+)
 variant_delete = cast("Callable[[str, str], DeletedVariant]", partial(_invoke, "variant_delete"))
 update_batch = cast(
     "Callable[[dict[str, Any], dict[str, Any], bool], BatchUpdateResult]",

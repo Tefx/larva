@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from returns.result import Failure, Result
 
-from larva.shell.shared.mcp_handler_helpers import MalformedParamsBuilder, validate_mcp_params
+from larva.shell.shared.mcp_handler_helpers import validate_mcp_params
 
 if TYPE_CHECKING:
     from returns.result import Result

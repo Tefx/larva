@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from returns.result import Result
-
 from larva.shell.mcp_contract import LARVA_ERROR_CODES
 from larva.shell.shared.mcp_handler_helpers import (
     ParamTypeSpec,
@@ -14,6 +12,8 @@ from larva.shell.shared.mcp_handler_helpers import (
 )
 
 if TYPE_CHECKING:
+    from returns.result import Result
+
     from larva.app.facade import LarvaError
 
 

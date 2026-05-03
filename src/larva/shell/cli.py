@@ -2,31 +2,11 @@
 
 from __future__ import annotations
 
-import argparse
-from typing import IO, TYPE_CHECKING, Callable, Sequence, cast
+from typing import IO, TYPE_CHECKING, cast
 
 from returns.result import Failure, Result, Success
 
-from larva.app.facade import LarvaFacade
-from larva.cli_entrypoint import main
-from larva.shell.components import ComponentStore, FilesystemComponentStore
-from larva.shell.cli_helpers import (
-    EXIT_CRITICAL,
-    EXIT_ERROR,
-    EXIT_OK,
-    CliExitCode,
-    CliCommandResult,
-    CliFailure,
-    JsonErrorEnvelope,  # noqa: F401  # re-exported from this module for callers/tests
-    _CliParseError,
-    _critical_error,
-    _emit_result,
-    _operation_failure,
-    _parse_key_value_pairs,
-    _parse_set_values,
-    _read_spec_json,
-)
-from larva.shell.cli_parser import build_cli_parser
+from larva.cli_entrypoint import main  # noqa: F401  # compatibility re-export
 from larva.shell.cli_commands import (
     assemble_command,
     clear_command,
@@ -41,18 +21,40 @@ from larva.shell.cli_commands import (
     resolve_command,
     update_batch_command,
     update_command,
+    validate_command,
     variant_activate_command,
     variant_delete_command,
     variant_list_command,
-    validate_command,
 )
-from larva.shell.shared.facade_factory import build_default_facade
+from larva.shell.cli_helpers import (
+    EXIT_CRITICAL,
+    EXIT_ERROR,  # noqa: F401  # re-exported from this module for callers/tests
+    EXIT_OK,
+    CliCommandResult,
+    CliFailure,
+    JsonErrorEnvelope,  # noqa: F401  # re-exported from this module for callers/tests
+    _CliParseError,
+    _critical_error,
+    _emit_result,
+    _operation_failure,
+    _parse_key_value_pairs,
+    _parse_set_values,
+    _read_spec_json,
+)
+from larva.shell.cli_parser import build_cli_parser
+from larva.shell.components import FilesystemComponentStore
+from larva.shell.shared.facade_factory import build_default_facade  # noqa: F401
 
 PERSONA_COMMAND_SEAM = "larva.app.facade.LarvaFacade"
 COMPONENT_COMMAND_SEAM = "larva.shell.components.ComponentStore"
 
 if TYPE_CHECKING:
-    from larva.app.facade import AssembleRequest
+    import argparse
+    from collections.abc import Callable, Sequence
+
+    from larva.app.facade import AssembleRequest, LarvaFacade
+    from larva.shell.cli_helpers import CliExitCode
+    from larva.shell.components import ComponentStore
 
 
 def _dispatch_component(
@@ -98,7 +100,6 @@ def _dispatch_validate(
 def _build_assemble_request(
     args: argparse.Namespace,
 ) -> Result[AssembleRequest, JsonErrorEnvelope]:
-    from larva.app.facade import AssembleRequest
 
     overrides = _parse_key_value_pairs(cast("list[str]", args.overrides), flag="--override")
     if isinstance(overrides, Failure):
@@ -321,7 +322,8 @@ def _dispatch(
 
 
 # @invar:allow shell_result: CLI entry handler returns process exit code
-# @shell_complexity: CLI entrypoint handles parse failures and long-running server subcommands before normal dispatch.
+# @shell_complexity: CLI entrypoint handles parse failures and long-running server subcommands
+# before normal dispatch.
 def run_cli(
     argv: Sequence[str],
     *,
@@ -329,8 +331,7 @@ def run_cli(
     stdout: IO[str],
     stderr: IO[str],
     component_store: ComponentStore | None = None,
-) -> "CliExitCode":
-    from larva.shell.cli_helpers import CliExitCode
+) -> CliExitCode:
 
     parser = build_cli_parser().unwrap()
     argv_list = list(argv)

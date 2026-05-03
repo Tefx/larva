@@ -24,11 +24,10 @@ Boundary citations:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from returns.result import Failure, Success
 
-from larva.shell.components import ComponentStore
 from larva.shell.mcp_contract import (
     LARVA_ERROR_CODES,
     LARVA_MCP_TOOLS,
@@ -42,17 +41,17 @@ from larva.shell.mcp_update_batch import handle_update_batch as handle_update_ba
 
 if TYPE_CHECKING:
     from larva.app.facade import (
+        ActivatedVariant,
         ClearedRegistry,
         DeletedPersona,
+        DeletedVariant,
         LarvaError,
         LarvaFacade,
         RegisteredPersona,
         VariantMetadata,
-        ActivatedVariant,
-        DeletedVariant,
     )
     from larva.core.spec import PersonaSpec
-    from larva.core.validate import ValidationReport
+    from larva.shell.components import ComponentStore
 
 
 # -----------------------------------------------------------------------------
@@ -99,7 +98,7 @@ class MCPHandlers(MCPParamValidationMixin):
     # Inlined implementation methods (formerly in mcp_handler_ops module)
     # -------------------------------------------------------------------------
 
-    def handle_validate(self, params: object) -> Union[ValidationReport, LarvaError]:
+    def handle_validate(self, params: object) -> ValidationReport | LarvaError:
         """Handle ``larva_validate`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_validate",
@@ -115,14 +114,18 @@ class MCPHandlers(MCPParamValidationMixin):
         facade = cast("Any", self._facade)
         return cast("ValidationReport", facade.validate(cast("PersonaSpec", spec)))
 
-    def handle_resolve(self, params: object) -> Union[PersonaSpec, LarvaError]:
+    def handle_resolve(self, params: object) -> PersonaSpec | LarvaError:
         """Handle ``larva_resolve`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_resolve",
             params,
             allowed_keys={"id", "overrides", "variant"},
             required_keys=("id",),
-            typed_keys=(("id", str, "string"), ("overrides", dict, "object"), ("variant", str, "string")),
+            typed_keys=(
+                ("id", str, "string"),
+                ("overrides", dict, "object"),
+                ("variant", str, "string"),
+            ),
         )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
@@ -133,10 +136,11 @@ class MCPHandlers(MCPParamValidationMixin):
         variant: str | None = checked_params.get("variant")
         facade = cast("Any", self._facade)
         return cast(
-            "PersonaSpec | LarvaError", self._unwrap_result(facade.resolve(persona_id, overrides, variant=variant))
+            "PersonaSpec | LarvaError",
+            self._unwrap_result(facade.resolve(persona_id, overrides, variant=variant)),
         )
 
-    def handle_register(self, params: object) -> Union[RegisteredPersona, LarvaError]:
+    def handle_register(self, params: object) -> RegisteredPersona | LarvaError:
         """Handle ``larva_register`` MCP tool call.
 
         Delegates to: facade.register(spec)
@@ -166,7 +170,7 @@ class MCPHandlers(MCPParamValidationMixin):
             self._unwrap_result(self._facade.register(cast("PersonaSpec", spec), variant=variant)),
         )
 
-    def handle_list(self, params: object) -> Union[list[dict[str, str]], LarvaError]:
+    def handle_list(self, params: object) -> list[dict[str, str]] | LarvaError:
         """Handle ``larva_list`` MCP tool call.
 
         Delegates to: facade.list()
@@ -184,7 +188,7 @@ class MCPHandlers(MCPParamValidationMixin):
             return validated_params.failure()
         return cast("list[dict[str, str]] | LarvaError", self._unwrap_result(self._facade.list()))
 
-    def handle_delete(self, params: object) -> Union["DeletedPersona", LarvaError]:
+    def handle_delete(self, params: object) -> DeletedPersona | LarvaError:
         """Handle ``larva_delete`` MCP tool call.
 
         Delegates to: facade.delete(persona_id)
@@ -213,7 +217,7 @@ class MCPHandlers(MCPParamValidationMixin):
             "DeletedPersona | LarvaError", self._unwrap_result(self._facade.delete(persona_id))
         )
 
-    def handle_clear(self, params: object) -> Union["ClearedRegistry", LarvaError]:
+    def handle_clear(self, params: object) -> ClearedRegistry | LarvaError:
         """Handle ``larva_clear`` MCP tool call.
 
         Delegates to: facade.clear(confirm)
@@ -243,7 +247,7 @@ class MCPHandlers(MCPParamValidationMixin):
             "ClearedRegistry | LarvaError", self._unwrap_result(self._facade.clear(confirm))
         )
 
-    def handle_clone(self, params: object) -> Union[PersonaSpec, LarvaError]:
+    def handle_clone(self, params: object) -> PersonaSpec | LarvaError:
         """Handle ``larva_clone`` MCP tool call.
 
         Delegates to: facade.clone(source_id, new_id)
@@ -275,7 +279,7 @@ class MCPHandlers(MCPParamValidationMixin):
             "PersonaSpec | LarvaError", self._unwrap_result(self._facade.clone(source_id, new_id))
         )
 
-    def handle_update(self, params: object) -> Union[PersonaSpec, LarvaError]:
+    def handle_update(self, params: object) -> PersonaSpec | LarvaError:
         """Handle ``larva_update`` MCP tool call.
 
         Delegates to: facade.update(persona_id, patches)
@@ -295,7 +299,11 @@ class MCPHandlers(MCPParamValidationMixin):
             params,
             allowed_keys={"id", "patches", "variant"},
             required_keys=("id", "patches"),
-            typed_keys=(("id", str, "string"), ("patches", dict, "object"), ("variant", str, "string")),
+            typed_keys=(
+                ("id", str, "string"),
+                ("patches", dict, "object"),
+                ("variant", str, "string"),
+            ),
         )
         if isinstance(validated_params, Failure):
             return validated_params.failure()
@@ -309,7 +317,7 @@ class MCPHandlers(MCPParamValidationMixin):
             self._unwrap_result(self._facade.update(persona_id, patches, variant=variant)),
         )
 
-    def handle_variant_list(self, params: object) -> Union["VariantMetadata", LarvaError]:
+    def handle_variant_list(self, params: object) -> VariantMetadata | LarvaError:
         """Handle ``larva_variant_list`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_variant_list",
@@ -325,7 +333,7 @@ class MCPHandlers(MCPParamValidationMixin):
             self._unwrap_result(self._facade.variant_list(validated_params.unwrap()["id"])),
         )
 
-    def handle_variant_activate(self, params: object) -> Union["ActivatedVariant", LarvaError]:
+    def handle_variant_activate(self, params: object) -> ActivatedVariant | LarvaError:
         """Handle ``larva_variant_activate`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_variant_activate",
@@ -342,7 +350,7 @@ class MCPHandlers(MCPParamValidationMixin):
             self._unwrap_result(self._facade.variant_activate(checked["id"], checked["variant"])),
         )
 
-    def handle_variant_delete(self, params: object) -> Union["DeletedVariant", LarvaError]:
+    def handle_variant_delete(self, params: object) -> DeletedVariant | LarvaError:
         """Handle ``larva_variant_delete`` MCP tool call."""
         validated_params = self._validated_params(
             "larva_variant_delete",
@@ -359,7 +367,7 @@ class MCPHandlers(MCPParamValidationMixin):
             self._unwrap_result(self._facade.variant_delete(checked["id"], checked["variant"])),
         )
 
-    def handle_update_batch(self, params: object) -> Union[dict[str, object], LarvaError]:
+    def handle_update_batch(self, params: object) -> dict[str, object] | LarvaError:
         """Handle ``larva_update_batch`` MCP tool call.
 
         Delegates to shared update_batch handler logic with where/patches/dry_run validation.
@@ -369,7 +377,7 @@ class MCPHandlers(MCPParamValidationMixin):
             return cast("dict[str, object]", result.unwrap())
         return result.failure()
 
-    def handle_export(self, params: object) -> Union[list["PersonaSpec"], LarvaError]:
+    def handle_export(self, params: object) -> list[PersonaSpec] | LarvaError:
         """Handle ``larva_export`` MCP tool call.
 
         Delegates to shared export handler logic with ``all`` xor ``ids`` validation.

@@ -51,7 +51,9 @@ _PERSONA_SPEC_FIELD_TYPES: dict[str, dict[str, object]] = {
     "spec_version": {
         "type": "string",
         "const": "0.1.0",
-        "description": "Schema version envelope (semver). All consumers must reject unknown versions.",
+        "description": (
+            "Schema version envelope (semver). All consumers must reject unknown versions."
+        ),
     },
     "model_params": {"type": "object"},
     "can_spawn": {
@@ -173,7 +175,9 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 },
                 "variant": {
                     "type": "string",
-                    "description": "Optional registry-local variant name; never a PersonaSpec field",
+                    "description": (
+                        "Optional registry-local variant name; never a PersonaSpec field"
+                    ),
                 },
             },
             "required": ["id"],
@@ -192,13 +196,16 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "spec": {
                     "description": (
                         "PersonaSpec JSON (must pass validation). "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and "
+                        f"{_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                     **_PERSONA_SPEC_INPUT_SCHEMA,
                 },
                 "variant": {
                     "type": "string",
-                    "description": "Optional registry-local variant name; never a PersonaSpec field",
+                    "description": (
+                        "Optional registry-local variant name; never a PersonaSpec field"
+                    ),
                 },
             },
             "required": ["spec"],
@@ -226,7 +233,9 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     },
     {
         "name": "larva_variant_activate",
-        "description": "Set the active registry-local variant without mutating PersonaSpec content.",
+        "description": (
+            "Set the active registry-local variant without mutating PersonaSpec content."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -339,12 +348,15 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                     "type": "object",
                     "description": (
                         "JSON merge patches to apply to the persona. "
-                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
+                        f"{_CAPABILITIES_REQUIRED_CLAUSE} and "
+                        f"{_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
                     ),
                 },
                 "variant": {
                     "type": "string",
-                    "description": "Optional registry-local variant name; never a PersonaSpec field",
+                    "description": (
+                        "Optional registry-local variant name; never a PersonaSpec field"
+                    ),
                 },
             },
             "required": ["id", "patches"],

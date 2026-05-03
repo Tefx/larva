@@ -69,7 +69,9 @@ def _add_persona_read_commands(
     validate_parser = subparsers.add_parser(
         "validate",
         help="Validate a persona spec file",
-        description="Parse and validate a PersonaSpec YAML/JSON file, reporting errors and warnings.",
+        description=(
+            "Parse and validate a PersonaSpec YAML/JSON file, reporting errors and warnings."
+        ),
     )
     validate_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
     _add_json_flag(validate_parser)
@@ -77,7 +79,9 @@ def _add_persona_read_commands(
     register_parser = subparsers.add_parser(
         "register",
         help="Register a persona spec in the registry",
-        description="Parse a PersonaSpec file and add it to the local registry for later resolution.",
+        description=(
+            "Parse a PersonaSpec file and add it to the local registry for later resolution."
+        ),
     )
     register_parser.add_argument("spec", metavar="SPEC", help="path to the persona spec file")
     register_parser.add_argument("--variant", help="registry-local variant name")
@@ -133,7 +137,9 @@ def _add_variant_commands(
     variant_activate_parser.add_argument("variant", metavar="VARIANT", help="variant name")
     _add_json_flag(variant_activate_parser)
 
-    variant_delete_parser = variant_subparsers.add_parser("delete", help="Delete an inactive variant")
+    variant_delete_parser = variant_subparsers.add_parser(
+        "delete", help="Delete an inactive variant"
+    )
     variant_delete_parser.add_argument("id", metavar="ID", help="base persona id")
     variant_delete_parser.add_argument("variant", metavar="VARIANT", help="variant name")
     _add_json_flag(variant_delete_parser)
@@ -177,7 +183,10 @@ def _add_registry_commands(subparsers: argparse._SubParsersAction[_CliParser]) -
     export_parser = subparsers.add_parser(
         "export",
         help="Export personas as spec files",
-        description="Export one or more registered personas as PersonaSpec JSON. Use --all to export everything.",
+        description=(
+            "Export one or more registered personas as PersonaSpec JSON. "
+            "Use --all to export everything."
+        ),
     )
     export_parser.add_argument(
         "ids", nargs="*", default=[], metavar="ID", help="persona IDs to export"
