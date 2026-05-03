@@ -4042,15 +4042,30 @@ phases:
   - id: shell_registry.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for shell registry
     status: pending
-    description: Resolve validate errors for completed steps shell_registry.shell-registry-gate
-      and shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2. Add later same-phase
-      closure evidence that either proves the current shell registry gate is green/OPEN
-      with gate_open_allowed=true, or records an explicit expected-red/non-blocking
-      disposition with owner, lifecycle state, and gate-intersection rationale for
-      each historical FAIL.
+    description: 'Resolve validate errors for completed steps shell_registry.shell-registry-gate
+      and shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2. This is a proof-closure/evidence
+      task, not product-code implementation. Produce accepted same-phase closure evidence
+      that either proves the current shell registry gate is green/OPEN with gate_open_allowed=true,
+      or records an explicit expected-red/non-blocking disposition with owner, lifecycle
+      state, and gate-intersection rationale for each historical FAIL.
+
+
+      Required disposition fields for any non-green closure: provenance, disposition
+      (blocking-now/blocking-later/non-blocking), owner, lifecycle state, gate-intersection
+      rationale, remaining gate impact, and closure path. Do not edit completed historical
+      steps.'
     verification: Run vectl_validate(check_refs=true) and show that both shell_registry
-      completed-evidence guard errors are gone, or paste the accepted non-blocking
-      disposition evidence that closes them.
+      completed-evidence guard errors are gone, or paste accepted non-blocking disposition
+      evidence that closes them. Evidence must include the specific validation output
+      or accepted disposition text; a generic PASS statement is insufficient.
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nIf no refs were provided,\
+      \ state: \"No refs for this step.\"\n\n## Evidence Guard Closure Report\n- Historical\
+      \ completed steps reviewed: shell_registry.shell-registry-gate; shell_registry.fix-shell-registry-gate-blockers-b1-b2-s1-s2\n\
+      - Closure route used: GREEN_CURRENT_PROOF | ACCEPTED_NON_BLOCKING_DISPOSITION\n\
+      - vectl_validate(check_refs=true) output or accepted disposition evidence:\n\
+      \  ```\n  <paste exact output/evidence>\n  ```\n- Gate-intersection disposition:\
+      \ <why remaining gates are closed or not intersected>\n- Headline: PASS | BLOCKED"
+    agent: gate-reviewer
 - id: app_facade
   name: larva.app.facade
   status: done
