@@ -67967,7 +67967,7 @@ phases:
     agent: developer
   - id: plan_ref_warning_hygiene_20260503
     name: Triage remaining vectl ref warnings
-    status: claimed
+    status: done
     description: Lightweight planner-only plan hygiene for vectl_validate(check_refs=true)
       warnings. The OpenCode hardening contract-test refs were updated to existing
       docs; this step should triage the remaining historical ref warnings as either
@@ -67982,6 +67982,41 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-05-03T13:40:39.622409+00:00'
+    done_at: '2026-05-03T13:42:18.292074+00:00'
+    evidence: 'Artifact:
+
+      - plan mutations: none
+
+
+      Verification:
+
+      - vectl_validate(check_refs=true): completed; reported evidence-guard errors
+      unrelated to ref hygiene and 60 missing-ref warnings.
+
+      - OpenCode refs check: opencode_hardening_20260503 steps were inspected with
+      vectl_show; no OpenCode hardening step references docs/opencode-wrapper.md or
+      docs/opencode-plugin-hardening-contract.md. The contract-test step refs resolve
+      to contrib/opencode-plugin/README.md, README.md, docs/reference/ARCHITECTURE.md,
+      and docs/reference/INTERFACES.md.
+
+
+      Disposition:
+
+      - OpenCode hardening refs: repaired/current; no remaining missing-ref warnings
+      for opencode_hardening_20260503.
+
+      - Root legacy docs refs such as ARCHITECTURE.md, INTERFACES.md, USAGE.md, USER_GUIDE.md,
+      ADR-002..., and MIGRATION-002...: historical completed-plan refs; non-blocking
+      legacy debt.
+
+      - Removed/renamed source and test refs such as src/larva/shell/components.py,
+      src/larva/core/assemble.py, src/larva/shell/python_api_components.py, tests/shell/test_components.py,
+      and tests/core/test_assemble.py: stale historical refs from completed phases;
+      non-blocking legacy debt.
+
+      - External/opifex conformance refs and wildcard refs: historical cross-repo
+      refs not affecting active OpenCode hardening work; non-blocking/out-of-scope
+      for this planner-only hygiene step.'
   - id: opencode_hardening_20260503.external-gate-review-for-opencode-hardening
     name: External gate review for OpenCode hardening
     status: pending
