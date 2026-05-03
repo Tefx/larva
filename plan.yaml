@@ -11656,7 +11656,7 @@ phases:
       - INTERFACES.md larva.validate'
   - id: core_validate.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for core validate
-    status: pending
+    status: claimed
     description: 'Resolve validate error for completed step core_validate.core-validate-verify.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence that proves the current validate gate is
@@ -11680,6 +11680,8 @@ phases:
       \  ```\n- Gate-intersection disposition: <why remaining gates are closed or\
       \ not intersected>\n- Headline: PASS | BLOCKED"
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-03T13:30:51.057716+00:00'
 - id: core_assemble_exec
   name: larva.core.assemble execution
   status: done
