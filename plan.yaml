@@ -60553,7 +60553,7 @@ phases:
       gap and no product implementation files were changed.'
   - id: variants_core_contract_20260503.core-pure-helpers
     name: core-pure-helpers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
 
@@ -60677,6 +60677,8 @@ phases:
     depends_on:
     - variants_core_contract_20260503.core-red-contract-tests
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-03T00:30:43.414399+00:00'
   - id: variants_core_contract_20260503.core-gate
     name: core-gate
     status: pending
