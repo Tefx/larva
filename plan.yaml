@@ -60302,7 +60302,7 @@ phases:
       issues introduced by the fix.'
 - id: variants_core_contract_20260503
   name: Registry-Local Variants Core Contract
-  status: in_progress
+  status: done
   gate: Core variant contracts and pure helpers have falsifying tests, contracts/doctests,
     and no canonical PersonaSpec metadata leakage.
   depends_on:
@@ -60824,7 +60824,7 @@ phases:
       before gate.'
   - id: variants_core_contract_20260503.core-gate
     name: core-gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -60977,6 +60977,204 @@ phases:
     agent: gate-reviewer-tacit
     claimed_by: gate-reviewer-tacit
     claimed_at: '2026-05-03T01:09:18.187307+00:00'
+    done_at: '2026-05-03T01:14:46.145246+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      - design/registry-local-variants-and-assembly-removal.md — canonical PersonaSpec
+      shape does not change; variant is not a PersonaSpec field; variant state belongs
+      only to larva registry boundary; variant names match lower-kebab max 64 and
+      unknown fields including variant are rejected.
+
+      - docs/reference/INTERFACES.md — larva is downstream admission/projection; opifex
+      owns canonical schema; tools/side_effect_policy and unknown top-level fields
+      are rejected.
+
+      - docs/reference/ARCHITECTURE.md — core is pure domain logic; shell adapts transports/storage;
+      core must not depend on shell/transport.
+
+      - docs/guides/USAGE.md — MCP PersonaSpec inputs reject forbidden legacy vocabulary;
+      PersonaSpec is flat and has no assembly metadata in output.
+
+      - docs/guides/USER_GUIDE.md — tools/side_effect_policy are forbidden legacy
+      PersonaSpec vocabulary at every canonical admission surface.
+
+      - ../opifex/design/final-canonical-contract.md — tools, side_effect_policy,
+      variables, variant, _registry, active, manifest state are invalid inside PersonaSpec;
+      registry metadata stays outside canonical spec.
+
+      - ../opifex/contracts/persona_spec.schema.json — required canonical fields and
+      additionalProperties=false.
+
+      - ../opifex/conformance/shared_surfaces.yaml — larva shared surfaces require
+      canonical admission, forbidden-field rejection, variant-name validation, registry
+      metadata separation, active canonical export only; opifex is authority and larva
+      consumes/conforms.
+
+      - ../opifex/conformance/case_matrix/larva/larva.register.yaml — variant/variables/_registry/active/manifest
+      inside spec rejected; bad variant names/id mismatch reject.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_activate.yaml — activation
+      changes manifest state without mutating PersonaSpec; variant names lower-kebab
+      max 64.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_list.yaml — variant
+      list returns registry metadata with id/active/variants and no PersonaSpec fields.
+
+      - ../opifex/conformance/case_matrix/larva/larva.variant_delete.yaml — deleting
+      active/last variant rejects; bad variant names reject.
+
+      - ../opifex/conformance/case_matrix/larva/larva.validate.yaml — variant/variables/_registry/active/manifest
+      inside spec reject.
+
+      - ../opifex/conformance/case_matrix/larva/larva.export.yaml — export returns
+      active canonical PersonaSpecs only; absent variant/_registry/active/manifest.
+
+      - ../opifex/conformance/case_matrix/larva/larva.update.yaml — variant is operation
+      parameter, not stored in PersonaSpec; patching id/spec_version/spec_digest/variant/tools
+      rejects.
+
+      - ../opifex/conformance/case_matrix/larva/larva.resolve.yaml — resolved output
+      matches canonical PersonaSpec; legacy override tools and bad variant name reject.
+
+      - ../opifex/conformance/case_matrix/larva/larva.delete.yaml — base delete removes
+      base persona and local variants; variant is not a delete selector.
+
+      - INVAR.md — core requires @pre/@post/doctest and no I/O; shell handles I/O.
+
+
+      ## Gate Review Report
+
+      - Reviewer: gate-reviewer-tacit
+
+      - Phase: variants_core_contract_20260503
+
+      - Decision: OPEN.
+
+      - Machine-readable closure: headline=PASS_WITH_DEBT; proof_gap_status=NON_BLOCKING;
+      blocking_status=CLOSED; verdict=PASS; blockers=[]; gate_open_allowed=true; orchestrator_action_hint=COMPLETE.
+
+
+      ## Behavioral Proof Register Summary
+
+      - Core forbidden registry metadata: PROVEN via tests/core/test_variants.py and
+      validation_contract/validate inspection.
+
+      - Variant name contract: PROVEN via Hypothesis/property tests, doctests, and
+      invar full property tests.
+
+      - Patch forbidden fields: PROVEN via direct/dot-notation patch tests and patch.py
+      inspection.
+
+      - Shell registry boundary: PROVEN via focused shell test and independent real
+      temp filesystem probe yielding Failure/REGISTRY_SPEC_READ_FAILED for _registry.
+
+      - Canonical_cutover scan: PROVEN via full hard-cutover readiness scanner tests;
+      exclusions remain explicit and not broad downstream exclusions.
+
+      - B1 Ruff remediation: PROVEN via uv run ruff check on reviewed files -> All
+      checks passed.
+
+      - B2 opifex provenance/disposition: NON_INTERSECTING; external opifex dirty
+      state is out-of-step-origin and non-blocking for this larva gate because larva
+      phase commits changed only larva worktree files and gate was verify-only.
+
+      - B3 design ref: PROVEN present/readable and cited.
+
+      - S1 precondition warning: NON_BLOCKING; strengthening would alter public VariantNameError
+      behavior for invalid input.
+
+      - Full invar: PROVEN; full invar guard passed with errors=0, warnings=7, infos=2.
+
+
+      ## Wiring Audit W1-W8
+
+      - W1 Source authority: opifex canonical authority and design ref identify registry
+      metadata as invalid in PersonaSpec.
+
+      - W2 Core admission/contract: validation_contract.py forbidden fields and validate.py
+      rejection path verified.
+
+      - W3 Patch path: FORBIDDEN_PATCH_FIELDS and pre-expansion dot-root rejection
+      verified.
+
+      - W4 Variant-name validation: lower-kebab/max-64 helper with tested behavior
+      verified.
+
+      - W5 Shell registry read boundary: registry imports CANONICAL_FORBIDDEN_FIELDS
+      and rejects stored metadata on read.
+
+      - W6 Hard-cutover scanner: source scanner remains strict with explicit authority/rejection
+      hotspot exclusions.
+
+      - W7 Gate-remediation closure: lint/focused tests/full invar verified.
+
+      - W8 Shared/opifex non-intersection: larva commits did not touch opifex; external
+      dirty state classified non-blocking for this larva gate.
+
+
+      ## Escape Hatch Audit
+
+      - No @invar:allow annotations in relevant changed core/shell registry files.
+
+      - Full Invar scan reports 5 shell_result escape hatches elsewhere, outside relevant
+      changed code and not blocking this gate.
+
+
+      ## Verification Outputs
+
+      ```text
+
+      ./.venv/bin/python -m pytest tests/core/test_variants.py -q
+
+      60 passed in 1.35s
+
+      ```
+
+      ```text
+
+      ./.venv/bin/python -m pytest tests/shell/test_registry.py::TestFileSystemRegistryStoreContract::test_get_rejects_registry_metadata_fields_at_shell_boundary
+      -q
+
+      4 passed in 0.34s
+
+      ```
+
+      ```text
+
+      ./.venv/bin/python -m pytest tests/canonical_cutover/test_hard_cutover_readiness.py
+      -q
+
+      10 passed in 0.33s
+
+      ```
+
+      ```text
+
+      uv run ruff check src/larva/core/validate.py src/larva/shell/registry.py tests/canonical_cutover/test_hard_cutover_readiness.py
+      tests/core/test_variants.py
+
+      All checks passed!
+
+      ```
+
+      ```text
+
+      ./.venv/bin/invar guard --all
+
+      status: passed; summary errors=0 warnings=7 infos=2 files_checked=44; property_tests
+      passed functions_tested=16 total_examples=1300; crosshair verified with no failures/counterexamples.
+
+      ```
+
+
+      ## Gate Decision
+
+      OPEN
+
+
+      ## Commit
+
+      - Commit hash(es): none (verify-only; worktree clean).'
   - id: variants_core_contract_20260503.core-downstream-forbidden-field-remediation
     name: core-downstream-forbidden-field-remediation
     status: done
@@ -61458,7 +61656,7 @@ phases:
       - Did not alter plan.yaml, claims, or vectl state.'
 - id: variants_registry_impl_20260503
   name: Registry Storage and Active Variant Behavior
-  status: locked
+  status: pending
   gate: Registry storage implements manifest/variants semantics, activation/delete
     guards, and active-only list/export without canonical metadata leakage.
   depends_on:
