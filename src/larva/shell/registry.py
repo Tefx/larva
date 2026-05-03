@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, TypeAlias, TypedDict, cast
 
 from returns.result import Failure, Result, Success
 
+from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
 from larva.shell.registry_fs import read_spec_payload, rollback_spec_write, write_json_atomic
 
 if TYPE_CHECKING:
@@ -439,7 +440,7 @@ class FileSystemRegistryStore(RegistryStore):
         return Success(index)
 
     _CANONICAL_FORBIDDEN_FIELDS: ClassVar[frozenset[str]] = frozenset(
-        {"tools", "side_effect_policy"}
+        CANONICAL_FORBIDDEN_FIELDS
     )
 
     def _read_spec(

@@ -152,6 +152,33 @@ class TestFileSystemRegistryStoreContract:
         assert error["persona_id"] == "bad-digest"
         assert "spec_digest" in error["message"]
 
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("variant", "local"),
+            ("_registry", {"source": "local"}),
+            ("active", True),
+            ("manifest", {"path": "personas.yaml"}),
+        ],
+    )
+    def test_get_rejects_registry_metadata_fields_at_shell_boundary(
+        self, registry_root: Path, field: str, value: object
+    ) -> None:
+        spec = dict(_canonical_spec("metadata-leak", "sha256:metadata-leak"))
+        spec[field] = value
+        _write_json(registry_root / "metadata-leak.json", spec)
+        _write_json(registry_root / INDEX_FILENAME, {"metadata-leak": spec["spec_digest"]})
+
+        store = FileSystemRegistryStore(root=registry_root)
+        result = store.get("metadata-leak")
+
+        assert isinstance(result, Failure)
+        error = result.failure()
+        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert error["persona_id"] == "metadata-leak"
+        assert field in error["message"]
+        assert "not permitted at canonical boundary" in error["message"]
+
     def test_get_returns_exact_stored_spec_for_valid_kebab_case_id(
         self, registry_root: Path
     ) -> None:

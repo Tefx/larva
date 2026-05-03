@@ -28,13 +28,13 @@ from typing import Any
 
 import pytest
 
+from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 LARVA_SRC_ROOT = Path(__file__).resolve().parent.parent.parent / "src" / "larva"
-
-CANONICAL_FORBIDDEN_FIELDS = ("tools", "side_effect_policy")
 
 # MCP tool names as currently registered in mcp_contract.py
 CANONICAL_MCP_TOOL_NAMES: list[str] = [
@@ -81,6 +81,8 @@ _SCAN_EXCLUDE_RELATIVE: list[str] = [
     "shell/shared/component_queries.py",
     # Facade docstrings describe what NOT to admit (legitimate rejection reference)
     "app/facade.py",
+    # Authoritative core contract definition; downstream consumers remain scanned.
+    "core/validation_contract.py",
 ]
 
 # String patterns that indicate a LEGITIMATE reference (rejection, forbidden,
@@ -142,9 +144,8 @@ def _line_has_forbidden_field_reference(line: str, field: str) -> bool:
     forbidden field as a dict key, parameter, or data access — not just a
     rejection/deprecation/stripping reference.
 
-    For the "tools" field specifically, we use word-boundary matching to avoid
-    false positives from "toolsets", "load_toolset", etc. The Python string
-    literal patterns like ``"tools"`` are what we're looking for.
+    The scan targets Python string literal references such as ``"tools"`` so
+    it catches dict-key/data-path usage without flagging substrings in names.
     """
     # Strip comments for the check
     comment_idx = line.find("#")
@@ -153,19 +154,8 @@ def _line_has_forbidden_field_reference(line: str, field: str) -> bool:
     if field not in code_only:
         return False
 
-    # For "tools", avoid false positives from "toolsets", "load_toolset", etc.
-    # We look for the field as a Python dict key: quoted string literal patterns.
-    if field == "tools":
-        # Match "tools" as a string key literal, not part of "toolsets"
-        # Pattern: the word "tools" as a standalone key, not part of compound words
-        # We look for: "tools", 'tools', .get("tools"), ["tools"], etc.
-        # But NOT: toolsets, load_toolset, component_toolset, etc.
-        if not re.search(r'["\']tools["\']', code_only):
-            # Not a string key reference — could be part of "toolsets"
-            return False
-
-    # "side_effect_policy" doesn't have compound-word false positives
-    # so no additional word-boundary check needed for it.
+    if not re.search(rf'["\']{re.escape(field)}["\']', code_only):
+        return False
 
     # Check if this is a legitimate reference pattern
     for pattern in _LEGITIMATE_REFERENCE_PATTERNS:
