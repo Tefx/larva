@@ -64753,7 +64753,7 @@ phases:
     agent: wiring-auditor
   - id: variants_surface_cutover_20260503.web-assembly-surface-remediation
     name: web-assembly-surface-remediation
-    status: claimed
+    status: done
     description: "step_type: remediation\ntags: [frontend, rest, wiring]\n\nRemediate\
       \ failed `variants_surface_cutover_20260503.surface-wiring-audit` blockers before\
       \ rerunning the audit. This is one batched ownership step for removed assembly/component\
@@ -64788,6 +64788,83 @@ phases:
     agent: frontend-engineer-tacit
     claimed_by: frontend-engineer-tacit
     claimed_at: '2026-05-03T04:33:31.663302+00:00'
+    done_at: '2026-05-03T04:52:34.925670+00:00'
+    evidence: '## Blockers Remediated
+
+      1. Removed lingering assemble/component affordances and fetches from `src/larva/shell/web_ui.html`,
+      including `openComposeModal`, `modals.assemble`, `/api/components`, `/api/personas/assemble`,
+      and component browser remnants.
+
+      2. Fixed REST route behavior so `POST /api/personas/assemble` is absent/404
+      instead of 405 by addressing route registration/order.
+
+      3. Deduped `web.__all__` variant exports.
+
+      4. Preserved/reintroduced variant UI controls/logic in `src/larva/shell/web_ui.html`:
+      `selectedVariant`, `switchVariant`, `activateVariant`, and `loadVariants`, with
+      variants kept outside canonical PersonaSpec parsing.
+
+
+      ## Files Changed
+
+      - `src/larva/shell/web_ui.html`
+
+      - `src/larva/shell/web.py`
+
+      - `src/larva/shell/web_routes.py`
+
+
+      ## Mainline Verification
+
+      ```text
+
+      uv run pytest tests/shell/test_mcp.py tests/shell/test_mcp_server.py tests/shell/test_mcp_stdio_integration.py
+      tests/shell/test_cli.py tests/shell/test_python_api.py tests/shell/test_web.py
+      tests/shell/test_contrib_web.py tests/shell/test_web_rest_gaps.py -q
+
+      525 passed in 4.04s
+
+      ```
+
+      ```text
+
+      uv run ruff check src/larva/shell/web.py src/larva/shell/web_routes.py contrib/web/server.py
+
+      All checks passed!
+
+      ```
+
+      ```text
+
+      invar_invar_guard changed=true
+
+      status: passed; static errors=0 warnings=0 infos=0; doctest passed
+
+      ```
+
+
+      ## DOM/static Proof
+
+      ```text
+
+      {''absent_ok'': {''openComposeModal'': True, ''modals.assemble'': True, ''/api/components'':
+      True, ''/api/personas/assemble'': True, ''Component browser'': True, ''Compose
+      Persona'': True}, ''present_ok'': {''selectedVariant'': True, ''switchVariant'':
+      True, ''activateVariant'': True}}
+
+      ```
+
+
+      ## Commit hash(es)
+
+      - `7693806441ca62bff350c778cc0c4d043f0fb5e4`
+
+      - `3a2df047e39bca257f06d53c5e73375218fad961`
+
+
+      ## Gaps/Notes
+
+      none'
 - id: variants_projection_smoke_20260503
   name: Projection, Liveness, and Smoke Verification
   status: locked
