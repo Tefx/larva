@@ -68584,7 +68584,6 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
-    - ../opifex/conformance/case_matrix/larva/*
     agent: python-executor
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
