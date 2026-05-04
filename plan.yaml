@@ -68780,6 +68780,11 @@ phases:
       rerun targeted commands if evidence is insufficient. PASS only with explicit
       yes/no checklist and Open Problems: none, Residual Risk: none. On failure, use
       vectl reject/defer guidance rather than editing plan.yaml.'
+    evidence_template: 'Evidence must include: reviewed step IDs and evidence links/summaries;
+      yes/no checklist for storage layout, ownership, materialization/digest, errors,
+      Web tombstone, MCP wording, OpenCode semantics, guards/tests, docs parity, no
+      migration/aliases; final vectl_validate --check-refs status; Open Problems:
+      none and Residual Risk: none for PASS; otherwise reject/defer with exact blockers.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -68794,6 +68799,7 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
+    - AGENTS.md
     depends_on:
     - variant-runtime-full-integration-gate
     agent: gate-reviewer
