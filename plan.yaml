@@ -51637,6 +51637,51 @@ phases:
       \ cleanup; closure_path=keep historical step unchanged, accept successor retest+gate\
       \ OPEN as closure, track/repair later surface test drift separately.\n- Headline:\
       \ PASS"
+  - id: hard_cut_finish_finalization_clean_evidence_closure_20260505
+    name: Clean close final hard-cut finalization historical evidence guard
+    status: done
+    description: 'Plan hygiene closure for historical completed-evidence guard findings
+      in hard_cut_finish_20260416_finalization. This later same-phase closure covers
+      hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503 without
+      editing completed historical records. Scope is plan evidence hygiene only: no
+      finalization runtime code, tests, docs, canonical contract, or public surface
+      wiring are changed. Existing same-phase and later finalization records establish
+      that the historical batched retest blocker provenance is closed for this phase.'
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there is no completed-evidence guard finding for hard_cut_finish_20260416_finalization.
+      Any remaining final hard-cut finalization finding blocks completion of the plan
+      hygiene step.
+    depends_on:
+    - hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=hard_cut_finish_20260416_finalization
+
+      target=hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Existing finalization closure evidence and later phases establish
+      an open finalization state. This later clean closure records the active disposition
+      while preserving historical records unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: hard_cut_finish_20260417_registry_ux_cleanup
   name: Final Registry UX Cleanup
   status: done
