@@ -68763,3 +68763,11 @@ phases:
     depends_on:
     - variant-runtime-full-integration-gate
     agent: gate-reviewer
+- id: plan_validation_debt_20260504
+  name: Plan Validation Debt Cleanup 2026-05-04
+  status: pending
+  gate: '`vectl_validate --check-refs` reports zero completed-evidence guard ERRORs
+    and zero missing-ref WARNs, or any remaining warning is explicitly documented
+    as non-actionable by a gate reviewer with evidence.'
+  depends_on:
+  - non_opencode_red_cleanup_20260503
