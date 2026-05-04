@@ -68873,6 +68873,21 @@ phases:
       Open Problems: none.
 
       Residual Risk: none.'
+    refs:
+    - AGENTS.md
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - src/larva/app/facade.py
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/web_routes.py
+    - src/larva/shell/python_api.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
     depends_on:
     - variant-runtime-full-integration-gate
     agent: spec-verifier
