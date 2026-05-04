@@ -68703,6 +68703,11 @@ phases:
       no placeholder leakage occurs on cache miss. Also run relevant export/resolve
       CLI smoke tests and invar_guard changed-file for touched files. Evidence must
       include commands, outputs, cache/fallback observations, and remaining gaps=none.
+    evidence_template: 'Evidence must include: files changed; OpenCode/plugin refs
+      read; focused test or smoke commands/outputs proving selected-id re-resolve
+      sees active variant changes; cache miss/no-placeholder proof; last-known-good
+      fallback observation if applicable; export/resolve CLI smoke output; changed-file
+      invar_guard for touched files; residual gaps: none for PASS.'
     refs:
     - docs/reference/INTERFACES.md
     - docs/reference/ARCHITECTURE.md
@@ -68711,6 +68716,7 @@ phases:
     - contrib/opencode-plugin/larva.ts
     - src/larva/app/facade.py
     - src/larva/shell/cli.py
+    - AGENTS.md
     depends_on:
     - variant-runtime-public-surface-parity
     agent: integration-verifier
