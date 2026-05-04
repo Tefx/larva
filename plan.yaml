@@ -68660,6 +68660,11 @@ phases:
       negative error envelopes. Run invar_guard changed-file. Evidence must paste
       representative outputs for each surface, including at least one Web error envelope
       and one CLI --json/Python/MCP structured error.
+    evidence_template: 'Evidence must include: files changed; authoritative refs read;
+      commands/outputs for CLI, MCP contract/handler, Python API, and Web REST; at
+      least one Web error envelope and one structured CLI/Python/MCP error with numeric_code;
+      Web assemble tombstone proof; changed-file invar_guard output; residual gaps:
+      none for PASS.'
     refs:
     - docs/reference/INTERFACES.md
     - docs/guides/USAGE.md
@@ -68674,6 +68679,7 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
+    - AGENTS.md
     depends_on:
     - variant-runtime-storage-implementation
     agent: python-executor
