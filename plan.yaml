@@ -69957,7 +69957,7 @@ phases:
       Residual Risk: none'
   - id: variant-runtime-contract-spec-review-evidence-closure-20260505
     name: Close variant runtime contract spec review evidence guard
-    status: pending
+    status: claimed
     description: 'Plan-validation remediation only; do not edit product code. The
       completed step `variant-runtime-contract-spec-review` contains accepted PASS
       evidence with Open Problems none and Residual Risk none, but vectl_validate
@@ -69984,6 +69984,8 @@ phases:
     depends_on:
     - variant-runtime-contract-spec-review
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-05-04T20:31:43.235879+00:00'
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: done
