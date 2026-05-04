@@ -46182,7 +46182,7 @@ phases:
       \ (non-user-facing)"
 - id: canonical_cutover_prep
   name: Canonical Hard-Cut Prep
-  status: in_progress
+  status: done
   gate: Policy pinned and red-first readiness harness defined
   depends_on:
   - web_preset_redesign_followup
@@ -46528,7 +46528,7 @@ phases:
   - id: canonical_cutover_prep.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical cutover
       prep
-    status: claimed
+    status: skipped
     description: 'Resolve validate error for completed step canonical_cutover_prep.gate.
       This is a proof-closure/evidence task, not product-code implementation. Produce
       accepted same-phase closure evidence proving the prep gate is now green/OPEN
@@ -46555,6 +46555,7 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:39.436168+00:00'
+    skipped_reason: absorbed
   - id: canonical_cutover_prep_clean_evidence_closure_20260505
     name: Clean close canonical cutover prep historical evidence guard
     status: done
