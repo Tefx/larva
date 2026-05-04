@@ -102,12 +102,9 @@ _PERSONA_SPEC_INPUT_SCHEMA = cast(
     },
 )
 _PERSONA_OVERRIDE_ALLOWED_FIELDS = (
-    "description",
     "prompt",
     "model",
-    "capabilities",
     "model_params",
-    "can_spawn",
     "compaction_prompt",
 )
 _PERSONA_OVERRIDE_INPUT_SCHEMA = cast(
@@ -119,8 +116,8 @@ _PERSONA_OVERRIDE_INPUT_SCHEMA = cast(
         },
         "additionalProperties": False,
         "description": (
-            "Canonical mutable PersonaSpec fields only. Stable identity and generated metadata "
-            "fields such as id, spec_version, and spec_digest are not overrideable."
+            "Implementation-only PersonaSpec fields only. Contract-owned fields, stable "
+            "identity, and generated metadata fields are not overrideable."
         ),
     },
 )
@@ -168,8 +165,9 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
                 "id": {"type": "string", "description": "Persona id in registry"},
                 "overrides": {
                     "description": (
-                        "Field overrides applied to the resolved spec. Canonical admission "
-                        f"requires capabilities and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
+                        "Implementation-only field overrides applied to the resolved spec: "
+                        "prompt, model, model_params, and compaction_prompt. Contract, "
+                        "derived, registry metadata, legacy, and unknown fields are rejected."
                     ),
                     **_PERSONA_OVERRIDE_INPUT_SCHEMA,
                 },
@@ -187,7 +185,7 @@ LARVA_MCP_TOOLS: list[MCPToolDefinition] = [
     {
         "name": "larva_register",
         "description": (
-            "Register a PersonaSpec in the global registry. "
+            "Register a PersonaSpec in the local larva registry. "
             f"{_CAPABILITIES_REQUIRED_CLAUSE} and {_FORBIDDEN_LEGACY_VOCABULARY_CLAUSE}."
         ),
         "input_schema": {

@@ -4,15 +4,17 @@
 normalizes, registers, resolves, updates, exports, and projects persona specs.
 
 > Status: this document describes the implemented registry-local variants
-> surface. Assembly/component public surfaces have been removed.
+> public surface and the target contract/variant registry storage model.
+> Assembly/component public surfaces have been removed.
 
-The canonical PersonaSpec contract authority is `../opifex`. larva consumes that
+The canonical PersonaSpec contract authority is opifex. larva consumes that
 contract; it does not redefine it.
 
 ## What larva is for
 
-Use larva when you want a stable authority for agent persona definitions instead
-of ad hoc prompt files scattered across tools and repos.
+Use larva when you want a stable local registry/admission/projection authority
+for registered agent persona instances instead of ad hoc prompt files scattered
+across tools and repos.
 
 - Validate PersonaSpec JSON before it reaches runtime
 - Store canonical personas in a local registry under `~/.larva/`
@@ -79,28 +81,32 @@ Key rules:
 ### Registry-local variants
 
 Variants are local registry metadata, not PersonaSpec fields. They let one base
-persona id have multiple stored configurations while agent-facing list/resolve
-surfaces keep the base id stable.
+persona id have multiple implementation variants while agent-facing list/resolve
+surfaces keep the base id stable and the persona contract shared.
 
 ```text
 ~/.larva/
   registry/
     code-reviewer/
       manifest.json          # {"active": "default"}
+      contract.json          # id, description, capabilities, can_spawn, spec_version
       variants/
-        default.json         # PersonaSpec with id == "code-reviewer"
-        tacit.json           # PersonaSpec with id == "code-reviewer"
+        default.json         # prompt, model, model_params, compaction_prompt
+        tacit.json           # prompt, model, model_params, compaction_prompt
 ```
 
 Important behavior:
 
 - `larva list` shows base persona ids, not variant metadata
-- `larva resolve code-reviewer` returns the active variant as a canonical PersonaSpec
+- `larva resolve code-reviewer` materializes the active variant as a canonical PersonaSpec
 - `larva resolve code-reviewer --variant tacit` returns a specific variant
 - `variant` is passed as an operation parameter or registry envelope metadata;
   it is never accepted inside a PersonaSpec object
 - `manifest.json` stores only the active pointer (`{"active": "default"}`);
   missing or corrupt manifests fail closed instead of being auto-created
+- `contract.json` owns persona identity, description, capability intent,
+  `can_spawn`, and `spec_version`; variant files own prompt/model execution
+  fields only
 - assembly/component inputs are removed; register full canonical PersonaSpecs directly
 
 ## Interfaces
@@ -157,6 +163,13 @@ larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
 ```
 
+Update rules: without `--variant`, contract-only patches update the shared
+persona contract and implementation-only patches update the active variant. With
+`--variant`, only `prompt`, `model`, `model_params`, and `compaction_prompt` are
+patchable. `description`, `capabilities`, and `can_spawn` are contract patches;
+`id`, `spec_version`, and `spec_digest` are never patchable. Mixed-scope patches
+are rejected.
+
 ### Python API
 
 ```python
@@ -165,6 +178,13 @@ from larva.shell.python_api import (
     register,
     resolve,
     update,
+    update_batch,
+    clone,
+    list,
+    delete,
+    clear,
+    export_all,
+    export_ids,
     variant_list,
     variant_activate,
     variant_delete,

@@ -1,6 +1,7 @@
 # larva -- Module Architecture
 
-Status: implemented architecture for the registry-local variants cutover.
+Status: implemented public architecture plus target registry storage contract for
+the registry-local variants cutover.
 ## Design Boundary
 
 `larva` is a downstream admission, registry, and projection handler for
@@ -48,13 +49,17 @@ Variants are registry metadata, not PersonaSpec fields.
 ```text
 ~/.larva/registry/<id>/
   manifest.json          # {"active": "default"}
+  contract.json          # id, description, capabilities, can_spawn, spec_version
   variants/<variant>.json
 ```
 
 `manifest.json` stores only the active variant name. The base persona id comes
 from the directory name, and variant names come from scanning `variants/*.json`.
-Every variant file contains a canonical PersonaSpec whose `id` equals the base
-persona id.
+`contract.json` stores the shared persona contract fields. Each variant file
+stores implementation fields only: `prompt`, `model`, optional `model_params`,
+and optional `compaction_prompt`. A variant file is not a canonical PersonaSpec;
+public resolve/export paths materialize `contract.json` plus the selected variant
+into a flat canonical PersonaSpec and recompute `spec_digest`.
 
 ## Variant Vocabulary
 
@@ -63,6 +68,8 @@ persona id.
   PersonaSpec field.
 - `active` means the variant named by `manifest.json` and used by default
   resolve/list/export/OpenCode projection behavior.
+- `contract` means the shared persona identity, description, capability intent,
+  spawn boundary, and schema version for all variants under the base id.
 - `larva_list` and canonical exports expose base personas only; variant metadata
   is available through variant-specific registry operations.
 
@@ -72,13 +79,15 @@ persona id.
 - Registry files are shell-boundary state and are untrusted until loaded,
   normalized, and validated.
 - `manifest.json` is the only correctness source for the active variant.
+- `contract.json` is the only local source for contract-owned fields.
 - `index.json` is not used in this design; list/resolve behavior derives from
-  `manifest.json` plus the `variants/*.json` directory scan.
-- Missing, malformed, or stale `manifest.json` state fails closed with
-  `REGISTRY_CORRUPT`; registry loaders must not auto-invent a manifest or
-  derive an active variant from filenames.
-- Public registry operations must reject mismatched `spec.id`, invalid variant
-  names, active-variant deletion, and last-variant deletion.
+  `manifest.json`, `contract.json`, and the `variants/*.json` directory scan.
+- Missing, malformed, or field-ownership-violating registry state fails closed
+  with `REGISTRY_CORRUPT`; registry loaders must not auto-invent files or derive
+  an active variant from filenames.
+- Public registry operations must reject mismatched `spec.id`, existing contract
+  redefinition during variant registration, invalid variant names,
+  mixed-scope patches, active-variant deletion, and last-variant deletion.
 
 ## Interface Boundaries
 
@@ -125,8 +134,10 @@ MCP/tool-result context.
   temperature, and permission refreshes use selected-id `resolve`, so export-all
   output is not runtime semantic authority.
 - [Proven] Plugin cache state is last-known-good performance state keyed by
-  Larva base id, with same-id in-flight resolve deduplication, debug-gated stale
-  fallback warnings, and fail-closed behavior when no prior prompt exists.
+  Larva base id, with same-id in-flight resolve deduplication, debug-gated
+  previous-cached-prompt fallback warnings, and fail-closed behavior when no
+  prior prompt exists. This cache is runtime performance state, not registry
+  storage state, and it never repairs registry files.
 - [Proven] Hot updates are bounded to prompt, `model_params.temperature`,
   tool-policy rules, `capabilities`, and `can_spawn`; added/deleted base ids and
   model/provider startup fields require OpenCode restart.
@@ -135,7 +146,7 @@ MCP/tool-result context.
   `[larva:<id>]` placeholders.
 
 The hardening contract for this path is that caching is a performance detail,
-not a semantic authority. A stale or missing cache must trigger selected-id
+not a semantic authority. A missing or expired cache must trigger selected-id
 re-resolve; placeholder leakage to the model is a failure; no previous prompt
 means fail closed. Adding or deleting persona ids remains startup-bound because
 it changes OpenCode's agent list.
@@ -157,6 +168,6 @@ Callers register complete canonical PersonaSpec JSON directly.
 - `capabilities` is the only tool-access declaration surface in PersonaSpec.
 - Runtime approval semantics do not belong in PersonaSpec.
 - `variant` and `_registry` are registry-local metadata and must never enter canonical PersonaSpec.
-- Active variant resolution returns bare canonical PersonaSpec JSON.
-- Active variant changes must update resolved `spec_digest` whenever canonical content changes.
+- Active variant resolution returns bare materialized canonical PersonaSpec JSON.
+- Active variant changes must update resolved `spec_digest` whenever materialized canonical content changes.
 - Canonical persona authority remains separate from runtime and gateway layers.

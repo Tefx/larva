@@ -34,6 +34,36 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 WebResult: TypeAlias = Result[T, JSONResponse]
 
+_HTTP_404_ERROR_CODES = frozenset({"PERSONA_NOT_FOUND", "VARIANT_NOT_FOUND"})
+_HTTP_409_ERROR_CODES = frozenset({
+    "ACTIVE_VARIANT_DELETE_FORBIDDEN",
+    "LAST_VARIANT_DELETE_FORBIDDEN",
+})
+_HTTP_500_ERROR_CODES = frozenset({
+    "INTERNAL",
+    "REGISTRY_INDEX_READ_FAILED",
+    "REGISTRY_SPEC_READ_FAILED",
+    "REGISTRY_WRITE_FAILED",
+    "REGISTRY_UPDATE_FAILED",
+    "REGISTRY_DELETE_FAILED",
+    "REGISTRY_CORRUPT",
+})
+
+
+# @shell_orchestration: HTTP status projection is REST transport boundary glue.
+# @invar:allow shell_result: pure HTTP status projection helper returns int for JSONResponse
+def _http_status_for_error_code(code: object) -> int:
+    """Return REST status for a structured Larva error code."""
+    if code in _HTTP_404_ERROR_CODES:
+        return 404
+    if code in _HTTP_409_ERROR_CODES:
+        return 409
+    if code in _HTTP_500_ERROR_CODES:
+        return 500
+    return 400
+
+
+
 def _web_api() -> WebResult[Any]:
     """Return the web module exposing monkeypatchable REST facade call sites."""
     from larva.shell import web
@@ -41,14 +71,30 @@ def _web_api() -> WebResult[Any]:
     return Success(web)
 
 def _api_error_response(e: LarvaApiError) -> WebResult[JSONResponse]:
-    return Success(JSONResponse(status_code=400, content={"error": e.error}))
+    return Success(
+        JSONResponse(
+            status_code=_http_status_for_error_code(e.error.get("code")),
+            content={"error": e.error},
+        )
+    )
 
 # @shell_orchestration: HTTP error-envelope projection is transport boundary glue.
 def _validation_error_response(report: ValidationReport) -> WebResult[JSONResponse]:
+    errors = report.get("errors", [])
+    message = "PersonaSpec validation failed"
+    if errors:
+        message = str(errors[0].get("message", message))
     return Success(
         JSONResponse(
             status_code=400,
-            content={"error": {"code": "PERSONA_INVALID", "errors": report["errors"]}},
+            content={
+                "error": {
+                    "code": "PERSONA_INVALID",
+                    "numeric_code": 101,
+                    "message": message,
+                    "details": {"report": report},
+                }
+            },
         )
     )
 
@@ -325,7 +371,7 @@ async def _api_variant_put(
                 content={
                     "error": {
                         "code": "PERSONA_ID_MISMATCH",
-                        "numeric_code": 113,
+                        "numeric_code": 122,
                         "message": "PUT variant spec id must match route id",
                         "details": {"field": "id", "expected": persona_id, "got": spec.get("id")},
                     }
@@ -407,8 +453,17 @@ def _register_persona_routes(app: FastAPI) -> WebResult[None]:
 
     async def assemble_removed() -> Any:
         """Explicit 404 tombstone for removed assembly endpoint to fail-closed."""
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Assemble endpoint removed")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": {
+                    "code": "INVALID_INPUT",
+                    "numeric_code": 1,
+                    "message": "Assemble endpoint removed",
+                    "details": {"path": "/api/personas/assemble"},
+                }
+            },
+        )
 
     app.add_api_route("/api/personas", list_personas, methods=["GET"])
     app.add_api_route("/api/personas", register_persona, methods=["POST"])

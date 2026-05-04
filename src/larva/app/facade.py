@@ -52,10 +52,15 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
     "ACTIVE_VARIANT_DELETE_FORBIDDEN": 120,
     "LAST_VARIANT_DELETE_FORBIDDEN": 121,
     "PERSONA_ID_MISMATCH": 122,
+    "BASE_CONTRACT_MISMATCH": 123,
+    "MIXED_SCOPE_PATCH": 124,
+    "FIELD_SCOPE_VIOLATION": 125,
 }
 
 
-_RESOLVE_FORBIDDEN_OVERRIDE_FIELDS = frozenset({"id", "tools", "side_effect_policy", "variables"})
+_RESOLVE_ALLOWED_OVERRIDE_FIELDS = frozenset(
+    {"prompt", "model", "model_params", "compaction_prompt"}
+)
 
 
 class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
@@ -121,7 +126,7 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
     ) -> Result[None, LarvaError]:
         if overrides is None:
             return Success(None)
-        forbidden_fields = sorted(set(overrides) & _RESOLVE_FORBIDDEN_OVERRIDE_FIELDS)
+        forbidden_fields = sorted(set(overrides) - _RESOLVE_ALLOWED_OVERRIDE_FIELDS)
         if not forbidden_fields:
             return Success(None)
         field = forbidden_fields[0]

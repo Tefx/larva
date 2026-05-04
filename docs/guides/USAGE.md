@@ -70,9 +70,13 @@ from larva.shell.python_api import (
     register,
     resolve,
     update,
+    update_batch,
+    clone,
     list,
     delete,
     clear,
+    export_all,
+    export_ids,
     variant_list,
     variant_activate,
     variant_delete,
@@ -165,7 +169,10 @@ Fetch a registered persona by id.
 
 - Without `variant`, resolve uses the active variant.
 - With `variant`, resolve returns that variant.
-- Runtime overrides apply after variant selection and trigger revalidation.
+- Runtime overrides apply after variant selection and before final validation and
+  digest computation. Allowed override fields are `prompt`, `model`,
+  `model_params`, and `compaction_prompt`; contract fields, derived fields,
+  registry metadata, legacy fields, and unknown fields are rejected.
 - Return value is a bare canonical PersonaSpec, never a registry envelope.
 
 ### 3.4 list
@@ -182,14 +189,31 @@ List base personas only.
 
 ### 3.5 update
 
-Patch fields in the active or a named variant.
+Patch either contract-owned fields or implementation-owned fields. Mixed-scope
+patches are rejected.
 
 ```json
 { "id": "code-reviewer", "variant": "tacit", "patches": { "model": "openai/gpt-5.5-pro" } }
 ```
 
-Without `variant`, update patches the active variant. Protected fields such as
-`id`, `spec_version`, and `spec_digest` are rejected.
+Without `variant`, an implementation-only patch updates the active variant and a
+contract-only patch updates the shared persona contract. With `variant`, only
+implementation-owned fields are accepted. Protected fields such as `id`,
+`spec_version`, and `spec_digest` are rejected.
+
+Patchable fields:
+
+| Scope | Patchable fields |
+|-------|------------------|
+| Contract, without `variant` | `description`, `capabilities`, `can_spawn` |
+| Active or named variant | `prompt`, `model`, `model_params`, `compaction_prompt` |
+| Never | `id`, `spec_version`, `spec_digest` |
+
+`larva_update_batch(where, patches, dry_run?)` uses the same ownership rules as
+`update` without a named variant: `where` matches active materialized
+PersonaSpecs, contract-only patches update the shared contract for matched base
+personas, implementation-only patches update matched active variants, and mixed
+patches are rejected for the whole batch.
 
 ### 3.6 variant operations
 
@@ -222,18 +246,24 @@ are not PersonaSpec fields.
 ```text
 ~/.larva/registry/<id>/
   manifest.json              # {"active": "default"}
+  contract.json              # id, description, capabilities, can_spawn, spec_version
   variants/
-    default.json             # canonical PersonaSpec, id == <id>
-    tacit.json               # canonical PersonaSpec, id == <id>
+    default.json             # prompt, model, model_params, compaction_prompt
+    tacit.json               # prompt, model, model_params, compaction_prompt
 ```
 
 Rules:
 
 - default resolve/list/export/OpenCode behavior uses the active variant
 - `larva_resolve(id, variant="name")` returns a specific variant as canonical PersonaSpec
-- `larva_register(spec, variant="name")` creates or replaces a named variant
+- `larva_register(spec, variant="name")` validates a complete PersonaSpec, stores
+  persona contract fields in `contract.json`, and creates or replaces the named
+  implementation variant
+- contract-owned fields are `id`, `description`, `capabilities`, `can_spawn`, and
+  `spec_version`; implementation-owned fields are `prompt`, `model`,
+  `model_params`, and `compaction_prompt`
 - active and last variants cannot be deleted through `variant_delete`
-- `index.json` is not used by the target variant registry; directory scan is the enumeration source
+- `index.json` is not used by the registry; directory scan is the enumeration source
 
 ---
 
@@ -260,11 +290,39 @@ Common codes:
 | `VARIANT_NOT_FOUND` | named variant not present |
 | `INVALID_VARIANT_NAME` | variant name is not lower-kebab slug or exceeds 64 characters |
 | `PERSONA_ID_MISMATCH` | `spec.id` does not match the target base persona id |
-| `REGISTRY_CORRUPT` | manifest is absent, malformed, or points at a missing variant |
+| `BASE_CONTRACT_MISMATCH` | a new variant attempts to redefine existing contract-owned fields |
+| `MIXED_SCOPE_PATCH` | an update patch mixes contract-owned and implementation-owned fields |
+| `FIELD_SCOPE_VIOLATION` | a field is patched or stored outside its owning scope |
+| `REGISTRY_CORRUPT` | manifest, contract, or selected variant state is absent, malformed, or violates ownership |
 | `ACTIVE_VARIANT_DELETE_FORBIDDEN` | attempted to delete active variant |
 | `LAST_VARIANT_DELETE_FORBIDDEN` | attempted to delete only remaining variant |
 | `PERSONA_INVALID` | validation failed after override/update |
 | `FORBIDDEN_FIELD` | legacy or unknown canonical field such as `tools` or `variant` |
+
+Negative CLI examples:
+
+```bash
+# invalid variant slug -> INVALID_VARIANT_NAME
+larva variant activate code-reviewer Bad_Name
+
+# contract field with explicit variant -> FIELD_SCOPE_VIOLATION
+larva update code-reviewer --variant tacit --set can_spawn=false
+
+# mixed contract and implementation fields -> MIXED_SCOPE_PATCH
+larva update code-reviewer --set can_spawn=false --set model=openai/gpt-5.5
+```
+
+Negative Web example:
+
+```http
+PUT /api/registry/personas/code-reviewer/variants/tacit
+Content-Type: application/json
+
+{"id":"code-reviewer-tacit","description":"...","prompt":"...","model":"...","capabilities":{},"spec_version":"0.1.0"}
+```
+
+returns `400` with `PERSONA_ID_MISMATCH` because the route base id and
+`spec.id` differ.
 
 ---
 
@@ -275,15 +333,19 @@ Common codes:
   registry/
     <id>/
       manifest.json              # {"active": "default"}
+      contract.json              # persona-level contract fields
       variants/
-        <variant>.json           # canonical PersonaSpec, spec.id == <id>
+        <variant>.json           # variant implementation fields
 ```
 
 `manifest.json` is the only correctness source for active variant selection.
-Variant lists are read from `variants/*.json`. Variant names match
+`contract.json` is the only local source for identity, description, capability
+intent, spawn boundary, and schema version. Variant lists are read from
+`variants/*.json`. Variant names match
 `^[a-z0-9]+(-[a-z0-9]+)*$`, are at most 64 characters, and the v1 registry
 returns the complete variant list without pagination. Corrupt or missing
-manifests fail closed with `REGISTRY_CORRUPT`; larva does not auto-repair them.
+manifests, contracts, or selected variant files fail closed with
+`REGISTRY_CORRUPT`; larva does not auto-repair them.
 
 ---
 
@@ -303,10 +365,13 @@ manifests fail closed with `REGISTRY_CORRUPT`; larva does not auto-repair them.
 ```text
 1. Build a complete PersonaSpec with the same base id
 2. larva_validate(spec) -> check valid=true
-3. larva_register(spec, variant="tacit") -> create/replace named variant
+3. larva_register(spec, variant="tacit") -> split into shared contract plus named implementation variant
 4. larva_variant_list(id) -> confirm it exists
 5. larva_variant_activate(id, "tacit") -> make it active when explicitly desired
 ```
+
+The source filename may include the variant name, but `spec.id` inside the file
+must remain the base persona id.
 
 ### Workflow C: Load for agent execution
 
@@ -329,9 +394,10 @@ not separate OpenCode agents.
 
 The plugin replaces the selected `[larva:<id>]` placeholder at OpenCode's
 system-prompt transform layer. The hardening contract is selected-id re-resolve
-on runtime cache miss/staleness, no raw placeholder leakage, and fail-closed
-behavior when no prompt can be resolved. Adding or deleting a persona id changes
-the OpenCode agent list and requires restarting `larva opencode`.
+on runtime cache miss or expiry, no raw placeholder leakage, and fail-closed
+behavior when no prompt can be resolved. Runtime cache fallback is not registry
+storage state and never repairs registry files. Adding or deleting a persona id
+changes the OpenCode agent list and requires restarting `larva opencode`.
 
 ---
 
@@ -342,8 +408,12 @@ the OpenCode agent list and requires restarting `larva opencode`.
 - **No assembly/components.** Register complete PersonaSpec JSON directly.
 - **Ids are global and flat.** Ids must be kebab-case.
 - **Variants are registry metadata.** `variant` is rejected inside PersonaSpec.
+- **Contract fields are shared.** `capabilities` and `can_spawn` belong to the
+  persona contract, not to an individual variant.
 - **spec_version is schema identity, not persona revisioning.**
 - **spec_digest is always recomputed.** Active variant switches must change resolved digest when canonical content changes.
-- **Override revalidation is mandatory.** Invalid overrides produce `PERSONA_INVALID`.
+- **Override revalidation is mandatory.** Forbidden override fields produce
+  `FORBIDDEN_OVERRIDE_FIELD`; allowed override values that make the materialized
+  spec invalid produce `PERSONA_INVALID`.
 - **Active and last variants are protected.** Use `variant_activate` before deleting a former active variant; delete the base persona to remove the last variant.
 - **`clear` requires confirmation.** The token `"CLEAR REGISTRY"` must match exactly.

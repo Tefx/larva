@@ -1,12 +1,14 @@
 # larva User Guide
 
-This guide explains how to use larva as the local authority for PersonaSpec
-validation, registry storage, and registry-local variant routing.
+This guide explains how to use larva as the local admission, registry, and
+projection layer for canonical PersonaSpec validation, storage, and
+registry-local variant routing. The canonical PersonaSpec contract is owned by
+opifex.
 
 ## 1. What larva does
 
-larva is a local authority for `PersonaSpec`, a flat JSON format used to define
-LLM agent personas.
+larva is the local registry/admission layer for `PersonaSpec`, a flat JSON
+format used to define LLM agent personas.
 
 larva can:
 
@@ -48,13 +50,15 @@ larva stores state under `~/.larva/`.
   registry/
     <persona-id>/
       manifest.json
+      contract.json
       variants/
         default.json
         tacit.json
 ```
 
-- `registry/` holds registered canonical persona specs and registry-local variant metadata.
-- Each variant file is a full canonical PersonaSpec whose `id` equals `<persona-id>`.
+- `registry/` holds persona contract files, variant implementation files, and registry-local variant metadata.
+- `contract.json` owns persona-level fields: `id`, `description`, `capabilities`, optional `can_spawn`, and `spec_version`.
+- Each variant file owns implementation fields only: `prompt`, `model`, optional `model_params`, and optional `compaction_prompt`.
 - `manifest.json` stores only the active variant pointer, for example `{"active": "default"}`.
 - Variant names are registry-local metadata and are never PersonaSpec fields.
 
@@ -107,6 +111,9 @@ larva resolve code-reviewer --json
 larva export --id code-reviewer --json
 ```
 
+When registering a named variant, the input filename may include the variant
+name, but the PersonaSpec inside must still use the base persona id.
+
 ## 7. Validation
 
 ```bash
@@ -130,6 +137,10 @@ Register a named variant:
 ```bash
 larva register code-reviewer-tacit.json --variant tacit
 ```
+
+The filename may include the variant name, but the PersonaSpec inside must still
+contain `"id": "code-reviewer"`; `variant` is passed only as an operation
+parameter.
 
 Resolve active variant:
 
@@ -157,7 +168,8 @@ Use clone when you want a separate base persona id:
 larva clone code-reviewer code-reviewer-exp
 ```
 
-Use variants when you want several configurations behind one base id.
+Use variants when you want several prompt/model implementations behind one base
+persona contract.
 
 Patch the active variant:
 
@@ -165,11 +177,28 @@ Patch the active variant:
 larva update code-reviewer --set model=openai/gpt-5.5
 ```
 
+Patch the shared persona contract:
+
+```bash
+larva update code-reviewer --set can_spawn=false
+```
+
 Patch a named variant:
 
 ```bash
 larva update code-reviewer --variant tacit --set model=openai/gpt-5.5-pro
 ```
+
+Update rules:
+
+| Situation | Allowed patch fields |
+|-----------|----------------------|
+| No `--variant`, contract patch | `description`, `capabilities`, `can_spawn` |
+| Active or named variant patch | `prompt`, `model`, `model_params`, `compaction_prompt` |
+| Never patchable | `id`, `spec_version`, `spec_digest` |
+
+Mixed contract/variant patches are rejected. Contract fields with an explicit
+`--variant` are rejected.
 
 ## 10. Listing, deleting, clearing, and exporting
 
@@ -216,15 +245,19 @@ Export does not include registry metadata.
 ## 11. Working with registry-local variants
 
 Variants replace name-based persona proliferation when the business role stays
-the same but the preferred prompt/model/capability configuration changes.
+the same but the preferred prompt/model implementation changes.
 
 Rules:
 
-- every variant is a complete canonical PersonaSpec
-- every variant for `code-reviewer` must have `"id": "code-reviewer"`
+- `contract.json` is the single local source for identity, description,
+  capability intent, spawn boundary, and schema version
+- every variant stores only implementation fields; variants do not redefine
+  `id`, `description`, `capabilities`, `can_spawn`, or `spec_version`
 - variant names are lower-kebab slugs matching `^[a-z0-9]+(-[a-z0-9]+)*$`
   and at most 64 characters
 - `variant` is registry metadata and must not appear inside PersonaSpec JSON
+- `larva resolve` materializes `contract.json` plus the selected variant into a
+  complete canonical PersonaSpec
 - `larva list`, `larva export`, and OpenCode projection use active variants only
 - deleting the active variant and deleting the last variant are rejected
 
@@ -242,11 +275,19 @@ larva delete code-reviewer-tacit
 
 ```python
 from larva.shell.python_api import (
+    clear,
+    clone,
+    delete,
+    export_all,
+    export_ids,
+    list,
     register,
     resolve,
     update,
+    update_batch,
     validate,
     variant_activate,
+    variant_delete,
     variant_list,
 )
 
@@ -348,7 +389,8 @@ Runtime refresh behavior:
 - each selected request resolves the chosen base id with `larva resolve <id> --json`
 - cache entries are last-known-good performance data, keyed by base id, and remember prompt, optional temperature, optional `spec_digest`, derived permissions, and timestamp
 - same-id concurrent resolves share one in-flight request
-- if resolve fails and a previous good prompt exists, the stale prompt is used with a debug warning; without a previous good prompt, the plugin fails closed instead of leaking `[larva:<id>]`
+- if resolve fails and a previous good prompt exists, that previous cached prompt is used with a debug warning; without a previous good prompt, the plugin fails closed instead of leaking `[larva:<id>]`
+- this runtime cache fallback is not registry storage state and never repairs registry files
 - prompts are watermarked with both `<larva-persona id="..." />` and an instruction to identify as the named persona loaded from larva
 
 Environment knobs:
@@ -376,8 +418,8 @@ Your id is missing or not kebab-case.
 
 ### `INVALID_SPEC_VERSION`
 
-You supplied a non-v1 schema version. In current larva, `spec_version` must be
-`"0.1.0"` if present.
+You supplied an unsupported `spec_version`. In current larva, `spec_version`
+must be `"0.1.0"` if present.
 
 ### `PERSONA_NOT_FOUND`
 
@@ -400,11 +442,26 @@ base id.
 Variant names must be lower-kebab slugs up to 64 characters, for example
 `default` or `tacit-review`.
 
+### `BASE_CONTRACT_MISMATCH`
+
+You tried to register a new variant with contract-owned fields that differ from
+the existing base persona contract. Keep `id`, `description`, `capabilities`,
+`can_spawn`, and `spec_version` aligned with the registered persona contract, or
+create a separate persona id.
+
+### `MIXED_SCOPE_PATCH` / `FIELD_SCOPE_VIOLATION`
+
+Your update mixed contract-owned fields with variant implementation fields, or
+tried to update a contract-owned field while selecting a specific variant. Run a
+contract-only update without `--variant`, or update only implementation fields
+for the active/named variant.
+
 ### `REGISTRY_CORRUPT`
 
-The registry manifest is absent, malformed, or points at a missing variant.
-Inspect `~/.larva/registry/<id>/manifest.json` and verify that the `active`
-variant file exists under `variants/`.
+The registry manifest, contract, or selected variant file is absent, malformed,
+violates field ownership, or materializes to an invalid PersonaSpec. Inspect
+`~/.larva/registry/<id>/manifest.json`, `contract.json`, and the selected file
+under `variants/`.
 
 ### `ACTIVE_VARIANT_DELETE_FORBIDDEN`
 
@@ -421,11 +478,13 @@ a key inside PersonaSpec JSON.
 
 ## 16. Design notes worth remembering
 
-- larva is an authority for persona definitions, not a runtime
+- larva is the local registry/admission/projection authority for registered
+  persona instances, not the canonical PersonaSpec contract authority or runtime
 - canonical output is flat and self-contained
 - `spec_version` describes schema compatibility, not release cadence
 - `spec_digest` tracks canonical content changes, including active variant switches
-- registry-local variants are named files plus an active pointer
+- registry-local variants are implementation files plus a shared persona contract
+  and active pointer
 - `variant` and `_registry` are not PersonaSpec fields
 - no hidden mutable state is applied to personas between calls except explicit registry operations
 
