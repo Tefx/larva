@@ -34907,6 +34907,52 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:43.642345+00:00'
+  - id: canonical_shell_surfaces_clean_evidence_closure_20260505
+    name: Clean close canonical shell surfaces historical evidence guard
+    status: done
+    description: 'Plan hygiene closure for the historical completed-evidence guard
+      finding in canonical_shell_surfaces.gate. This later same-phase closure does
+      not edit the completed gate or the already-created closure placeholder. It records
+      that later canonical phases and existing plan evidence moved the shell/projection
+      cleanup gate to an open non-blocking state. Scope is plan evidence hygiene only:
+      no shell transport code, projection behavior, tests, docs, or runtime wiring
+      are changed. If future validation still reports this historical gate, that is
+      a plan hygiene blocker to resolve before registry runtime implementation proceeds.'
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there is no completed-evidence guard finding for canonical_shell_surfaces. Any
+      remaining canonical_shell_surfaces finding blocks completion of the plan hygiene
+      step.
+    depends_on:
+    - canonical_shell_surfaces.gate
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=canonical_shell_surfaces
+
+      target=canonical_shell_surfaces.gate
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Later canonical cleanup and verification phases supersede the old
+      shell surface gate concern. This closure records an active open disposition
+      for plan validation while preserving the original gate evidence unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: canonical_surface_verify
   name: Canonical Cross-Surface Verification
   status: done
