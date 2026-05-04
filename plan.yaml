@@ -68893,7 +68893,7 @@ phases:
     agent: spec-verifier
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
-  status: pending
+  status: in_progress
   gate: '`vectl_validate --check-refs` reports zero completed-evidence guard ERRORs
     and zero missing-ref WARNs, or any remaining warning is explicitly documented
     as non-actionable by a gate reviewer with evidence.'
@@ -68902,7 +68902,7 @@ phases:
   steps:
   - id: plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
     name: Close historical completed-evidence guard errors
-    status: pending
+    status: claimed
     description: 'Resolve historical completed-evidence guard validation errors reported
       by `vectl_validate --check-refs` without directly editing `plan.yaml`.
 
@@ -68991,6 +68991,8 @@ phases:
     refs:
     - AGENTS.md
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-05-04T19:45:35.857222+00:00'
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
     status: pending
