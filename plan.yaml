@@ -69622,7 +69622,7 @@ phases:
       \ Risk: none"
   - id: variant-runtime-final-review
     name: Final contract and plan gate review
-    status: pending
+    status: claimed
     description: 'Gate-review the completed work against the design and public contract
       without implementing code. Acceptance criteria: every preceding step has durable
       evidence; the fresh contract/spec conformance review passed; no public surface
@@ -69672,6 +69672,8 @@ phases:
     depends_on:
     - variant-runtime-contract-spec-review
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-04T20:27:34.407502+00:00'
   - id: variant-runtime-contract-spec-review
     name: Fresh contract/spec conformance review
     status: done
