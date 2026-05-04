@@ -68578,6 +68578,11 @@ phases:
       must include exact test files, command lines, failing output snippets proving
       the intended missing behavior, and confirmation no product behavior was implemented
       in this step.
+    evidence_template: 'Evidence must include: files changed; authoritative refs read
+      including opifex canonical inputs and AGENTS.md; red-first test files and command
+      lines; failing output snippets proving missing storage/lifecycle/update/public-surface
+      behavior; confirmation no product behavior implemented; any existing-green criteria
+      with exact existing test refs; residual gaps: none for PASS or exact blockers.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -68587,6 +68592,7 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
+    - AGENTS.md
     agent: python-executor
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
