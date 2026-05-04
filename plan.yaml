@@ -68725,7 +68725,6 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
-    - ../opifex/conformance/case_matrix/larva/*
     depends_on:
     - variant-runtime-opencode-projection
     agent: integration-verifier
