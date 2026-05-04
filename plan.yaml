@@ -68541,3 +68541,11 @@ phases:
       Open Problems: none
 
       Residual Risk: none'
+- id: registry-local-variant-storage-runtime-completion
+  name: Registry-local Variant Storage/Runtime Completion
+  status: pending
+  gate: Registry split storage, variant lifecycle/update ownership, public-surface
+    parity, OpenCode projection semantics, full guard, and fresh review are proven
+    against the documented registry-local variant contract.
+  depends_on:
+  - non_opencode_red_cleanup_20260503
