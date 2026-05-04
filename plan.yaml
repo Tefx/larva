@@ -69523,7 +69523,7 @@ phases:
       \nResidual gaps: none\nOpen Problems: none\nResidual Risk: none"
   - id: variant-runtime-full-integration-gate
     name: Run full cross-surface verification and invar guard
-    status: claimed
+    status: done
     description: 'As an independent verifier, prove the implemented registry-local
       variant runtime contract end to end after implementation and surface work. Acceptance
       criteria: targeted storage/lifecycle/update tests pass; cross-surface CLI/MCP/Python/Web
@@ -69565,6 +69565,61 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-04T20:16:15.624991+00:00'
+    done_at: '2026-05-04T20:24:00.416732+00:00'
+    evidence: "SUCCESS from integration-verifier task `ses_20b5d7c7dffe64nKqT7nR1fXH9`\
+      \ after planner-guided resume.\n\nHistorical pre-fix red proof accepted from\
+      \ completed vectl step `variant-runtime-red-contract-tests`:\n- Red files: `tests/shell/test_variant_runtime_contract_red.py`,\
+      \ `tests/app/test_facade/test_variant_facade_red.py`\n- Pre-fix red command:\
+      \ `uv run pytest tests/shell/test_variant_runtime_contract_red.py tests/app/test_facade/test_variant_facade_red.py`\n\
+      - Expected-red snippets: `contract.json must be created`; materialization got\
+      \ `REGISTRY_SPEC_READ_FAILED`; ownership violation expected `REGISTRY_CORRUPT`;\
+      \ existing-base mismatch returned Success; mixed patch returned Success; field\
+      \ scope violation returned Success.\n- Completed-step confirmation: no product\
+      \ behavior implemented, only tests; Open Problems none; Residual Risk none.\n\
+      \nTemporary artifact cleanup:\n- Before: `git status --short` showed `?? verify_surfaces.py`\n\
+      - Action: deleted untracked temporary verification artifact `verify_surfaces.py`\n\
+      - After: `git status --short` showed only tracked modifications/additions:\n\
+      ```text\n M contrib/opencode-plugin/larva.ts\n M src/larva/app/facade.py\n M\
+      \ src/larva/shell/registry.py\n M src/larva/shell/registry_extra_ops.py\n M\
+      \ src/larva/shell/registry_types.py\n M tests/app/test_facade/test_update.py\n\
+      AM tests/app/test_facade/test_variant_facade_red.py\n M tests/shell/test_registry.py\n\
+      A  tests/shell/test_variant_runtime_contract_red.py\n```\nNo untracked temporary\
+      \ verification artifact remains.\n\nTargeted variant/parity/OpenCode tests:\n\
+      - Command: `uv run pytest tests/app/test_facade/test_variant_facade_red.py tests/shell/test_variant_runtime_contract_red.py\
+      \ tests/shell/test_variant_projection_smoke.py tests/core/test_variants.py tests/shell/test_web.py\
+      \ tests/shell/test_mcp.py tests/shell/test_python_api.py tests/shell/test_cli.py\
+      \ tests/shell/test_opencode_plugin_contract.py tests/shell/test_opencode_cli.py`\n\
+      - Output: `166 passed in 2.36s`\n\nFull repo tests:\n- Command: `uv run pytest`\n\
+      - Output: `548 passed in 6.01s`\n\nChanged-file Invar guard:\n- Command/tool:\
+      \ `invar_guard changed=true`\n- Output summary: passed; files_checked 4; errors\
+      \ 0; warnings 1; infos 0; doctest passed; crosshair/property skipped because\
+      \ no core files found.\n\nFull-scan Invar guard:\n- Command: `uvx invar-tools\
+      \ guard --all`\n- Output summary: passed; files_checked 40; errors 0; warnings\
+      \ 4; infos 3; doctest passed; crosshair verified; property_tests passed 8/8\
+      \ functions, 800 examples.\n\nBuild:\n- Command: `uv build`\n- Output: successfully\
+      \ built `dist/larva-0.4.9.tar.gz` and `dist/larva-0.4.9-py3-none-any.whl`.\n\
+      \nRuntime/public surface repros, all under isolated HOME:\n- CLI: register default,\
+      \ register `tacit`, resolve active/default, resolve explicit variant, update\
+      \ variant, update_batch contract description, variant list, activate, delete;\
+      \ errors verified for spec containing variant (`PERSONA_INVALID` 101), mixed\
+      \ patch (`MIXED_SCOPE_PATCH` 124), invalid variant (`INVALID_VARIANT_NAME` 118),\
+      \ delete last variant (`LAST_VARIANT_DELETE_FORBIDDEN` 121).\n- Python API:\
+      \ `variant_list` -> active `tacit`; resolve -> updated contract/model/prompt;\
+      \ explicit variant contract patch -> `FIELD_SCOPE_VIOLATION` numeric_code 125.\n\
+      - MCP: `variant_list`, `resolve_tacit`, `update_tacit`, invalid variant -> `INVALID_VARIANT_NAME`\
+      \ 118, `update_batch_dry_run` -> matched 1 updated 0.\n- Web REST: tombstone\
+      \ `POST /api/personas/assemble` -> 404 `INVALID_INPUT` 1; variant list/detail/PUT/activate/delete;\
+      \ PUT mismatched id -> 400 `PERSONA_ID_MISMATCH` 122; update_batch -> updated\
+      \ 1; active resolve -> WEB PUT prompt/model.\n- OpenCode: projection observed\
+      \ for `variant-gate`; plugin/cache checks true for base-id cache key, fail-closed\
+      \ no placeholder leak, inflight dedup, no runtime `export --all`, no `larva_active`,\
+      \ selected-id resolve.\n\nFresh self-review:\n- Accepted historical red proof\
+      \ cited.\n- Targeted and full test suites non-empty and green.\n- Runtime surfaces\
+      \ exercised through CLI dispatch, Python API, MCP handlers, FastAPI Web routes,\
+      \ and OpenCode seam.\n- Failure paths exercised.\n- Changed-file and full-scan\
+      \ Invar guards passed.\n- Build passed.\n- `verify_surfaces.py` removed and\
+      \ no untracked verification artifact remains.\n\nOpen Problems: none\nResidual\
+      \ Risk: none"
   - id: variant-runtime-final-review
     name: Final contract and plan gate review
     status: pending
