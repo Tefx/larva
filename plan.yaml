@@ -68543,12 +68543,15 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: pending
+  status: locked
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
+  context: Implementation phase for registry-local variant storage/runtime completion.
+    It now depends on `plan_validation_debt_20260504` so historical vectl validation
+    debt is cleaned before new implementation/gate evidence is produced.
   depends_on:
-  - non_opencode_red_cleanup_20260503
+  - plan_validation_debt_20260504
   steps:
   - id: variant-runtime-red-contract-tests
     name: Add red-first storage, lifecycle, and update ownership tests
