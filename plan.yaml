@@ -69674,7 +69674,7 @@ phases:
     agent: gate-reviewer
   - id: variant-runtime-contract-spec-review
     name: Fresh contract/spec conformance review
-    status: claimed
+    status: done
     description: 'Independently verify that the completed registry-local variant runtime
       implementation conforms to the authoritative design/docs and does not silently
       narrow runtime obligations. This is a read-only review step after full integration
@@ -69751,6 +69751,107 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-05-04T20:24:20.536311+00:00'
+    done_at: '2026-05-04T20:27:17.213740+00:00'
+    evidence: 'PASS from spec-verifier task `ses_20b561215ffeAIAZYVi5H7vQoK`.
+
+
+      Reviewed refs:
+
+      - `AGENTS.md` Invar/architecture lines 1-17 and Shared Contract Discipline lines
+      110-144
+
+      - `design/registry-local-variants-and-assembly-removal.md` storage layout, invariants,
+      public behavior, MCP/CLI/Python/Web surfaces, migration, verification checklist
+
+      - `docs/reference/INTERFACES.md` PersonaSpec Contract, MCP/CLI/Python/Web Runtime
+      Surface, Registry-local Variant Contract, Invariants
+
+      - `docs/reference/ARCHITECTURE.md` Registry-local Variant Model, Interface Boundaries/OpenCode,
+      Removed Subsystem, Invariants
+
+      - `docs/guides/USAGE.md` register, resolve, update, variant operations, file
+      layout, OpenCode workflow, constraints
+
+      - `docs/guides/USER_GUIDE.md` directory layout, variants, Python API, MCP, Web/OpenCode,
+      troubleshooting, design notes
+
+      - `README.md` Registry-local variants, MCP, CLI, Python API, OpenCode plugin,
+      Architecture
+
+      - Implementation: `src/larva/app/facade.py`, `src/larva/app/facade_registry_ops.py`,
+      `src/larva/shell/mcp_contract.py`, `src/larva/shell/web_routes.py`, `src/larva/shell/python_api.py`,
+      `src/larva/shell/registry.py`, `src/larva/shell/registry_extra_ops.py`, `contrib/opencode-plugin/larva.ts`
+
+      - Canonical authority: `../opifex/design/final-canonical-contract.md`, `../opifex/contracts/persona_spec.schema.json`,
+      `../opifex/conformance/shared_surfaces.yaml`
+
+
+      Evidence inspected:
+
+      - `variant-runtime-red-contract-tests`: red proof for split storage, materialization,
+      ownership failure, contract mismatch, `MIXED_SCOPE_PATCH`, `FIELD_SCOPE_VIOLATION`.
+
+      - `variant-runtime-storage-implementation`: `75 passed`, full repo `548 passed`,
+      changed-file invar guard passed.
+
+      - `variant-runtime-public-surface-parity`: CLI/Python/MCP/Web structured error/runtime
+      proof, Web tombstone proof, `REGISTRY_INDEX_READ_FAILED` mapping proof.
+
+      - `variant-runtime-opencode-projection`: OpenCode Bun smoke for selected-id
+      re-resolve, active variant prompt/digest update, stale cache marking, fail-closed
+      no-placeholder behavior.
+
+      - `variant-runtime-full-integration-gate`: targeted tests `166 passed`, full
+      repo `548 passed`, full-scan guard passed, `uv build` passed, runtime surface
+      repros.
+
+
+      Fresh verification:
+
+      - Command: `uv run pytest tests/app/test_facade/test_variant_facade_red.py tests/shell/test_variant_runtime_contract_red.py
+      tests/shell/test_web.py tests/shell/test_mcp.py tests/shell/test_python_api.py
+      tests/shell/test_opencode_plugin_contract.py tests/shell/test_opencode_cli.py`
+
+      - Output: `60 passed in 0.31s`
+
+      - Fresh storage/materialization smoke via `uv run python`: confirmed `manifest.json
+      -> {"active": "default"}`, `contract.json -> id/description/capabilities/spec_version
+      only`, `variants/default.json` and `variants/tacit.json -> prompt/model only`;
+      active and named variants materialize with distinct recomputed `spec_digest`;
+      ownership-corrupt `contract.json` returned `REGISTRY_CORRUPT`.
+
+      - Fresh resolve override smoke: allowed only `prompt`, `model`, `model_params`,
+      `compaction_prompt`; rejected `description`, `capabilities`, `can_spawn`, `spec_version`,
+      `spec_digest`, `variant`, `_registry`, `active`, `manifest`, `tools`, `side_effect_policy`,
+      unknown field with `FORBIDDEN_OVERRIDE_FIELD`.
+
+
+      Checklist results:
+
+      - Storage layout exactly `manifest.json` + `contract.json` + `variants/<variant>.json`
+      with documented field ownership: PASS.
+
+      - Register/resolve/list/export/variant detail materialize canonical PersonaSpec
+      with recomputed `spec_digest` and no registry metadata: PASS.
+
+      - Update/update_batch ownership errors match `MIXED_SCOPE_PATCH`, `FIELD_SCOPE_VIOLATION`,
+      protected-field rules; no old-layout migration framework: PASS.
+
+      - Resolve overrides allow only `prompt`, `model`, `model_params`, `compaction_prompt`;
+      reject contract/derived/metadata/legacy/unknown fields: PASS.
+
+      - MCP/CLI/Python/Web REST shapes, numeric codes, HTTP statuses, Web tombstone,
+      local-registry wording align with `INTERFACES.md`: PASS.
+
+      - OpenCode selected-id re-resolve/cache evidence preserves performance-only
+      cache semantics and no placeholder leakage: PASS.
+
+
+      Required fixes if FAIL: none
+
+      Open Problems: none
+
+      Residual Risk: none'
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: done
