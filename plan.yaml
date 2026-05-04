@@ -69185,7 +69185,7 @@ phases:
       Residual Risk: none'
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
-    status: pending
+    status: claimed
     description: 'Implement the storage/runtime behavior required by the red tests
       without introducing migration, repair, registry/factory/event-bus/state-machine
       frameworks, or local reinterpretations of shared contracts. Acceptance criteria:
@@ -69227,6 +69227,8 @@ phases:
     depends_on:
     - variant-runtime-red-contract-tests
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-04T19:58:13.971256+00:00'
   - id: variant-runtime-public-surface-parity
     name: Align MCP CLI Python and Web REST parity
     status: pending
