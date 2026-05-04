@@ -69332,7 +69332,7 @@ phases:
       Agent confirmed `vectl_complete_called: false`.'
   - id: variant-runtime-public-surface-parity
     name: Align MCP CLI Python and Web REST parity
-    status: pending
+    status: claimed
     description: 'Implement and/or repair deployability-bearing public surfaces so
       MCP, CLI, Python API, and Web REST match docs/reference/INTERFACES.md for register/resolve/update/update_batch/variant
       operations and errors. Acceptance criteria: resolve(overrides=...) accepts exactly
@@ -69375,6 +69375,8 @@ phases:
     depends_on:
     - variant-runtime-storage-implementation
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-04T20:05:35.416717+00:00'
   - id: variant-runtime-opencode-projection
     name: Preserve OpenCode selected-id re-resolve and cache semantics
     status: pending
