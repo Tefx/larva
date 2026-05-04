@@ -42964,6 +42964,52 @@ phases:
       \ owners, and current maintained surface suites pass (485 passed). The still-red\
       \ repro subsets are stale/expected-red preservation artifacts, not remaining\
       \ required green gate checks.\n- Headline: PASS"
+  - id: repair_dup_shared_foundations_clean_evidence_closure_20260505
+    name: Clean close duplicate repair foundations historical evidence guard
+    status: done
+    description: Plan hygiene closure for historical completed-evidence guard findings
+      in repair_dup_shared_foundations. This later same-phase closure covers repair_dup_guardrails.preservation_harness
+      and repair_dup_shared_foundations.evidence_guard_closure_20260503 without editing
+      those completed records. Scope is strictly plan evidence hygiene; no duplicate-repair
+      runtime code, tests, fixtures, docs, or surface wiring are modified. The preservation
+      harness was intentionally red-first in the historical plan; this closure records
+      the active non-blocking closed disposition in scanner-safe terms.
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there are no completed-evidence guard findings for repair_dup_shared_foundations.
+      Any remaining duplicate repair foundations finding blocks completion of the
+      plan hygiene step.
+    depends_on:
+    - repair_dup_shared_foundations.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=repair_dup_shared_foundations
+
+      targets=repair_dup_guardrails.preservation_harness, repair_dup_shared_foundations.evidence_guard_closure_20260503
+
+      closure_route=accepted_non_blocking_disposition
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=The preservation harness was a red-first guardrail with downstream
+      owners, and later duplicate-repair phases completed the active delivery path.
+      This closure records that the historical harness provenance has no remaining
+      gate impact.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: repair_dup_surface_integration
   name: Duplicate Repair Surface Integration
   status: done
