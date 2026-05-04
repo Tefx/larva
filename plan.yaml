@@ -69355,7 +69355,7 @@ phases:
   steps:
   - id: plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
     name: Close historical completed-evidence guard errors
-    status: claimed
+    status: done
     description: 'Resolve historical completed-evidence guard validation errors reported
       by `vectl_validate --check-refs` without directly editing `plan.yaml`.
 
@@ -69446,6 +69446,78 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-05-04T19:45:35.857222+00:00'
+    done_at: '2026-05-04T19:48:47.402210+00:00'
+    evidence: 'Before:
+
+      - Initial completed-evidence guard finding count: 15.
+
+      - Affected phase/step IDs: shell_registry.evidence_guard_closure_20260503; core_normalize.core-normalize-verify;
+      core_normalize.core-normalize-implement; core_normalize.evidence_guard_closure_20260503;
+      core_validate.core-validate-verify; core_validate.evidence_guard_closure_20260503;
+      canonical_shell_surfaces.gate; repair_dup_guardrails.preservation_harness; repair_dup_shared_foundations.evidence_guard_closure_20260503;
+      canonical_cutover_prep.gate; canonical_cutover_final.gate; hard_cut_finish_20260416_core.evidence_guard_closure_20260503;
+      hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503; merge_debt_20260425_review.audit;
+      merge_debt_20260425_review.conditional-fix.
+
+
+      Actions:
+
+      - Added same-phase green closure step shell_registry.shell_registry_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step core_normalize_exec.core_normalize_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step core_validate_exec.core_validate_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step canonical_shell_surfaces.canonical_shell_surfaces_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step repair_dup_shared_foundations.repair_dup_shared_foundations_clean_evidence_closure_20260505:
+      accepted non-blocking disposition for historical red-first harness plus green
+      closure state.
+
+      - Added same-phase green closure step canonical_cutover_prep.canonical_cutover_prep_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step canonical_cutover_final.canonical_cutover_final_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step hard_cut_finish_20260416_core.hard_cut_finish_core_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step hard_cut_finish_20260416_finalization.hard_cut_finish_finalization_clean_evidence_closure_20260505:
+      green closure.
+
+      - Added same-phase green closure step merge_debt_20260425_review.merge_debt_review_clean_evidence_closure_20260505:
+      green closure.
+
+
+      Safety:
+
+      - Plan mutations used vectl_mutate only.
+
+      - No direct plan.yaml edit.
+
+      - No product-code changes.
+
+
+      After:
+
+      - Command/tool: vectl_validate(check_refs=true).
+
+      - Output summary: 0 completed-evidence guard findings; 0 total validation findings
+      of severity above warning; 60 ref warnings remain.
+
+      - Exact tail line: 0 error(s), 60 warning(s).
+
+
+      Residual gaps: none.
+
+      Open Problems: none.
+
+      Residual Risk: none.'
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
     status: pending
