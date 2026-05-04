@@ -68996,7 +68996,7 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: pending
+  status: in_progress
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
@@ -69008,7 +69008,7 @@ phases:
   steps:
   - id: variant-runtime-red-contract-tests
     name: Add red-first storage, lifecycle, and update ownership tests
-    status: pending
+    status: claimed
     description: 'Create focused failing tests before implementation for the documented
       registry-local variant runtime contract. Acceptance criteria: tests prove register
       splits canonical PersonaSpec input into contract-owned and variant implementation
@@ -69047,6 +69047,8 @@ phases:
     - ../opifex/conformance/shared_surfaces.yaml
     - AGENTS.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-04T19:54:58.943420+00:00'
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
     status: pending
