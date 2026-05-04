@@ -69520,7 +69520,7 @@ phases:
       Residual Risk: none.'
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
-    status: pending
+    status: claimed
     description: 'Resolve historical missing-ref warnings reported by `vectl_validate
       --check-refs` without directly editing `plan.yaml`.
 
@@ -69598,6 +69598,8 @@ phases:
     depends_on:
     - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
     agent: vectl-planner
+    claimed_by: vectl-planner
+    claimed_at: '2026-05-04T19:49:45.409614+00:00'
   - id: plan_validation_debt_20260504.gate-clean-vectl-validation
     name: Gate clean vectl validation
     status: pending
