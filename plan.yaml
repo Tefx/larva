@@ -69185,7 +69185,7 @@ phases:
       Residual Risk: none'
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
-    status: claimed
+    status: done
     description: 'Implement the storage/runtime behavior required by the red tests
       without introducing migration, repair, registry/factory/event-bus/state-machine
       frameworks, or local reinterpretations of shared contracts. Acceptance criteria:
@@ -69229,6 +69229,107 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-04T19:58:13.971256+00:00'
+    done_at: '2026-05-04T20:05:18.305460+00:00'
+    evidence: 'SUCCESS from python-senior task `ses_20b6dfb5effe6ICul6tU8s0E5O`.
+
+
+      Authoritative refs read:
+
+      - `../opifex/design/final-canonical-contract.md`
+
+      - `../opifex/contracts/persona_spec.schema.json`
+
+      - `../opifex/conformance/shared_surfaces.yaml`
+
+      - `../opifex/conformance/case_matrix/larva/*`
+
+      - `AGENTS.md`
+
+      - `design/registry-local-variants-and-assembly-removal.md`
+
+      - `docs/reference/INTERFACES.md`
+
+      - `docs/reference/ARCHITECTURE.md`
+
+
+      Files changed:
+
+      - `src/larva/app/facade.py`
+
+      - `src/larva/shell/registry.py`
+
+      - `src/larva/shell/registry_extra_ops.py`
+
+      - `src/larva/shell/registry_types.py`
+
+      - `tests/shell/test_registry.py`
+
+      - `tests/app/test_facade/test_update.py`
+
+      - `tests/app/test_facade/test_variant_facade_red.py`
+
+      - `tests/shell/test_variant_runtime_contract_red.py`
+
+
+      Before/after behavior summary:
+
+      - Before: variant files stored full PersonaSpecs; no `contract.json` split;
+      materialization did not combine contract + variant implementation; register/update
+      did not fully enforce contract/implementation ownership.
+
+      - After: registry writes `<id>/manifest.json`, `<id>/contract.json`, and `<id>/variants/<variant>.json`;
+      variant enumeration scans `variants/*.json`; resolve/list/export materialize
+      `contract.json + selected variant` and recompute `spec_digest`; existing-base
+      register rejects contract mismatch with `BASE_CONTRACT_MISMATCH`; update rejects
+      mixed contract/implementation patches with `MIXED_SCOPE_PATCH`, contract patches
+      with explicit variant via `FIELD_SCOPE_VIOLATION`, and protected fields via
+      existing `FORBIDDEN_PATCH_FIELD`; active variant updates target the manifest-selected
+      variant; malformed/missing/ownership-violating storage fails closed.
+
+
+      Storage layout / ownership checklist:
+
+      - `manifest.json`: only `{"active": "<variant>"}`.
+
+      - `contract.json`: only `id`, `description`, `capabilities`, optional `can_spawn`,
+      `spec_version`.
+
+      - `variants/<variant>.json`: only `prompt`, `model`, optional `model_params`,
+      optional `compaction_prompt`.
+
+      - `spec_digest`: not stored in contract/variant files; recomputed on materialization.
+
+      - Registry metadata never enters PersonaSpec.
+
+      - Activation changes only `manifest.json` via existing atomic write helper.
+
+      - Delete still protects active and last variants.
+
+      - No migration, repair, registry/factory/event-bus/state-machine framework,
+      compatibility alias, or local shared-contract reinterpretation added.
+
+
+      Validation commands and outputs:
+
+      - `uv run pytest tests/shell/test_variant_runtime_contract_red.py tests/app/test_facade/test_variant_facade_red.py
+      tests/shell/test_registry.py tests/app/test_facade/test_update.py tests/app/test_facade/test_update_batch.py`
+      -> `75 passed`
+
+      - `uv run pytest` -> `548 passed`
+
+      - `invar_guard(changed=True)` -> passed; no errors; no core files changed; doctest
+      passed; one non-blocking file-size warning for `registry.py`.
+
+
+      Residual gaps: none
+
+      Open Problems: none
+
+      Residual Risk: none
+
+      Blockers: none
+
+      Agent confirmed `vectl_complete_called: false`.'
   - id: variant-runtime-public-surface-parity
     name: Align MCP CLI Python and Web REST parity
     status: pending
