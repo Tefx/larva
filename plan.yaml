@@ -68893,12 +68893,13 @@ phases:
       zero missing-ref WARNs, unless a reviewer explicitly records an accepted non-actionable
       warning with owner and rationale. Also run `vectl_status` to confirm the next
       implementation phase is unblocked only after this gate completes.'
-    evidence_template: 'Commands: paste `vectl_validate --check-refs` and `vectl_status`
-      outputs.
-
-      Assessment: PASS/FAIL with exact remaining blockers if any.
-
-      Residual risk: must be `none` for PASS.'
+    evidence_template: 'Evidence must include: (1) final vectl_validate --check-refs
+      command and output; (2) zero ERRORs and zero missing-ref WARNs, or exact accepted
+      non-actionable warning rationale/owner; (3) vectl_status output showing registry-local-variant-storage-runtime-completion
+      becomes next/unblocked only after cleanup; (4) confirmation no product code
+      changed; (5) Open Problems: none and Residual Risk: none for PASS.'
+    refs:
+    - AGENTS.md
     depends_on:
     - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
     - plan_validation_debt_20260504.repair-historical-missing-refs
