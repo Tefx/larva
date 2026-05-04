@@ -47865,7 +47865,7 @@ phases:
       \ and documentation, not in acceptance paths"
 - id: canonical_cutover_final
   name: Canonical Hard-Cut Final Verification
-  status: in_progress
+  status: done
   gate: Docs, examples, scans, tests, and guard all prove canonical alignment
   depends_on:
   - canonical_cutover_impl
@@ -48235,7 +48235,7 @@ phases:
   - id: canonical_cutover_final.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical cutover
       final
-    status: claimed
+    status: skipped
     description: 'Resolve validate error for completed step canonical_cutover_final.gate,
       whose evidence contains failed tests. This is a proof-closure/evidence task,
       not product-code implementation. Produce accepted same-phase closure evidence
@@ -48261,6 +48261,7 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:34.723761+00:00'
+    skipped_reason: absorbed
   - id: canonical_cutover_final_clean_evidence_closure_20260505
     name: Clean close canonical cutover final historical evidence guard
     status: done
