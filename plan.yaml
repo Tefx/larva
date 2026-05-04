@@ -68803,6 +68803,68 @@ phases:
     depends_on:
     - variant-runtime-full-integration-gate
     agent: gate-reviewer
+  - id: variant-runtime-contract-spec-review
+    name: Fresh contract/spec conformance review
+    status: pending
+    description: 'Independently verify that the completed registry-local variant runtime
+      implementation conforms to the authoritative design/docs and does not silently
+      narrow runtime obligations. This is a read-only review step after full integration
+      evidence exists; do not implement product code here.
+
+
+      Fresh-context objective: compare implementation, public surfaces, and evidence
+      against the documented contract so final gate is not relying only on the implementer/integration
+      verifier.
+
+
+      Review refs and required checks:
+
+      - Storage layout exactly matches `manifest.json` + `contract.json` + `variants/<variant>.json`
+      with documented field ownership.
+
+      - Register/resolve/list/export/variant detail materialize canonical PersonaSpec
+      with recomputed `spec_digest` and no registry metadata.
+
+      - Update/update_batch ownership errors match `MIXED_SCOPE_PATCH`, `FIELD_SCOPE_VIOLATION`,
+      protected-field rules, and no old-layout migration framework is introduced.
+
+      - Resolve overrides allow only `prompt`, `model`, `model_params`, `compaction_prompt`
+      and reject contract/derived/metadata/legacy/unknown fields.
+
+      - MCP/CLI/Python/Web REST public shapes, numeric codes, HTTP statuses, Web tombstone,
+      and local-registry authority wording remain aligned with `docs/reference/INTERFACES.md`.
+
+      - OpenCode selected-id re-resolve/cache evidence preserves performance-only
+      cache semantics and no placeholder leakage.
+
+
+      Blocker behavior: FAIL if docs and code diverge, evidence is missing/stale,
+      public runtime surfaces are only module-tested when a black-box/runtime proof
+      is feasible, or any Open Problems/Residual Risk are not `none`. If docs need
+      updates, reject with exact file/section changes required; do not edit docs in
+      this review step.'
+    verification: Perform a fresh spec/documentation conformance review using the
+      listed refs and the evidence from prior steps. PASS only if every required surface
+      is supported by fail-able evidence and implementation/docs are aligned. No code
+      edits in this step.
+    evidence_template: 'Reviewed refs: list exact files/sections inspected.
+
+      Evidence inspected: list prior step IDs and command outputs relied on.
+
+      Checklist: storage layout; materialization/digest; update ownership; resolve
+      overrides; MCP/CLI/Python/Web parity; Web error/status; OpenCode cache/projection;
+      no migration framework; opifex authority boundary.
+
+      Decision: PASS/FAIL.
+
+      Required fixes if FAIL: exact step/file/section.
+
+      Open Problems: none.
+
+      Residual Risk: none.'
+    depends_on:
+    - variant-runtime-full-integration-gate
+    agent: spec-verifier
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: pending
