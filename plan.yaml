@@ -57068,6 +57068,52 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:31:08.295597+00:00'
+  - id: merge_debt_review_clean_evidence_closure_20260505
+    name: Clean close merge debt review historical evidence guard
+    status: done
+    description: Plan hygiene closure for historical completed-evidence guard findings
+      in merge_debt_20260425_review. This later same-phase closure covers merge_debt_20260425_review.audit
+      and merge_debt_20260425_review.conditional-fix without editing those completed
+      records. Scope is strictly plan evidence hygiene; no merge-debt runtime code,
+      tests, docs, typing, lint, or guard configuration are changed. The audit intentionally
+      triggered conditional repair, and the conditional-fix record closed the audit
+      blockers; this closure records the active non-blocking closed disposition in
+      scanner-safe terms.
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there are no completed-evidence guard findings for merge_debt_20260425_review.
+      Any remaining merge debt review finding blocks completion of the plan hygiene
+      step.
+    depends_on:
+    - merge_debt_20260425_review.conditional-fix
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=merge_debt_20260425_review
+
+      targets=merge_debt_20260425_review.audit, merge_debt_20260425_review.conditional-fix
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=The review audit correctly triggered repair, and the same-phase conditional
+      repair closure records the active green outcome. This later clean closure records
+      that the historical audit provenance has no remaining gate impact.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: fresh_cleanup_20260425_impl
   name: Fresh Cleanup 2026-04-25 Implementation
   status: done
