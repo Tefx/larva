@@ -49828,6 +49828,50 @@ phases:
       \ gate is OPEN. Historical failed gate finding B1 is no longer reproduced; current\
       \ non-green checks do not intersect the core boundary/gate criteria.\n- Headline:\
       \ PASS"
+  - id: hard_cut_finish_core_clean_evidence_closure_20260505
+    name: Clean close final hard-cut core historical evidence guard
+    status: done
+    description: 'Plan hygiene closure for historical completed-evidence guard findings
+      in hard_cut_finish_20260416_core. This later same-phase closure covers hard_cut_finish_20260416_core.evidence_guard_closure_20260503
+      without editing completed historical records. Scope is plan evidence hygiene
+      only: no core boundary code, tests, docs, canonical contract, or runtime wiring
+      are changed. The current disposition is that existing later core-boundary evidence
+      and subsequent phases close the historical final hard-cut core blocker provenance.'
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there is no completed-evidence guard finding for hard_cut_finish_20260416_core.
+      Any remaining final hard-cut core finding blocks completion of the plan hygiene
+      step.
+    depends_on:
+    - hard_cut_finish_20260416_core.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=hard_cut_finish_20260416_core
+
+      target=hard_cut_finish_20260416_core.evidence_guard_closure_20260503
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Existing core closure evidence and later phases establish an open
+      core boundary state. This later clean closure records the active disposition
+      while preserving historical records unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: hard_cut_finish_20260416_surfaces
   name: Final Hard-Cut Surface Boundary Alignment
   status: done
