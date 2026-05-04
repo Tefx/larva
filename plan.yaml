@@ -68832,3 +68832,45 @@ phases:
 
       Residual risk: must be `none` for PASS.'
     agent: gate-reviewer
+  - id: plan_validation_debt_20260504.repair-historical-missing-refs
+    name: Repair historical missing refs
+    status: pending
+    description: 'Resolve historical missing-ref warnings reported by `vectl_validate
+      --check-refs` without directly editing `plan.yaml`.
+
+
+      Known warning families:
+
+      - root doc refs that moved: `ARCHITECTURE.md`, `INTERFACES.md`, `USAGE.md`,
+      `USER_GUIDE.md` should usually become `docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`,
+      `docs/guides/USAGE.md`, `docs/guides/USER_GUIDE.md` when semantically appropriate.
+
+      - removed assembly/component refs such as `src/larva/core/assemble.py`, `src/larva/shell/components.py`,
+      `tests/core/test_assemble.py`, `tests/shell/test_components.py`, and component-related
+      docs/tests must be removed, replaced with current tombstone/removal docs, or
+      explicitly marked non-actionable only if supported by current design docs.
+
+      - ADR/migration/opifex refs must be checked against current repository layout
+      and canonical opifex paths before changing; do not invent local files.
+
+
+      Use vectl tools only (`vectl_mutate edit-step` refs/remove_refs/add_refs as
+      needed). Do not directly edit `plan.yaml`. Do not restore deleted code just
+      to satisfy stale refs. Treat each missing ref as stale plan metadata unless
+      current requirements prove the file should exist.'
+    verification: 'Run `vectl_validate --check-refs` before and after. Acceptance:
+      after this step, missing-ref WARN count is zero, or any remaining missing-ref
+      warning has a documented reviewer-approved reason and follow-up owner. Prefer
+      zero warnings.'
+    evidence_template: 'Before: paste missing-ref WARN count and grouped warning families.
+
+      Actions: list every ref rewrite/removal with old path -> new path or removal
+      rationale; confirm vectl tools only and no direct `plan.yaml` edit.
+
+      After: paste `vectl_validate --check-refs` output showing zero missing-ref WARNs,
+      or paste reviewer-approved residual warnings.
+
+      Residual risk: must be `none` for PASS unless explicitly reviewer-approved.'
+    depends_on:
+    - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
+    agent: gate-reviewer
