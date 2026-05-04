@@ -69523,7 +69523,7 @@ phases:
       \nResidual gaps: none\nOpen Problems: none\nResidual Risk: none"
   - id: variant-runtime-full-integration-gate
     name: Run full cross-surface verification and invar guard
-    status: pending
+    status: claimed
     description: 'As an independent verifier, prove the implemented registry-local
       variant runtime contract end to end after implementation and surface work. Acceptance
       criteria: targeted storage/lifecycle/update tests pass; cross-surface CLI/MCP/Python/Web
@@ -69563,6 +69563,8 @@ phases:
     depends_on:
     - variant-runtime-opencode-projection
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-04T20:16:15.624991+00:00'
   - id: variant-runtime-final-review
     name: Final contract and plan gate review
     status: pending
