@@ -68910,7 +68910,12 @@ phases:
       --check-refs` without directly editing `plan.yaml`.
 
 
-      Known warning families:
+      Fresh-context objective: make the missing-ref warning portion of `vectl_validate
+      --check-refs` clean, or reduce it to explicitly reviewer-approved non-actionable
+      residual warnings with owner/rationale.
+
+
+      Known warning families from the current baseline:
 
       - root doc refs that moved: `ARCHITECTURE.md`, `INTERFACES.md`, `USAGE.md`,
       `USER_GUIDE.md` should usually become `docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`,
@@ -68925,29 +68930,59 @@ phases:
       and canonical opifex paths before changing; do not invent local files.
 
 
-      Use vectl tools only (`vectl_mutate edit-step` refs/remove_refs/add_refs as
-      needed). Do not directly edit `plan.yaml`. Do not restore deleted code just
-      to satisfy stale refs. Treat each missing ref as stale plan metadata unless
-      current requirements prove the file should exist.'
+      Mechanical repair path:
+
+      1. Run `vectl_validate --check-refs` and capture the exact missing-ref WARN
+      list.
+
+      2. Group warnings by missing path and step family.
+
+      3. For moved docs, use `vectl_mutate edit-step` with `remove_refs`/`add_refs`
+      or full `refs` replacement to point to existing current docs.
+
+      4. For removed assembly/component files, prefer removing stale refs or replacing
+      them with current removal/tombstone design docs (`docs/reference/INTERFACES.md`,
+      `docs/reference/ARCHITECTURE.md`, `design/registry-local-variants-and-assembly-removal.md`)
+      only when semantically correct.
+
+      5. For opifex refs, verify current canonical paths before replacing; if unavailable,
+      record a reviewer-owned non-actionable residual only if the referenced step
+      is historical and not needed for current execution.
+
+      6. Do not restore deleted code just to satisfy stale refs. Do not direct-edit
+      `plan.yaml`.
+
+
+      Boundaries: this step repairs plan metadata only. It must not create migration/framework/product
+      work.'
     verification: 'Run `vectl_validate --check-refs` before and after. Acceptance:
-      after this step, missing-ref WARN count is zero, or any remaining missing-ref
-      warning has a documented reviewer-approved reason and follow-up owner. Prefer
-      zero warnings.'
-    evidence_template: 'Evidence must include: (1) baseline vectl_validate --check-refs
-      missing-ref WARN list/count; (2) every ref mutation grouped by stale ref family
-      and replacement/removal rationale; (3) confirmation no deleted product files
-      were restored just to satisfy stale refs; (4) post-action vectl_validate --check-refs
-      output proving zero missing-ref WARNs, or explicit reviewer-approved non-actionable
-      warnings with owner; (5) residual gaps: none for PASS.'
+      missing-ref WARN count is zero, or every remaining missing-ref warning is explicitly
+      reviewer-approved with owner, rationale, and why it does not affect current
+      execution. Prefer zero warnings.'
+    evidence_template: 'Before: paste missing-ref WARN count and grouped warning families.
+
+      Actions: list every ref rewrite/removal as old path -> new path or removal rationale;
+      include step IDs touched; confirm vectl tools only and no direct `plan.yaml`
+      edit.
+
+      After: paste `vectl_validate --check-refs` output showing zero missing-ref WARNs,
+      or paste reviewer-approved residual warnings.
+
+      Residual gaps: none unless explicitly reviewer-approved.
+
+      Open Problems: none.
+
+      Residual Risk: none unless explicitly reviewer-approved.'
     refs:
     - AGENTS.md
     - docs/reference/ARCHITECTURE.md
     - docs/reference/INTERFACES.md
     - docs/guides/USAGE.md
     - docs/guides/USER_GUIDE.md
+    - design/registry-local-variants-and-assembly-removal.md
     depends_on:
     - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
-    agent: gate-reviewer
+    agent: vectl-planner
   - id: plan_validation_debt_20260504.gate-clean-vectl-validation
     name: Gate clean vectl validation
     status: pending
