@@ -69008,7 +69008,7 @@ phases:
   steps:
   - id: variant-runtime-red-contract-tests
     name: Add red-first storage, lifecycle, and update ownership tests
-    status: claimed
+    status: done
     description: 'Create focused failing tests before implementation for the documented
       registry-local variant runtime contract. Acceptance criteria: tests prove register
       splits canonical PersonaSpec input into contract-owned and variant implementation
@@ -69049,6 +69049,140 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-04T19:54:58.943420+00:00'
+    done_at: '2026-05-04T19:57:55.500766+00:00'
+    evidence: 'STATUS: SUCCESS from python-executor task `ses_20b70ef43ffeT8hbbqDFVDB4Ud`.
+
+
+      Files changed:
+
+      - `tests/shell/test_variant_runtime_contract_red.py` (new)
+
+      - `tests/app/test_facade/test_variant_facade_red.py` (new)
+
+
+      Authoritative refs read:
+
+      - `../opifex/design/final-canonical-contract.md`
+
+      - `../opifex/contracts/persona_spec.schema.json`
+
+      - `../opifex/conformance/shared_surfaces.yaml`
+
+      - `../opifex/conformance/case_matrix/larva/*`
+
+      - `AGENTS.md`
+
+      - `design/registry-local-variants-and-assembly-removal.md`
+
+      - `docs/reference/INTERFACES.md`
+
+      - `docs/reference/ARCHITECTURE.md`
+
+
+      Red-first command:
+
+      - `uv run pytest tests/shell/test_variant_runtime_contract_red.py tests/app/test_facade/test_variant_facade_red.py`
+
+
+      Expected-red failing output snippets proving missing behavior:
+
+      1. Split canonical PersonaSpec input:
+
+      ```text
+
+      >       assert contract_path.exists(), "contract.json must be created"
+
+      E       AssertionError: contract.json must be created
+
+      ```
+
+      2. Materialize contract + selected variant with recomputed `spec_digest`:
+
+      ```text
+
+      >       assert isinstance(result, Success)
+
+      E       AssertionError: assert False
+
+      E        +  where False = isinstance(<Failure: {''code'': ''REGISTRY_SPEC_READ_FAILED'',
+      ''message'': ''spec file must include a non-empty spec_digest'', ...}>, Success)
+
+      ```
+
+      3. Ownership-violating manifest/contract/variant files fail closed:
+
+      ```text
+
+      >       assert result.failure()["code"] == "REGISTRY_CORRUPT"
+
+      E       AssertionError: assert ''REGISTRY_SPEC_READ_FAILED'' == ''REGISTRY_CORRUPT''
+
+      ```
+
+      4. Existing base registration with contract-field mismatch returns `BASE_CONTRACT_MISMATCH`:
+
+      ```text
+
+      >       assert isinstance(result, Failure)
+
+      E       AssertionError: assert False
+
+      E        +  where False = isinstance(<Success: {''id'': ''existing-base'', ''registered'':
+      True}>, Failure)
+
+      ```
+
+      5. Update enforces `MIXED_SCOPE_PATCH`:
+
+      ```text
+
+      >       assert isinstance(result, Failure)
+
+      E       AssertionError: assert False
+
+      E        +  where False = isinstance(<Success: {''id'': ''mixed-patch'', ''description'':
+      ''New'', ''prompt'': ''New'', ...}>, Failure)
+
+      ```
+
+      6. Update enforces `FIELD_SCOPE_VIOLATION`:
+
+      ```text
+
+      >       assert isinstance(result, Failure)
+
+      E       AssertionError: assert False
+
+      E        +  where False = isinstance(<Success: {''id'': ''scope-violation'',
+      ''description'': ''New'', ...}>, Failure)
+
+      ```
+
+
+      Existing-green criteria with exact refs:
+
+      - Replacing a non-active variant does not change active pointer: `tests/app/test_facade/test_variant_facade_red.py::test_replacing_non_active_variant_does_not_change_active_pointer`.
+
+      - New base registration writes contract + default/named variant and activates
+      it: `tests/app/test_facade/test_variant_facade_red.py::test_new_base_registration_writes_contract_and_activates`.
+
+      - Active and last variant deletion protected: `tests/shell/test_registry.py::TestRegistryVariantDelete::test_variant_delete_active_variant_rejected`
+      and `test_variant_delete_last_variant_rejected`.
+
+      - Never-patch `id`/`spec_version`/`spec_digest`: `tests/app/test_facade/test_variant_facade_red.py::test_update_enforces_never_patch_fields`.
+
+
+      No product behavior implemented:
+
+      - Confirmed by execution agent: no `src/larva` files altered; changes strictly
+      limited to tests.
+
+
+      Residual gaps: none
+
+      Open Problems: none
+
+      Residual Risk: none'
   - id: variant-runtime-storage-implementation
     name: Implement split storage materialization and lifecycle/update rules
     status: pending
