@@ -68549,3 +68549,222 @@ phases:
     against the documented registry-local variant contract.
   depends_on:
   - non_opencode_red_cleanup_20260503
+  steps:
+  - id: variant-runtime-red-contract-tests
+    name: Add red-first storage, lifecycle, and update ownership tests
+    status: pending
+    description: 'Create focused failing tests before implementation for the documented
+      registry-local variant runtime contract. Acceptance criteria: tests prove register
+      splits canonical PersonaSpec input into contract-owned and variant implementation
+      state; resolve/list/export/variant detail materialize contract + selected variant
+      with recomputed spec_digest and no registry metadata inside PersonaSpec; corrupt/missing/ownership-violating
+      manifest/contract/variant files fail closed with REGISTRY_CORRUPT or PERSONA_INVALID
+      as documented; new base registration writes contract + default/named variant
+      and activates it; existing base registration with contract-field mismatch returns
+      BASE_CONTRACT_MISMATCH; replacing a non-active variant does not change active
+      pointer; active and last variant deletion remain protected; update/update_batch
+      enforce contract-only, implementation-only, MIXED_SCOPE_PATCH, FIELD_SCOPE_VIOLATION,
+      and never-patch id/spec_version/spec_digest rules. Read ../opifex canonical
+      inputs before touching shared surfaces. Blocker behavior: if existing tests
+      already cover any criterion, cite exact tests and add only missing red proof;
+      if behavior is already green, mark that criterion as existing-green and create
+      the smallest missing regression, but do not weaken the contract or plan migration.'
+    verification: Run targeted tests for the touched registry/facade/update areas
+      and show expected-red failures for newly added assertions before implementation.
+      Also run invar_guard changed-file if core files were touched. Required evidence
+      must include exact test files, command lines, failing output snippets proving
+      the intended missing behavior, and confirmation no product behavior was implemented
+      in this step.
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - src/larva/app/facade.py
+    - src/larva/shell/registry.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    agent: python-executor
+  - id: variant-runtime-storage-implementation
+    name: Implement split storage materialization and lifecycle/update rules
+    status: pending
+    description: 'Implement the storage/runtime behavior required by the red tests
+      without introducing migration, repair, registry/factory/event-bus/state-machine
+      frameworks, or local reinterpretations of shared contracts. Acceptance criteria:
+      registry writes ~/.larva/registry/<id>/manifest.json, contract.json, and variants/<variant>.json
+      with exact field ownership; directory scan is the correctness source for variant
+      enumeration; materialization always combines contract.json with active or named
+      variant and recomputes spec_digest; registry metadata never enters PersonaSpec;
+      malformed/missing/ownership-violating storage fails closed; activation updates
+      only manifest via write-then-rename where applicable; register rejects existing-base
+      contract mismatch and spec-id route mismatch; replacing existing non-active
+      variant preserves active pointer; delete protects active and last variants;
+      update/update_batch split patch ownership exactly and reject mixed/protected/variant-contract
+      scope violations with documented error codes. Respect AGENTS.md: core changes
+      need @pre/@post and doctest before implementation; shell owns file I/O and returns
+      Result. Blocker behavior: if any required behavior needs a canonical contract
+      change in ../opifex, stop and report; if old-layout migration pressure appears,
+      do not implement it and document as out of scope.'
+    verification: Run the red tests from variant-runtime-red-contract-tests and relevant
+      existing registry/facade/update tests until green; run invar_guard changed-file.
+      If core files changed, show contracts/doctests and doctest coverage evidence.
+      Required evidence must include files changed, before/after behavior summary,
+      commands and outputs, and remaining gaps=none.
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - src/larva/app/facade.py
+    - src/larva/shell/registry.py
+    - src/larva/shell/python_api.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    depends_on:
+    - variant-runtime-red-contract-tests
+    agent: python-senior
+  - id: variant-runtime-public-surface-parity
+    name: Align MCP CLI Python and Web REST parity
+    status: pending
+    description: 'Implement and/or repair deployability-bearing public surfaces so
+      MCP, CLI, Python API, and Web REST match docs/reference/INTERFACES.md for register/resolve/update/update_batch/variant
+      operations and errors. Acceptance criteria: resolve(overrides=...) accepts exactly
+      prompt, model, model_params, compaction_prompt and rejects contract-owned, derived,
+      legacy, and unknown fields; Web POST /api/personas/assemble remains a structured
+      404 tombstone; numeric error codes and Web 500 mappings include documented variant/storage
+      codes including REGISTRY_INDEX_READ_FAILED; Python API exposes the full implemented
+      inventory; MCP register describes the local larva registry; PUT /api/registry/personas/{id}/variants/{variant}
+      accepts raw canonical PersonaSpec and applies id mismatch, contract mismatch,
+      split-storage, and active-pointer rules; Web error envelopes/status mapping
+      stay aligned; CLI --json and MCP/Python errors carry the same structured code/numeric_code/message/details.
+      Blocker behavior: if a surface cannot be exercised without a running service,
+      provide a black-box runtime smoke or exact blocked command and do not claim
+      parity from module-only tests.'
+    verification: Run cross-surface tests or black-box repros covering CLI, MCP contract/handler,
+      Python API, and Web REST for register/resolve/update/variant operations plus
+      negative error envelopes. Run invar_guard changed-file. Evidence must paste
+      representative outputs for each surface, including at least one Web error envelope
+      and one CLI --json/Python/MCP structured error.
+    refs:
+    - docs/reference/INTERFACES.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - src/larva/app/facade.py
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/mcp.py
+    - src/larva/shell/cli.py
+    - src/larva/shell/web_routes.py
+    - src/larva/shell/python_api.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    depends_on:
+    - variant-runtime-storage-implementation
+    agent: python-executor
+  - id: variant-runtime-opencode-projection
+    name: Preserve OpenCode selected-id re-resolve and cache semantics
+    status: pending
+    description: 'Verify and repair OpenCode projection/cache behavior against the
+      authority rules. Acceptance criteria: OpenCode startup projection lists one
+      agent entry per base persona id using active materialized export; selected-id
+      runtime refresh re-resolves the selected base id and observes active variant
+      changes; runtime cache is performance-only last-known-good state and never registry
+      storage or repair state; no [larva:<id>] placeholder leaks when no previous
+      prompt exists; fallback to previous prompt, if present, is debug-visible and
+      does not repair registry files; model/provider startup obligations remain explicit
+      and are not silently narrowed to module-only code. Blocker behavior: if the
+      relevant OpenCode files are not present or are out of scope for this repository,
+      record exact evidence and convert the criterion into a black-box/public-surface
+      repro rather than skipping deployability-bearing behavior.'
+    verification: Run focused OpenCode/plugin tests or smoke repros proving active
+      variant digest/prompt changes are picked up through selected-id resolve and
+      no placeholder leakage occurs on cache miss. Also run relevant export/resolve
+      CLI smoke tests and invar_guard changed-file for touched files. Evidence must
+      include commands, outputs, cache/fallback observations, and remaining gaps=none.
+    refs:
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - README.md
+    - contrib/opencode-plugin/README.md
+    - contrib/opencode-plugin/larva.ts
+    - src/larva/app/facade.py
+    - src/larva/shell/cli.py
+    depends_on:
+    - variant-runtime-public-surface-parity
+    agent: integration-verifier
+  - id: variant-runtime-full-integration-gate
+    name: Run full cross-surface verification and invar guard
+    status: pending
+    description: 'As an independent verifier, prove the implemented registry-local
+      variant runtime contract end to end after implementation and surface work. Acceptance
+      criteria: targeted storage/lifecycle/update tests pass; cross-surface CLI/MCP/Python/Web
+      parity tests pass; black-box/public-surface repros cover register, resolve,
+      update, update_batch, variant list/detail/put/activate/delete, error envelopes,
+      Web tombstone, and OpenCode projection/cache semantics where applicable; shared-surface
+      evidence includes red proof before fix, runtime/integration proof, full repo
+      tests, full-scan invar guard, and fresh self-review. Blocker behavior: any failing
+      command, missing runtime surface, open problem, or residual risk blocks PASS;
+      do not mark expected-red unless explicitly owned and non-blocking with evidence.'
+    verification: 'Run the full relevant test suite, changed-file invar_guard, and
+      authoritative full scan via uvx invar-tools guard --all or invar_guard full-scan
+      equivalent. Paste concise command outputs including full-scan status. Perform
+      and document a fresh self-review with Open Problems: none and Residual Risk:
+      none.'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - src/larva/app/facade.py
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/web_routes.py
+    - src/larva/shell/python_api.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    depends_on:
+    - variant-runtime-opencode-projection
+    agent: integration-verifier
+  - id: variant-runtime-final-review
+    name: Final contract and plan gate review
+    status: pending
+    description: 'Gate-review the completed work against the design and public contract
+      without implementing code. Acceptance criteria: every preceding step has durable
+      evidence; no public surface narrows runtime obligations into module-only checks;
+      storage layout and ownership match the documented target exactly; error codes/envelopes/status
+      mappings match INTERFACES.md; Web, CLI, MCP, Python, and OpenCode behavior are
+      supported by fail-able evidence; docs remain aligned or explicitly unchanged
+      because commit 1a5348d already fixed them; no migration framework or compatibility
+      alias was introduced; no open problems or residual risk remain. Blocker behavior:
+      if any evidence is missing, stale, or shows failure, reject with specific step
+      IDs and required remediation; do not PASS with Open Problems or Residual Risk
+      other than none.'
+    verification: 'Review vectl evidence and current diffs/tests only; optionally
+      rerun targeted commands if evidence is insufficient. PASS only with explicit
+      yes/no checklist and Open Problems: none, Residual Risk: none. On failure, use
+      vectl reject/defer guidance rather than editing plan.yaml.'
+    refs:
+    - design/registry-local-variants-and-assembly-removal.md
+    - docs/reference/INTERFACES.md
+    - docs/reference/ARCHITECTURE.md
+    - docs/guides/USAGE.md
+    - docs/guides/USER_GUIDE.md
+    - README.md
+    - src/larva/app/facade.py
+    - src/larva/shell/mcp_contract.py
+    - src/larva/shell/web_routes.py
+    - src/larva/shell/python_api.py
+    - ../opifex/design/final-canonical-contract.md
+    - ../opifex/contracts/persona_spec.schema.json
+    - ../opifex/conformance/shared_surfaces.yaml
+    - ../opifex/conformance/case_matrix/larva/*
+    depends_on:
+    - variant-runtime-full-integration-gate
+    agent: gate-reviewer
