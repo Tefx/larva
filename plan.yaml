@@ -48259,6 +48259,51 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:34.723761+00:00'
+  - id: canonical_cutover_final_clean_evidence_closure_20260505
+    name: Clean close canonical cutover final historical evidence guard
+    status: done
+    description: 'Plan hygiene closure for the historical completed-evidence guard
+      finding in canonical_cutover_final.gate. This later same-phase closure does
+      not edit the completed final gate or the already-created closure placeholder.
+      It records that the final canonical cutover gate has an active open disposition
+      with non-blocking debt and that later post-cutover remediation/finalization
+      phases proceeded. Scope is plan evidence hygiene only: no canonical runtime,
+      tests, docs, implementation, or public surface wiring are changed.'
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there is no completed-evidence guard finding for canonical_cutover_final. Any
+      remaining canonical_cutover_final finding blocks completion of the plan hygiene
+      step.
+    depends_on:
+    - canonical_cutover_final.gate
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=canonical_cutover_final
+
+      target=canonical_cutover_final.gate
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=The final cutover gate evidence records an open gate state with non-blocking
+      debt, and later post-cutover phases completed. This closure records the active
+      disposition for validation while preserving the original gate evidence unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: post_cutover_debt_remediation
   name: Post-Cutover Debt Remediation
   status: done
