@@ -68619,6 +68619,11 @@ phases:
       If core files changed, show contracts/doctests and doctest coverage evidence.
       Required evidence must include files changed, before/after behavior summary,
       commands and outputs, and remaining gaps=none.
+    evidence_template: 'Evidence must include: files changed; authoritative refs read
+      including design, opifex canonical inputs, and AGENTS.md; red tests rerun green
+      with output; changed-file invar_guard output; core @pre/@post/doctest evidence
+      if core code changed; explicit storage layout/ownership checklist; confirmation
+      no migration/repair/framework/alias added; residual gaps: none for PASS.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -68629,6 +68634,7 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
+    - AGENTS.md
     depends_on:
     - variant-runtime-red-contract-tests
     agent: python-senior
