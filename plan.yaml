@@ -69431,7 +69431,7 @@ phases:
       : true}\n```\n\nResidual gaps: none\nOpen Problems: none\nResidual Risk: none"
   - id: variant-runtime-opencode-projection
     name: Preserve OpenCode selected-id re-resolve and cache semantics
-    status: claimed
+    status: done
     description: 'Verify and repair OpenCode projection/cache behavior against the
       authority rules. Acceptance criteria: OpenCode startup projection lists one
       agent entry per base persona id using active materialized export; selected-id
@@ -69468,6 +69468,59 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-04T20:13:15.283841+00:00'
+    done_at: '2026-05-04T20:15:55.557071+00:00'
+    evidence: "SUCCESS from integration-verifier task `ses_20b604118ffe5lZRblF2tr0QTg`.\n\
+      \nFiles changed by this step:\n- `contrib/opencode-plugin/larva.ts`\n  - Added\
+      \ digest/stale watermark rendering: normal `<!-- larva-spec: reviewer@222222\
+      \ -->`, fallback `<!-- larva-spec: reviewer@222222 stale -->`.\n  - Fixed successful\
+      \ selected-id refresh so it is not mislabeled stale.\n\nPre-existing dirty files\
+      \ noted by agent before this edit and not modified by this step included `src/larva/app/facade.py`,\
+      \ registry files/tests, `verify_surfaces.py`, etc.\n\nOpenCode/plugin refs read:\n\
+      - `AGENTS.md`\n- `docs/reference/INTERFACES.md`\n- `docs/reference/ARCHITECTURE.md`\n\
+      - `README.md`\n- `contrib/opencode-plugin/README.md`\n- `contrib/opencode-plugin/larva.ts`\n\
+      - `src/larva/app/facade.py`\n- `src/larva/shell/cli.py`\n- Relevant tests: `tests/shell/test_opencode_plugin_contract.py`,\
+      \ `tests/shell/test_opencode_cli.py`, `tests/shell/test_variant_projection_smoke.py`,\
+      \ `tests/shell/test_variant_runtime_contract_red.py`\n\nFocused OpenCode/plugin\
+      \ tests:\n- Command: `uv run pytest tests/shell/test_opencode_plugin_contract.py\
+      \ tests/shell/test_opencode_cli.py -q`\n- Output: `23 passed in 0.10s`\n\nRuntime\
+      \ selected-id re-resolve / active variant change proof:\n- Bun smoke executed\
+      \ real `contrib/opencode-plugin/larva.ts` hooks with fake Larva CLI boundary.\n\
+      - Output:\n```json\n{\n  \"agentKeys\": [\"reviewer\"],\n  \"calls\": [\"export\
+      \ --all --json\", \"resolve reviewer --json\", \"resolve reviewer --json\",\
+      \ \"resolve missing --json\"],\n  \"selectedIdResolveCount\": 2,\n  \"refreshContainsTacit\"\
+      : true,\n  \"refreshHasNormalDigest\": true,\n  \"refreshNotStale\": true,\n\
+      \  \"fallbackContainsPrevious\": true,\n  \"fallbackStale\": true,\n  \"missNoPlaceholder\"\
+      : true,\n  \"missFailClosed\": true\n}\n```\n- Observed transformed prompt after\
+      \ active prompt/digest change:\n```text\npre TACIT active prompt\n\n<!-- larva-spec:\
+      \ reviewer@222222 -->\n<larva-persona id=\"reviewer\" />\nWhen asked \"who are\
+      \ you\" or \"what persona\", mention that you are the \"reviewer\" persona loaded\
+      \ from larva. post\n```\n\nCache miss / no-placeholder proof:\n```json\n{\"\
+      missNoPlaceholder\": true, \"missFailClosed\": true}\n```\nObserved transformed\
+      \ cache-miss prompt:\n```text\npre [larva prompt unavailable for missing; request\
+      \ blocked because no previous prompt is available] post\n```\nNo raw `[larva:missing]`\
+      \ placeholder leaked.\n\nLast-known-good fallback observation:\n- With `LARVA_OPENCODE_DEBUG=1`,\
+      \ stderr included:\n```text\n[larva-plugin] resolve failed for reviewer resolve\
+      \ failed\n[larva-plugin] using stale lastKnownGood prompt for reviewer\n```\n\
+      - Fallback transformed prompt included stale watermark:\n```text\npre TACIT\
+      \ active prompt\n\n<!-- larva-spec: reviewer@222222 stale -->\n<larva-persona\
+      \ id=\"reviewer\" />\nWhen asked \"who are you\" or \"what persona\", mention\
+      \ that you are the \"reviewer\" persona loaded from larva. post\n```\n\nExport/resolve\
+      \ CLI smoke output:\n- Registered default and `tacit` variants under isolated\
+      \ `HOME`, exported/resolved before and after activation.\n- Output excerpt:\n\
+      ```text\n{\"data\":{\"id\":\"variant-smoke\",\"registered\":true}}\n{\"data\"\
+      :{\"id\":\"variant-smoke\",\"registered\":true}}\n{\"data\":[{\"id\":\"variant-smoke\"\
+      ,...,\"prompt\":\"DEFAULT CLI prompt\",...,\"spec_digest\":\"sha256:b8cf...\"\
+      }]}\n{\"data\":{\"id\":\"variant-smoke\",...,\"prompt\":\"DEFAULT CLI prompt\"\
+      ,...}}\n{\"data\":{\"id\":\"variant-smoke\",\"active\":\"tacit\"}}\n{\"data\"\
+      :[{\"id\":\"variant-smoke\",...,\"prompt\":\"TACIT CLI prompt\",...,\"spec_digest\"\
+      :\"sha256:af39...\"}]}\n{\"data\":{\"id\":\"variant-smoke\",...,\"prompt\":\"\
+      TACIT CLI prompt\",...}}\n```\nThis proves `export --all` and `resolve` expose\
+      \ active materialized variants and digest changes after activation.\n\nChanged-file\
+      \ invar guard:\n- Tool/command: `invar_guard(path=/Users/tefx/Projects/larva,\
+      \ changed=true)`\n- Output:\n```json\n{\"status\": \"passed\", \"summary\":\
+      \ {\"files_checked\": 5, \"errors\": 0, \"warnings\": 1, \"infos\": 0}}\n```\n\
+      Warning was non-blocking pre-existing size warning for `src/larva/shell/registry.py`.\n\
+      \nResidual gaps: none\nOpen Problems: none\nResidual Risk: none"
   - id: variant-runtime-full-integration-gate
     name: Run full cross-surface verification and invar guard
     status: pending
