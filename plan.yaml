@@ -34121,7 +34121,7 @@ phases:
       \ngate_open_allowed: true"
 - id: canonical_shell_surfaces
   name: Canonical Shell and Projection Cleanup
-  status: in_progress
+  status: done
   depends_on:
   - canonical_core_admission
   steps:
@@ -34879,7 +34879,7 @@ phases:
       \ authoritative contract definitions"
   - id: canonical_shell_surfaces.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failure for canonical shell surfaces
-    status: claimed
+    status: skipped
     description: 'Resolve validate error for completed step canonical_shell_surfaces.gate,
       whose evidence contains gate_open_allowed=false, failed tests, and FAIL. This
       is a proof-closure/evidence task, not product-code implementation. Produce accepted
@@ -34907,6 +34907,7 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:20:43.642345+00:00'
+    skipped_reason: absorbed
   - id: canonical_shell_surfaces_clean_evidence_closure_20260505
     name: Clean close canonical shell surfaces historical evidence guard
     status: done
