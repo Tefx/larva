@@ -69332,7 +69332,7 @@ phases:
       Agent confirmed `vectl_complete_called: false`.'
   - id: variant-runtime-public-surface-parity
     name: Align MCP CLI Python and Web REST parity
-    status: claimed
+    status: done
     description: 'Implement and/or repair deployability-bearing public surfaces so
       MCP, CLI, Python API, and Web REST match docs/reference/INTERFACES.md for register/resolve/update/update_batch/variant
       operations and errors. Acceptance criteria: resolve(overrides=...) accepts exactly
@@ -69377,6 +69377,58 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-04T20:05:35.416717+00:00'
+    done_at: '2026-05-04T20:12:54.100355+00:00'
+    evidence: "SUCCESS from python-executor task `ses_20b673652ffeNNQyFz4t5P2eng`\
+      \ after supplemental evidence request.\n\nFiles changed in this step: none.\
+      \ Product code changed: no; existing code already implemented parity criteria.\n\
+      \nAuthoritative refs read:\n- `../opifex/design/final-canonical-contract.md`\n\
+      - `../opifex/contracts/persona_spec.schema.json`\n- `../opifex/conformance/shared_surfaces.yaml`\n\
+      - `AGENTS.md`\n- `docs/reference/INTERFACES.md`\n- `docs/guides/USAGE.md`\n\
+      - `docs/guides/USER_GUIDE.md`\n- `README.md`\n- `src/larva/app/facade.py`\n\
+      - `src/larva/shell/mcp_contract.py`\n- `src/larva/shell/mcp.py`\n- `src/larva/shell/cli.py`\n\
+      - `src/larva/shell/web_routes.py`\n- `src/larva/shell/python_api.py`\n\nCLI\
+      \ --json structured error evidence:\n- Command: `uv run larva resolve nonexistent\
+      \ --json || true`\n- Output:\n```json\n{\n  \"error\": {\n    \"code\": \"PERSONA_NOT_FOUND\"\
+      ,\n    \"details\": {\"persona_id\": \"nonexistent\"},\n    \"message\": \"\
+      persona 'nonexistent' not found in registry\",\n    \"numeric_code\": 100\n\
+      \  }\n}\n```\n\nPython API / MCP / Web REST verification:\n- Command: `uv run\
+      \ python verify_surfaces.py`\n- Representative stdout:\n```text\n--- Python\
+      \ API resolve overrides rejection ---\nRejected contract field 'capabilities':\
+      \ FORBIDDEN_OVERRIDE_FIELD - Override field 'capabilities' is not permitted\
+      \ at canonical resolve boundary\nRejected unknown field: FORBIDDEN_OVERRIDE_FIELD\
+      \ - Override field 'unknown_field_x' is not permitted at canonical resolve boundary\n\
+      Rejected legacy field 'tools': FORBIDDEN_OVERRIDE_FIELD - Override field 'tools'\
+      \ is not permitted at canonical resolve boundary\n\n--- Python API Full Inventory\
+      \ ---\n__all__ exports: ['validate', 'register', 'resolve', 'update', 'variant_list',\
+      \ 'variant_activate', 'variant_delete', 'update_batch', 'list', 'delete', 'clear',\
+      \ 'clone', 'export_all', 'export_ids', 'PersonaSpec', 'ValidationReport', 'RegisteredPersona',\
+      \ 'PersonaSummary', 'VariantMetadata', 'ActivatedVariant', 'DeletedVariant',\
+      \ 'LarvaError', 'DeletedPersona', 'ClearedRegistry', 'BatchUpdateResult', 'LarvaApiError']\n\
+      \n--- MCP Handler Parity ---\nRegister: {'id': 'mcp-test', 'registered': True}\n\
+      Resolve valid override prompt: mcp overridden\nResolve invalid override: FORBIDDEN_OVERRIDE_FIELD\n\
+      \n--- Web REST Routes ---\nPOST /assemble (tombstone) status: 404\nResponse:\
+      \ {'error': {'code': 'INVALID_INPUT', 'numeric_code': 1, 'message': 'Assemble\
+      \ endpoint removed', 'details': {'path': '/api/personas/assemble'}}}\nPUT variant\
+      \ status: 200\nResponse: {'data': {'id': 'web-test', 'registered': True}}\n\
+      GET non-existent status: 404\nResponse: {'error': {'code': 'PERSONA_NOT_FOUND',\
+      \ 'numeric_code': 100, 'message': \"persona 'non-existent-web' not found in\
+      \ registry\", 'details': {'persona_id': 'non-existent-web'}}}\n```\n\nAdditional\
+      \ Python API error evidence on corrupted registry:\n```json\n{\"code\": \"REGISTRY_CORRUPT\"\
+      , \"numeric_code\": 117, \"message\": \"contract.json is missing\", \"details\"\
+      : {\"persona_id\": \"archimedes\", \"path\": \"/Users/tefx/.larva/registry/archimedes/contract.json\"\
+      }}\n```\n\nMCP handler structured error evidence:\n```json\n{\"code\": \"PERSONA_NOT_FOUND\"\
+      , \"numeric_code\": 100, \"message\": \"persona 'nonexistent-mcp' not found\
+      \ in registry\", \"details\": {\"persona_id\": \"nonexistent-mcp\"}}\n```\n\n\
+      Web assemble tombstone proof:\n- `POST /api/personas/assemble` returned HTTP\
+      \ 404 with envelope `{'error': {'code': 'INVALID_INPUT', 'numeric_code': 1,\
+      \ 'message': 'Assemble endpoint removed', 'details': {'path': '/api/personas/assemble'}}}`.\n\
+      \n`REGISTRY_INDEX_READ_FAILED` mapping proof:\n- `src/larva/app/facade.py:39`:\
+      \ `\"REGISTRY_INDEX_READ_FAILED\": 107`\n- `src/larva/shell/web_routes.py:44`:\
+      \ `\"REGISTRY_INDEX_READ_FAILED\"` included in `_HTTP_500_ERROR_CODES`.\n\n\
+      Changed-file invar guard:\n- Tool/command: `invar_guard(changed=True)` (CLI\
+      \ equivalent noted by agent: `uvx invar-tools guard`)\n- Output summary:\n```json\n\
+      {\"errors\": 0, \"files_checked\": 5, \"infos\": 0, \"warnings\": 1, \"passed\"\
+      : true}\n```\n\nResidual gaps: none\nOpen Problems: none\nResidual Risk: none"
   - id: variant-runtime-opencode-projection
     name: Preserve OpenCode selected-id re-resolve and cache semantics
     status: pending
