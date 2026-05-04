@@ -68738,6 +68738,12 @@ phases:
       equivalent. Paste concise command outputs including full-scan status. Perform
       and document a fresh self-review with Open Problems: none and Residual Risk:
       none.'
+    evidence_template: 'Evidence must include: full relevant test suite command/output;
+      changed-file invar_guard output; full-scan guard output via uvx invar-tools
+      guard --all or equivalent deferred invar_guard full scan; black-box/public-surface
+      repro outputs for registry, update, variant lifecycle, errors, Web tombstone,
+      and OpenCode where applicable; fresh self-review; Open Problems: none and Residual
+      Risk: none for PASS.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -68752,6 +68758,7 @@ phases:
     - ../opifex/design/final-canonical-contract.md
     - ../opifex/contracts/persona_spec.schema.json
     - ../opifex/conformance/shared_surfaces.yaml
+    - AGENTS.md
     depends_on:
     - variant-runtime-opencode-projection
     agent: integration-verifier
