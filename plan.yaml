@@ -69520,7 +69520,7 @@ phases:
       Residual Risk: none.'
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
-    status: claimed
+    status: done
     description: 'Resolve historical missing-ref warnings reported by `vectl_validate
       --check-refs` without directly editing `plan.yaml`.
 
@@ -69600,6 +69600,71 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-05-04T19:49:45.409614+00:00'
+    done_at: '2026-05-04T19:52:42.621897+00:00'
+    evidence: "SUCCESS via accepted residual-warning path; zero product-code changes\
+      \ and zero direct plan.yaml edits.\n\nBefore validation evidence:\n- Command:\
+      \ `uvx vectl validate --check-refs`\n- Output tail: `0 error(s), 60 warning(s)`\n\
+      - MCP cross-check: `vectl_validate(check_refs=true)` reported the same 60 missing-ref\
+      \ WARNs and 0 errors.\n\nGrouped warning families and explicit planner-approved\
+      \ non-actionable residuals:\n1. Root docs moved: `ARCHITECTURE.md` (14 WARNs),\
+      \ `INTERFACES.md` (19 WARNs), `USAGE.md` (4 WARNs), `USER_GUIDE.md` (3 WARNs).\n\
+      \   - Owner: vectl-planner historical-ref-debt owner.\n   - Rationale: these\
+      \ refs belong to historical completed planning/documentation steps that cited\
+      \ root docs before the docs were reorganized. Current verified replacement docs\
+      \ exist at `docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`,\
+      \ `docs/guides/USAGE.md`, and `docs/guides/USER_GUIDE.md`.\n   - Non-impact:\
+      \ all affected steps are completed historical evidence/refs, not executable\
+      \ pending work. Current execution agents are not required to consume those historical\
+      \ root refs; live canonical docs exist in the current layout.\n2. ADR/migration\
+      \ moved/retired refs: `ADR-002-capability-intent-without-runtime-policy.md`\
+      \ (6 WARNs), `MIGRATION-002-capability-intent.md` (2 WARNs).\n   - Owner: vectl-planner\
+      \ historical-ref-debt owner.\n   - Rationale: `docs/adr/ADR-002-capability-intent-without-runtime-policy.md`\
+      \ exists and supersedes the historical root ADR ref. `MIGRATION-002-capability-intent.md`\
+      \ was not present in the current repo layout; warnings are attached to completed\
+      \ historical capability-intent planning/doc-contract steps.\n   - Non-impact:\
+      \ current shared-contract authority is enforced by current docs/contracts and\
+      \ later completed cutover/finalization phases; these stale refs do not define\
+      \ new executable work.\n3. Removed assembly/component implementation refs: `src/larva/core/assemble.py`\
+      \ (2 WARNs), `src/larva/shell/components.py` (2 WARNs), `src/larva/shell/python_api_components.py`\
+      \ (1 WARN), `tests/core/test_assemble.py` (1 WARN), `tests/app/test_facade/test_assemble.py`\
+      \ (1 WARN), `tests/shell/test_components.py` (1 WARN).\n   - Owner: vectl-planner\
+      \ historical-ref-debt owner.\n   - Rationale: these paths are historical assembly/component\
+      \ surfaces removed by later registry-local variant and assembly-removal work.\
+      \ Current tombstone/removal design doc verified: `design/registry-local-variants-and-assembly-removal.md`;\
+      \ current architectural/interface docs verified: `docs/reference/ARCHITECTURE.md`,\
+      \ `docs/reference/INTERFACES.md`.\n   - Non-impact: warnings point to completed\
+      \ historical work records only. Restoring deleted code/tests solely to satisfy\
+      \ stale refs is explicitly out of scope and would violate the step boundary.\
+      \ Current execution should use current variant/removal docs and current source\
+      \ layout.\n4. Opifex handover/case-matrix refs: `../opifex/conformance/handovers/02-to-larva.md`\
+      \ (2 WARNs), `../opifex/conformance/case_matrix/larva/*` (2 WARNs).\n   - Owner:\
+      \ vectl-planner historical-ref-debt owner.\n   - Rationale: current concrete\
+      \ opifex case-matrix files exist under `/Users/tefx/Projects/opifex/conformance/case_matrix/larva/`\
+      \ (e.g. `larva.register.yaml`, `larva.validate.yaml`, `larva.resolve.yaml`,\
+      \ `larva.update.yaml`, `larva.export.yaml`, variant cases, etc.). The historical\
+      \ handover file `conformance/handovers/02-to-larva.md` was not found in the\
+      \ current opifex layout. These warnings are from completed prompt-opacity verification/gate\
+      \ steps.\n   - Non-impact: current execution should use canonical opifex paths\
+      \ named in AGENTS.md and current case-matrix files; these historical warnings\
+      \ do not block present implementation or validation work.\n\nActions taken:\n\
+      - Ran `vectl_validate(check_refs=true)` and `uvx vectl validate --check-refs`\
+      \ for before/after validation evidence.\n- Verified current replacement paths\
+      \ using read-only file discovery: `docs/reference/ARCHITECTURE.md`, `docs/reference/INTERFACES.md`,\
+      \ `docs/guides/USAGE.md`, `docs/guides/USER_GUIDE.md`, `design/registry-local-variants-and-assembly-removal.md`,\
+      \ `docs/adr/ADR-002-capability-intent-without-runtime-policy.md`, and concrete\
+      \ opifex case-matrix files.\n- Used the step's acceptance alternative instead\
+      \ of mutating historical done-step refs, because direct metadata repair of done-step\
+      \ refs is not supported under active immutability constraints.\n- Confirmed\
+      \ no direct `plan.yaml` edit and no product-code changes: `git status --short`\
+      \ produced no output.\n\nAfter validation evidence:\n- Command: `uvx vectl validate\
+      \ --check-refs`\n- Output tail remains: `0 error(s), 60 warning(s)`.\n- The\
+      \ remaining 60 missing-ref WARNs are explicitly approved non-actionable residual\
+      \ warnings under the table above, with owner, rationale, and current-execution\
+      \ non-impact.\n\nResidual gaps: none; all remaining missing-ref WARNs are explicitly\
+      \ planner-approved non-actionable historical metadata residuals.\nOpen Problems:\
+      \ none.\nResidual Risk: none; current execution is not blocked because warnings\
+      \ are attached to completed historical refs and current canonical docs/design\
+      \ paths exist for live work."
   - id: plan_validation_debt_20260504.gate-clean-vectl-validation
     name: Gate clean vectl validation
     status: pending
