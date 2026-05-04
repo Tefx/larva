@@ -68996,7 +68996,7 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: in_progress
+  status: done
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
@@ -69622,7 +69622,7 @@ phases:
       \ Risk: none"
   - id: variant-runtime-final-review
     name: Final contract and plan gate review
-    status: claimed
+    status: done
     description: 'Gate-review the completed work against the design and public contract
       without implementing code. Acceptance criteria: every preceding step has durable
       evidence; the fresh contract/spec conformance review passed; no public surface
@@ -69674,6 +69674,103 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-04T20:27:34.407502+00:00'
+    done_at: '2026-05-04T20:29:20.055171+00:00'
+    evidence: 'PASS from gate-reviewer task `ses_20b5321f0ffeYKle1KdmRTImvf`.
+
+
+      Reviewed step evidence and sufficiency:
+
+      - `plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors`:
+      `vectl_validate(check_refs=true)` evidence: 0 completed-evidence guard findings,
+      `0 error(s), 60 warning(s)` — sufficient.
+
+      - `plan_validation_debt_20260504.repair-historical-missing-refs`: 60 remaining
+      missing-ref WARNs explicitly owner/rationale-approved as historical non-actionable
+      refs — sufficient.
+
+      - `plan_validation_debt_20260504.gate-clean-vectl-validation`: gate accepted
+      zero ERRORs and historical WARN disposition — sufficient.
+
+      - `variant-runtime-red-contract-tests`: red-first tests added with failing snippets
+      for split storage, materialization, corrupt ownership, contract mismatch, mixed/scope
+      patch errors — sufficient.
+
+      - `variant-runtime-storage-implementation`: targeted `75 passed`, full `548
+      passed`, changed-file invar passed — sufficient.
+
+      - `variant-runtime-public-surface-parity`: CLI/Python/MCP/Web structured error/runtime
+      evidence, Web tombstone, numeric mapping proof — sufficient.
+
+      - `variant-runtime-opencode-projection`: OpenCode smoke evidence for selected-id
+      re-resolve, active digest/prompt changes, stale fallback, no placeholder leak
+      — sufficient.
+
+      - `variant-runtime-full-integration-gate`: targeted `166 passed`, full `548
+      passed`, full-scan invar passed, `uv build` passed, runtime repros — sufficient.
+
+      - `variant-runtime-contract-spec-review`: fresh conformance review and fresh
+      `60 passed`; storage/materialization/override smokes — sufficient.
+
+
+      Fresh verification performed:
+
+      - `git status --short`: only expected implementation/test/OpenCode changes;
+      no doc changes.
+
+      - `git log --oneline -5 -- docs... README.md design...`: docs last aligned by
+      `1a5348d4 fix: align registry variant public contracts`.
+
+      - `uv run pytest tests/app/test_facade/test_variant_facade_red.py tests/shell/test_variant_runtime_contract_red.py
+      tests/shell/test_web.py tests/shell/test_mcp.py tests/shell/test_python_api.py
+      tests/shell/test_opencode_plugin_contract.py tests/shell/test_opencode_cli.py`
+      -> `60 passed in 0.31s`.
+
+      - `uv run pytest` -> `548 passed in 5.86s`.
+
+      - `invar_guard(changed=True)` -> passed; 0 errors, 1 non-blocking file-size
+      warning for `src/larva/shell/registry.py`.
+
+      - Reviewed implementation/docs evidence: storage ownership in `src/larva/shell/registry.py`;
+      numeric codes in `src/larva/app/facade.py`; Web status mapping/tombstone in
+      `src/larva/shell/web_routes.py`; Python API surface in `src/larva/shell/python_api.py`;
+      MCP override/register wording in `src/larva/shell/mcp_contract.py`; docs/interface
+      codes in `docs/reference/INTERFACES.md`.
+
+
+      Final checklist:
+
+      - Every preceding step has durable evidence: Yes.
+
+      - Fresh contract/spec conformance review passed: Yes.
+
+      - No public surface narrows runtime obligations into module-only checks: Yes.
+
+      - Storage layout and ownership match documented target exactly: Yes.
+
+      - Error codes/envelopes/status mappings match `docs/reference/INTERFACES.md`:
+      Yes.
+
+      - Web, CLI, MCP, Python, and OpenCode behavior supported by fail-able evidence:
+      Yes.
+
+      - Docs aligned or unchanged because commit `1a5348d` already fixed them: Yes.
+
+      - No migration framework or compatibility alias introduced by this work: Yes.
+
+      - No open problems or residual risk remain: Yes.
+
+
+      Decision: PASS
+
+      Blockers: none
+
+      Warnings: none
+
+      Notes: one non-blocking invar file_size_warning for `src/larva/shell/registry.py`.
+
+      Open Problems: none
+
+      Residual Risk: none'
   - id: variant-runtime-contract-spec-review
     name: Fresh contract/spec conformance review
     status: done
