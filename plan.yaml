@@ -56708,7 +56708,7 @@ phases:
       \ regressions."
 - id: merge_debt_20260425_review
   name: Merge Debt Follow-up Review and Conditional Fix
-  status: in_progress
+  status: done
   depends_on:
   - merge_debt_20260425_test
   steps:
@@ -57042,7 +57042,7 @@ phases:
       - blockers: []'
   - id: merge_debt_20260425_review.evidence_guard_closure_20260503
     name: Close historical completed-evidence guard failures for merge debt review
-    status: claimed
+    status: skipped
     description: 'Resolve validate errors for completed steps merge_debt_20260425_review.audit
       and merge_debt_20260425_review.conditional-fix, including gate_open_allowed=false
       and FAIL evidence. This is a proof-closure/evidence task, not product-code implementation.
@@ -57071,6 +57071,7 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-03T13:31:08.295597+00:00'
+    skipped_reason: absorbed
   - id: merge_debt_review_clean_evidence_closure_20260505
     name: Clean close merge debt review historical evidence guard
     status: done
