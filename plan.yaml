@@ -68767,24 +68767,35 @@ phases:
     status: pending
     description: 'Gate-review the completed work against the design and public contract
       without implementing code. Acceptance criteria: every preceding step has durable
-      evidence; no public surface narrows runtime obligations into module-only checks;
-      storage layout and ownership match the documented target exactly; error codes/envelopes/status
-      mappings match INTERFACES.md; Web, CLI, MCP, Python, and OpenCode behavior are
-      supported by fail-able evidence; docs remain aligned or explicitly unchanged
-      because commit 1a5348d already fixed them; no migration framework or compatibility
-      alias was introduced; no open problems or residual risk remain. Blocker behavior:
-      if any evidence is missing, stale, or shows failure, reject with specific step
-      IDs and required remediation; do not PASS with Open Problems or Residual Risk
-      other than none.'
+      evidence; the fresh contract/spec conformance review passed; no public surface
+      narrows runtime obligations into module-only checks; storage layout and ownership
+      match the documented target exactly; error codes/envelopes/status mappings match
+      INTERFACES.md; Web, CLI, MCP, Python, and OpenCode behavior are supported by
+      fail-able evidence; docs remain aligned or explicitly unchanged because commit
+      1a5348d already fixed them; no migration framework or compatibility alias was
+      introduced; no open problems or residual risk remain. Blocker behavior: if any
+      evidence is missing, stale, or shows failure, reject with specific step IDs
+      and required remediation; do not PASS with Open Problems or Residual Risk other
+      than none.'
     verification: 'Review vectl evidence and current diffs/tests only; optionally
       rerun targeted commands if evidence is insufficient. PASS only with explicit
       yes/no checklist and Open Problems: none, Residual Risk: none. On failure, use
       vectl reject/defer guidance rather than editing plan.yaml.'
-    evidence_template: 'Evidence must include: reviewed step IDs and evidence links/summaries;
-      yes/no checklist for storage layout, ownership, materialization/digest, errors,
-      Web tombstone, MCP wording, OpenCode semantics, guards/tests, docs parity, no
-      migration/aliases; final vectl_validate --check-refs status; Open Problems:
-      none and Residual Risk: none for PASS; otherwise reject/defer with exact blockers.'
+    evidence_template: 'Reviewed step evidence: list all preceding step IDs and whether
+      evidence is sufficient.
+
+      Final checklist: validation cleanup complete; red tests existed; implementation
+      green; public-surface parity proven; OpenCode projection/cache proven; full
+      invar/full test gate passed; contract/spec review passed; no migration framework;
+      no compatibility aliases; docs/code aligned.
+
+      Decision: PASS/FAIL.
+
+      If FAIL: exact rejected step IDs and remediation required.
+
+      Open Problems: none.
+
+      Residual Risk: none.'
     refs:
     - design/registry-local-variants-and-assembly-removal.md
     - docs/reference/INTERFACES.md
@@ -68801,7 +68812,7 @@ phases:
     - ../opifex/conformance/shared_surfaces.yaml
     - AGENTS.md
     depends_on:
-    - variant-runtime-full-integration-gate
+    - variant-runtime-contract-spec-review
     agent: gate-reviewer
   - id: variant-runtime-contract-spec-review
     name: Fresh contract/spec conformance review
