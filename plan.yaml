@@ -68771,3 +68771,64 @@ phases:
     as non-actionable by a gate reviewer with evidence.'
   depends_on:
   - non_opencode_red_cleanup_20260503
+  steps:
+  - id: plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
+    name: Close historical completed-evidence guard errors
+    status: pending
+    description: 'Resolve historical completed-evidence guard validation errors reported
+      by `vectl_validate --check-refs` without directly editing `plan.yaml`.
+
+
+      Current known ERROR list to close:
+
+      - `shell_registry.evidence_guard_closure_20260503` in `shell_registry`
+
+      - `core_normalize.core-normalize-verify` in `core_normalize_exec`
+
+      - `core_normalize.core-normalize-implement` in `core_normalize_exec`
+
+      - `core_normalize.evidence_guard_closure_20260503` in `core_normalize_exec`
+
+      - `core_validate.core-validate-verify` in `core_validate_exec`
+
+      - `core_validate.evidence_guard_closure_20260503` in `core_validate_exec`
+
+      - `canonical_shell_surfaces.gate` in `canonical_shell_surfaces`
+
+      - `repair_dup_guardrails.preservation_harness` in `repair_dup_shared_foundations`
+
+      - `repair_dup_shared_foundations.evidence_guard_closure_20260503` in `repair_dup_shared_foundations`
+
+      - `canonical_cutover_prep.gate` in `canonical_cutover_prep`
+
+      - `canonical_cutover_final.gate` in `canonical_cutover_final`
+
+      - `hard_cut_finish_20260416_core.evidence_guard_closure_20260503` in `hard_cut_finish_20260416_core`
+
+      - `hard_cut_finish_20260416_finalization.evidence_guard_closure_20260503` in
+      `hard_cut_finish_20260416_finalization`
+
+      - `merge_debt_20260425_review.audit` in `merge_debt_20260425_review`
+
+      - `merge_debt_20260425_review.conditional-fix` in `merge_debt_20260425_review`
+
+
+      Use vectl tools only. For each historical failure, either add/complete a later
+      same-phase closure step with green/OPEN/gate_open_allowed=true evidence, or
+      record an expected-red/non-blocking owner/lifecycle/gate-intersection disposition
+      accepted by the validator. Do not paper over real failures; if current code/tests
+      are still red, leave a clear blocker instead of claiming PASS.'
+    verification: 'Run `vectl_validate --check-refs` before and after. Acceptance:
+      after this step, completed-evidence guard ERROR count is zero. If the validator
+      still reports completed-evidence guard errors, this step is not complete.'
+    evidence_template: 'Before: paste exact completed-evidence guard ERROR count and
+      representative lines.
+
+      Actions: list each phase/step remediated and the vectl command/action used;
+      confirm no direct `plan.yaml` edit.
+
+      After: paste `vectl_validate --check-refs` output showing zero completed-evidence
+      guard ERRORs.
+
+      Residual risk: must be `none` for PASS.'
+    agent: gate-reviewer
