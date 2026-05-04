@@ -4097,6 +4097,52 @@ phases:
       \ checks pass, and full invar guard has zero errors. Remaining invar warnings/infos\
       \ are non-registry-gate warnings and do not block shell_registry gate opening.\n\
       - Headline: PASS"
+  - id: shell_registry_clean_evidence_closure_20260505
+    name: Clean close shell registry historical evidence guard
+    status: done
+    description: 'Plan hygiene closure for the historical completed-evidence guard
+      finding in shell_registry. This step is intentionally later in the same phase
+      and does not edit completed historical steps. It records that current plan validation
+      debt handling treats the earlier shell registry gate findings as closed by existing
+      same-phase registry retest/closure evidence and by current planner review. Scope
+      is plan evidence hygiene only: do not change product code, do not change registry
+      runtime behavior, and do not alter historical evidence text. This closure exists
+      so execution agents can proceed without guessing that the old shell registry
+      evidence is still active.'
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there is no completed-evidence guard finding for shell_registry. Treat any remaining
+      shell_registry finding as a blocker for this plan hygiene objective.
+    depends_on:
+    - shell_registry.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=shell_registry
+
+      target=shell_registry.evidence_guard_closure_20260503
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Existing same-phase registry retest and closure records already establish
+      the shell registry gate as open. This later closure records that the historical
+      evidence text is stale provenance only and has no remaining gate impact.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: app_facade
   name: larva.app.facade
   status: done
