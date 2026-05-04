@@ -126,10 +126,22 @@ def test_plugin_per_request_active_id_comes_from_selected_placeholder() -> None:
     """Per-request state should be keyed by the selected placeholder id."""
     source = _source()
 
-    assert "selectedId" in source
+    assert "selectedIdsBySession" in source
+    assert "fallbackSelectedId" in source
+    assert "selectedIdForToolCall(input)" in source
     assert "active = id" not in source, (
         "module-global active id can bleed across concurrent OpenCode requests"
     )
+
+
+def test_plugin_tool_policy_uses_tool_call_session_id() -> None:
+    """Tool denial must not inherit a stale subagent id from another session."""
+    source = _source()
+
+    assert "inputSessionId" in source
+    assert "selectedIdsBySession.get(sessionID) ?? null" in source
+    assert "rememberSelectedId(input, name)" in source
+    assert "rememberSelectedId(input, selected.id)" in source
 
 
 def test_plugin_startup_registration_has_no_global_active_variant() -> None:

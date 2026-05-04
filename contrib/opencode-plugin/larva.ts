@@ -153,7 +153,29 @@ async function resolvePersona($: any, id: string): Promise<PersonaSpec | null> {
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<ResolveOutcome>>();
 let selectedPermissions = new Map<string, Record<string, string>>();
-let selectedId: string | null = null;
+const selectedIdsBySession = new Map<string, string>();
+let fallbackSelectedId: string | null = null;
+
+function inputSessionId(input: any): string | null {
+  const sessionID = input?.sessionID ?? input?.session_id;
+  return typeof sessionID === "string" && sessionID.length > 0 ? sessionID : null;
+}
+
+function rememberSelectedId(input: any, id: string | null): void {
+  const sessionID = inputSessionId(input);
+  if (sessionID) {
+    if (id) selectedIdsBySession.set(sessionID, id);
+    else selectedIdsBySession.delete(sessionID);
+    return;
+  }
+  fallbackSelectedId = id;
+}
+
+function selectedIdForToolCall(input: any): string | null {
+  const sessionID = inputSessionId(input);
+  if (sessionID) return selectedIdsBySession.get(sessionID) ?? null;
+  return fallbackSelectedId;
+}
 
 function failClosed(id: string): string {
   return `[larva prompt unavailable for ${id}; request blocked because no previous prompt is available]`;
@@ -308,12 +330,17 @@ function wildcardMatch(value: string, pattern: string): boolean {
   return regex.test(value);
 }
 
-function isToolDenied(agentId: string, toolName: string): boolean {
-  const perms = applyToolPolicy(agentId, { ...(selectedPermissions.get(agentId) ?? {}) });
-  if (perms[toolName] === "deny") return true;
+function toolDenyReason(agentId: string, toolName: string): string | null {
+  const basePerms = { ...(selectedPermissions.get(agentId) ?? {}) };
+  const perms = applyToolPolicy(agentId, { ...basePerms });
+  if (perms[toolName] === "deny") {
+    return basePerms[toolName] === "deny" ? "larva permissions" : "tool-policy.json";
+  }
   const entry = _toolPolicy[agentId];
-  if (!entry?.deny) return false;
-  return entry.deny.some((pattern) => wildcardMatch(toolName, pattern));
+  if (!entry?.deny) return null;
+  return entry.deny.some((pattern) => wildcardMatch(toolName, pattern))
+    ? "tool-policy.json"
+    : null;
 }
 
 function watermark(id: string): string {
@@ -369,10 +396,10 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       await loadToolPolicy($, directory);
       const name = typeof input.agent === "string" ? input.agent : (input.agent as any)?.name;
       if (!name || !managed.has(name)) {
-        selectedId = null;
+        rememberSelectedId(input, null);
         return;
       }
-      selectedId = name;
+      rememberSelectedId(input, name);
 
       const resolved = await getPersonaForRequest($, name);
       if (resolved.entry?.temperature !== undefined) {
@@ -380,13 +407,13 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       }
     },
 
-    "experimental.chat.system.transform": async (_input: any, output: any) => {
+    "experimental.chat.system.transform": async (input: any, output: any) => {
       if (!output.system.length) return;
       const sys = output.system[0] ?? "";
       const selected = selectedPlaceholder(sys);
       if (!selected) return;
 
-      selectedId = selected.id;
+      rememberSelectedId(input, selected.id);
       const resolved = await getPersonaForRequest($, selected.id);
       const replacement = resolved.entry
         ? `${resolved.entry.prompt}\n\n${watermark(selected.id)}`
@@ -396,10 +423,12 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
 
     "tool.execute.before": async (input: any, _output: any) => {
       await loadToolPolicy($, directory);
-      if (!selectedId) return;
-      if (isToolDenied(selectedId, input.tool)) {
+      const agentId = selectedIdForToolCall(input);
+      if (!agentId) return;
+      const denyReason = toolDenyReason(agentId, input.tool);
+      if (denyReason) {
         throw new Error(
-          `[larva] Tool "${input.tool}" is denied for agent "${selectedId}" by tool-policy.json`,
+          `[larva] Tool "${input.tool}" is denied for agent "${agentId}" by ${denyReason}`,
         );
       }
     },
