@@ -68819,6 +68819,10 @@ phases:
       by `vectl_validate --check-refs` without directly editing `plan.yaml`.
 
 
+      Fresh-context objective: make the completed-evidence guard portion of `vectl_validate
+      --check-refs` clean before any new registry runtime implementation proceeds.
+
+
       Current known ERROR list to close:
 
       - `shell_registry.evidence_guard_closure_20260503` in `shell_registry`
@@ -68853,23 +68857,52 @@ phases:
       - `merge_debt_20260425_review.conditional-fix` in `merge_debt_20260425_review`
 
 
-      Use vectl tools only. For each historical failure, either add/complete a later
-      same-phase closure step with green/OPEN/gate_open_allowed=true evidence, or
-      record an expected-red/non-blocking owner/lifecycle/gate-intersection disposition
-      accepted by the validator. Do not paper over real failures; if current code/tests
-      are still red, leave a clear blocker instead of claiming PASS.'
+      Mechanical repair path:
+
+      1. Run `vectl_validate --check-refs` and capture the exact current completed-evidence
+      guard ERROR list.
+
+      2. For each listed historical failure, inspect the target step/phase with `vectl_show`.
+
+      3. Use vectl tools only. Preferred pattern is to add a later same-phase closure
+      step with green/OPEN/gate_open_allowed=true evidence if current repo evidence
+      proves closure. If current evidence does not prove closure, add a pending closure/remediation
+      step in that same historical phase instead of claiming PASS.
+
+      4. If the validator supports an expected-red/non-blocking owner/lifecycle/gate-intersection
+      disposition, record that disposition only with explicit owner, reason, and why
+      it is non-blocking.
+
+      5. Do not direct-edit `plan.yaml`; do not paper over real failures; do not mark
+      this step complete while any completed-evidence guard ERROR remains.
+
+
+      Boundaries: this is plan hygiene, not product implementation. Do not change
+      product code unless a separate claimed product step explicitly requires it.'
     verification: 'Run `vectl_validate --check-refs` before and after. Acceptance:
-      after this step, completed-evidence guard ERROR count is zero. If the validator
-      still reports completed-evidence guard errors, this step is not complete.'
-    evidence_template: 'Evidence must include: (1) baseline vectl_validate --check-refs
-      output/counts for completed-evidence guard ERRORs; (2) exact vectl actions taken,
-      with affected historical step IDs and rationale; (3) post-action vectl_validate
-      --check-refs output proving completed-evidence guard ERROR count is zero; (4)
-      files changed: plan state only via vectl tools, no direct plan.yaml edits; (5)
-      residual gaps: none for PASS, otherwise exact blockers and owner.'
+      after this step, completed-evidence guard ERROR count is zero. If any completed-evidence
+      guard ERROR remains, this step is not complete and must report the exact remaining
+      phase/step blockers.'
+    evidence_template: 'Before: paste exact completed-evidence guard ERROR count and
+      all affected phase/step IDs.
+
+      Actions: list each historical phase/step remediated; for each, state the vectl
+      action used and whether it was green closure, pending remediation, or accepted
+      non-blocking disposition.
+
+      Safety: confirm no direct `plan.yaml` edit and no product-code changes.
+
+      After: paste `vectl_validate --check-refs` output section showing zero completed-evidence
+      guard ERRORs.
+
+      Residual gaps: none.
+
+      Open Problems: none.
+
+      Residual Risk: none.'
     refs:
     - AGENTS.md
-    agent: gate-reviewer
+    agent: vectl-planner
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
     status: pending
