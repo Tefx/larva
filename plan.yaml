@@ -69000,7 +69000,7 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: in_progress
+  status: done
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
@@ -69957,7 +69957,7 @@ phases:
       Residual Risk: none'
   - id: variant-runtime-contract-spec-review-evidence-closure-20260505
     name: Close variant runtime contract spec review evidence guard
-    status: claimed
+    status: done
     description: 'Plan-validation remediation only; do not edit product code. The
       completed step `variant-runtime-contract-spec-review` contains accepted PASS
       evidence with Open Problems none and Residual Risk none, but vectl_validate
@@ -69986,6 +69986,15 @@ phases:
     agent: vectl-planner
     claimed_by: vectl-planner
     claimed_at: '2026-05-04T20:31:43.235879+00:00'
+    done_at: '2026-05-04T20:31:49.638415+00:00'
+    evidence: 'green/OPEN/gate_open_allowed=true closure for completed step variant-runtime-contract-spec-review.
+      Evidence source inspected with vectl_show variant-runtime-contract-spec-review:
+      PASS from spec-verifier task ses_20b561215ffeAIAZYVi5H7vQoK; fresh targeted
+      verification reported 60 passed in 0.31s; fresh storage/materialization smoke
+      passed; fresh resolve override smoke passed; every required contract checklist
+      item was PASS; Required fixes: none; Open Problems: none; Residual Risk: none.
+      This closure records plan-validation disposition only and does not add product-code
+      claims or modify product code.'
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: done
