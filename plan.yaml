@@ -68874,3 +68874,28 @@ phases:
     depends_on:
     - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
     agent: gate-reviewer
+  - id: plan_validation_debt_20260504.gate-clean-vectl-validation
+    name: Gate clean vectl validation
+    status: pending
+    description: 'Final gate for historical vectl validation debt cleanup. Verify
+      the plan is clean enough before registry-local variant storage/runtime implementation
+      proceeds.
+
+
+      This is a review-only step. Do not change product code. If validation still
+      reports completed-evidence guard ERRORs or missing-ref WARNs, reject this step
+      and return the exact remaining blockers to the appropriate prior cleanup step.'
+    verification: 'Run `vectl_validate --check-refs`. Acceptance: zero ERRORs and
+      zero missing-ref WARNs, unless a reviewer explicitly records an accepted non-actionable
+      warning with owner and rationale. Also run `vectl_status` to confirm the next
+      implementation phase is unblocked only after this gate completes.'
+    evidence_template: 'Commands: paste `vectl_validate --check-refs` and `vectl_status`
+      outputs.
+
+      Assessment: PASS/FAIL with exact remaining blockers if any.
+
+      Residual risk: must be `none` for PASS.'
+    depends_on:
+    - plan_validation_debt_20260504.close-historical-completed-evidence-guard-errors
+    - plan_validation_debt_20260504.repair-historical-missing-refs
+    agent: gate-reviewer
