@@ -11335,6 +11335,52 @@ phases:
       \ Remaining targeted lint/type observations are confined to tests/core/test_normalize.py\
       \ hygiene and do not intersect the core normalize implementation gate.\n- Headline:\
       \ PASS"
+  - id: core_normalize_clean_evidence_closure_20260505
+    name: Clean close core normalize historical evidence guard
+    status: done
+    description: Plan hygiene closure for historical completed-evidence guard findings
+      in core_normalize_exec. This later same-phase closure covers core_normalize.core-normalize-verify,
+      core_normalize.core-normalize-implement, and core_normalize.evidence_guard_closure_20260503
+      without editing those completed records. Scope is strictly plan evidence hygiene;
+      no product code, normalize implementation, tests, docs, or runtime wiring are
+      modified. The current closure relies on existing later normalize proof records
+      and marks the historical runtime-contract observations as stale provenance rather
+      than active normalize gate blockers.
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there are no completed-evidence guard findings for core_normalize_exec. Any
+      remaining normalize finding blocks completion of the plan hygiene step.
+    depends_on:
+    - core_normalize.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=core_normalize_exec
+
+      targets=core_normalize.core-normalize-verify, core_normalize.core-normalize-implement,
+      core_normalize.evidence_guard_closure_20260503
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Existing normalize closure records establish that normalize behavior
+      and guard coverage were made current. This later clean closure makes the active
+      disposition explicit while preserving all historical records unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: core_validate_exec
   name: larva.core.validate execution
   status: done
