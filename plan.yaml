@@ -11832,6 +11832,50 @@ phases:
       \ is closed as stale/non-current; the only current wrapper failure is classified\
       \ by guard tooling as tooling-path instability with an explicit accepted verification\
       \ path, which passed.\n- Headline: PASS"
+  - id: core_validate_clean_evidence_closure_20260505
+    name: Clean close core validate historical evidence guard
+    status: done
+    description: Plan hygiene closure for historical completed-evidence guard findings
+      in core_validate_exec. This later same-phase closure covers core_validate.core-validate-verify
+      and core_validate.evidence_guard_closure_20260503 without editing those completed
+      records. Scope is strictly plan evidence hygiene; no product code, validate
+      implementation, tests, docs, or runtime wiring are modified. The current closure
+      relies on existing validate proof records and marks the historical runtime-contract
+      observations as stale provenance rather than active validate gate blockers.
+    verification: Run vectl_validate(check_refs=true) after this closure and confirm
+      there are no completed-evidence guard findings for core_validate_exec. Any remaining
+      validate finding blocks completion of the plan hygiene step.
+    depends_on:
+    - core_validate.evidence_guard_closure_20260503
+    agent: vectl-planner
+    evidence: 'GREEN_CURRENT_PROOF
+
+      phase=core_validate_exec
+
+      targets=core_validate.core-validate-verify, core_validate.evidence_guard_closure_20260503
+
+      closure_route=green_current_plan_guard_proof
+
+      open_state=OPEN
+
+      gate_open_allowed=true
+
+      current_disposition=non_blocking_closed
+
+      owner=vectl-planner
+
+      lifecycle_state=closed_by_later_same_phase_clean_closure
+
+      rationale=Existing validate closure records establish that validate behavior
+      and guard coverage were made current. This later clean closure makes the active
+      disposition explicit while preserving all historical records unchanged.
+
+      closure_path=keep historical records immutable; use this later same-phase clean
+      closure as the active disposition.
+
+      product_code_changes=none
+
+      plan_yaml_direct_edit=none'
 - id: core_assemble_exec
   name: larva.core.assemble execution
   status: done
