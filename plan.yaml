@@ -68824,16 +68824,14 @@ phases:
     verification: 'Run `vectl_validate --check-refs` before and after. Acceptance:
       after this step, completed-evidence guard ERROR count is zero. If the validator
       still reports completed-evidence guard errors, this step is not complete.'
-    evidence_template: 'Before: paste exact completed-evidence guard ERROR count and
-      representative lines.
-
-      Actions: list each phase/step remediated and the vectl command/action used;
-      confirm no direct `plan.yaml` edit.
-
-      After: paste `vectl_validate --check-refs` output showing zero completed-evidence
-      guard ERRORs.
-
-      Residual risk: must be `none` for PASS.'
+    evidence_template: 'Evidence must include: (1) baseline vectl_validate --check-refs
+      output/counts for completed-evidence guard ERRORs; (2) exact vectl actions taken,
+      with affected historical step IDs and rationale; (3) post-action vectl_validate
+      --check-refs output proving completed-evidence guard ERROR count is zero; (4)
+      files changed: plan state only via vectl tools, no direct plan.yaml edits; (5)
+      residual gaps: none for PASS, otherwise exact blockers and owner.'
+    refs:
+    - AGENTS.md
     agent: gate-reviewer
   - id: plan_validation_debt_20260504.repair-historical-missing-refs
     name: Repair historical missing refs
