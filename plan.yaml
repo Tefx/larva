@@ -68996,7 +68996,7 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: locked
+  status: pending
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
@@ -69346,7 +69346,7 @@ phases:
     agent: spec-verifier
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
-  status: in_progress
+  status: done
   gate: '`vectl_validate --check-refs` reports zero completed-evidence guard ERRORs
     and zero missing-ref WARNs, or any remaining warning is explicitly documented
     as non-actionable by a gate reviewer with evidence.'
@@ -69667,7 +69667,7 @@ phases:
       \ paths exist for live work."
   - id: plan_validation_debt_20260504.gate-clean-vectl-validation
     name: Gate clean vectl validation
-    status: claimed
+    status: done
     description: 'Final gate for historical vectl validation debt cleanup. Verify
       the plan is clean enough before registry-local variant storage/runtime implementation
       proceeds.
@@ -69693,3 +69693,90 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-04T19:53:03.698757+00:00'
+    done_at: '2026-05-04T19:54:03.347956+00:00'
+    evidence: "SUCCESS / PASS gate.\n\nRequired validation evidence:\n- Tool/command\
+      \ equivalent: vectl_validate(check_refs=true) (MCP equivalent of `vectl validate\
+      \ --check-refs`).\n- Exact output:\n  ## Validation\n  WARN: Step 'meta.plan.spec'\
+      \ ref 'ARCHITECTURE.md' — file not found\n  WARN: Step 'meta.plan.spec' ref\
+      \ 'INTERFACES.md' — file not found\n  WARN: Step 'meta.plan.normalize' ref 'ARCHITECTURE.md'\
+      \ — file not found\n  WARN: Step 'meta.plan.normalize' ref 'INTERFACES.md' —\
+      \ file not found\n  WARN: Step 'meta.plan.validate' ref 'ARCHITECTURE.md' —\
+      \ file not found\n  WARN: Step 'meta.plan.validate' ref 'INTERFACES.md' — file\
+      \ not found\n  WARN: Step 'meta.plan.assemble' ref 'ARCHITECTURE.md' — file\
+      \ not found\n  WARN: Step 'meta.plan.assemble' ref 'INTERFACES.md' — file not\
+      \ found\n  WARN: Step 'meta.plan.components' ref 'ARCHITECTURE.md' — file not\
+      \ found\n  WARN: Step 'meta.plan.components' ref 'INTERFACES.md' — file not\
+      \ found\n  WARN: Step 'meta.plan.registry' ref 'ARCHITECTURE.md' — file not\
+      \ found\n  WARN: Step 'meta.plan.registry' ref 'INTERFACES.md' — file not found\n\
+      \  WARN: Step 'meta.plan.facade' ref 'ARCHITECTURE.md' — file not found\n  WARN:\
+      \ Step 'meta.plan.facade' ref 'INTERFACES.md' — file not found\n  WARN: Step\
+      \ 'meta.plan.python_api' ref 'ARCHITECTURE.md' — file not found\n  WARN: Step\
+      \ 'meta.plan.python_api' ref 'INTERFACES.md' — file not found\n  WARN: Step\
+      \ 'meta.plan.cli' ref 'ARCHITECTURE.md' — file not found\n  WARN: Step 'meta.plan.cli'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'meta.plan.mcp' ref 'ARCHITECTURE.md'\
+      \ — file not found\n  WARN: Step 'meta.plan.mcp' ref 'INTERFACES.md' — file\
+      \ not found\n  WARN: Step 'feature_registry_ops.feature-registry-ops-mcp-components'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'feature_registry_ops.feature-registry-ops-mcp-components'\
+      \ ref 'ARCHITECTURE.md' — file not found\n  WARN: Step 'feature_registry_ops.feature-registry-ops-mcp-components'\
+      \ ref 'src/larva/shell/components.py' — file not found\n  WARN: Step 'feature_clone.docs-interfaces'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'feature_export.docs-interfaces'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'feature_update_batch.docs-interfaces'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'core_types.contract-capabilities-field'\
+      \ ref 'ADR-002-capability-intent-without-runtime-policy.md' — file not found\n\
+      \  WARN: Step 'core_types.contract-capabilities-field' ref 'MIGRATION-002-capability-intent.md'\
+      \ — file not found\n  WARN: Step 'core_logic.normalize-capabilities' ref 'INTERFACES.md'\
+      \ — file not found\n  WARN: Step 'core_logic.validate-deprecation-warnings'\
+      \ ref 'INTERFACES.md' — file not found\n  WARN: Step 'core_logic.assemble-capabilities'\
+      \ ref 'src/larva/core/assemble.py' — file not found\n  WARN: Step 'shell_adapters.components-toolset-migration'\
+      \ ref 'src/larva/shell/components.py' — file not found\n  WARN: Step 'test_migration.update-facade-tests'\
+      \ ref 'tests/app/test_facade/test_assemble.py' — file not found\n  WARN: Step\
+      \ 'test_migration.update-shell-tests' ref 'tests/shell/test_components.py' —\
+      \ file not found\n  WARN: Step 'doc_sync.update-interfaces-md' ref 'INTERFACES.md'\
+      \ — file not found\n  WARN: Step 'doc_sync.update-other-docs' ref 'ARCHITECTURE.md'\
+      \ — file not found\n  WARN: Step 'doc_sync.update-other-docs' ref 'USAGE.md'\
+      \ — file not found\n  WARN: Step 'doc_sync.update-other-docs' ref 'USER_GUIDE.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-json-schema' ref 'ADR-002-capability-intent-without-runtime-policy.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-interfaces-md' ref 'INTERFACES.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-interfaces-md' ref 'ADR-002-capability-intent-without-runtime-policy.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-interfaces-md' ref 'MIGRATION-002-capability-intent.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-architecture-md' ref 'ARCHITECTURE.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-architecture-md' ref 'ADR-002-capability-intent-without-runtime-policy.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.update-usage-and-userguide' ref\
+      \ 'USAGE.md' — file not found\n  WARN: Step 'doc_contract.update-usage-and-userguide'\
+      \ ref 'USER_GUIDE.md' — file not found\n  WARN: Step 'doc_contract.update-usage-and-userguide'\
+      \ ref 'ADR-002-capability-intent-without-runtime-policy.md' — file not found\n\
+      \  WARN: Step 'doc_contract.update-readme' ref 'ADR-002-capability-intent-without-runtime-policy.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.doc-contract-gate' ref 'INTERFACES.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.doc-contract-gate' ref 'ARCHITECTURE.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.doc-contract-gate' ref 'USAGE.md'\
+      \ — file not found\n  WARN: Step 'doc_contract.doc-contract-gate' ref 'USER_GUIDE.md'\
+      \ — file not found\n  WARN: Step 'invar_1203_remediation.reduce-core-app-size-debt-and-redundant-contracts'\
+      \ ref 'src/larva/core/assemble.py' — file not found\n  WARN: Step 'invar_1203_remediation.reduce-python-api-escape-hatches-and-shell-pure-logic'\
+      \ ref 'src/larva/shell/python_api_components.py' — file not found\n  WARN: Step\
+      \ 'prompt_opacity_doctor_parity_20260418.cross_surface_verify' ref '../opifex/conformance/handovers/02-to-larva.md'\
+      \ — file not found\n  WARN: Step 'prompt_opacity_doctor_parity_20260418.cross_surface_verify'\
+      \ ref '../opifex/conformance/case_matrix/larva/*' — file not found\n  WARN:\
+      \ Step 'prompt_opacity_doctor_parity_20260418.gate' ref '../opifex/conformance/handovers/02-to-larva.md'\
+      \ — file not found\n  WARN: Step 'prompt_opacity_doctor_parity_20260418.gate'\
+      \ ref '../opifex/conformance/case_matrix/larva/*' — file not found\n  WARN:\
+      \ Step 'post_prompt_opacity_debt_cleanup_20260419.remove-dead-prompt-placeholder-cleanup-residue'\
+      \ ref 'tests/core/test_assemble.py' — file not found\n  WARN: Step 'post_prompt_opacity_debt_cleanup_20260419.align-larva-export-all-false-selector-semantics-to-the-case-matrix'\
+      \ ref 'USAGE.md' — file not found\n  0 error(s), 60 warning(s)\n\nAcceptance\
+      \ analysis:\n- Completed-evidence guard ERRORs: 0 (passes required blocker condition).\n\
+      - Missing-ref WARNs: 60, all accepted under the explicit non-actionable historical\
+      \ metadata residual path recorded in `plan_validation_debt_20260504.repair-historical-missing-refs`.\n\
+      - Accepted residual warning owner: `vectl-planner historical-ref-debt owner`.\n\
+      - Accepted rationale: historical completed refs point to moved root docs, retired\
+      \ ADR/migration paths, removed assembly/component surfaces, and stale opifex\
+      \ handover/glob metadata; current replacement docs/design/case-matrix paths\
+      \ were verified by the prior cleanup step, and warnings attach to completed\
+      \ historical work records only, not current executable implementation work.\n\
+      \nStatus evidence before completing this gate:\n- `vectl_status(agent=\"gate-reviewer\"\
+      )` showed `registry-local-variant-storage-runtime-completion` locked at 0/7\
+      \ and dependent on `plan_validation_debt_20260504`, while `plan_validation_debt_20260504`\
+      \ was 2/3 with only this gate step remaining.\n\nChange-safety evidence:\n-\
+      \ `git status --short` before completion produced no output.\n- Review-only\
+      \ step changed no product code; only this vectl completion record is expected\
+      \ to update plan metadata.\n\nBlockers: none.\nWarnings: accepted non-actionable\
+      \ historical metadata residual warnings only, owner/rationale recorded above.\n\
+      Open Problems: none.\nResidual Risk: none."
