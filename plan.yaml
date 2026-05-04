@@ -69000,7 +69000,7 @@ phases:
       Residual Risk: none'
 - id: registry-local-variant-storage-runtime-completion
   name: Registry-local Variant Storage/Runtime Completion
-  status: done
+  status: in_progress
   gate: Registry split storage, variant lifecycle/update ownership, public-surface
     parity, OpenCode projection semantics, full guard, and fresh review are proven
     against the documented registry-local variant contract.
@@ -69955,6 +69955,35 @@ phases:
       Open Problems: none
 
       Residual Risk: none'
+  - id: variant-runtime-contract-spec-review-evidence-closure-20260505
+    name: Close variant runtime contract spec review evidence guard
+    status: pending
+    description: 'Plan-validation remediation only; do not edit product code. The
+      completed step `variant-runtime-contract-spec-review` contains accepted PASS
+      evidence with Open Problems none and Residual Risk none, but vectl_validate
+      currently reports a completed-evidence guard error because that historical evidence
+      includes validator-triggering wording inside a conditional checklist line. This
+      closure step must record later same-phase green disposition evidence for that
+      completed review without changing the historical step. Required context: `vectl_show
+      variant-runtime-contract-spec-review` shows PASS from spec-verifier task `ses_20b561215ffeAIAZYVi5H7vQoK`,
+      fresh targeted tests `60 passed in 0.31s`, storage/materialization smoke passing,
+      override smoke passing, checklist PASS for all registry-local variant contract
+      obligations, Required fixes none, Open Problems none, Residual Risk none. Boundary:
+      this is plan evidence reconciliation only; no product-code, docs, or git operations.
+      If validation still reports the same completed-evidence guard after this closure
+      evidence is recorded, leave that as the blocker and do not fabricate any additional
+      runtime proof.'
+    verification: Run vectl_validate(check_refs=false) or vectl_review(check_refs=false)
+      after completing this step. The completed-evidence guard for variant-runtime-contract-spec-review
+      must be gone. Evidence must explicitly state green/OPEN/gate_open_allowed=true,
+      Open Problems none, Residual Risk none, and cite the prior PASS evidence without
+      adding new product claims.
+    evidence_template: green/OPEN/gate_open_allowed=true; cites prior PASS evidence
+      from variant-runtime-contract-spec-review; validation output no longer reports
+      the completed-evidence guard; Open Problems none; Residual Risk none.
+    depends_on:
+    - variant-runtime-contract-spec-review
+    agent: vectl-planner
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: done
