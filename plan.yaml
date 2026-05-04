@@ -69674,7 +69674,7 @@ phases:
     agent: gate-reviewer
   - id: variant-runtime-contract-spec-review
     name: Fresh contract/spec conformance review
-    status: pending
+    status: claimed
     description: 'Independently verify that the completed registry-local variant runtime
       implementation conforms to the authoritative design/docs and does not silently
       narrow runtime obligations. This is a read-only review step after full integration
@@ -69749,6 +69749,8 @@ phases:
     depends_on:
     - variant-runtime-full-integration-gate
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-05-04T20:24:20.536311+00:00'
 - id: plan_validation_debt_20260504
   name: Plan Validation Debt Cleanup 2026-05-04
   status: done
