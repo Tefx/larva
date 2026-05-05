@@ -122,9 +122,12 @@ class TestFileSystemRegistryStoreContract:
         assert not index_path.exists()
         assert not (registry_root / "ops-analyst.json").exists()
 
+        contract_path = registry_root / "ops-analyst" / "contract.json"
         persisted_spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        persisted_contract = json.loads(contract_path.read_text(encoding="utf-8"))
         persisted_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        assert persisted_spec == spec
+        assert set(persisted_contract) == {"id", "description", "capabilities", "can_spawn", "spec_version"}
+        assert set(persisted_spec) == {"prompt", "model", "model_params", "compaction_prompt"}
         assert persisted_manifest == {"active": "default"}
 
     def test_save_preserves_explicit_null_values(self, registry_root: Path) -> None:
@@ -142,8 +145,11 @@ class TestFileSystemRegistryStoreContract:
                 encoding="utf-8"
             )
         )
-        assert "description" in persisted_spec
-        assert persisted_spec["description"] is None
+        persisted_contract = json.loads(
+            (registry_root / "null-preserver" / "contract.json").read_text(encoding="utf-8")
+        )
+        assert "description" in persisted_contract
+        assert persisted_contract["description"] is None
         assert persisted_spec["model_params"]["temperature"] is None
 
     def test_save_rejects_empty_spec_digest(self, registry_root: Path) -> None:
@@ -165,6 +171,16 @@ class TestFileSystemRegistryStoreContract:
         spec["spec_digest"] = ""
         (registry_root / "bad-digest" / "variants").mkdir(parents=True)
         _write_json(registry_root / "bad-digest" / "manifest.json", {"active": "default"})
+        _write_json(
+            registry_root / "bad-digest" / "contract.json",
+            {
+                "id": "bad-digest",
+                "description": spec["description"],
+                "capabilities": spec["capabilities"],
+                "can_spawn": spec["can_spawn"],
+                "spec_version": spec["spec_version"],
+            },
+        )
         _write_json(registry_root / "bad-digest" / "variants" / "default.json", spec)
 
         store = FileSystemRegistryStore(root=registry_root)
@@ -172,9 +188,9 @@ class TestFileSystemRegistryStoreContract:
 
         assert isinstance(result, Failure)
         error = result.failure()
-        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert error["code"] == "REGISTRY_CORRUPT"
         assert error["persona_id"] == "bad-digest"
-        assert "spec_digest" in error["message"]
+        assert "fields outside its ownership" in error["message"]
 
     @pytest.mark.parametrize(
         ("field", "value"),
@@ -192,17 +208,36 @@ class TestFileSystemRegistryStoreContract:
         spec[field] = value
         (registry_root / "metadata-leak" / "variants").mkdir(parents=True)
         _write_json(registry_root / "metadata-leak" / "manifest.json", {"active": "default"})
-        _write_json(registry_root / "metadata-leak" / "variants" / "default.json", spec)
+        _write_json(
+            registry_root / "metadata-leak" / "contract.json",
+            {
+                "id": "metadata-leak",
+                "description": spec["description"],
+                "capabilities": spec["capabilities"],
+                "can_spawn": spec["can_spawn"],
+                "spec_version": spec["spec_version"],
+            },
+        )
+        _write_json(
+            registry_root / "metadata-leak" / "variants" / "default.json",
+            {
+                "prompt": spec["prompt"],
+                "model": spec["model"],
+                "model_params": spec["model_params"],
+                "compaction_prompt": spec["compaction_prompt"],
+                field: value,
+            },
+        )
 
         store = FileSystemRegistryStore(root=registry_root)
         result = store.get("metadata-leak")
 
         assert isinstance(result, Failure)
         error = result.failure()
-        assert error["code"] == "REGISTRY_SPEC_READ_FAILED"
+        assert error["code"] == "REGISTRY_CORRUPT"
         assert error["persona_id"] == "metadata-leak"
         assert field in error["message"]
-        assert "not permitted at canonical boundary" in error["message"]
+        assert "fields outside its ownership" in error["message"]
 
     def test_get_returns_exact_stored_spec_for_valid_kebab_case_id(
         self, registry_root: Path
@@ -213,7 +248,9 @@ class TestFileSystemRegistryStoreContract:
 
         result = store.get("infra-reviewer")
 
-        assert result == Success(spec)
+        assert isinstance(result, Success)
+        assert result.unwrap()["id"] == spec["id"]
+        assert result.unwrap()["spec_digest"] != spec["spec_digest"]
 
     def test_get_returns_spec_when_index_file_is_missing(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
@@ -223,7 +260,9 @@ class TestFileSystemRegistryStoreContract:
 
         result = store.get("indexless-agent")
 
-        assert result == Success(spec)
+        assert isinstance(result, Success)
+        assert result.unwrap()["id"] == spec["id"]
+        assert result.unwrap()["spec_digest"] != spec["spec_digest"]
 
     def test_get_returns_spec_when_index_entry_is_missing(self, registry_root: Path) -> None:
         spec = _canonical_spec("stale-index-agent", "sha256:stale-index-agent")
@@ -289,7 +328,9 @@ class TestFileSystemRegistryStoreContract:
         assert isinstance(result, Success)
         specs = result.unwrap()
         by_id = {spec["id"]: spec for spec in specs}
-        assert by_id == {"analysis-agent": spec_a, "ops-agent": spec_b}
+        assert set(by_id) == {"analysis-agent", "ops-agent"}
+        assert by_id["analysis-agent"]["spec_digest"] != spec_a["spec_digest"]
+        assert by_id["ops-agent"]["spec_digest"] != spec_b["spec_digest"]
 
     def test_list_with_missing_index_returns_empty_registry(self, registry_root: Path) -> None:
         store = FileSystemRegistryStore(root=registry_root)
@@ -623,14 +664,30 @@ class TestRegistryVariantStorageLayout:
         active: str,
         variants: dict[str, PersonaSpec],
     ) -> None:
-        """Write a complete persona directory with manifest.json and variants."""
+        """Write a complete persona directory with contract.json and variants."""
         persona_dir = root / persona_id
         persona_dir.mkdir(parents=True, exist_ok=True)
         _write_json(persona_dir / "manifest.json", {"active": active})
+        first_spec = next(iter(variants.values()))
+        _write_json(
+            persona_dir / "contract.json",
+            {
+                key: first_spec[key]
+                for key in ("id", "description", "capabilities", "can_spawn", "spec_version")
+                if key in first_spec
+            },
+        )
         variants_dir = persona_dir / "variants"
         variants_dir.mkdir(exist_ok=True)
         for variant_name, spec in variants.items():
-            _write_json(variants_dir / f"{variant_name}.json", spec)
+            _write_json(
+                variants_dir / f"{variant_name}.json",
+                {
+                    key: spec[key]
+                    for key in ("prompt", "model", "model_params", "compaction_prompt")
+                    if key in spec
+                },
+            )
 
     def test_manifest_json_stores_exactly_active_pointer(self, variant_root: Path) -> None:
         """manifest.json contains exactly {"active": "default"}, no extra keys."""

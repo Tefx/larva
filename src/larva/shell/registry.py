@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import re
 import shutil
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal, cast
 
 from returns.result import Failure, Result, Success
 
+from larva.core.normalize import compute_spec_digest
 from larva.core.validation_contract import CANONICAL_FORBIDDEN_FIELDS
 from larva.shell.registry_extra_ops import RegistryExtraOps
 from larva.shell.registry_fs import read_spec_payload, rollback_spec_write, write_json_atomic
@@ -34,11 +36,16 @@ if TYPE_CHECKING:
 
 DEFAULT_REGISTRY_ROOT = Path("~/.larva/registry").expanduser()
 MANIFEST_FILENAME = "manifest.json"
+CONTRACT_FILENAME = "contract.json"
 VARIANTS_DIRNAME = "variants"
 DEFAULT_VARIANT = "default"
 _PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _VARIANT_NAME_PATTERN = _PERSONA_ID_PATTERN
 _MAX_VARIANT_NAME_LENGTH = 64
+_CONTRACT_FIELDS = frozenset({"id", "description", "capabilities", "can_spawn", "spec_version"})
+_CONTRACT_REQUIRED_FIELDS = frozenset({"id", "description", "capabilities", "spec_version"})
+_VARIANT_FIELDS = frozenset({"prompt", "model", "model_params", "compaction_prompt"})
+_VARIANT_REQUIRED_FIELDS = frozenset({"prompt", "model"})
 
 
 class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
@@ -63,12 +70,23 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
         if variant_error is not None:
             return Failure(variant_error)
 
-        spec_path = self._variant_path(persona_id, variant_name)
+        contract = {field: spec[field] for field in _CONTRACT_FIELDS if field in spec}
+        implementation = {field: spec[field] for field in _VARIANT_FIELDS if field in spec}
+        contract_path = self._contract_path(persona_id)
+        variant_path = self._variant_path(persona_id, variant_name)
+
+        contract_validation = self._validate_contract_payload(persona_id, contract_path, contract)
+        if isinstance(contract_validation, Failure):
+            return contract_validation
+        implementation_validation = self._validate_variant_payload(persona_id, variant_path, implementation)
+        if isinstance(implementation_validation, Failure):
+            return implementation_validation
+
         if self._require_non_empty_digest(spec.get("spec_digest")) is None:
             return Failure(
                 self._write_failed(
                     persona_id,
-                    spec_path,
+                    variant_path,
                     "spec_digest must be a non-empty string",
                 )
             )
@@ -95,21 +113,29 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
             if isinstance(manifest_result, Failure):
                 return manifest_result
             active_before = manifest_result.unwrap()
-        old_spec_bytes: bytes | None = None
-        spec_existed = spec_path.exists()
-        if spec_existed:
+            contract_match = self._require_matching_contract(persona_id, contract)
+            if isinstance(contract_match, Failure):
+                return contract_match
+        old_variant_bytes: bytes | None = None
+        variant_existed = variant_path.exists()
+        if variant_existed:
             try:
-                old_spec_bytes = spec_path.read_bytes()
+                old_variant_bytes = variant_path.read_bytes()
             except OSError as exc:
                 return Failure(
                     self._write_failed(
-                        persona_id, spec_path, f"failed to snapshot existing spec: {exc}"
+                        persona_id, variant_path, f"failed to snapshot existing variant: {exc}"
                     )
                 )
 
-        spec_write_result = self._write_json_atomic(spec_path, spec, "spec", persona_id)
-        if isinstance(spec_write_result, Failure):
-            return spec_write_result
+        if persona_is_new:
+            contract_write_result = self._write_json_atomic(contract_path, contract, "spec", persona_id)
+            if isinstance(contract_write_result, Failure):
+                return contract_write_result
+
+        variant_write_result = self._write_json_atomic(variant_path, implementation, "spec", persona_id)
+        if isinstance(variant_write_result, Failure):
+            return variant_write_result
 
         if persona_is_new:
             manifest_write = self._write_json_atomic(
@@ -117,7 +143,7 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
             )
             if isinstance(manifest_write, Failure):
                 rollback_error = self._rollback_spec_write(
-                    spec_path, old_spec_bytes, spec_existed, persona_id
+                    variant_path, old_variant_bytes, variant_existed, persona_id
                 )
                 if rollback_error is not None:
                     return Failure(rollback_error)
@@ -128,6 +154,74 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
                 self._registry_corrupt(persona_id, persona_dir, "manifest active pointer missing")
             )
 
+        return Success(None)
+
+    def _require_matching_contract(
+        self, persona_id: str, contract: dict[str, object]
+    ) -> Result[None, RegistryError]:
+        existing_contract = self._read_contract(persona_id)
+        if isinstance(existing_contract, Failure):
+            return existing_contract
+        mismatched_fields = sorted(
+            field for field in _CONTRACT_FIELDS if existing_contract.unwrap().get(field) != contract.get(field)
+        )
+        if mismatched_fields:
+            return Failure(
+                {
+                    "code": "BASE_CONTRACT_MISMATCH",
+                    "message": "registered variant contract fields differ from existing base persona contract",
+                    "persona_id": persona_id,
+                    "mismatched_fields": mismatched_fields,
+                }
+            )
+        return Success(None)
+
+    def update_materialized(
+        self, spec: PersonaSpec, variant: str | None = None
+    ) -> Result[None, RegistryError]:
+        persona_id = str(spec.get("id", ""))
+        if (invalid := self._invalid_id_error(persona_id)) is not None:
+            return Failure(invalid)
+        if not self._persona_dir(persona_id).exists():
+            return Failure(self._not_found(persona_id))
+        if variant is None:
+            active_result = self._read_manifest(persona_id)
+            if isinstance(active_result, Failure):
+                return active_result
+            variant_name = active_result.unwrap()
+        else:
+            variant_name = variant
+        if (variant_error := self._invalid_variant_error(variant_name)) is not None:
+            return Failure(variant_error)
+        if not self._variant_path(persona_id, variant_name).exists():
+            return Failure(self._variant_not_found(persona_id, variant_name))
+
+        contract = {field: spec[field] for field in _CONTRACT_FIELDS if field in spec}
+        implementation = {field: spec[field] for field in _VARIANT_FIELDS if field in spec}
+        contract_path = self._contract_path(persona_id)
+        variant_path = self._variant_path(persona_id, variant_name)
+        contract_validation = self._validate_contract_payload(persona_id, contract_path, contract)
+        if isinstance(contract_validation, Failure):
+            return contract_validation
+        implementation_validation = self._validate_variant_payload(persona_id, variant_path, implementation)
+        if isinstance(implementation_validation, Failure):
+            return implementation_validation
+
+        existing_contract = self._read_contract(persona_id)
+        if isinstance(existing_contract, Failure):
+            return existing_contract
+        existing_variant = self._read_variant_impl(persona_id, variant_name)
+        if isinstance(existing_variant, Failure):
+            return existing_variant
+
+        if existing_contract.unwrap() != contract:
+            contract_write = self._write_json_atomic(contract_path, contract, "spec", persona_id)
+            if isinstance(contract_write, Failure):
+                return contract_write
+        if existing_variant.unwrap() != implementation:
+            variant_write = self._write_json_atomic(variant_path, implementation, "spec", persona_id)
+            if isinstance(variant_write, Failure):
+                return variant_write
         return Success(None)
 
     def get(self, persona_id: str) -> Result[PersonaSpec, RegistryError]:
@@ -186,6 +280,9 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
 
     def _manifest_path(self, persona_id: str) -> Path:
         return self._persona_dir(persona_id) / MANIFEST_FILENAME
+
+    def _contract_path(self, persona_id: str) -> Path:
+        return self._persona_dir(persona_id) / CONTRACT_FILENAME
 
     def _variants_dir(self, persona_id: str) -> Path:
         return self._persona_dir(persona_id) / VARIANTS_DIRNAME
@@ -264,6 +361,117 @@ class FileSystemRegistryStore(RegistryExtraOps, RegistryStore):
                 )
 
         return Success(cast("PersonaSpec", payload))
+
+    def _read_json_object(
+        self, persona_id: str, path: Path, label: str
+    ) -> Result[dict[str, object], RegistryError]:
+        if not path.exists():
+            return Failure(self._registry_corrupt(persona_id, path, f"{label} is missing"))
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return Failure(self._registry_corrupt(persona_id, path, f"failed to read {label}: {exc}"))
+        if not isinstance(payload, dict) or not all(isinstance(key, str) for key in payload):
+            return Failure(self._registry_corrupt(persona_id, path, f"{label} must contain a JSON object"))
+        return Success(cast("dict[str, object]", payload))
+
+    def _validate_owned_payload(
+        self,
+        persona_id: str,
+        path: Path,
+        payload: dict[str, object],
+        *,
+        label: str,
+        allowed: frozenset[str],
+        required: frozenset[str],
+    ) -> Result[None, RegistryError]:
+        extra_fields = sorted(set(payload) - allowed)
+        if extra_fields:
+            return Failure(
+                self._registry_corrupt(
+                    persona_id,
+                    path,
+                    f"{label} contains fields outside its ownership: {', '.join(extra_fields)}",
+                )
+            )
+        missing_fields = sorted(required - set(payload))
+        if missing_fields:
+            return Failure(
+                self._registry_corrupt(
+                    persona_id,
+                    path,
+                    f"{label} is missing required fields: {', '.join(missing_fields)}",
+                )
+            )
+        return Success(None)
+
+    def _validate_contract_payload(
+        self, persona_id: str, path: Path, payload: dict[str, object]
+    ) -> Result[None, RegistryError]:
+        field_result = self._validate_owned_payload(
+            persona_id,
+            path,
+            payload,
+            label="contract.json",
+            allowed=_CONTRACT_FIELDS,
+            required=_CONTRACT_REQUIRED_FIELDS,
+        )
+        if isinstance(field_result, Failure):
+            return field_result
+        if payload.get("id") != persona_id:
+            return Failure(
+                self._registry_corrupt(persona_id, path, "contract id must match persona directory name")
+            )
+        return Success(None)
+
+    def _validate_variant_payload(
+        self, persona_id: str, path: Path, payload: dict[str, object]
+    ) -> Result[None, RegistryError]:
+        return self._validate_owned_payload(
+            persona_id,
+            path,
+            payload,
+            label="variant file",
+            allowed=_VARIANT_FIELDS,
+            required=_VARIANT_REQUIRED_FIELDS,
+        )
+
+    def _read_contract(self, persona_id: str) -> Result[dict[str, object], RegistryError]:
+        path = self._contract_path(persona_id)
+        payload_result = self._read_json_object(persona_id, path, "contract.json")
+        if isinstance(payload_result, Failure):
+            return payload_result
+        payload = payload_result.unwrap()
+        validation = self._validate_contract_payload(persona_id, path, payload)
+        if isinstance(validation, Failure):
+            return validation
+        return Success(payload)
+
+    def _read_variant_impl(
+        self, persona_id: str, variant: str
+    ) -> Result[dict[str, object], RegistryError]:
+        path = self._variant_path(persona_id, variant)
+        if not path.exists():
+            return Failure(self._variant_not_found(persona_id, variant))
+        payload_result = self._read_json_object(persona_id, path, "variant file")
+        if isinstance(payload_result, Failure):
+            return payload_result
+        payload = payload_result.unwrap()
+        validation = self._validate_variant_payload(persona_id, path, payload)
+        if isinstance(validation, Failure):
+            return validation
+        return Success(payload)
+
+    def _materialize_spec(self, persona_id: str, variant: str) -> Result[PersonaSpec, RegistryError]:
+        contract_result = self._read_contract(persona_id)
+        if isinstance(contract_result, Failure):
+            return contract_result
+        variant_result = self._read_variant_impl(persona_id, variant)
+        if isinstance(variant_result, Failure):
+            return variant_result
+        materialized: dict[str, object] = {**contract_result.unwrap(), **variant_result.unwrap()}
+        materialized["spec_digest"] = compute_spec_digest(materialized)
+        return Success(cast("PersonaSpec", materialized))
 
     def _variant_not_found(self, persona_id: str, variant: str) -> VariantNotFoundError:
         return {

@@ -39,6 +39,7 @@ class _RegistryOpsHost(Protocol):
     def _read_spec_at(
         self, persona_id: str, spec_path: Path, expected_digest: str | None
     ) -> Result[PersonaSpec, RegistryError]: ...
+    def _materialize_spec(self, persona_id: str, variant: str) -> Result[PersonaSpec, RegistryError]: ...
     def _write_json_atomic(
         self,
         path: Path,
@@ -101,17 +102,7 @@ class RegistryExtraOps(_RegistryOpsHost):
         variant_path = self._variant_path(persona_id, variant)
         if not variant_path.exists():
             return Failure(self._variant_not_found(persona_id, variant))
-        spec_result = self._read_spec_at(persona_id, variant_path, expected_digest=None)
-        if isinstance(spec_result, Failure):
-            return spec_result
-        spec = spec_result.unwrap()
-        if spec.get("id") != persona_id:
-            return Failure(
-                self._registry_corrupt(
-                    persona_id, variant_path, "variant spec id must match persona directory name"
-                )
-            )
-        return Success(spec)
+        return self._materialize_spec(persona_id, variant)
 
     def variant_list(self, persona_id: str) -> Result[VariantList, RegistryError]:
         if (invalid := self._invalid_id_error(persona_id)) is not None:

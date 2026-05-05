@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from returns.result import Success
+from returns.result import Failure
 
 from .conftest import _canonical_spec, _facade, _failure, InMemoryRegistryStore
 
 
-def test_update_named_variant_patches_that_variant() -> None:
+def test_update_named_variant_rejects_contract_patch() -> None:
     registry = InMemoryRegistryStore()
     registry.save(_canonical_spec("update-named"), variant="default")
     registry.save(_canonical_spec("update-named"), variant="tacit")
@@ -13,9 +13,8 @@ def test_update_named_variant_patches_that_variant() -> None:
 
     result = facade.update("update-named", {"description": "Updated"}, variant="tacit")
 
-    assert isinstance(result, Success)
-    assert registry.variant_save_inputs[-1][1] == "tacit"
-    assert result.unwrap()["description"] == "Updated"
+    assert isinstance(result, Failure)
+    assert result.failure()["code"] == "FIELD_SCOPE_VIOLATION"
 
 
 def test_update_rejects_variant_inside_patches() -> None:

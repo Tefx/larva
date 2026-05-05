@@ -61,6 +61,11 @@ ERROR_NUMERIC_CODES: dict[str, int] = {
 _RESOLVE_ALLOWED_OVERRIDE_FIELDS = frozenset(
     {"prompt", "model", "model_params", "compaction_prompt"}
 )
+_CONTRACT_PATCH_FIELDS = frozenset({"description", "capabilities", "can_spawn"})
+_IMPLEMENTATION_PATCH_FIELDS = frozenset({"prompt", "model", "model_params", "compaction_prompt"})
+_CONTRACT_COMPARE_FIELDS = frozenset(
+    {"id", "description", "capabilities", "can_spawn", "spec_version"}
+)
 
 
 class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
@@ -210,6 +215,32 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
         if isinstance(normalized_result, Failure):
             return normalized_result
         normalized = normalized_result.unwrap()
+
+        persona_id = cast("str", normalized.get("id", ""))
+        metadata_result = self._registry.variant_list(persona_id)
+        if isinstance(metadata_result, Failure):
+            metadata_error = metadata_result.failure()
+            if metadata_error["code"] != "PERSONA_NOT_FOUND":
+                return Failure(self._registry_failure_error(metadata_error))
+        else:
+            existing_result = self._registry.get(persona_id)
+            if isinstance(existing_result, Failure):
+                return Failure(self._registry_failure_error(existing_result.failure()))
+            existing = existing_result.unwrap()
+            mismatched_fields = sorted(
+                field
+                for field in _CONTRACT_COMPARE_FIELDS
+                if existing.get(field) != normalized.get(field)
+            )
+            if mismatched_fields:
+                return Failure(
+                    self._error(
+                        code="BASE_CONTRACT_MISMATCH",
+                        message="registered variant contract fields differ from existing base persona contract",
+                        details={"id": persona_id, "mismatched_fields": mismatched_fields},
+                    )
+                )
+
         if variant is None:
             save_result = self._registry.save(normalized)
         else:
@@ -217,8 +248,34 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
         if isinstance(save_result, Failure):
             return Failure(self._registry_failure_error(save_result.failure()))
 
-        persona_id = normalized.get("id", "")
         return Success({"id": persona_id, "registered": True})
+
+    def _validate_update_patch_scope(
+        self, patches: dict[str, object], variant: str | None
+    ) -> Result[None, LarvaError]:
+        roots = {key.split(".", 1)[0] for key in patches}
+        contract_roots = roots & _CONTRACT_PATCH_FIELDS
+        implementation_roots = roots & _IMPLEMENTATION_PATCH_FIELDS
+        if contract_roots and implementation_roots:
+            return Failure(
+                self._error(
+                    code="MIXED_SCOPE_PATCH",
+                    message="update patch must not mix contract-owned and implementation-owned fields",
+                    details={
+                        "contract_fields": sorted(contract_roots),
+                        "implementation_fields": sorted(implementation_roots),
+                    },
+                )
+            )
+        if variant is not None and contract_roots:
+            return Failure(
+                self._error(
+                    code="FIELD_SCOPE_VIOLATION",
+                    message="contract-owned fields cannot be patched with an explicit variant",
+                    details={"fields": sorted(contract_roots), "variant": variant},
+                )
+            )
+        return Success(None)
 
     def resolve(
         self,
@@ -253,6 +310,9 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
         patches: dict[str, object],
         variant: str | None = None,
     ) -> Result[PersonaSpec, LarvaError]:
+        scope_validation = self._validate_update_patch_scope(patches, variant)
+        if isinstance(scope_validation, Failure):
+            return scope_validation
         get_result = (
             self._registry.get(persona_id)
             if variant is None
@@ -274,7 +334,10 @@ class DefaultLarvaFacade(RegistryFacadeOps, LarvaFacade):
         if isinstance(normalized_result, Failure):
             return normalized_result
         normalized = normalized_result.unwrap()
-        if variant is None:
+        update_materialized = getattr(self._registry, "update_materialized", None)
+        if callable(update_materialized):
+            save_result = update_materialized(normalized, variant=variant)
+        elif variant is None:
             save_result = self._registry.save(normalized)
         else:
             save_result = self._registry.save(normalized, variant=variant)

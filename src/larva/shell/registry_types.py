@@ -105,6 +105,15 @@ class VariantNotFoundError(TypedDict):
     variant: str
 
 
+class BaseContractMismatchError(TypedDict):
+    """Existing base persona contract differs from a registered variant spec."""
+
+    code: Literal["BASE_CONTRACT_MISMATCH"]
+    message: str
+    persona_id: str
+    mismatched_fields: list[str]
+
+
 class ActiveVariantDeleteForbiddenError(TypedDict):
     """Caller attempted to delete the active variant."""
 
@@ -142,6 +151,7 @@ RegistryError: TypeAlias = (
     | RegistryCorruptError
     | InvalidVariantNameError
     | VariantNotFoundError
+    | BaseContractMismatchError
     | ActiveVariantDeleteForbiddenError
     | LastVariantDeleteForbiddenError
 )

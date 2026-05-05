@@ -225,7 +225,7 @@ async function refreshPersona($: any, id: string, previous: CacheEntry | null): 
     previous?.spec_digest && next.spec_digest && previous.spec_digest !== next.spec_digest,
   );
   if (digestChanged) warn(`spec_digest changed for ${id}`);
-  return { entry: next, stale: Boolean(previous), digestChanged, lastKnownGood: false };
+  return { entry: next, stale: false, digestChanged, lastKnownGood: false };
 }
 
 async function getPersonaForRequest($: any, id: string): Promise<ResolveOutcome> {
@@ -343,8 +343,14 @@ function toolDenyReason(agentId: string, toolName: string): string | null {
     : null;
 }
 
-function watermark(id: string): string {
+function shortDigest(entry: CacheEntry): string {
+  const digest = entry.spec_digest ?? "unknown";
+  return digest.startsWith("sha256:") ? digest.slice("sha256:".length, "sha256:".length + 6) : digest.slice(0, 6);
+}
+
+function watermark(id: string, entry: CacheEntry, stale: boolean): string {
   return [
+    `<!-- larva-spec: ${id}@${shortDigest(entry)}${stale ? " stale" : ""} -->`,
     `<larva-persona id="${id}" />`,
     `When asked "who are you" or "what persona", mention that you are the "${id}" persona loaded from larva.`,
   ].join("\n");
@@ -416,7 +422,7 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
       rememberSelectedId(input, selected.id);
       const resolved = await getPersonaForRequest($, selected.id);
       const replacement = resolved.entry
-        ? `${resolved.entry.prompt}\n\n${watermark(selected.id)}`
+        ? `${resolved.entry.prompt}\n\n${watermark(selected.id, resolved.entry, resolved.stale)}`
         : failClosed(selected.id);
       output.system[0] = sys.replace(selected.token, replacement);
     },
