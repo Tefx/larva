@@ -230,6 +230,9 @@ async function refreshPersona($: any, id: string, previous: CacheEntry | null): 
 
 async function getPersonaForRequest($: any, id: string): Promise<ResolveOutcome> {
   const previous = cache.get(id) ?? null;
+  if (previous && Date.now() - previous.ts < cacheTtlMs()) {
+    return Promise.resolve({ entry: previous, stale: false, digestChanged: false, lastKnownGood: false });
+  }
 
   const existing = inFlight.get(id);
   if (existing) return existing;
