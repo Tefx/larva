@@ -22,6 +22,8 @@
  *   LARVA_CMD — larva CLI command (default: "larva")
  *   LARVA_OPENCODE_DEBUG=1 — emit runtime hardening warnings
  *   LARVA_OPENCODE_CACHE_TTL_MS=0 — disable performance cache
+ *   LARVA_OPENCODE_RESOLVE_TIMEOUT_MS=5000 — max Larva CLI wait;
+ *     invalid, zero, or negative values fall back to the default
  */
 
 import type { Plugin } from "@opencode-ai/plugin";
@@ -31,8 +33,10 @@ import type { Plugin } from "@opencode-ai/plugin";
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CACHE_TTL_MS = 5 * 60_000;
+const DEFAULT_RESOLVE_TIMEOUT_MS = 5_000;
 const CACHE_TTL_ENV = "LARVA_OPENCODE_CACHE_TTL_MS";
 const DEBUG_ENV = "LARVA_OPENCODE_DEBUG";
+const RESOLVE_TIMEOUT_ENV = "LARVA_OPENCODE_RESOLVE_TIMEOUT_MS";
 const HOT_UPDATE_FIELDS = [
   "prompt",
   "temperature",
@@ -68,6 +72,17 @@ function cacheTtlMs(): number {
   if (!Number.isFinite(parsed) || parsed < 0) {
     warn(`invalid ${CACHE_TTL_ENV}; using default`, raw);
     return DEFAULT_CACHE_TTL_MS;
+  }
+  return parsed;
+}
+
+function resolveTimeoutMs(): number {
+  const raw = process.env[RESOLVE_TIMEOUT_ENV];
+  if (raw === undefined || raw === "") return DEFAULT_RESOLVE_TIMEOUT_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    warn(`invalid ${RESOLVE_TIMEOUT_ENV}; using default`, raw);
+    return DEFAULT_RESOLVE_TIMEOUT_MS;
   }
   return parsed;
 }
@@ -109,17 +124,92 @@ interface ResolveOutcome {
 
 let _projectDir: string | undefined;
 
+class LarvaExecTimeoutError extends Error {
+  constructor(args: string[], timeoutMs: number, killed: boolean) {
+    super(
+      `larva CLI timed out after ${timeoutMs}ms: ${args.join(" ")}` +
+        (killed ? "" : " (subprocess kill unavailable)"),
+    );
+    this.name = "LarvaExecTimeoutError";
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isLarvaExecTimeoutError(error: unknown): boolean {
+  return error instanceof LarvaExecTimeoutError || (
+    isRecord(error) && error.name === "LarvaExecTimeoutError"
+  );
+}
+
+function killLarvaOperation(operation: unknown): boolean {
+  const candidates: unknown[] = [operation];
+  if (isRecord(operation)) {
+    candidates.push(operation.proc, operation.child, operation.subprocess);
+  }
+
+  for (const candidate of candidates) {
+    if (!isRecord(candidate) || typeof candidate.kill !== "function") continue;
+    const kill = candidate.kill as (signal?: string) => unknown;
+    try {
+      kill("SIGTERM");
+      return true;
+    } catch {
+      try {
+        kill();
+        return true;
+      } catch {
+        /* try next candidate */
+      }
+    }
+  }
+  return false;
+}
+
+async function withLarvaTimeout<T>(operation: Promise<T>, args: string[]): Promise<T> {
+  const timeoutMs = resolveTimeoutMs();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const killed = killLarvaOperation(operation);
+      warn(`larva CLI timed out after ${timeoutMs}ms`, { args, killed });
+      reject(new LarvaExecTimeoutError(args, timeoutMs, killed));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function larvaCommandStdout(
+  operation: Promise<any>,
+  args: string[],
+): Promise<string> {
+  const r = await withLarvaTimeout(operation, args);
+  return r.stdout.toString();
+}
+
 async function larvaExec($: any, args: string[]): Promise<string> {
   if (_projectDir) {
-    const r = await $`uv run --project ${_projectDir} larva ${args}`.quiet();
-    return r.stdout.toString();
+    return await larvaCommandStdout(
+      $`uv run --project ${_projectDir} larva ${args}`.quiet(),
+      ["uv", "run", "--project", _projectDir, "larva", ...args],
+    );
   }
   try {
-    const r = await $`larva ${args}`.quiet();
-    return r.stdout.toString();
-  } catch {
-    const r = await $`uvx larva ${args}`.quiet();
-    return r.stdout.toString();
+    return await larvaCommandStdout($`larva ${args}`.quiet(), ["larva", ...args]);
+  } catch (e) {
+    if (isLarvaExecTimeoutError(e)) throw e;
+    return await larvaCommandStdout(
+      $`uvx larva ${args}`.quiet(),
+      ["uvx", "larva", ...args],
+    );
   }
 }
 

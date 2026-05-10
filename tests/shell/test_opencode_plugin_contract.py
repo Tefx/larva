@@ -8,15 +8,98 @@ not runtime semantic authority.
 
 from __future__ import annotations
 
+import json
 import re
+import shutil
+import subprocess
+import textwrap
 from pathlib import Path
+from typing import Any
 
+import pytest
 
 PLUGIN = Path(__file__).resolve().parents[2] / "contrib" / "opencode-plugin" / "larva.ts"
+PYPROJECT = Path(__file__).resolve().parents[2] / "pyproject.toml"
+
+
+def _run_node(
+    tmp_path: Path,
+    script: str,
+    *,
+    timeout: float = 3.0,
+) -> dict[str, Any]:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for OpenCode plugin runtime contract tests")
+
+    script_path = tmp_path / "scenario.mjs"
+    script_path.write_text(textwrap.dedent(script), encoding="utf-8")
+    completed = subprocess.run(
+        [node, str(script_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
+def _runtime_plugin_copy(tmp_path: Path, appended_exports: str) -> Path:
+    plugin = tmp_path / "larva-runtime-test.ts"
+    plugin.write_text(
+        _source() + "\n" + textwrap.dedent(appended_exports),
+        encoding="utf-8",
+    )
+    return plugin
 
 
 def _source() -> str:
     return PLUGIN.read_text(encoding="utf-8")
+
+
+def _never_resolving_dollar_script() -> str:
+    return r'''
+        function createDollar(spec) {
+          const stats = { killed: 0, resolveStarted: 0 };
+          const stdout = (text) => Promise.resolve({ stdout: { toString: () => text } });
+          const reject = (message) => Promise.reject(new Error(message));
+
+          function neverResolvingResolve() {
+            const promise = new Promise(() => {});
+            promise.kill = () => { stats.killed += 1; };
+            return promise;
+          }
+
+          const dollar = (strings, ...values) => ({
+            quiet() {
+              const commandStart = String(strings[0]);
+              const args = values.find((value) => Array.isArray(value)) ?? [];
+              if (commandStart.startsWith("cat ")) return reject("fixture file absent");
+              if (
+                commandStart.startsWith("larva ") ||
+                commandStart.startsWith("uvx larva ") ||
+                commandStart.startsWith("uv run")
+              ) {
+                if (args[0] === "export") {
+                  return stdout(JSON.stringify({ data: [spec] }));
+                }
+                if (args[0] === "resolve") {
+                  stats.resolveStarted += 1;
+                  return neverResolvingResolve();
+                }
+              }
+              return reject(`unexpected command: ${commandStart}`);
+            },
+          });
+          dollar.stats = stats;
+          return dollar;
+        }
+
+        function assert(condition, message) {
+          if (!condition) throw new Error(message);
+        }
+    '''
 
 
 def test_plugin_selected_id_main_path_does_not_export_all() -> None:
@@ -76,7 +159,189 @@ def test_plugin_debug_and_ttl_are_controlled_by_environment() -> None:
 
     assert "LARVA_OPENCODE_DEBUG" in source
     assert "LARVA_OPENCODE_CACHE_TTL_MS" in source
+    assert "LARVA_OPENCODE_RESOLVE_TIMEOUT_MS" in source
     assert "const CACHE_TTL_MS = 5 * 60_000" not in source
+
+
+def test_plugin_resolve_timeout_env_parsing_default_override_invalid(tmp_path: Path) -> None:
+    """Resolve timeout env uses default, accepts valid override, rejects invalid values."""
+    runtime_plugin = _runtime_plugin_copy(
+        tmp_path,
+        """
+        export {
+          DEFAULT_RESOLVE_TIMEOUT_MS as __defaultResolveTimeoutMs,
+          resolveTimeoutMs as __resolveTimeoutMs,
+        };
+        """,
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const module = await import({json.dumps(runtime_plugin.as_uri())});
+        delete process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS;
+        const defaultValue = module.__resolveTimeoutMs();
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "37";
+        const validOverride = module.__resolveTimeoutMs();
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "invalid";
+        const invalidFallback = module.__resolveTimeoutMs();
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "0";
+        const zeroFallback = module.__resolveTimeoutMs();
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "-1";
+        const negativeFallback = module.__resolveTimeoutMs();
+
+        console.log(JSON.stringify({{
+          defaultConstant: module.__defaultResolveTimeoutMs,
+          defaultValue,
+          validOverride,
+          invalidFallback,
+          zeroFallback,
+          negativeFallback,
+        }}));
+        """,
+    )
+
+    assert result == {
+        "defaultConstant": 5_000,
+        "defaultValue": 5_000,
+        "validOverride": 37,
+        "invalidFallback": 5_000,
+        "zeroFallback": 5_000,
+        "negativeFallback": 5_000,
+    }
+
+
+def test_plugin_system_transform_times_out_to_stale_cached_prompt(tmp_path: Path) -> None:
+    """A hung runtime resolve falls back to stale last-known-good prompt."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_never_resolving_dollar_script()}
+
+        process.env.LARVA_OPENCODE_DEBUG = "1";
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "25";
+        process.env.LARVA_OPENCODE_CACHE_TTL_MS = "60000";
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{
+          id: "python-senior",
+          prompt: "cached senior prompt",
+          spec_digest: "sha256:abcdef123456",
+          model_params: {{ temperature: 0.2 }},
+        }};
+        const $ = createDollar(spec);
+        const hooks = await module.default({{ $, directory: "/tmp/no-larva-project" }});
+        await hooks.config({{}});
+
+        process.env.LARVA_OPENCODE_CACHE_TTL_MS = "0";
+        const output = {{ system: ["before [larva:python-senior] after"] }};
+        const started = performance.now();
+        await hooks["experimental.chat.system.transform"]({{ sessionID: "s1" }}, output);
+        const elapsedMs = performance.now() - started;
+
+        assert(elapsedMs < 750, `transform blocked too long: ${{elapsedMs}}ms`);
+        assert(output.system[0].includes("cached senior prompt"), "stale prompt missing");
+        assert(output.system[0].includes("stale"), "stale watermark missing");
+        assert(!output.system[0].includes("[larva:python-senior]"), "placeholder leaked");
+        assert($.stats.resolveStarted === 1, "resolve mock was not exercised");
+        assert($.stats.killed === 1, "hung resolve was not killed");
+
+        console.log(JSON.stringify({{ elapsedMs, system: output.system[0] }}));
+        """,
+    )
+
+    assert result["elapsedMs"] < 750
+    assert "cached senior prompt" in result["system"]
+    assert "stale" in result["system"]
+
+
+def test_plugin_system_transform_times_out_to_fail_closed_without_cache(tmp_path: Path) -> None:
+    """A first request with hung resolve fails closed instead of leaking placeholder."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_never_resolving_dollar_script()}
+
+        process.env.LARVA_OPENCODE_DEBUG = "1";
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "25";
+        process.env.LARVA_OPENCODE_CACHE_TTL_MS = "0";
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const $ = createDollar({{ id: "unused", prompt: "unused" }});
+        const hooks = await module.default({{ $, directory: "/tmp/no-larva-project" }});
+        const output = {{ system: ["before [larva:missing] after"] }};
+        const started = performance.now();
+        await hooks["experimental.chat.system.transform"]({{ sessionID: "s2" }}, output);
+        const elapsedMs = performance.now() - started;
+
+        assert(elapsedMs < 750, `transform blocked too long: ${{elapsedMs}}ms`);
+        assert(
+          output.system[0].includes("[larva prompt unavailable for missing"),
+          "fail-closed prompt missing",
+        );
+        assert(!output.system[0].includes("[larva:missing]"), "placeholder leaked");
+        assert($.stats.resolveStarted === 1, "resolve mock was not exercised");
+        assert($.stats.killed === 1, "hung resolve was not killed");
+
+        console.log(JSON.stringify({{ elapsedMs, system: output.system[0] }}));
+        """,
+    )
+
+    assert result["elapsedMs"] < 750
+    assert "[larva prompt unavailable for missing" in result["system"]
+    assert "[larva:missing]" not in result["system"]
+
+
+def test_plugin_chat_params_timeout_does_not_block_request_preparation(tmp_path: Path) -> None:
+    """A hung resolve in chat.params returns promptly so provider prep can continue."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_never_resolving_dollar_script()}
+
+        process.env.LARVA_OPENCODE_DEBUG = "1";
+        process.env.LARVA_OPENCODE_RESOLVE_TIMEOUT_MS = "25";
+        process.env.LARVA_OPENCODE_CACHE_TTL_MS = "0";
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{
+          id: "python-senior",
+          prompt: "startup-only prompt",
+          model_params: {{ temperature: 0.9 }},
+        }};
+        const $ = createDollar(spec);
+        const hooks = await module.default({{ $, directory: "/tmp/no-larva-project" }});
+        await hooks.config({{}});
+
+        const output = {{}};
+        const started = performance.now();
+        await hooks["chat.params"]({{ agent: "python-senior", sessionID: "s3" }}, output);
+        const elapsedMs = performance.now() - started;
+
+        assert(elapsedMs < 750, `chat.params blocked too long: ${{elapsedMs}}ms`);
+        assert(
+          output.temperature === undefined,
+          "timed-out first resolve should not invent params",
+        );
+        assert($.stats.resolveStarted === 1, "resolve mock was not exercised");
+        assert($.stats.killed === 1, "hung resolve was not killed");
+
+        console.log(JSON.stringify({{ elapsedMs, output }}));
+        """,
+    )
+
+    assert result["elapsedMs"] < 750
+    assert result["output"] == {}
+
+
+def test_opencode_plugin_packaged_path_force_includes_source_plugin() -> None:
+    """Wheel packaging must include the fixed plugin source at the runtime path."""
+    pyproject = PYPROJECT.read_text(encoding="utf-8")
+
+    assert (
+        '"contrib/opencode-plugin/larva.ts" = "larva/shell/opencode_plugin/larva.ts"'
+        in pyproject
+    )
 
 
 def test_plugin_watermark_strings_remain_contractual() -> None:
