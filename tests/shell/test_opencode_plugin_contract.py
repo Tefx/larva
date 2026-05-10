@@ -60,6 +60,8 @@ def _source() -> str:
 
 def _never_resolving_dollar_script() -> str:
     return r'''
+        import * as fs from "node:fs/promises";
+        
         function createDollar(spec) {
           const stats = { killed: 0, resolveStarted: 0 };
           const stdout = (text) => Promise.resolve({ stdout: { toString: () => text } });
@@ -75,6 +77,13 @@ def _never_resolving_dollar_script() -> str:
             quiet() {
               const commandStart = String(strings[0]);
               const args = values.find((value) => Array.isArray(value)) ?? [];
+              const outFile = values.find((value) => typeof value === "string" && value.includes("larva-exec"));
+              
+              const writeAndResolve = async (text) => {
+                if (outFile) await fs.writeFile(outFile, text, "utf8");
+                return;
+              };
+
               if (commandStart.startsWith("cat ")) return reject("fixture file absent");
               if (
                 commandStart.startsWith("larva ") ||
@@ -82,7 +91,7 @@ def _never_resolving_dollar_script() -> str:
                 commandStart.startsWith("uv run")
               ) {
                 if (args[0] === "export") {
-                  return stdout(JSON.stringify({ data: [spec] }));
+                  return writeAndResolve(JSON.stringify({ data: [spec] }));
                 }
                 if (args[0] === "resolve") {
                   stats.resolveStarted += 1;

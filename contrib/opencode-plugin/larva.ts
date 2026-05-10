@@ -27,6 +27,9 @@
  */
 
 import type { Plugin } from "@opencode-ai/plugin";
+import { promises as fs } from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -187,29 +190,38 @@ async function withLarvaTimeout<T>(operation: Promise<T>, args: string[]): Promi
   }
 }
 
-async function larvaCommandStdout(
+async function larvaCommandWait(
   operation: Promise<any>,
   args: string[],
-): Promise<string> {
-  const r = await withLarvaTimeout(operation, args);
-  return r.stdout.toString();
+): Promise<void> {
+  await withLarvaTimeout(operation, args);
 }
 
 async function larvaExec($: any, args: string[]): Promise<string> {
-  if (_projectDir) {
-    return await larvaCommandStdout(
-      $`uv run --project ${_projectDir} larva ${args}`.quiet(),
-      ["uv", "run", "--project", _projectDir, "larva", ...args],
-    );
-  }
+  const tmpFile = path.join(
+    os.tmpdir(),
+    `larva-exec-${Date.now()}-${Math.random().toString(36).slice(2)}.out`,
+  );
   try {
-    return await larvaCommandStdout($`larva ${args}`.quiet(), ["larva", ...args]);
-  } catch (e) {
-    if (isLarvaExecTimeoutError(e)) throw e;
-    return await larvaCommandStdout(
-      $`uvx larva ${args}`.quiet(),
-      ["uvx", "larva", ...args],
-    );
+    if (_projectDir) {
+      await larvaCommandWait(
+        $`uv run --project ${_projectDir} larva ${args} > ${tmpFile}`.quiet(),
+        ["uv", "run", "--project", _projectDir, "larva", ...args],
+      );
+    } else {
+      try {
+        await larvaCommandWait($`larva ${args} > ${tmpFile}`.quiet(), ["larva", ...args]);
+      } catch (e) {
+        if (isLarvaExecTimeoutError(e)) throw e;
+        await larvaCommandWait(
+          $`uvx larva ${args} > ${tmpFile}`.quiet(),
+          ["uvx", "larva", ...args],
+        );
+      }
+    }
+    return await fs.readFile(tmpFile, "utf-8");
+  } finally {
+    await fs.unlink(tmpFile).catch(() => {});
   }
 }
 
