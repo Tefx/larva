@@ -70599,7 +70599,7 @@ phases:
     - docs/reference/INTERFACES.md
     agent: frontend-engineer
   - id: opencode_tela_policy_plugin_fix_20260524
-    name: Complete OpenCode plugin raw+normalized tool-policy matching
+    name: Complete OpenCode plugin coherent tool-policy precedence
     status: pending
     description: 'step_type: implementation
 
@@ -70607,23 +70607,27 @@ phases:
 
       tags: ["integration"]
 
+      work_type: defect_repair
+
 
       TARGET STATE:
 
-      The OpenCode plugin''s tool.execute.before policy check evaluates tool deny/allow
-      rules against deduped candidate names derived from the raw OpenCode tool name
-      and a single-prefix normalized candidate. A raw tool name such as tela_serena_search
-      is denied by a serena_* deny rule while raw tela_* policy rules still work.
-      The behavior is local to larva''s OpenCode plugin.
+      The OpenCode plugin uses one coherent policy evaluator/helper for config-time
+      permission projection and runtime tool.execute.before decisions. Within a single
+      tool-policy entry, allow exceptions override broader tool-policy deny patterns
+      for the same tool name, including exact and wildcard allow patterns. Capability-derived/base
+      permission hard denies such as edit/bash/task deny remain non-overridable by
+      tool-policy allow unless a future authoritative architecture decision explicitly
+      changes that rule.
 
 
       UPSTREAM ARTIFACTS:
 
       - tests/shell/test_opencode_plugin_contract.py from opencode_tela_policy_red_tests_20260524
-      — test cases and assertions are PROTECTED.
+      — expected-red cases and assertions are PROTECTED.
 
-      - contrib/opencode-plugin/README.md — plugin-only behavior and tool-policy format
-      are AUTHORITATIVE.
+      - contrib/opencode-plugin/README.md — plugin-local tool-policy format and documented
+      precedence are AUTHORITATIVE after docs sync.
 
 
       REQUIREMENT TRACEABILITY MATRIX:
@@ -70631,97 +70635,113 @@ phases:
       | requirement_id | source_ref + key passage | obligation | owning_step_id |
       checklist_item | evidence_field | status | non_intersection_or_escalation |
 
-      | R1 | user request: raw=input.tool | keep raw as candidate and in explanations
-      | opencode_tela_policy_plugin_fix_20260524 | raw name preserved | raw_preservation
-      | OWNED | n/a |
+      | R1 | user report + larva.ts applyToolPolicy lines 423-428 | preserve config-time
+      exact allow projection behavior | opencode_tela_policy_plugin_fix_20260524 |
+      config projection keeps allow exception | config_projection | OWNED | n/a |
 
-      | R2 | user request: normalized strips exactly one leading tela_ | normalized=tela_
-      stripped once only | opencode_tela_policy_plugin_fix_20260524 | one-prefix normalization
-      implemented | normalization | OWNED | n/a |
+      | R2 | user report + larva.ts toolDenyReason lines 438-448 | runtime evaluator
+      honors allow before broader wildcard deny for tool-policy entries | opencode_tela_policy_plugin_fix_20260524
+      | runtime exact allow exception works | runtime_exact_allow | OWNED | n/a |
 
-      | R3 | user request: candidate names=deduped [raw, normalized] | dedupe identical
-      raw/normalized candidate list | opencode_tela_policy_plugin_fix_20260524 | deduped
-      candidate matching works | candidate_dedupe | OWNED | n/a |
+      | R3 | user request acceptance 3 | wildcard deny still denies unrelated tela
+      tools with no allow match | opencode_tela_policy_plugin_fix_20260524 | unrelated
+      deny remains effective | unrelated_deny | OWNED | n/a |
 
-      | R4 | user request: deny wins if ANY candidate matches deny pattern | deny
-      is checked across all candidates before allow | opencode_tela_policy_plugin_fix_20260524
-      | deny precedence works | deny_precedence | OWNED | n/a |
+      | R4 | user request acceptance 4 | wildcard allow exception allows tela_vectl_*
+      while deny continues to block unrelated tela_serena_* | opencode_tela_policy_plugin_fix_20260524
+      | wildcard allow exception works | wildcard_allow | OWNED | n/a |
 
-      | R5 | user request: allow, if relevant, considers candidates after deny | allow
-      semantics remain compatible with current implementation after deny | opencode_tela_policy_plugin_fix_20260524
-      | allow-after-deny checked | allow_after_deny | OWNED | n/a |
+      | R5 | user architecture decision | avoid duplicated config/runtime policy logic
+      by using a shared evaluator/helper inside plugin | opencode_tela_policy_plugin_fix_20260524
+      | shared evaluator used by both paths | shared_evaluator | OWNED | n/a |
 
-      | R6 | user request: diagnostics include raw/normalized/matched rule where practical
-      | denial/debug explanation exposes matching context | opencode_tela_policy_plugin_fix_20260524
-      | diagnostics include useful context | diagnostic_context | OWNED | n/a |
+      | R6 | user request acceptance 5 | capability/base permission hard denies remain
+      hard and non-overridable by tool-policy allow | opencode_tela_policy_plugin_fix_20260524
+      | hard-deny precedence works | hard_deny_precedence | OWNED | n/a |
 
-      | R7 | non-goals | no global tela/opifex identity, PersonaSpec admission, or
-      wrapper startup changes | opencode_tela_policy_plugin_fix_20260524 | non-goals
-      preserved | scope_guard | OWNED | n/a |
+      | R7 | scope constraints | no global tela/opifex policy, PersonaSpec schema/admission,
+      or wrapper startup registration changes | opencode_tela_policy_plugin_fix_20260524
+      | non-goals preserved | scope_guard | OWNED | n/a |
 
 
       BOUNDING BOX:
 
       - Primary touch path: contrib/opencode-plugin/larva.ts.
 
-      - Test touch path only as needed to keep opencode_tela_policy_red_tests_20260524
-      green after the product fix.
+      - Test touch path only as needed to turn opencode_tela_policy_red_tests_20260524
+      green.
+
+      - Docs are handled by opencode_tela_policy_docs_sync_20260524, not this implementation
+      step.
 
 
       CONSTRAINTS:
 
-      - Do NOT destructively replace input.tool; raw tela_* rules must still work.
+      - Do not change PersonaSpec schema/admission or canonical opifex/tela policy
+      meaning.
 
-      - Do NOT recursively strip tela_tela_*; normalized candidate removes exactly
-      one leading tela_ prefix.
+      - Do not change OpenCode wrapper startup registration except if a failing test
+      proves helper export/scaffolding is required for the plugin test harness.
 
-      - Do NOT change PersonaSpec schema/admission, global tela/opifex canonical tool
-      identity, or wrapper startup registration.
+      - Do not let tool-policy allow override capability-derived/base hard denies
+      from selectedPermissions/basePerms such as bash/task/edit deny.
 
-      - Preserve current selected-id/session isolation for tool calls.
+      - Preserve selected-agent isolation: decisions must be based on the selected
+      agent''s policy entry and selected/base permissions only.
+
+      - Keep runtime and config-time policy decisions coherent by centralizing match
+      classification and precedence in the plugin.
 
 
       ## Gate Preview (what the gate WILL reject)
 
-      1. Recursive normalization of tela_tela_*.
+      1. Runtime tool.execute.before still rejects tela_vectl_decide under deny ["tela_*"]
+      + allow ["tela_vectl_decide"].
 
-      2. Loss of raw tela_* rule support.
+      2. Allow exception logic accidentally allows unrelated tela_serena_* tools.
 
-      3. Allow logic that bypasses a deny match on any raw/normalized candidate.
+      3. Tool-policy allow overrides capability/base hard denies for bash/task/edit.
 
-      4. Vague denial errors with no raw tool and no matched policy context.
+      4. Config-time and runtime policy paths use divergent duplicated precedence
+      logic.
 
-      5. Any change outside larva''s OpenCode plugin compatibility boundary.
+      5. Any change to global tela/opifex canonical policy, PersonaSpec schema/admission,
+      or wrapper startup registration beyond a justified test seam.
 
 
       ## Completion Criteria (stub exclusion)
 
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
-      matcher must contain substantive logic that processes input.tool and produces
-      decisions that vary by raw/normalized candidates and deny/allow patterns.'
+      evaluator must contain substantive logic that classifies exact/wildcard allow
+      and deny matches by source and produces decisions that vary by tool name, selected
+      agent, tool-policy entry, and capability/base permission hard denies.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
       - [ ] refs confirmation includes key passages from all refs.
 
-      - [ ] Previously expected-red tests now pass with raw+normalized candidate behavior.
+      - [ ] Previously expected-red allow-exception tests now pass.
 
-      - [ ] Main path: tela_serena_* / tela_tavily_* / tela_tasca_* is denied by serena_*
-      / tavily_* / tasca_* deny rules for the selected agent.
+      - [ ] Main path: deny ["tela_*"] + allow ["tela_vectl_decide"] does not deny
+      tela_vectl_decide at runtime.
 
-      - [ ] Failure path: tela_tela_serena_* normalizes only to tela_serena_* and
-      does not match serena_* through recursive stripping.
+      - [ ] Failure path: tela_serena_find_symbol remains denied by deny ["tela_*"]
+      when no allow matches.
 
-      - [ ] Raw path: a raw tela_* policy rule still matches raw tela_* input without
-      destructive replacement.
+      - [ ] Wildcard allow path: deny ["tela_*"] + allow ["tela_vectl_*"] allows tela_vectl_decide
+      and denies unrelated tela_serena_*.
 
-      - [ ] Deny precedence: any deny candidate match blocks before allow semantics
-      are considered.
+      - [ ] Hard-deny path: exact selectedPermissions/basePerms deny for bash or task
+      remains denied even when tool-policy allow matches.
 
-      - [ ] Diagnostic/error/debug evidence includes raw tool, normalized tool when
-      different, and matched rule/candidate where practical.
+      - [ ] Coherence evidence shows config-time projection and runtime hook use one
+      shared evaluator/helper or an explicitly factored shared classification function.
 
-      - [ ] Non-goal evidence shows no edits to global tela/opifex identity surfaces,
-      PersonaSpec schema/admission, or wrapper startup registration.'
+      - [ ] Non-goal evidence shows no edits to global tela/opifex policy, PersonaSpec
+      schema/admission, or wrapper startup registration except any minimal test-only
+      helper seam justified in evidence.
+
+      - [ ] invar guard or the canonical project guard command is run after the fix
+      and raw output is included.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -70734,46 +70754,48 @@ phases:
 
       - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
 
+      - docs/reference/INTERFACES.md — <key passage or NOT READ: reason>
+
 
       ## Implementation Receipt
 
-      - files_changed: <list>
+      - changed_files: <list>
 
-      - command: <exact targeted test command>
+      - shared_evaluator: <function/helper name and call sites>
 
-      - raw_stdout_stderr: <paste raw output>
-
-      - exit_code: <code>
+      - protected_artifacts_preserved: <test/docs constraints>
 
 
-      ## Requirement Evidence Fields
+      ## Test / Guard Receipt
 
-      - raw_preservation: <evidence>
+      - targeted_command: <command>
 
-      - normalization: <evidence>
+      - targeted_raw_stdout_stderr: <paste raw output>
 
-      - candidate_dedupe: <evidence>
+      - guard_command: <invar guard or canonical guard command>
 
-      - deny_precedence: <evidence>
-
-      - allow_after_deny: <evidence>
-
-      - diagnostic_context: <evidence>
-
-      - scope_guard: <evidence>
+      - guard_raw_stdout_stderr: <paste raw output>
 
 
-      ## Integration Evidence
+      ## Coverage / Risk Notes
 
-      - path_exercised: OpenCode input.tool -> tool.execute.before -> toolDenyReason/policy
-      matcher -> thrown denial or allow
+      - config_projection: <evidence>
 
-      - actual_denial_message: <paste>
+      - runtime_exact_allow: <evidence>
 
+      - unrelated_deny: <evidence>
 
-      ## Checklist Receipt
+      - wildcard_allow: <evidence>
 
-      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+      - hard_deny_precedence: <evidence>
+
+      - scope_guard: <evidence>'
+    refs:
+    - contrib/opencode-plugin/larva.ts
+    - contrib/opencode-plugin/README.md
+    - tests/shell/test_opencode_plugin_contract.py
+    - docs/reference/ARCHITECTURE.md
+    - docs/reference/INTERFACES.md
     depends_on:
     - opencode_tela_policy_red_tests_20260524
     agent: frontend-engineer
