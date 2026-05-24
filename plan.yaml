@@ -70433,7 +70433,7 @@ phases:
       Open Problems: none.\nResidual Risk: none."
 - id: opencode-tela-tool-policy-normalization-2026-05-24
   name: OpenCode Tool-Policy Precedence Repair 2026-05-24
-  status: in_progress
+  status: done
   gate: OpenCode plugin tool-policy precedence is tested, implemented with coherent
     config/runtime evaluator behavior, documented as plugin-only behavior, independently
     verified with targeted tests plus guard evidence, and gate-reviewed without changing
@@ -71479,7 +71479,7 @@ phases:
       - none (verify-only, no changes)'
   - id: opencode_tela_policy_gate_20260524
     name: Gate OpenCode tool-policy precedence repair
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -71611,3 +71611,108 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-24T18:36:09.964681+00:00'
+    done_at: '2026-05-24T18:40:44.553764+00:00'
+    evidence: 'headline: PASS_WITH_DEBT
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      final_decision: OPEN
+
+
+      ## refs Read Confirmation
+
+      - contrib/opencode-plugin/larva.ts — toolPolicyDecision returns allow before
+      deny; applyToolPolicy and evaluateToolPolicy call that evaluator, and basePerms[toolName]
+      === "deny" short-circuits as Larva permissions.
+
+      - contrib/opencode-plugin/README.md — precedence docs state capability/base
+      Larva permissions are hard denies, tool-policy allow exceptions override broader
+      tool-policy denies, and scope is OpenCode plugin-local.
+
+      - tests/shell/test_opencode_plugin_contract.py — tests cover config exact allow
+      projection, runtime exact allow, unrelated tela_serena_* denial, wildcard allow,
+      and hard-deny non-override.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode runtime prompt replacement and tool-policy
+      checks remain in contrib/opencode-plugin/larva.ts, not core/app.
+
+      - docs/reference/INTERFACES.md — OpenCode startup projection is not runtime
+      semantic authority; hot-update scope remains prompt/temperature/tool-policy/capabilities/can_spawn.
+
+
+      ## Gate Review Report
+
+      - reviewer: gate-reviewer
+
+      - phase: opencode-tela-tool-policy-normalization-2026-05-24
+
+      - decision: OPEN
+
+      - blockers: []
+
+      - warning: expected-red evidence was provided as specific failing test/failure
+      details rather than a durable raw-log artifact in gate worktree; non-blocking
+      because failure signatures are concrete and corresponding behavioral tests are
+      now green.
+
+
+      ## Decision Basis
+
+      - exact allow exception: PROVEN — runtime exact allow test passed; tela_vectl_decide
+      allowed under deny ["tela_*"] + allow ["tela_vectl_decide"].
+
+      - unrelated wildcard deny: PROVEN — tela_serena_find_symbol remains denied by
+      tool-policy.json.
+
+      - wildcard allow exception: PROVEN — allow ["tela_vectl_*"] permits tela_vectl_decide
+      while unrelated tela_serena_* remains denied.
+
+      - hard-deny non-override: PROVEN — capability-derived bash deny evaluated before
+      tool-policy allow; hard-deny test passed and error cites larva permissions.
+
+      - shared evaluator coherence: PROVEN — toolPolicyDecision used by both config
+      projection and runtime evaluation; config/runtime tests passed.
+
+      - docs plugin-local scope: PROVEN — README restricts behavior to OpenCode plugin-local
+      runtime enforcement, not global tela/opifex policy, PersonaSpec admission, or
+      wrapper startup.
+
+      - guard evidence: PROVEN — mainline .venv/bin/invar guard passed with errors
+      0 and warnings 0.
+
+      - expected-red proof: PROVEN — phase red evidence showed 22 collected, 19 passed,
+      3 failed before fix with exact allow/wildcard allow runtime denial and hard-deny
+      failure.
+
+      - non-goal audit: PROVEN — gate-only branch had no changes; no schema/admission/global
+      policy/wrapper drift.
+
+
+      ## Mainline Verification
+
+      - targeted_command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+      -vv
+
+      - targeted_result: 22 passed in 3.65s.
+
+      - guard_command: .venv/bin/invar guard
+
+      - guard_result: status passed; static passed true; errors 0; warnings 0; files_checked
+      0.
+
+
+      ## Checklist
+
+      All eleven verification checklist items toggled checked via orchestrator after
+      matching the gate checklist_receipt.
+
+
+      ## Commit
+
+      - none (gate-only, no changes)'
