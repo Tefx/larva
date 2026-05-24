@@ -70822,30 +70822,30 @@ phases:
       agent, tool-policy entry, and capability/base permission hard denies.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
-      - [ ] refs confirmation includes key passages from all refs.
+      - [x] refs confirmation includes key passages from all refs.
 
-      - [ ] Previously expected-red allow-exception tests now pass.
+      - [x] Previously expected-red allow-exception tests now pass.
 
-      - [ ] Main path: deny ["tela_*"] + allow ["tela_vectl_decide"] does not deny
+      - [x] Main path: deny ["tela_*"] + allow ["tela_vectl_decide"] does not deny
       tela_vectl_decide at runtime.
 
-      - [ ] Failure path: tela_serena_find_symbol remains denied by deny ["tela_*"]
+      - [x] Failure path: tela_serena_find_symbol remains denied by deny ["tela_*"]
       when no allow matches.
 
-      - [ ] Wildcard allow path: deny ["tela_*"] + allow ["tela_vectl_*"] allows tela_vectl_decide
+      - [x] Wildcard allow path: deny ["tela_*"] + allow ["tela_vectl_*"] allows tela_vectl_decide
       and denies unrelated tela_serena_*.
 
-      - [ ] Hard-deny path: exact selectedPermissions/basePerms deny for bash or task
+      - [x] Hard-deny path: exact selectedPermissions/basePerms deny for bash or task
       remains denied even when tool-policy allow matches.
 
-      - [ ] Coherence evidence shows config-time projection and runtime hook use one
+      - [x] Coherence evidence shows config-time projection and runtime hook use one
       shared evaluator/helper or an explicitly factored shared classification function.
 
-      - [ ] Non-goal evidence shows no edits to global tela/opifex policy, PersonaSpec
+      - [x] Non-goal evidence shows no edits to global tela/opifex policy, PersonaSpec
       schema/admission, or wrapper startup registration except any minimal test-only
       helper seam justified in evidence.
 
-      - [ ] invar guard or the canonical project guard command is run after the fix
+      - [x] invar guard or the canonical project guard command is run after the fix
       and raw output is included.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
