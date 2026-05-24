@@ -70439,3 +70439,137 @@ phases:
     global tela/opifex identity semantics.
   depends_on:
   - plan_validation_debt_20260504
+  steps:
+  - id: opencode_tela_policy_red_tests_20260524
+    name: Expected-red tests for OpenCode tela tool-policy candidates
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: default
+
+
+      DIAGNOSIS / PROOF ARTIFACT:
+
+      Add focused expected-red contract coverage showing the current OpenCode plugin
+      policy matcher fails to deny aggregated tela tool names when only normalized
+      base-family rules are configured.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user request: raw=input.tool | preserve raw tool name as a candidate
+      | opencode_tela_policy_red_tests_20260524 | raw tela_* rule remains test-covered
+      | raw_rule_case | OWNED | n/a |
+
+      | R2 | user request: normalized removes exactly one leading tela_ | test tela_serena_*
+      -> serena_* and tela_tela_serena_* -> tela_serena_* | opencode_tela_policy_red_tests_20260524
+      | single-prefix normalization covered | normalization_cases | OWNED | n/a |
+
+      | R3 | user request: deduped [raw, normalized] candidates | test non-prefixed
+      and prefixed names without duplicate side effects | opencode_tela_policy_red_tests_20260524
+      | candidate list semantics covered | candidate_cases | OWNED | n/a |
+
+      | R4 | user request: deny wins over allow | test deny candidate blocks even
+      if allow candidate/rule exists | opencode_tela_policy_red_tests_20260524 | deny
+      precedence covered | deny_precedence_case | OWNED | n/a |
+
+      | R5 | user request: plugin-only non-goals | tests must not touch global tela/opifex/PersonaSpec/wrapper
+      startup | opencode_tela_policy_red_tests_20260524 | scope guard checked | scope_guard
+      | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      - contrib/opencode-plugin/larva.ts
+
+      - tests/shell/test_opencode_plugin_contract.py
+
+      - contrib/opencode-plugin/README.md for documented policy semantics
+
+
+      CONSTRAINTS:
+
+      - Modify tests only, plus minimal test helper/export scaffolding if needed inside
+      copied runtime test source.
+
+      - Do not implement product/plugin matching logic in this step.
+
+      - Do not require duplicate operator policy entries for serena_* and tela_serena_*
+      as the long-term acceptance path.
+
+      - Do not change PersonaSpec schema/admission, wrapper startup registration,
+      or global tela/opifex identity semantics.
+
+
+      EXPECTED-RED SUCCESS SEMANTICS:
+
+      This step succeeds when tests clearly expose the current compatibility bug before
+      implementation. Red is expected before opencode_tela_policy_plugin_fix_20260524
+      completes.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [ ] refs confirmation includes key passages from contrib/opencode-plugin/larva.ts,
+      contrib/opencode-plugin/README.md, tests/shell/test_opencode_plugin_contract.py,
+      and docs/reference/ARCHITECTURE.md#OpenCode.
+
+      - [ ] Tests are limited to tests/shell/test_opencode_plugin_contract.py unless
+      a minimal exported helper seam is strictly necessary for runtime testing.
+
+      - [ ] Expected-red output shows tela_serena_* or tela_tavily_* or tela_tasca_*
+      is not denied by a serena_* / tavily_* / tasca_* deny rule before implementation.
+
+      - [ ] Test coverage includes raw tela_* rule preservation and exactly-one-prefix
+      normalization for tela_tela_*.
+
+      - [ ] Test coverage includes deny precedence before allow semantics.
+
+      - [ ] Scope guard confirms no planned changes to global tela/opifex identity,
+      PersonaSpec schema/admission, or wrapper startup registration.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/opencode-plugin/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/opencode-plugin/README.md — <key passage or NOT READ: reason>
+
+      - tests/shell/test_opencode_plugin_contract.py — <key passage or NOT READ: reason>
+
+      - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
+
+
+      ## Expected-Red Receipt
+
+      - command: <exact pytest/node-backed command>
+
+      - raw_stdout_stderr: <paste raw output>
+
+      - exit_code: <code>
+
+      - expected_failures: <test names and why red is expected>
+
+
+      ## Requirement Evidence Fields
+
+      - raw_rule_case: <evidence>
+
+      - normalization_cases: <evidence>
+
+      - candidate_cases: <evidence>
+
+      - deny_precedence_case: <evidence>
+
+      - scope_guard: <files changed and non-goals preserved>
+
+
+      ## Checklist Receipt
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+    agent: frontend-engineer
