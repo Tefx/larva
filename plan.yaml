@@ -71479,7 +71479,7 @@ phases:
       - none (verify-only, no changes)'
   - id: opencode_tela_policy_gate_20260524
     name: Gate OpenCode tool-policy precedence repair
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -71609,3 +71609,5 @@ phases:
     - opencode_tela_policy_docs_sync_20260524
     - opencode_tela_policy_independent_verify_20260524
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-24T18:36:09.964681+00:00'
