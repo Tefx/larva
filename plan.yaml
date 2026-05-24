@@ -71275,29 +71275,29 @@ phases:
       explicit remediation ownership.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
-      - [ ] refs confirmation includes key passages from all refs.
+      - [x] refs confirmation includes key passages from all refs.
 
-      - [ ] Raw command output from targeted OpenCode plugin contract tests is included,
+      - [x] Raw command output from targeted OpenCode plugin contract tests is included,
       not summarized.
 
-      - [ ] Behavioral proof register covers exact allow exception, wildcard allow
+      - [x] Behavioral proof register covers exact allow exception, wildcard allow
       exception, unrelated wildcard denial, capability/base hard-deny precedence,
       shared evaluator coherence, docs, and plugin-only scope.
 
-      - [ ] Verification includes a real Node-backed hook/helper execution path or
+      - [x] Verification includes a real Node-backed hook/helper execution path or
       equivalent existing contract harness, not source inspection alone.
 
-      - [ ] invar guard or the canonical project guard command is run and raw output
+      - [x] invar guard or the canonical project guard command is run and raw output
       is included.
 
-      - [ ] Changed-file audit confirms no edits to PersonaSpec schema/admission,
+      - [x] Changed-file audit confirms no edits to PersonaSpec schema/admission,
       global tela/opifex policy, or wrapper startup registration beyond any justified
       test harness seam.
 
-      - [ ] If any PROVEN status is unavailable, the report marks NEEDS_TEST/UNPROVEN/BLOCKED
+      - [x] If any PROVEN status is unavailable, the report marks NEEDS_TEST/UNPROVEN/BLOCKED
       and provides a remediation/retest closure path.
 
-      - [ ] Headline is PASS, PASS_WITH_DEBT, or FAIL with blockers explicitly listed.'
+      - [x] Headline is PASS, PASS_WITH_DEBT, or FAIL with blockers explicitly listed.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
