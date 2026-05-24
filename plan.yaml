@@ -71544,38 +71544,38 @@ phases:
       6. Generic pass claims without raw targeted test output and guard output.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
-      - [ ] refs confirmation includes key passages from all refs or states no additional
+      - [x] refs confirmation includes key passages from all refs or states no additional
       refs for gate-only evidence.
 
-      - [ ] All phase steps have complete checklist receipts and specific evidence,
+      - [x] All phase steps have complete checklist receipts and specific evidence,
       not vague summaries.
 
-      - [ ] Gate decision basis maps every OWNED requirement to PROVEN evidence or
+      - [x] Gate decision basis maps every OWNED requirement to PROVEN evidence or
       blocks with explicit remediation ownership.
 
-      - [ ] Gate confirms expected-red evidence exposed the original runtime allow-exception
+      - [x] Gate confirms expected-red evidence exposed the original runtime allow-exception
       bug before the fix.
 
-      - [ ] Gate confirms post-fix evidence proves exact allow exception, wildcard
+      - [x] Gate confirms post-fix evidence proves exact allow exception, wildcard
       allow exception, unrelated wildcard denial, and capability/base hard-deny non-override.
 
-      - [ ] Gate confirms config-time projection and runtime hook use coherent shared
+      - [x] Gate confirms config-time projection and runtime hook use coherent shared
       evaluator/helper semantics.
 
-      - [ ] Gate confirms independent verification included runtime/helper execution
+      - [x] Gate confirms independent verification included runtime/helper execution
       evidence and raw command output, not source inspection alone.
 
-      - [ ] Gate confirms invar guard or canonical project guard evidence is present
+      - [x] Gate confirms invar guard or canonical project guard evidence is present
       and acceptable.
 
-      - [ ] Gate confirms docs state OpenCode plugin-local precedence and do not expand
+      - [x] Gate confirms docs state OpenCode plugin-local precedence and do not expand
       global tela/opifex policy, PersonaSpec schema/admission, or wrapper startup
       registration semantics.
 
-      - [ ] Gate confirms no unresolved blocker, NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING
+      - [x] Gate confirms no unresolved blocker, NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING
       item is bypassed without non-intersection evidence.
 
-      - [ ] Final decision is exactly OPEN or BLOCKED with required follow-up actions
+      - [x] Final decision is exactly OPEN or BLOCKED with required follow-up actions
       if blocked.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- contrib/opencode-plugin/larva.ts — <key passage or NOT READ: reason>\n\
