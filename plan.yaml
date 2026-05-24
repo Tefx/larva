@@ -71718,7 +71718,7 @@ phases:
       - none (gate-only, no changes)'
 - id: live-opencode-tool-policy-smoke-2026-05-25
   name: Live OpenCode Tool-Policy Smoke 2026-05-25
-  status: pending
+  status: in_progress
   gate: Live real OpenCode smoke either proves the tool-policy precedence path through
     a real OpenCode execution path, or produces deterministic BLOCKED/PARTIAL evidence
     explaining the OpenCode CLI/runtime constraint without faking live coverage.
@@ -71727,7 +71727,7 @@ phases:
   steps:
   - id: live_opencode_tool_policy_smoke_20260525.runtime_smoke
     name: Live real OpenCode tool-policy precedence smoke
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT:
 
       Produce a live/runtime smoke report for the completed OpenCode tool-policy precedence
@@ -71961,3 +71961,5 @@ phases:
       \ requires_followup: true|false\n- followup_needed: <if true, exact plan gap\
       \ to create>\n"
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-05-24T18:56:53.346098+00:00'
