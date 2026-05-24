@@ -70433,7 +70433,7 @@ phases:
       Open Problems: none.\nResidual Risk: none."
 - id: opencode-tela-tool-policy-normalization-2026-05-24
   name: OpenCode Tool-Policy Precedence Repair 2026-05-24
-  status: pending
+  status: in_progress
   gate: OpenCode plugin tool-policy precedence is tested, implemented with coherent
     config/runtime evaluator behavior, documented as plugin-only behavior, independently
     verified with targeted tests plus guard evidence, and gate-reviewed without changing
@@ -70448,7 +70448,7 @@ phases:
   steps:
   - id: opencode_tela_policy_red_tests_20260524
     name: Expected-red tests for OpenCode tool-policy allow exceptions
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -70604,6 +70604,8 @@ phases:
     - docs/reference/ARCHITECTURE.md
     - docs/reference/INTERFACES.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-24T17:56:27.011692+00:00'
   - id: opencode_tela_policy_plugin_fix_20260524
     name: Complete OpenCode plugin coherent tool-policy precedence
     status: pending
