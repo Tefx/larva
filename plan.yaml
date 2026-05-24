@@ -70534,29 +70534,29 @@ phases:
       tela_vectl_decide under deny ["tela_*"].'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
-      - [ ] refs confirmation includes key passages from contrib/opencode-plugin/larva.ts,
+      - [x] refs confirmation includes key passages from contrib/opencode-plugin/larva.ts,
       contrib/opencode-plugin/README.md, tests/shell/test_opencode_plugin_contract.py,
       docs/reference/ARCHITECTURE.md, and docs/reference/INTERFACES.md.
 
-      - [ ] Tests are limited to tests/shell/test_opencode_plugin_contract.py unless
+      - [x] Tests are limited to tests/shell/test_opencode_plugin_contract.py unless
       a minimal exported helper seam is strictly necessary for runtime testing.
 
-      - [ ] Expected-red output shows deny ["tela_*"] + allow ["tela_vectl_decide"]
+      - [x] Expected-red output shows deny ["tela_*"] + allow ["tela_vectl_decide"]
       currently fails because runtime blocks tela_vectl_decide.
 
-      - [ ] Test coverage includes post-fix expectation that tela_vectl_decide is
+      - [x] Test coverage includes post-fix expectation that tela_vectl_decide is
       not denied when exact allow matches broader deny in the same tool-policy entry.
 
-      - [ ] Test coverage includes tela_serena_find_symbol remains denied by deny
+      - [x] Test coverage includes tela_serena_find_symbol remains denied by deny
       ["tela_*"] when no allow matches.
 
-      - [ ] Test coverage includes wildcard allow exception deny ["tela_*"] + allow
+      - [x] Test coverage includes wildcard allow exception deny ["tela_*"] + allow
       ["tela_vectl_*"] allows tela_vectl_decide and denies unrelated tela_serena_*.
 
-      - [ ] Test coverage includes capability/base permission hard deny (for example
+      - [x] Test coverage includes capability/base permission hard deny (for example
       bash or task deny) is not overridden by tool-policy allow.
 
-      - [ ] Scope guard confirms no planned changes to global tela/opifex policy,
+      - [x] Scope guard confirms no planned changes to global tela/opifex policy,
       PersonaSpec schema/admission, or wrapper startup registration.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
