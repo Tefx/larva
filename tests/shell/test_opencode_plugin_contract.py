@@ -111,6 +111,69 @@ def _never_resolving_dollar_script() -> str:
     '''
 
 
+def _tool_policy_dollar_script() -> str:
+    return r'''
+        import * as fs from "node:fs/promises";
+
+        function createPolicyDollar(spec, policy) {
+          const stdout = (text) => Promise.resolve({ stdout: { toString: () => text } });
+          const reject = (message) => Promise.reject(new Error(message));
+
+          const dollar = (strings, ...values) => ({
+            quiet() {
+              const commandStart = String(strings[0]);
+              const args = values.find((value) => Array.isArray(value)) ?? [];
+              const outFile = values.find((value) => typeof value === "string" && value.includes("larva-exec"));
+
+              const writeAndResolve = async (text) => {
+                if (outFile) await fs.writeFile(outFile, text, "utf8");
+                return;
+              };
+
+              if (commandStart.startsWith("cat ")) {
+                const requestedPath = String(values[0] ?? "");
+                if (requestedPath.endsWith("/.opencode/tool-policy.json")) {
+                  return stdout(JSON.stringify(policy));
+                }
+                if (requestedPath.endsWith("/pyproject.toml")) {
+                  return reject("not a larva project");
+                }
+                return reject(`fixture file absent: ${requestedPath}`);
+              }
+
+              if (
+                commandStart.startsWith("larva ") ||
+                commandStart.startsWith("uvx larva ") ||
+                commandStart.startsWith("uv run")
+              ) {
+                if (args[0] === "export") {
+                  return writeAndResolve(JSON.stringify({ data: [spec] }));
+                }
+                if (args[0] === "resolve") {
+                  return writeAndResolve(JSON.stringify({ data: spec }));
+                }
+              }
+              return reject(`unexpected command: ${commandStart}`);
+            },
+          });
+          return dollar;
+        }
+
+        async function selectedToolError(hooks, tool, sessionID = "policy-session") {
+          try {
+            await hooks["tool.execute.before"]({ tool, sessionID }, {});
+            return null;
+          } catch (error) {
+            return String(error?.message ?? error);
+          }
+        }
+
+        function assert(condition, message) {
+          if (!condition) throw new Error(message);
+        }
+    '''
+
+
 def test_plugin_selected_id_main_path_does_not_export_all() -> None:
     """Selected ``[larva:<id>]`` requests must resolve that id, not export all."""
     source = _source()
@@ -341,6 +404,181 @@ def test_plugin_chat_params_timeout_does_not_block_request_preparation(tmp_path:
 
     assert result["elapsedMs"] < 750
     assert result["output"] == {}
+
+
+def test_plugin_tool_policy_config_projection_preserves_exact_allow_after_wildcard_deny(
+    tmp_path: Path,
+) -> None:
+    """Startup projection applies deny entries first and exact allow exceptions last."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_tool_policy_dollar_script()}
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{ id: "frontend-engineer", prompt: "policy prompt" }};
+        const policy = {{
+          agents: {{
+            "frontend-engineer": {{
+              deny: ["tela_*"],
+              allow: ["tela_vectl_decide"],
+            }},
+          }},
+        }};
+        const hooks = await module.default({{
+          $: createPolicyDollar(spec, policy),
+          directory: "/tmp/policy-projection",
+        }});
+        const config = {{}};
+        await hooks.config(config);
+
+        console.log(JSON.stringify(config.agent["frontend-engineer"].permission));
+        """,
+    )
+
+    assert result == {"tela_*": "deny", "tela_vectl_decide": "allow"}
+
+
+def test_plugin_tool_policy_runtime_exact_allow_exception_overrides_wildcard_deny(
+    tmp_path: Path,
+) -> None:
+    """Runtime hook must honor exact allow exceptions before wildcard deny rules."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_tool_policy_dollar_script()}
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{ id: "frontend-engineer", prompt: "policy prompt" }};
+        const policy = {{
+          agents: {{
+            "frontend-engineer": {{
+              deny: ["tela_*"],
+              allow: ["tela_vectl_decide"],
+            }},
+          }},
+        }};
+        const hooks = await module.default({{
+          $: createPolicyDollar(spec, policy),
+          directory: "/tmp/policy-runtime-exact",
+        }});
+        await hooks.config({{}});
+        await hooks["chat.params"]({{ agent: "frontend-engineer", sessionID: "s-exact" }}, {{}});
+
+        const allowedError = await selectedToolError(hooks, "tela_vectl_decide", "s-exact");
+        console.log(JSON.stringify({{ allowedError }}));
+        """,
+    )
+
+    assert result["allowedError"] is None
+
+
+def test_plugin_tool_policy_runtime_unrelated_tela_tool_remains_wildcard_denied(
+    tmp_path: Path,
+) -> None:
+    """Wildcard deny still blocks unrelated tela tools with no matching allow."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_tool_policy_dollar_script()}
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{ id: "frontend-engineer", prompt: "policy prompt" }};
+        const policy = {{
+          agents: {{
+            "frontend-engineer": {{
+              deny: ["tela_*"],
+              allow: ["tela_vectl_decide"],
+            }},
+          }},
+        }};
+        const hooks = await module.default({{
+          $: createPolicyDollar(spec, policy),
+          directory: "/tmp/policy-runtime-deny",
+        }});
+        await hooks.config({{}});
+        await hooks["chat.params"]({{ agent: "frontend-engineer", sessionID: "s-deny" }}, {{}});
+
+        const deniedError = await selectedToolError(hooks, "tela_serena_find_symbol", "s-deny");
+        console.log(JSON.stringify({{ deniedError }}));
+        """,
+    )
+
+    assert 'Tool "tela_serena_find_symbol" is denied' in result["deniedError"]
+    assert "tool-policy.json" in result["deniedError"]
+
+
+def test_plugin_tool_policy_runtime_wildcard_allow_exception_overrides_wildcard_deny(
+    tmp_path: Path,
+) -> None:
+    """Runtime hook must honor wildcard allow exceptions before wildcard deny rules."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_tool_policy_dollar_script()}
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{ id: "frontend-engineer", prompt: "policy prompt" }};
+        const policy = {{
+          agents: {{
+            "frontend-engineer": {{
+              deny: ["tela_*"],
+              allow: ["tela_vectl_*"],
+            }},
+          }},
+        }};
+        const hooks = await module.default({{
+          $: createPolicyDollar(spec, policy),
+          directory: "/tmp/policy-runtime-wildcard",
+        }});
+        await hooks.config({{}});
+        await hooks["chat.params"]({{ agent: "frontend-engineer", sessionID: "s-wild" }}, {{}});
+
+        const allowedError = await selectedToolError(hooks, "tela_vectl_decide", "s-wild");
+        const deniedError = await selectedToolError(hooks, "tela_serena_find_symbol", "s-wild");
+        console.log(JSON.stringify({{ allowedError, deniedError }}));
+        """,
+    )
+
+    assert result["allowedError"] is None
+    assert 'Tool "tela_serena_find_symbol" is denied' in result["deniedError"]
+    assert "tool-policy.json" in result["deniedError"]
+
+
+def test_plugin_tool_policy_allow_does_not_override_capability_hard_deny(
+    tmp_path: Path,
+) -> None:
+    """Persona capability/base permission hard denies are not tool-policy allowable."""
+    result = _run_node(
+        tmp_path,
+        f"""
+        {_tool_policy_dollar_script()}
+
+        const module = await import({json.dumps(PLUGIN.as_uri())});
+        const spec = {{
+          id: "readonly-agent",
+          prompt: "policy prompt",
+          capabilities: {{ fs: "read_only", git: "read_only" }},
+        }};
+        const policy = {{
+          agents: {{
+            "readonly-agent": {{ allow: ["bash"] }},
+          }},
+        }};
+        const hooks = await module.default({{
+          $: createPolicyDollar(spec, policy),
+          directory: "/tmp/policy-hard-deny",
+        }});
+        await hooks.config({{}});
+        await hooks["chat.params"]({{ agent: "readonly-agent", sessionID: "s-hard" }}, {{}});
+
+        const deniedError = await selectedToolError(hooks, "bash", "s-hard");
+        console.log(JSON.stringify({{ deniedError }}));
+        """,
+    )
+
+    assert 'Tool "bash" is denied' in result["deniedError"]
+    assert "larva permissions" in result["deniedError"]
 
 
 def test_opencode_plugin_packaged_path_force_includes_source_plugin() -> None:
