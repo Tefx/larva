@@ -71724,3 +71724,240 @@ phases:
     explaining the OpenCode CLI/runtime constraint without faking live coverage.
   depends_on:
   - opencode-tela-tool-policy-normalization-2026-05-24
+  steps:
+  - id: live_opencode_tool_policy_smoke_20260525.runtime_smoke
+    name: Live real OpenCode tool-policy precedence smoke
+    status: pending
+    description: 'PROOF ARTIFACT:
+
+      Produce a live/runtime smoke report for the completed OpenCode tool-policy precedence
+      fix using the real `larva opencode` wrapper and the real `opencode` binary when
+      available. This is proof-closure work for the user request "真实测试"; it is NOT
+      an implementation task.
+
+
+      VERIFICATION SCOPE DECLARATION:
+
+      - phase-check: protects the completed `opencode-tela-tool-policy-normalization-2026-05-24`
+      phase by closing the gap between Node-backed plugin-hook harness evidence and
+      a real OpenCode launch path.
+
+      - If the real OpenCode binary is unavailable or cannot exercise a tool invocation
+      safely/non-interactively, return deterministic BLOCKED or PARTIAL evidence;
+      do not fake live coverage.
+
+
+      BOUNDING BOX:
+
+      - Wrapper/runtime docs: `contrib/opencode-plugin/README.md`, `README.md`, `docs/reference/ARCHITECTURE.md`.
+
+      - Existing targeted suite: `tests/shell/test_opencode_plugin_contract.py`.
+
+      - Runtime surfaces to inspect, without modifying product code: `larva opencode
+      ...`, `opencode ...`, temporary HOME/project `.opencode/tool-policy.json`, environment
+      variables, CLI stdout/stderr/logs.
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | LIVE-R1 | User request: "真实测试" after prior verification did not launch real
+      OpenCode binary | Attempt real `larva opencode` / real `opencode` launch path
+      in isolation | live_opencode_tool_policy_smoke_20260525.runtime_smoke | binary/path/version
+      and launch evidence checklist items | opencode_path_version, launch_invocation,
+      launch_stdout_stderr | OWNED | n/a |
+
+      | LIVE-R2 | `contrib/opencode-plugin/README.md` lines 94-107: `larva opencode`
+      forwards args, builds temp `OPENCODE_CONFIG_CONTENT`, injects plugin, execs
+      real `opencode` | Use wrapper path where possible, and separately record real
+      binary availability | live_opencode_tool_policy_smoke_20260525.runtime_smoke
+      | wrapper invocation and temp env/config checklist items | wrapper_command,
+      opencode_command, env_snapshot | OWNED | n/a |
+
+      | LIVE-R3 | `contrib/opencode-plugin/README.md` lines 197-238: project/global
+      tool-policy search order and precedence | Use temp project `.opencode/tool-policy.json`
+      with deny `["tela_*"]` + allow `["tela_vectl_decide"]`; verify allowed path
+      or at minimum no plugin runtime-hook failure for the allowed tool through real
+      OpenCode path | live_opencode_tool_policy_smoke_20260525.runtime_smoke | allowed-path
+      checklist item | allowed_tool_result | OWNED | If OpenCode lacks a safe noninteractive
+      tool invocation route, mark PARTIAL with exact CLI limitation and cross-reference
+      targeted suite row |
+
+      | LIVE-R4 | `contrib/opencode-plugin/README.md` lines 235-238 and test coverage
+      lines 476-508 | Broader deny remains effective for representative unrelated
+      `tela_serena_*`/tela tool where feasible | live_opencode_tool_policy_smoke_20260525.runtime_smoke
+      | denied-path checklist item | denied_tool_result | OWNED | If not safely invocable,
+      mark PARTIAL with exact reason and targeted-suite fallback |
+
+      | LIVE-R5 | `contrib/opencode-plugin/README.md` lines 230-234 and tests lines
+      548-581 | Hard-deny precedence remains documented/covered by targeted suite
+      if real invocation cannot safely exercise bash/task calls | live_opencode_tool_policy_smoke_20260525.runtime_smoke
+      | hard-deny coverage checklist item | hard_deny_receipt | OWNED | Real bash/task
+      invocation may be excluded for safety; targeted-suite proof is acceptable with
+      raw command output |
+
+      | LIVE-R6 | User non-goals | No plugin code, schema/admission, global tela/opifex
+      policy, wrapper startup semantics, or user global OpenCode config pollution
+      | live_opencode_tool_policy_smoke_20260525.runtime_smoke | side-effect isolation
+      checklist item | isolation_cleanup_report | OWNED | n/a |
+
+
+      SIDE_EFFECT_BUDGET:
+
+      Allowed:
+
+      - Create and delete temporary directories under a temp root for HOME, XDG config/cache/data,
+      and a throwaway project containing `.opencode/tool-policy.json`.
+
+      - Invoke read-only/version/help/smoke OpenCode commands and `larva opencode`
+      wrapper commands needed to reach the runtime hook path.
+
+      - Set temporary environment variables such as `HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`,
+      `XDG_DATA_HOME`, `LARVA_OPENCODE_DEBUG=1`, `LARVA_OPENCODE_CACHE_TTL_MS=0`,
+      and `LARVA_OPENCODE_PLUGIN` when needed to force the source-tree plugin.
+
+      Forbidden:
+
+      - Do NOT modify plugin source, Python source, tests, docs, PersonaSpec schema/admission,
+      global tela/opifex policy, or wrapper startup semantics.
+
+      - Do NOT write to the user global `~/.config/opencode`, user HOME, or persistent
+      project `.opencode` except inside the isolated temp project.
+
+      - Do NOT run destructive model/tool actions or real bash/task tool calls unless
+      the OpenCode CLI provides a safe dry-run/non-mutating route and the evidence
+      explains the safety boundary.
+
+      - Do NOT claim a live pass if only the Node-backed plugin harness ran.
+
+
+      RISK_PROBES:
+
+      - Verify the real execution path actually loads the Larva plugin through OpenCode,
+      not merely `node` importing `contrib/opencode-plugin/larva.ts`.
+
+      - Verify project-level temp `.opencode/tool-policy.json` is the policy source
+      used; global user config must be isolated and not silently contributing behavior.
+
+      - Verify OpenCode CLI constraints are distinguished from Larva plugin failures;
+      command-not-found, missing auth/provider, or noninteractive invocation limits
+      must be reported as BLOCKED/PARTIAL with raw evidence.
+
+
+      NON-GOALS:
+
+      - No code/doc/test implementation changes.
+
+      - No changes to PersonaSpec schema/admission or global shared contract meaning.
+
+      - No changes to wrapper startup semantics or permanent OpenCode configuration.
+
+
+      EXPECTED OUTCOMES:
+
+      - FULL LIVE: real OpenCode binary available, wrapper/plugin loaded, temp policy
+      observed through a real OpenCode execution path, allowed `tela_vectl_decide`
+      path does not fail due to tool-policy deny, unrelated `tela_serena_*`/representative
+      tela tool is denied where feasible.
+
+      - PARTIAL: real binary/wrapper launches but OpenCode CLI cannot safely/noninteractively
+      invoke the relevant tool hooks; provide exact limitation plus raw targeted-suite
+      output proving hard-deny and precedence behavior.
+
+      - BLOCKED: real OpenCode binary or required runtime command is unavailable;
+      provide exact path/version/command-not-found/install/CLI constraint evidence
+      and do not report live behavior as proven.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] refs confirmation includes key passages for launcher behavior, real OpenCode
+      requirement, tool-policy search/precedence, hard-deny precedence, and targeted
+      test coverage.
+
+      - [ ] Real OpenCode availability is checked and recorded with exact command(s),
+      path from `which`/equivalent, version output, exit codes, stdout, and stderr.
+
+      - [ ] Isolated environment is recorded: temp HOME/project path, `.opencode/tool-policy.json`
+      contents, relevant env vars, and cleanup/no-user-global-config-pollution statement.
+
+      - [ ] If OpenCode is unavailable, evidence headline is BLOCKED and includes
+      exact command-not-found/install/path details; no live behavioral pass is claimed.
+
+      - [ ] If OpenCode is available, evidence includes raw `larva opencode` / `opencode`
+      invocation output proving the real wrapper/binary/plugin path launched or explaining
+      the exact CLI/runtime constraint that prevents hook-level invocation.
+
+      - [ ] Allowed path is tested where feasible: deny `["tela_*"]` + allow `["tela_vectl_decide"]`
+      permits the allowed path or at minimum does not fail at plugin runtime hook
+      when invoked through a real OpenCode execution path.
+
+      - [ ] Denied path is tested where feasible: a representative unrelated `tela_serena_*`/tela
+      tool remains denied by the broader wildcard policy.
+
+      - [ ] Hard-deny precedence is not exercised destructively; if real bash/task
+      hook invocation is unsafe or unavailable, raw targeted-suite output for `test_plugin_tool_policy_allow_does_not_override_capability_hard_deny`
+      is included and explicitly labeled as suite-backed, not live binary-backed.
+
+      - [ ] Behavioral proof register classifies each obligation as PROVEN, PARTIAL,
+      BLOCKED, or SUITE_BACKED with closure path and gate-decision basis.
+
+      - [ ] Non-goals and side-effect budget are preserved: no product code/docs/tests/schema/global
+      config changes and no persistent user OpenCode config pollution.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- contrib/opencode-plugin/README.md — <key passages for launcher, real\
+      \ opencode requirement, tool-policy search/precedence, hard-deny precedence>\n\
+      - README.md — <key passage for `larva opencode` launching real OpenCode>\n-\
+      \ docs/reference/ARCHITECTURE.md — <key passage for wrapper/plugin runtime ownership>\n\
+      - tests/shell/test_opencode_plugin_contract.py — <key passages for targeted\
+      \ precedence and hard-deny tests>\n\nIf any ref was not read, state: `NOT READ:\
+      \ <reason>`.\n\n## Live OpenCode Smoke Report\n- headline: FULL_LIVE | PARTIAL\
+      \ | BLOCKED | FAIL\n- tester: client-runtime-verifier\n- timestamp: <ISO 8601>\n\
+      \n### Binary / Version / Path Evidence\n- commands_checked:\n  ```\n  <paste\
+      \ exact commands used to locate/version opencode and larva>\n  ```\n- opencode_path:\
+      \ <path or NOT_FOUND>\n- opencode_version_output:\n  ```\n  <raw stdout/stderr\
+      \ + exit code>\n  ```\n- larva_wrapper_version_or_help:\n  ```\n  <raw stdout/stderr\
+      \ + exit code>\n  ```\n- availability_disposition: AVAILABLE | OPENCODE_NOT_FOUND\
+      \ | WRAPPER_BLOCKED | CLI_CONSTRAINT\n\n### Isolated Environment Evidence\n\
+      - temp_home: <path>\n- temp_project: <path>\n- xdg_env:\n  ```\n  HOME=<temp>\n\
+      \  XDG_CONFIG_HOME=<temp>/config\n  XDG_CACHE_HOME=<temp>/cache\n  XDG_DATA_HOME=<temp>/data\n\
+      \  LARVA_OPENCODE_DEBUG=1\n  LARVA_OPENCODE_CACHE_TTL_MS=0\n  LARVA_OPENCODE_PLUGIN=<path\
+      \ if set>\n  ```\n- `.opencode/tool-policy.json` used:\n  ```json\n  <exact\
+      \ temp policy JSON>\n  ```\n- cleanup/no_global_pollution: <evidence statement\
+      \ and any raw listing if relevant>\n\n### Live Invocation Evidence\n- wrapper_command:\n\
+      \  ```\n  <exact larva opencode command>\n  ```\n- wrapper_stdout_stderr_exit:\n\
+      \  ```\n  <raw output and exit code>\n  ```\n- direct_opencode_command_if_used:\n\
+      \  ```\n  <exact opencode command or N/A>\n  ```\n- direct_opencode_stdout_stderr_exit:\n\
+      \  ```\n  <raw output and exit code or N/A>\n  ```\n- proof_class: FULL_LIVE\
+      \ | PARTIAL_LIVE | BLOCKED_NO_BINARY | BLOCKED_CLI_LIMIT\n\n### Policy Behavior\
+      \ Evidence\n- allowed_tool_result (`tela_vectl_decide` under deny `[\"tela_*\"\
+      ]` + allow `[\"tela_vectl_decide\"]`):\n  ```\n  <raw live output, or exact\
+      \ reason not invocable>\n  ```\n- denied_tool_result (representative unrelated\
+      \ `tela_serena_*`/tela tool):\n  ```\n  <raw live output, or exact reason not\
+      \ invocable>\n  ```\n- hard_deny_receipt:\n  ```\n  <raw targeted-suite output\
+      \ for hard-deny test if live bash/task invocation is unsafe/unavailable>\n \
+      \ ```\n\n### Behavioral Proof Register\n| requirement_ref | behavior_claim |\
+      \ runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- |\n| LIVE-R1 | Real OpenCode\
+      \ binary availability established | path/version command output | <section>\
+      \ | PROVEN/BLOCKED | <next action if blocked> | <basis> |\n| LIVE-R3 | Allow\
+      \ exception does not fail under broader deny | live wrapper/OpenCode path output\
+      \ | <section> | PROVEN/PARTIAL/BLOCKED | <closure> | <basis> |\n| LIVE-R4 |\
+      \ Broader deny remains effective for unrelated tela tool | live wrapper/OpenCode\
+      \ path output | <section> | PROVEN/PARTIAL/BLOCKED | <closure> | <basis> |\n\
+      | LIVE-R5 | Hard-deny precedence remains covered safely | targeted suite or\
+      \ safe live proof | <section> | PROVEN/SUITE_BACKED/PARTIAL | <closure> | <basis>\
+      \ |\n\n### Checklist Receipt\n- [ ] Real binary/path/version checked.\n- [ ]\
+      \ Temp HOME/project/config isolation used.\n- [ ] Allowed path attempted through\
+      \ real OpenCode path or clearly marked PARTIAL/BLOCKED.\n- [ ] Denied path attempted\
+      \ through real OpenCode path or clearly marked PARTIAL/BLOCKED.\n- [ ] Hard-deny\
+      \ precedence covered safely and not overclaimed as live if suite-backed.\n-\
+      \ [ ] Raw command outputs included.\n- [ ] No code/docs/tests/global config\
+      \ changed.\n\n### Final Disposition\n- final_status: FULL_LIVE_PASS | PARTIAL_WITH_EXPLICIT_CLI_LIMIT\
+      \ | BLOCKED_NO_REAL_OPENCODE | FAIL\n- residual_gap: <none or exact gap>\n-\
+      \ requires_followup: true|false\n- followup_needed: <if true, exact plan gap\
+      \ to create>\n"
+    agent: client-runtime-verifier
