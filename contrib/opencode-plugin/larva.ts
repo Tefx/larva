@@ -384,6 +384,11 @@ interface ToolPolicyEntry {
 }
 
 type ToolPolicy = Record<string, ToolPolicyEntry>;
+type ToolPolicyDecision = "allow" | "deny" | undefined;
+
+interface ToolPolicyEvaluation {
+  deniedBy: "larva permissions" | "tool-policy.json" | null;
+}
 
 let _toolPolicy: ToolPolicy = {};
 
@@ -420,11 +425,24 @@ function parseToolPolicy(text: string): ToolPolicy {
   return policy;
 }
 
+function matchingPolicyPatterns(toolName: string, patterns: string[] | undefined): string[] {
+  return (patterns ?? []).filter((pattern) => wildcardMatch(toolName, pattern));
+}
+
+function toolPolicyDecision(entry: ToolPolicyEntry | undefined, toolName: string): ToolPolicyDecision {
+  if (matchingPolicyPatterns(toolName, entry?.allow).length > 0) return "allow";
+  if (matchingPolicyPatterns(toolName, entry?.deny).length > 0) return "deny";
+  return undefined;
+}
+
 function applyToolPolicy(agentId: string, perms: Record<string, string>): Record<string, string> {
   const entry = _toolPolicy[agentId];
   if (!entry) return perms;
-  for (const tool of entry.deny ?? []) perms[tool] = "deny";
-  for (const tool of entry.allow ?? []) perms[tool] = "allow";
+  for (const tool of [...(entry.deny ?? []), ...(entry.allow ?? [])]) {
+    if (perms[tool] === "deny") continue;
+    const decision = toolPolicyDecision(entry, tool);
+    if (decision) perms[tool] = decision;
+  }
   return perms;
 }
 
@@ -435,17 +453,22 @@ function wildcardMatch(value: string, pattern: string): boolean {
   return regex.test(value);
 }
 
-function toolDenyReason(agentId: string, toolName: string): string | null {
-  const basePerms = { ...(selectedPermissions.get(agentId) ?? {}) };
-  const perms = applyToolPolicy(agentId, { ...basePerms });
-  if (perms[toolName] === "deny") {
-    return basePerms[toolName] === "deny" ? "larva permissions" : "tool-policy.json";
+function evaluateToolPolicy(
+  agentId: string,
+  toolName: string,
+  basePerms: Record<string, string>,
+): ToolPolicyEvaluation {
+  if (basePerms[toolName] === "deny") return { deniedBy: "larva permissions" };
+
+  if (toolPolicyDecision(_toolPolicy[agentId], toolName) === "deny") {
+    return { deniedBy: "tool-policy.json" };
   }
-  const entry = _toolPolicy[agentId];
-  if (!entry?.deny) return null;
-  return entry.deny.some((pattern) => wildcardMatch(toolName, pattern))
-    ? "tool-policy.json"
-    : null;
+  return { deniedBy: null };
+}
+
+function toolDenyReason(agentId: string, toolName: string): string | null {
+  const basePerms = selectedPermissions.get(agentId) ?? {};
+  return evaluateToolPolicy(agentId, toolName, basePerms).deniedBy;
 }
 
 function shortDigest(entry: CacheEntry): string {
@@ -487,9 +510,9 @@ const larvaPlugin: Plugin = async ({ $, directory }) => {
 
       for (const spec of specs) {
         managed.add(spec.id);
-        const perms = toPermissions(spec) ?? {};
-        const finalPerms = applyToolPolicy(spec.id, perms);
-        selectedPermissions.set(spec.id, finalPerms);
+        const basePerms = toPermissions(spec) ?? {};
+        const finalPerms = applyToolPolicy(spec.id, { ...basePerms });
+        selectedPermissions.set(spec.id, basePerms);
 
         config.agent[spec.id] = {
           description: spec.description ? `[larva] ${spec.description}` : `[larva] ${spec.id}`,
