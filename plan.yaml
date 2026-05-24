@@ -71716,3 +71716,11 @@ phases:
       ## Commit
 
       - none (gate-only, no changes)'
+- id: live-opencode-tool-policy-smoke-2026-05-25
+  name: Live OpenCode Tool-Policy Smoke 2026-05-25
+  status: pending
+  gate: Live real OpenCode smoke either proves the tool-policy precedence path through
+    a real OpenCode execution path, or produces deterministic BLOCKED/PARTIAL evidence
+    explaining the OpenCode CLI/runtime constraint without faking live coverage.
+  depends_on:
+  - opencode-tela-tool-policy-normalization-2026-05-24
