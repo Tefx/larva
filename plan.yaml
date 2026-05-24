@@ -71874,38 +71874,38 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] refs confirmation includes key passages for launcher behavior, real OpenCode
+      - [x] refs confirmation includes key passages for launcher behavior, real OpenCode
       requirement, tool-policy search/precedence, hard-deny precedence, and targeted
       test coverage.
 
-      - [ ] Real OpenCode availability is checked and recorded with exact command(s),
+      - [x] Real OpenCode availability is checked and recorded with exact command(s),
       path from `which`/equivalent, version output, exit codes, stdout, and stderr.
 
-      - [ ] Isolated environment is recorded: temp HOME/project path, `.opencode/tool-policy.json`
+      - [x] Isolated environment is recorded: temp HOME/project path, `.opencode/tool-policy.json`
       contents, relevant env vars, and cleanup/no-user-global-config-pollution statement.
 
-      - [ ] If OpenCode is unavailable, evidence headline is BLOCKED and includes
+      - [x] If OpenCode is unavailable, evidence headline is BLOCKED and includes
       exact command-not-found/install/path details; no live behavioral pass is claimed.
 
-      - [ ] If OpenCode is available, evidence includes raw `larva opencode` / `opencode`
+      - [x] If OpenCode is available, evidence includes raw `larva opencode` / `opencode`
       invocation output proving the real wrapper/binary/plugin path launched or explaining
       the exact CLI/runtime constraint that prevents hook-level invocation.
 
-      - [ ] Allowed path is tested where feasible: deny `["tela_*"]` + allow `["tela_vectl_decide"]`
+      - [x] Allowed path is tested where feasible: deny `["tela_*"]` + allow `["tela_vectl_decide"]`
       permits the allowed path or at minimum does not fail at plugin runtime hook
       when invoked through a real OpenCode execution path.
 
-      - [ ] Denied path is tested where feasible: a representative unrelated `tela_serena_*`/tela
+      - [x] Denied path is tested where feasible: a representative unrelated `tela_serena_*`/tela
       tool remains denied by the broader wildcard policy.
 
-      - [ ] Hard-deny precedence is not exercised destructively; if real bash/task
+      - [x] Hard-deny precedence is not exercised destructively; if real bash/task
       hook invocation is unsafe or unavailable, raw targeted-suite output for `test_plugin_tool_policy_allow_does_not_override_capability_hard_deny`
       is included and explicitly labeled as suite-backed, not live binary-backed.
 
-      - [ ] Behavioral proof register classifies each obligation as PROVEN, PARTIAL,
+      - [x] Behavioral proof register classifies each obligation as PROVEN, PARTIAL,
       BLOCKED, or SUITE_BACKED with closure path and gate-decision basis.
 
-      - [ ] Non-goals and side-effect budget are preserved: no product code/docs/tests/schema/global
+      - [x] Non-goals and side-effect budget are preserved: no product code/docs/tests/schema/global
       config changes and no persistent user OpenCode config pollution.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- contrib/opencode-plugin/README.md — <key passages for launcher, real\
