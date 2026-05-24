@@ -70705,7 +70705,7 @@ phases:
       matching the worker checklist_receipt.'
   - id: opencode_tela_policy_plugin_fix_20260524
     name: Complete OpenCode plugin coherent tool-policy precedence
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -70904,6 +70904,8 @@ phases:
     depends_on:
     - opencode_tela_policy_red_tests_20260524
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-24T18:03:29.323519+00:00'
   - id: opencode_tela_policy_docs_sync_20260524
     name: Document OpenCode plugin tool-policy precedence
     status: pending
