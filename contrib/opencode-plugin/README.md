@@ -196,7 +196,11 @@ only.
 
 ### From tool-policy.json (runtime)
 
-Per-agent deny/allow rules for specific opencode tools. This is **not** part of the persona definition — it's runtime enforcement (tela's job in the full opifex system, approximated here for opencode).
+Per-agent deny/allow rules for specific opencode tools. This is **not** part of
+the persona definition — it is OpenCode plugin-local runtime enforcement for
+`tool-policy.json` only. Do not treat these rules as global tela/opifex canonical
+policy, PersonaSpec schema/admission semantics, or wrapper startup registration
+behavior.
 
 **Search order:**
 1. `.opencode/tool-policy.json` (project-level)
@@ -222,6 +226,48 @@ Per-agent deny/allow rules for specific opencode tools. This is **not** part of 
 If the file doesn't exist, no tool restrictions are applied beyond what larva's
 `capabilities` and `can_spawn` provide. `side_effect_policy` is invalid at the
 larva canonical boundary and must not be treated as PersonaSpec input.
+
+**Precedence:**
+
+1. Capability-derived/base Larva permissions are hard denies. If `capabilities`
+   derive `edit: deny` or `bash: deny`, or `can_spawn: false` derives
+   `task: deny`, a `tool-policy.json` `allow` entry does not override that deny.
+2. Within the selected agent's `tool-policy.json` entry, `allow` patterns are
+   exceptions to broader `deny` patterns. A matching `allow` permits that tool
+   for tool-policy evaluation unless a hard deny from step 1 already applies.
+3. A wildcard deny still denies unrelated tools when no `allow` pattern matches.
+
+Examples for a selected OpenCode agent named `vectl-orchestrator`:
+
+```json
+{
+  "agents": {
+    "vectl-orchestrator": {
+      "deny": ["tela_*"],
+      "allow": ["tela_vectl_decide"]
+    }
+  }
+}
+```
+
+For that selected agent, `tela_vectl_decide` is permitted by the exact allow
+exception even though `tela_*` is denied. Other `tela_*` tools remain denied
+unless they have their own matching allow exception.
+
+```json
+{
+  "agents": {
+    "vectl-orchestrator": {
+      "deny": ["tela_*"],
+      "allow": ["tela_vectl_*"]
+    }
+  }
+}
+```
+
+For that selected agent, the wildcard allow exception permits
+`tela_vectl_decide`, while unrelated tools such as `tela_serena_*` remain denied
+by the broader `tela_*` deny pattern.
 
 ## Other mappings
 
