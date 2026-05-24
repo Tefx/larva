@@ -70853,3 +70853,159 @@ phases:
     depends_on:
     - opencode_tela_policy_plugin_fix_20260524
     agent: doc-reviewer
+  - id: opencode_tela_policy_independent_verify_20260524
+    name: Independent OpenCode tool-policy normalization verification
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      agent_source: default
+
+      independence_level: L2
+
+
+      As an INDEPENDENT TESTER, validate the OpenCode plugin compatibility fix from
+      a fresh perspective. The check protects the phase gate opencode_tela_policy_gate_20260524
+      and any downstream release/readiness gate that would rely on OpenCode plugin
+      tool-policy enforcement.
+
+
+      PROOF ARTIFACT:
+
+      Produce a behavioral proof register and raw test/runtime evidence showing the
+      matcher uses raw+single-prefix-normalized candidates, deny precedence, and plugin-only
+      scope.
+
+
+      BEHAVIORAL PROOF REGISTER REQUIRED:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | R1 | raw input.tool remains a candidate | targeted runtime/helper test with
+      raw tela_* policy rule | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path>
+      | <basis> |
+
+      | R2 | exactly one leading tela_ is stripped for normalized candidate | tela_serena_*
+      and tela_tela_serena_* cases | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
+      | <path> | <basis> |
+
+      | R3 | deny wins over allow across any candidate | deny+allow conflict case
+      | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path> | <basis> |
+
+      | R4 | diagnostics include raw/normalized/match context where practical | captured
+      thrown error/debug output | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
+      | <path> | <basis> |
+
+      | R5 | no global tela/opifex/PersonaSpec/wrapper-startup changes | changed-file
+      and doc-scope audit | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path>
+      | <basis> |
+
+
+      YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works. Finding issues is a
+      successful verification outcome, but unresolved blocker-class issues must have
+      explicit remediation ownership.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [ ] refs confirmation includes key passages from all refs.
+
+      - [ ] Raw command output from targeted OpenCode plugin contract tests is included,
+      not summarized.
+
+      - [ ] Behavioral proof register covers raw preservation, one-prefix normalization,
+      deduped candidate behavior, deny precedence, allow-after-deny, diagnostic context,
+      and plugin-only scope.
+
+      - [ ] Verification includes a real Node-backed hook/helper execution path or
+      equivalent existing contract harness, not source inspection alone.
+
+      - [ ] If any PROVEN status is unavailable, the report marks NEEDS_TEST/UNPROVEN/BLOCKED
+      and provides a remediation/retest closure path.
+
+      - [ ] Changed-file audit confirms no edits to PersonaSpec schema/admission,
+      global tela/opifex identity, or wrapper startup registration.
+
+      - [ ] Headline is PASS, PASS_WITH_DEBT, or FAIL with blockers explicitly listed.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier (independent of implementation agent frontend-engineer
+      and docs agent doc-reviewer)
+
+      **Scope**: OpenCode plugin tool-policy raw+normalized matching
+
+      **Independence Level**: L2
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/opencode-plugin/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/opencode-plugin/README.md — <key passage or NOT READ: reason>
+
+      - tests/shell/test_opencode_plugin_contract.py — <key passage or NOT READ: reason>
+
+      - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
+
+
+      ### Test Execution
+
+      - commands_executed:
+
+      ```
+
+      <paste exact commands>
+
+      ```
+
+      - raw_stdout_stderr:
+
+      ```
+
+      <paste raw output>
+
+      ```
+
+      - exit_codes: <codes>
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ### Issues Found
+
+      | Severity | Description | Location | Reproduction |
+
+      | --- | --- | --- | --- |
+
+
+      ### Scope / Non-Goal Audit
+
+      - changed_files: <list>
+
+      - non_goal_surfaces_checked: <evidence>
+
+
+      ### Headline
+
+      - [ ] PASS: No blocking issues found and coverage justified above
+
+      - [ ] PASS_WITH_DEBT: Only explicit non-blocking debt remains
+
+      - [ ] FAIL: Blocking issues or blocking proof gaps remain
+
+
+      ## Checklist Receipt
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+    depends_on:
+    - opencode_tela_policy_plugin_fix_20260524
+    - opencode_tela_policy_docs_sync_20260524
+    agent: integration-verifier
