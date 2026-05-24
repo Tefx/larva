@@ -70573,3 +70573,182 @@ phases:
 
       - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
     agent: frontend-engineer
+  - id: opencode_tela_policy_plugin_fix_20260524
+    name: Complete OpenCode plugin raw+normalized tool-policy matching
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      tags: ["integration"]
+
+
+      TARGET STATE:
+
+      The OpenCode plugin''s tool.execute.before policy check evaluates tool deny/allow
+      rules against deduped candidate names derived from the raw OpenCode tool name
+      and a single-prefix normalized candidate. A raw tool name such as tela_serena_search
+      is denied by a serena_* deny rule while raw tela_* policy rules still work.
+      The behavior is local to larva''s OpenCode plugin.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - tests/shell/test_opencode_plugin_contract.py from opencode_tela_policy_red_tests_20260524
+      — test cases and assertions are PROTECTED.
+
+      - contrib/opencode-plugin/README.md — plugin-only behavior and tool-policy format
+      are AUTHORITATIVE.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user request: raw=input.tool | keep raw as candidate and in explanations
+      | opencode_tela_policy_plugin_fix_20260524 | raw name preserved | raw_preservation
+      | OWNED | n/a |
+
+      | R2 | user request: normalized strips exactly one leading tela_ | normalized=tela_
+      stripped once only | opencode_tela_policy_plugin_fix_20260524 | one-prefix normalization
+      implemented | normalization | OWNED | n/a |
+
+      | R3 | user request: candidate names=deduped [raw, normalized] | dedupe identical
+      raw/normalized candidate list | opencode_tela_policy_plugin_fix_20260524 | deduped
+      candidate matching works | candidate_dedupe | OWNED | n/a |
+
+      | R4 | user request: deny wins if ANY candidate matches deny pattern | deny
+      is checked across all candidates before allow | opencode_tela_policy_plugin_fix_20260524
+      | deny precedence works | deny_precedence | OWNED | n/a |
+
+      | R5 | user request: allow, if relevant, considers candidates after deny | allow
+      semantics remain compatible with current implementation after deny | opencode_tela_policy_plugin_fix_20260524
+      | allow-after-deny checked | allow_after_deny | OWNED | n/a |
+
+      | R6 | user request: diagnostics include raw/normalized/matched rule where practical
+      | denial/debug explanation exposes matching context | opencode_tela_policy_plugin_fix_20260524
+      | diagnostics include useful context | diagnostic_context | OWNED | n/a |
+
+      | R7 | non-goals | no global tela/opifex identity, PersonaSpec admission, or
+      wrapper startup changes | opencode_tela_policy_plugin_fix_20260524 | non-goals
+      preserved | scope_guard | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      - Primary touch path: contrib/opencode-plugin/larva.ts.
+
+      - Test touch path only as needed to keep opencode_tela_policy_red_tests_20260524
+      green after the product fix.
+
+
+      CONSTRAINTS:
+
+      - Do NOT destructively replace input.tool; raw tela_* rules must still work.
+
+      - Do NOT recursively strip tela_tela_*; normalized candidate removes exactly
+      one leading tela_ prefix.
+
+      - Do NOT change PersonaSpec schema/admission, global tela/opifex canonical tool
+      identity, or wrapper startup registration.
+
+      - Preserve current selected-id/session isolation for tool calls.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Recursive normalization of tela_tela_*.
+
+      2. Loss of raw tela_* rule support.
+
+      3. Allow logic that bypasses a deny match on any raw/normalized candidate.
+
+      4. Vague denial errors with no raw tool and no matched policy context.
+
+      5. Any change outside larva''s OpenCode plugin compatibility boundary.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      matcher must contain substantive logic that processes input.tool and produces
+      decisions that vary by raw/normalized candidates and deny/allow patterns.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [ ] refs confirmation includes key passages from all refs.
+
+      - [ ] Previously expected-red tests now pass with raw+normalized candidate behavior.
+
+      - [ ] Main path: tela_serena_* / tela_tavily_* / tela_tasca_* is denied by serena_*
+      / tavily_* / tasca_* deny rules for the selected agent.
+
+      - [ ] Failure path: tela_tela_serena_* normalizes only to tela_serena_* and
+      does not match serena_* through recursive stripping.
+
+      - [ ] Raw path: a raw tela_* policy rule still matches raw tela_* input without
+      destructive replacement.
+
+      - [ ] Deny precedence: any deny candidate match blocks before allow semantics
+      are considered.
+
+      - [ ] Diagnostic/error/debug evidence includes raw tool, normalized tool when
+      different, and matched rule/candidate where practical.
+
+      - [ ] Non-goal evidence shows no edits to global tela/opifex identity surfaces,
+      PersonaSpec schema/admission, or wrapper startup registration.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/opencode-plugin/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/opencode-plugin/README.md — <key passage or NOT READ: reason>
+
+      - tests/shell/test_opencode_plugin_contract.py — <key passage or NOT READ: reason>
+
+      - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
+
+
+      ## Implementation Receipt
+
+      - files_changed: <list>
+
+      - command: <exact targeted test command>
+
+      - raw_stdout_stderr: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Requirement Evidence Fields
+
+      - raw_preservation: <evidence>
+
+      - normalization: <evidence>
+
+      - candidate_dedupe: <evidence>
+
+      - deny_precedence: <evidence>
+
+      - allow_after_deny: <evidence>
+
+      - diagnostic_context: <evidence>
+
+      - scope_guard: <evidence>
+
+
+      ## Integration Evidence
+
+      - path_exercised: OpenCode input.tool -> tool.execute.before -> toolDenyReason/policy
+      matcher -> thrown denial or allow
+
+      - actual_denial_message: <paste>
+
+
+      ## Checklist Receipt
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+    depends_on:
+    - opencode_tela_policy_red_tests_20260524
+    agent: frontend-engineer
