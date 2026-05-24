@@ -70448,7 +70448,7 @@ phases:
   steps:
   - id: opencode_tela_policy_red_tests_20260524
     name: Expected-red tests for OpenCode tool-policy allow exceptions
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -70606,6 +70606,103 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-24T17:56:27.011692+00:00'
+    done_at: '2026-05-24T18:03:04.021621+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+
+      ## refs Read Confirmation
+
+      - contrib/opencode-plugin/larva.ts — applyToolPolicy applies deny then allow,
+      but toolDenyReason checks wildcard deny without allow exception handling.
+
+      - contrib/opencode-plugin/README.md — tool.execute.before applies runtime tool-policy/permission
+      denial for selected id; tool-policy rules are hot-updated runtime behavior.
+
+      - tests/shell/test_opencode_plugin_contract.py — existing Node runtime harness
+      imports contrib plugin directly for focused contract coverage.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode tool-policy checks live in contrib/opencode-plugin/larva.ts;
+      hot updates include tool-policy/capabilities/can_spawn.
+
+      - docs/reference/INTERFACES.md — OpenCode startup projection is not runtime
+      authority; hot-update scope includes tool-policy/capabilities/can_spawn.
+
+
+      ## Test-Step Semantic Report
+
+      - step_intent: test_define_red
+
+      - expected_result: red
+
+      - observed_result: red
+
+      - failure_alignment: Targeted tests expose current bug: runtime blocks allowed
+      tela_vectl_decide under deny ["tela_*"] + allow ["tela_vectl_decide"].
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - product_implementation_files_modified: no; only tests/shell/test_opencode_plugin_contract.py
+      changed.
+
+
+      ## Expected-Red Receipt
+
+      - command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+
+      - mainline_exit_code: 1
+
+      - raw result: 22 collected; 19 passed, 3 failed.
+
+      - expected_red_failure: test_plugin_tool_policy_runtime_exact_allow_exception_overrides_wildcard_deny
+      fails because allowedError is ''[larva] Tool "tela_vectl_decide" is denied for
+      agent "frontend-engineer" by tool-policy.json'' instead of None.
+
+      - additional red failures: wildcard allow exception also blocks tela_vectl_decide;
+      capability hard-deny non-override test shows bash was not denied when tool-policy
+      allowed it.
+
+
+      ## Coverage Fields
+
+      - config_projection_allow: PROVEN — config projection allow test passed, projected
+      permission preserves {"tela_*": "deny", "tela_vectl_decide": "allow"}.
+
+      - runtime_allow_exception_red: PROVEN — exact allow runtime test fails with
+      runtime denial of tela_vectl_decide.
+
+      - unrelated_deny_case: PROVEN — unrelated tela_serena_find_symbol denial case
+      exists and passes.
+
+      - wildcard_allow_case: PROVEN — wildcard allow exception case exists and fails
+      on allowed tela_vectl_decide while asserting unrelated deny.
+
+      - hard_deny_case: PROVEN — hard-deny non-override case exists and currently
+      red, exposing required fix.
+
+      - scope_guard: PROVEN — no global tela/opifex policy, PersonaSpec schema/admission,
+      wrapper startup, or product implementation files changed.
+
+
+      ## Files Changed
+
+      - tests/shell/test_opencode_plugin_contract.py: added OpenCode plugin runtime
+      tool-policy expected-red tests and local Node fake-dollar helper.
+
+
+      ## Commits / Merge
+
+      - worker commit: d56346ddc1d2a52ccd208a8e274901dd89e8abc1
+
+      - main squash commit: 1dc3580 [vectl] step-opencode_tela_policy_red_tests_20260524
+      completed
+
+
+      ## Checklist
+
+      All eight verification checklist items toggled checked via orchestrator after
+      matching the worker checklist_receipt.'
   - id: opencode_tela_policy_plugin_fix_20260524
     name: Complete OpenCode plugin coherent tool-policy precedence
     status: pending
