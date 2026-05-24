@@ -70431,3 +70431,11 @@ phases:
       \ to update plan metadata.\n\nBlockers: none.\nWarnings: accepted non-actionable\
       \ historical metadata residual warnings only, owner/rationale recorded above.\n\
       Open Problems: none.\nResidual Risk: none."
+- id: opencode-tela-tool-policy-normalization-2026-05-24
+  name: OpenCode Tela Tool Policy Normalization 2026-05-24
+  status: pending
+  gate: OpenCode plugin tool-policy normalization is tested, implemented, documented
+    as plugin-only behavior, independently verified, and gate-reviewed without changing
+    global tela/opifex identity semantics.
+  depends_on:
+  - plan_validation_debt_20260504
