@@ -70432,11 +70432,17 @@ phases:
       \ historical metadata residual warnings only, owner/rationale recorded above.\n\
       Open Problems: none.\nResidual Risk: none."
 - id: opencode-tela-tool-policy-normalization-2026-05-24
-  name: OpenCode Tela Tool Policy Normalization 2026-05-24
+  name: OpenCode Tool-Policy Precedence Repair 2026-05-24
   status: pending
-  gate: OpenCode plugin tool-policy normalization is tested, implemented, documented
-    as plugin-only behavior, independently verified, and gate-reviewed without changing
-    global tela/opifex identity semantics.
+  gate: OpenCode plugin tool-policy precedence is tested, implemented with coherent
+    config/runtime evaluator behavior, documented as plugin-only behavior, independently
+    verified with targeted tests plus guard evidence, and gate-reviewed without changing
+    global tela/opifex policy, PersonaSpec schema/admission, or wrapper startup registration
+    semantics.
+  context: 'Defect repair for confirmed OpenCode plugin runtime policy bug: allow
+    exceptions in tool-policy entries must override broader tool-policy deny patterns
+    for the same entry, while capability-derived/base permission hard denies remain
+    non-overridable.'
   depends_on:
   - plan_validation_debt_20260504
   steps:
