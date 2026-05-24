@@ -71212,7 +71212,7 @@ phases:
       matching the worker checklist_receipt.'
   - id: opencode_tela_policy_independent_verify_20260524
     name: Independent OpenCode tool-policy precedence verification
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -71379,6 +71379,104 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-24T18:27:41.370055+00:00'
+    done_at: '2026-05-24T18:35:33.565789+00:00'
+    evidence: 'headline: PASS_WITH_DEBT
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ## refs Read Confirmation
+
+      - contrib/opencode-plugin/larva.ts — toolPolicyDecision checks allow before
+      deny; evaluateToolPolicy checks larva/base hard deny before tool-policy evaluation.
+
+      - contrib/opencode-plugin/README.md — precedence docs state base Larva permissions
+      are hard denies; tool-policy allow patterns are exceptions to broader denies;
+      unrelated wildcard-denied tools remain denied.
+
+      - tests/shell/test_opencode_plugin_contract.py — Node-backed _run_node writes
+      scenario.mjs and executes real node; tests cover exact allow, wildcard allow,
+      unrelated denial, and capability hard-deny.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode runtime prompt replacement and tool-policy
+      checks remain in contrib/opencode-plugin/larva.ts.
+
+      - docs/reference/INTERFACES.md — OpenCode startup projection is not runtime
+      authority; hot-update scope is prompt/temperature/tool-policy/capabilities/can_spawn.
+
+
+      ## Commands / Runtime Evidence
+
+      - targeted_command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+      -vv
+
+      - mainline_targeted_result: 22 passed in 2.67s with all plugin policy tests
+      passing.
+
+      - node_or_hook_path: tests/shell/test_opencode_plugin_contract.py::_run_node
+      -> node scenario.mjs importing contrib/opencode-plugin/larva.ts; exercises hooks.config,
+      chat.params, tool.execute.before.
+
+      - guard_command: .venv/bin/invar guard
+
+      - mainline_guard_result: status passed; static passed true; errors 0; warnings
+      0; files_checked 0; doctest passed.
+
+      - changed_file_audit: verify-only worktree status/diff empty; main...HEAD diff
+      empty; no files modified.
+
+
+      ## behavioral_proof_register
+
+      | requirement_ref | status | evidence_ref | gate_decision_basis |
+
+      | R1 exact allow exception | PROVEN | test_plugin_tool_policy_runtime_exact_allow_exception_overrides_wildcard_deny
+      PASSED | runtime tool.execute.before returned no error for allowed exact tela_vectl_decide
+      |
+
+      | R2 unrelated wildcard deny | PROVEN | test_plugin_tool_policy_runtime_unrelated_tela_tool_remains_wildcard_denied
+      PASSED | tela_serena_find_symbol denied by tool-policy.json |
+
+      | R3 wildcard allow exception | PROVEN | test_plugin_tool_policy_runtime_wildcard_allow_exception_overrides_wildcard_deny
+      PASSED | tela_vectl_decide allowed and unrelated tela_serena_* denied |
+
+      | R4 hard deny precedence | PROVEN | test_plugin_tool_policy_allow_does_not_override_capability_hard_deny
+      PASSED | bash denial cites larva permissions |
+
+      | R5 shared evaluator coherence | PROVEN | larva.ts shared toolPolicyDecision
+      plus config/runtime tests passed | applyToolPolicy and runtime evaluation share
+      precedence classification |
+
+      | R6 docs/plugin-only scope | PROVEN | README precedence/scope docs plus changed-file
+      audit | docs confine rules to tool-policy.json/OpenCode plugin and preserve
+      PersonaSpec/opifex/wrapper boundaries |
+
+
+      ## Uncertainty Sources
+
+      - Full repository guard was an extra non-required attempt and remained deferred
+      in worker context; targeted Node-backed contract suite and changed-file/mainline
+      invar guard passed. No blockers.
+
+      - No live OpenCode binary launched; L2 scope accepts existing Node-backed plugin
+      hook harness.
+
+
+      ## Checklist
+
+      All eight verification checklist items toggled checked via orchestrator after
+      matching the worker checklist_receipt.
+
+
+      ## Commit
+
+      - none (verify-only, no changes)'
   - id: opencode_tela_policy_gate_20260524
     name: Gate OpenCode tool-policy precedence repair
     status: pending
