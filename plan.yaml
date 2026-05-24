@@ -70995,7 +70995,7 @@ phases:
       matching the worker checklist_receipt.'
   - id: opencode_tela_policy_docs_sync_20260524
     name: Document OpenCode plugin tool-policy precedence
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -71126,6 +71126,90 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-05-24T18:09:39.848865+00:00'
+    done_at: '2026-05-24T18:27:07.794816+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/opencode-plugin/README.md — existing docs identify tool.execute.before
+      as selected-id runtime tool-policy/permission denial and tool-policy as hot-updated
+      runtime behavior.
+
+      - contrib/opencode-plugin/larva.ts — shared toolPolicyDecision checks allow
+      patterns before policy deny patterns, while evaluateToolPolicy preserves larva/base
+      hard-deny precedence first.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode wrapper owns startup projection;
+      plugin owns runtime prompt injection and tool-policy checks in contrib/opencode-plugin/larva.ts.
+
+      - docs/reference/INTERFACES.md — OpenCode startup projection is not runtime
+      semantic authority; hot-update scope includes tool-policy/capabilities/can_spawn.
+
+
+      ## Documentation Receipt
+
+      - changed_files: contrib/opencode-plugin/README.md
+
+      - hard_deny_docs: Added/confirmed passage stating capability-derived/base Larva
+      permissions are hard denies and tool-policy allow does not override edit/bash/task/task-from-can_spawn
+      denies.
+
+      - allow_exception_docs: Added/confirmed passage stating allow patterns are exceptions
+      to broader deny patterns inside selected agent''s tool-policy entry unless hard
+      deny already applies.
+
+      - examples: Added exact allow example deny ["tela_*"] + allow ["tela_vectl_decide"]
+      and wildcard allow example deny ["tela_*"] + allow ["tela_vectl_*"] while unrelated
+      tela_serena_* remains denied.
+
+      - plugin_only_scope: Added/confirmed OpenCode plugin-local runtime enforcement
+      only; not global tela/opifex policy, PersonaSpec schema/admission, or wrapper
+      startup registration behavior.
+
+      - wrapper_scope: Only README docs changed; no wrapper startup semantics/code
+      changed.
+
+
+      ## Consistency / Verification
+
+      - implementation_alignment: Docs align with toolPolicyDecision/evaluateToolPolicy
+      behavior and targeted tests.
+
+      - targeted_command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+
+      - targeted_result: 22 passed in 1.24s.
+
+      - guard_command: .venv/bin/invar guard
+
+      - guard_result: status passed; static passed true; errors 0; warnings 0; files_checked
+      0.
+
+
+      ## Coverage / Requirement Proof
+
+      - hard_deny_docs: PROVEN — quoted hard-deny precedence passage documented.
+
+      - allow_exception_docs: PROVEN — allow-over-broader-deny passage documented.
+
+      - examples: PROVEN — exact and wildcard examples documented, including unrelated
+      wildcard deny behavior.
+
+      - plugin_only_scope: PROVEN — plugin-local-only scope documented.
+
+      - wrapper_scope: PROVEN — docs exclude wrapper startup registration; only README
+      changed.
+
+
+      ## Commits / Merge
+
+      - worker commit: 99280fbb028df9727bca902788f5870aade6845c
+
+      - main squash commit: 428bf7d [vectl] step-opencode_tela_policy_docs_sync_20260524
+      completed
+
+
+      ## Checklist
+
+      All seven verification checklist items toggled checked via orchestrator after
+      matching the worker checklist_receipt.'
   - id: opencode_tela_policy_independent_verify_20260524
     name: Independent OpenCode tool-policy precedence verification
     status: pending
