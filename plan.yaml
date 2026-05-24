@@ -71718,7 +71718,7 @@ phases:
       - none (gate-only, no changes)'
 - id: live-opencode-tool-policy-smoke-2026-05-25
   name: Live OpenCode Tool-Policy Smoke 2026-05-25
-  status: in_progress
+  status: done
   gate: Live real OpenCode smoke either proves the tool-policy precedence path through
     a real OpenCode execution path, or produces deterministic BLOCKED/PARTIAL evidence
     explaining the OpenCode CLI/runtime constraint without faking live coverage.
@@ -71727,7 +71727,7 @@ phases:
   steps:
   - id: live_opencode_tool_policy_smoke_20260525.runtime_smoke
     name: Live real OpenCode tool-policy precedence smoke
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT:
 
       Produce a live/runtime smoke report for the completed OpenCode tool-policy precedence
@@ -71963,3 +71963,121 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-05-24T18:56:53.346098+00:00'
+    done_at: '2026-05-24T19:03:12.810031+00:00'
+    evidence: 'headline: PARTIAL
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ## refs Read Confirmation
+
+      - contrib/opencode-plugin/README.md — launcher builds temporary OPENCODE_CONFIG_CONTENT,
+      injects plugin, execs real opencode; tool-policy search order and precedence
+      documented.
+
+      - README.md — larva opencode launches real OpenCode CLI with temporary dynamic
+      config from active registry variants.
+
+      - docs/reference/ARCHITECTURE.md — launcher owns startup process/env; plugin
+      owns runtime prompt injection and tool-policy checks; launcher must not write
+      persistent opencode config.
+
+      - tests/shell/test_opencode_plugin_contract.py — targeted tests cover exact
+      allow, unrelated tela deny, and hard-deny non-override.
+
+      - contrib/opencode-plugin/larva.ts — loadToolPolicy checks project then global
+      policy; toolPolicyDecision checks allow before deny; evaluateToolPolicy returns
+      larva permission hard deny before tool-policy.
+
+
+      ## Real OpenCode Evidence
+
+      - opencode_path: /opt/homebrew/bin/opencode
+
+      - opencode_version: 1.15.10
+
+      - opencode_help: exit 0 and lists opencode [project], opencode run, opencode
+      agent.
+
+      - wrapper_command: uv run --project <worktree> larva opencode agent list --print-logs
+      --log-level DEBUG inside temp project.
+
+      - wrapper_result: exit 0; OpenCode logs show version 1.15.10, OPENCODE_CONFIG_CONTENT
+      loaded, source plugin loaded from worktree contrib/opencode-plugin/larva.ts.
+
+      - agent_list_projection: frontend-engineer listed with permission "tela_*" deny
+      and "tela_vectl_decide" allow.
+
+
+      ## Isolated Environment / Cleanup
+
+      - temp_root: /var/folders/rs/6_0h1ssn5439q1yfqy4pykg00000gn/T/opencode/larva-runtime-smoke2.51kLnt
+
+      - temp HOME/XDG/project used; temp project contained .opencode/tool-policy.json
+      with deny ["tela_*"] and allow ["tela_vectl_decide"].
+
+      - env included LARVA_OPENCODE_DEBUG=1, LARVA_OPENCODE_CACHE_TTL_MS=0, LARVA_OPENCODE_PLUGIN=<worktree>/contrib/opencode-plugin/larva.ts.
+
+      - temp root removed; exists_after=no. No user global ~/.config/opencode or persistent
+      project config written.
+
+
+      ## Classification / Behavioral Proof Register
+
+      - LIVE-R1 real binary/wrapper: PROVEN — real /opt/homebrew/bin/opencode 1.15.10
+      launched via wrapper.
+
+      - LIVE-R2 isolated wrapper path: PROVEN — temp HOME/XDG/project and OPENCODE_CONFIG_CONTENT
+      path recorded; plugin source path loaded.
+
+      - LIVE-R3 allowed path: PARTIAL/SUITE_BACKED — live agent list showed tela_vectl_decide
+      allow entry; no safe documented noninteractive OpenCode command to directly
+      invoke arbitrary tool hook; targeted suite proves hook allowedError is None.
+
+      - LIVE-R4 denied path: PARTIAL/SUITE_BACKED — live agent list showed tela_*
+      deny entry; no safe noninteractive hook invocation; targeted suite proves tela_serena_find_symbol
+      denied.
+
+      - LIVE-R5 hard deny: SUITE_BACKED — targeted hard-deny test passed; no destructive
+      real bash/task hook executed.
+
+      - LIVE-R6 side effects: PROVEN — git status clean, no files changed, temp root
+      removed, no global config pollution.
+
+
+      ## Targeted Suite Fallback
+
+      - command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py::test_plugin_tool_policy_runtime_exact_allow_exception_overrides_wildcard_deny
+      tests/shell/test_opencode_plugin_contract.py::test_plugin_tool_policy_runtime_unrelated_tela_tool_remains_wildcard_denied
+      tests/shell/test_opencode_plugin_contract.py::test_plugin_tool_policy_allow_does_not_override_capability_hard_deny
+      -vv
+
+      - result: 3 passed in 3.79s.
+
+
+      ## CLI Constraint
+
+      OpenCode CLI exposes agent/run/help commands but no documented safe noninteractive
+      primitive to directly invoke arbitrary MCP/tool hooks such as tela_vectl_decide
+      or tela_serena_* without model/provider/tool execution. Therefore real binary
+      proof is PARTIAL: wrapper/plugin/config/permission projection are live-proven;
+      hook semantics are suite-backed.
+
+
+      ## Files Changed / Commit
+
+      - files_changed: none
+
+      - commit: none (verify-only, no changes)
+
+
+      ## Checklist
+
+      All ten verification checklist items toggled checked via orchestrator after
+      matching the worker checklist_receipt.'
