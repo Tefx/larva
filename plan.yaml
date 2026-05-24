@@ -70705,7 +70705,7 @@ phases:
       matching the worker checklist_receipt.'
   - id: opencode_tela_policy_plugin_fix_20260524
     name: Complete OpenCode plugin coherent tool-policy precedence
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -70906,6 +70906,93 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-24T18:03:29.323519+00:00'
+    done_at: '2026-05-24T18:09:16.566856+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/opencode-plugin/larva.ts — pre-fix runtime path used separate applyToolPolicy
+      and wildcard-only toolDenyReason; fix centralized precedence in shared evaluator.
+
+      - contrib/opencode-plugin/README.md — tool.execute.before applies runtime tool-policy/permission
+      denial for selected id; tool-policy/capabilities/can_spawn are hot-update inputs.
+
+      - tests/shell/test_opencode_plugin_contract.py — protected tests cover config
+      exact allow projection, exact/wildcard allow exceptions, unrelated wildcard
+      deny, and hard larva permission deny for bash.
+
+      - docs/reference/ARCHITECTURE.md — OpenCode runtime prompt replacement and tool-policy
+      checks remain in contrib/opencode-plugin/larva.ts.
+
+      - docs/reference/INTERFACES.md — OpenCode startup projection is not runtime
+      semantic authority; hot-update scope includes tool-policy/capabilities/can_spawn.
+
+
+      ## Implementation Receipt
+
+      - changed_files: contrib/opencode-plugin/larva.ts
+
+      - shared_evaluator: toolPolicyDecision(...) is used by config-time applyToolPolicy(...)
+      and runtime evaluateToolPolicy(...)/toolDenyReason(...).
+
+      - protected_artifacts_preserved: upstream tests/docs/contracts not modified
+      in this implementation step.
+
+      - deviation_records: []
+
+
+      ## Test / Guard Receipt
+
+      - targeted_command: .venv/bin/python -m pytest tests/shell/test_opencode_plugin_contract.py
+
+      - targeted_exit_code: 0
+
+      - targeted_raw_stdout_stderr: 22 collected; tests/shell/test_opencode_plugin_contract.py
+      ...................... [100%]; 22 passed in 1.12s.
+
+      - guard_command: .venv/bin/invar guard
+
+      - guard_exit_code: 0
+
+      - guard_raw_stdout_stderr: status passed; static passed true; errors 0; warnings
+      0; files_checked 0; doctest passed.
+
+
+      ## Coverage / Requirement Proof
+
+      - config_projection: PROVEN — test_plugin_tool_policy_config_projection_preserves_exact_allow_after_wildcard_deny
+      passed.
+
+      - runtime_exact_allow: PROVEN — test_plugin_tool_policy_runtime_exact_allow_exception_overrides_wildcard_deny
+      passed.
+
+      - unrelated_deny: PROVEN — test_plugin_tool_policy_runtime_unrelated_tela_tool_remains_wildcard_denied
+      passed.
+
+      - wildcard_allow: PROVEN — test_plugin_tool_policy_runtime_wildcard_allow_exception_overrides_wildcard_deny
+      passed.
+
+      - shared_evaluator: PROVEN — toolPolicyDecision shared by config projection
+      and runtime deny evaluation.
+
+      - hard_deny_precedence: PROVEN — test_plugin_tool_policy_allow_does_not_override_capability_hard_deny
+      passed.
+
+      - scope_guard: PROVEN — only contrib/opencode-plugin/larva.ts changed; no global
+      tela/opifex policy, PersonaSpec schema/admission, wrapper startup registration,
+      tests, or docs changed.
+
+
+      ## Commits / Merge
+
+      - worker commit: b5d46d91634d3939ebe12faba586c2a535449eb9
+
+      - main squash commit: 840fef7 [vectl] step-opencode_tela_policy_plugin_fix_20260524
+      completed
+
+
+      ## Checklist
+
+      All nine verification checklist items toggled checked via orchestrator after
+      matching the worker checklist_receipt.'
   - id: opencode_tela_policy_docs_sync_20260524
     name: Document OpenCode plugin tool-policy precedence
     status: pending
