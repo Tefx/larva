@@ -71061,27 +71061,27 @@ phases:
       - Keep examples bounded to the OpenCode plugin tool-policy.json surface.'
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
 
-      - [ ] refs confirmation includes key passages from README, plugin source, and
+      - [x] refs confirmation includes key passages from README, plugin source, and
       reference OpenCode docs.
 
-      - [ ] Documentation explicitly states capability-derived/base permission hard
+      - [x] Documentation explicitly states capability-derived/base permission hard
       denies such as edit/bash/task deny are non-overridable by tool-policy allow.
 
-      - [ ] Documentation explicitly states tool-policy allow exceptions override
+      - [x] Documentation explicitly states tool-policy allow exceptions override
       broader tool-policy deny patterns within the same selected-agent policy entry.
 
-      - [ ] Documentation includes exact allow example: deny ["tela_*"] + allow ["tela_vectl_decide"]
+      - [x] Documentation includes exact allow example: deny ["tela_*"] + allow ["tela_vectl_decide"]
       permits tela_vectl_decide.
 
-      - [ ] Documentation includes wildcard allow example: deny ["tela_*"] + allow
+      - [x] Documentation includes wildcard allow example: deny ["tela_*"] + allow
       ["tela_vectl_*"] permits tela_vectl_decide while unrelated tela_serena_* remains
       denied.
 
-      - [ ] Documentation states this is OpenCode plugin tool-policy behavior only
+      - [x] Documentation states this is OpenCode plugin tool-policy behavior only
       and not global tela/opifex canonical policy, PersonaSpec schema/admission, or
       wrapper startup registration semantics.
 
-      - [ ] Documentation remains consistent with the implemented shared evaluator
+      - [x] Documentation remains consistent with the implemented shared evaluator
       behavior and targeted tests.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
