@@ -70752,3 +70752,104 @@ phases:
     depends_on:
     - opencode_tela_policy_red_tests_20260524
     agent: frontend-engineer
+  - id: opencode_tela_policy_docs_sync_20260524
+    name: Document plugin-only tela tool-policy normalization
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      OpenCode plugin documentation states the raw+normalized tool-policy matching
+      semantics for exactly one leading tela_ prefix and clearly limits the behavior
+      to larva''s OpenCode plugin matching layer.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | D1 | user request: Docs must state plugin-only behavior | README explains
+      OpenCode plugin matching only | opencode_tela_policy_docs_sync_20260524 | plugin-only
+      scope documented | plugin_only_scope | OWNED | n/a |
+
+      | D2 | user request: required semantics 1-7 | README documents raw, normalized,
+      candidates, deny precedence, allow-after-deny, raw preservation, one-prefix-only
+      | opencode_tela_policy_docs_sync_20260524 | required semantics documented |
+      semantic_doc_rows | OWNED | n/a |
+
+      | D3 | non-goals | README/docs reject global tela/opifex identity, PersonaSpec
+      admission, wrapper startup changes, long-term double-write requirement | opencode_tela_policy_docs_sync_20260524
+      | non-goals documented | non_goal_doc | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      - contrib/opencode-plugin/README.md is the primary doc target.
+
+      - docs/reference/ARCHITECTURE.md or docs/reference/INTERFACES.md may receive
+      a minimal OpenCode note only if needed to keep reference docs aligned.
+
+
+      CONSTRAINTS:
+
+      - Do not describe this as global tela/opifex canonical tool identity.
+
+      - Do not imply operators must maintain duplicate serena_* and tela_serena_*
+      rules long term.
+
+      - Do not alter code in this documentation step.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [ ] refs confirmation includes key passages from README and reference OpenCode
+      docs.
+
+      - [ ] Documentation explicitly defines raw=input.tool and normalized=raw with
+      exactly one leading tela_ removed when present.
+
+      - [ ] Documentation states candidates are deduped [raw, normalized].
+
+      - [ ] Documentation states deny wins across any candidate before allow is considered.
+
+      - [ ] Documentation states raw tela_* rules still work and tela_tela_* is not
+      recursively stripped.
+
+      - [ ] Documentation states this is OpenCode plugin matching behavior only and
+      not global tela/opifex canonical identity.
+
+      - [ ] Documentation states operators should not need long-term duplicate serena_*
+      and tela_serena_* rules for this compatibility path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/opencode-plugin/README.md — <key passage or NOT READ: reason>
+
+      - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
+
+      - docs/reference/INTERFACES.md — <key passage or NOT READ: reason>
+
+
+      ## Documentation Receipt
+
+      - files_changed: <list>
+
+      - changed_sections: <headings>
+
+      - semantic_doc_rows: <raw/normalized/candidates/deny/allow/raw-preserved/one-prefix
+      evidence>
+
+      - plugin_only_scope: <quote>
+
+      - non_goal_doc: <quote>
+
+
+      ## Checklist Receipt
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+    depends_on:
+    - opencode_tela_policy_plugin_fix_20260524
+    agent: doc-reviewer
