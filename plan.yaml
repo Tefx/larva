@@ -70931,7 +70931,7 @@ phases:
     - opencode_tela_policy_plugin_fix_20260524
     agent: doc-reviewer
   - id: opencode_tela_policy_independent_verify_20260524
-    name: Independent OpenCode tool-policy normalization verification
+    name: Independent OpenCode tool-policy precedence verification
     status: pending
     description: 'step_type: verification
 
@@ -70941,18 +70941,22 @@ phases:
 
       independence_level: L2
 
+      work_type: defect_repair
 
-      As an INDEPENDENT TESTER, validate the OpenCode plugin compatibility fix from
-      a fresh perspective. The check protects the phase gate opencode_tela_policy_gate_20260524
-      and any downstream release/readiness gate that would rely on OpenCode plugin
-      tool-policy enforcement.
+
+      As an INDEPENDENT TESTER, validate the OpenCode plugin tool-policy precedence
+      fix from a fresh perspective. The check protects the phase gate opencode_tela_policy_gate_20260524
+      and downstream release/readiness gates that rely on OpenCode plugin tool-policy
+      enforcement.
 
 
       PROOF ARTIFACT:
 
-      Produce a behavioral proof register and raw test/runtime evidence showing the
-      matcher uses raw+single-prefix-normalized candidates, deny precedence, and plugin-only
-      scope.
+      Produce a behavioral proof register and raw test/runtime evidence showing one
+      coherent evaluator handles config-time projection and runtime hook behavior;
+      tool-policy allow exceptions override broader tool-policy deny patterns; unrelated
+      wildcard-denied tools remain blocked; capability/base permission hard denies
+      remain non-overridable.
 
 
       BEHAVIORAL PROOF REGISTER REQUIRED:
@@ -70960,24 +70964,30 @@ phases:
       | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
       status | closure_path | gate_decision_basis |
 
-      | R1 | raw input.tool remains a candidate | targeted runtime/helper test with
-      raw tela_* policy rule | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path>
-      | <basis> |
-
-      | R2 | exactly one leading tela_ is stripped for normalized candidate | tela_serena_*
-      and tela_tela_serena_* cases | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
-      | <path> | <basis> |
-
-      | R3 | deny wins over allow across any candidate | deny+allow conflict case
+      | R1 | deny ["tela_*"] + allow ["tela_vectl_decide"] permits tela_vectl_decide
+      at runtime | targeted plugin contract test or Node-backed helper/hook execution
       | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path> | <basis> |
 
-      | R4 | diagnostics include raw/normalized/match context where practical | captured
-      thrown error/debug output | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
+      | R2 | deny ["tela_*"] still denies tela_serena_find_symbol when no allow matches
+      | targeted plugin contract test or Node-backed helper/hook execution | <artifact>
+      | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path> | <basis> |
+
+      | R3 | deny ["tela_*"] + allow ["tela_vectl_*"] permits tela_vectl_decide and
+      denies unrelated tela_serena_* | targeted wildcard allow test | <artifact> |
+      PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path> | <basis> |
+
+      | R4 | capability/base permission hard deny for bash/task/edit is not overridden
+      by tool-policy allow | targeted hard-deny precedence test | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
       | <path> | <basis> |
 
-      | R5 | no global tela/opifex/PersonaSpec/wrapper-startup changes | changed-file
-      and doc-scope audit | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path>
-      | <basis> |
+      | R5 | config-time permission projection and runtime hook use coherent shared
+      evaluator/helper semantics | source and behavior audit with helper/call-site
+      evidence | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <path> | <basis>
+      |
+
+      | R6 | docs clarify plugin-local precedence and do not expand global tela/opifex/PersonaSpec/wrapper
+      scope | doc/source changed-file audit | <artifact> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED
+      | <path> | <basis> |
 
 
       YOUR GOAL IS TO FIND PROBLEMS, not to confirm it works. Finding issues is a
@@ -70990,31 +71000,25 @@ phases:
       - [ ] Raw command output from targeted OpenCode plugin contract tests is included,
       not summarized.
 
-      - [ ] Behavioral proof register covers raw preservation, one-prefix normalization,
-      deduped candidate behavior, deny precedence, allow-after-deny, diagnostic context,
-      and plugin-only scope.
+      - [ ] Behavioral proof register covers exact allow exception, wildcard allow
+      exception, unrelated wildcard denial, capability/base hard-deny precedence,
+      shared evaluator coherence, docs, and plugin-only scope.
 
       - [ ] Verification includes a real Node-backed hook/helper execution path or
       equivalent existing contract harness, not source inspection alone.
 
+      - [ ] invar guard or the canonical project guard command is run and raw output
+      is included.
+
+      - [ ] Changed-file audit confirms no edits to PersonaSpec schema/admission,
+      global tela/opifex policy, or wrapper startup registration beyond any justified
+      test harness seam.
+
       - [ ] If any PROVEN status is unavailable, the report marks NEEDS_TEST/UNPROVEN/BLOCKED
       and provides a remediation/retest closure path.
 
-      - [ ] Changed-file audit confirms no edits to PersonaSpec schema/admission,
-      global tela/opifex identity, or wrapper startup registration.
-
       - [ ] Headline is PASS, PASS_WITH_DEBT, or FAIL with blockers explicitly listed.'
-    evidence_template: '## Verification Report
-
-      **Tester**: integration-verifier (independent of implementation agent frontend-engineer
-      and docs agent doc-reviewer)
-
-      **Scope**: OpenCode plugin tool-policy raw+normalized matching
-
-      **Independence Level**: L2
-
-
-      ### refs Read Confirmation (MANDATORY)
+    evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
@@ -71026,62 +71030,69 @@ phases:
 
       - docs/reference/ARCHITECTURE.md — <key passage or NOT READ: reason>
 
-
-      ### Test Execution
-
-      - commands_executed:
-
-      ```
-
-      <paste exact commands>
-
-      ```
-
-      - raw_stdout_stderr:
-
-      ```
-
-      <paste raw output>
-
-      ```
-
-      - exit_codes: <codes>
+      - docs/reference/INTERFACES.md — <key passage or NOT READ: reason>
 
 
-      ### Behavioral Proof Register
+      ## Verification Report
+
+      **Tester**: integration-verifier (independent of frontend-engineer/doc-reviewer)
+
+      **Scope**: OpenCode plugin tool-policy precedence
+
+      **Independence Level**: L2
+
+
+      ## Commands / Runtime Evidence
+
+      - targeted_command: <command>
+
+      - targeted_raw_stdout_stderr: <paste raw output>
+
+      - node_or_hook_path: <command/helper path or equivalent harness>
+
+      - guard_command: <invar guard or canonical guard command>
+
+      - guard_raw_stdout_stderr: <paste raw output>
+
+
+      ## Behavioral Proof Register
 
       | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
       status | closure_path | gate_decision_basis |
 
-      | --- | --- | --- | --- | --- | --- | --- |
+      | R1 | exact allow exception permits tela_vectl_decide | <expected> | <artifact>
+      | <status> | <path> | <basis> |
+
+      | R2 | unrelated tela_serena remains denied | <expected> | <artifact> | <status>
+      | <path> | <basis> |
+
+      | R3 | wildcard allow exception works narrowly | <expected> | <artifact> | <status>
+      | <path> | <basis> |
+
+      | R4 | hard denies remain hard | <expected> | <artifact> | <status> | <path>
+      | <basis> |
+
+      | R5 | shared evaluator coherence | <expected> | <artifact> | <status> | <path>
+      | <basis> |
+
+      | R6 | docs and scope alignment | <expected> | <artifact> | <status> | <path>
+      | <basis> |
 
 
-      ### Issues Found
+      ## Headline
 
-      | Severity | Description | Location | Reproduction |
+      - [ ] PASS: no blocking issues found and coverage justified
 
-      | --- | --- | --- | --- |
+      - [ ] PASS_WITH_DEBT: only explicit non-blocking debt remains with non-intersection
+      rationale
 
-
-      ### Scope / Non-Goal Audit
-
-      - changed_files: <list>
-
-      - non_goal_surfaces_checked: <evidence>
-
-
-      ### Headline
-
-      - [ ] PASS: No blocking issues found and coverage justified above
-
-      - [ ] PASS_WITH_DEBT: Only explicit non-blocking debt remains
-
-      - [ ] FAIL: Blocking issues or blocking proof gaps remain
-
-
-      ## Checklist Receipt
-
-      - checklist_receipt: <satisfied/failed/blocked/unobserved per item>'
+      - [ ] FAIL: blocking issues or proof gaps remain'
+    refs:
+    - contrib/opencode-plugin/larva.ts
+    - contrib/opencode-plugin/README.md
+    - tests/shell/test_opencode_plugin_contract.py
+    - docs/reference/ARCHITECTURE.md
+    - docs/reference/INTERFACES.md
     depends_on:
     - opencode_tela_policy_plugin_fix_20260524
     - opencode_tela_policy_docs_sync_20260524
