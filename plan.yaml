@@ -71009,3 +71009,94 @@ phases:
     - opencode_tela_policy_plugin_fix_20260524
     - opencode_tela_policy_docs_sync_20260524
     agent: integration-verifier
+  - id: opencode_tela_policy_gate_20260524
+    name: Gate OpenCode tela policy normalization
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      agent_source: default
+
+      review_depth: STANDARD
+
+
+      As an INDEPENDENT REVIEWER, assess whether the OpenCode tela tool-policy normalization
+      phase meets the quality bar for closure.
+
+
+      DECISION ARTIFACT:
+
+      Provide an OPEN/BLOCKED recommendation based on completed evidence from tests,
+      implementation, documentation, and independent verification. The gate protects
+      completion of this bounded compatibility fix; it must block on unresolved plugin-policy
+      behavior or scope drift.
+
+
+      Gate decision basis MUST review:
+
+      - requirement-to-checklist traceability matrix rows from all phase steps
+
+      - behavioral proof register from opencode_tela_policy_independent_verify_20260524
+
+      - raw expected-red and green test evidence
+
+      - documentation proof that behavior is OpenCode plugin-only
+
+      - non-goal audit for no global tela/opifex identity, PersonaSpec schema/admission,
+      or wrapper startup changes
+
+
+      Independence: gate-reviewer MUST NOT be frontend-engineer, doc-reviewer, or
+      integration-verifier for this phase.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [ ] refs confirmation includes key passages from all refs or states no additional
+      refs for gate-only evidence.
+
+      - [ ] All phase steps have complete checklist receipts and specific evidence,
+      not vague summaries.
+
+      - [ ] Gate decision basis maps every OWNED requirement to PROVEN evidence or
+      blocks with explicit remediation ownership.
+
+      - [ ] Gate rejects sampled approval if any raw/normalized/deny/allow/diagnostic/plugin-only
+      requirement lacks positive proof.
+
+      - [ ] Gate confirms independent verification included runtime/helper execution
+      evidence, not source inspection alone.
+
+      - [ ] Gate confirms docs state this is OpenCode plugin matching behavior only
+      and do not expand tela/opifex canonical tool identity.
+
+      - [ ] Gate confirms no unresolved blocker, NEEDS_TEST, UNPROVEN, or UNCERTAIN_BLOCKING
+      item is bypassed without non-intersection evidence.
+
+      - [ ] Final decision is exactly OPEN or BLOCKED with required follow-up actions
+      if blocked.'
+    evidence_template: "## Gate Review Report\n**Reviewer**: gate-reviewer (independent\
+      \ of phase implementation and verification agents)\n**Phase**: opencode-tela-tool-policy-normalization-2026-05-24\n\
+      \n### refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- contrib/opencode-plugin/larva.ts\
+      \ — <key passage or NOT READ: reason>\n- contrib/opencode-plugin/README.md —\
+      \ <key passage or NOT READ: reason>\n- tests/shell/test_opencode_plugin_contract.py\
+      \ — <key passage or NOT READ: reason>\n- docs/reference/ARCHITECTURE.md — <key\
+      \ passage or NOT READ: reason>\n\n### Execution Review\n| Step ID | Status |\
+      \ Evidence Quality | Concerns |\n| --- | --- | --- | --- |\n\n### Gate Decision\
+      \ Basis\n| requirement_or_proof_ref | evidence_ref_reviewed | checklist_row_reviewed\
+      \ | positive_proof_status | unresolved_status | blocks_or_non_intersection |\
+      \ decision_basis |\n| --- | --- | --- | --- | --- | --- | --- |\n\n### Issues\
+      \ Identified\n| Severity | Description | Related Step | Blocking? |\n| --- |\
+      \ --- | --- | --- |\n\n### Phase Assessment\n- [ ] All planned steps completed\
+      \ successfully\n- [ ] Evidence quality is specific and verifiable\n- [ ] Behavioral\
+      \ proof register has no unowned blocker-class gaps\n- [ ] Documentation scope\
+      \ is plugin-only\n- [ ] Non-goals preserved\n\n### Gate Decision\n- [ ] OPEN:\
+      \ Phase passes gate\n- [ ] BLOCKED: Issues must be resolved before closure\n\
+      \  - Blocking issues: <list>\n  - Required actions: <what needs to happen>\n\
+      \n## Checklist Receipt\n- checklist_receipt: <satisfied/failed/blocked/unobserved\
+      \ per item>"
+    depends_on:
+    - opencode_tela_policy_red_tests_20260524
+    - opencode_tela_policy_plugin_fix_20260524
+    - opencode_tela_policy_docs_sync_20260524
+    - opencode_tela_policy_independent_verify_20260524
+    agent: gate-reviewer
