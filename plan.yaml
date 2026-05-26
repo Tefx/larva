@@ -73811,7 +73811,7 @@ phases:
       - [x] Negative preflight proof confirms missing Pi and unsupported extension
       still fail before child Pi execution.
 
-      - [ ] `invar guard` or the project canonical invar guard command is run after
+      - [x] `invar guard` or the project canonical invar guard command is run after
       changes and raw output/exit code are provided.
 
       - [ ] No forbidden scope was changed; any deviation record is explicit and justified.'
