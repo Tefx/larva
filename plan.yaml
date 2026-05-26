@@ -75262,7 +75262,7 @@ phases:
       - [x] Normal successful abort/cancelled regression remains `status: cancelled`
       with `error.code: LARVA_CHILD_CANCELLED`.
 
-      - [ ] Scope evidence shows child start failures outside the abort/no-response/termination-false
+      - [x] Scope evidence shows child start failures outside the abort/no-response/termination-false
       unknowable seam are not globally remapped.
 
       - [ ] Evidence includes the main path and highest-risk failure path, not only
