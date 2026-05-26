@@ -73979,7 +73979,7 @@ phases:
       - [x] Initial `LARVA_PI_INITIAL_PERSONA_ID` commit runs during extension initialization
       before first prompt, selector, or `larva: none` status is exposed.
 
-      - [ ] Wiring uses launcher-provided `LARVA_PI_EXTENSION_ENTRY`, `LARVA_PI_REAL_BIN`,
+      - [x] Wiring uses launcher-provided `LARVA_PI_EXTENSION_ENTRY`, `LARVA_PI_REAL_BIN`,
       `LARVA_PI_EXTENSION_FLAG`, `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`
       exactly as specified.
 
