@@ -74540,7 +74540,7 @@ phases:
     agent: gate-reviewer
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -74702,6 +74702,8 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.extension_runtime_proof
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T13:52:21.237185+00:00'
   - id: pi_extension_runtime_20260526.abort_runtime_retest
     name: Retest in-flight abort runtime behavior
     status: pending
