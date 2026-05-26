@@ -72526,26 +72526,20 @@ phases:
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
     status: pending
-    description: 'step_type: verification
-
-      expected_result: green
-
-      verification_scope: local-check; protects the launcher runtime gate.
-
-      As an independent runtime verifier, prove the launcher path starts a real or
-      fixture Pi process through the selected extension flag and exposes meaningful
-      env/argv evidence.
-
-      SCOPE: CLI launch surface only; extension internals are verified in the extension
-      phase.
-
-      <side_effect_budget>Allowed: run tests/fixture commands and inspect artifacts.
-      Forbidden: source mutation or claiming implementation evidence as sufficient
-      without runtime argv/env proof.</side_effect_budget>
-
-      <risk_probes>1. Ensure the proof exercises CLI entrypoint, not only helper functions.
-      2. Ensure extension unsupported failure occurs before Pi starts. 3. Ensure env
-      JSON is parseable and argv order is preserved.'
+    description: "step_type: verification\nexpected_result: green\nverification_scope:\
+      \ local-check; protects the launcher runtime gate.\nAs an independent runtime\
+      \ verifier, prove the launcher path starts a real or fixture Pi process through\
+      \ the selected extension flag and exposes meaningful env/argv evidence.\nSCOPE:\
+      \ CLI launch surface only; extension internals are verified in the extension\
+      \ phase.\n<side_effect_budget>Allowed: run tests/fixture commands and inspect\
+      \ artifacts. Forbidden: source mutation or claiming implementation evidence\
+      \ as sufficient without runtime argv/env proof.</side_effect_budget>\n<risk_probes>1.\
+      \ Ensure the proof exercises CLI entrypoint, not only helper functions. 2. Ensure\
+      \ extension unsupported failure occurs before Pi starts. 3. Ensure env JSON\
+      \ is parseable and argv order is preserved.\n- [ ] Completion evidence includes:\n\
+      \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
+      \ key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Exact command/invocation exercising `larva pi` through the
       packaged CLI entrypoint is recorded.
 
