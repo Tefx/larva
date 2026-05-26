@@ -72542,20 +72542,23 @@ phases:
 
       - [ ] `uv run invar guard --all` or the project-authoritative invar full guard
       command is run after changes and raw output is captured.'
-    evidence_template: "## refs Read Confirmation (MANDATORY)\n- design/pi-coding-agent-integration.md\
-      \ — cite key passages from Launch, Launcher contract, Architecture basis, and\
-      \ Verification targets 1-5/10/37-39.\n\n## Requirement-to-Checklist Traceability\
-      \ Matrix\n| requirement_id | source_ref + key passage | obligation | owning_step_id\
-      \ | checklist_item | evidence_field | status | non_intersection_or_escalation\
-      \ |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n\n## Implementation\
-      \ Receipt\n- files_changed: <list>\n- protected_tests_used: tests/shell/test_pi_launcher_contract.py\n\
-      - commands:\n  - <pytest launcher command with raw stdout>\n  - <invar guard\
-      \ command with raw stdout>\n- exit_codes: <codes>\n\n## Runtime/Env Evidence\n\
-      - invocation_shape: <observed argv>\n- env_snapshot: <redacted env keys/values\
-      \ for LARVA_PI_* and LARVA_CLI_ARGV_JSON>\n- stderr_error_cases: <table>\n\n\
-      ## Side Effect / Forbidden Scope\n- pi_settings_write_absent: <evidence>\n-\
-      \ persona_schema_unchanged: <evidence>\n- policy_json_not_parsed_by_launcher:\
-      \ <evidence>"
+    evidence_template: '## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this step>; NOT READ entries only with reason.
+
+
+      ## Completion Evidence
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
+
+      - launcher_runtime_receipt: <raw command/output proving CLI entrypoint, env,
+      argv, and error paths>
+
+      - forbidden_scope_preservation: <confirmation no forbidden Pi scope was added>
+
+      '
     agent: python-senior
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
