@@ -73137,37 +73137,42 @@ phases:
       lock/credential logic, policy hierarchy, batch subagent, catalogue prompt dump,
       sidecar metadata, Pi settings fallback.
 
-      - [ ] Unresolved obligations include closure paths before finalization can open.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      - [ ] Unresolved obligations include closure paths before finalization can open.
 
-      - design/pi-coding-agent-integration.md — key extension/runtime passages reviewed.
+      - [ ] All upstream implementation, wiring, and runtime proof receipts include
+      `## refs Read Confirmation` with `design/pi-coding-agent-integration.md` key
+      passages or explicit NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Gate Decision Basis
-
-      | requirement_ref | evidence_ref | status | unresolved_status | blocks_finalization
-      | rationale |
-
-      | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this gate>; NOT READ entries only with reason.
 
 
-      ## Execution Review
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | Step ID | Status | Evidence Quality | Concerns |
+      - persona_projection receipt included refs confirmation: <yes/no; evidence ref>
 
-      | --- | --- | --- | --- |
+      - tool_policy receipt included refs confirmation: <yes/no; evidence ref>
+
+      - subagent_rpc receipt included refs confirmation: <yes/no; evidence ref>
+
+      - wire_extension_entry receipt included refs confirmation: <yes/no; evidence
+      ref>
+
+      - extension_runtime_proof receipt included refs confirmation: <yes/no; evidence
+      ref>
+
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Gate Decision
+      ## Gate Evidence
 
-      - [ ] OPEN: extension phase passes
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - [ ] BLOCKED: required actions listed
+      - gate_decision: <OPEN/BLOCK with decision basis>
 
-
-      ## Forbidden Scope Review
-
-      - findings: <none or list>'
+      '
     depends_on:
     - pi_extension_runtime_20260526.persona_projection
     - pi_extension_runtime_20260526.tool_policy
