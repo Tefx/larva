@@ -75668,7 +75668,7 @@ phases:
       \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
       \ key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Exact launch command/fixture target for `larva pi --persona
+    verification: '- [x] Exact launch command/fixture target for `larva pi --persona
       <id> -- <pi args>` is recorded.
 
       - [ ] Runtime artifact shows the bundled extension loaded through selected flag
