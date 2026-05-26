@@ -73289,3 +73289,80 @@ phases:
 
       **Headline**: PASS | PASS_WITH_DEBT | FAIL'
     agent: wiring-auditor
+  - id: pi_finalization_20260526.end_to_end_liveness
+    name: End-to-end Pi runtime liveness proof
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: full-plan-check; protects final gate for runnable/user-visible
+      CLI and Pi extension surfaces.
+
+      As client-runtime-verifier, launch the user-facing `larva pi` surface with a
+      fake or real Pi runtime that loads the bundled extension, then prove observable
+      status/command/tool behavior across launcher -> extension -> child RPC seam.
+
+      SURFACE CLASS: CLI/TUI/RPC runtime.
+
+      <side_effect_budget>Allowed: launch fixture/real Pi commands and collect stdout/stderr/status/RPC
+      artifacts. Forbidden: source mutation, live credential assumptions, or requiring
+      external Pi services beyond fixture seams when unavailable.</side_effect_budget>
+
+      <risk_probes>1. Proof must traverse launcher and extension together, not isolated
+      helpers. 2. TUI selector proof may use a deterministic fixture but must distinguish
+      interactive from RPC/print/JSON. 3. Live dependency absence may block live Pi
+      proof but not fixture liveness proof.'
+    verification: '- [ ] Exact launch command/fixture target for `larva pi --persona
+      <id> -- <pi args>` is recorded.
+
+      - [ ] Runtime artifact shows the bundled extension loaded through selected flag
+      and status shows `larva: <persona-id>` or `larva: none` as appropriate.
+
+      - [ ] One safe `/larva-persona` interaction and one denied tool-call or `larva_subagent`
+      fixture interaction are exercised through runtime hooks.
+
+      - [ ] Child RPC liveness shows public result shape or documented failed/cancelled
+      shape with raw JSONL/stdout/stderr evidence.
+
+      - [ ] If real Pi is unavailable, the receipt distinguishes fixture PASS from
+      live-environment BLOCKED and lists exact missing external dependency without
+      failing implementation proof.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key runtime liveness passages from
+      Architecture basis and Verification targets.
+
+
+      ## Client/Runtime Proof Receipt
+
+      - surface_class: CLI/TUI/RPC
+
+      - launch_command: <exact command>
+
+      - runtime_target: real_pi | fixture_pi
+
+      - raw_stdout: <paste>
+
+      - raw_stderr: <paste>
+
+      - exit_code: <code>
+
+      - observable_status_or_output: <evidence>
+
+      - interaction_exercised: <selector/tool/subagent evidence>
+
+      - child_rpc_trace: <JSONL or fixture trace>
+
+      - live_blockers_if_any: <none or exact missing dependency>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |'
+    depends_on:
+    - pi_finalization_20260526.wiring_audit
+    agent: client-runtime-verifier
