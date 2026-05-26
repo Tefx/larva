@@ -75477,7 +75477,7 @@ phases:
       PROVEN. Checklist toggled from retest receipt.'
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
-  status: in_progress
+  status: done
   gate: Design conformance, runtime liveness, docs sync, invar guard, and final deep
     review are complete.
   depends_on:
@@ -76041,7 +76041,7 @@ phases:
       command/receipt evidence.'
   - id: pi_finalization_20260526.gate
     name: Final deep review gate for Pi integration
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: full-plan-check; final gate\
       \ for Pi Coding Agent integration.\nAs an independent final reviewer, perform\
       \ deep review of implementation evidence, docs, spec conformance, wiring, runtime\
@@ -76129,6 +76129,127 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T18:55:36.798357+00:00'
+    done_at: '2026-05-26T19:05:40.143345+00:00'
+    evidence: 'Final deep review gate for Pi integration completed with independent
+      read-only gate-reviewer PASS plus required blind-tester Mode D liveness PASS.
+      No product/source/docs/test/plan files modified.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: decision/runtime
+      scope lines 7-22; non-goals lines 34-46; launcher extension flag/settings constraints
+      lines 95-116; startup failures lines 118-150; persona switching/status lines
+      152-205; projection/model/prompt lines 207-278; tool policy lines 280-397; subagent/RPC/resume/abort/concurrency
+      lines 399-798; launcher/API/bridge/RPC contracts lines 800-1118; architecture/runtime
+      surfaces lines 1121-1264; verification targets VT1-VT41 lines 1267-1405; handoff/watch-for
+      constraints lines 1407-1437.
+
+
+      ## Upstream Receipt Refs Confirmation Audit
+
+      - spec_conformance receipt included refs confirmation: yes; supplied plan evidence
+      states refs confirmation for design, launcher/extension source, pyproject, and
+      contract tests.
+
+      - wiring_audit receipt included refs confirmation: yes; supplied plan evidence
+      states refs confirmation for design, pyproject, launcher/CLI files, extension,
+      tests, and plan receipts.
+
+      - end_to_end_liveness receipt included refs confirmation: yes; supplied plan
+      evidence states refs confirmation for design, contract tests, and extension.
+
+      - doc_sync receipt included refs confirmation: yes; direct design refs were
+      read and cited in doc sync evidence.
+
+      - full_guard receipt included refs confirmation: yes; full_guard evidence included
+      design refs and upstream receipt audit.
+
+      - launcher/extension phase gate receipts included upstream refs confirmation
+      audits: yes; both phase gates reported design and implementation/test refs confirmations.
+
+      - missing_or_incomplete_refs_confirmation: none.
+
+
+      ## Final Gate Evidence
+
+      - checklist_receipt: all description and verification checklist items toggled
+      by orchestrator from gate-reviewer receipt.
+
+      - target_1_41_matrix: gate-reviewer reconstructed a complete VT1-VT41 matrix;
+      all 41 design verification targets marked PROVEN with source/test/runtime/upstream
+      receipt evidence refs; no NEEDS_TEST/UNPROVEN/BLOCKED rows.
+
+      - b1_b7_closure: B1 child-session override, B2 child startup ownership, B3 canonical
+      PersonaSpec bridge validation, B4 list fail-closed, B5 exact pre-RPC stderr
+      whitelist/post-readiness diagnostic-only, B6 tool enumeration/update fail-closed
+      behavior, and B7 runtime proof gaps all marked PROVEN via spec_divergence_fix,
+      pre_rpc_stderr_mapping_fix/retest, extension_runtime_conformance_proof, end_to_end_liveness,
+      and targeted/full guard receipts.
+
+      - runtime_liveness_decision: gate rejected helper-only/source-only/build-only
+      evidence as sole basis; accepted executable/fake TypeScript/Pi seam proof from
+      end_to_end_liveness plus targeted tests and independent CLI help. Blind-tester
+      Mode D independently proved `.venv/bin/larva pi --help` exit 0; invalid `--persona`
+      path exit 2 with LARVA_PI_BAD_ARGS; temp fake Pi runtime launch via `.venv/bin/larva
+      pi --persona pi-fixture -- --version` exit 0 with `-e` bundled extension argument
+      and launcher env values including LARVA_PI_EXTENSION_ENTRY, LARVA_PI_EXTENSION_FLAG,
+      LARVA_PI_INITIAL_PERSONA_ID, LARVA_PI_LAUNCHED, LARVA_PI_REAL_BIN, and LARVA_PI_TOOL_POLICY_FILE.
+
+      - forbidden_scope_audit: no PersonaSpec schema changes, ask action, Pi settings
+      fallback, worktree/file-lock/credential isolation, project policy hierarchy,
+      batch scheduler, sidecar metadata, MCP transport, or settings fallback implementation/documentation
+      claim found.
+
+      - docs_and_full_guard_decision: README/contrib Pi docs align with design non-goals
+      and public behavior; full_guard reviewed targeted Pi tests 80/80 passed, full
+      repo pytest 638 passed, `uv run invar guard --all` passed with errors 0. Gate-reviewer
+      independent invar guard also completed ok with files_checked 41/errors 0.
+
+      - blind_tester_mode_d: PASS; blockers []; gate_open_allowed true; fixture vs
+      live explicitly distinguished, with no external live Pi blocker because public
+      fake Pi fixture proof was authorized for liveness.
+
+      - gate_decision: OPEN.
+
+      - unresolved_statuses: none.
+
+      - closure_paths: none.
+
+      - final_remediation_owners: none.
+
+
+      ## Semantic Closure Fields
+
+      verdict: PASS
+
+      gate_decision: OPEN
+
+      gate_open_allowed: true
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+      product_files_modified: no
+
+      commit_hashes: none (read-only gate and read-only blind liveness)
+
+
+      ## Verification receipts
+
+      - Gate-reviewer task: ses_19a596fd9ffe8ehwiEFwygxNNY returned SUCCESS with verdict
+      PASS / gate_decision OPEN / proof_gap_status NONE / blockers [].
+
+      - Blind-tester Mode D task: ses_19a54feb9ffeFVsDQ5YZ3tWoKV returned SUCCESS
+      with verdict PASS / blockers [] / gate_open_allowed true.
+
+      - Orchestrator inspection: gate and blind-tester worktrees had clean status
+      and no diff against main before completion.'
   - id: pi_finalization_20260526.spec_divergence_fix
     name: Fix Pi extension spec divergences B1-B6
     status: done
