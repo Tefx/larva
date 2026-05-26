@@ -73650,7 +73650,7 @@ phases:
       \ Forbidden: code mutation or accepting helper-only proof for runnable CLI surface.</side_effect_budget>\n\
       <risk_probes>1. Handler-only proof is insufficient for `larva pi`. 2. Any unresolved\
       \ launcher env obligation intersects child RPC finalization gates. 3. Forbidden\
-      \ scope additions block the gate.\n- [ ] Completion evidence includes:\n  `##\
+      \ scope additions block the gate.\n- [x] Completion evidence includes:\n  `##\
       \ refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md — key\
       \ passages read: <specific sections/targets used by this step>; NOT READ entries\
       \ only with reason.`\n"
