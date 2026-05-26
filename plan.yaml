@@ -73657,7 +73657,7 @@ phases:
     verification: '- [x] Gate decision basis reviews implementation and runtime liveness
       receipts.
 
-      - [ ] OPEN only if CLI entrypoint/startup path, env, extension flag, forwarded
+      - [x] OPEN only if CLI entrypoint/startup path, env, extension flag, forwarded
       args, and documented error exits have positive proof.
 
       - [ ] Gate rejects build-only/helper-only proof for the runnable `larva pi`
