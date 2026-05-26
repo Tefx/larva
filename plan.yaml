@@ -73983,7 +73983,7 @@ phases:
       `LARVA_PI_EXTENSION_FLAG`, `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`
       exactly as specified.
 
-      - [ ] Focused tests prove source-to-sink path from hook/tool/command registration
+      - [x] Focused tests prove source-to-sink path from hook/tool/command registration
       into module logic and back to Pi-observable result.
 
       - [ ] No forbidden-scope artifacts are introduced.'
