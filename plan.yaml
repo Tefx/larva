@@ -72089,3 +72089,10 @@ phases:
   depends_on:
   - live-opencode-tool-policy-smoke-2026-05-25
   - meta.gate
+- id: pi-launcher-runtime-2026-05-26
+  name: Pi Launcher Runtime 2026-05-26
+  status: locked
+  gate: Launcher starts real Pi with bundled extension and Larva-owned environment,
+    without writing Pi settings.
+  depends_on:
+  - pi-coding-agent-contract-harness-2026-05-26
