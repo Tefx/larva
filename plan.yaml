@@ -73947,7 +73947,7 @@ phases:
       or integration conflicts.'
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
-    status: pending
+    status: claimed
     description: "step_type: implementation\ntags: [\"integration\"]\nagent_source:\
       \ project\nspec_refs: design/pi-coding-agent-integration.md > API contracts;\
       \ Architecture basis; Implementation handoff\nrefs: design/pi-coding-agent-integration.md\n\
@@ -74020,6 +74020,8 @@ phases:
     - pi_extension_runtime_20260526.tool_policy
     - pi_extension_runtime_20260526.subagent_rpc
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T10:56:20.632728+00:00'
   - id: pi_extension_runtime_20260526.extension_runtime_proof
     name: Extension runtime and seam proof
     status: pending
