@@ -108,6 +108,38 @@ def test_launcher_missing_pi_executable(monkeypatch):
     assert code == 127
     assert "larva pi: LARVA_PI_NOT_FOUND:" in stderr.getvalue()
 
+def test_launcher_path_discovery_skips_larva_shim(tmp_path, mock_subprocess_run, monkeypatch):
+    """
+    Verification target 4 (B1):
+    PATH discovery skips Larva's own shim path and uses the first valid real `pi`
+    when `LARVA_PI_BIN` is not overriding.
+    """
+    shim_dir = tmp_path / "shim"
+    shim_dir.mkdir()
+    shim_bin = shim_dir / "pi"
+    shim_bin.write_text("#!/bin/sh\nexit 0\n")
+    shim_bin.chmod(0o755)
+    
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    real_bin = real_dir / "pi"
+    real_bin.write_text("#!/bin/sh\nexit 0\n")
+    real_bin.chmod(0o755)
+    
+    monkeypatch.setattr(sys, "argv", [str(shim_bin), "--version"])
+    monkeypatch.setenv("PATH", f"{shim_dir}:{real_dir}")
+    monkeypatch.delenv("LARVA_PI_BIN", raising=False)
+    
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    
+    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0
+    
+    call_args = mock_subprocess_run.call_args[0]
+    assert call_args[0][0] == str(real_bin)
+
 def test_launcher_test_override_bin(mock_subprocess_run, fake_pi_executable, monkeypatch):
     """
     Verification target 4:
@@ -126,15 +158,26 @@ def test_launcher_test_override_bin(mock_subprocess_run, fake_pi_executable, mon
     call_args = mock_subprocess_run.call_args[0]
     assert call_args[0][0] == str(fake_pi_executable)
 
-def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_run):
+def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_run, tmp_path, monkeypatch):
     """
-    Verification target 5:
+    Verification target 5 (B2):
     Extension loading preflight prefers `-e` when supported, otherwise uses
     `--extension` when supported. If neither flag is supported, it exits before
     Pi starts with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and does not write Pi settings.
     """
     # mock pi to support neither -e nor --extension
     mock_subprocess_run.return_value.stdout = b"Options:\n  --version  Show version"
+    
+    settings_dir = tmp_path / ".pi" / "settings"
+    settings_dir.mkdir(parents=True)
+    monkeypatch.setenv("PI_SETTINGS_DIR", str(settings_dir))
+    
+    original_write_text = Path.write_text
+    writes = []
+    def spy_write_text(self, *args, **kwargs):
+        writes.append(self)
+        return original_write_text(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "write_text", spy_write_text)
     
     import io
     stdout = io.StringIO()
@@ -143,12 +186,28 @@ def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_
     code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code != 0
     assert "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED" in stderr.getvalue()
+    
+    pi_writes = [p for p in writes if ".pi" in str(p)]
+    assert not pi_writes, f"Expected no Pi settings writes, got {pi_writes}"
     # we verify no settings are written via mock asserts in more comprehensive tests
 
-def test_launcher_interactive_tui_classification(mock_shutil_which, mock_subprocess_run, fake_pi_executable):
+@pytest.mark.parametrize("args, expected_tui", [
+    (["pi", "--persona", "known"], "1"),
+    (["pi", "--persona", "known", "--", "-p"], "0"),
+    (["pi", "--persona", "known", "--", "--print"], "0"),
+    (["pi", "--persona", "known", "--", "--json"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "rpc"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "print"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "json"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "sdk"], "0"),
+    (["pi", "--persona", "known", "--", "--mode"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "unknown"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "rpc", "--print"], "0"),
+])
+def test_launcher_interactive_tui_classification(mock_shutil_which, mock_subprocess_run, fake_pi_executable, args, expected_tui):
     """
-    Verification target 10:
-    Launcher mode detection sets `LARVA_PI_INTERACTIVE_TUI=0` for exact `-p`,
+    Verification target 10 (B3):
+    Launcher mode detection matrix sets `LARVA_PI_INTERACTIVE_TUI=0` for exact `-p`,
     exact `--print`, exact `--json`, `--mode rpc|print|json|sdk`, missing/empty
     or unknown `--mode`, and conflicting mode/print markers; it sets `1` when no
     recognized non-interactive marker is present.
@@ -157,54 +216,63 @@ def test_launcher_interactive_tui_classification(mock_shutil_which, mock_subproc
     stdout = io.StringIO()
     stderr = io.StringIO()
     
-    # Test interactive mode
-    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    code = run_cli(args, facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code == 0
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_INTERACTIVE_TUI") == "1"
-    
-    # Test non-interactive mode
-    code = run_cli(["pi", "--persona", "known", "--", "--mode", "rpc"], facade=_make_facade(), stdout=stdout, stderr=stderr)
-    assert code == 0
-    env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env.get("LARVA_PI_INTERACTIVE_TUI") == "0"
+    assert env.get("LARVA_PI_INTERACTIVE_TUI") == expected_tui
 
-def test_bridge_uses_larva_cli_argv_json(mock_subprocess_run):
+def test_bridge_uses_larva_cli_argv_json(mock_shutil_which, mock_subprocess_run, monkeypatch):
     """
-    Verification target 37:
+    Verification target 37 (B4):
     Persona resolution bridge uses `LARVA_CLI_ARGV_JSON` plus `resolve <id> --json`
     and inherits launcher registry environment.
+    OWNERSHIP NOTE: Bridge suffix/fallback/list failure semantics are explicitly
+    owned by the extension runtime implementation (see test_pi_extension_contract.py).
     """
     import io
+    import json
     stdout = io.StringIO()
     stderr = io.StringIO()
     
+    monkeypatch.setattr(sys, "argv", ["larva", "pi", "--persona", "known"])
     code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code == 0
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
     assert "LARVA_CLI_ARGV_JSON" in env
+    
+    argv_prefix = json.loads(env["LARVA_CLI_ARGV_JSON"])
+    assert isinstance(argv_prefix, list)
+    assert len(argv_prefix) >= 1
 
-def test_bridge_list_uses_larva_cli_argv_json(mock_subprocess_run):
+def test_bridge_list_uses_larva_cli_argv_json(mock_shutil_which, mock_subprocess_run, monkeypatch):
     """
-    Verification target 38:
+    Verification target 38 (B4):
     Persona list bridge uses `LARVA_CLI_ARGV_JSON` plus `list --json`
+    OWNERSHIP NOTE: Bridge suffix/fallback/list failure semantics are explicitly
+    owned by the extension runtime implementation (see test_pi_extension_contract.py).
     """
     import io
+    import json
     stdout = io.StringIO()
     stderr = io.StringIO()
     
+    monkeypatch.setattr(sys, "argv", ["larva", "pi", "--persona", "known"])
     code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
     assert code == 0
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
     assert "LARVA_CLI_ARGV_JSON" in env
+    
+    argv_prefix = json.loads(env["LARVA_CLI_ARGV_JSON"])
+    assert isinstance(argv_prefix, list)
+    assert len(argv_prefix) >= 1
 
 def test_launcher_propagates_extension_fatal_startup_errors(mock_shutil_which, mock_subprocess_run):
     """
-    Verification target 39:
-    Before child RPC readiness, parent parses only child stderr lines shaped as
-    `larva pi: <ERROR_CODE>:` and propagates...
-    Wait, the launcher preserves stderr from the Pi process, including extension-detected
-    fatal startup errors that use the same `larva pi: <ERROR_CODE>: <message>` shape.
+    Verification target 39 (B5):
+    Launcher preserves stderr from the Pi process, including extension-detected
+    fatal startup errors that use the `larva pi: <ERROR_CODE>: <message>` shape.
+    OWNERSHIP NOTE: The parent-child pre-RPC whitelist mapping logic is distinctly
+    owned by the extension runtime implementation (see test_child_stderr_startup_error_whitelist).
     """
     mock_subprocess_run.return_value.returncode = 1
     mock_subprocess_run.return_value.stderr = b"larva pi: LARVA_MODEL_UNAVAILABLE: model not found"
