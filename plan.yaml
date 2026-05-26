@@ -75502,7 +75502,7 @@ phases:
       \ Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages read:\
       \ <specific sections/targets used by this step>; NOT READ entries only with\
       \ reason.`\n"
-    verification: '- [ ] Requirements register includes every design verification
+    verification: '- [x] Requirements register includes every design verification
       target 1-41 and all non-goals as checked obligations.
 
       - [ ] Evidence table cites design section and implementation file/line or runtime
