@@ -72725,43 +72725,31 @@ phases:
   - id: pi_extension_runtime_20260526.tool_policy
     name: Complete adapter-local tool policy enforcement
     status: pending
-    description: 'step_type: implementation
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Tool policy; API contracts;
-      Verification targets 14-17
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: The Pi extension parses adapter-local `~/.pi/tool-policy.json`
-      only inside the extension, validates only the active target persona entry beyond
-      top-level shape, filters the current Pi model-facing tool baseline with allow/deny
-      semantics, calls `pi.setActiveTools(filteredTools)`, and enforces the same decision
-      through `tool_call` interception.
-
-      BOUNDING BOX: contrib/pi-extension/ policy modules and tests/shell/test_pi_extension_contract.py.
-      Avoid shared runtime hook registration in contrib/pi-extension/larva.ts until
-      the wiring step.
-
-      CONSTRAINTS: Policy is not canonical PersonaSpec. There is no `ask` action,
-      wildcard matching, command-level bash policy, or project/global hierarchy. Unknown
-      Pi tool names are ignored. Deny wins. Missing policy or missing active entry
-      equals current baseline.
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; filtered
-      tool sets and decisions must vary with baseline, active persona, allow, deny,
-      and invalid policy inputs.
-
-      <side_effect_budget>Allowed: add/modify extension policy code and focused tests.
-      Forbidden: PersonaSpec fields, launcher policy parsing, ask action, Pi settings
-      writes, project policy hierarchy, or batch policy machinery.</side_effect_budget>
-
-      <risk_probes>1. Prior Larva restrictions must not carry over across persona
-      commits. 2. Invalid non-target persona entries must be ignored until targeted.
-      3. Denied `larva_subagent` must bypass the handler entirely.'
+    description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Tool policy; API contracts; Verification targets 14-17\nrefs: design/pi-coding-agent-integration.md\n\
+      TARGET STATE: The Pi extension parses adapter-local `~/.pi/tool-policy.json`\
+      \ only inside the extension, validates only the active target persona entry\
+      \ beyond top-level shape, filters the current Pi model-facing tool baseline\
+      \ with allow/deny semantics, calls `pi.setActiveTools(filteredTools)`, and enforces\
+      \ the same decision through `tool_call` interception.\nBOUNDING BOX: contrib/pi-extension/\
+      \ policy modules and tests/shell/test_pi_extension_contract.py. Avoid shared\
+      \ runtime hook registration in contrib/pi-extension/larva.ts until the wiring\
+      \ step.\nCONSTRAINTS: Policy is not canonical PersonaSpec. There is no `ask`\
+      \ action, wildcard matching, command-level bash policy, or project/global hierarchy.\
+      \ Unknown Pi tool names are ignored. Deny wins. Missing policy or missing active\
+      \ entry equals current baseline.\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; filtered\
+      \ tool sets and decisions must vary with baseline, active persona, allow, deny,\
+      \ and invalid policy inputs.\n<side_effect_budget>Allowed: add/modify extension\
+      \ policy code and focused tests. Forbidden: PersonaSpec fields, launcher policy\
+      \ parsing, ask action, Pi settings writes, project policy hierarchy, or batch\
+      \ policy machinery.</side_effect_budget>\n<risk_probes>1. Prior Larva restrictions\
+      \ must not carry over across persona commits. 2. Invalid non-target persona\
+      \ entries must be ignored until targeted. 3. Denied `larva_subagent` must bypass\
+      \ the handler entirely.\n- [ ] Completion evidence includes:\n  `## refs Read\
+      \ Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages read:\
+      \ <specific sections/targets used by this step>; NOT READ entries only with\
+      \ reason.`\n"
     verification: '- [ ] Missing policy file and missing active target entry commit
       the current model-facing baseline with no extra Larva restriction.
 
