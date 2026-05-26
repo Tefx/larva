@@ -75854,11 +75854,16 @@ phases:
       \ OPEN.\n- [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n\
       \  `- design/pi-coding-agent-integration.md — key passages read: <specific sections/targets\
       \ used by this step>; NOT READ entries only with reason.`\n"
-    verification: '- [ ] Final gate decision basis reviews spec conformance, wiring
-      audit, end-to-end liveness, doc sync, and full guard receipts.
+    verification: '- [ ] Final gate decision basis reviews original spec conformance,
+      wiring audit, B1-B6 divergence fix receipt, B1-B7 runtime conformance proof,
+      spec conformance retest, end-to-end liveness, doc sync, and full guard receipts.
 
       - [ ] OPEN only if every owned design verification target 1-41 is PROVEN or
       has explicit non-intersection accepted by the reviewer.
+
+      - [ ] OPEN only if B1-B6 concrete divergences are closed by implementation evidence
+      and B7 runtime proof gaps are closed by executable/fake TypeScript/Pi seam evidence
+      or assigned blocker-class remediation ownership.
 
       - [ ] Gate rejects helper-only/source-only/build-only evidence for runnable
       CLI/TUI/RPC surfaces.
