@@ -73791,7 +73791,7 @@ phases:
       - [x] Successful commit enumerates the current baseline, calls `pi.setActiveTools(filteredTools)`,
       and does not carry restrictions from previous commits.
 
-      - [ ] `tool_call` denial returns `ToolPolicyDecision` with `LARVA_TOOL_DENIED`;
+      - [x] `tool_call` denial returns `ToolPolicyDecision` with `LARVA_TOOL_DENIED`;
       denied `larva_subagent` produces no `LarvaSubagentResult`.'
     evidence_template: '## refs Read Confirmation
 
