@@ -76086,3 +76086,132 @@ phases:
     - pi_finalization_20260526.spec_conformance
     - pi_finalization_20260526.wiring_audit
     agent: frontend-engineer
+  - id: pi_finalization_20260526.extension_runtime_conformance_proof
+    name: Focused extension runtime conformance proof for B1-B7
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check; protects final gate by converting B7 source/static
+      gaps into executable TypeScript/Pi seam evidence for B1-B6.
+
+      agent_source: project
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > Subagent spawning > Child startup
+
+      - design/pi-coding-agent-integration.md > API contracts > Larva CLI bridge contract
+
+      - design/pi-coding-agent-integration.md > API contracts > Child RPC contract
+
+      - design/pi-coding-agent-integration.md > Verification targets 13, 17, 22, 26,
+      31, 34, 37, 38, 39
+
+      harness_refs:
+
+      - tests/shell/test_pi_extension_contract.py
+
+      - tests/shell/test_pi_extension_tool_policy_static.py
+
+      - tests/shell/test_pi_launcher_contract.py
+
+      - executable or fake TypeScript/Pi seam harness produced/used by the implementation
+      fix
+
+      PROOF ARTIFACT: A runtime conformance report that exercises the fixed extension
+      behavior through executable/fake TypeScript/Pi seams rather than relying on
+      source inspection alone.
+
+
+      BEHAVIORAL PROOF REGISTER REQUIRED:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1/VT22 | empty child-session override fails closed | executable seam with
+      empty env override returns LARVA_CHILD_START_FAILED | b1_runtime | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest or non-intersection | final gate |
+
+      | B2/VT26/VT31/VT34 | child startup/resume initialization owned by child process
+      | fake child/bridge trace proves no parent resolve before child process startup/resume
+      | b2_runtime | PROVEN/UNPROVEN/BLOCKED | fix/retest or non-intersection | final
+      gate |
+
+      | B3/VT37 | invalid PersonaSpec resolve fails closed | fake CLI resolve missing
+      capabilities/spec_version maps to LARVA_PERSONA_NOT_FOUND | b3_runtime | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest or non-intersection | final gate |
+
+      | B4/VT38 | invalid persona list item fails whole list/no suggestions | fake
+      CLI list with one invalid item produces empty suggestions / selector failure
+      | b4_runtime | PROVEN/UNPROVEN/BLOCKED | fix/retest or non-intersection | final
+      gate |
+
+      | B5/VT39 | only whitelisted pre-RPC stderr codes propagate and post-readiness
+      stderr is diagnostic | fake child stderr before and after RPC readiness proves
+      whitelist/timing | b5_runtime | PROVEN/UNPROVEN/BLOCKED | fix/retest or non-intersection
+      | final gate |
+
+      | B6/VT13/VT17 | tool enumeration/update failures are fail-closed and denied
+      calls do not invoke underlying Pi tool | fake Pi tool APIs fail/deny and raw
+      trace proves error/preservation/no invocation | b6_runtime | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest or non-intersection | final gate |
+
+      | B7 | source/static-only gaps are converted into executable evidence | report
+      names every prior source/static-only target now covered by executable seam or
+      explicit blocker | b7_gap_closure | PROVEN/UNPROVEN/BLOCKED | fix/retest or
+      non-intersection | final gate |
+
+
+      <side_effect_budget>Allowed: run executable/fake TypeScript/Pi seam tests, collect
+      stdout/stderr/RPC traces, inspect artifacts. Forbidden: product source mutation
+      or using live Pi availability as a prerequisite for fixture proof.</side_effect_budget>
+
+      <risk_probes>1. Verify the evidence traverses extension runtime seams, not isolated
+      pure helper tests. 2. Verify fake seams model Pi stdout/stderr readiness timing
+      accurately enough to prove B5. 3. Verify any remaining runtime gap is assigned
+      a blocker-class closure path before final gate.</risk_probes>'
+    verification: '- [ ] Runtime report includes raw command(s), stdout/stderr, exit
+      codes, and harness path(s) for executable/fake TypeScript/Pi seam proof.
+
+      - [ ] B1-B6 each have positive executable evidence or a blocker-class closure
+      path; source/static-only claims are rejected.
+
+      - [ ] B7 gap inventory names prior source/static-only behaviors and maps each
+      to runtime evidence, explicit BLOCKED status, or a new remediation owner.
+
+      - [ ] Proof separates fixture/runtime seam PASS from live Pi environment BLOCKED
+      when real Pi is unavailable.
+
+      - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for each B1-B7 row.
+
+      - [ ] The report is produced by an independent verifier and does not mutate
+      source.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — key passages from Child startup,\
+      \ Larva CLI bridge contract, Child RPC contract, Tool policy, and Verification\
+      \ targets 13/17/22/26/31/34/37/38/39.\n\n## Runtime Conformance Report\n- verifier:\
+      \ integration-verifier\n- commands_executed:\n  ```\n  <exact commands>\n  ```\n\
+      - raw_stdout_stderr:\n  ```\n  <raw output>\n  ```\n- harness_paths: <paths>\n\
+      \n## Behavioral Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- |\n| B1/VT22 | <claim> | <expected proof> |\
+      \ <artifact ref> | <PROVEN/UNPROVEN/BLOCKED> | <path> | <basis> |\n| B2/VT26/31/34\
+      \ | <claim> | <expected proof> | <artifact ref> | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <path> | <basis> |\n| B3/VT37 | <claim> | <expected proof> | <artifact ref>\
+      \ | <PROVEN/UNPROVEN/BLOCKED> | <path> | <basis> |\n| B4/VT38 | <claim> | <expected\
+      \ proof> | <artifact ref> | <PROVEN/UNPROVEN/BLOCKED> | <path> | <basis> |\n\
+      | B5/VT39 | <claim> | <expected proof> | <artifact ref> | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <path> | <basis> |\n| B6/VT13/17 | <claim> | <expected proof> | <artifact\
+      \ ref> | <PROVEN/UNPROVEN/BLOCKED> | <path> | <basis> |\n| B7 | <gap closure>\
+      \ | <expected proof> | <artifact ref> | <PROVEN/UNPROVEN/BLOCKED> | <path> |\
+      \ <basis> |\n\n## Gap Closure\n- source_static_only_gaps_closed: <list>\n- live_pi_unavailable_if_any:\
+      \ <exact missing dependency; fixture proof still required>\n- blockers_remaining:\
+      \ <none or list>"
+    depends_on:
+    - pi_finalization_20260526.spec_divergence_fix
+    agent: integration-verifier
