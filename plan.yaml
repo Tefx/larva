@@ -74797,7 +74797,7 @@ phases:
     verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md`
       and the Pi extension runtime seam, or records explicit NOT READ reasons.
 
-      - [ ] Fake Pi runtime abort-during-result trace includes child RPC `abort` command.
+      - [x] Fake Pi runtime abort-during-result trace includes child RPC `abort` command.
 
       - [ ] Abort-during-result returns cancelled with `LARVA_CHILD_CANCELLED` and
       no success `result_text`.
