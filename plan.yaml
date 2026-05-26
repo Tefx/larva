@@ -79686,7 +79686,7 @@ phases:
   steps:
   - id: pi_persona_spawn_proof_20260527.contract_design
     name: Design real-Pi persona and spawn proof contract
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       agent_source: project
@@ -79849,6 +79849,44 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T21:29:15.849297+00:00'
+    done_at: '2026-05-26T21:57:50.537731+00:00'
+    evidence: 'Read-only proof contract design completed; no product/source/test/doc
+      files changed and no commit was required in isolated worktree.
+
+
+      Refs confirmation: integration-verifier read design/pi-coding-agent-integration.md,
+      contrib/pi-extension/larva.ts, relevant tests/shell Pi launcher/extension tests,
+      and installed Pi 0.75.5 API/docs/source. AGENTS.md and CONSTITUTION.md were
+      absent in the isolated worktree with explicit NOT READ reasons. Key passages
+      identified: launcher `larva pi --persona`, initial persona commit, `/larva-persona`
+      atomic switch, `before_agent_start` prompt projection, `larva_subagent` tool
+      and child RPC lifecycle, cleanup/busy marker rules, Pi extension hook docs,
+      Pi RPC prompt/command/session APIs, and extension API types for registerCommand/registerTool/getAllTools/setActiveTools.
+
+
+      Proof contract outputs: defined temp-env probe personas `pi-proof-alpha-7f3c`,
+      `pi-proof-beta-2b8d`, and `pi-proof-child-9e2a` with nonce sentinel prompts
+      and cleanup plan. Defined real Pi startup command/probe for `uv run larva pi
+      --persona pi-proof-alpha-7f3c` via Pi RPC/PTY and exact alpha sentinel response;
+      live slash switch sequence `/larva-persona pi-proof-beta-2b8d` with beta sentinel
+      response and negative control; spawn lifecycle sequence using alpha `can_spawn`
+      to call `larva_subagent` for child sentinel, requiring tool_execution_start/end,
+      child session/result payload, resume/reuse, cleanup/no orphan probes; prompt
+      injection route map from launcher env to extension commitPersona to before_agent_start
+      systemPrompt watermark; sentinel behavior rule that exact nonce output is required
+      and raw prompt logs are supporting only.
+
+
+      Requirement coverage: R1-R5 proof-design obligations PROVEN. Runtime behavior
+      intentionally remains NEEDS_TEST for downstream diagnostic_live. Checklist items
+      all proven/toggled: traceability covers all four Chinese questions plus prior-regression
+      preservation, exact real-Pi observability methods defined, sentinel prompt strategy
+      proves effective prompt/context rather than extension state, probe lifecycle
+      cleanup/reset defined, and no product code changed.
+
+
+      Semantic closure: verdict PASS; blockers []; blocking_status CLOSED; proof_gap_status
+      NON_BLOCKING; gate_open_allowed false until downstream real-Pi diagnostic/retest.'
   - id: pi_persona_spawn_proof_20260527.diagnostic_live
     name: Run expected-red-or-green real-Pi persona, switch, spawn, and prompt diagnostic
     status: pending
