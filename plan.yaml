@@ -76359,7 +76359,7 @@ phases:
       failed verification targets. 2. Treat any unresolved B1-B7 row as final-gate
       blocker unless non-intersection is explicit. 3. Confirm no forbidden PersonaSpec/schema/tool-policy
       scope was added while fixing divergences.</risk_probes>'
-    verification: '- [ ] Requirements register covers all verification targets 1-41
+    verification: '- [x] Requirements register covers all verification targets 1-41
       and explicitly marks B1-B7 as retested.
 
       - [ ] Evidence table cites the fix receipt and runtime proof artifacts for B1-B7,
