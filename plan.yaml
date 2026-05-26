@@ -72718,6 +72718,317 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.gate
     agent: python-executor
+  - id: pi_contract_harness_20260526.coverage_regate
+    name: Coverage regate for Pi contract expected-red harness
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      agent_source: project
+
+      read_only: true
+
+
+      PROOF ARTIFACT / DECISION ARTIFACT:
+
+      As an INDEPENDENT READ-ONLY gate reviewer, re-audit the Pi contract expected-red
+      harness from a fresh adversarial perspective after `pi_contract_harness_20260526.coverage_remediation`.
+      Your job is to decide whether coverage is now sufficient to unblock downstream
+      Pi launcher/extension implementation phases. Finding remaining gaps is a successful
+      review outcome; do not rubber-stamp.
+
+
+      SCOPE:
+
+      - Re-audit B1-B6 from the original blocked `pi_contract_harness_20260526.gate`
+      review.
+
+      - Audit the full verification target range 1-41 from `design/pi-coding-agent-integration.md`,
+      with emphasis on targets 4, 5, 10, 37, 38, and 39.
+
+      - Audit refs receipts for upstream completed expected-red steps and current
+      remediation evidence.
+
+      - Read-only: do not modify tests, fixtures, product code, docs, plan state,
+      or lifecycle state.
+
+
+      UPSTREAM GATE CONTEXT TO PRESERVE:
+
+      - Original gate verdict: FAIL / BLOCK.
+
+      - Original blocker ledger: B1 target 4 partial; B2 target 5 partial; B3 target
+      10 incomplete; B4 targets 37/38 ambiguous/partial; B5 target 39 split/conflated;
+      B6 upstream refs confirmations not independently auditable from underlying receipt
+      artifacts.
+
+      - Original reviewer confirmed no product implementation files were modified
+      and expected-red commands align with missing implementation.
+
+
+      POSITIVE REQUIREMENT TRACEABILITY MATRIX TO REVIEW:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | required_status_for_OPEN |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1/T4 | `design/pi-coding-agent-integration.md:1280-1281` target 4 | PATH
+      ordering, Larva shim exclusion, first valid real `pi` selection expected-red
+      coverage. | `pi_contract_harness_20260526.coverage_remediation` | B1 target
+      4 PATH discovery expected-red coverage added | `B1_test_changes`, `B1_command_receipt`
+      | PROVEN |
+
+      | B2/T5 | `design/pi-coding-agent-integration.md:1282-1284` target 5 | No Pi
+      settings/config write when extension flag unsupported. | `pi_contract_harness_20260526.coverage_remediation`
+      | B2 target 5 no-settings-write expected-red assertion added | `B2_test_changes`,
+      `B2_command_receipt` | PROVEN |
+
+      | B3/T10 | `design/pi-coding-agent-integration.md:1296-1303` target 10 | Full
+      mode-detection matrix: `-p`, `--print`, `--json`, `--mode print/json/rpc/sdk`,
+      missing/empty/unknown `--mode`, conflict precedence. | `pi_contract_harness_20260526.coverage_remediation`
+      | B3 target 10 full mode-detection matrix added | `B3_test_changes`, `B3_command_receipt`
+      | PROVEN |
+
+      | B4/T37-38 | `design/pi-coding-agent-integration.md:1385-1392` targets 37/38
+      | Launcher-context argv prefix construction/inheritance covered; suffix/fallback/list
+      failure semantics explicitly owned if downstream implementation phase must close
+      them. | `pi_contract_harness_20260526.coverage_remediation` | B4 targets 37/38
+      launcher bridge expected-red coverage and ownership clarification added | `B4_test_changes`,
+      `B4_ownership_note`, `B4_command_receipt` | PROVEN_OR_OWNED_WITH_NON_INTERSECTION
+      |
+
+      | B5/T39 | `design/pi-coding-agent-integration.md:1393-1397` target 39 | Launcher
+      stderr preservation and parent-child pre-RPC whitelist mapping separated into
+      distinct expected-red obligations. | `pi_contract_harness_20260526.coverage_remediation`
+      | B5 target 39 split launcher stderr and whitelist mapping expected-red coverage
+      added | `B5_test_changes`, `B5_command_receipt` | PROVEN |
+
+      | B6/refs | Original blocked gate B6 | Current remediation and regate contain
+      auditable refs confirmation; unavailable old receipts accepted only if current
+      positive coverage is complete and non-intersecting. | `pi_contract_harness_20260526.coverage_remediation`;
+      `pi_contract_harness_20260526.coverage_regate` | B6 refs receipt replacement
+      evidence added | `refs_read_confirmation`, `upstream_receipt_audit`, `accepted_limitations`
+      | PROVEN_OR_ACCEPTED_LIMITATION_NON_INTERSECTING |
+
+
+      FULL TARGET 1-41 COVERAGE MATRIX REQUIREMENT:
+
+      Produce a target-by-target matrix for verification targets 1 through 41 with
+      columns: `target_number`, `design_ref`, `requirement_summary`, `owning_step_or_test`,
+      `evidence_ref`, `status`, `closure_path`, `gate_decision_basis`. Status must
+      be one of `PROVEN`, `OWNED`, `NEEDS_TEST`, `UNPROVEN`, `BLOCKED`, `NOT_APPLICABLE_WITH_AUTHORITY`.
+      Any `NEEDS_TEST`, `UNPROVEN`, or `BLOCKED` target must block OPEN unless it
+      has explicit non-intersection evidence for downstream implementation gates.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      - Allowed: read plan evidence, read design refs, inspect tests/fixtures and
+      command receipts, run/read-only verification commands if needed.
+
+      - Forbidden: modify code, tests, fixtures, docs, plan state, lifecycle state,
+      or product implementation.
+
+      - Forbidden: approve from sampled evidence if the full target 1-41 matrix is
+      incomplete.
+
+
+      RISK_PROBES:
+
+      - Check that B1-B5 are closed by positive expected-red coverage, not by prose-only
+      ownership claims or accidental broad tests.
+
+      - Check that B6 does not let unauditable old receipt gaps hide missing current
+      refs confirmation.
+
+      - Check that the phase remains contract-harness-only: no product implementation,
+      runtime launcher, or extension implementation changes are present.
+
+
+      OPEN/BLOCK RULE:
+
+      Allow `OPEN` only if every blocker B1-B6 is closed or explicitly owned with
+      non-intersection, the full target 1-41 matrix is complete, refs receipts are
+      auditable for current proof, and no forbidden product implementation scope is
+      present. Otherwise return `BLOCKED` with a precise remediation ledger.
+
+
+      ## Checklist
+
+      - [ ] Full verification target 1-41 coverage matrix produced with design refs,
+      owning tests/steps, evidence refs, statuses, closure paths, and gate decision
+      basis.
+
+      - [ ] B1 target 4 evidence proves PATH ordering, Larva shim exclusion, and first
+      valid real `pi` expected-red coverage.
+
+      - [ ] B2 target 5 evidence proves explicit no-settings/config-write expected-red
+      assertion.
+
+      - [ ] B3 target 10 evidence proves full mode-detection matrix coverage.
+
+      - [ ] B4 targets 37/38 evidence proves launcher argv prefix/inheritance coverage
+      and downstream ownership for suffix/fallback/list failure semantics if not directly
+      launcher-testable.
+
+      - [ ] B5 target 39 evidence proves launcher stderr preservation and pre-RPC
+      whitelist mapping are separated and owned.
+
+      - [ ] B6 upstream/current refs receipt audit is explicit; any old artifact limitation
+      is accepted only with current positive proof and non-intersection rationale.
+
+      - [ ] No product implementation files changed in the expected-red harness phase.
+
+      - [ ] Gate decision basis rejects generic pass claims, sampled coverage, and
+      prose-only closure.
+
+      - [ ] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
+      or have explicit non-intersection ownership; otherwise `BLOCKED`.'
+    verification: '- [ ] Read-only adversarial regate completed by `gate-reviewer`
+      independently of remediation author.
+
+      - [ ] Full target 1-41 coverage matrix is present and includes design refs,
+      owning tests/steps, evidence refs, statuses, closure paths, and gate decision
+      basis.
+
+      - [ ] B1-B6 each have positive proof or explicit ownership with non-intersection;
+      no blocker is closed by narrative assertion alone.
+
+      - [ ] Upstream and current refs receipts are audited; any unavailable old receipt
+      artifact is classified as an accepted limitation only if current positive coverage
+      proof is complete and non-intersecting.
+
+      - [ ] Changed-file scope is audited and confirms no forbidden product implementation
+      files changed.
+
+      - [ ] OPEN/BLOCK decision is explicit and blocks downstream implementation if
+      any B1-B6 obligation remains `NEEDS_TEST`, `UNPROVEN`, `BLOCKED`, or ambiguously
+      owned.'
+    evidence_template: '## Gate Review Report
+
+
+      **Reviewer**: gate-reviewer (independent, read-only)
+
+      **Phase**: pi-coding-agent-contract-harness-2026-05-26
+
+      **Timestamp**: <ISO 8601>
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - `design/pi-coding-agent-integration.md` — key passages for targets 1-41, explicitly
+      including target 4 lines 1280-1281, target 5 lines 1282-1284, target 10 lines
+      1296-1303, targets 37/38 lines 1385-1392, and target 39 lines 1393-1397, or
+      `NOT READ: <reason>`.
+
+
+      ### Upstream Receipt Audit
+
+      | upstream_step | receipt_available | refs_confirmation_present | key_passages_auditable
+      | limitation | non_intersection_rationale |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `pi_contract_harness_20260526.extension_expected_red` | yes/no | yes/no |
+      yes/no | <if any> | <required if limitation> |
+
+      | `pi_contract_harness_20260526.launcher_expected_red` | yes/no | yes/no | yes/no
+      | <if any> | <required if limitation> |
+
+      | `pi_contract_harness_20260526.coverage_remediation` | yes/no | yes/no | yes/no
+      | <if any> | <required if limitation> |
+
+
+      ### Full Verification Target 1-41 Coverage Matrix
+
+      | target_number | design_ref | requirement_summary | owning_step_or_test | evidence_ref
+      | status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | 1 | <ref> | <summary> | <owner> | <evidence> | PROVEN/OWNED/NEEDS_TEST/UNPROVEN/BLOCKED/NOT_APPLICABLE_WITH_AUTHORITY
+      | <closure> | <basis> |
+
+      | ... | ... | ... | ... | ... | ... | ... | ... |
+
+      | 41 | <ref> | <summary> | <owner> | <evidence> | PROVEN/OWNED/NEEDS_TEST/UNPROVEN/BLOCKED/NOT_APPLICABLE_WITH_AUTHORITY
+      | <closure> | <basis> |
+
+
+      ### B1-B6 Closure Audit
+
+      | blocker | required_positive_proof | evidence_ref | status | notes |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 | PATH ordering, Larva shim exclusion, first valid real `pi` | <test/receipt>
+      | PROVEN/UNPROVEN/BLOCKED | <notes> |
+
+      | B2 | no Pi settings/config write assertion | <test/receipt> | PROVEN/UNPROVEN/BLOCKED
+      | <notes> |
+
+      | B3 | full mode-detection matrix | <test/receipt> | PROVEN/UNPROVEN/BLOCKED
+      | <notes> |
+
+      | B4 | launcher argv prefix/inheritance plus suffix/fallback/list ownership
+      | <test/receipt/ownership> | PROVEN/OWNED/UNPROVEN/BLOCKED | <notes> |
+
+      | B5 | separated launcher stderr and pre-RPC whitelist mapping | <test/receipt>
+      | PROVEN/UNPROVEN/BLOCKED | <notes> |
+
+      | B6 | refs receipt replacement/current audit | <receipt audit> | PROVEN/ACCEPTED_LIMITATION_NON_INTERSECTING/UNPROVEN/BLOCKED
+      | <notes> |
+
+
+      ### Forbidden Scope Audit
+
+      ```text
+
+      <changed-file and/or diff-summary evidence proving product implementation files
+      were not modified>
+
+      ```
+
+
+      ### Gate Decision Basis
+
+      - unresolved_statuses: `<list NEEDS_TEST/UNPROVEN/BLOCKED/UNCERTAIN_BLOCKING
+      rows>`
+
+      - non_intersection_evidence: `<only for unresolved non-blocking rows>`
+
+      - decision: `OPEN | BLOCKED`
+
+      - required_actions_if_blocked: `<precise remediation ledger>`
+
+
+      ## Checklist Receipt
+
+      - [ ] Full target 1-41 coverage matrix completed.
+
+      - [ ] B1 closed/owned with positive proof.
+
+      - [ ] B2 closed/owned with positive proof.
+
+      - [ ] B3 closed/owned with positive proof.
+
+      - [ ] B4 closed/owned with positive proof or explicit downstream ownership and
+      non-intersection.
+
+      - [ ] B5 closed/owned with positive proof.
+
+      - [ ] B6 refs audit closed or accepted limitation is non-intersecting.
+
+      - [ ] No product implementation scope detected.
+
+      - [ ] OPEN/BLOCK decision follows the rule in the step description.'
+    depends_on:
+    - pi_contract_harness_20260526.coverage_remediation
+    agent: gate-reviewer
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
