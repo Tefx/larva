@@ -75326,7 +75326,7 @@ phases:
       proof.'
   - id: pi_extension_runtime_20260526.abort_start_failure_retest
     name: Retest abort no-response child-exit start-failure mapping
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -75438,6 +75438,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T15:14:07.806382+00:00'
+    done_at: '2026-05-26T15:25:29.334476+00:00'
+    evidence: 'PASS_READ_ONLY_RETEST. Integration-verifier task ses_19b259fceffeJFDZ2V5kdy82gG
+      returned PASS / blocking_status CLOSED / proof_gap_status NONE. Worktree remained
+      clean and no files changed. Evidence included refs confirmation for design/pi-coding-agent-integration.md
+      abort/error-code passages, contrib/pi-extension/larva.ts mapping lines, and
+      tests/shell/test_pi_extension_contract.py abort coverage. Exact fake scenario
+      `abort-no-response-child-exited-kill-false` appeared in the receipt and returned
+      parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`; evidence
+      explicitly shows it no longer returns `LARVA_CHILD_START_FAILED`. Normal successful
+      abort/cancelled regression returned `status: cancelled` with `error.code: LARVA_CHILD_CANCELLED`.
+      Supporting commands: `uv run pytest tests/shell/test_pi_extension_contract.py
+      -k abort -q` passed 3 selected; `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py -q` passed 47/47; `uv run
+      invar guard --all` passed with 0 errors and only pre-existing warnings/infos.
+      Behavioral proof register marks abort start-failure-after-unknowable obligation
+      PROVEN. Checklist toggled from retest receipt.'
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
