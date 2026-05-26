@@ -73574,6 +73574,94 @@ phases:
       closure after the expected-red harness phase.
 
       - No blockers remain for this same-phase expected-red disposition closure.'
+  - id: pi_contract_harness_20260526.expected_red_guard_final_green_closure
+    name: Expected-red guard final green closure
+    status: done
+    description: 'PLAN-STATE CLOSURE ARTIFACT:
+
+      Record deterministic same-phase closure for expected-red artifacts from `pi_contract_harness_20260526.final_regate_expected_red_closure`.
+      This step adds no implementation work and does not alter prior evidence.
+
+
+      Disposition:
+
+      - provenance: expected-red pre-implementation gap proof.
+
+      - disposition: blocking status closed because downstream implementation and
+      final Pi finalization gate are complete.
+
+      - gate intersection: closed for remaining plan validation.
+
+
+      <side_effect_budget>
+
+      Allowed: mutate plan state only by adding this completed same-phase closure
+      step.
+
+      Forbidden: modify product code, prior evidence, lifecycle state, git branches,
+      commits, or step worktrees.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify expected-red artifacts remain intentional pre-implementation gap proof.
+
+      - Verify downstream completed gates remain the owner for implemented behavior
+      proof.
+
+      - Verify no product implementation or test files are changed by this closure.
+
+      </risk_probes>'
+    verification: '- [x] EXPECTED_RED_ACCEPTED marker is present.
+
+      - [x] Positive OPEN markers are present.
+
+      - [x] Blocking and proof-gap statuses are closed.
+
+      - [x] Evidence states downstream implementation and final Pi finalization gate
+      are complete.
+
+      - [x] No product files or prior evidence are changed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Closure Receipt
+
+      - [x] Positive closure markers recorded.
+
+      - [x] Same-phase dependency recorded.
+
+      - [x] Product files untouched.'
+    depends_on:
+    - pi_contract_harness_20260526.final_regate_expected_red_closure
+    agent: gate-reviewer
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      verdict: PASS
+
+      gate_decision: OPEN
+
+      gate_open_allowed: true
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      blockers: []
+
+      expected_red_disposition: CLOSED
+
+      gate_intersection: CLOSED
+
+      downstream_closure: COMPLETE
+
+
+      Expected-red artifacts were intentional pre-implementation gap proof. Downstream
+      implementation and final Pi finalization gate are complete. No blockers remain.'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: done
