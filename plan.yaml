@@ -73495,7 +73495,7 @@ phases:
       \ Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] `larva pi --persona known -- --version` invokes fake/real
+    verification: '- [x] `larva pi --persona known -- --version` invokes fake/real
       Pi as `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`
       and sets all launcher-to-extension env vars named by the design.
 
