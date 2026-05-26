@@ -75255,7 +75255,7 @@ phases:
       abort/error-code passages and `contrib/pi-extension/larva.ts` mapping locations,
       or records explicit NOT READ reasons.
 
-      - [ ] Parent result for exact fake runtime scenario `abort-no-response-child-exited-kill-false`
+      - [x] Parent result for exact fake runtime scenario `abort-no-response-child-exited-kill-false`
       is changed from failed `LARVA_CHILD_START_FAILED` to failed `LARVA_CHILD_PROTOCOL_FAILED`
       when abort state is unknowable.
 
