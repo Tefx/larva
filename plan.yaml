@@ -74398,7 +74398,7 @@ phases:
       \ Read Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages\
       \ read: <specific sections/targets used by this step>; NOT READ entries only\
       \ with reason.`\n"
-    verification: '- [ ] Runtime scenario proves `/larva-persona <valid>`, no-arg
+    verification: '- [x] Runtime scenario proves `/larva-persona <valid>`, no-arg
       interactive selector path, non-interactive bad-input path, and UI status updates.
 
       - [ ] Runtime scenario proves prompt watermark composition/replacement and model
