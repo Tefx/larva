@@ -73456,6 +73456,124 @@ phases:
       returned EXIT_CODE=1 with 37 failed / 2 passed in 0.18s, aligned with missing
       bundled extension and packaging hook. Checklist items toggled from final regate
       receipt. This opens the Pi contract harness phase for downstream implementation.'
+  - id: pi_contract_harness_20260526.final_regate_expected_red_closure
+    name: Final regate expected-red closure
+    status: done
+    description: 'PLAN-STATE CLOSURE ARTIFACT:
+
+      Record deterministic same-phase closure for expected-red pytest failure evidence
+      emitted by `pi_contract_harness_20260526.final_regate`. This step adds no implementation
+      work and does not alter historical evidence.
+
+
+      Disposition:
+
+      - provenance: expected-red pre-implementation contract harness evidence from
+      `pi_contract_harness_20260526.final_regate`.
+
+      - disposition: non-blocking / closed for this completed phase because the gate
+      explicitly opened downstream implementation and finalization gates, and all
+      Pi phases are now completed.
+
+      - gate intersection: the pytest EXIT_CODE=1 results were intentional red contract
+      artifacts proving missing implementation gaps before implementation; downstream
+      implementation/finalization gates own and have completed green/OPEN closure
+      for product behavior.
+
+
+      <side_effect_budget>
+
+      Allowed: mutate plan state only by adding this completed same-phase closure
+      step.
+
+      Forbidden: modify product code, historical evidence, lifecycle state, git branches,
+      commits, or step worktrees.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the closure does not reinterpret expected-red tests as product regressions.
+
+      - Verify downstream completed gates, not this plan-state closure, remain the
+      owner for implemented behavior proof.
+
+      - Verify no product implementation or test files are changed by this closure.
+
+      </risk_probes>'
+    verification: '- [ ] EXPECTED_RED_ACCEPTED marker is present in evidence.
+
+      - [ ] verdict, gate_decision, gate_open_allowed, blocking_status, and blockers
+      fields record green/open closure.
+
+      - [ ] Evidence states both failed pytest commands were expected-red pre-implementation
+      artifacts.
+
+      - [ ] Evidence states downstream implementation/finalization gates now close
+      gate intersection for product behavior.
+
+      - [ ] No implementation work or historical evidence alteration is requested.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No refs for this step.
+
+
+      ## Expected-Red Closure Receipt
+
+      - marker: EXPECTED_RED_ACCEPTED
+
+      - verdict: PASS
+
+      - gate_decision: OPEN
+
+      - gate_open_allowed: true
+
+      - blocking_status: CLOSED
+
+      - blockers: []
+
+      - expected_red_disposition: <why failed pytest commands are non-blocking>
+
+      - gate_intersection: <which downstream completed gates own green behavior closure>'
+    depends_on:
+    - pi_contract_harness_20260526.final_regate
+    agent: gate-reviewer
+    evidence: 'EXPECTED_RED_ACCEPTED
+
+      verdict: PASS
+
+      gate_decision: OPEN
+
+      gate_open_allowed: true
+
+      blocking_status: CLOSED
+
+      blockers: []
+
+
+      Closure disposition:
+
+      - `pi_contract_harness_20260526.final_regate` intentionally accepted expected-red
+      pre-implementation contract harness failures while opening downstream implementation.
+
+      - Launcher expected-red command `.venv/bin/python -m pytest -q tests/shell/test_pi_launcher_contract.py`
+      returned EXIT_CODE=1 with 31 failed because the `pi` CLI command was intentionally
+      missing before implementation.
+
+      - Extension expected-red command `.venv/bin/python -m pytest -q tests/shell/test_pi_extension_contract.py`
+      returned EXIT_CODE=1 with 37 failed / 2 passed because the bundled extension
+      and packaging hook were intentionally missing before implementation.
+
+      - These failures were expected-red contract artifacts, not product regression
+      evidence; they exposed the declared missing implementation gap without changing
+      forbidden product implementation files.
+
+      - Gate intersection is CLOSED for plan validation: downstream implementation
+      and finalization gates are now completed and own green/OPEN product-behavior
+      closure after the expected-red harness phase.
+
+      - No blockers remain for this same-phase expected-red disposition closure.'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: done
