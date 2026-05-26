@@ -72272,7 +72272,7 @@ phases:
       matching the worker checklist_receipt.'
 - id: pi-coding-agent-contract-harness-2026-05-26
   name: Pi Coding Agent Contract Harness 2026-05-26
-  status: pending
+  status: in_progress
   gate: Pi contract harness and expected-red tests define the design obligations before
     implementation.
   depends_on:
@@ -72336,7 +72336,7 @@ phases:
     agent: python-executor
   - id: pi_contract_harness_20260526.extension_expected_red
     name: Extension contract and expected-red tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Persona runtime projection; Tool policy; Subagent spawning; API contracts;\
@@ -72395,6 +72395,8 @@ phases:
 
       '
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T05:09:10.167525+00:00'
   - id: pi_contract_harness_20260526.gate
     name: Gate contract harness
     status: pending
