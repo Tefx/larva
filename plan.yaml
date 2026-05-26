@@ -76986,7 +76986,7 @@ phases:
       - [x] A non-whitelisted pre-RPC stderr case remains a child start/protocol failure
       and is not propagated as a domain code.
 
-      - [ ] Post-readiness stderr remains diagnostic-only and does not override a
+      - [x] Post-readiness stderr remains diagnostic-only and does not override a
       ready RPC/domain result.
 
       - [ ] B1/B2/B3/B4/B6 previously passing conformance checks remain green or have
