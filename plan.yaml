@@ -77673,3 +77673,155 @@ phases:
       - verdict: EXPECTED_RED_REPRODUCED | BLOCKED\n- blockers: []\n- gate_open_allowed:\
       \ false\n- downstream_anchor_for_fix: pi_slash_autocomplete_20260527.fix_extension_shape"
     agent: integration-verifier
+  - id: pi_slash_autocomplete_20260527.fix_extension_shape
+    name: Fix Pi extension slash autocomplete return shape
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      `contrib/pi-extension/larva.ts` exposes slash-command/autocomplete data in Pi
+      extension API shapes that the Pi TUI editor accepts when the user types `/`.
+      The editor must receive strings or documented autocomplete objects whose string-bearing
+      field is valid for Pi''s `startsWith`-based matching. Typing `/` must not crash
+      the Pi runtime.
+
+
+      UPSTREAM ARTIFACTS (from reproduction step):
+
+      - pi_slash_autocomplete_20260527.reproduce_contract — failing command/fixture
+      and failing value shape are AUTHORITATIVE.
+
+      - Focused expected-red regression test from the reproduction step is PROTECTED.
+
+
+      SCOPE:
+
+      - Fix only `contrib/pi-extension/larva.ts` and focused tests/fixtures needed
+      to turn the expected-red slash autocomplete proof green.
+
+      - Preserve existing Pi behavior, slash commands, MCP adapter behavior, and launcher
+      semantics except where necessary to conform autocomplete return shapes.
+
+      - No PersonaSpec, shared schema, canonical contract, or Python admission-surface
+      change is allowed.
+
+
+      CONTRACT ANCHOR:
+
+      The fix must consume the reproduction artifact''s failing shape and make the
+      returned autocomplete/slash-command candidates conform to the Pi extension public
+      API documented in refs.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-SLASH-CRASH-001 | user report + reproduce_contract artifact | slash autocomplete
+      no longer passes non-string values to Pi editor matching | pi_slash_autocomplete_20260527.fix_extension_shape
+      | focused regression turns green | regression_result | OWNED | retest verifies
+      runtime liveness |
+
+      | PI-SCOPE-001 | `contrib/pi-extension/larva.ts` and Pi integration design |
+      preserve existing commands/tool policy; no schema/persona changes | pi_slash_autocomplete_20260527.fix_extension_shape
+      | forbidden-scope diff check | scope_diff_summary | OWNED | gate blocks if violated
+      |
+
+
+      <side_effect_budget>
+
+      Allowed: modify `contrib/pi-extension/larva.ts`; update/add focused slash-autocomplete
+      tests/fixtures under `tests/shell/` only as needed. Forbidden: modify PersonaSpec/schema/shared
+      contracts, Python core/shell admission behavior, unrelated Pi launcher behavior,
+      prior completed phase evidence, or broad refactors.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm all autocomplete candidates returned during `/` matching are strings
+      or Pi-documented objects with valid string fields, not arrays/objects accidentally
+      forwarded from tool metadata.
+
+      - Confirm empty/no-match autocomplete does not crash and does not alter command
+      execution behavior.
+
+      - Confirm the fix covers both bundled extension runtime and static/contract
+      tests, not only a helper function.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (green after fix):
+
+      - [ ] Refs confirmation includes key passages from the design and extension
+      source that define autocomplete/slash-command surface expectations.
+
+      - [ ] Diff summary confirms product changes are limited to contrib/pi-extension/larva.ts
+      plus focused tests/fixtures.
+
+      - [ ] Focused expected-red slash autocomplete regression from pi_slash_autocomplete_20260527.reproduce_contract
+      now passes.
+
+      - [ ] Evidence shows Pi TUI autocomplete receives only strings or documented
+      autocomplete object shapes for `/` candidates.
+
+      - [ ] Existing Pi extension command/tool-policy behavior remains covered by
+      targeted tests.
+
+      - [ ] No PersonaSpec, schema, or unrelated launcher behavior changed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
+      READ: reason>
+
+
+      ## Fix Receipt
+
+      - upstream_reproduction_artifact: pi_slash_autocomplete_20260527.reproduce_contract
+
+      - changed_files: <list>
+
+      - scope_diff_summary: <confirm only allowed files changed>
+
+      - autocomplete_shape_before: <from reproduction>
+
+      - autocomplete_shape_after: <strings or documented Pi API object shape>
+
+      - regression_result: <command + raw output + exit code>
+
+      - existing_behavior_checks: <targeted Pi extension tests/raw output>
+
+
+      ## Semantic Closure
+
+      - verdict: FIX_READY_FOR_RETEST | BLOCKED
+
+      - blockers: []
+
+      - gate_open_allowed: false'
+    depends_on:
+    - pi_slash_autocomplete_20260527.reproduce_contract
+    agent: frontend-engineer
