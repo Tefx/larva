@@ -75651,7 +75651,7 @@ phases:
       audit receipt.'
   - id: pi_finalization_20260526.end_to_end_liveness
     name: End-to-end Pi runtime liveness proof
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ full-plan-check; protects final gate for runnable/user-visible CLI and Pi\
       \ extension surfaces.\nAs client-runtime-verifier, launch the user-facing `larva\
@@ -75725,6 +75725,27 @@ phases:
     agent: client-runtime-verifier
     claimed_by: client-runtime-verifier
     claimed_at: '2026-05-26T16:15:55.715798+00:00'
+    done_at: '2026-05-26T17:05:07.086943+00:00'
+    evidence: 'PASS_FIXTURE_E2E_LIVENESS. Client-runtime-verifier task ses_19aece732ffeBMXpJpDZP4uxKI
+      returned PASS with blocking_status CLOSED and proof_gap_status NONE; read-only
+      with no tracked files modified. Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      launcher/extension contract tests, and contrib/pi-extension/larva.ts. Exact
+      launch command used isolated temp HOME/registry, fake Pi runtime, tool policy
+      file, child-session dir, and `uv run larva pi --persona known -- --version`;
+      exit 0 with stdout JSON showing ok=true, surface fake-pi-extension-runtime,
+      status `larva: known`, subagent_status success, and task_id. Runtime artifacts
+      proved bundled extension loaded through selected `-e` flag from worktree `contrib/pi-extension/larva.ts`;
+      status history included `larva: known`; registered command `larva-persona`;
+      registered tool `larva_subagent`; safe `/larva-persona known` interaction ok;
+      denied read tool_call with LARVA_TOOL_DENIED and allowed bash; larva_subagent
+      returned public success shape with result_text `fake child final: say hi`; raw
+      JSONL showed get_state, prompt, agent_end, get_last_assistant_text; launcher
+      env included initial persona, real bin, extension flag/entry, CLI argv JSON,
+      interactive TUI, launched marker. Supporting commands: real Pi exists and advertises
+      extension flags but fixture was intentionally used to avoid credentials/interactivity;
+      `uv run pytest tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py` passed 80 tests; invar
+      changed-files guard passed. Checklist toggled from runtime receipt.'
   - id: pi_finalization_20260526.doc_sync
     name: Documentation sync for Pi integration
     status: pending
