@@ -75486,7 +75486,7 @@ phases:
   steps:
   - id: pi_finalization_20260526.spec_conformance
     name: Spec conformance audit for Pi integration
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ full-plan-check; protects final gate and reviews all design verification targets\
       \ 1-41.\nAs an independent spec verifier, compare implemented launcher and extension\
@@ -75550,6 +75550,26 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-05-26T15:40:40.867808+00:00'
+    done_at: '2026-05-26T15:58:28.339816+00:00'
+    evidence: 'BLOCKED_SPEC_AUDIT_RECONCILED_WITH_REMEDIATION. Spec-verifier task
+      ses_19b0d45b9ffeb0LlqVUUt73QNW returned FAIL/BLOCKED after read-only conformance
+      audit against design/pi-coding-agent-integration.md targets 1-41 and non-goals.
+      Audit included refs confirmation for design, launcher/extension source, pyproject,
+      and contract tests; requirements register covered VT1-VT41 plus NG1-NG8; evidence
+      table cited design sections and implementation/runtime evidence; all non-CONFORMS
+      rows had severity and closure paths; forbidden scope absence was explicitly
+      checked. Launcher targets largely conform, but extension/runtime blockers were
+      identified: VT13/17 tool enumeration/update failure handling too permissive;
+      VT22 empty LARVA_PI_CHILD_SESSION_DIR incorrectly defaults instead of failing;
+      VT26/31/34 parent resolves child persona before child startup/resume and post-RPC
+      stderr parsing concerns; VT37 PersonaSpec required-field validation too loose;
+      VT38 list bridge invalid-item semantics; VT39 startup stderr whitelist/post-readiness
+      parsing; and broad executable runtime proof gaps for many extension behaviors.
+      Planner remediation task ses_19b04f129ffeieZTbbcX9Fsyij added `pi_finalization_20260526.spec_divergence_fix`,
+      `pi_finalization_20260526.extension_runtime_conformance_proof`, and `pi_finalization_20260526.spec_conformance_retest`,
+      and rewired downstream finalization dependencies. Checklist toggled from audit
+      receipt; this completion records issue-detection evidence and remediation ownership,
+      not final spec conformance.'
   - id: pi_finalization_20260526.wiring_audit
     name: Wiring and package reachability audit
     status: done
