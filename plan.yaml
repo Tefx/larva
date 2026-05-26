@@ -73640,7 +73640,7 @@ phases:
       evidence and remediation ownership, not a green launcher gate.'
   - id: pi_launcher_runtime_20260526.gate
     name: Gate launcher runtime
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check; protects downstream\
       \ Pi extension/finalization gates that consume launcher env contracts.\nAs an\
       \ independent reviewer, decide whether the launcher runtime surface is complete\
@@ -73703,6 +73703,8 @@ phases:
     - pi_launcher_runtime_20260526.env_contract_fix
     - pi_launcher_runtime_20260526.env_liveness_retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T13:22:33.461904+00:00'
   - id: pi_launcher_runtime_20260526.env_contract_fix
     name: Set launcher child env contract values
     status: done
