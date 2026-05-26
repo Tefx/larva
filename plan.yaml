@@ -73276,32 +73276,24 @@ phases:
   - id: pi_finalization_20260526.doc_sync
     name: Documentation sync for Pi integration
     status: pending
-    description: 'step_type: documentation
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Implementation handoff; Verification
-      targets
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: User-facing documentation describes how to use `larva pi`, configure
-      adapter-local `~/.pi/tool-policy.json`, understand `/larva-persona`, and call/resume
-      `larva_subagent`, while preserving design non-goals and opifex PersonaSpec authority.
-
-      BOUNDING BOX: README.md and/or contrib/pi-extension/README.md; do not edit the
-      design artifact unless explicitly required by reviewer.
-
-      CONSTRAINTS: Docs must not imply PersonaSpec schema changes, ask action, Pi
-      settings fallback, worktree/credential/file-lock isolation, policy hierarchy,
-      batch subagent, sidecar metadata, or MCP transport built into this integration.
-
-      <side_effect_budget>Allowed: documentation updates only. Forbidden: product
-      code/test mutation and forbidden-scope claims.</side_effect_budget>
-
-      <risk_probes>1. Docs must state extension flag loading rather than settings
-      writes. 2. Policy docs must say adapter-local and exact allow/deny only. 3.
-      Subagent docs must present task_id path resume semantics without sidecar guarantees.'
+    description: "step_type: documentation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Implementation handoff; Verification targets\nrefs: design/pi-coding-agent-integration.md\n\
+      TARGET STATE: User-facing documentation describes how to use `larva pi`, configure\
+      \ adapter-local `~/.pi/tool-policy.json`, understand `/larva-persona`, and call/resume\
+      \ `larva_subagent`, while preserving design non-goals and opifex PersonaSpec\
+      \ authority.\nBOUNDING BOX: README.md and/or contrib/pi-extension/README.md;\
+      \ do not edit the design artifact unless explicitly required by reviewer.\n\
+      CONSTRAINTS: Docs must not imply PersonaSpec schema changes, ask action, Pi\
+      \ settings fallback, worktree/credential/file-lock isolation, policy hierarchy,\
+      \ batch subagent, sidecar metadata, or MCP transport built into this integration.\n\
+      <side_effect_budget>Allowed: documentation updates only. Forbidden: product\
+      \ code/test mutation and forbidden-scope claims.</side_effect_budget>\n<risk_probes>1.\
+      \ Docs must state extension flag loading rather than settings writes. 2. Policy\
+      \ docs must say adapter-local and exact allow/deny only. 3. Subagent docs must\
+      \ present task_id path resume semantics without sidecar guarantees.\n- [ ] Completion\
+      \ evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Documentation shows `larva pi --persona <id> -- <pi args...>`
       and names the launcher-owned environment at a user-appropriate level.
 
