@@ -79230,7 +79230,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_slash_autocomplete_20260527.fix_live_slash_autocomplete_api
     name: Fix live Pi slash autocomplete API shape
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -79373,6 +79373,8 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T20:46:59.348019+00:00'
   - id: pi_slash_autocomplete_20260527.retest_live_slash_final
     name: Retest live Pi slash autocomplete final
     status: pending
