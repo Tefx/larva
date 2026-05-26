@@ -75748,7 +75748,7 @@ phases:
       changed-files guard passed. Checklist toggled from runtime receipt.'
   - id: pi_finalization_20260526.doc_sync
     name: Documentation sync for Pi integration
-    status: claimed
+    status: done
     description: "step_type: documentation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Implementation handoff; Verification targets\nrefs: design/pi-coding-agent-integration.md\n\
       TARGET STATE: User-facing documentation describes how to use `larva pi`, configure\
@@ -75810,6 +75810,59 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-05-26T18:32:41.700832+00:00'
+    done_at: '2026-05-26T18:44:10.820873+00:00'
+    evidence: 'Documentation sync completed and merged into main.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: decision/non-goals
+      lines 9-21 and 34-46; launcher/extension flag/no settings fallback lines 86-116;
+      tool policy ownership/shape/validation/allow-deny/no ask lines 280-397; /larva-persona
+      selector/status lines 152-205; subagent input/result/task_id/resume/abort/busy
+      semantics lines 399-790; verification targets lines 1267-1406; implementation
+      handoff/watch-for lines 1407-1437.
+
+
+      ## Upstream Receipt Refs Confirmation Audit
+
+      - spec_conformance receipt included refs confirmation: no upstream receipt artifact
+      was available in this step scope; non-blocking for documentation sync because
+      the authoritative design ref was read directly and mapped to docs.
+
+      - missing_or_incomplete_refs_confirmation: none blocking for this documentation
+      sync.
+
+
+      ## Documentation Sync Evidence
+
+      - checklist_receipt: all description and verification checklist items toggled
+      by orchestrator from worker receipt.
+
+      - docs_changed: README.md added `larva pi` CLI listing and Pi Coding Agent integration
+      overview; contrib/pi-extension/README.md added launcher, adapter-local tool-policy,
+      /larva-persona, larva_subagent/resume/abort/busy, and non-goals documentation.
+
+      - forbidden_scope_preservation: docs explicitly state no PersonaSpec schema
+      changes, no ask action, no Pi settings fallback, no worktree/credential/file-lock
+      isolation, no project-level policy hierarchy, no batch scheduler, no sidecar
+      metadata, and no built-in MCP transport.
+
+      - requirement_coverage: all required documentation obligations PROVEN by the
+      changed README.md and contrib/pi-extension/README.md sections.
+
+      - worker verification: git diff --check exited 0; worker branch status clean
+      after commit.
+
+      - worker commit: 9eb162086bb9c7665f17d3750ee8ae0425bfc7fc docs: add Pi integration
+      user guide.
+
+      - orchestrator merge: git merge --squash vectl/step-pi_finalization_20260526.doc_sync
+      && git commit -m "[vectl] step-pi_finalization_20260526.doc_sync completed"
+      created main commit 97ff407.
+
+      - mainline final-state verification: git diff --check HEAD~1..HEAD exited 0;
+      git status --porcelain returned no output.'
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
     status: claimed
