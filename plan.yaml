@@ -73434,3 +73434,69 @@ phases:
     depends_on:
     - pi_finalization_20260526.spec_conformance
     agent: doc-reviewer
+  - id: pi_finalization_20260526.full_guard
+    name: Full repository guard and test verification
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: full-plan-check; protects final gate.
+
+      As an independent verifier, run the repo-level verification required after Pi
+      integration changes, including the authoritative invar full guard command family
+      and targeted launcher/extension tests.
+
+      <side_effect_budget>Allowed: run verification commands and collect logs. Forbidden:
+      source mutation.</side_effect_budget>
+
+      <risk_probes>1. Guard failures from touched shell/core/package/test paths are
+      blocker-class regardless of provenance. 2. Node-backed extension tests may skip
+      only when environment lacks Node, with explicit blocker/non-blocker disposition.
+      3. Core contract/doctest failures must not be dismissed as unrelated without
+      non-intersection evidence.'
+    verification: '- [ ] Targeted launcher and extension test commands run with raw
+      stdout/stderr and exit codes.
+
+      - [ ] Full repository tests or the project-accepted equivalent run with raw
+      stdout/stderr and exit code.
+
+      - [ ] `uv run invar guard --all` or current project-authoritative full invar
+      guard command runs with raw stdout/stderr and exit code.
+
+      - [ ] Any guard/test failure has disposition: remediation owner now, explicit
+      non-intersection, or blocked final gate.
+
+      - [ ] Evidence distinguishes fixture runtime proof from live Pi dependency proof
+      when live Pi is unavailable.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key verification targets and invar
+      constraints.
+
+
+      ## Command Evidence
+
+      | command | raw_output_ref_or_paste | exit_code | verdict |
+
+      | --- | --- | --- | --- |
+
+
+      ## Failure Disposition Ledger
+
+      | failure | provenance | gate_intersection | disposition | remediation_owner
+      |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Checklist Receipt
+
+      - checklist_satisfied: <items>
+
+      - checklist_failed_or_blocked: <items>'
+    depends_on:
+    - pi_finalization_20260526.spec_conformance
+    - pi_finalization_20260526.wiring_audit
+    - pi_finalization_20260526.end_to_end_liveness
+    agent: integration-verifier
