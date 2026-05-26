@@ -75568,7 +75568,7 @@ phases:
     verification: '- [x] CLI reachability evidence shows `larva pi` is registered
       through the real console script/CLI dispatch path.
 
-      - [ ] Package/build evidence shows `contrib/pi-extension/larva.ts` is included
+      - [x] Package/build evidence shows `contrib/pi-extension/larva.ts` is included
       at the runtime path the launcher resolves.
 
       - [ ] Static or runtime traces show Pi extension entry registers the required
