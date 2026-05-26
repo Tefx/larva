@@ -73944,7 +73944,7 @@ phases:
       - [x] Negative liveness cases for missing Pi and unsupported extension prove
       failure occurs before child Pi execution.
 
-      - [ ] Behavioral proof register marks launcher env obligations PROVEN or BLOCKED
+      - [x] Behavioral proof register marks launcher env obligations PROVEN or BLOCKED
       with explicit closure paths; gate-opening recommendation is forbidden while
       any required env value is UNPROVEN/BLOCKED.
 
