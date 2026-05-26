@@ -73788,7 +73788,7 @@ phases:
       deny wins; present allow is an allowlist; empty allow blocks all model-facing
       tools.
 
-      - [ ] Successful commit enumerates the current baseline, calls `pi.setActiveTools(filteredTools)`,
+      - [x] Successful commit enumerates the current baseline, calls `pi.setActiveTools(filteredTools)`,
       and does not carry restrictions from previous commits.
 
       - [ ] `tool_call` denial returns `ToolPolicyDecision` with `LARVA_TOOL_DENIED`;
