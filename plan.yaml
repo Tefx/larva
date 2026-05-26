@@ -74956,7 +74956,7 @@ phases:
       <risk_probes>1. Verify `child.kill() === false` is not silently treated as cancelled.
       2. Verify an abort RPC failure cannot be masked by generic aborted-result mapping.
       3. Verify normal successful abort cancellation still returns `LARVA_CHILD_CANCELLED`.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`
       and `contrib/pi-extension/larva.ts` abort/kill mappings, or records explicit
       NOT READ reasons.
 
