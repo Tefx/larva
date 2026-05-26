@@ -665,6 +665,7 @@ async function runChildSequence(
     const sequencePromise = sequence();
     const first = await Promise.race([sequencePromise, abortRace]);
     if (abortStarted && abortPromise) {
+      if (first.status === "failed" && first.error?.code === "LARVA_CHILD_START_FAILED") return await abortPromise;
       if (first.status === "cancelled" || first.status === "failed") return first;
       return await Promise.race([sequencePromise, abortPromise]);
     }
