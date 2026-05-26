@@ -75562,7 +75562,7 @@ phases:
       <risk_probes>1. Packaged extension file must be included and used by launcher.\
       \ 2. CLI parser/dispatch must expose `pi` from the installed console script\
       \ path. 3. Extension registration must not be dead code or disconnected from\
-      \ hook exports.\n- [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n\
+      \ hook exports.\n- [x] Completion evidence includes:\n  `## refs Read Confirmation`\n\
       \  `- design/pi-coding-agent-integration.md — key passages read: <specific sections/targets\
       \ used by this step>; NOT READ entries only with reason.`\n"
     verification: '- [ ] CLI reachability evidence shows `larva pi` is registered
