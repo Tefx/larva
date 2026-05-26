@@ -73505,7 +73505,7 @@ phases:
       - [x] Interactive detector covers exact print/json/mode markers, missing/empty/unknown
       mode, conflicts, and default interactive behavior.
 
-      - [ ] Tests prove launcher does not parse `~/.pi/tool-policy.json` and does
+      - [x] Tests prove launcher does not parse `~/.pi/tool-policy.json` and does
       not write Pi settings.
 
       - [ ] `uv run invar guard --all` or the project-authoritative invar full guard
