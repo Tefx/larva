@@ -73934,7 +73934,7 @@ phases:
     verification: '- [x] Exact fixture CLI liveness command/invocation through the
       packaged `larva pi` entrypoint is recorded with raw stdout/stderr and exit code.
 
-      - [ ] Runtime child env/argv artifact shows `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED=1`,
+      - [x] Runtime child env/argv artifact shows `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED=1`,
       `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
       `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`.
 
