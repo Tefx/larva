@@ -72462,46 +72462,34 @@ phases:
   - id: pi_launcher_runtime_20260526.implement_launcher_entry
     name: Complete larva pi launcher and package entry
     status: pending
-    description: 'step_type: implementation
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Runtime UX > Launch; Launcher
-      contract; Architecture basis; Verification targets 1-5, 10, 37-39
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: `larva pi [--persona <id>] [--] <pi args...>` is a shell/runtime
-      launcher that discovers the real Pi executable, selects `-e` or `--extension`
-      from `pi --help`, resolves the bundled extension entry, preserves user Pi args,
-      performs mandatory initial persona preflight through the same Larva CLI context,
-      and starts real Pi with the Larva-owned environment required by the design.
-
-      BOUNDING BOX: src/larva/shell/pi.py; src/larva/shell/cli.py; src/larva/shell/cli_parser.py;
-      pyproject.toml force-include for contrib/pi-extension/larva.ts; tests/shell/test_pi_launcher_contract.py.
-
-      UPSTREAM ARTIFACTS: `pi_contract_harness_20260526.launcher_expected_red` tests
-      are PROTECTED.
-
-      CONSTRAINTS: Shell handles I/O/process/env and returns Result-shaped command
-      outcomes where existing shell conventions require it. Core code is out of scope
-      unless a tiny pure helper is unavoidable; any Core function requires @pre/@post
-      and doctest. The launcher must not parse policy JSON, write Pi settings, add
-      locks, manage worktrees, or alter PersonaSpec schema.
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
-      deliverable MUST contain substantive logic that processes its inputs and produces
-      outputs that vary based on those inputs.
-
-      <side_effect_budget>Allowed: modify launcher/package/test files needed for `larva
-      pi`. Forbidden: PersonaSpec schema changes, policy hierarchy, ask action, worktree/file
-      lock/credential isolation, Pi settings writes, merge management.</side_effect_budget>
-
-      <risk_probes>1. PATH discovery must skip Larva''s own shim and respect executable
-      `LARVA_PI_BIN`. 2. Extension flag detection must be preflight-only and fail
-      closed. 3. Child/session env values must be exact and absolute where specified.</risk_probes>'
+    description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Runtime UX > Launch; Launcher contract; Architecture basis; Verification\
+      \ targets 1-5, 10, 37-39\nrefs: design/pi-coding-agent-integration.md\nTARGET\
+      \ STATE: `larva pi [--persona <id>] [--] <pi args...>` is a shell/runtime launcher\
+      \ that discovers the real Pi executable, selects `-e` or `--extension` from\
+      \ `pi --help`, resolves the bundled extension entry, preserves user Pi args,\
+      \ performs mandatory initial persona preflight through the same Larva CLI context,\
+      \ and starts real Pi with the Larva-owned environment required by the design.\n\
+      BOUNDING BOX: src/larva/shell/pi.py; src/larva/shell/cli.py; src/larva/shell/cli_parser.py;\
+      \ pyproject.toml force-include for contrib/pi-extension/larva.ts; tests/shell/test_pi_launcher_contract.py.\n\
+      UPSTREAM ARTIFACTS: `pi_contract_harness_20260526.launcher_expected_red` tests\
+      \ are PROTECTED.\nCONSTRAINTS: Shell handles I/O/process/env and returns Result-shaped\
+      \ command outcomes where existing shell conventions require it. Core code is\
+      \ out of scope unless a tiny pure helper is unavoidable; any Core function requires\
+      \ @pre/@post and doctest. The launcher must not parse policy JSON, write Pi\
+      \ settings, add locks, manage worktrees, or alter PersonaSpec schema.\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable. Each deliverable MUST contain substantive logic that processes\
+      \ its inputs and produces outputs that vary based on those inputs.\n<side_effect_budget>Allowed:\
+      \ modify launcher/package/test files needed for `larva pi`. Forbidden: PersonaSpec\
+      \ schema changes, policy hierarchy, ask action, worktree/file lock/credential\
+      \ isolation, Pi settings writes, merge management.</side_effect_budget>\n<risk_probes>1.\
+      \ PATH discovery must skip Larva's own shim and respect executable `LARVA_PI_BIN`.\
+      \ 2. Extension flag detection must be preflight-only and fail closed. 3. Child/session\
+      \ env values must be exact and absolute where specified.</risk_probes>\n- [\
+      \ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] `larva pi --persona known -- --version` invokes fake/real
       Pi as `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`
       and sets all launcher-to-extension env vars named by the design.
