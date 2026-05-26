@@ -73508,7 +73508,7 @@ phases:
       - [x] Tests prove launcher does not parse `~/.pi/tool-policy.json` and does
       not write Pi settings.
 
-      - [ ] `uv run invar guard --all` or the project-authoritative invar full guard
+      - [x] `uv run invar guard --all` or the project-authoritative invar full guard
       command is run after changes and raw output is captured.'
     evidence_template: '## refs Read Confirmation
 
