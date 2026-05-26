@@ -75812,7 +75812,7 @@ phases:
     claimed_at: '2026-05-26T18:32:41.700832+00:00'
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
-    status: pending
+    status: claimed
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ full-plan-check; protects final gate.\nAs an independent verifier, run the\
       \ repo-level verification required after Pi integration changes, including the\
@@ -75884,6 +75884,8 @@ phases:
     - pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     - pi_finalization_20260526.end_to_end_liveness
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T18:32:46.390692+00:00'
   - id: pi_finalization_20260526.gate
     name: Final deep review gate for Pi integration
     status: pending
