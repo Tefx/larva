@@ -73680,6 +73680,8 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.implement_launcher_entry
     - pi_launcher_runtime_20260526.launcher_liveness_proof
+    - pi_launcher_runtime_20260526.env_contract_fix
+    - pi_launcher_runtime_20260526.env_liveness_retest
     agent: gate-reviewer
   - id: pi_launcher_runtime_20260526.env_contract_fix
     name: Set launcher child env contract values
