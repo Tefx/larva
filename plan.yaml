@@ -76848,7 +76848,7 @@ phases:
       - [x] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
       failure and does not propagate as a domain code.
 
-      - [ ] Post-readiness stderr, including whitelisted-looking text, remains diagnostic-only
+      - [x] Post-readiness stderr, including whitelisted-looking text, remains diagnostic-only
       and does not override RPC/domain results.
 
       - [ ] Runtime fake seam evidence is produced with raw command, stdout/stderr/RPC
