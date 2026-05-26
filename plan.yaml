@@ -73195,40 +73195,40 @@ phases:
 
       ## Checklist
 
-      - [ ] R1 target 5 expected-red test added for help text with no `-e` and supported
+      - [x] R1 target 5 expected-red test added for help text with no `-e` and supported
       `--extension`, asserting selected flag `--extension`.
 
-      - [ ] R2 target 10 expected-red matrix includes `--mode=rpc`, `--mode=print`,
+      - [x] R2 target 10 expected-red matrix includes `--mode=rpc`, `--mode=print`,
       `--mode=json`, `--mode=sdk`, `--mode=`, and `--mode=unknown`.
 
-      - [ ] R2 target 10 expected-red matrix includes `--mode interactive` and `--mode=interactive`
+      - [x] R2 target 10 expected-red matrix includes `--mode interactive` and `--mode=interactive`
       interactive cases when no non-interactive, unknown, or malformed marker is present.
 
-      - [ ] R2 target 10 expected-red matrix includes conflict precedence cases where
+      - [x] R2 target 10 expected-red matrix includes conflict precedence cases where
       print/json or other non-interactive markers force `LARVA_PI_INTERACTIVE_TUI=0`
       despite interactive markers.
 
-      - [ ] Expected-red command receipt shows failures are aligned with missing implementation
+      - [x] Expected-red command receipt shows failures are aligned with missing implementation
       and not test syntax/import/fixture errors.
 
-      - [ ] Changed-file evidence confirms no product implementation, design doc,
+      - [x] Changed-file evidence confirms no product implementation, design doc,
       plan, or lifecycle files changed.'
-    verification: '- [ ] refs confirmation cites key passages from `design/pi-coding-agent-integration.md:823-829`,
+    verification: '- [x] refs confirmation cites key passages from `design/pi-coding-agent-integration.md:823-829`,
       `1282-1284`, and `1296-1303`.
 
-      - [ ] R1 target 5 `--extension` fallback expected-red coverage is present and
+      - [x] R1 target 5 `--extension` fallback expected-red coverage is present and
       tied to the design obligation.
 
-      - [ ] R2 target 10 extended mode matrix coverage is present for equal-form modes,
+      - [x] R2 target 10 extended mode matrix coverage is present for equal-form modes,
       empty/unknown modes, explicit interactive forms, and conflict precedence.
 
-      - [ ] Raw command receipt identifies the exact targeted test command(s), exit
+      - [x] Raw command receipt identifies the exact targeted test command(s), exit
       code, stdout/stderr, and expected-red failure alignment.
 
-      - [ ] Changed-file receipt confirms only expected-red tests/test fixtures changed
+      - [x] Changed-file receipt confirms only expected-red tests/test fixtures changed
       and no product implementation files changed.
 
-      - [ ] Downstream implementation remains blocked pending `pi_contract_harness_20260526.final_regate`.'
+      - [x] Downstream implementation remains blocked pending `pi_contract_harness_20260526.final_regate`.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- `design/pi-coding-agent-integration.md` — cite key passages for lines\
       \ 823-829, 1282-1284, and 1296-1303, or `NOT READ: <reason>`.\n\n## Exact Test\
