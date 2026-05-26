@@ -73784,7 +73784,7 @@ phases:
       - [x] Invalid JSON/unreadable/wrong top-level shape/unknown active keys/non-string
       allow-deny entries fail the attempted commit and preserve previous active state.
 
-      - [ ] Unknown current-runtime tool names are ignored; duplicates normalize;
+      - [x] Unknown current-runtime tool names are ignored; duplicates normalize;
       deny wins; present allow is an allowlist; empty allow blocks all model-facing
       tools.
 
