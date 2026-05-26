@@ -74504,12 +74504,19 @@ phases:
       runtime trace(s) where abort RPC failure and kill failure/unknowable state return
       parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
+      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_start_failure_retest`
+      and blocks unless exact fake runtime scenario `abort-no-response-child-exited-kill-false`
+      returns parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`
+      and explicitly no longer returns `LARVA_CHILD_START_FAILED`.
+
       - [ ] Gate confirms normal successful abort/kill cancellation still returns
-      cancelled `LARVA_CHILD_CANCELLED` after the unknowable-state fix.
+      cancelled `LARVA_CHILD_CANCELLED` after the unknowable-state and start-failure
+      mapping fixes.
 
       - [ ] OPEN only if persona projection, tool policy, subagent obligations, narrow
-      abort cancellation, and unknowable abort failure obligations have positive hook/RPC
-      evidence or explicit non-intersection.
+      abort cancellation, unknowable abort failure obligations, and abort no-response
+      child-exit/kill-false failure obligations have positive hook/RPC evidence or
+      explicit non-intersection.
 
       - [ ] Gate rejects source-only proof for slash command/status/tool/runtime/abort
       behavior.
@@ -74521,9 +74528,9 @@ phases:
       - [ ] Unresolved obligations include closure paths before finalization can open.
 
       - [ ] All upstream implementation, wiring, runtime proof, abort fix, abort retest,
-      abort unknowable fix, and abort unknowable retest receipts include `## refs
-      Read Confirmation` with `design/pi-coding-agent-integration.md` key passages
-      or explicit NOT READ reasons.'
+      abort unknowable fix, abort unknowable retest, abort start-failure fix, and
+      abort start-failure retest receipts include `## refs Read Confirmation` with
+      `design/pi-coding-agent-integration.md` key passages or explicit NOT READ reasons.'
     evidence_template: "## Gate Review Report\n\n**Reviewer**: gate-reviewer (independent\
       \ of phase implementation)\n**Phase**: pi-extension-runtime-2026-05-26\n\n###\
       \ refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
@@ -74551,6 +74558,8 @@ phases:
     - pi_extension_runtime_20260526.abort_runtime_retest
     - pi_extension_runtime_20260526.abort_unknowable_fix
     - pi_extension_runtime_20260526.abort_unknowable_retest
+    - pi_extension_runtime_20260526.abort_start_failure_fix
+    - pi_extension_runtime_20260526.abort_start_failure_retest
     agent: gate-reviewer
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
