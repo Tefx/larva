@@ -76070,7 +76070,7 @@ phases:
       - [x] B4: List bridge treats any invalid `data[]` item as list failure/no suggestions,
       not partial filtering.
 
-      - [ ] B5: Pre-RPC stderr propagation whitelist contains only `LARVA_PERSONA_NOT_FOUND`,
+      - [x] B5: Pre-RPC stderr propagation whitelist contains only `LARVA_PERSONA_NOT_FOUND`,
       `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`;
       post-readiness stderr is diagnostic only.
 
