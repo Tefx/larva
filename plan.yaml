@@ -73573,7 +73573,7 @@ phases:
       - [x] Runtime artifact shows selected extension flag, bundled extension entry,
       forwarded args, and required env values.
 
-      - [ ] Negative liveness cases prove missing Pi and unsupported extension fail
+      - [x] Negative liveness cases prove missing Pi and unsupported extension fail
       before child Pi execution.
 
       - [ ] Output includes raw stdout/stderr and exit codes, not narrative summaries.
