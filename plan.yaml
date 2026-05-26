@@ -73666,7 +73666,7 @@ phases:
       - [x] Gate rejects any PersonaSpec schema changes, Pi settings writes, worktree/file-lock/credential
       logic, or policy hierarchy scope creep.
 
-      - [ ] Unresolved items are classified with explicit blocking/non-intersection
+      - [x] Unresolved items are classified with explicit blocking/non-intersection
       rationale.
 
       - [ ] Implementation and liveness receipts include `## refs Read Confirmation`
