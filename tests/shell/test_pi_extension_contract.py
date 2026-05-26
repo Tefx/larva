@@ -74,6 +74,21 @@ def _assert_regex(source: str, pattern: str, message: str) -> None:
     assert re.search(pattern, source, re.DOTALL), message
 
 
+def _function_body(source: str, signature: str) -> str:
+    start = source.index(signature)
+    brace = source.index("{", start)
+    depth = 0
+    for index in range(brace, len(source)):
+        char = source[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : index]
+    raise AssertionError(f"could not find function body for {signature}")
+
+
 def test_requirement_traceability_covers_verification_targets_6_through_41() -> None:
     """The expected-red harness maps every owned design target to a test."""
     assert sorted(REQUIREMENT_TRACEABILITY) == list(range(6, 42))
@@ -105,6 +120,43 @@ def test_initial_persona_commit_is_before_user_visible_none_state() -> None:
         r"LARVA_PI_INITIAL_PERSONA_ID[\s\S]+commitPersona[\s\S]+setStatus",
         "initial persona must be committed before any user-visible status/selector path",
     )
+
+
+def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
+    source = _source()
+    body = _function_body(source, "export async function initializeExtension")
+
+    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerCommand")
+    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("before_agent_start"')
+    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("tool_call"')
+    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerTool")
+
+    command_registration = re.search(r"registerCommand\?\.\(\{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert command_registration is not None
+    command_body = command_registration.group("body")
+    assert 'name: "larva-persona"' in command_body
+    assert "completePersonaIds(prefix, ctx)" in command_body
+    assert "handlePersonaCommand(input, ctx, pi)" in command_body
+
+    assert 'on?.("before_agent_start", before_agent_start)' in body
+    tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert tool_call_registration is not None
+    assert "decideToolCall(name)" in tool_call_registration.group("body")
+
+
+def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None:
+    source = _source()
+    body = _function_body(source, "export async function initializeExtension")
+    tool_registration = re.search(r"registerTool\?\.\(\{(?P<body>[\s\S]*?)\n  \}\);", body)
+    assert tool_registration is not None
+    tool_body = tool_registration.group("body")
+
+    assert 'name: "larva_subagent"' in tool_body
+    assert "inputSchema" in tool_body
+    assert 'required: ["persona_id", "task"]' in tool_body
+    assert "additionalProperties: false" in tool_body
+    assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
+    assert "abortSignal: ctx.abortSignal" in tool_body
 
 
 def test_persona_switch_commits_envelope_model_and_status() -> None:

@@ -82,6 +82,12 @@ type CommandDefinition = {
   complete?: (prefix: string) => Promise<string[]>;
   handler: (input?: string) => Promise<PersonaSwitchResult>;
 };
+type ToolDefinition<Input, Output> = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  handler: (input: Input) => Promise<Output>;
+};
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string };
 type PiApi = {
@@ -89,6 +95,7 @@ type PiApi = {
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: (command: CommandDefinition) => void;
+  registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentResult>) => void;
   on?: (event: "before_agent_start" | "tool_call" | string, handler: (payload: unknown) => unknown) => void;
 };
 type PiContext = PiApi & {
@@ -667,13 +674,27 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     complete: (prefix: string) => completePersonaIds(prefix, ctx),
     handler: (input?: string) => handlePersonaCommand(input, ctx, pi),
   });
+  pi.registerTool?.({
+    name: "larva_subagent",
+    description: "Spawn or resume one Larva persona child Pi session and return its final assistant text.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        persona_id: { type: "string", description: "Target Larva persona id." },
+        task: { type: "string", description: "Instruction to send to the child session." },
+        task_id: { type: "string", description: "Optional child session .jsonl path to resume." },
+      },
+      required: ["persona_id", "task"],
+      additionalProperties: false,
+    },
+    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal }),
+  });
   pi.on?.("before_agent_start", before_agent_start);
   pi.on?.("tool_call", (payload: unknown) => {
     const name = isRecord(payload) && typeof payload.name === "string" ? payload.name : "";
     return decideToolCall(name);
   });
   void openPersonaSelector;
-  void larva_subagent;
 }
 
 export const __contract_examples = {
