@@ -73206,3 +73206,86 @@ phases:
 
       - <none or findings>'
     agent: spec-verifier
+  - id: pi_finalization_20260526.wiring_audit
+    name: Wiring and package reachability audit
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: full-plan-check; protects final gate.
+
+      As an independent wiring auditor, verify that the `larva pi` CLI command, package
+      force-include, bundled extension entry, Pi hook/command/tool registrations,
+      and child RPC launch path are reachable at runtime.
+
+      <side_effect_budget>Allowed: read-only scans/import traces/package build inspection
+      and command execution. Forbidden: source mutation.</side_effect_budget>
+
+      <risk_probes>1. Packaged extension file must be included and used by launcher.
+      2. CLI parser/dispatch must expose `pi` from the installed console script path.
+      3. Extension registration must not be dead code or disconnected from hook exports.'
+    verification: '- [ ] CLI reachability evidence shows `larva pi` is registered
+      through the real console script/CLI dispatch path.
+
+      - [ ] Package/build evidence shows `contrib/pi-extension/larva.ts` is included
+      at the runtime path the launcher resolves.
+
+      - [ ] Static or runtime traces show Pi extension entry registers the required
+      command, tool, hooks, status, `setActiveTools`, and `tool_call` interception.
+
+      - [ ] Child process invocation trace shows child RPC uses launcher-provided
+      real bin, extension flag, and extension entry.
+
+      - [ ] No orphan public symbols, dead extension entry, or unconsumed config/env
+      fields remain without documented non-intersection.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key launcher, architecture, and wiring
+      passages.
+
+
+      ## Wiring Audit Report
+
+      **CLI reachability**:
+
+      ```
+
+      <import/dispatch/command output>
+
+      ```
+
+      **Package extension inclusion**:
+
+      ```
+
+      <build or source mapping evidence>
+
+      ```
+
+      **Extension hook/tool/command registration**:
+
+      ```
+
+      <trace or grep/import evidence>
+
+      ```
+
+      **Child RPC launch path**:
+
+      ```
+
+      <trace evidence>
+
+      ```
+
+      **Orphans / dead paths**:
+
+      ```
+
+      <none found or list>
+
+      ```
+
+      **Headline**: PASS | PASS_WITH_DEBT | FAIL'
+    agent: wiring-auditor
