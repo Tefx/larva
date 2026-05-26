@@ -74802,7 +74802,7 @@ phases:
       - [x] Abort-during-result returns cancelled with `LARVA_CHILD_CANCELLED` and
       no success `result_text`.
 
-      - [ ] Raw evidence includes the before/after scenario name or target number
+      - [x] Raw evidence includes the before/after scenario name or target number
       that closes B1 target 35.
 
       - [ ] No regressions for success, failure-after-session-allocation, resume,
