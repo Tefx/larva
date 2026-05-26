@@ -74404,7 +74404,7 @@ phases:
       - [x] Runtime scenario proves prompt watermark composition/replacement and model
       projection through Pi model registry/setModel seam.
 
-      - [ ] Runtime scenario proves policy baseline filtering, `pi.setActiveTools`,
+      - [x] Runtime scenario proves policy baseline filtering, `pi.setActiveTools`,
       `tool_call` denial, and denied `larva_subagent` no-handler behavior.
 
       - [ ] Runtime scenario proves `larva_subagent` success, failure-after-session-allocation,
