@@ -76845,7 +76845,7 @@ phases:
       - [x] Exact whitelist is preserved: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
       `LARVA_POLICY_INVALID`, `LARVA_TOOL_ENUMERATION_FAILED`.
 
-      - [ ] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
+      - [x] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
       failure and does not propagate as a domain code.
 
       - [ ] Post-readiness stderr, including whitelisted-looking text, remains diagnostic-only
