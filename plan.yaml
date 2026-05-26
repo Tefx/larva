@@ -73552,7 +73552,7 @@ phases:
       state edits.'
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ local-check; protects the launcher runtime gate.\nAs an independent runtime\
       \ verifier, prove the launcher path starts a real or fixture Pi process through\
@@ -73618,6 +73618,26 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T10:46:35.268591+00:00'
+    done_at: '2026-05-26T11:02:13.144294+00:00'
+    evidence: 'BLOCKED_LIVENESS_RECONCILED_WITH_REMEDIATION. Independent integration-verifier
+      task ses_19c1a36c0ffe5GD0gwf5ZgwqKd returned semantic FAIL/BLOCKED: protected
+      launcher contract tests passed 31/31 and packaged CLI fixture liveness reached
+      the child process, but runtime child env was missing design-required `LARVA_PI_TOOL_POLICY_FILE`
+      and `LARVA_PI_LAUNCHED=1`. Positive proof gathered: exact invocation `LARVA_PI_BIN="$PWD/.runtime-fixtures/fake-pi-supported.py"
+      LARVA_PI_PROBE_LOG="$PWD/.runtime-fixtures/supported-run.json" uv run larva
+      pi -- --mode rpc --probe-arg ''alpha beta''` executed through packaged `uv run
+      larva pi`; artifact showed selected `-e`, bundled `contrib/pi-extension/larva.ts`,
+      forwarded `--mode rpc --probe-arg ''alpha beta''`, and env values `LARVA_PI_REAL_BIN`,
+      `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
+      `LARVA_PI_INTERACTIVE_TUI=0`. Negative liveness proved missing Pi exited 127
+      with `LARVA_PI_NOT_FOUND` and no child marker, and unsupported extension exited
+      2 with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and no child marker. Behavioral
+      proof register marked missing `LARVA_PI_TOOL_POLICY_FILE` and `LARVA_PI_LAUNCHED=1`
+      as BLOCKED. Planner remediation task ses_19c11b454ffeAMY1LdSs0Fr4wK added `pi_launcher_runtime_20260526.env_contract_fix`
+      and `pi_launcher_runtime_20260526.env_liveness_retest`, and updated `pi_launcher_runtime_20260526.gate`
+      dependencies so downstream launcher gate remains blocked until env fix and retest
+      complete. Checklist toggled from verifier receipt; this completion records issue-detection
+      evidence and remediation ownership, not a green launcher gate.'
   - id: pi_launcher_runtime_20260526.gate
     name: Gate launcher runtime
     status: pending
