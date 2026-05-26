@@ -79847,3 +79847,156 @@ phases:
 
       - risk_probes_addressed: <yes/no with notes>'
     agent: integration-verifier
+  - id: pi_persona_spawn_proof_20260527.diagnostic_live
+    name: Run expected-red-or-green real-Pi persona, switch, spawn, and prompt diagnostic
+    status: pending
+    description: 'step_type: test
+
+      step_intent: diagnostic_live
+
+      expected_result: red_or_green
+
+      agent_source: project
+
+
+      DIAGNOSIS ARTIFACT:
+
+      Before any product fix, execute real Pi commands/PTY interactions to determine
+      whether the four acceptance obligations are already satisfied. A red result
+      is acceptable only when it produces precise implementation input. This step
+      may create/update focused tests or probe fixtures/personas only when needed
+      to make the live diagnostic reproducible; it must not change product implementation
+      code.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - pi_persona_spawn_proof_20260527.contract_design — proof contract, probe personas/sentinels,
+      route map, cleanup plan are authoritative for this diagnostic.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | contract_design R1 | real `uv run larva pi --persona <probe>` proves
+      startup persona is effective in prompt/context | pi_persona_spawn_proof_20260527.diagnostic_live
+      | startup persona live proof | startup_persona_transcript, sentinel_response,
+      exit_behavior | OWNED | blockers feed remediation step |
+
+      | R2 | contract_design R2 | live PTY slash `/larva-persona <other probe>` switches
+      persona and post-switch sentinel proves new effective context | pi_persona_spawn_proof_20260527.diagnostic_live
+      | slash switch live proof | slash_switch_transcript, state_confirmation, post_switch_sentinel_response
+      | OWNED | blockers feed remediation step |
+
+      | R3 | contract_design R3 | real Pi spawn/subagent path covers request, spawned
+      run/session, policy handoff, completion or controlled failure, cleanup/no orphan
+      state | pi_persona_spawn_proof_20260527.diagnostic_live | spawn lifecycle live
+      proof | spawn_lifecycle_transcript, policy_handoff_observation, cleanup_state_probe
+      | OWNED | blockers feed remediation step |
+
+      | R4 | contract_design R4 | prompt injection route is observed and sentinel
+      behavior proves persona prompt entered effective model/system context | pi_persona_spawn_proof_20260527.diagnostic_live
+      | prompt injection proof | prompt_route_map_observed, sentinel_behavior_output
+      | OWNED | blockers feed remediation step |
+
+      | R5 | prior phase | slash autocomplete `/` and Pi startup do not regress while
+      running the diagnostic | pi_persona_spawn_proof_20260527.diagnostic_live | prior
+      regression smoke | autocomplete_transcript, startup_no_crash_output | OWNED
+      | blockers feed remediation step |
+
+
+      REQUIRED REAL COMMANDS / PTY ACTIONS:
+
+      - `uv run larva pi --persona <probe persona>`
+
+      - Live PTY entry for `/larva-persona <other probe persona>` followed by a sentinel
+      prompt requiring the switched persona''s behavior.
+
+      - Real Pi spawn/subagent invocation path identified by contract_design; evidence
+      must show lifecycle from request through completion/failure and cleanup/no orphan
+      state.
+
+      - Forbidden-string searches against transcripts/logs for stale/default persona
+      markers, raw extension-only echo, orphan session/process markers, and known
+      previous slash/autocomplete crash strings.
+
+
+      <side_effect_budget>
+
+      Allowed: add/update focused tests, PTY harness snippets, and temporary probe
+      persona fixtures if necessary for reproducible diagnosis; run real `uv run larva
+      pi ...` commands; collect transcripts/logs. Forbidden: product implementation
+      fixes, hiding failures behind mocks, accepting helper-only proof, leaving persistent
+      probe personas/sessions/processes behind.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm the sentinel prompt is asked after startup and after slash switch,
+      and that the answer changes according to the active persona.
+
+      - Confirm spawn lifecycle observes cleanup/no orphan state after both success
+      and controlled failure when feasible.
+
+      - Confirm any environment blocker is distinguished from product behavior and
+      does not get treated as PASS.
+
+      </risk_probes>'
+    verification: '- [ ] Real `uv run larva pi --persona <probe persona>` transcript
+      proves startup persona semantic load and effective sentinel behavior, or records
+      a blocker with reproduction details.
+
+      - [ ] Real PTY slash `/larva-persona <other probe persona>` transcript proves
+      persona switch and post-switch effective sentinel behavior, or records a blocker
+      with reproduction details.
+
+      - [ ] Real Pi spawn/subagent path transcript proves request, spawned run/session,
+      model/tool policy handoff, completion/failure handling, cleanup/state reset,
+      and no orphan processes/sessions, or records a blocker with reproduction details.
+
+      - [ ] Prompt injection route evidence proves persona prompt reaches effective
+      system prompt/context; extension-state-only evidence is explicitly marked insufficient.
+
+      - [ ] Previous Pi startup and slash autocomplete non-crash behavior is rechecked
+      during diagnostic.
+
+      - [ ] Any focused tests/probe fixtures are limited to diagnostic support and
+      do not implement product fixes.
+
+      - [ ] Diagnostic result classifies each acceptance area as PASS, PRODUCT_BLOCKER,
+      ENV_BLOCKER, or INCONCLUSIVE with remediation input.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/ — <key passage/listed tests or NOT READ: reason>\n- AGENTS.md\
+      \ — <key passage or NOT READ: reason>\n- installed Pi API/source refs — <path/package/version\
+      \ and key passage or NOT READ: reason>\n\n## Real Pi Diagnostic Transcript\n\
+      ### Startup persona\n- command: `uv run larva pi --persona <probe persona>`\n\
+      - raw_stdout_stderr_or_pty: |\n  <paste>\n- sentinel_prompt: <prompt>\n- sentinel_response:\
+      \ <response>\n- exit_behavior: <exit/timeout>\n- verdict: PASS | PRODUCT_BLOCKER\
+      \ | ENV_BLOCKER | INCONCLUSIVE\n\n### Slash persona switch\n- pty_sequence:\
+      \ <including `/larva-persona <other probe persona>`>\n- raw_pty_transcript:\
+      \ |\n  <paste>\n- post_switch_sentinel_prompt: <prompt>\n- post_switch_sentinel_response:\
+      \ <response>\n- verdict: PASS | PRODUCT_BLOCKER | ENV_BLOCKER | INCONCLUSIVE\n\
+      \n### Spawn/subagent lifecycle\n- invocation_path: <real Pi spawn path>\n- raw_transcript:\
+      \ |\n  <paste>\n- lifecycle_observed: request=<yes/no>, spawned_run=<yes/no>,\
+      \ policy_handoff=<yes/no>, completion_or_failure=<yes/no>, cleanup_no_orphan=<yes/no>\n\
+      - cleanup_state_probe: <command/output or PTY/log evidence>\n- verdict: PASS\
+      \ | PRODUCT_BLOCKER | ENV_BLOCKER | INCONCLUSIVE\n\n### Prompt injection route\n\
+      - observed_route: <registry -> extension -> model/system prompt/context>\n-\
+      \ raw_prompt_visible: <yes/no, evidence>\n- sentinel_behavior_proof: <why only\
+      \ active persona prompt can cause output>\n- verdict: PASS | PRODUCT_BLOCKER\
+      \ | ENV_BLOCKER | INCONCLUSIVE\n\n## Forbidden-string / Regression Searches\n\
+      - stale/default persona markers: <search command/output>\n- extension-only echo\
+      \ markers: <search command/output>\n- orphan session/process markers: <search\
+      \ command/output>\n- previous slash crash markers: <search command/output>\n\
+      \n## Remediation Input\n- blockers: <precise files/surfaces/symptoms>\n- focused\
+      \ tests/probe fixtures created: <paths or none>\n- no_product_fix_performed:\
+      \ <yes/no>"
+    depends_on:
+    - pi_persona_spawn_proof_20260527.contract_design
+    agent: integration-verifier
