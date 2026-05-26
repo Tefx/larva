@@ -76973,7 +76973,7 @@ phases:
       rather than only isolated helper/unit logic. 2. Confirm readiness timing, not
       stderr text alone, determines propagation. 3. Confirm raw evidence includes
       the child stderr line, JSONL/readiness trace, and parent result code.</risk_probes>'
-    verification: '- [ ] Retest is read-only and records exact commands/harness paths,
+    verification: '- [x] Retest is read-only and records exact commands/harness paths,
       raw stdout/stderr/RPC trace, and exit codes.
 
       - [ ] Fake child pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
