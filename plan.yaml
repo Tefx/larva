@@ -72921,44 +72921,23 @@ phases:
 
       - [ ] Abort flow maps cancel/success/unknowable states to documented result
       statuses and error codes.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+    evidence_template: '## refs Read Confirmation
 
-      - design/pi-coding-agent-integration.md — cite key passages from Subagent spawning,
-      Child RPC contract, and Verification targets 18-36/39-41.
-
-
-      ## Requirement-to-Checklist Traceability Matrix
-
-      | requirement_id | source_ref + key passage | obligation | owning_step_id |
-      checklist_item | evidence_field | status | non_intersection_or_escalation |
-
-      | --- | --- | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this step>; NOT READ entries only with reason.
 
 
-      ## Implementation Receipt
+      ## Completion Evidence
 
-      - files_changed: <list>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - command: <focused subagent/RPC test command>
+      - subagent_rpc_receipt: <runtime/test evidence for spawn authority, child process
+      command, path taxonomy, resume, busy set, abort, and result contract>
 
-      - raw_stdout: <paste>
+      - forbidden_scope_preservation: <confirmation no forbidden Pi scope was added>
 
-      - exit_code: <code>
-
-
-      ## Subagent Evidence
-
-      - spawn_authority_matrix: <table>
-
-      - path_taxonomy_matrix: <table>
-
-      - child_invocation_env: <evidence>
-
-      - rpc_sequence_traces: <new/resume/abort evidence>
-
-      - busy_set_cleanup: <evidence>
-
-      - no_sidecar_or_lock_files: <evidence>'
+      '
     agent: frontend-engineer
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
