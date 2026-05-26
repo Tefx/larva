@@ -79369,3 +79369,172 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     agent: frontend-engineer
+  - id: pi_slash_autocomplete_20260527.retest_live_slash_final
+    name: Retest live Pi slash autocomplete final
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      independence_level: L1
+
+
+      PROOF ARTIFACT:
+
+      As an independent verifier, prove the focused live slash autocomplete API remediation
+      closes the remaining blocker after startup was fixed. This retest is the only
+      new gate-opening proof for the live slash `/` crash; the failed `pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix`
+      remains issue-detection evidence for orchestrator skip/absorb disposition and
+      must not be used as green closure proof.
+
+
+      REQUIRED COVERAGE:
+
+      1. `uv run larva pi --help` raw stdout/stderr and exit code 0.
+
+      2. Live `uv run larva pi --persona vectl-planner` raw stdout/stderr and exit
+      code; startup must not fail closed with `LARVA_TOOL_ENUMERATION_FAILED` or `Pi
+      active-tool update failed`.
+
+      3. Mandatory live PTY/TUI slash `/` proof against `uv run larva pi --persona
+      vectl-planner`: send `/`, capture output/trace/exit behavior, and prove no uncaught
+      `TypeError: value.startsWith is not a function`. This proof is mandatory unless
+      there is a hard environment blocker.
+
+      4. If a hard environment blocker prevents live PTY slash proof, provide exact
+      blocker details plus a faithful Pi editor API fixture proof reaching the same
+      extension registration/candidate shape consumed by live slash autocomplete;
+      mark gate_open_allowed=false unless the blocker is clearly environmental and
+      non-product.
+
+      5. Focused regressions for slash autocomplete candidate shape/API registration,
+      startup enumeration fallback, active-tool startup degradation, denied-tool enforcement,
+      and normal switch semantics.
+
+      6. Targeted Pi extension/launcher tests covering `contrib/pi-extension/larva.ts`
+      and relevant Pi launcher integration.
+
+      7. Full `uv run invar guard --all` raw output and exit code 0.
+
+      8. Semantic closure fields for every proof item.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-FINAL-HELP-001 | runnable Pi CLI surface | help smoke remains exit 0 |
+      pi_slash_autocomplete_20260527.retest_live_slash_final | help command raw output
+      exit 0 | help_smoke | OWNED | final gate consumes |
+
+      | PI-FINAL-STARTUP-001 | failed retest passing startup observations | live persona
+      startup remains fixed | pi_slash_autocomplete_20260527.retest_live_slash_final
+      | live persona startup raw output exit acceptable | persona_startup_live | OWNED
+      | final gate consumes |
+
+      | PI-FINAL-SLASH-001 | failed retest blocker: `/` exits 1 with `value.startsWith`
+      TypeError | live PTY slash `/` autocomplete no longer crashes | pi_slash_autocomplete_20260527.retest_live_slash_final
+      | live slash PTY proof raw output and exit behavior | live_slash_pty | OWNED
+      | final gate blocks without proof or hard environment blocker |
+
+      | PI-FINAL-REGRESSION-001 | focused regression suite | focused regressions pass
+      for candidate shape and preserved startup/tool policy behavior | pi_slash_autocomplete_20260527.retest_live_slash_final
+      | focused regressions raw output exit 0 | focused_regressions | OWNED | final
+      gate consumes |
+
+      | PI-FINAL-TARGETED-001 | targeted Pi tests | targeted tests pass | pi_slash_autocomplete_20260527.retest_live_slash_final
+      | targeted tests raw output exit 0 | targeted_pi_tests | OWNED | final gate
+      consumes |
+
+      | PI-FINAL-GUARD-001 | AGENTS.md Invar baseline | full guard passes | pi_slash_autocomplete_20260527.retest_live_slash_final
+      | guard raw output exit 0 | guard_output | OWNED | final gate consumes |
+
+
+      <side_effect_budget>
+
+      Allowed: read-only verification, runtime smoke execution, PTY/TUI automation,
+      and artifact collection. Forbidden: source/test mutation, lifecycle actions,
+      modifying prior evidence, using the failed prior retest as green proof, or waiving
+      live slash proof without a hard environment blocker.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Exercise slash `/` in the live TUI, not only extension-load, help, static
+      fixtures, or unit tests.
+
+      - Search raw outputs for `value.startsWith is not a function`, `LARVA_TOOL_ENUMERATION_FAILED`,
+      and `Pi active-tool update failed`.
+
+      - Distinguish LIVE_CLI, LIVE_TUI, FOCUSED_TEST, TARGETED_TEST, and GUARD evidence;
+      do not let any class substitute for another.
+
+      </risk_probes>
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - `contrib/pi-extension/larva.ts` — key passage or `NOT READ: <reason>`
+
+      - `design/pi-coding-agent-integration.md` — key passage or `NOT READ: <reason>`
+
+      - focused Pi tests — key passage or `NOT READ: <reason>`'
+    verification: 'ACCEPTABLE RECEIPT (must-green independent retest):
+
+      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      NOT READ reasons.
+
+      - [ ] `uv run larva pi --help` is run with raw stdout/stderr and exit code 0.
+
+      - [ ] Live `uv run larva pi --persona vectl-planner` is run with raw stdout/stderr
+      and does not fail closed at extension-load, tool-enumeration, or active-tool
+      update startup.
+
+      - [ ] Mandatory live PTY/TUI slash `/` proof is run against `uv run larva pi
+      --persona vectl-planner`; raw output/trace/exit behavior shows no uncaught `TypeError:
+      value.startsWith is not a function`.
+
+      - [ ] If live PTY slash proof is blocked, the evidence states the exact hard
+      environment blocker, includes faithful Pi editor API fixture proof reaching
+      the same live registration/candidate shape, and sets gate_open_allowed according
+      to blocker disposition.
+
+      - [ ] Focused regressions for slash candidate API shape, startup enumeration
+      fallback, active-tool startup degradation, denied-tool enforcement, and normal
+      switch semantics pass with raw command output and exit code 0.
+
+      - [ ] Targeted Pi extension/launcher tests pass with raw command output and
+      exit code 0.
+
+      - [ ] Full `uv run invar guard --all` passes with raw output, exit code 0, and
+      errors 0.
+
+      - [ ] Fixture-vs-live distinction is explicit for each proof item; helper-only/source-only
+      proof is rejected for the live slash obligation unless a hard environment blocker
+      is documented.
+
+      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for every OWNED
+      requirement.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      proof_gap_status, gate_open_allowed.
+
+      - [ ] Green closure requires verdict PASS/OPEN, blockers [], blocking_status=none/non-blocking,
+      proof_gap_status=none, and gate_open_allowed=true.'
+    depends_on:
+    - pi_slash_autocomplete_20260527.fix_live_slash_autocomplete_api
+    agent: integration-verifier
