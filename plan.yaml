@@ -72282,39 +72282,27 @@ phases:
   - id: pi_contract_harness_20260526.launcher_expected_red
     name: Launcher contract and expected-red tests
     status: pending
-    description: 'step_type: test
-
-      step_intent: test_define_red
-
-      expected_result: red
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Runtime UX > Launch; Launcher
-      contract; Verification targets 1-5, 10, 37-39
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET PROOF ARTIFACT: Expected-red launcher tests pin `larva pi [--persona
-      <id>] [--] <pi args...>`, real Pi discovery, extension flag selection, extension
-      packaging path, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`
-      classification before launcher implementation exists.
-
-      BOUNDING BOX: tests/shell/test_pi_launcher_contract.py; src/larva/shell/cli.py;
-      src/larva/shell/cli_parser.py; pyproject.toml force-include expectations.
-
-      CONSTRAINTS: Product code may not be implemented in this step; tests may use
-      fake executable Pi fixtures and fake Larva resolve/list fixtures; do not parse
-      `~/.pi/tool-policy.json` in launcher tests except to prove launcher does not
-      parse it.
-
-      <side_effect_budget>Allowed: add expected-red tests/fixtures only under tests/.
-      Forbidden: modifying src/, contrib/, pyproject.toml, PersonaSpec schema, Pi
-      settings files, worktree/lock/credential logic.</side_effect_budget>
-
-      <risk_probes>1. Verify forwarded Pi args are unchanged after Larva-owned flags.
-      2. Verify extension unsupported path does not write Pi settings. 3. Verify malformed/unknown
-      Pi mode is non-interactive for selector purposes.</risk_probes>'
+    description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Runtime UX > Launch; Launcher contract; Verification targets 1-5, 10, 37-39\n\
+      refs: design/pi-coding-agent-integration.md\nTARGET PROOF ARTIFACT: Expected-red\
+      \ launcher tests pin `larva pi [--persona <id>] [--] <pi args...>`, real Pi\
+      \ discovery, extension flag selection, extension packaging path, `LARVA_PI_EXTENSION_ENTRY`,\
+      \ `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI` classification before\
+      \ launcher implementation exists.\nBOUNDING BOX: tests/shell/test_pi_launcher_contract.py;\
+      \ src/larva/shell/cli.py; src/larva/shell/cli_parser.py; pyproject.toml force-include\
+      \ expectations.\nCONSTRAINTS: Product code may not be implemented in this step;\
+      \ tests may use fake executable Pi fixtures and fake Larva resolve/list fixtures;\
+      \ do not parse `~/.pi/tool-policy.json` in launcher tests except to prove launcher\
+      \ does not parse it.\n<side_effect_budget>Allowed: add expected-red tests/fixtures\
+      \ only under tests/. Forbidden: modifying src/, contrib/, pyproject.toml, PersonaSpec\
+      \ schema, Pi settings files, worktree/lock/credential logic.</side_effect_budget>\n\
+      <risk_probes>1. Verify forwarded Pi args are unchanged after Larva-owned flags.\
+      \ 2. Verify extension unsupported path does not write Pi settings. 3. Verify\
+      \ malformed/unknown Pi mode is non-interactive for selector purposes.</risk_probes>\n\
+      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Tests are limited to tests/ fixtures and expose the launcher
       gap as expected-red without implementing product code.
 
