@@ -1,0 +1,1437 @@
+# Pi Coding Agent Integration
+
+Status: proposed design target  
+Scope: `larva pi` launcher, bundled Pi extension, persona switching, adapter-local Pi tool policy keyed by persona id, and Larva-backed subagent spawning  
+Canonical contract authority: opifex-owned PersonaSpec schema
+
+## Decision
+
+`larva` will support Pi Coding Agent through a small launcher plus a bundled Pi
+extension.
+
+The integration projects Larva personas into Pi at runtime. It does not change
+the canonical `PersonaSpec` shape and does not make Larva a workspace sandbox,
+task scheduler, or general Pi permission platform.
+
+The integration owns four runtime behaviors:
+
+1. start Pi with an optional active Larva persona;
+2. switch the active persona in-place during a Pi session;
+3. apply persona-specific model and tool rules;
+4. spawn a child Pi session as a Larva persona through one subagent tool.
+
+## Rationale
+
+Pi keeps its core small and exposes extension hooks for commands, system-prompt
+updates, model changes, tool-call interception, UI status, and custom tools. The
+simplest integration is therefore a Pi extension loaded by a `larva pi` launcher.
+
+OpenCode is useful precedent but not a template to copy wholesale. OpenCode has a
+native agent/subagent/permission runtime. Pi does not. The Larva-Pi path should
+only project Larva persona identity and persona-owned runtime rules into Pi. It
+must not recreate OpenCode's full runtime or add unrelated workspace management.
+
+## Non-goals
+
+- No `PersonaSpec` schema changes.
+- No `tools`, `side_effect_policy`, local policy, active persona, variant, or Pi
+  state fields inside canonical PersonaSpec JSON.
+- No `ask` permission action. Tool rules are only `allow` and `deny`.
+- No worktree isolation, file locking, merge management, sandboxing, or credential
+  isolation.
+- No project-level policy hierarchy.
+- No batch subagent tool.
+- No subagent catalogue dumped into the system prompt.
+- No MCP transport implementation inside this integration. A Pi MCP bridge may be
+  installed separately by the user.
+
+## Evidence and constraints
+
+- [Proven] `../opifex/contracts/persona_spec.schema.json` makes `id`,
+  `description`, `prompt`, `model`, `capabilities`, and `spec_version` canonical
+  PersonaSpec fields. It also defines optional `can_spawn`. `tools` and
+  `side_effect_policy` are invalid canonical fields.
+- [Proven] `../opifex/design/final-canonical-contract.md` states that
+  `capabilities` expresses an intent ceiling, not runtime approval policy.
+- [Proven] Larva exposes persona registry access through MCP/facade surfaces such
+  as `larva_list`, `larva_export`, and `larva_resolve` in `src/larva/shell`.
+- [Proven] `uv run larva resolve --help` documents
+  `larva resolve <id> --json`; `uv run larva resolve software-architect --json`
+  returns `{"data": <PersonaSpec>}`.
+- [Proven] `https://pi.dev` describes Pi extensions as TypeScript modules with
+  access to tools, commands, keyboard shortcuts, events, and the TUI. It also
+  lists interactive, print/JSON, RPC, and SDK modes and advertises mid-session
+  model switching.
+- [Proven] `https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/docs/extensions.md`
+  documents `pi -e ./path.ts` / `--extension` for loading an extension without
+  editing settings, `before_agent_start` system-prompt modification,
+  `pi.setModel(model)`, `ctx.ui.setStatus(...)`, `pi.getAllTools()`,
+  `pi.setActiveTools(...)`, command registration, and `tool_call` interception.
+  It also states sibling tool calls are preflighted sequentially and then
+  executed concurrently in default parallel tool mode.
+- [Proven] `https://raw.githubusercontent.com/earendil-works/pi/main/packages/coding-agent/docs/rpc.md`
+  documents `pi --mode rpc`, JSONL commands (`prompt`, `switch_session`,
+  `get_state`, `get_last_assistant_text`, `abort`), and `agent_end` events.
+- [Proven] `https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/examples/sdk/06-extensions.ts`
+  shows extension event hooks, `tool_call` interception with block reasons,
+  custom tool registration, command registration, and SDK
+  `DefaultResourceLoader.additionalExtensionPaths`.
+- [Likely] Pi has no native MCP, subagent, or permission-popup layer; these are
+  extension/package concerns unless verified otherwise in Pi's source.
+
+## Runtime UX
+
+### Launch
+
+Preferred entry point:
+
+```bash
+larva pi --persona python-senior -- <pi args...>
+```
+
+`--persona` is optional. When omitted, Pi starts without an active Larva persona
+until the user chooses one inside the session.
+
+Arguments after `larva pi` are forwarded to the real Pi executable. The launcher
+does not write `.pi/settings.json` or any user Pi config file.
+
+Bundled extension loading:
+
+- The launcher invokes the real Pi CLI with Pi's documented extension flag:
+  `<real-pi-bin> <extension-flag> <absolute path to bundled Larva extension> ...`.
+- The absolute bundled extension path is passed to the extension as
+  `LARVA_PI_EXTENSION_ENTRY`. Child/RPC sessions must use that path instead of
+  deriving it from module metadata or argv inspection.
+- User Pi arguments are preserved after Larva-owned flags. The launcher may
+  prepend its own `<extension-flag> <bundled extension>` pair before forwarded
+  user arguments.
+- The launcher detects extension loading support by running the real `pi --help`
+  during preflight. If `-e` is present, use `-e`; otherwise if `--extension` is
+  present, use `--extension`. If neither flag is present, exit before Pi starts
+  with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`.
+- If the target Pi version does not support an extension flag, the launcher must
+  not fall back to writing user or project Pi settings.
+- Parent and child/RPC sessions must use the same resolved real Pi executable,
+  selected extension flag, and bundled extension entry from launcher-provided
+  environment.
+
+Launch failure rules:
+
+- Invalid launcher syntax exits before Pi starts with `LARVA_PI_BAD_ARGS`.
+- Missing real `pi` executable exits before Pi starts with `LARVA_PI_NOT_FOUND`.
+- Missing bundled extension exits before Pi starts with `LARVA_PI_EXTENSION_NOT_FOUND`.
+- If `--persona <id>` is supplied, persona resolution is a mandatory launcher
+  preflight check using the same Larva CLI argv prefix later passed to the
+  extension. Failure exits before Pi starts with `LARVA_PERSONA_NOT_FOUND`.
+- Initial persona commit happens during Pi extension initialization before the
+  first user prompt, selector, or `larva: none` status is exposed.
+- Tool-policy file parsing and validation happen inside the Pi extension. For
+  initial `--persona`, unreadable, malformed, or structurally invalid policy is
+  fatal: the extension writes `larva pi: LARVA_POLICY_INVALID: <message>` to
+  stderr and terminates startup with a non-zero exit instead of continuing as
+  `larva: none`.
+- Policy tool names that are not currently registered in Pi are ignored, not
+  fatal. If Pi's tool enumeration API itself fails, initial startup is fatal with
+  `LARVA_TOOL_ENUMERATION_FAILED` using the same stderr and non-zero-exit rule.
+- If Pi rejects the requested model for initial `--persona`, the extension writes
+  `larva pi: LARVA_MODEL_UNAVAILABLE: <message>` to stderr and terminates startup
+  with a non-zero exit. For an in-session switch, it preserves the previous active
+  state instead.
+
+Larva-owned startup errors are written to stderr as:
+
+```text
+larva pi: <ERROR_CODE>: <human-readable message>
+```
+
+For launcher-detected errors, the launcher exits with the codes defined in
+Launcher contract. For extension-detected fatal startup errors after Pi has
+started, the extension must make the Pi process exit non-zero; if it can choose
+the code, it uses `2`. A zero exit after a Larva fatal startup error is invalid.
+
+### Persona switching
+
+The Pi extension registers:
+
+```text
+/larva-persona <persona-id>
+```
+
+The command supports argument completion for persona ids.
+
+No-argument behavior:
+
+- In interactive TUI mode only, the extension opens a selector populated through
+  the Larva CLI bridge list command.
+- RPC `ctx.hasUI` is not enough to open the selector. In RPC, print, or JSON mode,
+  no argument returns `ok: false` with `LARVA_BAD_INPUT` and leaves active state
+  unchanged.
+- Selecting a persona is equivalent to running `/larva-persona <selected-id>`.
+- Cancelling the selector returns `ok: false` with `LARVA_BAD_INPUT` and leaves
+  active state unchanged.
+
+Switching is in-place and takes effect on the next model invocation. The active
+conversation history is not rewritten.
+
+Switch commit is atomic:
+
+1. resolve the target persona;
+2. validate that Pi can select the persona model;
+3. load and validate `~/.pi/tool-policy.json` if present;
+4. compute the active tool rules for the target persona, ignoring policy names for
+   tools Pi does not currently expose;
+5. commit active persona state and update Pi model/status.
+
+If any step fails, the previous active persona, model, and tool rules remain in
+effect. The command returns a user-visible error with one of these stable codes:
+`LARVA_BAD_INPUT`, `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
+`LARVA_POLICY_INVALID`, or `LARVA_TOOL_ENUMERATION_FAILED`.
+
+### UI status
+
+In Pi interactive UI, the extension always sets a footer/status entry:
+
+```text
+larva: <persona-id>
+```
+
+When no Larva persona is active, the status is:
+
+```text
+larva: none
+```
+
+Print mode may not render this status. JSON/RPC clients may receive UI events and
+choose how to display them.
+
+## Persona runtime projection
+
+Persona projection is snapshot-based for a running process, not live-reloaded every
+turn.
+
+The extension resolves a persona and builds a runtime envelope only at these
+commit points:
+
+- initial `larva pi --persona <id>` startup;
+- successful `/larva-persona <id>` switch;
+- new `larva_subagent` child startup;
+- resumed `larva_subagent` child startup.
+
+A committed envelope has this shape:
+
+```json
+{
+  "persona_id": "python-senior",
+  "spec_digest": "sha256:...",
+  "model": "provider/model-id",
+  "prompt": "opaque PersonaSpec prompt text",
+  "tool_policy": {
+    "allow": ["read", "grep"],
+    "deny": ["write", "edit"]
+  }
+}
+```
+
+Registry edits after commit do not affect the active Pi process until the user
+runs another explicit switch or resumes a child session in a new child process.
+On resume, the child conversation file is reused, but the target persona id is
+resolved from the current registry so prompt/model/tool-policy hot fixes apply.
+
+The first design target projects only `prompt`, `model`, `id`, `spec_digest`, and
+adapter-local tool policy. Canonical optional fields such as `model_params` and
+`compaction_prompt` are intentionally not projected until Pi has a verified place
+to apply them.
+
+Prompt projection uses Pi's `before_agent_start` extension hook. On each agent
+turn, the extension returns a `systemPrompt` equal to Pi's current chained system
+prompt plus the committed Larva persona prompt and a low-noise watermark. This
+composes with Pi's existing prompt instead of replacing user/project context.
+
+Prompt injection must be idempotent. If the incoming `event.systemPrompt` already
+contains a previous Larva watermark block, the extension replaces that block for
+the current committed envelope instead of appending a second copy.
+
+Model projection uses Pi's documented `pi.setModel(model)` API. The PersonaSpec
+`model` string for this adapter is parsed at the first slash: the provider is the
+substring before the first slash, and the model id is the remaining substring
+after it. Both parts must be non-empty. This supports current Larva model strings
+such as `openrouter/google/gemini-3.1-pro-preview`. Missing slash, empty provider,
+or empty model id maps to `LARVA_MODEL_UNAVAILABLE` without changing the canonical
+PersonaSpec schema. The extension looks up the parsed model through
+`ctx.modelRegistry.find(provider, modelId)`, then calls `pi.setModel(model)`.
+Missing model or `false` from `pi.setModel` maps to `LARVA_MODEL_UNAVAILABLE`.
+
+The watermark example:
+
+```html
+<!-- larva-spec: python-senior@abc123 -->
+```
+
+The extension must not inject a full list of available subagents. Instead, it may
+include one short instruction:
+
+```text
+Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and
+resolve personas when needed.
+```
+
+This keeps context use bounded when the registry contains many personas.
+
+## Tool policy
+
+### Ownership
+
+`~/.pi/tool-policy.json` is a Larva-Pi adapter file. It is not a canonical
+PersonaSpec field and is not interpreted by opifex.
+
+The policy is keyed by canonical persona id. It expresses Pi tool rules for that
+persona.
+
+### Shape
+
+Minimal file shape:
+
+```json
+{
+  "personas": {
+    "python-senior": {
+      "allow": ["read", "grep", "find", "ls", "bash"],
+      "deny": ["write", "edit"]
+    },
+    "doc-reviewer": {
+      "allow": ["read", "grep", "find", "ls"],
+      "deny": ["bash", "write", "edit"]
+    }
+  }
+}
+```
+
+Policy contract:
+
+- Top level must be a JSON object with exactly one key: `personas`.
+- `personas` must be an object. Empty `personas: {}` is valid.
+- Persona keys are treated as PersonaSpec ids.
+- Only the active target persona entry is validated beyond top-level shape.
+- If the active target entry exists, it must be an object with optional `allow` and
+  `deny` arrays.
+- Unknown keys inside the active target persona policy are invalid.
+- `allow` and `deny`, when present in the active target entry, must contain only
+  non-empty strings.
+- Duplicate names inside one active target `allow` or `deny` array are ignored
+  after the first occurrence. This keeps duplicate entries harmless without adding
+  another error.
+- Non-target persona entries are not inspected during the current commit.
+- The Pi extension validates JSON readability and structural shape. The launcher
+  does not parse the policy file.
+- Policy tool names are applied as exact string filters over Pi's currently
+  registered model-facing tools. Names not present in the current Pi registry are
+  ignored.
+- If Pi cannot enumerate model-facing tool names, the attempted commit fails with
+  `LARVA_TOOL_ENUMERATION_FAILED` and preserves the previous committed envelope.
+
+Matching is exact string matching in the first design target. Wildcards,
+path-level rules, command-level bash rules, and project-level overrides are out
+of scope.
+
+### Validation boundary
+
+The launcher does not parse `~/.pi/tool-policy.json`. It only passes the policy
+file path to the bundled Pi extension through `LARVA_PI_TOOL_POLICY_FILE`. The Pi
+extension owns all policy parsing and validation for initial startup, in-session
+persona switches, and child startup.
+
+| Validation item | Launcher preflight | Extension commit |
+| --- | --- | --- |
+| file exists | no; missing file is valid | no; missing file means no adapter-local restrictions |
+| file readable if present | no | yes |
+| valid JSON if present | no | yes |
+| top-level object with only `personas` if present | no | yes |
+| `personas` is object if present | no | yes |
+| target persona entry shape | no | yes, for active target when entry exists |
+| `allow`/`deny` are arrays of strings | no | yes, for active target |
+| unknown keys | no | yes, for active target |
+| duplicate tool names | no | normalize |
+| unknown Pi tool names | no | no; unmatched names are ignored |
+
+For initial `--persona`, extension policy shape failure is fatal startup failure
+with `LARVA_POLICY_INVALID`. For an in-session switch, it returns `ok: false` and
+preserves the previous active state. For child startup, it returns a failed
+`LarvaSubagentResult`.
+
+### Semantics
+
+Tool filtering baseline:
+
+- On every successful persona commit, the extension enumerates Pi's current
+  model-facing tools and treats that set as the unfiltered baseline for this
+  commit.
+- The target persona policy is applied to that baseline only. Prior Larva
+  restrictions from an earlier persona commit do not carry over.
+- Missing `~/.pi/tool-policy.json`: no extra Larva-Pi tool restriction; the
+  committed active tools are the current baseline.
+- Missing active target persona entry: no extra Larva-Pi tool restriction for that
+  persona; the committed active tools are the current baseline.
+- Pi-required non-model UI/runtime tools are outside this Larva policy surface.
+
+Policy validation and filtering:
+
+- Invalid JSON, unreadable file, wrong top-level shape, invalid active target
+  entry shape, non-array `allow`/`deny`, non-string entries, or unknown keys in
+  the active target entry: fail the attempted launch/switch and keep the previous
+  active policy. If no previous policy exists, no persona is committed.
+- Invalid non-target persona entries are ignored until that persona becomes the
+  active target.
+- Policy tool names that are not registered in the current Pi runtime are ignored.
+  They do not make launch or switching fail.
+- `deny` wins over `allow` for tools that exist in the current Pi runtime.
+- If `allow` is absent, the baseline is allowed minus denied tools.
+- If `allow` is present, only listed existing tools are allowed, minus denied
+  tools.
+- Empty `allow: []` means no model-facing tools are allowed.
+- Empty `deny: []` denies nothing.
+- A policy denying `larva_subagent` blocks the subagent tool even when
+  `can_spawn` would otherwise allow it. The observable result is the generic
+  `ToolPolicyDecision` denial with `LARVA_TOOL_DENIED`; the `larva_subagent`
+  handler is not invoked and no `LarvaSubagentResult` is produced.
+
+There is no `ask` action.
+
+## Subagent spawning
+
+### Public tool
+
+The extension registers one custom tool:
+
+```text
+larva_subagent(persona_id, task, task_id?)
+```
+
+Input contract:
+
+- `persona_id`: required non-empty string; target Larva persona id.
+- `task`: required non-empty string; instruction to send to the child session for
+  this invocation.
+- `task_id`: optional non-empty string; absolute child Pi session `.jsonl` file
+  path under the Larva child session root.
+
+Bad input returns `status: "failed"` with `LARVA_BAD_INPUT`; it does not create or
+resume a child process. For these pre-session failures, public `task_id` is
+`null`. `persona_id` in the result is the requested target id only after it passed
+basic non-empty string validation; otherwise it is an empty string.
+
+### Spawn authority
+
+The active parent persona's `can_spawn` field controls whether spawning is
+allowed:
+
+- omitted or `false`: no subagent spawning;
+- `true`: may spawn any registered Larva persona;
+- string array: may spawn only listed persona ids.
+
+If no parent Larva persona is active, `larva_subagent` returns `failed` with
+`LARVA_NO_ACTIVE_PERSONA`.
+
+`can_spawn` controls spawn authority. `~/.pi/tool-policy.json` controls Pi tools
+inside the parent or child session. A policy denying `larva_subagent` also blocks
+the tool if the parent persona has an active allow/deny policy entry for that
+tool.
+
+### Child startup
+
+When a new child is spawned, the tool starts one child Pi process for that
+`larva_subagent` invocation. The process is not retained after the result is
+returned. This keeps lifecycle management simple: every new call or resume call
+owns exactly one child process.
+
+Child session root:
+
+- Default root: `~/.pi/larva/child-sessions`.
+- Test override: `LARVA_PI_CHILD_SESSION_DIR` may point to another absolute path.
+- Empty, relative, unreadable, or uncreatable override paths make
+  `larva_subagent` return `failed` with `LARVA_CHILD_START_FAILED`.
+- The directory is created if missing with owner-only permissions where the host
+  platform supports them.
+- Public `task_id` values are valid only when their canonical real path is inside
+  this root. Paths outside the root are `LARVA_BAD_INPUT`.
+- Child sessions are retained until the user deletes them; the first design target
+  performs no automatic cleanup.
+
+Child process invocation:
+
+```text
+<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --mode rpc --session-dir <larva-child-session-dir>
+```
+
+The child must use the `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
+`LARVA_PI_EXTENSION_ENTRY` values provided by the launcher. It must not invoke bare
+`pi`, rediscover Pi through `PATH`, or derive the extension entry from module
+metadata or argv inspection.
+
+Environment:
+
+- `LARVA_PI_INITIAL_PERSONA_ID=<child persona id>`
+- `LARVA_PI_TOOL_POLICY_FILE=<policy path>`
+- `LARVA_PI_PARENT_PERSONA_ID=<parent persona id>`
+- `LARVA_PI_REAL_BIN=<resolved real Pi executable>`
+- `LARVA_PI_EXTENSION_FLAG=<-e or --extension>`
+- `LARVA_PI_EXTENSION_ENTRY=<absolute bundled extension entry>`
+- `LARVA_CLI_ARGV_JSON=<same Larva CLI argv prefix>`
+- `LARVA_PI_INTERACTIVE_TUI=0`
+
+Child extension initialization resolves the child persona, selects its model, loads
+policy, enumerates available Pi tools, and commits the child persona envelope
+before replying to the first `get_state` request. Policy names for tools not
+present in the child Pi runtime are ignored. If initialization fails before RPC
+readiness, the child writes one stderr line using this shape and exits non-zero:
+
+```text
+larva pi: <ERROR_CODE>: <human-readable message>
+```
+
+The parent maps only these child stderr codes through to `LarvaSubagentResult`:
+`LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and
+`LARVA_TOOL_ENUMERATION_FAILED`. Any other pre-RPC child exit maps to
+`LARVA_CHILD_START_FAILED`. The parent must not parse other child stderr text.
+
+Startup sequence:
+
+1. start the child process using the invocation above;
+2. read JSONL stdout using Pi RPC framing;
+3. send `{"id":"state-1","type":"get_state"}`;
+4. require a successful response within ten seconds with a non-empty
+   `data.sessionFile` whose canonical real path is a `.jsonl` file under the
+   child session root;
+5. use that session file path as the public `task_id`;
+6. send `{"id":"prompt-1","type":"prompt","message":<task>}`;
+7. require a successful `prompt` response within ten seconds, then consume events
+   until `agent_end`;
+8. send `{"id":"last-1","type":"get_last_assistant_text"}` and require a
+   successful response within ten seconds with `data.text` as a string; use that
+   string as `result_text`.
+
+Completion is defined by the first `agent_end` event after the accepted `prompt`
+command. Waiting for `agent_end` is intentionally unbounded by the adapter and
+continues until Pi completes or the parent aborts. A "missing `agent_end`" failure
+means the child process exits or closes stdout before emitting `agent_end`. A
+still-running child without `agent_end` is not classified as missing. JSON parse
+failure, unsupported response shape, command-response timeout, EOF before
+`agent_end`, failed `get_last_assistant_text` response, or missing/null/non-string
+`data.text` maps to `LARVA_CHILD_PROTOCOL_FAILED`. A failed process start or
+extension load maps to `LARVA_CHILD_START_FAILED` unless a whitelisted child fatal
+startup code is parsed as described above.
+
+No Larva sidecar file is written. The resume contract is deliberately only:
+
+- the public `task_id` path;
+- canonical path containment inside the child session root;
+- readable `.jsonl` session file;
+- explicit `persona_id` supplied on each `larva_subagent` call.
+
+This avoids multi-file state for metadata that is not a security boundary. It
+also allows a resumed child session to use current-registry persona hot fixes.
+
+A running child uses the persona/model/tool-policy envelope captured at that
+child process startup. A later resume starts a new child process and re-resolves
+the requested child persona id from the current registry before appending the new
+task.
+
+### Result contract
+
+The tool returns this public shape:
+
+```json
+{
+  "task_id": "/absolute/path/to/child-session.jsonl",
+  "persona_id": "doc-reviewer",
+  "status": "success",
+  "result_text": "...",
+  "error": null
+}
+```
+
+`task_id` is canonically the child Pi session file path. It is the only public
+resume handle.
+
+For failures before any child session path exists, `task_id` is `null`:
+
+```json
+{
+  "task_id": null,
+  "persona_id": "",
+  "status": "failed",
+  "result_text": "",
+  "error": {"code": "LARVA_BAD_INPUT", "message": "task must be a non-empty string."}
+}
+```
+
+`persona_id` in the result is the requested target id after it passes basic
+non-empty string validation. If `persona_id` is missing, empty, or not a string,
+the result uses `""`.
+
+Status values:
+
+- `success`: child session reached agent completion and produced a string final
+  assistant text value.
+- `failed`: child process startup, extension loading, persona resolution, model
+  selection, protocol handling, policy validation, session validation, or session
+  resume failed.
+- `cancelled`: the parent tool call was aborted and the child was aborted or
+  killed as cleanup.
+
+`result_text` is the final assistant message produced by the child for this tool
+invocation. On resume, it is the final assistant message produced after the new
+`task` is appended. It is never raw JSONL. It may contain partial child output for
+`failed` or `cancelled` only when the child produced text before failure.
+
+`get_last_assistant_text.data.text` must be a string before it can become
+`result_text`. Missing `data.text`, `null`, or any non-string value maps to
+`LARVA_CHILD_PROTOCOL_FAILED`. Empty string is still a valid string and is not
+coerced.
+
+If Pi returns assistant text with truncation or runtime limits, the integration
+returns that text exactly and does not judge whether it is semantically usable.
+`LARVA_CHILD_PROTOCOL_FAILED` is used only when the RPC response is malformed,
+reports command failure, or lacks a string final assistant text field.
+
+`error` is `null` on `success`. On `failed` or `cancelled`, it is an object:
+
+```json
+{
+  "code": "LARVA_SESSION_INVALID",
+  "message": "Child session path is invalid."
+}
+```
+
+Initial stable error codes:
+
+- `LARVA_BAD_INPUT`
+- `LARVA_PI_BAD_ARGS`
+- `LARVA_PI_NOT_FOUND`
+- `LARVA_PI_EXTENSION_NOT_FOUND`
+- `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`
+- `LARVA_NO_ACTIVE_PERSONA`
+- `LARVA_SPAWN_NOT_ALLOWED`
+- `LARVA_PERSONA_NOT_FOUND`
+- `LARVA_MODEL_UNAVAILABLE`
+- `LARVA_POLICY_INVALID`
+- `LARVA_TOOL_ENUMERATION_FAILED`
+- `LARVA_TOOL_DENIED`
+- `LARVA_SESSION_NOT_FOUND`
+- `LARVA_SESSION_INVALID`
+- `LARVA_SESSION_BUSY`
+- `LARVA_CHILD_START_FAILED`
+- `LARVA_CHILD_PROTOCOL_FAILED`
+- `LARVA_CHILD_CANCELLED`
+
+### Error mapping
+
+Use these mappings before falling back to `LARVA_CHILD_PROTOCOL_FAILED` for
+unknown child/RPC failures.
+
+Policy denial for the `larva_subagent` tool is not a `LarvaSubagentResult`: if
+`tool_call` denies `larva_subagent`, Pi observes the generic `ToolPolicyDecision`
+denial with `LARVA_TOOL_DENIED` and the subagent handler is not invoked.
+
+Subagent handler mappings:
+
+- Empty or non-string `persona_id`, `task`, or `task_id`: `LARVA_BAD_INPUT`.
+- Relative `task_id`, canonicalization failure, symlink escape, or path outside
+  child session root: `LARVA_BAD_INPUT`.
+- Parent has no active persona: `LARVA_NO_ACTIVE_PERSONA`.
+- Parent `can_spawn` disallows target: `LARVA_SPAWN_NOT_ALLOWED`.
+- Child fatal startup stderr with whitelisted `LARVA_PERSONA_NOT_FOUND`:
+  `LARVA_PERSONA_NOT_FOUND`.
+- Child fatal startup stderr with whitelisted `LARVA_MODEL_UNAVAILABLE`:
+  `LARVA_MODEL_UNAVAILABLE`.
+- Child fatal startup stderr with whitelisted `LARVA_POLICY_INVALID`:
+  `LARVA_POLICY_INVALID`.
+- Child fatal startup stderr with whitelisted `LARVA_TOOL_ENUMERATION_FAILED`:
+  `LARVA_TOOL_ENUMERATION_FAILED`.
+- Canonical under-root path that does not end in `.jsonl`: `LARVA_SESSION_INVALID`.
+- Canonical under-root `.jsonl` session file is missing: `LARVA_SESSION_NOT_FOUND`.
+- Existing under-root path is a directory, not a regular file, or unreadable:
+  `LARVA_SESSION_INVALID`.
+- Same `task_id` is already being resumed by another active call in this parent
+  extension process: `LARVA_SESSION_BUSY`.
+- Child Pi process cannot be started, extension cannot be loaded, or pre-RPC child
+  exit has no whitelisted Larva error code: `LARVA_CHILD_START_FAILED`.
+- Child RPC starts but returns malformed, unsupported, or unknown protocol output:
+  `LARVA_CHILD_PROTOCOL_FAILED`.
+- Parent abort cancels or kills the child: `LARVA_CHILD_CANCELLED`.
+
+### Resume
+
+When `task_id` is provided, the parent validates only input, path, parent spawn
+authority, and same-process busy state before starting the child. Child persona
+resolution, child model selection, child policy parsing, and child runtime tool
+enumeration are performed by the child extension during child startup. Parent tool
+policy is enforced before `larva_subagent` execution through the generic
+`tool_call` policy path; if that policy denies the tool, the handler is not
+invoked.
+
+Deterministic `task_id` taxonomy:
+
+- missing, empty, non-string, or relative `task_id`: `LARVA_BAD_INPUT`;
+- canonicalization failure, symlink escape, or path outside child session root:
+  `LARVA_BAD_INPUT`;
+- canonical path under the child session root that does not end in `.jsonl`:
+  `LARVA_SESSION_INVALID`;
+- canonical `.jsonl` path under the child session root that does not exist:
+  `LARVA_SESSION_NOT_FOUND`;
+- existing path under the child session root that is a directory, not a regular
+  file, or not readable: `LARVA_SESSION_INVALID`.
+
+The parent persona must still be allowed to spawn the requested target persona id.
+If the file is missing, invalid, or busy, the tool returns `failed` and does not
+create a new session.
+
+"Previously returned" is not proven by extra metadata. For this first design
+target, resume eligibility is path-based: an existing readable `.jsonl` session
+file under the Larva child session root is a valid resume handle. This keeps the
+contract simple and avoids fake provenance guarantees.
+
+Resume uses current-registry persona semantics. The existing child session file is
+reused, but the new child process resolves `persona_id` from the current Larva
+registry before appending `task`. This intentionally allows persona prompt/model
+hot fixes to affect resumed child work.
+
+Resume child process invocation is the same as new child startup:
+
+```text
+<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> --mode rpc --session-dir <larva-child-session-dir>
+```
+
+Resume sequence:
+
+1. validate `task_id`, child session root, and parent spawn authority for
+   `larva_subagent`;
+2. mark the canonical `task_id` busy in the parent extension's in-memory
+   active-task set; if it is already busy, return `failed` with
+   `LARVA_SESSION_BUSY` before starting any child process;
+3. start the child RPC process using `LARVA_PI_REAL_BIN`,
+   `LARVA_PI_EXTENSION_FLAG`, and `LARVA_PI_EXTENSION_ENTRY`;
+4. let the child extension perform child persona/model/policy/tool initialization;
+5. send `{"id":"switch-1","type":"switch_session","sessionPath":<task_id>}`;
+6. require `success: true` and `data.cancelled !== true` within ten seconds;
+7. send `{"id":"prompt-1","type":"prompt","message":<task>}`;
+8. require a successful `prompt` response within ten seconds;
+9. wait for `agent_end` after that accepted prompt;
+10. send `get_last_assistant_text` and require a successful response within ten
+    seconds; use that response for `result_text`;
+11. remove `task_id` from the active-task set after success, failure, or
+    cancellation.
+
+If child initialization emits a whitelisted fatal startup code, map it as defined
+in Child startup. If a response timeout or protocol failure occurs after the busy
+marker is set, the extension clears the marker and aborts or kills the child
+process as cleanup.
+
+Resume appends the provided `task` as a new user instruction to the existing child
+session through Pi RPC `prompt`. It does not ignore or replace `task`, and it does
+not merely return prior output.
+
+Completed, failed, and cancelled child sessions may be resumed if their session
+file remains valid and readable.
+
+Using the session file path as `task_id` makes child-session reuse naturally
+survive parent Pi restarts.
+
+### Abort
+
+If the parent tool call receives Pi's abort signal, the extension forwards one RPC
+abort request to the child. If the child process is still alive after a five-second
+grace period, the extension may kill the child process.
+
+Abort result rules:
+
+- If abort or kill stops the child, return `cancelled` with
+  `error.code: "LARVA_CHILD_CANCELLED"`.
+- If the child exits successfully during the grace period, return the child's
+  normal `success` result.
+- If abort RPC fails but kill succeeds, still return `cancelled` with
+  `LARVA_CHILD_CANCELLED`.
+- If both abort and kill fail or child state becomes unknowable, return `failed`
+  with `LARVA_CHILD_PROTOCOL_FAILED`.
+
+There is no separate cancel command in the first design target.
+
+### Concurrency
+
+The integration does not provide a batch tool. Pi's documented default parallel
+tool mode may run sibling `larva_subagent` calls concurrently after sequential
+preflight.
+
+The integration does not add a scheduler in the first design target. It has only
+one same-process safety rule: two active calls in the same parent Pi extension
+process must not resume the same `task_id` at the same time.
+
+Same-`task_id` resume exclusion:
+
+- The parent extension keeps an in-memory set of active canonical `task_id` paths.
+- Scope: one active parent Pi extension process.
+- Acquisition: after `task_id` validation and before child process start, check
+  the set; if the canonical path is already present, return `failed` with
+  `LARVA_SESSION_BUSY`.
+- Release: remove the canonical path from the set after resume finishes, fails, or
+  is cancelled.
+- Restart behavior: parent Pi restart clears the set. There is no stale-lock file
+  to clean up.
+
+This deliberately does not protect against two independent parent Pi processes
+resuming the same child session concurrently. That cross-process case is outside
+the first design target. If it becomes a real requirement, the design should be
+reopened explicitly instead of adding hidden filesystem locking now.
+
+Child completion duration is not capped by the adapter; it remains a Pi/runtime
+limit and may run until Pi completes or the parent aborts. Required child RPC
+command responses are different: `get_state`, `switch_session`, `prompt`, and
+`get_last_assistant_text` must each respond within ten seconds. Timeout maps to
+`LARVA_CHILD_PROTOCOL_FAILED`; resume timeout must also clear the busy marker and
+clean up the child process.
+
+No adapter-specific maximum is imposed on total child sessions, `task` length, or
+`result_text` length in the first design target. If Pi rejects a request before
+child work starts, return `failed` with the closest stable code (`LARVA_BAD_INPUT`,
+`LARVA_CHILD_START_FAILED`, or `LARVA_CHILD_PROTOCOL_FAILED`). If Pi truncates or
+limits output but still returns assistant text through RPC, preserve that text in
+`result_text`; do not classify truncation by semantic judgment. Parent abort must
+still propagate as defined in Abort.
+
+## Launcher contract
+
+The launcher consumes only Larva-owned flags before forwarding remaining
+arguments to Pi.
+
+Initial target:
+
+```text
+larva pi [--persona <id>] [--] <pi args...>
+```
+
+Parsed launcher fields:
+
+- `persona`: optional string from `--persona <id>`.
+- `pi_args`: ordered list of all remaining arguments, preserving values after
+  optional `--` separator normalization.
+
+Interactive-mode detection for `LARVA_PI_INTERACTIVE_TUI`:
+
+- The launcher does not validate Pi arguments generally. It only scans `pi_args`
+  to decide whether the Larva selector is safe to expose.
+- Recognized non-interactive markers are exact `-p`, exact `--print`, exact
+  `--json`, and `--mode` values `rpc`, `print`, `json`, or `sdk`.
+- `--mode` may appear as `--mode <value>` or `--mode=<value>`.
+- `--mode interactive` and `--mode=interactive` are interactive only when no
+  non-interactive, unknown, or malformed mode marker is also present.
+- Missing `--mode` value, empty mode value, or any unrecognized `--mode` value is
+  treated as non-interactive for Larva selector purposes.
+- If multiple mode or print markers conflict, non-interactive wins and
+  `LARVA_PI_INTERACTIVE_TUI=0`.
+- Unknown Pi arguments that are not `--mode` forms are ignored by this detector and
+  still forwarded unchanged.
+- Default when no recognized non-interactive marker is present is
+  `LARVA_PI_INTERACTIVE_TUI=1`.
+
+Internal launcher-to-extension environment:
+
+- `LARVA_PI_INITIAL_PERSONA_ID`: set only when `--persona` is supplied.
+- `LARVA_PI_TOOL_POLICY_FILE`: absolute path to `~/.pi/tool-policy.json` unless a
+  test harness overrides it.
+- `LARVA_PI_CHILD_SESSION_DIR`: optional absolute child session root override for
+  tests.
+- `LARVA_PI_REAL_BIN`: absolute path to the resolved real Pi executable.
+- `LARVA_PI_EXTENSION_FLAG`: selected extension flag, either `-e` or `--extension`.
+- `LARVA_PI_EXTENSION_ENTRY`: absolute path to the bundled Larva Pi extension
+  entry file used in the parent Pi invocation and reused by child/RPC launches.
+- `LARVA_CLI_ARGV_JSON`: JSON array argv prefix for invoking the same Larva CLI
+  context as the launcher. The extension appends `resolve <id> --json` or
+  `list --json`.
+- `LARVA_PI_INTERACTIVE_TUI`: `1` only when the detector above classifies the
+  forwarded Pi args as interactive TUI; `0` for RPC, print, JSON, SDK, malformed
+  mode, unknown mode, or conflicting mode/print markers.
+- `LARVA_PI_LAUNCHED`: literal `1`, used only to prevent accidental recursive
+  launcher execution.
+
+Real Pi executable discovery:
+
+- Test override: if `LARVA_PI_BIN` is set, it must point to an executable file and
+  is used as the real Pi binary.
+- Default: search `PATH` for the first executable named `pi` whose resolved path is
+  not the current `larva` executable and not inside Larva's own shim path.
+- If no such executable exists, exit `127` with `LARVA_PI_NOT_FOUND`.
+- If multiple valid `pi` executables exist, use the first one in `PATH` order.
+
+Extension flag selection:
+
+- Run `<real-pi-bin> --help` during preflight.
+- Prefer `-e` when listed.
+- Otherwise use `--extension` when listed.
+- If neither is listed, exit before Pi starts with
+  `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`.
+
+Real Pi invocation shape:
+
+```text
+<LARVA_PI_REAL_BIN> <LARVA_PI_EXTENSION_FLAG> <LARVA_PI_EXTENSION_ENTRY> <pi_args...>
+```
+
+Launcher responsibilities:
+
+- locate the bundled Pi extension entry file and resolve it to an absolute path;
+- locate the real Pi executable using the discovery rule above;
+- select the supported extension flag using the rule above;
+- classify interactive TUI mode using only the detector above;
+- build `LARVA_CLI_ARGV_JSON` for the same Larva CLI context and preserve the
+  launcher environment for registry access;
+- set the internal environment variables above;
+- forward user Pi arguments unchanged after optional separator normalization,
+  with only the prepended extension flag and bundled extension path added by Larva;
+- report launcher-detected stderr errors using
+  `larva pi: <ERROR_CODE>: <message>`;
+- preserve stderr from the Pi process, including extension-detected fatal startup
+  errors that use the same `larva pi: <ERROR_CODE>: <message>` shape.
+
+Exit behavior:
+
+- `0`: the Pi process exits successfully and no Larva fatal startup error occurred.
+- `2`: Larva launcher preflight, argument failure, or bundled extension fatal
+  startup error when the extension can choose the code.
+- `127`: real `pi` executable not found.
+- otherwise: propagate the real Pi process exit code. Extension-detected fatal
+  startup errors must still be non-zero even when Pi chooses the code.
+
+## API contracts
+
+These are adapter-internal contracts. Pi's real hook names are documented for the
+selected surfaces (`-e`, `--extension`, `pi.registerCommand`, `pi.registerTool`,
+`tool_call`, `before_agent_start`, `pi.setModel`, `ctx.ui.setStatus`,
+`pi.getAllTools`, `pi.setActiveTools`, and RPC JSONL commands). The implementation
+maps those Pi APIs to these Larva-facing shapes without changing the behavior
+below.
+
+```ts
+type LarvaErrorCode =
+  | "LARVA_BAD_INPUT"
+  | "LARVA_PI_BAD_ARGS"
+  | "LARVA_PI_NOT_FOUND"
+  | "LARVA_PI_EXTENSION_NOT_FOUND"
+  | "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED"
+  | "LARVA_NO_ACTIVE_PERSONA"
+  | "LARVA_PERSONA_NOT_FOUND"
+  | "LARVA_MODEL_UNAVAILABLE"
+  | "LARVA_POLICY_INVALID"
+  | "LARVA_TOOL_ENUMERATION_FAILED"
+  | "LARVA_TOOL_DENIED"
+  | "LARVA_SPAWN_NOT_ALLOWED"
+  | "LARVA_SESSION_NOT_FOUND"
+  | "LARVA_SESSION_INVALID"
+  | "LARVA_SESSION_BUSY"
+  | "LARVA_CHILD_START_FAILED"
+  | "LARVA_CHILD_PROTOCOL_FAILED"
+  | "LARVA_CHILD_CANCELLED";
+
+type LarvaError = {
+  code: LarvaErrorCode;
+  message: string;
+};
+
+type PersonaEnvelope = {
+  persona_id: string;
+  spec_digest: string;
+  model: string;
+  prompt: string;
+  tool_policy: PiToolPolicy;
+};
+
+type PiToolPolicy = {
+  allow?: string[];
+  deny?: string[];
+};
+
+type PersonaSwitchResult =
+  | { ok: true; envelope: PersonaEnvelope }
+  | { ok: false; error: LarvaError };
+
+type ToolPolicyDecision =
+  | { action: "allow" }
+  | { action: "deny"; error: LarvaError };
+
+type LarvaSubagentInput = {
+  persona_id: string;
+  task: string;
+  task_id?: string;
+};
+
+type LarvaSubagentResult = {
+  task_id: string | null;
+  persona_id: string;
+  status: "success" | "failed" | "cancelled";
+  result_text: string;
+  error: LarvaError | null;
+};
+```
+
+Command and hook contracts:
+
+- `/larva-persona <id>` returns `PersonaSwitchResult` and commits state only on
+  `ok: true`.
+- `/larva-persona` with no argument opens a selector only when
+  `LARVA_PI_INTERACTIVE_TUI=1`. RPC `ctx.hasUI`, print mode, and JSON mode return
+  `LARVA_BAD_INPUT` without changing state.
+- Initial `--persona` commit runs during extension initialization before first
+  prompt, selector, or `larva: none` status.
+- Prompt injection uses Pi `before_agent_start` and returns a composed
+  `systemPrompt`; it never replaces Pi's project/user context wholesale.
+- Prompt injection is idempotent: an existing Larva watermark block is replaced,
+  not duplicated.
+- Model switching uses `ctx.modelRegistry.find(provider, modelId)` followed by
+  `pi.setModel(model)`. PersonaSpec `model` is parsed at the first slash:
+  provider is before the first slash and model id is the remainder. Missing slash,
+  empty provider, empty model id, missing model, or `false` from `pi.setModel`
+  maps to `LARVA_MODEL_UNAVAILABLE`.
+- Policy enforcement is two-stage. At every commit, the extension enumerates the
+  current Pi model-facing tools as that commit's baseline, applies the target
+  persona allow/deny policy to that baseline, and calls
+  `pi.setActiveTools(filteredTools)` so disallowed tools are not offered to the
+  model. Missing policy means `filteredTools` equals the current baseline. Prior
+  Larva restrictions from an earlier persona commit do not carry over. At
+  tool-call time, `tool_call` interception denies any disallowed tool that still
+  appears. If enumeration or active-tool update fails, commit fails with
+  `LARVA_TOOL_ENUMERATION_FAILED` and preserves prior state.
+- If `tool_call` denies `larva_subagent`, Pi observes `ToolPolicyDecision` with
+  `action: "deny"` and `LARVA_TOOL_DENIED`; the custom tool handler is not
+  invoked and no `LarvaSubagentResult` is produced.
+- Policy names not present in the current Pi runtime are ignored.
+- `larva_subagent` accepts `LarvaSubagentInput` and returns
+  `LarvaSubagentResult` only when the custom tool handler is actually invoked.
+- Extension initialization reads only `LARVA_PI_INITIAL_PERSONA_ID`,
+  `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
+  `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
+  `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
+  `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the launcher
+  environment.
+- Child sessions expose `larva_subagent` only when the child persona's own
+  `can_spawn` and child tool policy allow it. Nested spawning is not special-cased.
+
+### Larva CLI bridge contract
+
+The Pi TypeScript extension resolves and lists personas through the Larva CLI. It
+does not read registry files directly.
+
+Primary invocation source:
+
+```text
+LARVA_CLI_ARGV_JSON
+```
+
+`LARVA_CLI_ARGV_JSON` is a JSON array argv prefix supplied by the launcher for the
+same Larva CLI context that started `larva pi`. The extension appends the command
+arguments below to that prefix and inherits the launcher-provided environment.
+
+Resolution command suffix:
+
+```text
+resolve <persona-id> --json
+```
+
+List command suffix for completion and selector UI:
+
+```text
+list --json
+```
+
+Fallback commands are allowed only when `LARVA_CLI_ARGV_JSON` is absent, for tests
+or manually loaded extension sessions:
+
+```text
+larva resolve <persona-id> --json
+larva list --json
+uvx larva resolve <persona-id> --json
+uvx larva list --json
+```
+
+Successful resolve stdout shape:
+
+```json
+{"data": {"id": "software-architect", "prompt": "...", "model": "...", "capabilities": {}, "spec_version": "0.1.0", "spec_digest": "sha256:..."}}
+```
+
+Successful list stdout shape:
+
+```json
+{"data": [{"id": "software-architect", "description": "...", "spec_digest": "sha256:...", "model": "provider/model"}]}
+```
+
+For completion and selector population, the extension requires only `data[].id` as
+a non-empty string. It may display `description` or `model` when present, but it
+must not require them for selection.
+
+Failure stdout shape:
+
+```json
+{"error": {"code": "INVALID_PERSONA_ID", "numeric_code": 104, "message": "...", "details": {}}}
+```
+
+Bridge rules:
+
+- The command must exit within ten seconds.
+- Malformed `LARVA_CLI_ARGV_JSON`, resolve timeout, non-zero exit, invalid JSON,
+  missing `data`, or missing required PersonaSpec fields maps to
+  `LARVA_PERSONA_NOT_FOUND`.
+- List timeout, non-zero exit, invalid JSON, missing `data`, non-array `data`, or
+  an item without a non-empty string `id` makes completion return no suggestions.
+  For interactive no-argument `/larva-persona`, the command returns `ok: false`
+  with `LARVA_PERSONA_NOT_FOUND` and leaves active state unchanged.
+- Stderr is diagnostic only. The extension must not parse semantics from stderr.
+- The returned resolve `data` object must satisfy the canonical PersonaSpec
+  contract before building a `PersonaEnvelope`.
+
+### Child RPC contract
+
+The parent extension communicates with child Pi using Pi RPC JSONL only after the
+child is ready enough to speak RPC. Before RPC readiness, the parent may read
+child stderr only for the whitelisted fatal startup line described in Child
+startup.
+
+Supported child RPC commands:
+
+- `get_state`: obtain `data.sessionFile` for public `task_id` allocation.
+- `prompt`: submit the child task.
+- `switch_session`: resume a previous child session file.
+- `get_last_assistant_text`: obtain final assistant text for `result_text`.
+- `abort`: request child cancellation.
+
+RPC command response rules:
+
+- `get_state`, `switch_session`, `prompt`, and `get_last_assistant_text` must each
+  return a command response within ten seconds.
+- Waiting for `agent_end` after an accepted `prompt` has no adapter timeout; it
+  ends when Pi completes, aborts, or the process fails.
+- A command response with `success: false`, invalid JSON, unexpected id/type,
+  missing required data field, or timeout maps to `LARVA_CHILD_PROTOCOL_FAILED`,
+  except `switch_session` with a missing session may map to
+  `LARVA_SESSION_NOT_FOUND` if Pi exposes that distinction clearly.
+- `get_last_assistant_text.data.text` must be a string. Missing, `null`, or
+  non-string `text` maps to `LARVA_CHILD_PROTOCOL_FAILED`.
+- Child stdout is protocol-only. Child stderr is diagnostics-only after RPC
+  readiness.
+
+## Architecture basis
+
+```yaml
+architecture_basis:
+  system_layers:
+    - core: "No changes. PersonaSpec validation and normalization remain canonical."
+    - app: "No required changes unless a narrow facade helper is needed for export/resolve reuse."
+    - shell: "New Pi launcher and bundled Pi extension boundary."
+    - external_runtime: "Pi CLI/RPC process and user-provided MCP bridge."
+
+  source_of_truth_matrix:
+    PersonaSpec schema: "opifex canonical contract"
+    persona registry contents: "Larva CLI argv prefix supplied by launcher in LARVA_CLI_ARGV_JSON"
+    active Pi persona: "Pi extension session-local committed envelope"
+    Pi executable: "LARVA_PI_REAL_BIN discovered by launcher"
+    Pi extension flag: "LARVA_PI_EXTENSION_FLAG selected by launcher from Pi help"
+    Pi extension entry: "LARVA_PI_EXTENSION_ENTRY absolute bundled extension path resolved by launcher"
+    Pi interactive classification: "Launcher scan of forwarded pi_args for exact print/json/mode markers"
+    Pi tool rules: "~/.pi/tool-policy.json, adapter-local, parsed only by Pi extension"
+    Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each persona commit"
+    child session root: "~/.pi/larva/child-sessions or absolute LARVA_PI_CHILD_SESSION_DIR test override"
+    child session identity: "Pi child session file path returned as task_id"
+    child session validation: "Canonical readable .jsonl path under child session root"
+    child resume busy state: "Parent extension in-memory active-task set"
+    Pi MCP bridge: "User-installed Pi extension/package, out of this integration scope"
+
+  service_catalog:
+    larva_pi_launcher:
+      owner: "larva.shell"
+      responsibility: "Discover real Pi and Larva CLI context, then start Pi with the bundled Larva extension and optional initial persona."
+    larva_pi_extension:
+      owner: "contrib/pi-extension"
+      responsibility: "Project resolved Larva personas into Pi prompt/model/tool state."
+    larva_subagent_tool:
+      owner: "contrib/pi-extension"
+      responsibility: "Spawn or resume one child Pi RPC process per invocation as a target persona."
+
+  runtime_contract:
+    launch: "larva pi [--persona <id>] [--] <pi args...> -> <real-pi-bin> <extension-flag> <extension-entry> <pi args...>"
+    interactive_mode: "LARVA_PI_INTERACTIVE_TUI from exact -p/--print/--json/--mode detector; non-interactive wins conflicts"
+    switch: "/larva-persona <id>, next model invocation, atomic commit"
+    projection: "before_agent_start prompt composition + pi.setModel(model), committed at launch/switch/child startup"
+    policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
+    persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent"
+    subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked"
+    child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
+    resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
+
+  state_strata:
+    canonical_state: "PersonaSpec and registry entries managed by Larva"
+    adapter_config_state: "~/.pi/tool-policy.json"
+    session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
+    child_session_state: "Pi session JSONL file used as public task_id"
+    child_busy_state: "In-memory active-task set inside one parent Pi extension process"
+
+  transport_boundary_rules:
+    - "Larva CLI/facade/MCP surfaces remain the persona source; Pi extension does not read registry files directly."
+    - "Launcher passes LARVA_CLI_ARGV_JSON so the extension uses the same Larva CLI context."
+    - "Parent and child Pi are launched through LARVA_PI_REAL_BIN with LARVA_PI_EXTENSION_FLAG and LARVA_PI_EXTENSION_ENTRY; no bare pi lookup or extension-entry derivation in the extension."
+    - "No Pi settings writes."
+    - "Pi RPC is used only for child Pi session control."
+    - "Before child RPC readiness, parent parses only whitelisted `larva pi: <LARVA_*_CODE>:` stderr lines."
+    - "MCP bridge is external to this integration."
+    - "No sidecar metadata is written for child sessions; path containment plus explicit persona_id is the whole resume contract."
+    - "No filesystem lock files are part of the first target; cross-process same-task resume coordination is out of scope."
+
+  cross_cutting_governance:
+    registries:
+      - "Larva persona registry remains owned by Larva."
+      - "Pi extension keeps only session-local committed envelope state."
+      - "Parent Pi extension keeps a process-local active-task set for same-task resume exclusion."
+    lifecycle_ordering:
+      - "Launcher preflights Larva-owned arguments, extension path, real Pi executable, extension flag, Larva CLI argv prefix, interactive classification, and initial persona id only."
+      - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass."
+      - "Child extension performs child persona/model/policy initialization before replying to get_state."
+      - "Subagent child process discovers sessionFile via RPC get_state and validates it before exposing task_id."
+      - "Resume marks task_id active before starting the child process and clears it after completion, failure, or cancellation."
+    coordination_mechanisms:
+      - "Selected Pi extension flag for parent and child extension loading."
+      - "Launcher-provided Pi extension entry path for parent and child extension loading."
+      - "Pi before_agent_start and pi.setModel for persona projection."
+      - "Pi extension command for persona switch."
+      - "Pi setActiveTools plus tool_call hook for allow/deny enforcement."
+      - "Pi custom tool for subagent spawn/resume."
+      - "Pi RPC JSONL for child sessions."
+      - "Child stderr fatal-startup line before RPC readiness."
+      - "In-memory active-task set for same-parent same-task resume exclusion."
+    wiring_strategy: "Explicit launcher environment plus selected Pi extension flag registration."
+    governance_owner: "Larva shell owns launcher; Pi extension owns runtime projection, tool-policy parsing, and active-task state."
+
+  shared_abstractions:
+    shared_types:
+      - name: "PersonaSpec"
+        owner_module: "larva.core / opifex contract"
+        consumers: ["Pi extension", "Larva CLI/MCP"]
+        rationale: "Canonical persona identity, prompt, model, capabilities, can_spawn."
+      - name: "PersonaEnvelope"
+        owner_module: "contrib/pi-extension"
+        consumers: ["persona switch", "prompt/model projection", "child startup"]
+        rationale: "One committed process-local envelope prevents per-turn drift and half-applied state."
+      - name: "PiToolPolicy"
+        owner_module: "contrib/pi-extension"
+        consumers: ["persona switch", "tool_call hook", "subagent child startup"]
+        rationale: "One adapter-local policy shape prevents duplicated allow/deny parsing."
+      - name: "LarvaError"
+        owner_module: "contrib/pi-extension"
+        consumers: ["persona switch", "tool policy", "larva_subagent result"]
+        rationale: "Stable machine-readable failure shape for tests and RPC clients."
+      - name: "LarvaSubagentResult"
+        owner_module: "contrib/pi-extension"
+        consumers: ["larva_subagent tool", "parent model"]
+        rationale: "Minimal public result shape: task_id, persona_id, status, result_text, error. Not produced when tool_call blocks the tool before handler invocation."
+    shared_protocols: []
+    shared_utilities: "N/A: no utility should be shared until implementation proves duplication."
+    decision: "Only types that cross command/tool/session boundaries are shared; internals stay local."
+
+  module_split_recommendations:
+    - module: "src/larva/shell/pi.py"
+      owner: "larva shell"
+      reason_to_split: "Process/env launcher concerns are separate from OpenCode launcher and from core persona semantics."
+    - module: "contrib/pi-extension/larva.ts"
+      owner: "Pi adapter"
+      reason_to_split: "Pi extension hooks are runtime-specific and should not enter Python core/app layers."
+    - module: "contrib/pi-extension/README.md"
+      owner: "Pi adapter docs"
+      reason_to_split: "Operator-facing install, policy, and runtime semantics belong next to the extension."
+
+  ux_surfaces:
+    - surface: "CLI command"
+      scope: "larva pi --persona <id> argument forwarding, extension loading, exit behavior, stderr errors"
+    - surface: "Pi slash command"
+      scope: "/larva-persona completion, selector, status/error messages"
+    - surface: "Pi custom tool"
+      scope: "larva_subagent tool description and result shape"
+
+  runtime_surfaces:
+    - surface: "CLI"
+      launch_or_entrypoint: "larva pi --persona <id>"
+      minimum_liveness_proof: "A Pi session starts via the selected extension flag with the Larva extension loaded and status shows active persona."
+    - surface: "Pi RPC child process"
+      launch_or_entrypoint: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>"
+      minimum_liveness_proof: "larva_subagent returns success/failed/cancelled with public task_id when allocated."
+
+  open_questions: []
+
+  readiness: "READY_FOR_PLANNING"
+```
+
+## Verification targets
+
+Implementation gates must prove these observable behaviors:
+
+1. `larva pi --persona known -- --version` invokes real Pi as
+   `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`, sets
+   `LARVA_PI_INITIAL_PERSONA_ID=known`, `LARVA_PI_REAL_BIN`,
+   `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, and
+   `LARVA_CLI_ARGV_JSON` for the extension process.
+2. `larva pi --persona missing` does not start Pi, exits non-zero, and writes
+   `larva pi: LARVA_PERSONA_NOT_FOUND:` to stderr.
+3. Missing real `pi` executable exits `127` and writes
+   `larva pi: LARVA_PI_NOT_FOUND:` to stderr.
+4. `LARVA_PI_BIN` test override is honored when it points to an executable; PATH
+   discovery skips Larva's own shim path and uses the first valid real `pi`.
+5. Extension loading preflight prefers `-e` when supported, otherwise uses
+   `--extension` when supported. If neither flag is supported, it exits before Pi
+   starts with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED` and does not write Pi settings.
+6. Initial `--persona` commit runs during extension initialization before first
+   user prompt, selector, or `larva: none` status. Malformed/unavailable model,
+   invalid policy shape, or failed tool enumeration writes
+   `larva pi: <ERROR_CODE>:` to stderr and makes Pi exit non-zero.
+7. `/larva-persona <valid>` commits one `PersonaEnvelope`, calls
+   `ctx.modelRegistry.find(...)` plus `pi.setModel(...)`, and status shows the
+   committed persona id.
+8. With no active persona, interactive status is set to `larva: none`.
+9. `before_agent_start` composes Pi's existing system prompt with the committed
+   Larva prompt and watermark; it does not replace project/user context wholesale
+   and it replaces an existing Larva watermark block instead of duplicating it.
+10. Launcher mode detection sets `LARVA_PI_INTERACTIVE_TUI=0` for exact `-p`,
+    exact `--print`, exact `--json`, `--mode rpc|print|json|sdk`, missing/empty or
+    unknown `--mode`, and conflicting mode/print markers; it sets `1` when no
+    recognized non-interactive marker is present. `/larva-persona` with no
+    argument opens a selector only when `LARVA_PI_INTERACTIVE_TUI=1`; selecting a
+    persona commits it and cancelling leaves state unchanged with
+    `LARVA_BAD_INPUT`. RPC `ctx.hasUI`, print mode, JSON mode, SDK mode, or
+    `LARVA_PI_INTERACTIVE_TUI=0` do not open a selector.
+11. `/larva-persona` with no argument in non-interactive mode returns `ok: false`
+    with `LARVA_BAD_INPUT` and leaves state unchanged.
+12. `/larva-persona <invalid>` returns `ok: false` with
+    `LARVA_PERSONA_NOT_FOUND` and leaves the previous envelope unchanged.
+13. Model strings parse at the first slash: `openrouter/google/gemini` becomes
+    provider `openrouter` and model id `google/gemini`; missing slash, empty
+    provider, empty model id, unavailable model, invalid target policy shape, or
+    failed tool enumeration returns `ok: false` with the documented error and
+    leaves the previous envelope unchanged.
+14. Missing policy file and missing active target persona policy entry do not add
+    extra tool restrictions: the commit uses the current Pi model-facing tool
+    baseline, and prior Larva restrictions from an earlier persona do not carry
+    over.
+15. Extension policy validation rejects unreadable JSON, wrong top-level shape,
+    invalid active target entry shape, non-string `allow`/`deny` entries in the
+    active target, and unknown keys in the active target. The launcher does not
+    parse the policy file. Invalid non-target entries are ignored until targeted.
+16. Policy names for tools not currently registered in Pi are ignored, not
+    rejected. `deny` wins over `allow`; present `allow` acts as an allowlist over
+    existing model-facing tools; empty `allow: []` blocks all model-facing tools.
+17. Policy commit enumerates the current Pi model-facing tool baseline, calls
+    `pi.setActiveTools(filteredTools)`, does not carry over prior Larva
+    restrictions, and also enforces the same decision through `tool_call`
+    interception. A denied tool call returns `ToolPolicyDecision` with
+    `action: "deny"` and `LARVA_TOOL_DENIED`; the underlying Pi tool is not
+    invoked. When the denied tool is `larva_subagent`, no `LarvaSubagentResult` is
+    produced.
+18. `can_spawn: false` or omitted makes `larva_subagent` return `failed` with
+    `LARVA_SPAWN_NOT_ALLOWED`.
+19. `can_spawn: ["target"]` allows only listed targets and rejects unlisted
+    targets with `LARVA_SPAWN_NOT_ALLOWED`.
+20. No active parent persona makes `larva_subagent` return `failed` with
+    `LARVA_NO_ACTIVE_PERSONA`.
+21. Bad `larva_subagent` input returns `failed` with `LARVA_BAD_INPUT`, null
+    public `task_id`, and `persona_id: ""` unless the target id passed basic
+    non-empty string validation.
+22. Child session root defaults to `~/.pi/larva/child-sessions`, supports absolute
+    `LARVA_PI_CHILD_SESSION_DIR` test override, is created if missing, and rejects
+    empty, relative, unreadable, or uncreatable overrides with
+    `LARVA_CHILD_START_FAILED`.
+23. Public `task_id` paths outside the canonical child session root are rejected
+    with `LARVA_BAD_INPUT`.
+24. Successful `larva_subagent` returns `status: "success"`, public `task_id`,
+    string final assistant `result_text`, and `error: null`.
+25. Failed `larva_subagent` after session allocation returns public `task_id` when
+    known and a non-null `{code, message}` error object.
+26. Child startup uses `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
+    `LARVA_PI_EXTENSION_ENTRY`, not bare `pi` or derived extension-entry paths;
+    uses Pi RPC `get_state`, validates `data.sessionFile` as a readable `.jsonl`
+    path under the child session root, uses that path as `task_id`, sends
+    `prompt`, waits for `agent_end`, then requires
+    `get_last_assistant_text.data.text` to be a string for `result_text`.
+27. No child-session sidecar file is written or required; resume validation relies
+    on child-root path containment, readable `.jsonl` file shape, and explicit
+    `persona_id` resolution.
+28. `task_id` resume uses Pi RPC `switch_session`, then appends the new `task` via
+    `prompt` and returns output from that resumed invocation, not prior raw JSONL.
+29. Resume path taxonomy is deterministic: non-string/empty/relative task id,
+    canonicalization failure, symlink escape, or outside-root path returns
+    `LARVA_BAD_INPUT`; under-root non-`.jsonl`, directory, non-regular file, or
+    unreadable file returns `LARVA_SESSION_INVALID`; missing under-root `.jsonl`
+    returns `LARVA_SESSION_NOT_FOUND`.
+30. Resume fails with `LARVA_SESSION_BUSY` when the same canonical `task_id` is
+    already active in this parent extension process.
+31. Before starting a resume child process, the parent validates only input/path,
+    parent spawn authority, and busy state. Child persona/model/policy/tool
+    initialization happens inside the child extension.
+32. Two concurrent resumes of the same `task_id` in one parent Pi extension
+    process use the in-memory active-task set; one proceeds and the other returns
+    `failed` with `LARVA_SESSION_BUSY` before starting a child process.
+33. Parent Pi restart clears busy state; there is no stale lock file to remove.
+34. A running child uses the persona/model/tool-policy envelope captured at that
+    child process startup. A later resume reuses the child session file but
+    re-resolves the requested child persona id from the current registry before
+    appending the new task.
+35. Parent abort sends Pi RPC `abort`, returns `status: "cancelled"` with
+    `LARVA_CHILD_CANCELLED` when abort or kill stops the child, returns `success`
+    if the child completed during grace, and returns `failed` with
+    `LARVA_CHILD_PROTOCOL_FAILED` if child state becomes unknowable.
+36. Child sessions expose nested `larva_subagent` only when the child persona's
+    own `can_spawn` and child tool policy allow it.
+37. Persona resolution bridge uses `LARVA_CLI_ARGV_JSON` plus `resolve <id> --json`
+    and inherits launcher registry environment. Fallback to `larva`/`uvx larva` is
+    allowed only when `LARVA_CLI_ARGV_JSON` is absent. Timeout/nonzero/malformed
+    output maps to `LARVA_PERSONA_NOT_FOUND`.
+38. Persona list bridge uses `LARVA_CLI_ARGV_JSON` plus `list --json`, requires
+    only `data[].id` for completion/selector population, and maps list failure to
+    empty completions or `LARVA_PERSONA_NOT_FOUND` for the interactive
+    no-argument selector.
+39. Before child RPC readiness, parent parses only child stderr lines shaped as
+    `larva pi: <ERROR_CODE>:` and propagates only `LARVA_PERSONA_NOT_FOUND`,
+    `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and
+    `LARVA_TOOL_ENUMERATION_FAILED`; other pre-RPC child exits map to
+    `LARVA_CHILD_START_FAILED`.
+40. Child RPC command responses for `get_state`, `switch_session`, `prompt`, and
+    `get_last_assistant_text` time out after ten seconds with
+    `LARVA_CHILD_PROTOCOL_FAILED`; waiting for `agent_end` after an accepted prompt
+    is unbounded until Pi completes or the parent aborts.
+41. If Pi truncates or limits returned assistant text but still returns a string
+    final text field, `larva_subagent` returns that text without semantic
+    usability judgment. `LARVA_CHILD_PROTOCOL_FAILED` is reserved for malformed,
+    failed, text-missing, null-text, or non-string-text RPC responses.
+
+## Implementation handoff
+
+Suggested order:
+
+1. Add the `larva pi` shell launcher and packaging hook for the bundled extension.
+   It must discover real Pi, select `-e` or `--extension`, launch with that flag,
+   preserve forwarded user Pi args, and pass `LARVA_PI_REAL_BIN`,
+   `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
+   `LARVA_PI_INTERACTIVE_TUI`, and the policy file path without parsing policy.
+2. Add the Pi extension command for active persona state, completion, UI status,
+   persona resolve/list through `LARVA_CLI_ARGV_JSON`, model switch through
+   `pi.setModel`, and snapshot prompt composition through `before_agent_start`.
+3. Add `~/.pi/tool-policy.json` parsing and tool-call blocking inside the Pi
+   extension, including `pi.setActiveTools(filteredTools)` plus `tool_call`
+   interception.
+4. Add `larva_subagent` backed by one child Pi RPC process per invocation using
+   `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
+   `LARVA_PI_EXTENSION_ENTRY`, the child session root, public `task_id` path
+   validation, process-local same-`task_id` busy tracking, and `task_id` resume.
+5. Add documentation and verification tests for the behaviors listed above.
+
+Watch for:
+
+- Do not import Pi-specific policy concepts into PersonaSpec validation.
+- Do not silently continue with a half-switched persona/model/policy state.
+- Do not dump persona registries into the system prompt.
+- Do not build worktree isolation or a job scheduler in this feature.
+- Do not mutate Pi JSONL session files for Larva provenance.
+- Do not write Pi settings files as a hidden fallback for extension loading.
+- Do not add sidecar metadata or filesystem lock files unless cross-process resume
+  safety becomes an explicit requirement.
