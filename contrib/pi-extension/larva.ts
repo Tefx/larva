@@ -27,38 +27,8 @@ type LarvaErrorCode =
 
 type LarvaError = { code: LarvaErrorCode; message: string };
 type PiToolPolicy = { allow?: string[]; deny?: string[] };
-type PersonaSpec = {
-  id: string;
-  prompt: string;
-  model: string;
-  spec_digest?: string;
-  can_spawn?: boolean | string[];
-};
 
-type PersonaEnvelope = {
-  persona_id: string;
-  spec_digest: string;
-  model: string;
-  prompt: string;
-  tool_policy: PiToolPolicy;
-  can_spawn?: boolean | string[];
-};
-
-type PersonaSwitchResult =
-  | { ok: true; envelope: PersonaEnvelope }
-  | { ok: false; error: LarvaError };
-
-type ToolPolicyDecision = { action: "allow" } | { action: "deny"; error: LarvaError };
-type LarvaSubagentInput = { persona_id?: unknown; task?: unknown; task_id?: unknown };
-type LarvaSubagentResult = {
-  task_id: string | null;
-  persona_id: string;
-  status: "success" | "failed" | "cancelled";
-  result_text: string;
-  error: LarvaError | null;
-};
-
-type RuntimeEnv = {
+type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_INITIAL_PERSONA_ID?: string;
   LARVA_PI_TOOL_POLICY_FILE?: string;
   LARVA_PI_CHILD_SESSION_DIR?: string;
@@ -71,25 +41,340 @@ type RuntimeEnv = {
   LARVA_PI_LAUNCHED?: string;
 };
 
-type PiContext = {
-  env?: RuntimeEnv;
-  ui?: { setStatus?: (text: string) => void | Promise<void> };
-  modelRegistry?: { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
-  getAllTools?: () => string[] | Promise<string[]>;
-  setActiveTools?: (tools: string[]) => void | boolean | Promise<void | boolean>;
-  setModel?: (model: unknown) => void | boolean | Promise<void | boolean>;
-  on?: (event: string, handler: (value: unknown) => unknown) => void;
-  abortSignal?: AbortSignal;
+export type PersonaSpec = {
+  id: string;
+  description?: string;
+  prompt: string;
+  model: string;
+  capabilities?: Record<string, unknown>;
+  spec_version?: string;
+  spec_digest?: string;
+  can_spawn?: boolean | string[];
 };
 
-const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*? -->\n?/g;
-const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
-const activeTaskIds: Set<string> = new Set<string>();
-let activeParent: PersonaEnvelope | null = null;
-let allowedToolNames: Set<string> | null = null;
+export type PersonaEnvelope = {
+  persona_id: string;
+  spec_digest: string;
+  model: string;
+  prompt: string;
+  tool_policy: PiToolPolicy;
+  can_spawn?: boolean | string[];
+};
 
-function error(code: LarvaErrorCode, message: string): LarvaError {
-  return { code, message };
+export type PersonaSwitchResult =
+  | { ok: true; envelope: PersonaEnvelope }
+  | { ok: false; error: LarvaError };
+
+export type ToolPolicyDecision = { action: "allow" } | { action: "deny"; error: LarvaError };
+export type LarvaSubagentInput = { persona_id?: unknown; task?: unknown; task_id?: unknown };
+export type LarvaSubagentResult = {
+  task_id: string | null;
+  persona_id: string;
+  status: "success" | "failed" | "cancelled";
+  result_text: string;
+  error: LarvaError | null;
+};
+
+type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
+type CommandDefinition = {
+  name: string;
+  description: string;
+  complete?: (prefix: string) => Promise<string[]>;
+  handler: (input?: string) => Promise<PersonaSwitchResult>;
+};
+type SelectorOption = { id: string; label: string; description?: string };
+type BridgeListItem = { id: string; description?: string; model?: string };
+type PiApi = {
+  setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
+  getAllTools?: () => unknown[] | Promise<unknown[]>;
+  setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
+  registerCommand?: (command: CommandDefinition) => void;
+  on?: (event: "before_agent_start" | "tool_call" | string, handler: (payload: unknown) => unknown) => void;
+};
+type PiContext = PiApi & {
+  env?: RuntimeEnv;
+  ui?: { setStatus?: (status: string) => void | Promise<void> };
+  modelRegistry?: ModelRegistry;
+  hasUI?: boolean;
+  openSelector?: (options: SelectorOption[]) => Promise<string | null>;
+  abortSignal?: AbortSignal;
+};
+type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string> };
+type ParsedModel = { provider: string; modelId: string };
+
+const CLI_TIMEOUT_MS = 10_000;
+const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
+const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
+const state: ActiveState = { envelope: null, activeTools: new Set<string>() };
+const activeTaskIds: Set<string> = new Set<string>();
+
+const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
+  const nodeEnv = typeof process === "undefined" ? {} : process.env;
+  return { ...nodeEnv, ...(ctx?.env ?? {}) } as RuntimeEnv;
+}
+
+export function parseModel(model: string): ParsedModel | null {
+  const slash = model.indexOf("/");
+  if (slash <= 0 || slash === model.length - 1) return null;
+  const provider = model.slice(0, slash);
+  const modelId = model.slice(slash + 1);
+  return provider && modelId ? { provider, modelId } : null;
+}
+
+async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
+  const candidates = buildLarvaArgvCandidates(env, suffix);
+  for (const argv of candidates) {
+    const result = await spawnJsonCommand(argv, env);
+    if (result.ok) return result;
+  }
+  return { ok: false };
+}
+
+function buildLarvaArgvCandidates(env: RuntimeEnv, suffix: string[]): string[][] {
+  const encoded = env.LARVA_CLI_ARGV_JSON;
+  if (encoded !== undefined) {
+    try {
+      const prefix = JSON.parse(encoded) as unknown;
+      if (!Array.isArray(prefix) || !prefix.every((part) => typeof part === "string")) return [];
+      return [[...prefix, ...suffix]];
+    } catch {
+      return [];
+    }
+  }
+  return [["larva", ...suffix], ["uvx", "larva", ...suffix]];
+}
+
+async function spawnJsonCommand(argv: string[], env: RuntimeEnv): Promise<{ ok: true; stdout: string } | { ok: false }> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CLI_TIMEOUT_MS);
+  try {
+    const [command, ...args] = argv;
+    if (!command) return { ok: false };
+    const stdout = await new Promise<string>((resolveStdout, reject) => {
+      const child = spawn(command, args, { env: { ...process.env, ...env }, signal: controller.signal });
+      const chunks: Buffer[] = [];
+      child.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+      child.on("error", reject);
+      child.on("close", (code: number | null) => {
+        if (code === 0) resolveStdout(Buffer.concat(chunks).toString("utf8"));
+        else reject(new Error(`larva exited ${code ?? "unknown"}`));
+      });
+    });
+    return { ok: true, stdout };
+  } catch {
+    return { ok: false };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function resolvePersona(id: string, ctx?: { env?: RuntimeEnv }): Promise<PersonaSpec> {
+  const result = await runLarvaCommand(currentEnv(ctx), ["resolve", id, "--json"]);
+  if (!result.ok) throw error("LARVA_PERSONA_NOT_FOUND", `Unable to resolve persona ${id}`);
+  try {
+    const parsed = JSON.parse(result.stdout) as unknown;
+    const data = isRecord(parsed) ? parsed.data : undefined;
+    if (isPersonaSpec(data)) return data;
+  } catch {
+    // malformed output maps to LARVA_PERSONA_NOT_FOUND
+  }
+  throw error("LARVA_PERSONA_NOT_FOUND", `Invalid persona payload for ${id}`);
+}
+
+function isPersonaSpec(value: unknown): value is PersonaSpec {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    value.id.length > 0 &&
+    typeof value.prompt === "string" &&
+    typeof value.model === "string" &&
+    (value.capabilities === undefined || isRecord(value.capabilities)) &&
+    (value.spec_version === undefined || typeof value.spec_version === "string")
+  );
+}
+
+export async function listPersonas(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[]> {
+  const result = await runLarvaCommand(currentEnv(ctx), ["list", "--json"]);
+  if (!result.ok) return [];
+  try {
+    const parsed = JSON.parse(result.stdout) as unknown;
+    const data = isRecord(parsed) ? parsed.data : undefined;
+    if (!Array.isArray(data)) return [];
+    return data.map((item) => normalizeListItem(item)).filter((item): item is BridgeListItem => item !== null);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeListItem(item: unknown): BridgeListItem | null {
+  if (!isRecord(item) || typeof item.id !== "string" || item.id.length === 0) return null;
+  return {
+    id: item.id,
+    description: typeof item.description === "string" ? item.description : undefined,
+    model: typeof item.model === "string" ? item.model : undefined,
+  };
+}
+
+export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<string[]> {
+  const personas = await listPersonas(ctx);
+  return personas.map((persona) => persona.id).filter((id) => id.startsWith(prefix));
+}
+
+export function getActiveEnvelope(): PersonaEnvelope | null {
+  return state.envelope;
+}
+
+async function setStatus(ctx: PiContext): Promise<void> {
+  const inactiveStatus = "larva: none";
+  await ctx.ui?.setStatus?.(state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
+}
+
+async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
+  const parsed = parseModel(spec.model);
+  if (!parsed) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
+  const model = await ctx.modelRegistry?.find?.(parsed.provider, parsed.modelId);
+  if (!model) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${spec.model}`);
+  const accepted = await pi.setModel?.(model);
+  if (accepted === false) throw error("LARVA_MODEL_UNAVAILABLE", `Pi rejected model ${spec.model}`);
+  return model;
+}
+
+async function enumerateTools(pi: PiApi): Promise<string[]> {
+  try {
+    const tools = await pi.getAllTools?.();
+    if (!Array.isArray(tools)) return [];
+    return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
+  } catch {
+    throw error("LARVA_TOOL_ENUMERATION_FAILED", "Unable to enumerate Pi tools");
+  }
+}
+
+function toolName(tool: unknown): string | null {
+  if (typeof tool === "string" && tool.length > 0) return tool;
+  if (isRecord(tool) && typeof tool.name === "string" && tool.name.length > 0) return tool.name;
+  return null;
+}
+
+async function loadPolicy(personaId: string, env: RuntimeEnv): Promise<PiToolPolicy> {
+  const file = env.LARVA_PI_TOOL_POLICY_FILE;
+  if (!file) return {};
+  try {
+    const fs = await import("node:fs/promises");
+    const raw = await fs.readFile(file, "utf8").catch((readError: unknown) => {
+      const code = isRecord(readError) ? readError.code : undefined;
+      if (code === "ENOENT") return null;
+      throw readError;
+    });
+    if (raw === null) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isRecord(parsed) || Object.keys(parsed).some((key) => key !== "personas") || !isRecord(parsed.personas)) {
+      throw new Error("invalid top-level policy");
+    }
+    const target = parsed.personas[personaId];
+    if (target === undefined) return {};
+    if (!isRecord(target)) throw new Error("invalid persona policy");
+    const keys = Object.keys(target);
+    if (keys.some((key) => key !== "allow" && key !== "deny")) throw new Error("invalid policy key");
+    return {
+      allow: normalizePolicyArray(target.allow),
+      deny: normalizePolicyArray(target.deny),
+    };
+  } catch {
+    throw error("LARVA_POLICY_INVALID", "Invalid Larva Pi tool policy");
+  }
+}
+
+function normalizePolicyArray(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string" && entry.length > 0)) {
+    throw new Error("invalid policy array");
+  }
+  return Array.from(new Set(value));
+}
+
+export function filterPolicyTools(baseline: string[], policy: PiToolPolicy): string[] {
+  const existing = new Set(baseline);
+  const denied = new Set((policy.deny ?? []).filter((name) => existing.has(name)));
+  const allowSource = policy.allow === undefined ? baseline : policy.allow.filter((name) => existing.has(name));
+  return allowSource.filter((name) => !denied.has(name)); // deny wins via denied.has
+}
+
+export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
+  const previousEnvelope = state.envelope;
+  const previousActiveTools = new Set(state.activeTools);
+  try {
+    const spec = await resolvePersona(personaId, ctx);
+    await validateModel(spec, ctx, pi);
+    const baseline = await enumerateTools(pi);
+    const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
+    const activeTools = filterPolicyTools(baseline, tool_policy);
+    const applied = await pi.setActiveTools?.(activeTools);
+    if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    const envelope: PersonaEnvelope = {
+      persona_id: spec.id,
+      spec_digest: spec.spec_digest ?? "",
+      model: spec.model,
+      prompt: spec.prompt,
+      tool_policy,
+      can_spawn: spec.can_spawn,
+    };
+    state.envelope = envelope;
+    state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
+    await setStatus(ctx);
+    return { ok: true, envelope };
+  } catch (caught) {
+    state.envelope = previousEnvelope; // previousEnvelope rollback preserves model-facing state.
+    state.activeTools = previousActiveTools;
+    const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
+    return { ok: false, error: larvaError };
+  }
+}
+
+function isLarvaError(value: unknown): value is LarvaError {
+  return isRecord(value) && typeof value.code === "string" && typeof value.message === "string";
+}
+
+export async function openPersonaSelector(ctx: PiContext): Promise<string | null> {
+  const personas = await listPersonas(ctx);
+  if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
+  const options = personas.map((persona) => ({ id: persona.id, label: persona.id, description: persona.description ?? persona.model }));
+  return ctx.openSelector ? ctx.openSelector(options) : null;
+}
+
+export async function handlePersonaCommand(input: string | undefined, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
+  const trimmed = input?.trim() ?? "";
+  if (trimmed.length > 0) return commitPersona(trimmed, ctx, pi);
+  if (currentEnv(ctx).LARVA_PI_INTERACTIVE_TUI !== "1") {
+    return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive TUI only; preserve previousEnvelope") };
+  }
+  const selected = await openPersonaSelector(ctx);
+  if (!selected) return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selection cancelled") };
+  return commitPersona(selected, ctx, pi);
+}
+
+export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope): string {
+  const cleanPrompt = systemPrompt.replace(LARVA_WATERMARK_RE, "").trimEnd();
+  const block = [
+    `<!-- larva-spec: ${envelope.persona_id}@${envelope.spec_digest} -->`,
+    envelope.prompt,
+    "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.",
+  ].join("\n");
+  return `${cleanPrompt}\n\n${block}`;
+}
+
+export function before_agent_start(event: unknown): { systemPrompt: string } | undefined {
+  if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return undefined;
+  return { systemPrompt: replaceLarvaWatermark(event.systemPrompt, state.envelope) };
+}
+
+export function decideToolCall(tool: string): ToolPolicyDecision {
+  if (state.activeTools.size === 0 || state.activeTools.has(tool)) return { action: "allow" };
+  return { action: "deny", error: error("LARVA_TOOL_DENIED", `Larva policy denied ${tool}`) };
 }
 
 function failed(task_id: string | null, persona_id: string, larvaError: LarvaError): LarvaSubagentResult {
@@ -97,41 +382,20 @@ function failed(task_id: string | null, persona_id: string, larvaError: LarvaErr
 }
 
 function cancelled(task_id: string | null, persona_id: string): LarvaSubagentResult {
-  return {
-    task_id,
-    persona_id,
-    status: "cancelled",
-    result_text: "",
-    error: error("LARVA_CHILD_CANCELLED", "Child run was cancelled."),
-  };
+  return { task_id, persona_id, status: "cancelled", result_text: "", error: error("LARVA_CHILD_CANCELLED", "Child run was cancelled.") };
 }
 
 function success(task_id: string, persona_id: string, result_text: string): LarvaSubagentResult {
   return { task_id, persona_id, status: "success", result_text, error: null };
 }
 
-function parseModel(model: string): { provider: string; modelId: string } | null {
-  const split = model.indexOf("/");
-  if (split <= 0 || split === model.length - 1) return null;
-  const provider = model.slice(0, split);
-  const modelId = model.slice(split + 1);
-  return provider && modelId ? { provider, modelId } : null;
-}
-
-function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope | null): string {
-  const withoutPrevious = systemPrompt.replace(LARVA_WATERMARK_RE, "\n").trimEnd();
-  if (!envelope) return withoutPrevious;
-  const digest = envelope.spec_digest || "unknown";
-  return `${withoutPrevious}\n\n${envelope.prompt}\n<!-- larva-spec: ${envelope.persona_id}@${digest} -->\nUse Larva MCP or the larva CLI (\`larva\`, fallback \`uvx larva\`) to discover and resolve personas when needed.`;
-}
-
 function normalizeString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
-function canSpawn(parent: PersonaEnvelope | null, personaId: string): LarvaError | null {
-  if (!parent) return error("LARVA_NO_ACTIVE_PERSONA", "No active parent Larva persona.");
-  const authority = parent.can_spawn;
+function canSpawn(activeParent: PersonaEnvelope | null, personaId: string): LarvaError | null {
+  if (!activeParent) return error("LARVA_NO_ACTIVE_PERSONA", "No active parent Larva persona.");
+  const authority = activeParent.can_spawn;
   if (authority === true) return null;
   if (Array.isArray(authority) && authority.includes(personaId)) return null;
   return error("LARVA_SPAWN_NOT_ALLOWED", "Active parent persona cannot spawn the requested persona.");
@@ -214,7 +478,7 @@ function startChild(env: RuntimeEnv, root: string, personaId: string): ChildProc
         ...process.env,
         ...env,
         LARVA_PI_INITIAL_PERSONA_ID: personaId,
-        LARVA_PI_PARENT_PERSONA_ID: activeParent?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
+        LARVA_PI_PARENT_PERSONA_ID: state.envelope?.persona_id || env.LARVA_PI_PARENT_PERSONA_ID || "",
         LARVA_PI_INTERACTIVE_TUI: "0",
       },
       stdio: ["pipe", "pipe", "pipe"],
@@ -231,6 +495,7 @@ function parseStartupError(stderr: string): LarvaError {
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
     "LARVA_TOOL_ENUMERATION_FAILED",
+    "LARVA_CHILD_START_FAILED",
   ];
   if (match && whitelist.includes(match[1] as LarvaErrorCode)) {
     return error(match[1] as LarvaErrorCode, "Child startup failed with a Larva startup error.");
@@ -298,10 +563,6 @@ class RpcClient {
   }
 }
 
-function isLarvaError(value: unknown): value is LarvaError {
-  return typeof value === "object" && value !== null && "code" in value && "message" in value;
-}
-
 function isSuccessResponse(value: unknown): boolean {
   return typeof value === "object" && value !== null && (value as { success?: unknown }).success === true;
 }
@@ -322,11 +583,14 @@ function finalText(value: unknown): string | LarvaError {
 }
 
 async function runChildSequence(env: RuntimeEnv, root: string, personaId: string, task: string, taskId: string | null): Promise<LarvaSubagentResult> {
+  try {
+    await resolvePersona(personaId, { env });
+  } catch (caught) {
+    return failed(taskId, personaId, isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Child persona could not be resolved."));
+  }
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
   const rpc = new RpcClient(child);
-  const abortSignal = globalThis.AbortSignal ? undefined : undefined;
-  void abortSignal;
   if (taskId) {
     const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
     if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
@@ -334,8 +598,8 @@ async function runChildSequence(env: RuntimeEnv, root: string, personaId: string
       return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
     }
   } else {
-    const state = await rpc.command("state-1", { type: "get_state" });
-    const sessionFile = sessionFileFromState(state);
+    const stateResult = await rpc.command("state-1", { type: "get_state" });
+    const sessionFile = sessionFileFromState(stateResult);
     if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
     const canonical = await validateTaskId(sessionFile, root);
     if (isLarvaError(canonical)) { child.kill(); return failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")); }
@@ -355,9 +619,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
   const parsed = validateInput(input);
   if ("status" in parsed) return parsed; // public task_id: null on bad input pre-session failures
   const { personaId, task, taskId } = parsed;
-  const authorityError = canSpawn(activeParent, personaId);
-  if (authorityError) return failed(null, personaId, authorityError);
-  const env = ctx?.env || process.env;
+  const env = currentEnv(ctx);
   const root = await childSessionRoot(env);
   if (isLarvaError(root)) return failed(null, personaId, root);
 
@@ -366,6 +628,10 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
     const validated = await validateTaskId(taskId, root);
     if (isLarvaError(validated)) return failed(null, personaId, validated);
     canonicalTaskId = validated;
+  }
+  const authorityError = canSpawn(state.envelope, personaId);
+  if (authorityError) return failed(null, personaId, authorityError);
+  if (canonicalTaskId) {
     if (activeTaskIds.has(canonicalTaskId)) return failed(canonicalTaskId, personaId, error("LARVA_SESSION_BUSY", "Child session is already being resumed."));
     activeTaskIds.add(canonicalTaskId);
   }
@@ -380,91 +646,25 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
   }
 }
 
-async function resolvePersona(personaId: string, env: RuntimeEnv): Promise<PersonaSpec | LarvaError> {
-  const prefix = env.LARVA_CLI_ARGV_JSON ? JSON.parse(env.LARVA_CLI_ARGV_JSON) : ["uvx", "larva"];
-  if (!Array.isArray(prefix) || !prefix.every((item) => typeof item === "string")) return error("LARVA_PERSONA_NOT_FOUND", "Invalid Larva CLI argv prefix.");
-  const [cmd, ...args] = [...prefix, "resolve", personaId, "--json"];
-  const child = spawn(cmd, args, { env: process.env, stdio: ["ignore", "pipe", "ignore"], signal: AbortSignal.timeout(10_000) });
-  let stdout = "";
-  child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString("utf8"); });
-  const code = await new Promise<number | null>((resolveExit) => child.on("exit", resolveExit));
-  if (code !== 0) return error("LARVA_PERSONA_NOT_FOUND", "Persona could not be resolved.");
-  try {
-    const parsed = JSON.parse(stdout) as { data?: PersonaSpec };
-    if (parsed.data && typeof parsed.data.id === "string") return parsed.data;
-  } catch { /* malformed output maps to persona-not-found */ }
-  return error("LARVA_PERSONA_NOT_FOUND", "Persona resolve returned malformed JSON.");
-}
-
-async function completePersonaIds(env: RuntimeEnv): Promise<string[]> {
-  const prefix = env.LARVA_CLI_ARGV_JSON ? JSON.parse(env.LARVA_CLI_ARGV_JSON) : ["uvx", "larva"];
-  const [cmd, ...args] = [...prefix, "list", "--json"];
-  const child = spawn(cmd, args, { env: process.env, stdio: ["ignore", "pipe", "ignore"], signal: AbortSignal.timeout(10_000) });
-  let stdout = "";
-  child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString("utf8"); });
-  await new Promise((resolveExit) => child.on("exit", resolveExit));
-  const parsed = JSON.parse(stdout) as { data?: Array<{ id?: unknown }> };
-  return Array.isArray(parsed.data) ? parsed.data.map((item) => item.id).filter((id): id is string => typeof id === "string") : [];
-}
-
-async function filterPolicyTools(ctx: PiContext, policy: PiToolPolicy): Promise<string[] | LarvaError> {
-  try {
-    const baseline = await ctx.getAllTools?.();
-    if (!Array.isArray(baseline)) return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
-    const baselineSet = new Set(baseline);
-    const denied = new Set((policy.deny || []).filter((tool) => baselineSet.has(tool)));
-    const allowSource = policy.allow ? policy.allow.filter((tool) => baselineSet.has(tool)) : baseline;
-    const filtered = allowSource.filter((tool) => !denied.has(tool)); // deny wins
-    const applied = await ctx.setActiveTools?.(filtered);
-    if (applied === false) return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed.");
-    allowedToolNames = new Set(filtered);
-    return filtered;
-  } catch {
-    return error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
-  }
-}
-
-async function commitPersona(personaId: string, ctx: PiContext): Promise<PersonaSwitchResult> {
-  const previousEnvelope = activeParent;
-  const spec = await resolvePersona(personaId, ctx.env || process.env);
-  if (isLarvaError(spec)) return { ok: false, error: spec };
-  const parsed = parseModel(spec.model);
-  if (!parsed) return { ok: false, error: error("LARVA_MODEL_UNAVAILABLE", "Persona model must include provider/modelId such as openrouter/google/gemini.") };
-  const model = await ctx.modelRegistry?.find?.(parsed.provider, parsed.modelId);
-  if (!model) return { ok: false, error: error("LARVA_MODEL_UNAVAILABLE", "Persona model is unavailable.") };
-  const setModel = await ctx.setModel?.(model);
-  if (setModel === false) return { ok: false, error: error("LARVA_MODEL_UNAVAILABLE", "Pi rejected persona model.") };
-  const envelope: PersonaEnvelope = { persona_id: spec.id, spec_digest: spec.spec_digest || "", model: spec.model, prompt: spec.prompt, tool_policy: {}, can_spawn: spec.can_spawn };
-  const tools = await filterPolicyTools(ctx, envelope.tool_policy);
-  if (isLarvaError(tools)) { activeParent = previousEnvelope; return { ok: false, error: tools }; }
-  activeParent = envelope;
-  await ctx.ui?.setStatus?.(`larva: ${envelope.persona_id}`);
-  return { ok: true, envelope };
-}
-
-function evaluateToolPolicy(toolName: string): ToolPolicyDecision {
-  if (allowedToolNames && !allowedToolNames.has(toolName)) return { action: "deny", error: error("LARVA_TOOL_DENIED", `Tool ${toolName} is denied by Larva policy.`) };
-  return { action: "allow" };
-}
-
-async function openPersonaSelector(ctx: PiContext): Promise<PersonaSwitchResult> {
-  if (ctx.env?.LARVA_PI_INTERACTIVE_TUI !== "1") return { ok: false, error: error("LARVA_BAD_INPUT", "Persona selector is interactive-only; preserve previousEnvelope.") };
-  const ids = await completePersonaIds(ctx.env || process.env);
-  const selected = ids[0];
-  if (!selected) return { ok: false, error: error("LARVA_BAD_INPUT", "No persona selected; rollback to previousEnvelope.") };
-  return commitPersona(selected, ctx);
-}
-
-export async function initializeExtension(ctx: PiContext): Promise<void> {
-  const env = ctx.env || process.env;
+export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
+  const env = currentEnv(ctx);
   if (env.LARVA_PI_INITIAL_PERSONA_ID) {
-    const committed = await commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID, ctx);
+    const committed = await commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi);
     if (!committed.ok) throw new Error(`larva pi: ${committed.error.code}: ${committed.error.message}`);
   } else {
-    await ctx.ui?.setStatus?.("larva: none");
+    await setStatus(ctx);
   }
-  ctx.on?.("before_agent_start", (event: unknown) => ({ systemPrompt: replaceLarvaWatermark(String((event as { systemPrompt?: unknown }).systemPrompt || ""), activeParent) }));
-  ctx.on?.("tool_call", (event: unknown) => evaluateToolPolicy(String((event as { name?: unknown }).name || "")));
+  pi.registerCommand?.({
+    name: "larva-persona",
+    description: "Switch active Larva persona",
+    complete: (prefix: string) => completePersonaIds(prefix, ctx),
+    handler: (input?: string) => handlePersonaCommand(input, ctx, pi),
+  });
+  pi.on?.("before_agent_start", before_agent_start);
+  pi.on?.("tool_call", (payload: unknown) => {
+    const name = isRecord(payload) && typeof payload.name === "string" ? payload.name : "";
+    return decideToolCall(name);
+  });
   void openPersonaSelector;
   void larva_subagent;
 }
@@ -476,3 +676,5 @@ export const __contract_examples = {
   startupShape: "larva pi: <ERROR_CODE>: <human-readable message>",
   piApiTokens: "modelRegistry.find ctx.ui.setStatus typeof data.text === \"string\"",
 };
+
+export default initializeExtension;
