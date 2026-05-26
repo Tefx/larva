@@ -76316,7 +76316,7 @@ phases:
       not final conformance.'
   - id: pi_finalization_20260526.spec_conformance_retest
     name: Spec conformance retest after Pi divergence fixes
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -76438,6 +76438,24 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-05-26T17:34:03.996282+00:00'
+    done_at: '2026-05-26T18:25:16.408879+00:00'
+    evidence: 'PASS_READ_ONLY_SPEC_RETEST. Spec-verifier task ses_19aa58033ffe260KaHf2BEnI7Q
+      returned PASS / blocking_status CLOSED / proof_gap_status NONE / verdict PASS;
+      no files modified. Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      opifex canonical PersonaSpec authority, implementation files, tests, and plan
+      receipts. Requirements register covered all VT1-VT41 and B1-B7 retested; conformance
+      counts show 41/41 CONFORMS, 0 blockers. Evidence table cites spec_divergence_fix,
+      extension_runtime_conformance_proof, pre_rpc_stderr_mapping_fix/retest, end_to_end_liveness,
+      and current fake TypeScript/Pi seam artifacts. B1-B7 closure: B1 empty child-session
+      override CONFORMS; B2 child/resume parent preflight CONFORMS; B3 PersonaSpec
+      required fields CONFORMS; B4 list fail-closed CONFORMS; B5 pre-RPC stderr mapping
+      CONFORMS; B6 tool enumeration/update failure handling CONFORMS; B7 runtime proof
+      gaps closed by executable/fake TypeScript/Pi seams. Commands: targeted Pi tests
+      passed 80/80; invar guard passed with 0 errors and only pre-existing warnings/infos;
+      current fake TypeScript/Pi seams for B1-B7 passed; current pre-RPC whitelist
+      table passed; abort runtime harness passed; startup fatal/status-selector scenarios
+      passed. Forbidden non-goals and canonical PersonaSpec authority preserved. Checklist
+      toggled from retest receipt.'
   - id: pi_finalization_20260526.pre_rpc_stderr_fix
     name: Pre-RPC stderr fix for child persona errors
     status: skipped
