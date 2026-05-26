@@ -72335,6 +72335,80 @@ phases:
     without writing Pi settings.
   depends_on:
   - pi-coding-agent-contract-harness-2026-05-26
+  steps:
+  - id: pi_launcher_runtime_20260526.implement_launcher_entry
+    name: Complete larva pi launcher and package entry
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Runtime UX > Launch; Launcher
+      contract; Architecture basis; Verification targets 1-5, 10, 37-39
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET STATE: `larva pi [--persona <id>] [--] <pi args...>` is a shell/runtime
+      launcher that discovers the real Pi executable, selects `-e` or `--extension`
+      from `pi --help`, resolves the bundled extension entry, preserves user Pi args,
+      performs mandatory initial persona preflight through the same Larva CLI context,
+      and starts real Pi with the Larva-owned environment required by the design.
+
+      BOUNDING BOX: src/larva/shell/pi.py; src/larva/shell/cli.py; src/larva/shell/cli_parser.py;
+      pyproject.toml force-include for contrib/pi-extension/larva.ts; tests/shell/test_pi_launcher_contract.py.
+
+      UPSTREAM ARTIFACTS: `pi_contract_harness_20260526.launcher_expected_red` tests
+      are PROTECTED.
+
+      CONSTRAINTS: Shell handles I/O/process/env and returns Result-shaped command
+      outcomes where existing shell conventions require it. Core code is out of scope
+      unless a tiny pure helper is unavoidable; any Core function requires @pre/@post
+      and doctest. The launcher must not parse policy JSON, write Pi settings, add
+      locks, manage worktrees, or alter PersonaSpec schema.
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+      <side_effect_budget>Allowed: modify launcher/package/test files needed for `larva
+      pi`. Forbidden: PersonaSpec schema changes, policy hierarchy, ask action, worktree/file
+      lock/credential isolation, Pi settings writes, merge management.</side_effect_budget>
+
+      <risk_probes>1. PATH discovery must skip Larva''s own shim and respect executable
+      `LARVA_PI_BIN`. 2. Extension flag detection must be preflight-only and fail
+      closed. 3. Child/session env values must be exact and absolute where specified.</risk_probes>'
+    verification: '- [ ] `larva pi --persona known -- --version` invokes fake/real
+      Pi as `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`
+      and sets all launcher-to-extension env vars named by the design.
+
+      - [ ] Missing persona, missing real Pi, missing extension, unsupported extension
+      flag, and bad args produce documented stderr codes and exit behavior.
+
+      - [ ] Interactive detector covers exact print/json/mode markers, missing/empty/unknown
+      mode, conflicts, and default interactive behavior.
+
+      - [ ] Tests prove launcher does not parse `~/.pi/tool-policy.json` and does
+      not write Pi settings.
+
+      - [ ] `uv run invar guard --all` or the project-authoritative invar full guard
+      command is run after changes and raw output is captured.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\n- design/pi-coding-agent-integration.md\
+      \ — cite key passages from Launch, Launcher contract, Architecture basis, and\
+      \ Verification targets 1-5/10/37-39.\n\n## Requirement-to-Checklist Traceability\
+      \ Matrix\n| requirement_id | source_ref + key passage | obligation | owning_step_id\
+      \ | checklist_item | evidence_field | status | non_intersection_or_escalation\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n\n## Implementation\
+      \ Receipt\n- files_changed: <list>\n- protected_tests_used: tests/shell/test_pi_launcher_contract.py\n\
+      - commands:\n  - <pytest launcher command with raw stdout>\n  - <invar guard\
+      \ command with raw stdout>\n- exit_codes: <codes>\n\n## Runtime/Env Evidence\n\
+      - invocation_shape: <observed argv>\n- env_snapshot: <redacted env keys/values\
+      \ for LARVA_PI_* and LARVA_CLI_ARGV_JSON>\n- stderr_error_cases: <table>\n\n\
+      ## Side Effect / Forbidden Scope\n- pi_settings_write_absent: <evidence>\n-\
+      \ persona_schema_unchanged: <evidence>\n- policy_json_not_parsed_by_launcher:\
+      \ <evidence>"
+    agent: python-senior
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: locked
