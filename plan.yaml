@@ -73814,7 +73814,7 @@ phases:
       - [x] `invar guard` or the project canonical invar guard command is run after
       changes and raw output/exit code are provided.
 
-      - [ ] No forbidden scope was changed; any deviation record is explicit and justified.'
+      - [x] No forbidden scope was changed; any deviation record is explicit and justified.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
       \ <reason>\"\n\n## Env Contract Receipt\n- touched_files: <launcher/test files>\n\
