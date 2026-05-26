@@ -72490,6 +72490,75 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.implement_launcher_entry
     agent: integration-verifier
+  - id: pi_launcher_runtime_20260526.gate
+    name: Gate launcher runtime
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects downstream Pi extension/finalization
+      gates that consume launcher env contracts.
+
+      As an independent reviewer, decide whether the launcher runtime surface is complete
+      enough for Pi extension integration.
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: CLI runtime, subprocess/env handling, packaged extension
+      entry, and user-observable stderr/exit behavior.
+
+      <side_effect_budget>Allowed: read-only review of evidence. Forbidden: code mutation
+      or accepting helper-only proof for runnable CLI surface.</side_effect_budget>
+
+      <risk_probes>1. Handler-only proof is insufficient for `larva pi`. 2. Any unresolved
+      launcher env obligation intersects child RPC finalization gates. 3. Forbidden
+      scope additions block the gate.'
+    verification: '- [ ] Gate decision basis reviews implementation and runtime liveness
+      receipts.
+
+      - [ ] OPEN only if CLI entrypoint/startup path, env, extension flag, forwarded
+      args, and documented error exits have positive proof.
+
+      - [ ] Gate rejects build-only/helper-only proof for the runnable `larva pi`
+      surface.
+
+      - [ ] Gate rejects any PersonaSpec schema changes, Pi settings writes, worktree/file-lock/credential
+      logic, or policy hierarchy scope creep.
+
+      - [ ] Unresolved items are classified with explicit blocking/non-intersection
+      rationale.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key launcher/runtime passages reviewed.
+
+
+      ## Gate Decision Basis
+
+      | obligation | evidence_ref | status | blocks_downstream | rationale |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: launcher phase passes
+
+      - [ ] BLOCKED: required actions listed
+
+
+      ## Forbidden Scope Review
+
+      - findings: <none or list>'
+    depends_on:
+    - pi_launcher_runtime_20260526.implement_launcher_entry
+    - pi_launcher_runtime_20260526.launcher_liveness_proof
+    agent: gate-reviewer
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: locked
