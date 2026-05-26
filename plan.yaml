@@ -78590,7 +78590,7 @@ phases:
     agent: gate-reviewer
   - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     name: Fix Pi active-tool update startup degradation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -78800,6 +78800,129 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T20:26:17.673991+00:00'
+    done_at: '2026-05-26T20:36:14.646794+00:00'
+    evidence: 'Pi active-tool update startup degradation implementation completed
+      and merged into main.
+
+
+      ## refs Read Confirmation
+
+      - contrib/pi-extension/larva.ts — worker read initializeExtension initial commit
+      path and commitPersona active-tool update rollback/failure behavior.
+
+      - tests/shell/test_pi_extension_contract.py — worker read initial persona commit/registration,
+      tool policy denial, rollback preservation, and child startup error whitelist
+      tests.
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — worker read baseline
+      filtering, deny-wins, rollback tools, and LARVA_TOOL_ENUMERATION_FAILED semantics
+      inside commitPersona.
+
+      - tests/shell/test_pi_reported_failures_expected_red.py — worker read reported
+      regression anchors for slash completion string value and startup not failing
+      closed on unavailable tool enumeration.
+
+      - design/pi-coding-agent-integration.md — worker read no PersonaSpec schema
+      changes, adapter-local policy, switch-failure state preservation, and denied-tool
+      behavior; documented older fatal startup text conflict with this step’s authoritative
+      safe-degradation target.
+
+      - AGENTS.md — NOT READ as file absent in isolated worktree; injected AGENTS/invar
+      discipline followed.
+
+      - tests/shell/test_pi_launcher_contract.py — worker read launcher env propagation
+      and extension-detected fatal startup propagation boundaries.
+
+
+      ## Requirement Traceability Receipt
+
+      - PI-ACTIVE-STARTUP-001: PROVEN — added focused runtime test `test_initial_active_tool_update_failure_degrades_startup_and_allows_later_switch`;
+      targeted pytest passed.
+
+      - PI-ACTIVE-ENFORCE-001: PROVEN — same runtime test asserts denied `bash` tool_call
+      remains `LARVA_TOOL_DENIED`; static policy tests passed.
+
+      - PI-ACTIVE-SWITCH-001: PROVEN — same runtime test invokes registered `/larva-persona`
+      handler after degraded startup and verifies successful switch/status/envelope.
+
+      - PI-LIVE-SLASH-GAP-001: OWNED_BY_RETEST — live slash proof not claimed by implementation
+      step; downstream retest owns it.
+
+
+      ## Fix Receipt
+
+      - changed_files: `contrib/pi-extension/larva.ts`; `tests/shell/test_pi_extension_contract.py`.
+
+      - startup_degradation_design: initial persona commit still attempts normal commit;
+      if initial failure code is `LARVA_TOOL_ENUMERATION_FAILED`, initializeExtension
+      no longer throws during extension load, sets observable status `larva: <persona-id>
+      unavailable (LARVA_TOOL_ENUMERATION_FAILED)`, leaves envelope/tool state rolled
+      back, and preserves other startup errors as fatal.
+
+      - active_tool_startup_regression: worker command `.venv/bin/python -m pytest
+      tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_reported_failures_expected_red.py tests/shell/test_pi_launcher_contract.py`
+      exited 0 with 83 passed.
+
+      - denied_tool_regression: added runtime assertion for denied bash tool_call
+      with code LARVA_TOOL_DENIED; covered by targeted pytest.
+
+      - normal_switch_regression: added runtime assertion that post-degradation `/larva-persona
+      ok` switch succeeds and final status/envelope are `ok`; covered by targeted
+      pytest.
+
+      - worker full guard: `uv run invar guard --all` passed on rerun with status
+      passed/errors 0.
+
+      - scope_preservation: worker diff limited to TS extension and focused extension
+      test; no schema, PersonaSpec, Python admission, launcher implementation, plan,
+      claims, or prior evidence files changed.
+
+      - deviations: none; design conflict recorded only, no design file mutation.
+
+      - worker commit: 4d4d1a7.
+
+      - orchestrator merge: squash-merged to main as 7a80e25.
+
+
+      ## Mainline final-state verification
+
+      - `git diff --check HEAD~1..HEAD` passed.
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_reported_failures_expected_red.py tests/shell/test_pi_launcher_contract.py
+      -q` exited 0 with 83 passed in 0.96s.
+
+      - `uv run invar guard --all` exited 0 with status passed, files_checked 41,
+      errors 0, warnings 4, infos 3, doctest passed, crosshair verified from cache,
+      property_tests passed.
+
+      - main git status clean.
+
+
+      ## Semantic Closure Fields
+
+      verdict: PASS
+
+      blockers: []
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NON_BLOCKING
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: COMPLETE
+
+      requirement_coverage:
+
+      - PI-ACTIVE-STARTUP-001: PROVEN — targeted runtime regression passed.
+
+      - PI-ACTIVE-ENFORCE-001: PROVEN — denial regression passed.
+
+      - PI-ACTIVE-SWITCH-001: PROVEN — post-degradation switch regression passed.
+
+      - PI-LIVE-SLASH-GAP-001: OWNED_BY_RETEST — no live slash proof claimed.'
   - id: pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     name: Retest Pi live smoke after active-tool startup fix
     status: pending
