@@ -75121,7 +75121,7 @@ phases:
       - [x] Fake runtime proof shows kill failure or unknowable child state returns
       parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
-      - [ ] Regression proof shows normal successful abort/kill still returns parent
+      - [x] Regression proof shows normal successful abort/kill still returns parent
       `status: cancelled` with `error.code: LARVA_CHILD_CANCELLED`.
 
       - [ ] Behavioral proof register marks the unknowable-abort obligation `PROVEN`
