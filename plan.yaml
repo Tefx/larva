@@ -72409,6 +72409,87 @@ phases:
       \ persona_schema_unchanged: <evidence>\n- policy_json_not_parsed_by_launcher:\
       \ <evidence>"
     agent: python-senior
+  - id: pi_launcher_runtime_20260526.launcher_liveness_proof
+    name: Launcher runtime liveness proof
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: local-check; protects the launcher runtime gate.
+
+      As an independent runtime verifier, prove the launcher path starts a real or
+      fixture Pi process through the selected extension flag and exposes meaningful
+      env/argv evidence.
+
+      SCOPE: CLI launch surface only; extension internals are verified in the extension
+      phase.
+
+      <side_effect_budget>Allowed: run tests/fixture commands and inspect artifacts.
+      Forbidden: source mutation or claiming implementation evidence as sufficient
+      without runtime argv/env proof.</side_effect_budget>
+
+      <risk_probes>1. Ensure the proof exercises CLI entrypoint, not only helper functions.
+      2. Ensure extension unsupported failure occurs before Pi starts. 3. Ensure env
+      JSON is parseable and argv order is preserved.'
+    verification: '- [ ] Exact command/invocation exercising `larva pi` through the
+      packaged CLI entrypoint is recorded.
+
+      - [ ] Runtime artifact shows selected extension flag, bundled extension entry,
+      forwarded args, and required env values.
+
+      - [ ] Negative liveness cases prove missing Pi and unsupported extension fail
+      before child Pi execution.
+
+      - [ ] Output includes raw stdout/stderr and exit codes, not narrative summaries.
+
+      - [ ] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
+      closure paths.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Independence Level**: L1
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key launcher/liveness passages.
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Runtime Receipt
+
+      - command: <exact CLI command>
+
+      - raw_stdout: <paste>
+
+      - raw_stderr: <paste>
+
+      - exit_code: <code>
+
+      - argv_env_artifact: <path or pasted JSON>
+
+      - negative_cases: <table>
+
+
+      ## Headline
+
+      - [ ] PASS: launcher runtime obligations proven
+
+      - [ ] PASS_WITH_DEBT: only non-blocking debt remains with non-intersection
+
+      - [ ] FAIL: blocking proof gaps remain'
+    depends_on:
+    - pi_launcher_runtime_20260526.implement_launcher_entry
+    agent: integration-verifier
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: locked
