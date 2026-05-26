@@ -75684,7 +75684,7 @@ phases:
       live-environment BLOCKED and lists exact missing external dependency without
       failing implementation proof.
 
-      - [ ] Upstream wiring audit and contributing Pi receipts include `## refs Read
+      - [x] Upstream wiring audit and contributing Pi receipts include `## refs Read
       Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
       NOT READ reasons.'
     evidence_template: '## refs Read Confirmation
