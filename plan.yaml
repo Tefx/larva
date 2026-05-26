@@ -74518,7 +74518,7 @@ phases:
       child-exit/kill-false failure obligations have positive hook/RPC evidence or
       explicit non-intersection.
 
-      - [ ] Gate rejects source-only proof for slash command/status/tool/runtime/abort
+      - [x] Gate rejects source-only proof for slash command/status/tool/runtime/abort
       behavior.
 
       - [ ] Gate rejects forbidden-scope additions: schema changes, ask action, worktree/file
