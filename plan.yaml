@@ -72768,41 +72768,23 @@ phases:
 
       - [ ] Prompt composition preserves existing Pi project/user context and replaces
       an existing Larva watermark block instead of appending duplicates.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+    evidence_template: '## refs Read Confirmation
 
-      - design/pi-coding-agent-integration.md — cite key passages from Persona runtime
-      projection, Persona switching, UI status, API contracts, and Verification targets
-      6-13/37-38.
-
-
-      ## Requirement-to-Checklist Traceability Matrix
-
-      | requirement_id | source_ref + key passage | obligation | owning_step_id |
-      checklist_item | evidence_field | status | non_intersection_or_escalation |
-
-      | --- | --- | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this step>; NOT READ entries only with reason.
 
 
-      ## Implementation Receipt
+      ## Completion Evidence
 
-      - files_changed: <list>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - command: <exact focused test command>
+      - persona_projection_receipt: <runtime/test evidence for resolve/list, model
+      projection, prompt watermark, status, selector behavior>
 
-      - raw_stdout: <paste>
+      - forbidden_scope_preservation: <confirmation no forbidden Pi scope was added>
 
-      - exit_code: <code>
-
-
-      ## Behavior Evidence
-
-      - cli_bridge_cases: <resolve/list/fallback/timeout evidence>
-
-      - model_projection_cases: <provider/model parsing evidence>
-
-      - prompt_watermark_cases: <compose/replace evidence>
-
-      - selector_status_cases: <interactive/non-interactive evidence>'
+      '
     agent: frontend-engineer
   - id: pi_extension_runtime_20260526.tool_policy
     name: Complete adapter-local tool policy enforcement
