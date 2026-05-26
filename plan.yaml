@@ -73792,7 +73792,7 @@ phases:
     agent: frontend-engineer
   - id: pi_extension_runtime_20260526.subagent_rpc
     name: Complete larva_subagent child RPC runtime
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Subagent spawning; API contracts > Child RPC contract; Verification targets\
       \ 18-36, 39-41\nrefs: design/pi-coding-agent-integration.md\nTARGET STATE: The\
@@ -73858,6 +73858,8 @@ phases:
 
       '
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T07:57:13.449191+00:00'
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
     status: pending
