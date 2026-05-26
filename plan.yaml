@@ -76167,7 +76167,7 @@ phases:
       state, no canonical PersonaSpec meaning change, no aliases, no unrelated files.'
   - id: pi_finalization_20260526.extension_runtime_conformance_proof
     name: Focused extension runtime conformance proof for B1-B7
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       expected_result: green
@@ -76296,6 +76296,24 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T16:14:19.356231+00:00'
+    done_at: '2026-05-26T17:10:41.227425+00:00'
+    evidence: 'BLOCKED_RUNTIME_CONFORMANCE_RECONCILED_WITH_REMEDIATION. Integration-verifier
+      task ses_19aece6b6ffeQrs6FU06wTOJK0 returned FAIL/BLOCKED for B5/VT39 despite
+      B1/B2/B3/B4/B6 passing. Executable TypeScript/Pi fake seam evidence showed fake
+      child wrote pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
+      and exited before RPC readiness, but parent returned `LARVA_CHILD_PROTOCOL_FAILED`;
+      expected `LARVA_PERSONA_NOT_FOUND`. Post-readiness diagnostic-only stderr path
+      passed. Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      contrib/pi-extension/larva.ts, tests/shell/test_pi_extension_contract.py, and
+      tests/shell/test_pi_extension_tool_policy_static.py; runtime report included
+      raw commands/stdout/stderr/exit codes and harness path; B1-B6 proof register
+      had positive evidence or blocker-class closure path; B7 inventory mapped source/static
+      gaps to executable evidence or blocker. Supporting checks passed: extension/static
+      tests 48/48 and invar guard. Planner remediation task ses_19ac04a3effeyL4KajQdF4ztr3
+      added `pi_finalization_20260526.pre_rpc_stderr_mapping_fix` and `pi_finalization_20260526.pre_rpc_stderr_mapping_retest`,
+      and updated downstream dependencies. Checklist toggled from verifier receipt;
+      this completion records issue-detection evidence and remediation ownership,
+      not final conformance.'
   - id: pi_finalization_20260526.spec_conformance_retest
     name: Spec conformance retest after Pi divergence fixes
     status: pending
