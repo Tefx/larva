@@ -73466,7 +73466,7 @@ phases:
   steps:
   - id: pi_launcher_runtime_20260526.implement_launcher_entry
     name: Complete larva pi launcher and package entry
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Runtime UX > Launch; Launcher contract; Architecture basis; Verification\
       \ targets 1-5, 10, 37-39\nrefs: design/pi-coding-agent-integration.md\nTARGET\
@@ -73530,6 +73530,26 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-26T07:57:29.995964+00:00'
+    done_at: '2026-05-26T10:46:03.555589+00:00'
+    evidence: 'WORKTREE_MERGED_VIA_RESOLVER_VERIFIED. Retry task ses_19cb40749ffeD93GXkeuKjO6DA
+      returned SUCCESS with atomic commit 60ea2e96: bounded `larva pi` launcher implementation.
+      Orchestrator toggled all checklist items, then squash merge into main hit an
+      add/add conflict in contrib/pi-extension/larva.ts because launcher branch carried
+      a placeholder while main had the full extension runtime. Conflict-resolver task
+      ses_19c1f101dffeZGcjhnzFcddoPW preserved main''s full extension runtime and
+      staged launcher changes only. Orchestrator committed merge as cbef2af ([vectl]
+      step-pi_launcher_runtime_20260526.implement_launcher_entry completed). Final
+      mainline changed files: src/larva/shell/pi.py added; src/larva/shell/cli.py
+      and src/larva/shell/cli_parser.py modified. Mainline verification: `uv run pytest
+      tests/shell/test_pi_launcher_contract.py` passed 31/31 in 0.16s; `uv run pytest
+      tests/shell/test_pi_extension_contract.py` passed 39/39 in 0.08s; `uv run invar
+      guard --all` passed with 0 errors and only pre-existing warnings/infos. Evidence
+      included refs confirmation for design/pi-coding-agent-integration.md and tests/shell/test_pi_launcher_contract.py;
+      checklist receipts for real Pi invocation/env, documented error paths, interactive
+      detector, no policy parsing/no settings writes, and full invar guard. Forbidden
+      scope preserved: no PersonaSpec schema changes, no policy JSON parsing by launcher,
+      no Pi settings writer, no locks, no worktree manager, no scheduler, no plan/orchestrator
+      state edits.'
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
     status: pending
