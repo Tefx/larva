@@ -75762,7 +75762,7 @@ phases:
 
       '
     depends_on:
-    - pi_finalization_20260526.spec_conformance
+    - pi_finalization_20260526.spec_conformance_retest
     agent: doc-reviewer
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
