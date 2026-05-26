@@ -74525,6 +74525,170 @@ phases:
     - pi_extension_runtime_20260526.wire_extension_entry
     - pi_extension_runtime_20260526.extension_runtime_proof
     agent: gate-reviewer
+  - id: pi_extension_runtime_20260526.abort_rpc_fix
+    name: Wire in-flight abort into child RPC runtime
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: project
+
+      TARGET STATE:
+
+      When the Pi extension parent abort signal fires while `larva_subagent` child
+      execution is in flight, the extension sends the child RPC `abort` command, prevents
+      a later successful child result from being reported as success, and returns
+      the documented cancelled mapping with `LARVA_CHILD_CANCELLED` when abort/kill
+      stops the child.
+
+
+      BOUNDING BOX:
+
+      - Primary runtime: `contrib/pi-extension/larva.ts` around the child RPC sequence
+      and abort/result handling near the reported lines 632-660.
+
+      - Runtime tests/fixtures: existing fake Pi runtime scenario harness used by
+      `pi_extension_runtime_20260526.extension_runtime_proof`; extend or update only
+      the focused abort coverage needed to expose and close B1.
+
+      - Authoritative blocker evidence: target 35 from `pi_extension_runtime_20260526.extension_runtime_proof`
+      showing `abortDuringResult` returned `{status: success, result_text: final:abort-during,
+      error: null}` and RPC trace omitted `abort`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-abort-propagation | extension runtime proof target 35; `contrib/pi-extension/larva.ts`
+      abort checks currently only before child run and after result | Parent abort
+      during in-flight child RPC sends RPC `abort` to child | pi_extension_runtime_20260526.abort_rpc_fix
+      | `- [ ] In-flight abort path wires abortSignal to RpcClient.abort while child
+      sequence is running.` | `abort_trace` | OWNED | Blocks phase gate and final
+      Pi integration liveness if unclosed. |
+
+      | B1-cancelled-result | extension runtime proof target 35 expected mapping |
+      Abort/kill during child run returns cancelled with `LARVA_CHILD_CANCELLED`,
+      not success with final result text | pi_extension_runtime_20260526.abort_rpc_fix
+      | `- [ ] Child result resolution after an abort cannot overwrite the cancelled
+      outcome.` | `cancelled_result` | OWNED | Blocks phase gate and final Pi integration
+      liveness if unclosed. |
+
+      | B1-regression-scope | extension runtime proof success/failure/resume/busy
+      targets | Existing success, failure, resume, and busy behavior remains unchanged
+      | pi_extension_runtime_20260526.abort_runtime_retest | `- [ ] Retest proves
+      no regressions for success/failure/resume/busy scenarios.` | `regression_matrix`
+      | OWNED | Covered by downstream read-only retest. |
+
+
+      CONSTRAINTS:
+
+      - Keep the Pi extension runtime contract local to the existing RPC/client boundaries;
+      do not introduce sidecar metadata, file locks, schema changes, Pi settings fallback,
+      worktree logic, ask action, batch subagent behavior, or policy hierarchy changes.
+
+      - Preserve existing success, failure, resume, and busy semantics while closing
+      only the in-flight abort propagation/result-cancellation gap.
+
+      - If the current fake runtime harness lacks an abort-during-result assertion,
+      extend it in the minimal focused way needed to make B1 falsifiable; do not replace
+      runtime seam proof with source inspection.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive runtime logic that processes abort state
+      and child RPC outcomes. Hardcoded test-only cancellation or trace fabrication
+      does NOT satisfy this step.
+
+
+      <side_effect_budget>Allowed: mutate `contrib/pi-extension/larva.ts` and focused
+      Pi extension fake-runtime tests/fixtures for the in-flight abort gap. Forbidden:
+      source mutation outside the Pi extension abort/runtime-test seam unless required
+      by an existing compile/test import path; forbidden to change shared persona
+      schema, tool policy hierarchy, launcher behavior, worktree/file-lock/credential
+      logic, or documentation-only proof.</side_effect_budget>
+
+      <risk_probes>1. Race ordering: abort arriving before, during, or just after
+      child result must not produce a stale success. 2. Child lifecycle: RPC abort
+      should be observable in JSONL/fake-runtime trace and should not leak busy state.
+      3. Regression risk: success, failure, resume, and busy mappings must remain
+      byte/shape-compatible with existing runtime proof expectations.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+      key passage(s) for child/subagent abort or cancellation semantics, or records
+      explicit NOT READ reason.
+
+      - [ ] In-flight abort path wires abortSignal to `RpcClient.abort` while child
+      sequence is running.
+
+      - [ ] Child result resolution after an abort cannot overwrite the cancelled
+      outcome.
+
+      - [ ] Focused abort runtime test/fixture coverage is added or updated so B1
+      would fail on the previously observed success-without-abort behavior.
+
+      - [ ] Evidence identifies the focused command/scenario used for local validation
+      and includes actual output or trace excerpt, without claiming phase-wide retest
+      ownership.
+
+      - [ ] Existing success, failure, resume, and busy runtime semantics are not
+      intentionally changed.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/larva.ts — key passage/location or "NOT READ: <reason>"
+
+
+      ## B1 Fix Receipt
+
+      - blocker: B1 target 35 in-flight abort propagation/result cancellation
+
+      - touched_files: <files changed>
+
+      - abort_wiring_summary: <how abortSignal reaches RpcClient.abort during child
+      run>
+
+      - cancellation_mapping_summary: <how LARVA_CHILD_CANCELLED/cancelled result
+      wins over late success>
+
+      - focused_validation_command: <command/scenario if run>
+
+      - focused_validation_output_or_trace: <raw output/trace excerpt>
+
+
+      ## Traceability Evidence
+
+      - abort_trace: <where RPC abort is expected/observed in focused proof>
+
+      - cancelled_result: <cancelled result/error shape evidence>
+
+      - regression_notes: <success/failure/resume/busy preservation notes>
+
+
+      ## Checklist Receipt
+
+      - [ ] refs confirmation provided
+
+      - [ ] in-flight abort wired
+
+      - [ ] late success cannot overwrite cancelled outcome
+
+      - [ ] focused abort coverage updated
+
+      - [ ] validation output/trace provided
+
+      - [ ] non-goal surfaces preserved'
+    depends_on:
+    - pi_extension_runtime_20260526.extension_runtime_proof
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
