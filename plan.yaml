@@ -72656,55 +72656,55 @@ phases:
 
       ## Checklist
 
-      - [ ] B1 target 4 PATH discovery expected-red coverage added: ordering, Larva
+      - [x] B1 target 4 PATH discovery expected-red coverage added: ordering, Larva
       shim exclusion, and first valid real `pi` selection are asserted in launcher
       contract tests.
 
-      - [ ] B2 target 5 no-settings-write expected-red assertion added: unsupported
+      - [x] B2 target 5 no-settings-write expected-red assertion added: unsupported
       extension flag path proves no Pi settings/config file write occurs.
 
-      - [ ] B3 target 10 full mode-detection matrix added: exact `-p`, `--print`,
+      - [x] B3 target 10 full mode-detection matrix added: exact `-p`, `--print`,
       `--json`, `--mode print/json/rpc/sdk`, missing/empty/unknown `--mode`, and conflict
       precedence are parametrized or otherwise positively covered.
 
-      - [ ] B4 targets 37/38 launcher bridge expected-red coverage and ownership clarification
+      - [x] B4 targets 37/38 launcher bridge expected-red coverage and ownership clarification
       added: argv prefix construction/inheritance are launcher-tested; bridge suffix/fallback/list
       failure semantics are explicitly represented and owned for downstream implementation.
 
-      - [ ] B5 target 39 split launcher stderr and whitelist mapping expected-red
+      - [x] B5 target 39 split launcher stderr and whitelist mapping expected-red
       coverage added: launcher stderr preservation and parent-child pre-RPC whitelist
       mapping are distinct obligations with explicit tests or ownership notes.
 
-      - [ ] B6 refs receipt replacement evidence added: current remediation includes
+      - [x] B6 refs receipt replacement evidence added: current remediation includes
       refs confirmation with key passages, and any unavailable upstream receipt artifacts
       are classified as limitations only after current positive coverage proof is
       complete.
 
-      - [ ] Test changes are limited to expected-red tests/fixtures/helpers; no product
+      - [x] Test changes are limited to expected-red tests/fixtures/helpers; no product
       implementation files changed.
 
-      - [ ] Command receipts show expected-red behavior for the remediated harness,
+      - [x] Command receipts show expected-red behavior for the remediated harness,
       including explicit red/failing assertions for missing implementation rather
       than accidental green passes.
 
-      - [ ] Traceability matrix is updated or echoed in evidence so every blocker
+      - [x] Traceability matrix is updated or echoed in evidence so every blocker
       B1-B6 maps to concrete tests/checklist/evidence fields.'
-    verification: '- [ ] Expected-red tests or fixtures for B1-B6 are present and
+    verification: '- [x] Expected-red tests or fixtures for B1-B6 are present and
       mapped to the positive requirement traceability matrix.
 
-      - [ ] Evidence includes refs confirmation with key passages from `design/pi-coding-agent-integration.md`
+      - [x] Evidence includes refs confirmation with key passages from `design/pi-coding-agent-integration.md`
       target lines 1280-1284, 1296-1303, and 1385-1397.
 
-      - [ ] Evidence includes exact files/tests changed and confirms the scope is
+      - [x] Evidence includes exact files/tests changed and confirms the scope is
       tests/fixtures/helpers only.
 
-      - [ ] Evidence includes raw command receipts showing the remediated harness
+      - [x] Evidence includes raw command receipts showing the remediated harness
       exposes the expected red gaps without product implementation changes.
 
-      - [ ] Evidence includes a no-product-code-changed confirmation with changed-file
+      - [x] Evidence includes a no-product-code-changed confirmation with changed-file
       list.
 
-      - [ ] Evidence explains any accepted limitation for unavailable upstream receipts
+      - [x] Evidence explains any accepted limitation for unavailable upstream receipts
       and why current positive proof makes it non-intersecting for downstream gates.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- `design/pi-coding-agent-integration.md` — key passages for target\
