@@ -73578,7 +73578,7 @@ phases:
 
       - [x] Output includes raw stdout/stderr and exit codes, not narrative summaries.
 
-      - [ ] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
+      - [x] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
       closure paths.
 
       - [ ] Upstream implementation receipt includes `## refs Read Confirmation` with
