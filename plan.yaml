@@ -74383,7 +74383,7 @@ phases:
       state changes, or schema changes.'
   - id: pi_extension_runtime_20260526.extension_runtime_proof
     name: Extension runtime and seam proof
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ phase-check; protects the Pi extension runtime gate and final liveness gate.\n\
       As an independent verifier, exercise the bundled Pi extension through fake or\
@@ -74453,6 +74453,27 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T11:02:38.483144+00:00'
+    done_at: '2026-05-26T13:51:48.759792+00:00'
+    evidence: 'BLOCKED_RUNTIME_PROOF_RECONCILED_WITH_REMEDIATION. Integration-verifier
+      task ses_19b817ec2ffelQ6pego1b4vkLF returned semantic FAIL/BLOCKED with `orchestrator_action_hint:
+      DO_NOT_COMPLETE` due blocker B1 / target 35: in-flight parent abort is not propagated
+      into child Pi RPC. Positive runtime proof was collected for `/larva-persona`
+      valid switch, no-arg interactive selector, non-interactive bad-input path, UI
+      status updates, prompt watermark replacement, model projection through modelRegistry/setModel,
+      policy baseline filtering, pi.setActiveTools, tool_call denial, denied larva_subagent
+      no-handler behavior, subagent success/failure-after-allocation/resume/busy paths,
+      and refs/upstream receipt audit. Blocking evidence: fake Pi runtime abort-during
+      scenario returned `{status: success, result_text: final:abort-during, error:
+      null}` and RPC trace contained no `abort` command; expected in-flight abort
+      should send RPC abort and return cancelled with `LARVA_CHILD_CANCELLED`. Protected
+      tests passed (`uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` => 45 passed) and `uv run invar guard --all` passed with 0 errors; worktree
+      remained read-only/clean. Planner remediation task ses_19b767229ffe3q66xUxsC3e1yS
+      added `pi_extension_runtime_20260526.abort_rpc_fix` and `pi_extension_runtime_20260526.abort_runtime_retest`,
+      and updated `pi_extension_runtime_20260526.gate` dependencies so target 35 remains
+      blocked until the abort fix and retest prove closure. Checklist toggled to record
+      the issue-detection proof and remediation ownership; this completion does NOT
+      mark the extension runtime gate open.'
   - id: pi_extension_runtime_20260526.gate
     name: Gate extension runtime
     status: pending
