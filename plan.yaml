@@ -72508,7 +72508,7 @@ phases:
       NOT mark the contract harness as open.'
   - id: pi_contract_harness_20260526.coverage_remediation
     name: Coverage remediation for Pi contract expected-red harness
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -72743,6 +72743,8 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.gate
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-26T06:12:57.968297+00:00'
   - id: pi_contract_harness_20260526.coverage_regate
     name: Coverage regate for Pi contract expected-red harness
     status: pending
