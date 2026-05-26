@@ -75115,7 +75115,7 @@ phases:
       `contrib/pi-extension/larva.ts:573-577`, and `contrib/pi-extension/larva.ts:694-697`,
       or records explicit NOT READ reasons.
 
-      - [ ] Fake runtime proof shows abort RPC failure returns parent `status: failed`
+      - [x] Fake runtime proof shows abort RPC failure returns parent `status: failed`
       with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
       - [ ] Fake runtime proof shows kill failure or unknowable child state returns
