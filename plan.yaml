@@ -72398,20 +72398,17 @@ phases:
   - id: pi_contract_harness_20260526.gate
     name: Gate contract harness
     status: pending
-    description: 'step_type: gate
-
-      verification_scope: phase-check; protects launcher and extension implementation
-      gates.
-
-      As an independent gate reviewer, assess whether expected-red tests and the requirement-to-checklist
-      matrix cover design/pi-coding-agent-integration.md without forbidden-scope expansion.
-
-      <side_effect_budget>Allowed: read-only review. Forbidden: code/test mutation
-      or lifecycle completion.</side_effect_budget>
-
-      <risk_probes>1. Detect orphan requirements from verification targets 1-41. 2.
-      Detect any plan/test drift toward forbidden scope. 3. Detect ambiguous expected-red
-      versus must-green semantics.</risk_probes>'
+    description: "step_type: gate\nverification_scope: phase-check; protects launcher\
+      \ and extension implementation gates.\nAs an independent gate reviewer, assess\
+      \ whether expected-red tests and the requirement-to-checklist matrix cover design/pi-coding-agent-integration.md\
+      \ without forbidden-scope expansion.\n<side_effect_budget>Allowed: read-only\
+      \ review. Forbidden: code/test mutation or lifecycle completion.</side_effect_budget>\n\
+      <risk_probes>1. Detect orphan requirements from verification targets 1-41. 2.\
+      \ Detect any plan/test drift toward forbidden scope. 3. Detect ambiguous expected-red\
+      \ versus must-green semantics.</risk_probes>\n- [ ] Completion evidence includes:\n\
+      \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
+      \ key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Gate decision basis reviews both expected-red receipts and
       confirms no product implementation occurred.
 
