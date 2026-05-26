@@ -75041,7 +75041,7 @@ phases:
       behavior, or docs-only proof.'
   - id: pi_extension_runtime_20260526.abort_unknowable_retest
     name: Retest abort unknowable-state handling
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -75153,6 +75153,21 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T14:47:16.769173+00:00'
+    done_at: '2026-05-26T15:03:29.179482+00:00'
+    evidence: 'BLOCKED_RETEST_RECONCILED_WITH_REMEDIATION_PENDING. Integration-verifier
+      task ses_19b3e2394ffeytQen7ZV3ookyQ returned FAIL: runtime fake child scenario
+      `abort-no-response-child-exited-kill-false` returned parent `status: failed`
+      but wrong `error.code: LARVA_CHILD_START_FAILED`; expected `LARVA_CHILD_PROTOCOL_FAILED`.
+      It also proved normal cancelled paths still pass: abort-rpc-success and abort-rpc-failure-kill-succeeds
+      returned cancelled/LARVA_CHILD_CANCELLED. Supporting checks passed: `uv run
+      pytest tests/shell/test_pi_extension_contract.py -k abort -q` passed 3 selected,
+      full extension/static tests passed 47/47, and invar guard passed with 0 errors.
+      Planner remediation task ses_19b3489aeffeeI20t9k8Akxu2U added `pi_extension_runtime_20260526.abort_start_failure_fix`
+      and `pi_extension_runtime_20260526.abort_start_failure_retest`, and updated
+      the phase gate dependency. Checklist toggled to record issue detection and remediation
+      ownership. This completion does NOT mark the extension gate open; it records
+      the failed retest evidence and points to the focused follow-up fix/retest for
+      the exact start-failure/protocol-error mapping.'
   - id: pi_extension_runtime_20260526.abort_start_failure_fix
     name: Fix abort no-response child-exit start-failure mapping
     status: pending
