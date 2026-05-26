@@ -71716,6 +71716,195 @@ phases:
       ## Commit
 
       - none (gate-only, no changes)'
+  - id: opencode_tela_policy_gate_evidence_closure_20260526
+    name: Close OpenCode tool-policy gate evidence disposition
+    status: done
+    description: 'step_type: proof_closure
+
+      verification_scope: phase-check
+
+      agent_source: project
+
+      work_type: proof_closure
+
+
+      PROOF ARTIFACT:
+
+      This closure/disposition step records the later same-phase evidence closure
+      for historical step `opencode_tela_policy_gate_20260524`. It does not introduce
+      implementation work and does not alter any Pi phase architecture or scope.
+
+
+      DISPOSITION:
+
+      - provenance: historical completed evidence guard concern from `opencode_tela_policy_gate_20260524`
+
+      - disposition: non-blocking for Pi phases after same-phase closure evidence
+      because the historical OpenCode policy gate evidence already recorded `gate_open_allowed:
+      true`, `final_decision: OPEN`, `blockers: []`, targeted tests green, and invar
+      guard green.
+
+      - gate intersection: no remaining blocker-class OpenCode policy issue intersects
+      the Pi phases `pi-coding-agent-contract-harness-2026-05-26`, `pi-launcher-runtime-2026-05-26`,
+      `pi-extension-runtime-2026-05-26`, or `pi-integration-finalization-2026-05-26`;
+      the closure is limited to historical gate evidence metadata and does not authorize
+      product-code or Pi-scope changes.
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | R1 | vectl_validate(check_refs=true) 2026-05-26: completed evidence guard
+      requires later same-phase closure step or disposition | Add same-phase closure/disposition
+      after `opencode_tela_policy_gate_20260524` | opencode_tela_policy_gate_evidence_closure_20260526
+      | closure step follows historical gate and records validated disposition | same_phase_closure
+      | OWNED | This step depends on the historical gate and is in the same phase.
+      |
+
+      | R2 | `opencode_tela_policy_gate_20260524` evidence: `gate_open_allowed: true`,
+      `final_decision: OPEN`, `blockers: []`, targeted tests `22 passed`, guard passed
+      errors 0 warnings 0 | Preserve positive gate-open evidence and close unclosed
+      failure-evidence guard | opencode_tela_policy_gate_evidence_closure_20260526
+      | green/OPEN/gate_open_allowed=true evidence is restated with citations | gate_closure_evidence
+      | OWNED | Historical failure evidence is closed by later same-phase OPEN disposition.
+      |
+
+      | R3 | Reviewer request: do not alter Pi phase architecture or introduce implementation
+      work | Keep repair metadata-only and Pi-nonintersecting | opencode_tela_policy_gate_evidence_closure_20260526
+      | Pi phases remain unmodified and no implementation work is introduced | pi_non_intersection
+      | OWNED | This step only amends historical validation disposition metadata.
+      |
+
+
+      <side_effect_budget>
+
+      Allowed side effects: add this same-phase proof-closure/disposition plan step
+      in `plan.yaml` via vectl-managed mutation only. Forbidden side effects: editing
+      product code, editing docs/configs directly, changing Pi phase architecture,
+      expanding Pi scope, or changing historical implementation/gate evidence content.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm the validation blocker is closed by a later same-phase disposition
+      rather than by mutating the original historical gate evidence.
+
+      - Confirm Pi phases are not touched and no implementation work is added.
+
+      - Confirm missing-ref warnings remain warnings and are not escalated as blockers
+      by this repair.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof):
+
+      - [x] Same-phase closure step exists after `opencode_tela_policy_gate_20260524`
+      and depends on it.
+
+      - [x] Evidence records `gate_open_allowed: true`, `final_decision: OPEN`, and
+      `blockers: []` from the historical gate evidence.
+
+      - [x] Evidence records targeted green proof for `tests/shell/test_opencode_plugin_contract.py`
+      and green guard proof from the historical gate evidence.
+
+      - [x] Evidence records explicit non-intersection with all four Pi phases and
+      confirms no Pi phase content was changed.
+
+      - [x] Evidence records that the 60 missing-ref findings are historical warnings
+      and not part of this requested blocker repair.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - plan.yaml — use vectl-managed views/validation output; do not edit directly.
+
+
+      ## Closure Evidence
+
+      - same_phase_closure: <confirm this step is in `opencode-tela-tool-policy-normalization-2026-05-24`
+      and depends on `opencode_tela_policy_gate_20260524`>
+
+      - gate_closure_evidence: <quote historical gate `gate_open_allowed`, `final_decision`,
+      blockers, targeted test result, and guard result>
+
+      - pi_non_intersection: <confirm Pi phases untouched and non-intersecting>
+
+      - validation_result: <paste `vectl_validate(check_refs=true)` result after mutation>
+
+
+      ## Headline
+
+      - [ ] PASS: validation blocker closed or only historical missing-ref warnings
+      remain
+
+      - [ ] FAIL: completed evidence guard error remains'
+    depends_on:
+    - opencode_tela_policy_gate_20260524
+    agent: plan-readiness-auditor
+    evidence: 'headline: PASS
+
+      disposition: same_phase_closure
+
+      gate_open_allowed: true
+
+      final_decision: OPEN
+
+      blockers: []
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - plan.yaml — consulted only through vectl-managed tools (`vectl_show` and `vectl_validate`);
+      direct editing was not used.
+
+
+      ## Closure Evidence
+
+      - same_phase_closure: this step is added to phase `opencode-tela-tool-policy-normalization-2026-05-24`
+      and depends on the historical gate step `opencode_tela_policy_gate_20260524`.
+
+      - historical_gate_closure: `opencode_tela_policy_gate_20260524` evidence already
+      records `gate_open_allowed: true`, `final_decision: OPEN`, `blockers: []`, `verdict:
+      PASS`, and `orchestrator_action_hint: COMPLETE`.
+
+      - green_test_evidence: historical gate evidence records targeted command `.venv/bin/python
+      -m pytest tests/shell/test_opencode_plugin_contract.py -vv` with result `22
+      passed in 3.65s`.
+
+      - green_guard_evidence: historical gate evidence records `.venv/bin/invar guard`
+      passed with errors 0 and warnings 0.
+
+      - pi_non_intersection: this repair only adds closure/disposition metadata to
+      the historical OpenCode tool-policy phase; it does not modify the Pi phases
+      `pi-coding-agent-contract-harness-2026-05-26`, `pi-launcher-runtime-2026-05-26`,
+      `pi-extension-runtime-2026-05-26`, or `pi-integration-finalization-2026-05-26`.
+
+      - missing_ref_warnings: 60 missing-ref findings are historical warnings reported
+      by validation and are outside the requested blocker repair unless a future validation
+      policy escalates them.
+
+
+      ## Checklist Receipt
+
+      - [x] Same-phase closure step exists after `opencode_tela_policy_gate_20260524`
+      and depends on it.
+
+      - [x] Evidence records `gate_open_allowed: true`, `final_decision: OPEN`, and
+      `blockers: []` from the historical gate evidence.
+
+      - [x] Evidence records targeted green proof for `tests/shell/test_opencode_plugin_contract.py`
+      and green guard proof from the historical gate evidence.
+
+      - [x] Evidence records explicit non-intersection with all four Pi phases and
+      confirms no Pi phase content was changed.
+
+      - [x] Evidence records that the 60 missing-ref findings are historical warnings
+      and not part of this requested blocker repair.'
 - id: live-opencode-tool-policy-smoke-2026-05-25
   name: Live OpenCode Tool-Policy Smoke 2026-05-25
   status: done
