@@ -73581,7 +73581,7 @@ phases:
       - [x] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
       closure paths.
 
-      - [ ] Upstream implementation receipt includes `## refs Read Confirmation` with
+      - [x] Upstream implementation receipt includes `## refs Read Confirmation` with
       `design/pi-coding-agent-integration.md` key passages or explicit NOT READ reasons.'
     evidence_template: '## refs Read Confirmation
 
