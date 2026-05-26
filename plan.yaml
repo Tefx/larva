@@ -76854,7 +76854,7 @@ phases:
       - [x] Runtime fake seam evidence is produced with raw command, stdout/stderr/RPC
       trace, exit code, and harness path.
 
-      - [ ] Existing B1/B2/B3/B4/B6 passing behaviors remain green or have explicit
+      - [x] Existing B1/B2/B3/B4/B6 passing behaviors remain green or have explicit
       non-intersection evidence.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
