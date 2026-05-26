@@ -73100,7 +73100,7 @@ phases:
       gate and does NOT mark the harness OPEN.'
   - id: pi_contract_harness_20260526.regate_gap_remediation
     name: Regate gap remediation for Pi expected-red harness
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -73247,6 +73247,8 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.coverage_regate
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-26T07:35:29.233875+00:00'
   - id: pi_contract_harness_20260526.final_regate
     name: Final regate for Pi expected-red contract harness
     status: pending
