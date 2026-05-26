@@ -77825,3 +77825,118 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.reproduce_contract
     agent: frontend-engineer
+  - id: pi_slash_autocomplete_20260527.retest_liveness
+    name: Retest Pi slash autocomplete and liveness
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      As an independent verifier, prove the slash autocomplete crash is closed after
+      `pi_slash_autocomplete_20260527.fix_extension_shape`. This is a local-check
+      plus client/runtime liveness check protecting the final post-completion bugfix
+      gate.
+
+
+      SCOPE:
+
+      - Run the focused regression created by the reproduction step and verify it
+      is green.
+
+      - Run targeted Pi extension/launcher tests relevant to `contrib/pi-extension/larva.ts`
+      and slash-command/autocomplete registration.
+
+      - If practical, perform a fake or live Pi slash-autocomplete/liveness probe
+      showing typing `/` no longer exits with uncaught exception.
+
+      - Distinguish fixture evidence from live TUI evidence explicitly.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-SLASH-GREEN-001 | reproduce_contract artifact + fixed extension source
+      | slash autocomplete regression is green | pi_slash_autocomplete_20260527.retest_liveness
+      | focused regression raw output shows pass | focused_regression_output | OWNED
+      | final gate consumes |
+
+      | PI-RUNTIME-001 | user report live Pi crash | fake/live Pi slash autocomplete
+      probe no longer crashes, or blocker explains why live cannot run | pi_slash_autocomplete_20260527.retest_liveness
+      | liveness probe evidence includes live_vs_fixture distinction | liveness_probe
+      | OWNED | final gate blocks if no equivalent runtime proof and runtime was exercisable
+      |
+
+      | PI-GUARD-001 | AGENTS.md Invar baseline | targeted tests and invar guard pass
+      or blockers recorded | pi_slash_autocomplete_20260527.retest_liveness | tests/invar
+      raw output included | guard_and_tests | OWNED | final gate consumes |
+
+
+      <side_effect_budget>
+
+      Allowed: read-only verification and test execution; no source mutation. Forbidden:
+      changing implementation, rewriting tests to pass, modifying prior phase evidence,
+      or accepting helper-only proof when fake/live Pi runtime can be exercised.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify `/` autocomplete path specifically, not only command execution after
+      selecting a command.
+
+      - Verify no uncaught exception appears in stdout/stderr/logs, including `value.startsWith
+      is not a function`.
+
+      - Verify fixture proof matches the extension API shape used by Pi runtime.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (must-green):
+
+      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      NOT READ reasons.
+
+      - [ ] Focused slash autocomplete regression passes with raw command output and
+      exit code 0.
+
+      - [ ] Targeted Pi extension/launcher tests pass with raw command output and
+      exit code 0.
+
+      - [ ] Fake or live Pi slash autocomplete/liveness probe shows `/` no longer
+      crashes; evidence states LIVE_TUI or FAKE_PI_FIXTURE and why.
+
+      - [ ] `invar guard` or project-equivalent full guard command is run and raw
+      output is included, or an explicit blocker records why it could not run.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, gate_open_allowed.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT\
+      \ READ: reason>\n\n## Retest Receipt\n- focused_regression_command: <exact command>\n\
+      - focused_regression_output: |\n  <raw stdout/stderr>\n- focused_regression_exit_code:\
+      \ <code>\n- targeted_pi_tests_command: <exact command>\n- targeted_pi_tests_output:\
+      \ |\n  <raw stdout/stderr>\n- targeted_pi_tests_exit_code: <code>\n- guard_command:\
+      \ <exact command>\n- guard_and_tests: |\n  <raw stdout/stderr>\n- guard_exit_code:\
+      \ <code>\n\n## Slash Autocomplete Liveness Probe\n- live_vs_fixture: LIVE_TUI\
+      \ | FAKE_PI_FIXTURE\n- launch_or_fixture_command: <exact command>\n- interaction:\
+      \ typing `/` / invoking slash autocomplete\n- observed_result: <no uncaught\
+      \ exception, no value.startsWith crash, meaningful autocomplete state>\n- output_or_log:\
+      \ |\n  <raw output/log/snapshot>\n- limitations: <none or exact blocker>\n\n\
+      ## Semantic Closure\n- verdict: PASS | PASS_WITH_DEBT | FAIL | BLOCKED\n- blockers:\
+      \ []\n- gate_open_allowed: true|false"
+    depends_on:
+    - pi_slash_autocomplete_20260527.fix_extension_shape
+    agent: integration-verifier
