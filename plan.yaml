@@ -72566,6 +72566,102 @@ phases:
     and exposes larva_subagent through real Pi extension hooks.
   depends_on:
   - pi-coding-agent-contract-harness-2026-05-26
+  steps:
+  - id: pi_extension_runtime_20260526.persona_projection
+    name: Complete persona projection and slash command runtime
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Persona runtime projection;
+      Runtime UX > Persona switching; UI status; API contracts; Verification targets
+      6-13, 37-38
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET STATE: The bundled Pi extension maintains session-local active persona
+      state, resolves/list personas through the Larva CLI bridge, projects model via
+      `ctx.modelRegistry.find` plus `pi.setModel`, composes an idempotent Larva prompt
+      watermark through `before_agent_start`, sets `larva: <id>` or `larva: none`
+      UI status, and implements `/larva-persona` completion/selector behavior exactly
+      as specified.
+
+      BOUNDING BOX: contrib/pi-extension/ persona/bridge/status modules and tests/shell/test_pi_extension_contract.py.
+      Avoid shared runtime wiring in contrib/pi-extension/larva.ts except exported
+      seams intentionally consumed by the later wiring step.
+
+      UPSTREAM ARTIFACTS: `pi_contract_harness_20260526.extension_expected_red` tests
+      are PROTECTED.
+
+      CONSTRAINTS: Do not dump a subagent/persona catalogue into the prompt. Do not
+      alter PersonaSpec schema. Commit switch state atomically only after resolve,
+      model, policy readiness hooks supplied by sibling modules can succeed.
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; returned
+      prompt/model/status values must vary with resolved persona and runtime mode
+      inputs.
+
+      <side_effect_budget>Allowed: add/modify Pi extension TypeScript modules and
+      focused tests. Forbidden: schema changes, policy hierarchy, ask action, Pi settings
+      writes, worktree/lock/credential logic.</side_effect_budget>
+
+      <risk_probes>1. Model parsing must split at the first slash. 2. No-arg selector
+      opens only when `LARVA_PI_INTERACTIVE_TUI=1`, not merely `ctx.hasUI`. 3. Prompt
+      watermark replacement must be idempotent.'
+    verification: '- [ ] Resolve/list bridge uses `LARVA_CLI_ARGV_JSON` plus suffixes
+      and falls back to `larva`/`uvx larva` only when env is absent.
+
+      - [ ] `/larva-persona <valid>` commits one envelope, calls model lookup/setModel,
+      updates status, and affects the next model invocation without rewriting conversation
+      history.
+
+      - [ ] No active persona status is `larva: none`; invalid switch, bad model,
+      invalid policy hook, or tool enumeration failure preserves previous envelope.
+
+      - [ ] No-argument selector behavior follows interactive/non-interactive rules
+      and cancellation returns `LARVA_BAD_INPUT` without state change.
+
+      - [ ] Prompt composition preserves existing Pi project/user context and replaces
+      an existing Larva watermark block instead of appending duplicates.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Persona runtime
+      projection, Persona switching, UI status, API contracts, and Verification targets
+      6-13/37-38.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Implementation Receipt
+
+      - files_changed: <list>
+
+      - command: <exact focused test command>
+
+      - raw_stdout: <paste>
+
+      - exit_code: <code>
+
+
+      ## Behavior Evidence
+
+      - cli_bridge_cases: <resolve/list/fallback/timeout evidence>
+
+      - model_projection_cases: <provider/model parsing evidence>
+
+      - prompt_watermark_cases: <compose/replace evidence>
+
+      - selector_status_cases: <interactive/non-interactive evidence>'
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
