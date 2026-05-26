@@ -76053,29 +76053,29 @@ phases:
       <risk_probes>1. Build/test/source evidence cannot substitute for launched CLI/TUI/RPC\
       \ liveness. 2. Absence of known defects is not positive proof for design targets\
       \ 1-41. 3. Any forbidden-scope addition or undocumented side effect blocks final\
-      \ OPEN.\n- [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n\
+      \ OPEN.\n- [x] Completion evidence includes:\n  `## refs Read Confirmation`\n\
       \  `- design/pi-coding-agent-integration.md — key passages read: <specific sections/targets\
       \ used by this step>; NOT READ entries only with reason.`\n"
-    verification: '- [ ] Final gate decision basis reviews original spec conformance,
+    verification: '- [x] Final gate decision basis reviews original spec conformance,
       wiring audit, B1-B6 divergence fix receipt, B1-B7 runtime conformance proof,
       spec conformance retest, end-to-end liveness, doc sync, and full guard receipts.
 
-      - [ ] OPEN only if every owned design verification target 1-41 is PROVEN or
+      - [x] OPEN only if every owned design verification target 1-41 is PROVEN or
       has explicit non-intersection accepted by the reviewer.
 
-      - [ ] OPEN only if B1-B6 concrete divergences are closed by implementation evidence
+      - [x] OPEN only if B1-B6 concrete divergences are closed by implementation evidence
       and B7 runtime proof gaps are closed by executable/fake TypeScript/Pi seam evidence
       or assigned blocker-class remediation ownership.
 
-      - [ ] Gate rejects helper-only/source-only/build-only evidence for runnable
+      - [x] Gate rejects helper-only/source-only/build-only evidence for runnable
       CLI/TUI/RPC surfaces.
 
-      - [ ] Gate rejects any forbidden-scope implementation or documentation claim.
+      - [x] Gate rejects any forbidden-scope implementation or documentation claim.
 
-      - [ ] Gate records OPEN/BLOCK verdict, unresolved statuses, closure paths, and
+      - [x] Gate records OPEN/BLOCK verdict, unresolved statuses, closure paths, and
       final remediation owners.
 
-      - [ ] All upstream finalization and Pi phase receipts include `## refs Read
+      - [x] All upstream finalization and Pi phase receipts include `## refs Read
       Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
       NOT READ reasons.'
     evidence_template: '## refs Read Confirmation
