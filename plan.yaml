@@ -73663,7 +73663,7 @@ phases:
       - [x] Gate rejects build-only/helper-only proof for the runnable `larva pi`
       surface.
 
-      - [ ] Gate rejects any PersonaSpec schema changes, Pi settings writes, worktree/file-lock/credential
+      - [x] Gate rejects any PersonaSpec schema changes, Pi settings writes, worktree/file-lock/credential
       logic, or policy hierarchy scope creep.
 
       - [ ] Unresolved items are classified with explicit blocking/non-intersection
