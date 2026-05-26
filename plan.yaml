@@ -75265,7 +75265,7 @@ phases:
       - [x] Scope evidence shows child start failures outside the abort/no-response/termination-false
       unknowable seam are not globally remapped.
 
-      - [ ] Evidence includes the main path and highest-risk failure path, not only
+      - [x] Evidence includes the main path and highest-risk failure path, not only
       static test success.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
