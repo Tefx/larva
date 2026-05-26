@@ -72841,42 +72841,23 @@ phases:
 
       - [ ] `tool_call` denial returns `ToolPolicyDecision` with `LARVA_TOOL_DENIED`;
       denied `larva_subagent` produces no `LarvaSubagentResult`.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+    evidence_template: '## refs Read Confirmation
 
-      - design/pi-coding-agent-integration.md — cite key passages from Tool policy,
-      API contracts, and Verification targets 14-17.
-
-
-      ## Requirement-to-Checklist Traceability Matrix
-
-      | requirement_id | source_ref + key passage | obligation | owning_step_id |
-      checklist_item | evidence_field | status | non_intersection_or_escalation |
-
-      | --- | --- | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this step>; NOT READ entries only with reason.
 
 
-      ## Implementation Receipt
+      ## Completion Evidence
 
-      - files_changed: <list>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - command: <focused policy test command>
+      - tool_policy_receipt: <runtime/test evidence for policy parsing, filtering,
+      setActiveTools, and denial semantics>
 
-      - raw_stdout: <paste>
+      - forbidden_scope_preservation: <confirmation no forbidden Pi scope was added>
 
-      - exit_code: <code>
-
-
-      ## Policy Evidence
-
-      - validation_matrix: <table>
-
-      - baseline_reset_cases: <evidence>
-
-      - set_active_tools_calls: <evidence>
-
-      - tool_call_denial_cases: <evidence>
-
-      - larva_subagent_denial_no_handler: <evidence>'
+      '
     agent: frontend-engineer
   - id: pi_extension_runtime_20260526.subagent_rpc
     name: Complete larva_subagent child RPC runtime
