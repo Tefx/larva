@@ -78507,3 +78507,213 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.retest_liveness
     agent: gate-reviewer
+  - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+    name: Fix Pi active-tool update startup degradation
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      `contrib/pi-extension/larva.ts` no longer fails extension-load startup for `uv
+      run larva pi --persona vectl-planner` when `setActiveTools` or the active-tool
+      update path fails during initial extension load. Startup must continue in a
+      safe degraded/unavailable state or warning, while denied-tool enforcement and
+      normal tool-switch semantics remain preserved after the extension is running.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - `pi_slash_autocomplete_20260527.fix_extension_shape` — prior autocomplete/tool-enumeration
+      shape repair is PROTECTED.
+
+      - Failed `pi_slash_autocomplete_20260527.retest_liveness` result — live startup
+      still exits 1 with `LARVA_TOOL_ENUMERATION_FAILED: Pi active-tool update failed`;
+      slash `/` proof remains fixture/static only.
+
+
+      SCOPE:
+
+      - Modify `contrib/pi-extension/larva.ts` and focused Pi extension/launcher tests
+      only.
+
+      - Treat startup-time `setActiveTools`/active-tool update failure as safe degraded/unavailable
+      state or warning, not as an uncaught extension-load error.
+
+      - Preserve fail-closed denied-tool enforcement for actual forbidden tool use
+      and preserve normal tool-switch semantics after startup.
+
+      - Do not change PersonaSpec/schema/shared contracts, Python core/shell admission,
+      unrelated launcher behavior, or prior completed evidence.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-ACTIVE-STARTUP-001 | failed retest: `LARVA_TOOL_ENUMERATION_FAILED: Pi
+      active-tool update failed` | initial persona startup must not fail closed when
+      active-tool update fails during extension load | pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+      | startup degradation regression passes | active_tool_startup_regression | OWNED
+      | final gate consumes new retest proof |
+
+      | PI-ACTIVE-ENFORCE-001 | Pi extension/tool policy behavior | denied-tool enforcement
+      remains fail-closed for actual forbidden tool use | pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+      | denied-tool enforcement regression remains green | denied_tool_regression
+      | OWNED | final gate blocks if weakened |
+
+      | PI-ACTIVE-SWITCH-001 | Pi extension active-tool semantics | normal active-tool
+      switch/update behavior remains intact after startup | pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+      | normal switch regression remains green | normal_switch_regression | OWNED
+      | final gate blocks if weakened |
+
+      | PI-LIVE-SLASH-GAP-001 | failed retest proof gap | missing live slash proof
+      is not closed by this implementation step; it is owned by the new retest | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+      | live slash proof attempted or justified fixture used | live_slash_runtime_proof
+      | OWNED | implementation step must not claim runtime proof |
+
+
+      <side_effect_budget>
+
+      Allowed: mutate `contrib/pi-extension/larva.ts`; add/update focused tests for
+      active-tool startup degradation, denied-tool enforcement, and normal switch
+      semantics. Forbidden: broad refactors, schema/persona/core admission changes,
+      unrelated launcher behavior changes, prior completed phase evidence edits, or
+      weakening denied-tool enforcement.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Distinguish startup-time active-tool update unavailability from runtime denied-tool
+      enforcement; the former degrades safely, the latter still blocks forbidden tool
+      use.
+
+      - Verify the safe degraded state is observable as warning/unavailable state
+      and does not silently pretend tools are active.
+
+      - Verify normal active-tool switch/update semantics still work after the extension
+      is initialized.
+
+      </risk_probes>
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
+    verification: 'ACCEPTABLE RECEIPT (green implementation remediation):
+
+      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      NOT READ reasons.
+
+      - [ ] Diff summary confirms changes are limited to `contrib/pi-extension/larva.ts`
+      plus focused Pi tests/fixtures.
+
+      - [ ] A focused regression proves `setActiveTools`/active-tool update failure
+      during extension-load startup degrades safely instead of throwing `LARVA_TOOL_ENUMERATION_FAILED`.
+
+      - [ ] Evidence shows degraded startup produces an unavailable/warning state
+      and does not falsely mark failed tools active.
+
+      - [ ] Denied-tool enforcement remains fail-closed for actual forbidden tool
+      use.
+
+      - [ ] Normal active-tool switch/update semantics remain green after startup.
+
+      - [ ] Focused reported-failure regressions and targeted Pi extension/launcher
+      tests pass with raw command output.
+
+      - [ ] No PersonaSpec/schema/shared contract/Python admission/unrelated launcher/prior
+      evidence mutation occurred.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      proof_gap_status, gate_open_allowed=false until independent retest/gate.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
+      READ: reason>
+
+      - tests/shell/test_pi_reported_failures_expected_red.py — <key passage or NOT
+      READ: reason>
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+
+      ## Requirement Traceability Receipt
+
+      | requirement_id | evidence_field | proof_ref | status |
+
+      | --- | --- | --- | --- |
+
+      | PI-ACTIVE-STARTUP-001 | active_tool_startup_regression | <command/output>
+      | PROVEN/UNPROVEN/BLOCKED |
+
+      | PI-ACTIVE-ENFORCE-001 | denied_tool_regression | <command/output> | PROVEN/UNPROVEN/BLOCKED
+      |
+
+      | PI-ACTIVE-SWITCH-001 | normal_switch_regression | <command/output> | PROVEN/UNPROVEN/BLOCKED
+      |
+
+
+      ## Fix Receipt
+
+      - changed_files: <list>
+
+      - startup_failure_root_cause: <explain why active-tool update failed startup>
+
+      - degraded_state_behavior: <warning/unavailable state evidence>
+
+      - enforcement_preserved: <denied-tool evidence>
+
+      - normal_switch_preserved: <switch/update evidence>
+
+      - scope_diff_summary: <forbidden-scope check>
+
+
+      ## Commands
+
+      - focused_startup_regression: <command, raw stdout/stderr, exit code>
+
+      - denied_tool_regression: <command, raw stdout/stderr, exit code>
+
+      - normal_switch_regression: <command, raw stdout/stderr, exit code>
+
+      - targeted_pi_tests: <command, raw stdout/stderr, exit code>
+
+
+      ## Semantic Closure Fields
+
+      verdict: PASS|FAIL
+
+      blockers: <list>
+
+      blocking_status: CLOSED|BLOCKED
+
+      proof_gap_status: live slash proof remains owned by retest until proven
+
+      fixture_vs_live: implementation regression only; live runtime proof deferred
+      to retest
+
+      semantic_fields_complete: true|false
+
+      gate_open_allowed: false'
+    depends_on:
+    - pi_slash_autocomplete_20260527.fix_extension_shape
+    agent: frontend-engineer
