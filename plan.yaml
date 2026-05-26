@@ -79345,30 +79345,30 @@ phases:
       - focused Pi tests — key passage or `NOT READ: <reason>`'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Refs confirmation includes key passages from `contrib/pi-extension/larva.ts`,
+      - [x] Refs confirmation includes key passages from `contrib/pi-extension/larva.ts`,
       `design/pi-coding-agent-integration.md`, and relevant focused Pi tests, or explicit
       NOT READ reasons.
 
-      - [ ] Evidence identifies the actual Pi v0.75.5 slash autocomplete candidate
+      - [x] Evidence identifies the actual Pi v0.75.5 slash autocomplete candidate
       API shape/registration expectation used by the live editor.
 
-      - [ ] Diff is limited to `contrib/pi-extension/larva.ts` and focused tests needed
+      - [x] Diff is limited to `contrib/pi-extension/larva.ts` and focused tests needed
       for candidate-shape proof.
 
-      - [ ] Autocomplete candidates consumed by live slash `/` have the exact value
+      - [x] Autocomplete candidates consumed by live slash `/` have the exact value
       shape Pi editor expects; the old `value.startsWith is not a function` failure
       mode is directly addressed.
 
-      - [ ] `/larva-persona` behavior remains covered and unchanged except for required
+      - [x] `/larva-persona` behavior remains covered and unchanged except for required
       API-shape adaptation.
 
-      - [ ] Startup enumeration fallback, active-tool startup degradation, denied-tool
+      - [x] Startup enumeration fallback, active-tool startup degradation, denied-tool
       enforcement, and normal switch semantics remain covered by focused tests.
 
-      - [ ] Fixture/static tests are updated only to mirror the actual Pi editor API
+      - [x] Fixture/static tests are updated only to mirror the actual Pi editor API
       contract, not to encode a local convenience shape.
 
-      - [ ] No forbidden shared contract, Python admission, unrelated launcher, or
+      - [x] No forbidden shared contract, Python admission, unrelated launcher, or
       prior-evidence mutation occurred.'
     depends_on:
     - pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
