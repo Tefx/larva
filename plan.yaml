@@ -72508,7 +72508,7 @@ phases:
       NOT mark the contract harness as open.'
   - id: pi_contract_harness_20260526.coverage_remediation
     name: Coverage remediation for Pi contract expected-red harness
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -72745,6 +72745,26 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-26T06:12:57.968297+00:00'
+    done_at: '2026-05-26T06:19:46.695559+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED with worktree-isolation anomaly salvaged. Subagent
+      reported commit c5bf440ddd50c6fd6de38bfb27a7acb29a750ee5 and evidence showed
+      test-only remediation; orchestrator verified the commit landed directly on main
+      rather than the isolated branch (isolation violation), but the delta is net-positive
+      and non-regressive: `git diff --name-status c5bf440^..c5bf440` shows only `M
+      tests/shell/test_pi_launcher_contract.py` (91 insertions, 23 deletions), with
+      no product implementation files and no plan.yaml modification. Checklist items
+      toggled by orchestrator from the checklist_receipt. Mainline verification after
+      the change: `uv run pytest tests/shell/test_pi_launcher_contract.py` produced
+      expected red 20 failed in 0.23s; failures align with missing `pi` command/launcher
+      implementation while now exposing B1 PATH shim exclusion/first valid pi, B2
+      no-settings-write assertion, B3 full mode detection matrix, B4 bridge argv prefix/ownership
+      notes, and B5 stderr/whitelist split. `uv run pytest tests/shell/test_pi_extension_contract.py`
+      produced expected red 37 failed / 2 passed in 0.17s due missing bundled extension
+      and pyproject force-include. Evidence includes refs confirmation for design/pi-coding-agent-integration.md
+      target lines 1280-1284, 1296-1303, 1385-1397; exact changed file list; product_files_changed:
+      NONE; and B6 current refs receipt replacement/non-intersection rationale. No
+      blockers remain for this expected-red remediation step; downstream regate owns
+      independent OPEN/BLOCK decision.'
   - id: pi_contract_harness_20260526.coverage_regate
     name: Coverage regate for Pi contract expected-red harness
     status: pending
