@@ -72786,45 +72786,33 @@ phases:
   - id: pi_extension_runtime_20260526.subagent_rpc
     name: Complete larva_subagent child RPC runtime
     status: pending
-    description: 'step_type: implementation
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Subagent spawning; API contracts
-      > Child RPC contract; Verification targets 18-36, 39-41
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: The Pi extension exposes `larva_subagent(persona_id, task, task_id?)`
-      as one custom tool handler invoked only after policy allows it; validates spawn
-      authority from the active parent persona; starts or resumes exactly one child
-      Pi RPC process per invocation using launcher-provided `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
-      and `LARVA_PI_EXTENSION_ENTRY`; validates child session paths; tracks process-local
-      busy resumes; propagates abort; and returns the documented `LarvaSubagentResult`
-      shape.
-
-      BOUNDING BOX: contrib/pi-extension/ subagent/RPC modules and tests/shell/test_pi_extension_contract.py.
-      Avoid shared hook registration in contrib/pi-extension/larva.ts until the wiring
-      step.
-
-      CONSTRAINTS: No batch subagent tool, no sidecar metadata, no filesystem lock
-      files, no cross-process resume coordination, no bare `pi` lookup in child paths,
-      no extension-entry derivation from module metadata/argv. Resume eligibility
-      is path-based only.
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; child
-      process commands, path taxonomy, busy state, abort handling, and result fields
-      must vary with inputs and RPC events.
-
-      <side_effect_budget>Allowed: add/modify extension subagent/RPC code and focused
-      tests. Forbidden: sidecar files, filesystem locks, scheduler/batch tool, worktree/credential
-      isolation, schema changes, or project policy hierarchy.</side_effect_budget>
-
-      <risk_probes>1. Same-task resume busy marker must clear on success, failure,
-      and cancellation. 2. Child fatal stderr whitelist must not parse arbitrary stderr.
-      3. Resume must send `switch_session` then append the new task via `prompt`.'
+    description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Subagent spawning; API contracts > Child RPC contract; Verification targets\
+      \ 18-36, 39-41\nrefs: design/pi-coding-agent-integration.md\nTARGET STATE: The\
+      \ Pi extension exposes `larva_subagent(persona_id, task, task_id?)` as one custom\
+      \ tool handler invoked only after policy allows it; validates spawn authority\
+      \ from the active parent persona; starts or resumes exactly one child Pi RPC\
+      \ process per invocation using launcher-provided `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,\
+      \ and `LARVA_PI_EXTENSION_ENTRY`; validates child session paths; tracks process-local\
+      \ busy resumes; propagates abort; and returns the documented `LarvaSubagentResult`\
+      \ shape.\nBOUNDING BOX: contrib/pi-extension/ subagent/RPC modules and tests/shell/test_pi_extension_contract.py.\
+      \ Avoid shared hook registration in contrib/pi-extension/larva.ts until the\
+      \ wiring step.\nCONSTRAINTS: No batch subagent tool, no sidecar metadata, no\
+      \ filesystem lock files, no cross-process resume coordination, no bare `pi`\
+      \ lookup in child paths, no extension-entry derivation from module metadata/argv.\
+      \ Resume eligibility is path-based only.\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; child\
+      \ process commands, path taxonomy, busy state, abort handling, and result fields\
+      \ must vary with inputs and RPC events.\n<side_effect_budget>Allowed: add/modify\
+      \ extension subagent/RPC code and focused tests. Forbidden: sidecar files, filesystem\
+      \ locks, scheduler/batch tool, worktree/credential isolation, schema changes,\
+      \ or project policy hierarchy.</side_effect_budget>\n<risk_probes>1. Same-task\
+      \ resume busy marker must clear on success, failure, and cancellation. 2. Child\
+      \ fatal stderr whitelist must not parse arbitrary stderr. 3. Resume must send\
+      \ `switch_session` then append the new task via `prompt`.\n- [ ] Completion\
+      \ evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] `can_spawn` omitted/false/list/true cases and no-active-parent
       cases return the documented stable error codes.
 
