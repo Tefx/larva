@@ -73552,7 +73552,7 @@ phases:
       state edits.'
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
-    status: pending
+    status: claimed
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ local-check; protects the launcher runtime gate.\nAs an independent runtime\
       \ verifier, prove the launcher path starts a real or fixture Pi process through\
@@ -73616,6 +73616,8 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.implement_launcher_entry
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T10:46:35.268591+00:00'
   - id: pi_launcher_runtime_20260526.gate
     name: Gate launcher runtime
     status: pending
