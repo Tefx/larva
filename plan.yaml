@@ -75552,7 +75552,7 @@ phases:
     claimed_at: '2026-05-26T15:40:40.867808+00:00'
   - id: pi_finalization_20260526.wiring_audit
     name: Wiring and package reachability audit
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ full-plan-check; protects final gate.\nAs an independent wiring auditor, verify\
       \ that the `larva pi` CLI command, package force-include, bundled extension\
@@ -75611,6 +75611,24 @@ phases:
     agent: wiring-auditor
     claimed_by: wiring-auditor
     claimed_at: '2026-05-26T15:40:43.010918+00:00'
+    done_at: '2026-05-26T15:50:00.779611+00:00'
+    evidence: 'PASS_WITH_WARN_READ_ONLY. Wiring-auditor task ses_19b0d454bffeSoO2Ei3tyxy0cB
+      returned PASS_WITH_WARN with no blockers and no files modified. Evidence included
+      refs Read Confirmation for design/pi-coding-agent-integration.md, pyproject.toml,
+      src/larva/cli_entrypoint.py, src/larva/shell/cli.py, src/larva/shell/cli_parser.py,
+      src/larva/shell/pi.py, contrib/pi-extension/larva.ts, tests/shell/test_pi_launcher_contract.py,
+      tests/shell/test_pi_extension_contract.py, tests/shell/test_pi_extension_tool_policy_static.py,
+      and plan receipts. Audit confirmed CLI reachability from pyproject console script
+      through cli/main/run_cli/pi_command to subprocess.run; package force-include
+      maps contrib/pi-extension/larva.ts to larva/shell/pi_extension/larva.ts and
+      launcher resolves same path; extension default export registers command/tool/hooks/status/setActiveTools/tool_call;
+      child RPC invocation uses launcher-provided real bin, extension flag, and extension
+      entry; upstream launcher/extension receipts include refs confirmation. Warnings
+      are non-blocking: getActiveEnvelope and __contract_examples are public test/inspection
+      helpers with documented non-intersection; LARVA_PI_LAUNCHED is a liveness marker
+      typed but not behaviorally consumed; auditor did not rerun runtime commands
+      but traced source and audited upstream runtime receipts. Checklist toggled from
+      audit receipt.'
   - id: pi_finalization_20260526.end_to_end_liveness
     name: End-to-end Pi runtime liveness proof
     status: pending
