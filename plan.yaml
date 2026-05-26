@@ -75909,6 +75909,9 @@ phases:
     depends_on:
     - pi_finalization_20260526.spec_conformance
     - pi_finalization_20260526.wiring_audit
+    - pi_finalization_20260526.spec_divergence_fix
+    - pi_finalization_20260526.extension_runtime_conformance_proof
+    - pi_finalization_20260526.spec_conformance_retest
     - pi_finalization_20260526.end_to_end_liveness
     - pi_finalization_20260526.doc_sync
     - pi_finalization_20260526.full_guard
