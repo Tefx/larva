@@ -76316,7 +76316,7 @@ phases:
       not final conformance.'
   - id: pi_finalization_20260526.spec_conformance_retest
     name: Spec conformance retest after Pi divergence fixes
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -76436,6 +76436,8 @@ phases:
     - pi_finalization_20260526.pre_rpc_stderr_retest
     - pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-05-26T17:34:03.996282+00:00'
   - id: pi_finalization_20260526.pre_rpc_stderr_fix
     name: Pre-RPC stderr fix for child persona errors
     status: skipped
