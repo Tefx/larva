@@ -76438,7 +76438,7 @@ phases:
     agent: spec-verifier
   - id: pi_finalization_20260526.pre_rpc_stderr_fix
     name: Pre-RPC stderr fix for child persona errors
-    status: pending
+    status: skipped
     description: 'step_type: implementation
 
       agent_source: project
@@ -76565,6 +76565,7 @@ phases:
     depends_on:
     - pi_finalization_20260526.extension_runtime_conformance_proof
     agent: frontend-engineer
+    skipped_reason: absorbed
   - id: pi_finalization_20260526.pre_rpc_stderr_retest
     name: Read-only retest for pre-RPC stderr code propagation
     status: pending
