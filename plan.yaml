@@ -78433,48 +78433,48 @@ phases:
       API shape, not only local fixture assumptions.'
     verification: 'ACCEPTABLE GATE DECISION:
 
-      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      - [x] Refs confirmation includes key passages from all provided refs or explicit
       NOT READ reasons.
 
-      - [ ] Red reproduction/contract evidence exists for slash autocomplete `/` crash/shape
+      - [x] Red reproduction/contract evidence exists for slash autocomplete `/` crash/shape
       gap and persona startup/tool-enumeration fail-closed gap.
 
-      - [ ] Failed `pi_slash_autocomplete_20260527.retest_liveness` and failed `pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix`
+      - [x] Failed `pi_slash_autocomplete_20260527.retest_liveness` and failed `pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix`
       are treated only as issue-detection evidence; neither is used as gate-opening
       proof.
 
-      - [ ] Implementation diff for all fix steps is limited to allowed scope and
+      - [x] Implementation diff for all fix steps is limited to allowed scope and
       preserves non-goals.
 
-      - [ ] Final retest evidence includes `uv run larva pi --help` raw output/exit,
+      - [x] Final retest evidence includes `uv run larva pi --help` raw output/exit,
       live `uv run larva pi --persona vectl-planner` raw output/exit, mandatory slash
       autocomplete `/` live PTY proof unless hard environment blocked, focused regressions,
       targeted Pi tests, and full `uv run invar guard --all`.
 
-      - [ ] Final retest evidence shows no uncaught `value.startsWith is not a function`,
+      - [x] Final retest evidence shows no uncaught `value.startsWith is not a function`,
       `LARVA_TOOL_ENUMERATION_FAILED`, or `Pi active-tool update failed` startup failure.
 
-      - [ ] If live slash PTY proof was blocked, blocker details are hard-environment-specific,
+      - [x] If live slash PTY proof was blocked, blocker details are hard-environment-specific,
       fixture proof reaches the same Pi editor extension API shape, and unresolved
       product risk is not waived.
 
-      - [ ] Denied-tool enforcement and normal active-tool switch semantics remain
+      - [x] Denied-tool enforcement and normal active-tool switch semantics remain
       positively proven after both startup and autocomplete API fixes.
 
-      - [ ] No helper-only/source-only proof is accepted for runnable CLI/TUI surfaces
+      - [x] No helper-only/source-only proof is accepted for runnable CLI/TUI surfaces
       unless live automation is hard-environment blocked and a faithful fixture seam
       reaches the same API shape.
 
-      - [ ] No prior completed phase evidence was mutated.
+      - [x] No prior completed phase evidence was mutated.
 
-      - [ ] Behavioral proof register maps every OWNED requirement to PROVEN or gives
+      - [x] Behavioral proof register maps every OWNED requirement to PROVEN or gives
       explicit blocker/closure path; gate does not open with unresolved blocker-class
       proof gaps.
 
-      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      - [x] Semantic closure fields are present: verdict, blockers, blocking_status,
       proof_gap_status, gate_open_allowed.
 
-      - [ ] Gate opens only with verdict PASS or OPEN, blockers [], blocking_status=non-blocking/none,
+      - [x] Gate opens only with verdict PASS or OPEN, blockers [], blocking_status=non-blocking/none,
       proof_gap_status=none, and gate_open_allowed=true.'
     evidence_template: '## Gate Review Report
 
