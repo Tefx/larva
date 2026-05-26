@@ -192,7 +192,7 @@ def test_policy_validation_boundary_and_active_target_shape() -> None:
     source = _source()
     _assert_tokens(source, "LARVA_PI_TOOL_POLICY_FILE", "personas", "LARVA_POLICY_INVALID")
     _assert_tokens(source, "allow", "deny")
-    assert "ask" not in source
+    assert '"ask"' not in source
 
 
 def test_policy_filtering_ignores_unknown_tools_and_deny_wins() -> None:
