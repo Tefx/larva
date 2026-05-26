@@ -79410,7 +79410,7 @@ phases:
       errors 0, warnings 4, infos 3, files_checked 41.'
   - id: pi_slash_autocomplete_20260527.retest_live_slash_final
     name: Retest live Pi slash autocomplete final
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -79579,3 +79579,46 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T21:01:27.551953+00:00'
+    done_at: '2026-05-26T21:09:30.464136+00:00'
+    evidence: 'Independent final green retest completed in isolated read-only worktree.
+      No product implementation files modified; worktree clean; no commit created.
+
+
+      Semantic closure: step_intent retest_green; expected_result green; observed_result
+      green; failure_alignment none; verdict PASS; blockers []; blocking_status CLOSED;
+      proof_gap_status NONE; gate_open_allowed true; orchestrator_action_hint COMPLETE.
+
+
+      Refs confirmation: verifier read contrib/pi-extension/larva.ts (string-valued
+      candidates, two-arg registerCommand, safe tool enumeration and active-tool rollback/degradation
+      passages), design/pi-coding-agent-integration.md (startup/switch/persona command
+      requirements), and focused Pi tests (reported startsWith crash, startup fail-closed
+      blocker, Pi v0.75.5 command registration/candidate tests, active-tool/tool-policy
+      and launcher coverage).
+
+
+      Raw proof summary: `uv run larva pi --help` exit 0 with usage output. Live PTY
+      startup for `uv run larva pi --persona vectl-planner` rendered Pi v0.75.5 with
+      larva extension and no `LARVA_TOOL_ENUMERATION_FAILED`, no `Pi active-tool update
+      failed`, no `TypeError: value.startsWith is not a function`; child was killed
+      by harness after observation. Mandatory live PTY slash proof sent `/`; slash
+      command UI rendered, process did not exit/crash before harness termination,
+      and searches for `TypeError: value.startsWith is not a function`, `value.startsWith`,
+      `LARVA_TOOL_ENUMERATION_FAILED`, and `Pi active-tool update failed` were all
+      false.
+
+
+      Regression/guard proof: focused regressions (`uv run pytest -q tests/shell/test_pi_reported_failures_expected_red.py
+      tests/shell/test_pi_extension_contract.py::test_live_pi_command_registration_uses_two_arg_argument_completion_shape
+      tests/shell/test_pi_extension_contract.py::test_initial_active_tool_update_failure_degrades_startup_and_allows_later_switch
+      tests/shell/test_pi_extension_tool_policy_static.py`) exit 0, 9 passed. Targeted
+      Pi tests (`uv run pytest -q tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      tests/shell/test_pi_launcher_contract.py`) exit 0, 82 passed. `uv run invar
+      guard --all` exit 0, status passed, errors 0, warnings 4.
+
+
+      Requirement coverage all PROVEN: PI-FINAL-HELP-001 via help_smoke; PI-FINAL-STARTUP-001
+      via live persona startup PTY; PI-FINAL-SLASH-001 via live slash PTY proof; PI-FINAL-REGRESSION-001
+      via focused regressions; PI-FINAL-TARGETED-001 via targeted Pi tests; PI-FINAL-GUARD-001
+      via guard output. Checklist items were toggled based on verifier receipt before
+      completion.'
