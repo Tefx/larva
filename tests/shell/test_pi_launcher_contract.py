@@ -191,6 +191,34 @@ def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_
     assert not pi_writes, f"Expected no Pi settings writes, got {pi_writes}"
     # we verify no settings are written via mock asserts in more comprehensive tests
 
+def test_launcher_extension_fallback_to_long_flag(mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch):
+    """
+    Verification target 5 (B2):
+    Extension loading preflight prefers `-e` when supported, otherwise uses
+    `--extension` when supported.
+    """
+    # mock pi to support --extension but not -e
+    mock_subprocess_run.return_value.stdout = b"Options:\n  --extension  Extension path"
+    
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    
+    code = run_cli(["pi", "--persona", "known", "--", "--version"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+    
+    mock_subprocess_run.assert_called()
+    call_args, call_kwargs = mock_subprocess_run.call_args
+    cmd = call_args[0]
+    
+    assert cmd[0] == str(fake_pi_executable)
+    assert cmd[1] == "--extension"
+    assert "extension" in cmd[2]
+    assert cmd[3] == "--version"
+    
+    env = call_kwargs.get("env", os.environ)
+    assert env.get("LARVA_PI_EXTENSION_FLAG") == "--extension"
+
 @pytest.mark.parametrize("args, expected_tui", [
     (["pi", "--persona", "known"], "1"),
     (["pi", "--persona", "known", "--", "-p"], "0"),
@@ -202,6 +230,16 @@ def test_launcher_extension_unsupported_path(mock_shutil_which, mock_subprocess_
     (["pi", "--persona", "known", "--", "--mode", "sdk"], "0"),
     (["pi", "--persona", "known", "--", "--mode"], "0"),
     (["pi", "--persona", "known", "--", "--mode", "unknown"], "0"),
+    (["pi", "--persona", "known", "--", "--mode=rpc"], "0"),
+    (["pi", "--persona", "known", "--", "--mode=print"], "0"),
+    (["pi", "--persona", "known", "--", "--mode=json"], "0"),
+    (["pi", "--persona", "known", "--", "--mode=sdk"], "0"),
+    (["pi", "--persona", "known", "--", "--mode="], "0"),
+    (["pi", "--persona", "known", "--", "--mode=unknown"], "0"),
+    (["pi", "--persona", "known", "--", "--mode", "interactive"], "1"),
+    (["pi", "--persona", "known", "--", "--mode=interactive"], "1"),
+    (["pi", "--persona", "known", "--", "--mode", "interactive", "--json"], "0"),
+    (["pi", "--persona", "known", "--", "--mode=interactive", "-p"], "0"),
     (["pi", "--persona", "known", "--", "--mode", "rpc", "--print"], "0"),
 ])
 def test_launcher_interactive_tui_classification(mock_shutil_which, mock_subprocess_run, fake_pi_executable, args, expected_tui):
