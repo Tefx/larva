@@ -75943,7 +75943,7 @@ phases:
     agent: gate-reviewer
   - id: pi_finalization_20260526.spec_divergence_fix
     name: Fix Pi extension spec divergences B1-B6
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -76118,6 +76118,24 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T15:59:08.642042+00:00'
+    done_at: '2026-05-26T16:13:16.096020+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Frontend-engineer task ses_19afc67caffe5e0paty5hyWpPg
+      returned success with commit 1c9dd3b: fixed Pi extension spec divergence blockers
+      B1-B6. Orchestrator toggled all checklist items, squash-merged branch into main
+      as 00512dc ([vectl] step-pi_finalization_20260526.spec_divergence_fix completed),
+      and verified mainline. Changed files: contrib/pi-extension/larva.ts, tests/shell/test_pi_extension_contract.py,
+      tests/shell/test_pi_extension_tool_policy_static.py. Per-blocker receipts: B1
+      empty LARVA_PI_CHILD_SESSION_DIR now fails LARVA_CHILD_START_FAILED; B2 parent
+      child/resume paths no longer resolve child persona before child RPC startup
+      except parent input/path/spawn/busy checks; B3 resolve bridge requires canonical
+      capabilities and spec_version and maps invalid payload to LARVA_PERSONA_NOT_FOUND;
+      B4 list bridge fails closed for invalid data[] items; B5 stderr whitelist limited
+      to design codes and post-readiness stderr diagnostic-only; B6 tool enumeration/update
+      failures fail closed and preserve prior active envelope. Verification: `uv run
+      pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` passed 48/48; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos; `git diff --check` clean. Forbidden scope preserved: no plan/orchestrator
+      state, no canonical PersonaSpec meaning change, no aliases, no unrelated files.'
   - id: pi_finalization_20260526.extension_runtime_conformance_proof
     name: Focused extension runtime conformance proof for B1-B7
     status: pending
