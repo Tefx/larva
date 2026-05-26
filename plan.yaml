@@ -72595,49 +72595,40 @@ phases:
       - [ ] Output includes raw stdout/stderr and exit codes, not narrative summaries.
 
       - [ ] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
-      closure paths.'
-    evidence_template: '## Verification Report
+      closure paths.
 
-      **Tester**: integration-verifier
+      - [ ] Upstream implementation receipt includes `## refs Read Confirmation` with
+      `design/pi-coding-agent-integration.md` key passages or explicit NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-      **Independence Level**: L1
-
-
-      ## refs Read Confirmation (MANDATORY)
-
-      - design/pi-coding-agent-integration.md — key launcher/liveness passages.
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this verification>; NOT READ entries only with reason.
 
 
-      ## Behavioral Proof Register
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
+      - implement_launcher_entry receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-      | --- | --- | --- | --- | --- | --- | --- |
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Runtime Receipt
+      ## Runtime Verification Evidence
 
-      - command: <exact CLI command>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - raw_stdout: <paste>
+      - command: <exact command/invocation>
 
-      - raw_stderr: <paste>
+      - raw_stdout: <stdout>
+
+      - raw_stderr: <stderr>
 
       - exit_code: <code>
 
-      - argv_env_artifact: <path or pasted JSON>
+      - behavioral_proof_register: <launcher obligations and closure paths>
 
-      - negative_cases: <table>
-
-
-      ## Headline
-
-      - [ ] PASS: launcher runtime obligations proven
-
-      - [ ] PASS_WITH_DEBT: only non-blocking debt remains with non-intersection
-
-      - [ ] FAIL: blocking proof gaps remain'
+      '
     depends_on:
     - pi_launcher_runtime_20260526.implement_launcher_entry
     agent: integration-verifier
