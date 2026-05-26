@@ -75876,25 +75876,25 @@ phases:
       \ of provenance. 2. Node-backed extension tests may skip only when environment\
       \ lacks Node, with explicit blocker/non-blocker disposition. 3. Core contract/doctest\
       \ failures must not be dismissed as unrelated without non-intersection evidence.\n\
-      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      - [x] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Targeted launcher and extension test commands run with raw
+    verification: '- [x] Targeted launcher and extension test commands run with raw
       stdout/stderr and exit codes.
 
-      - [ ] Full repository tests or the project-accepted equivalent run with raw
+      - [x] Full repository tests or the project-accepted equivalent run with raw
       stdout/stderr and exit code.
 
-      - [ ] `uv run invar guard --all` or current project-authoritative full invar
+      - [x] `uv run invar guard --all` or current project-authoritative full invar
       guard command runs with raw stdout/stderr and exit code.
 
-      - [ ] Any guard/test failure has disposition: remediation owner now, explicit
+      - [x] Any guard/test failure has disposition: remediation owner now, explicit
       non-intersection, or blocked final gate.
 
-      - [ ] Evidence distinguishes fixture runtime proof from live Pi dependency proof
+      - [x] Evidence distinguishes fixture runtime proof from live Pi dependency proof
       when live Pi is unavailable.
 
-      - [ ] Upstream spec, wiring, and liveness receipts include `## refs Read Confirmation`
+      - [x] Upstream spec, wiring, and liveness receipts include `## refs Read Confirmation`
       with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
       reasons.'
     evidence_template: '## refs Read Confirmation
