@@ -74996,6 +74996,118 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.abort_runtime_retest
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.abort_unknowable_retest
+    name: Retest abort unknowable-state handling
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects `pi_extension_runtime_20260526.gate`
+      and `pi-integration-finalization-2026-05-26`.
+
+      agent_source: project
+
+      As an INDEPENDENT TESTER (`integration-verifier`), perform read-only fake Pi
+      runtime retest after `pi_extension_runtime_20260526.abort_unknowable_fix`.
+
+
+      PROOF ARTIFACT:
+
+      A runtime evidence packet proving the design target for abort/kill failure and
+      unknowable child state: abort RPC failure and kill failure/unknowable state
+      return failed `LARVA_CHILD_PROTOCOL_FAILED`, while the previously proven normal
+      successful abort cancellation path still returns cancelled `LARVA_CHILD_CANCELLED`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-ABORT-RPC-FAIL | design/pi-coding-agent-integration.md:739-754 | Fake runtime
+      abort RPC failure returns failed `LARVA_CHILD_PROTOCOL_FAILED` | pi_extension_runtime_20260526.abort_unknowable_retest
+      | `- [ ] Abort RPC failure returns failed LARVA_CHILD_PROTOCOL_FAILED.` | `abort_rpc_failure_trace`
+      | OWNED | Blocks phase gate if absent. |
+
+      | PI-KILL-UNKNOWABLE-FAIL | design/pi-coding-agent-integration.md:739-754; gate
+      evidence `contrib/pi-extension/larva.ts:573-577` | Fake runtime kill failure
+      or unknowable child state returns failed `LARVA_CHILD_PROTOCOL_FAILED` | pi_extension_runtime_20260526.abort_unknowable_retest
+      | `- [ ] Kill failure or unknowable child state returns failed LARVA_CHILD_PROTOCOL_FAILED.`
+      | `kill_failure_trace` | OWNED | Blocks phase gate if absent. |
+
+      | PI-NORMAL-CANCELLED-REGRESSION | prior narrow abort RPC/cancelled path proven
+      | Normal successful abort/kill path remains cancelled `LARVA_CHILD_CANCELLED`
+      | pi_extension_runtime_20260526.abort_unknowable_retest | `- [ ] Normal cancelled
+      path remains cancelled LARVA_CHILD_CANCELLED.` | `normal_cancelled_trace` |
+      OWNED | Blocks phase gate if regressed. |
+
+
+      SCOPE:
+
+      - Read-only verification only; do not modify source, tests, docs, configs, or
+      plan state.
+
+      - Use fake Pi runtime / extension hook / child RPC seam evidence, not source-only
+      inspection.
+
+      - Raw traces/results are required; narrative summaries alone are insufficient.
+
+
+      <side_effect_budget>Allowed: run fake Pi runtime scenarios and inspect traces/logs/source
+      for evidence. Forbidden: source/test/doc/config mutation, accepting source-only
+      proof, or treating generic thrown exceptions as proof unless the parent result
+      shape is shown.</side_effect_budget>
+
+      <risk_probes>1. Confirm abort RPC failure and kill failure are separately exercised
+      or explicitly represented in one scenario with both raw facts visible. 2. Confirm
+      failed `LARVA_CHILD_PROTOCOL_FAILED` wins over generic aborted-to-cancelled
+      mapping. 3. Confirm the earlier normal cancelled path still emits `LARVA_CHILD_CANCELLED`
+      and does not regress to failed.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`,
+      `contrib/pi-extension/larva.ts:573-577`, and `contrib/pi-extension/larva.ts:694-697`,
+      or records explicit NOT READ reasons.
+
+      - [ ] Fake runtime proof shows abort RPC failure returns parent `status: failed`
+      with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
+
+      - [ ] Fake runtime proof shows kill failure or unknowable child state returns
+      parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
+
+      - [ ] Regression proof shows normal successful abort/kill still returns parent
+      `status: cancelled` with `error.code: LARVA_CHILD_CANCELLED`.
+
+      - [ ] Behavioral proof register marks the unknowable-abort obligation `PROVEN`
+      or `BLOCKED` with explicit closure path; no OPEN recommendation is made while
+      it is unproven.'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of frontend-engineer)\n**Scope**: abort RPC failure, kill failure/unknowable\
+      \ state, and normal cancelled-path regression\n**Independence Level**: L1\n\n\
+      ### refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
+      \ — key passage for lines 739-754 or NOT READ reason\n- contrib/pi-extension/larva.ts\
+      \ — key passage for lines 573-577 and 694-697 or NOT READ reason\n\n### Fake\
+      \ Runtime Proof\n- command(s):\n  ```\n  <exact command(s)>\n  ```\n- abort_rpc_failure_trace:\n\
+      \  ```\n  <raw trace/result with failed LARVA_CHILD_PROTOCOL_FAILED>\n  ```\n\
+      - kill_failure_or_unknowable_trace:\n  ```\n  <raw trace/result with failed\
+      \ LARVA_CHILD_PROTOCOL_FAILED>\n  ```\n- normal_cancelled_trace:\n  ```\n  <raw\
+      \ trace/result with cancelled LARVA_CHILD_CANCELLED>\n  ```\n\n### Behavioral\
+      \ Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- |\n| design/pi-coding-agent-integration.md:739-754\
+      \ | abort/kill failure or unknowable state fails with LARVA_CHILD_PROTOCOL_FAILED\
+      \ | fake runtime abort RPC failure and kill failure/unknowable traces | <evidence\
+      \ ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <basis> |\n| prior abort cancelled\
+      \ path | successful abort/kill remains cancelled with LARVA_CHILD_CANCELLED\
+      \ | fake runtime normal-cancelled regression trace | <evidence ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <basis> |\n\n### Headline\n- [ ] PASS: unknowable abort handling\
+      \ and cancelled regression are proven\n- [ ] FAIL: blocker or proof gap remains"
+    depends_on:
+    - pi_extension_runtime_20260526.abort_unknowable_fix
+    agent: integration-verifier
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
