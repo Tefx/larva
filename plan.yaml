@@ -76568,7 +76568,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_finalization_20260526.pre_rpc_stderr_retest
     name: Read-only retest for pre-RPC stderr code propagation
-    status: pending
+    status: skipped
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -76717,6 +76717,7 @@ phases:
     depends_on:
     - pi_finalization_20260526.pre_rpc_stderr_fix
     agent: integration-verifier
+    skipped_reason: absorbed
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_fix
     name: Pre-RPC stderr mapping fix for whitelisted child codes
     status: done
