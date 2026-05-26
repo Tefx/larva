@@ -77780,7 +77780,7 @@ phases:
       \ command completion shape and tool enumeration fail-closed path."
   - id: pi_slash_autocomplete_20260527.fix_extension_shape
     name: Fix Pi extension autocomplete shape and startup enumeration fallback
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -77975,6 +77975,8 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.reproduce_contract
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T20:06:17.387299+00:00'
   - id: pi_slash_autocomplete_20260527.retest_liveness
     name: Retest Pi startup, slash autocomplete, live smoke, and guard
     status: pending
