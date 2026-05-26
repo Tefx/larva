@@ -77547,10 +77547,13 @@ phases:
       proof register covers B5/VT39 and B1/B2/B3/B4/B6 preservation/non-intersection.
       Checklist toggled from retest receipt.'
 - id: pi-slash-autocomplete-crash-fix-2026-05-27
-  name: Pi Slash Autocomplete Crash Fix 2026-05-27
+  name: Pi Slash Autocomplete and Live Smoke Fix 2026-05-27
   status: pending
-  gate: Live/fake Pi slash autocomplete no longer crashes; focused tests and invar
-    pass.
+  gate: 'Systematic Pi smoke/live coverage proves both reported live failures are
+    reproduced or faithfully fixture-exposed, fixed, retested, and gate-reviewed:
+    slash autocomplete `/` does not crash, `uv run larva pi --persona vectl-planner`
+    does not fail closed at extension/tool enumeration startup, targeted tests pass,
+    and `uv run invar guard --all` is green or blockers are explicit.'
   depends_on:
   - pi-integration-finalization-2026-05-26
   steps:
