@@ -75170,7 +75170,7 @@ phases:
       the exact start-failure/protocol-error mapping.'
   - id: pi_extension_runtime_20260526.abort_start_failure_fix
     name: Fix abort no-response child-exit start-failure mapping
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -75303,6 +75303,8 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.abort_unknowable_retest
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T15:04:06.607050+00:00'
   - id: pi_extension_runtime_20260526.abort_start_failure_retest
     name: Retest abort no-response child-exit start-failure mapping
     status: pending
