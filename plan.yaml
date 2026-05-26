@@ -74487,7 +74487,7 @@ phases:
       \ extension surfaces.</side_effect_budget>\n<risk_probes>1. Any unproven tool-policy\
       \ denial or subagent result contract intersects final gates. 2. Any forbidden\
       \ sidecar/lock/schema/policy hierarchy change blocks. 3. Unit-only proof cannot\
-      \ substitute for hook/RPC seam evidence.\n- [x] Completion evidence includes:\n\
+      \ substitute for hook/RPC seam evidence.\n- [ ] Completion evidence includes:\n\
       \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
       \ key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
