@@ -73570,7 +73570,7 @@ phases:
     verification: '- [x] Exact command/invocation exercising `larva pi` through the
       packaged CLI entrypoint is recorded.
 
-      - [ ] Runtime artifact shows selected extension flag, bundled extension entry,
+      - [x] Runtime artifact shows selected extension flag, bundled extension entry,
       forwarded args, and required env values.
 
       - [ ] Negative liveness cases prove missing Pi and unsupported extension fail
