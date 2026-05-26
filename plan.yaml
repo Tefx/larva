@@ -73268,7 +73268,7 @@ phases:
       and 1296-1303; downstream implementation remains blocked pending `pi_contract_harness_20260526.final_regate`.'
   - id: pi_contract_harness_20260526.final_regate
     name: Final regate for Pi expected-red contract harness
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -73436,6 +73436,8 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.regate_gap_remediation
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T07:48:38.128109+00:00'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
