@@ -72443,35 +72443,35 @@ phases:
       - [ ] No forbidden scope is present in tests or downstream implementation plan.
 
       - [ ] OPEN/BLOCK verdict cites evidence artifacts and unresolved behavioral
-      obligations.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      obligations.
 
-      - design/pi-coding-agent-integration.md — key passages reviewed from Implementation
-      handoff and Verification targets.
+      - [ ] Upstream expected-red receipts include `## refs Read Confirmation` with
+      `design/pi-coding-agent-integration.md` key passages or explicit NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Gate Decision Basis
-
-      - phase: pi-coding-agent-contract-harness-2026-05-26
-
-      - evidence_refs_reviewed: <step receipts>
-
-      - traceability_rows_reviewed: <count>
-
-      - orphan_requirements: <none or list>
-
-      - expected_red_semantics_valid: <yes/no>
-
-      - forbidden_scope_findings: <none or list>
-
-      - final_verdict: OPEN | BLOCKED
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this gate>; NOT READ entries only with reason.
 
 
-      ## Checklist Receipt
+      ## Upstream Receipt Refs Confirmation Audit
 
-      - checklist_satisfied: <items>
+      - launcher_expected_red receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-      - checklist_failed_or_blocked: <items>'
+      - extension_expected_red receipt included refs confirmation: <yes/no; evidence
+      ref>
+
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
+
+
+      ## Gate Evidence
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
+
+      - gate_decision: <OPEN/BLOCK with decision basis>
+
+      '
     depends_on:
     - pi_contract_harness_20260526.launcher_expected_red
     - pi_contract_harness_20260526.extension_expected_red
