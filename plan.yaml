@@ -75571,7 +75571,7 @@ phases:
       - [x] Package/build evidence shows `contrib/pi-extension/larva.ts` is included
       at the runtime path the launcher resolves.
 
-      - [ ] Static or runtime traces show Pi extension entry registers the required
+      - [x] Static or runtime traces show Pi extension entry registers the required
       command, tool, hooks, status, `setActiveTools`, and `tool_call` interception.
 
       - [ ] Child process invocation trace shows child RPC uses launcher-provided
