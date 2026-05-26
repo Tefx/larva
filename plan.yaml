@@ -73502,7 +73502,7 @@ phases:
       - [x] Missing persona, missing real Pi, missing extension, unsupported extension
       flag, and bad args produce documented stderr codes and exit behavior.
 
-      - [ ] Interactive detector covers exact print/json/mode markers, missing/empty/unknown
+      - [x] Interactive detector covers exact print/json/mode markers, missing/empty/unknown
       mode, conflicts, and default interactive behavior.
 
       - [ ] Tests prove launcher does not parse `~/.pi/tool-policy.json` and does
