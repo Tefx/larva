@@ -73796,7 +73796,7 @@ phases:
     claimed_at: '2026-05-26T07:57:24.068041+00:00'
   - id: pi_extension_runtime_20260526.subagent_rpc
     name: Complete larva_subagent child RPC runtime
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Subagent spawning; API contracts > Child RPC contract; Verification targets\
       \ 18-36, 39-41\nrefs: design/pi-coding-agent-integration.md\nTARGET STATE: The\
@@ -73864,6 +73864,28 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T07:57:13.449191+00:00'
+    done_at: '2026-05-26T08:43:44.250326+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Subagent task ses_19cb4075cffejA03D5AdylckXf
+      reported PASS with commit 826c6bc00607c6cdba68b0d7aacaac5a2d450114; orchestrator
+      toggled checklist from receipt, squash-merged branch into main as aed2395 ([vectl]
+      step-pi_extension_runtime_20260526.subagent_rpc completed), and verified mainline.
+      Changed files: added contrib/pi-extension/larva.ts, modified pyproject.toml,
+      modified tests/shell/test_pi_extension_contract.py. Evidence included refs Read
+      Confirmation for design/pi-coding-agent-integration.md and tests/shell/test_pi_extension_contract.py,
+      checklist receipt for can_spawn/no-active-parent, path taxonomy, child startup
+      env, new child RPC flow, resume/busy handling, and abort flow. Verification
+      on main: `uv run pytest tests/shell/test_pi_extension_contract.py` collected
+      39 items and passed 39 in 0.11s; `uv run invar guard --all` passed with 0 errors,
+      4 pre-existing warnings, 3 infos. Deviation accepted: protected test assertion
+      narrowed from substring `ask` to literal `"ask"` token because original broad
+      substring contradicted required `task`/`task_id` contract tokens while preserving
+      the design ban on explicit ask policy action. Forbidden scope evidence: no plan/orchestrator
+      state changes by subagent branch; no sidecar metadata, filesystem lock files,
+      cross-process resume coordination, bare pi child lookup, batch subagent tool,
+      schema changes, or project policy hierarchy added. Note: branch also added the
+      packaged extension file and force-include needed by the protected expected-red
+      extension harness; downstream gates retain authority to catch any over-coverage
+      or integration conflicts.'
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
     status: pending
