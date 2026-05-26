@@ -73503,33 +73503,43 @@ phases:
       non-intersection, or blocked final gate.
 
       - [ ] Evidence distinguishes fixture runtime proof from live Pi dependency proof
-      when live Pi is unavailable.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      when live Pi is unavailable.
 
-      - design/pi-coding-agent-integration.md — key verification targets and invar
-      constraints.
+      - [ ] Upstream spec, wiring, and liveness receipts include `## refs Read Confirmation`
+      with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
+      reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Command Evidence
-
-      | command | raw_output_ref_or_paste | exit_code | verdict |
-
-      | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this full guard verification>; NOT READ entries only with reason.
 
 
-      ## Failure Disposition Ledger
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | failure | provenance | gate_intersection | disposition | remediation_owner
-      |
+      - spec_conformance receipt included refs confirmation: <yes/no; evidence ref>
 
-      | --- | --- | --- | --- | --- |
+      - wiring_audit receipt included refs confirmation: <yes/no; evidence ref>
+
+      - end_to_end_liveness receipt included refs confirmation: <yes/no; evidence
+      ref>
+
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Checklist Receipt
+      ## Full Guard Evidence
 
-      - checklist_satisfied: <items>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - checklist_failed_or_blocked: <items>'
+      - targeted_tests: <commands/raw stdout/stderr/exit codes>
+
+      - repo_tests: <commands/raw stdout/stderr/exit codes>
+
+      - invar_guard: <command/raw stdout/stderr/exit code>
+
+      - failure_dispositions: <none or remediation/non-intersection/blocking records>
+
+      '
     depends_on:
     - pi_finalization_20260526.spec_conformance
     - pi_finalization_20260526.wiring_audit
