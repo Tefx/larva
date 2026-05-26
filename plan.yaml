@@ -75574,7 +75574,7 @@ phases:
       - [x] Static or runtime traces show Pi extension entry registers the required
       command, tool, hooks, status, `setActiveTools`, and `tool_call` interception.
 
-      - [ ] Child process invocation trace shows child RPC uses launcher-provided
+      - [x] Child process invocation trace shows child RPC uses launcher-provided
       real bin, extension flag, and extension entry.
 
       - [ ] No orphan public symbols, dead extension entry, or unconsumed config/env
