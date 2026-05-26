@@ -72096,3 +72096,10 @@ phases:
     without writing Pi settings.
   depends_on:
   - pi-coding-agent-contract-harness-2026-05-26
+- id: pi-extension-runtime-2026-05-26
+  name: Pi Extension Runtime 2026-05-26
+  status: locked
+  gate: Bundled Pi extension projects persona prompt/model/status, enforces tool policy,
+    and exposes larva_subagent through real Pi extension hooks.
+  depends_on:
+  - pi-coding-agent-contract-harness-2026-05-26
