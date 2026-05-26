@@ -74494,7 +74494,7 @@ phases:
     verification: '- [x] Gate decision basis reviews all implementation receipts plus
       extension runtime proof.
 
-      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_runtime_retest`
+      - [x] Gate specifically reviews `pi_extension_runtime_20260526.abort_runtime_retest`
       and blocks unless B1 target 35 narrow cancelled path is PROVEN by fake Pi runtime
       trace containing child RPC `abort` plus cancelled `LARVA_CHILD_CANCELLED` parent
       result.
