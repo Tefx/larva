@@ -73080,26 +73080,21 @@ phases:
   - id: pi_finalization_20260526.spec_conformance
     name: Spec conformance audit for Pi integration
     status: pending
-    description: 'step_type: verification
-
-      expected_result: green
-
-      verification_scope: full-plan-check; protects final gate and reviews all design
-      verification targets 1-41.
-
-      As an independent spec verifier, compare implemented launcher and extension
-      behavior against design/pi-coding-agent-integration.md. This is not a generic
-      test pass; it is adversarial divergence hunting against exact contract language.
-
-      SCOPE: `larva pi`, bundled extension entry, persona projection, tool policy,
-      `larva_subagent`, launcher env, and forbidden non-goals.
-
-      <side_effect_budget>Allowed: read-only source/evidence/spec review and command
-      execution. Forbidden: source mutation.</side_effect_budget>
-
-      <risk_probes>1. Detect local reinterpretations of canonical PersonaSpec/opifex-owned
-      schema. 2. Detect drift from stable error codes/result shapes. 3. Detect omitted
-      verification targets hidden by passing unit tests.'
+    description: "step_type: verification\nexpected_result: green\nverification_scope:\
+      \ full-plan-check; protects final gate and reviews all design verification targets\
+      \ 1-41.\nAs an independent spec verifier, compare implemented launcher and extension\
+      \ behavior against design/pi-coding-agent-integration.md. This is not a generic\
+      \ test pass; it is adversarial divergence hunting against exact contract language.\n\
+      SCOPE: `larva pi`, bundled extension entry, persona projection, tool policy,\
+      \ `larva_subagent`, launcher env, and forbidden non-goals.\n<side_effect_budget>Allowed:\
+      \ read-only source/evidence/spec review and command execution. Forbidden: source\
+      \ mutation.</side_effect_budget>\n<risk_probes>1. Detect local reinterpretations\
+      \ of canonical PersonaSpec/opifex-owned schema. 2. Detect drift from stable\
+      \ error codes/result shapes. 3. Detect omitted verification targets hidden by\
+      \ passing unit tests.\n- [ ] Completion evidence includes:\n  `## refs Read\
+      \ Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages read:\
+      \ <specific sections/targets used by this step>; NOT READ entries only with\
+      \ reason.`\n"
     verification: '- [ ] Requirements register includes every design verification
       target 1-41 and all non-goals as checked obligations.
 
