@@ -73669,7 +73669,7 @@ phases:
   steps:
   - id: pi_extension_runtime_20260526.persona_projection
     name: Complete persona projection and slash command runtime
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Persona runtime projection; Runtime UX > Persona switching; UI status; API\
       \ contracts; Verification targets 6-13, 37-38\nrefs: design/pi-coding-agent-integration.md\n\
@@ -73731,6 +73731,25 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T07:57:06.594490+00:00'
+    done_at: '2026-05-26T09:41:59.133196+00:00'
+    evidence: 'WORKTREE_MERGED_VIA_RESOLVER_VERIFIED. Subagent evidence repair for
+      task ses_19cb4079affeiOjgZX944CTM1Q reported SUCCESS with commit 3b7eed2: persona
+      projection runtime in contrib/pi-extension/larva.ts and pyproject force-include.
+      During squash merge into main, conflict occurred in contrib/pi-extension/larva.ts
+      against previously merged subagent RPC implementation; conflict-resolver task
+      ses_19c7d04daffepby6bOng3pqrCh resolved it by preserving both persona projection
+      and subagent/RPC behavior. Orchestrator committed merge as bb9aee7 ([vectl]
+      step-pi_extension_runtime_20260526.persona_projection completed). Mainline verification
+      after resolver merge: `uv run pytest tests/shell/test_pi_extension_contract.py`
+      collected 39 items and passed 39 in 0.09s; `uv run invar guard --all` passed
+      with 0 errors, 4 pre-existing warnings, 3 infos. Evidence included refs Read
+      Confirmation for design/pi-coding-agent-integration.md and tests/shell/test_pi_extension_contract.py;
+      checklist receipt covering resolve/list bridge via LARVA_CLI_ARGV_JSON plus
+      fallback, valid switch envelope/model/status behavior, invalid switch/bad model
+      rollback, interactive/non-interactive selector behavior, and idempotent prompt
+      watermark. Forbidden scope preserved: no PersonaSpec schema change, plan/orchestrator
+      state edit, or prompt catalogue dump; implementation limited to bundled Pi extension/runtime
+      packaging. No deviation records.'
   - id: pi_extension_runtime_20260526.tool_policy
     name: Complete adapter-local tool policy enforcement
     status: claimed
