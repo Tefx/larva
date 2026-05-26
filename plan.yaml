@@ -72269,6 +72269,65 @@ phases:
 
       - no_ask_or_policy_hierarchy_or_batch_tool: <evidence>'
     agent: frontend-engineer
+  - id: pi_contract_harness_20260526.gate
+    name: Gate contract harness
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects launcher and extension implementation
+      gates.
+
+      As an independent gate reviewer, assess whether expected-red tests and the requirement-to-checklist
+      matrix cover design/pi-coding-agent-integration.md without forbidden-scope expansion.
+
+      <side_effect_budget>Allowed: read-only review. Forbidden: code/test mutation
+      or lifecycle completion.</side_effect_budget>
+
+      <risk_probes>1. Detect orphan requirements from verification targets 1-41. 2.
+      Detect any plan/test drift toward forbidden scope. 3. Detect ambiguous expected-red
+      versus must-green semantics.</risk_probes>'
+    verification: '- [ ] Gate decision basis reviews both expected-red receipts and
+      confirms no product implementation occurred.
+
+      - [ ] Every design verification target 1-41 is OWNED by a concrete checklist
+      item or explicitly escalated before implementation.
+
+      - [ ] No forbidden scope is present in tests or downstream implementation plan.
+
+      - [ ] OPEN/BLOCK verdict cites evidence artifacts and unresolved behavioral
+      obligations.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key passages reviewed from Implementation
+      handoff and Verification targets.
+
+
+      ## Gate Decision Basis
+
+      - phase: pi-coding-agent-contract-harness-2026-05-26
+
+      - evidence_refs_reviewed: <step receipts>
+
+      - traceability_rows_reviewed: <count>
+
+      - orphan_requirements: <none or list>
+
+      - expected_red_semantics_valid: <yes/no>
+
+      - forbidden_scope_findings: <none or list>
+
+      - final_verdict: OPEN | BLOCKED
+
+
+      ## Checklist Receipt
+
+      - checklist_satisfied: <items>
+
+      - checklist_failed_or_blocked: <items>'
+    depends_on:
+    - pi_contract_harness_20260526.launcher_expected_red
+    - pi_contract_harness_20260526.extension_expected_red
+    agent: gate-reviewer
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
