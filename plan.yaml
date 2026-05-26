@@ -77718,7 +77718,7 @@ phases:
     - AGENTS.md
     agent: integration-verifier
   - id: pi_slash_autocomplete_20260527.fix_extension_shape
-    name: Fix Pi extension slash autocomplete return shape
+    name: Fix Pi extension autocomplete shape and startup enumeration fallback
     status: pending
     description: 'step_type: implementation
 
@@ -77727,28 +77727,39 @@ phases:
 
       TARGET STATE:
 
-      `contrib/pi-extension/larva.ts` exposes slash-command/autocomplete data in Pi
-      extension API shapes that the Pi TUI editor accepts when the user types `/`.
-      The editor must receive strings or documented autocomplete objects whose string-bearing
-      field is valid for Pi''s `startsWith`-based matching. Typing `/` must not crash
-      the Pi runtime.
+      `contrib/pi-extension/larva.ts` satisfies both live Pi bug reports:
+
+      1. Slash-command/autocomplete data returned during `/` completion uses Pi extension
+      API shapes that the Pi TUI editor accepts: strings or documented autocomplete
+      objects whose string-bearing field is valid for Pi''s `startsWith`-based matching.
+
+      2. `uv run larva pi --persona vectl-planner` does not fail closed at extension-load
+      startup when Pi tool enumeration is unavailable; the extension must either enumerate
+      successfully or degrade to a safe, documented empty/unavailable tool state that
+      lets Pi start and report the limitation without uncaught startup failure.
 
 
       UPSTREAM ARTIFACTS (from reproduction step):
 
-      - pi_slash_autocomplete_20260527.reproduce_contract — failing command/fixture
-      and failing value shape are AUTHORITATIVE.
+      - `pi_slash_autocomplete_20260527.reproduce_contract` — failing slash autocomplete
+      shape and startup enumeration failure mode are AUTHORITATIVE.
 
-      - Focused expected-red regression test from the reproduction step is PROTECTED.
+      - Focused expected-red regression tests/fixtures from the reproduction step
+      are PROTECTED.
 
 
       SCOPE:
 
-      - Fix only `contrib/pi-extension/larva.ts` and focused tests/fixtures needed
-      to turn the expected-red slash autocomplete proof green.
+      - Prefer one cohesive repair in `contrib/pi-extension/larva.ts` plus focused
+      tests/fixtures under `tests/shell/` because both failures are extension runtime
+      shape/fallback issues.
 
-      - Preserve existing Pi behavior, slash commands, MCP adapter behavior, and launcher
-      semantics except where necessary to conform autocomplete return shapes.
+      - Add a second mechanical helper/test only if needed to keep autocomplete candidate
+      normalization and tool-enumeration fallback independently testable.
+
+      - Preserve existing Pi commands, slash labels, MCP adapter behavior, tool policy
+      semantics, and launcher CLI semantics except where necessary to prevent invalid
+      autocomplete shapes or fail-closed extension startup.
 
       - No PersonaSpec, shared schema, canonical contract, or Python admission-surface
       change is allowed.
@@ -77756,9 +77767,10 @@ phases:
 
       CONTRACT ANCHOR:
 
-      The fix must consume the reproduction artifact''s failing shape and make the
-      returned autocomplete/slash-command candidates conform to the Pi extension public
-      API documented in refs.
+      The fix must consume the reproduction artifact''s failing shapes and make returned
+      autocomplete/slash-command/tool candidates conform to the Pi extension public
+      API documented in refs. Tool enumeration unavailability must be represented
+      as a safe runtime state, not an uncaught extension-load exception.
 
 
       ## Completion Criteria (stub exclusion)
@@ -77777,21 +77789,26 @@ phases:
       | --- | --- | --- | --- | --- | --- | --- | --- |
 
       | PI-SLASH-CRASH-001 | user report + reproduce_contract artifact | slash autocomplete
-      no longer passes non-string values to Pi editor matching | pi_slash_autocomplete_20260527.fix_extension_shape
-      | focused regression turns green | regression_result | OWNED | retest verifies
-      runtime liveness |
+      no longer passes non-string/non-documented values to Pi editor matching | pi_slash_autocomplete_20260527.fix_extension_shape
+      | focused slash regression turns green | slash_regression_result | OWNED | retest
+      verifies runtime liveness |
+
+      | PI-STARTUP-ENUM-001 | user report + reproduce_contract artifact | extension-load
+      startup does not fail closed when Pi tool enumeration is unavailable | pi_slash_autocomplete_20260527.fix_extension_shape
+      | startup enumeration regression turns green | startup_regression_result | OWNED
+      | retest verifies live startup/smoke |
 
       | PI-SCOPE-001 | `contrib/pi-extension/larva.ts` and Pi integration design |
-      preserve existing commands/tool policy; no schema/persona changes | pi_slash_autocomplete_20260527.fix_extension_shape
-      | forbidden-scope diff check | scope_diff_summary | OWNED | gate blocks if violated
-      |
+      preserve existing commands/tool policy; no schema/persona/admission changes
+      | pi_slash_autocomplete_20260527.fix_extension_shape | forbidden-scope diff
+      check | scope_diff_summary | OWNED | gate blocks if violated |
 
 
       <side_effect_budget>
 
-      Allowed: modify `contrib/pi-extension/larva.ts`; update/add focused slash-autocomplete
-      tests/fixtures under `tests/shell/` only as needed. Forbidden: modify PersonaSpec/schema/shared
-      contracts, Python core/shell admission behavior, unrelated Pi launcher behavior,
+      Allowed: modify `contrib/pi-extension/larva.ts`; update/add focused Pi extension/launcher
+      tests or fixtures under `tests/shell/` only as needed. Forbidden: modify PersonaSpec/schema/shared
+      contracts, Python core/shell admission behavior, unrelated launcher behavior,
       prior completed phase evidence, or broad refactors.
 
       </side_effect_budget>
@@ -77799,73 +77816,101 @@ phases:
 
       <risk_probes>
 
-      - Confirm all autocomplete candidates returned during `/` matching are strings
-      or Pi-documented objects with valid string fields, not arrays/objects accidentally
-      forwarded from tool metadata.
+      - Confirm every autocomplete candidate returned during `/` matching is a string
+      or Pi-documented object with a valid string-bearing field, not arrays/objects
+      accidentally forwarded from tool metadata.
 
-      - Confirm empty/no-match autocomplete does not crash and does not alter command
-      execution behavior.
+      - Confirm tool enumeration unavailable/failed states are surfaced as safe extension
+      runtime data or warnings, not uncaught extension-load failure.
 
-      - Confirm the fix covers both bundled extension runtime and static/contract
-      tests, not only a helper function.
+      - Confirm empty/no-match autocomplete and unavailable tools do not crash and
+      do not alter command execution behavior beyond documented unavailable-state
+      handling.
 
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (green after fix):
 
-      - [ ] Refs confirmation includes key passages from the design and extension
-      source that define autocomplete/slash-command surface expectations.
+      - [ ] Refs confirmation includes key passages from design, extension source,
+      relevant tests, and AGENTS.md.
 
-      - [ ] Diff summary confirms product changes are limited to contrib/pi-extension/larva.ts
-      plus focused tests/fixtures.
+      - [ ] Diff summary confirms product changes are limited to `contrib/pi-extension/larva.ts`
+      plus focused tests/fixtures, with no prior completed phase evidence mutation.
 
-      - [ ] Focused expected-red slash autocomplete regression from pi_slash_autocomplete_20260527.reproduce_contract
+      - [ ] Focused expected-red slash autocomplete regression from `pi_slash_autocomplete_20260527.reproduce_contract`
+      now passes.
+
+      - [ ] Focused expected-red startup/tool-enumeration regression from `pi_slash_autocomplete_20260527.reproduce_contract`
       now passes.
 
       - [ ] Evidence shows Pi TUI autocomplete receives only strings or documented
       autocomplete object shapes for `/` candidates.
 
-      - [ ] Existing Pi extension command/tool-policy behavior remains covered by
-      targeted tests.
+      - [ ] Evidence shows tool enumeration unavailable/failure path degrades safely
+      without fail-closed extension-load startup crash.
 
-      - [ ] No PersonaSpec, schema, or unrelated launcher behavior changed.'
+      - [ ] Existing Pi extension command/tool-policy and launcher behavior remains
+      covered by targeted tests.
+
+      - [ ] No PersonaSpec, schema, Python admission surface, or unrelated launcher
+      behavior changed.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      proof_gap_status, gate_open_allowed=false until retest/gate.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
-      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+      - `design/pi-coding-agent-integration.md` — <key passage or NOT READ: reason>
 
-      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+      - `contrib/pi-extension/larva.ts` — <key passage or NOT READ: reason>
 
-      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
+      - `tests/shell/test_pi_extension_contract.py` — <key passage or NOT READ: reason>
 
-      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
+      - `tests/shell/test_pi_extension_tool_policy_static.py` — <key passage or NOT
       READ: reason>
+
+      - `tests/shell/test_pi_launcher.py` — <key passage or NOT READ: reason>
+
+      - `AGENTS.md` — <key passage or NOT READ: reason>
 
 
       ## Fix Receipt
 
-      - upstream_reproduction_artifact: pi_slash_autocomplete_20260527.reproduce_contract
-
       - changed_files: <list>
 
-      - scope_diff_summary: <confirm only allowed files changed>
+      - scope_diff_summary: <why only allowed surfaces changed>
 
-      - autocomplete_shape_before: <from reproduction>
+      - slash_root_cause: <invalid value shape root cause>
 
-      - autocomplete_shape_after: <strings or documented Pi API object shape>
+      - startup_root_cause: <tool enumeration fail-closed root cause>
 
-      - regression_result: <command + raw output + exit code>
+      - slash_regression_result: <raw command/stdout/stderr/exit>
 
-      - existing_behavior_checks: <targeted Pi extension tests/raw output>
+      - startup_regression_result: <raw command/stdout/stderr/exit>
+
+      - autocomplete_shape_proof: <strings/documented object fields proof>
+
+      - enumeration_fallback_proof: <safe unavailable state proof>
 
 
       ## Semantic Closure
 
-      - verdict: FIX_READY_FOR_RETEST | BLOCKED
+      verdict: FIX_APPLIED | BLOCKED
 
-      - blockers: []
+      blockers: []
 
-      - gate_open_allowed: false'
+      blocking_status: <blocking/non-blocking with rationale>
+
+      proof_gap_status: <none or explicit gaps deferred to retest>
+
+      gate_open_allowed: false'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_tool_policy_static.py
+    - tests/shell/test_pi_launcher.py
+    - AGENTS.md
     depends_on:
     - pi_slash_autocomplete_20260527.reproduce_contract
     agent: frontend-engineer
