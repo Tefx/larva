@@ -73660,7 +73660,7 @@ phases:
       - [x] OPEN only if CLI entrypoint/startup path, env, extension flag, forwarded
       args, and documented error exits have positive proof.
 
-      - [ ] Gate rejects build-only/helper-only proof for the runnable `larva pi`
+      - [x] Gate rejects build-only/helper-only proof for the runnable `larva pi`
       surface.
 
       - [ ] Gate rejects any PersonaSpec schema changes, Pi settings writes, worktree/file-lock/credential
