@@ -75505,7 +75505,7 @@ phases:
     verification: '- [x] Requirements register includes every design verification
       target 1-41 and all non-goals as checked obligations.
 
-      - [ ] Evidence table cites design section and implementation file/line or runtime
+      - [x] Evidence table cites design section and implementation file/line or runtime
       evidence for each requirement.
 
       - [ ] Verdict model distinguishes CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
