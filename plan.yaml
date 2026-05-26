@@ -76694,3 +76694,162 @@ phases:
     depends_on:
     - pi_finalization_20260526.pre_rpc_stderr_fix
     agent: integration-verifier
+  - id: pi_finalization_20260526.pre_rpc_stderr_mapping_fix
+    name: Pre-RPC stderr mapping fix for whitelisted child codes
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      work_type: defect_repair
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > API contracts > Child RPC contract
+
+      - design/pi-coding-agent-integration.md > Verification target 39
+
+      refs:
+
+      - design/pi-coding-agent-integration.md
+
+      touch_paths:
+
+      - contrib/pi-extension/
+
+      - tests/shell/test_pi_extension_contract.py
+
+      harness_refs:
+
+      - executable/fake TypeScript/Pi child runtime seam used by pi_finalization_20260526.extension_runtime_conformance_proof
+
+
+      TARGET STATE: The executable TypeScript/Pi parent runtime maps whitelisted child
+      stderr emitted before JSONL/RPC readiness to the same parent domain error code.
+      In the failing B5/VT39 scenario, pre-readiness stderr `larva pi: LARVA_PERSONA_NOT_FOUND:
+      child invalid` yields parent code `LARVA_PERSONA_NOT_FOUND`, not generic `LARVA_CHILD_PROTOCOL_FAILED`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B5/VT39-pre-rpc-persona | design/pi-coding-agent-integration.md > Verification
+      target 39; whitelisted child stderr before JSONL readiness may propagate | `LARVA_PERSONA_NOT_FOUND`
+      pre-RPC stderr propagates as parent `LARVA_PERSONA_NOT_FOUND` | pi_finalization_20260526.pre_rpc_stderr_mapping_fix
+      | Pre-RPC persona-not-found mapping fixed | pre_rpc_persona_mapping | OWNED
+      | final gate blocker if unproven |
+
+      | B5/VT39-whitelist-exact | design/pi-coding-agent-integration.md > Child RPC
+      contract; only named codes may propagate | Whitelist is exactly `LARVA_PERSONA_NOT_FOUND`,
+      `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, `LARVA_TOOL_ENUMERATION_FAILED`
+      | pi_finalization_20260526.pre_rpc_stderr_mapping_fix | Exact whitelist preserved
+      | whitelist_exactness | OWNED | final gate blocker if widened or narrowed |
+
+      | B5/VT39-non-whitelisted | design/pi-coding-agent-integration.md > Child RPC
+      contract; generic child/protocol failures remain generic | Non-whitelisted pre-RPC
+      stderr remains child start/protocol failure | pi_finalization_20260526.pre_rpc_stderr_mapping_fix
+      | Non-whitelisted stderr stays generic | non_whitelist_generic | OWNED | final
+      gate blocker if arbitrary stderr propagates |
+
+      | B5/VT39-post-readiness | design/pi-coding-agent-integration.md > Child RPC
+      contract; stderr after readiness is diagnostic-only | Post-readiness stderr
+      does not override RPC/domain result | pi_finalization_20260526.pre_rpc_stderr_mapping_fix
+      | Post-readiness diagnostic path preserved | post_readiness_diagnostic | OWNED
+      | final gate blocker if timing boundary regresses |
+
+      | B1/B2/B3/B4/B6-preservation | prior conformance proof reported these passed
+      | Mapping fix does not regress already-passing behaviors | pi_finalization_20260526.pre_rpc_stderr_mapping_fix
+      | Previously passing rows remain green or non-intersection is explicit | preservation
+      | OWNED | final gate blocker if regression intersects B1-B6 |
+
+
+      CONSTRAINTS:
+
+      - Preserve readiness timing as the semantic boundary: before JSONL/RPC readiness
+      can propagate only exact whitelisted domain codes; after readiness remains diagnostic-only.
+
+      - Preserve exact code spelling: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
+      `LARVA_POLICY_INVALID`, `LARVA_TOOL_ENUMERATION_FAILED`.
+
+      - Do not accept arbitrary `LARVA_*` stderr strings, non-whitelisted codes, or
+      malformed shared input.
+
+      - Do not modify Python PersonaSpec/schema authority, opifex shared contracts,
+      or unrelated B1/B2/B3/B4/B6 behavior.
+
+      - Fixture/fake TypeScript/Pi runtime evidence is required and sufficient; live
+      Pi availability is not required.
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Parent still returning `LARVA_CHILD_PROTOCOL_FAILED` for the exact pre-readiness
+      persona-not-found fake child scenario.
+
+      2. Whitelist drift, including old unprefixed names such as `MODEL_UNAVAILABLE`,
+      `POLICY_INVALID`, or `TOOL_ENUMERATION_FAILED` without the `LARVA_` prefix.
+
+      3. Arbitrary or non-whitelisted pre-RPC stderr propagating as a domain error.
+
+      4. Post-readiness stderr overriding a ready RPC/domain result.
+
+      5. Source-only proof without executable/fake TypeScript/Pi runtime seam evidence.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      deliverable must contain substantive runtime mapping logic whose output varies
+      by stderr timing and domain code.
+
+
+      <side_effect_budget>Allowed: mutate TypeScript/Pi extension runtime mapping
+      code and focused fake-child tests or fixtures for B5/VT39. Forbidden: Python
+      shared contract/schema changes, whitelisting arbitrary stderr, weakening B1/B2/B3/B4/B6,
+      or requiring live Pi availability for fixture proof.</side_effect_budget>
+
+      <risk_probes>1. Verify the fake child exits before JSONL/RPC readiness in the
+      persona-not-found scenario. 2. Verify exact `LARVA_`-prefixed whitelist semantics
+      and at least one non-whitelisted negative case. 3. Verify post-readiness stderr
+      remains diagnostic-only even when it contains whitelisted-looking text.</risk_probes>'
+    verification: '- [ ] Pre-RPC fake child stderr `larva pi: LARVA_PERSONA_NOT_FOUND:
+      child invalid` before JSONL/RPC readiness maps to parent `LARVA_PERSONA_NOT_FOUND`.
+
+      - [ ] Exact whitelist is preserved: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
+      `LARVA_POLICY_INVALID`, `LARVA_TOOL_ENUMERATION_FAILED`.
+
+      - [ ] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
+      failure and does not propagate as a domain code.
+
+      - [ ] Post-readiness stderr, including whitelisted-looking text, remains diagnostic-only
+      and does not override RPC/domain results.
+
+      - [ ] Runtime fake seam evidence is produced with raw command, stdout/stderr/RPC
+      trace, exit code, and harness path.
+
+      - [ ] Existing B1/B2/B3/B4/B6 passing behaviors remain green or have explicit
+      non-intersection evidence.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — key passage or \"NOT READ:\
+      \ <reason>\"\n\n## Fix Receipt\n- changed_files: <paths>\n- fake_runtime_harness:\
+      \ <path>\n- command: <exact command>\n- exit_code: <code>\n- raw_stdout: |\n\
+      \    <paste>\n- raw_stderr: |\n    <paste>\n- rpc_trace: |\n    <paste JSONL/readiness\
+      \ trace>\n\n## Mapping Evidence\n| case | timing | stderr | expected_parent_code\
+      \ | actual_parent_code | status |\n| --- | --- | --- | --- | --- | --- |\n|\
+      \ persona-not-found | pre-readiness | larva pi: LARVA_PERSONA_NOT_FOUND: child\
+      \ invalid | LARVA_PERSONA_NOT_FOUND | <actual> | PASS/FAIL |\n| model-unavailable\
+      \ | pre-readiness | <stderr> | LARVA_MODEL_UNAVAILABLE | <actual> | PASS/FAIL\
+      \ |\n| policy-invalid | pre-readiness | <stderr> | LARVA_POLICY_INVALID | <actual>\
+      \ | PASS/FAIL |\n| tool-enumeration | pre-readiness | <stderr> | LARVA_TOOL_ENUMERATION_FAILED\
+      \ | <actual> | PASS/FAIL |\n| non-whitelisted | pre-readiness | <stderr> | child\
+      \ start/protocol failure | <actual> | PASS/FAIL |\n| post-readiness | post-readiness\
+      \ | <stderr> | diagnostic-only/no override | <actual> | PASS/FAIL |\n\n## Preservation\n\
+      - B1/B2/B3/B4/B6 preservation evidence: <commands/results or explicit non-intersection>\n\
+      - constraints_preserved: <evidence>\n- residual_risk: <none or blocker owner>"
+    depends_on:
+    - pi_finalization_20260526.extension_runtime_conformance_proof
+    agent: frontend-engineer
