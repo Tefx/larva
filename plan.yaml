@@ -79675,7 +79675,7 @@ phases:
       completion.'
 - id: pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
   name: Pi Persona Load, Slash Switch, Spawn, and Prompt Injection Proof 2026-05-27
-  status: pending
+  status: in_progress
   gate: 'All four user questions have deterministic real-Pi evidence: `--persona`
     semantically loads the persona, `/larva-persona <id>` switches and confirms effective
     load, `larva spawn`/subagent lifecycle is exercised end-to-end, and persona prompt
@@ -79686,7 +79686,7 @@ phases:
   steps:
   - id: pi_persona_spawn_proof_20260527.contract_design
     name: Design real-Pi persona and spawn proof contract
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       agent_source: project
@@ -79847,6 +79847,8 @@ phases:
 
       - risk_probes_addressed: <yes/no with notes>'
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T21:29:15.849297+00:00'
   - id: pi_persona_spawn_proof_20260527.diagnostic_live
     name: Run expected-red-or-green real-Pi persona, switch, spawn, and prompt diagnostic
     status: pending
