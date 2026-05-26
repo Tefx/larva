@@ -75111,7 +75111,7 @@ phases:
       failed `LARVA_CHILD_PROTOCOL_FAILED` wins over generic aborted-to-cancelled
       mapping. 3. Confirm the earlier normal cancelled path still emits `LARVA_CHILD_CANCELLED`
       and does not regress to failed.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`,
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`,
       `contrib/pi-extension/larva.ts:573-577`, and `contrib/pi-extension/larva.ts:694-697`,
       or records explicit NOT READ reasons.
 
