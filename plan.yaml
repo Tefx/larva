@@ -76719,7 +76719,7 @@ phases:
     agent: integration-verifier
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_fix
     name: Pre-RPC stderr mapping fix for whitelisted child codes
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -76876,6 +76876,8 @@ phases:
     depends_on:
     - pi_finalization_20260526.extension_runtime_conformance_proof
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T17:11:52.743048+00:00'
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     name: Read-only retest for pre-RPC stderr mapping
     status: pending
