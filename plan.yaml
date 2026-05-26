@@ -72929,25 +72929,20 @@ phases:
   - id: pi_extension_runtime_20260526.extension_runtime_proof
     name: Extension runtime and seam proof
     status: pending
-    description: 'step_type: verification
-
-      expected_result: green
-
-      verification_scope: phase-check; protects the Pi extension runtime gate and
-      final liveness gate.
-
-      As an independent verifier, exercise the bundled Pi extension through fake or
-      real Pi extension APIs/RPC process seams and prove the user-observable slash
-      command/status/tool behavior, not only source structure.
-
-      <side_effect_budget>Allowed: run tests, Node/fixture scenarios, and inspect
-      artifacts. Forbidden: source mutation or accepting unit-only proof for runtime
-      hook surfaces.</side_effect_budget>
-
-      <risk_probes>1. Runtime evidence must show commands/hooks/tools registered and
-      invoked. 2. Mocked Pi APIs are acceptable only when the source-to-sink hook
-      path is exercised. 3. Subagent RPC proof must include raw JSONL traces for success
-      and failure paths.'
+    description: "step_type: verification\nexpected_result: green\nverification_scope:\
+      \ phase-check; protects the Pi extension runtime gate and final liveness gate.\n\
+      As an independent verifier, exercise the bundled Pi extension through fake or\
+      \ real Pi extension APIs/RPC process seams and prove the user-observable slash\
+      \ command/status/tool behavior, not only source structure.\n<side_effect_budget>Allowed:\
+      \ run tests, Node/fixture scenarios, and inspect artifacts. Forbidden: source\
+      \ mutation or accepting unit-only proof for runtime hook surfaces.</side_effect_budget>\n\
+      <risk_probes>1. Runtime evidence must show commands/hooks/tools registered and\
+      \ invoked. 2. Mocked Pi APIs are acceptable only when the source-to-sink hook\
+      \ path is exercised. 3. Subagent RPC proof must include raw JSONL traces for\
+      \ success and failure paths.\n- [ ] Completion evidence includes:\n  `## refs\
+      \ Read Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages\
+      \ read: <specific sections/targets used by this step>; NOT READ entries only\
+      \ with reason.`\n"
     verification: '- [ ] Runtime scenario proves `/larva-persona <valid>`, no-arg
       interactive selector path, non-interactive bad-input path, and UI status updates.
 
