@@ -76389,3 +76389,132 @@ phases:
     depends_on:
     - pi_finalization_20260526.extension_runtime_conformance_proof
     agent: spec-verifier
+  - id: pi_finalization_20260526.pre_rpc_stderr_fix
+    name: Pre-RPC stderr fix for child persona errors
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      work_type: defect_repair
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > API contracts > Child RPC contract
+
+      - design/pi-coding-agent-integration.md > Verification target 39
+
+      refs:
+
+      - design/pi-coding-agent-integration.md
+
+      TARGET STATE: The Pi extension/child runtime preserves whitelisted pre-RPC stderr
+      domain error codes emitted before RPC readiness, so `larva pi: LARVA_PERSONA_NOT_FOUND:
+      child invalid` yields parent error code `LARVA_PERSONA_NOT_FOUND` rather than
+      generic `LARVA_CHILD_PROTOCOL_FAILED`. The whitelist remains limited to `LARVA_PERSONA_NOT_FOUND`,
+      `MODEL_UNAVAILABLE`, `POLICY_INVALID`, and `TOOL_ENUMERATION_FAILED`. Stderr
+      after RPC readiness remains diagnostic and must continue to produce protocol/diagnostic
+      handling rather than domain-code propagation.
+
+
+      BOUNDING BOX: TypeScript/Pi extension child-process bridge and existing fake
+      child runtime tests/seams that produced B5/VT39. Do not change PersonaSpec schema,
+      Python shared contracts, or non-Pi admission surfaces.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B5/VT39-pre-rpc-persona | design/pi-coding-agent-integration.md > Verification
+      target 39; child stderr before RPC readiness may carry whitelisted domain code
+      | Pre-RPC `LARVA_PERSONA_NOT_FOUND` stderr propagates as same parent code |
+      pi_finalization_20260526.pre_rpc_stderr_fix | Fix preserves whitelisted pre-RPC
+      domain code propagation | whitelisted_pre_rpc_mapping | OWNED | final gate blocker
+      if unproven |
+
+      | B5/VT39-whitelist | design/pi-coding-agent-integration.md > Child RPC contract;
+      only named domain codes may propagate | Whitelist exactly includes `LARVA_PERSONA_NOT_FOUND`,
+      `MODEL_UNAVAILABLE`, `POLICY_INVALID`, `TOOL_ENUMERATION_FAILED` | pi_finalization_20260526.pre_rpc_stderr_fix
+      | Whitelist remains exact and closed | whitelist_exactness | OWNED | final gate
+      blocker if widened/narrowed |
+
+      | B5/VT39-post-readiness | design/pi-coding-agent-integration.md > Child RPC
+      contract; stderr after readiness is diagnostic/protocol surface | Post-readiness
+      stderr does not become a domain error override | pi_finalization_20260526.pre_rpc_stderr_fix
+      | Post-readiness stderr remains diagnostic/protocol failure handling | post_readiness_diagnostic
+      | OWNED | final gate blocker if domain override occurs after readiness |
+
+
+      CONSTRAINTS:
+
+      - Preserve B1/B2/B3/B4/B6 behavior that already passed; do not broaden the fix
+      into unrelated launcher, tool-policy, or persona schema behavior.
+
+      - Preserve exact whitelist semantics; do not accept arbitrary `LARVA_*` stderr
+      strings.
+
+      - Keep readiness timing as the semantic boundary: before RPC readiness can map
+      whitelisted domain codes; after readiness remains diagnostic/protocol handling.
+
+      - Fixture/fake child evidence is sufficient for implementation proof; live Pi
+      availability is not required.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      deliverable must contain substantive runtime mapping logic whose output varies
+      by stderr timing and domain code.
+
+
+      <side_effect_budget>Allowed: mutate TypeScript/Pi extension runtime code and
+      focused fake-child tests for B5/VT39 only. Forbidden: Python canonical PersonaSpec/schema
+      changes, accepting malformed shared input, widening whitelist beyond the four
+      named codes, or changing post-readiness stderr semantics.</side_effect_budget>
+
+      <risk_probes>1. Confirm the failed fake-child seam actually exits before RPC
+      readiness and still maps to `LARVA_PERSONA_NOT_FOUND`. 2. Confirm non-whitelisted
+      pre-RPC stderr still maps to protocol/start failure, not arbitrary propagation.
+      3. Confirm post-readiness stderr with a whitelisted-looking code remains diagnostic/protocol
+      handling.</risk_probes>'
+    verification: '- [ ] Focused fix preserves exact pre-RPC whitelist: `LARVA_PERSONA_NOT_FOUND`,
+      `MODEL_UNAVAILABLE`, `POLICY_INVALID`, `TOOL_ENUMERATION_FAILED`.
+
+      - [ ] Fake child that writes `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
+      to stderr before RPC readiness and exits produces parent code `LARVA_PERSONA_NOT_FOUND`.
+
+      - [ ] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
+      failure rather than propagated as a domain code.
+
+      - [ ] Post-readiness stderr, including whitelisted-looking text, remains diagnostic/protocol
+      failure behavior and does not override RPC/domain results.
+
+      - [ ] Existing B1/B2/B3/B4/B6 focused tests or fixtures remain green or have
+      explicit non-intersection evidence.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage or "NOT READ: <reason>"
+
+
+      ## Fix Receipt
+
+      - touched_files: <TypeScript/Pi extension files and focused tests>
+
+      - whitelisted_pre_rpc_mapping: <raw test/runtime evidence>
+
+      - whitelist_exactness: <evidence exact whitelist did not widen/narrow>
+
+      - post_readiness_diagnostic: <raw test/runtime evidence>
+
+      - preserved_passed_behaviors: <B1/B2/B3/B4/B6 evidence or non-intersection>
+
+      - command_stdout_stderr_exit: <raw output and exit codes>'
+    depends_on:
+    - pi_finalization_20260526.extension_runtime_conformance_proof
+    agent: frontend-engineer
