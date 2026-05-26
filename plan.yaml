@@ -76897,7 +76897,7 @@ phases:
       changes, no arbitrary stderr propagation, no B1/B2/B3/B4/B6 regression evidence.'
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     name: Read-only retest for pre-RPC stderr mapping
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -77023,3 +77023,20 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T17:24:16.360458+00:00'
+    done_at: '2026-05-26T17:33:14.846150+00:00'
+    evidence: 'PASS_READ_ONLY_RETEST. Integration-verifier task ses_19aae4d87ffeNE4LuFbvRiDY8D
+      returned PASS / blocking_status CLOSED / proof_gap_status NONE; read-only with
+      no files modified. Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      contrib/pi-extension/larva.ts, and tests/shell/test_pi_extension_contract.py.
+      Runtime fake seam table-driven harness at /var/folders/.../opencode/larva-pi-pre-rpc-stderr-harness/pi_stderr_mapping_harness.py
+      proved: pre-RPC `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid` maps to parent
+      `LARVA_PERSONA_NOT_FOUND`; whitelist codes `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`,
+      `LARVA_TOOL_ENUMERATION_FAILED` map to themselves; non-whitelisted `LARVA_TOOL_DENIED`
+      and unstructured stderr map to `LARVA_CHILD_START_FAILED`; post-readiness whitelisted-looking
+      stderr maps diagnostic-only to `LARVA_CHILD_PROTOCOL_FAILED` and does not override
+      RPC/domain result. Supporting checks: `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py -q` passed 48/48; `uv run
+      pytest tests/shell/test_pi_launcher_contract.py -q` passed 32/32; `uv run invar
+      guard --all` passed with 0 errors and only pre-existing warnings/infos. Behavioral
+      proof register covers B5/VT39 and B1/B2/B3/B4/B6 preservation/non-intersection.
+      Checklist toggled from retest receipt.'
