@@ -77940,3 +77940,147 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.fix_extension_shape
     agent: integration-verifier
+  - id: pi_slash_autocomplete_20260527.gate
+    name: Gate Pi slash autocomplete crash fix
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+
+      DECISION ARTIFACT:
+
+      As an independent read-only gate reviewer, decide whether the post-completion
+      Pi slash autocomplete crash fix can open. This gate protects the completed Pi
+      integration from regression after the live user report.
+
+
+      GATE SCOPE:
+
+      - Review pi_slash_autocomplete_20260527.reproduce_contract, pi_slash_autocomplete_20260527.fix_extension_shape,
+      and pi_slash_autocomplete_20260527.retest_liveness evidence.
+
+      - Verify no prior completed phase evidence was modified.
+
+      - Verify no forbidden scope was changed: PersonaSpec/schema/canonical shared
+      contracts/Python admission surfaces/unrelated launcher behavior.
+
+      - Verify runtime/client proof is not helper-only if fake or live Pi slash autocomplete
+      could be exercised.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-GATE-001 | user report `pi内输入/ 后出错` | slash autocomplete crash is reproduced
+      red then closed green | pi_slash_autocomplete_20260527.gate | red/green evidence
+      pair reviewed | red_green_pair | OWNED | gate cannot open without both |
+
+      | PI-GATE-002 | Pi integration design + extension source | fix conforms Pi extension
+      API candidate shapes | pi_slash_autocomplete_20260527.gate | API shape conformance
+      reviewed | api_shape_decision | OWNED | gate blocks on ambiguous shape |
+
+      | PI-GATE-003 | phase constraints | no forbidden scope/prior evidence mutation
+      | pi_slash_autocomplete_20260527.gate | scope and prior-evidence check reviewed
+      | scope_decision | OWNED | gate blocks on violation |
+
+
+      <side_effect_budget>
+
+      Allowed: read-only review of evidence, diffs, refs, and test outputs. Forbidden:
+      source mutations, test edits, lifecycle/claim/complete actions, changing prior
+      completed evidence, or opening gate with unresolved blockers.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Reject sampled or helper-only proof if retest could exercise Pi slash autocomplete
+      through fake/live runtime.
+
+      - Check that `blockers: []` is explicit before OPEN/PASS; do not infer from
+      missing blockers.
+
+      - Check that autocomplete candidates are positively proven as strings or documented
+      Pi API objects, not merely absence of the old stack trace.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE GATE DECISION:
+
+      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      NOT READ reasons.
+
+      - [ ] Red reproduction/contract evidence exists and is expected-red without
+      product code mutation.
+
+      - [ ] Implementation diff is limited to allowed scope and preserves non-goals.
+
+      - [ ] Retest evidence includes focused regression, targeted Pi tests, guard/invar
+      proof, and fake/live slash autocomplete liveness distinction.
+
+      - [ ] Runtime/client proof is not helper-only when fake/live Pi autocomplete
+      could be exercised.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, gate_open_allowed.
+
+      - [ ] Gate opens only with verdict PASS or OPEN, blockers [], and gate_open_allowed=true.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
+      READ: reason>
+
+
+      ## Gate Review Report
+
+      - phase: pi-slash-autocomplete-crash-fix-2026-05-27
+
+      - reviewer: gate-reviewer
+
+      - red_green_pair: <expected-red reproduction + green retest evidence refs>
+
+      - api_shape_decision: <strings/documented object shapes proven? yes/no + evidence
+      refs>
+
+      - runtime_liveness_decision: <LIVE_TUI | FAKE_PI_FIXTURE | BLOCKED + rationale>
+
+      - scope_decision: <allowed scope preserved? prior completed evidence untouched?
+      yes/no>
+
+      - helper_only_proof_rejected_if_runtime_exercisable: true|false
+
+
+      ## Issues
+
+      | severity | description | related_step | blocking |
+
+      | --- | --- | --- | --- |
+
+      | <blocker|should_fix|suggestion|tech_debt> | <issue or none> | <step> | YES/NO
+      |
+
+
+      ## Semantic Closure
+
+      - verdict: PASS | OPEN | BLOCKED | FAIL
+
+      - blockers: []
+
+      - gate_open_allowed: true|false
+
+      - gate_decision_basis: <evidence refs per requirement matrix row>'
+    depends_on:
+    - pi_slash_autocomplete_20260527.retest_liveness
+    agent: gate-reviewer
