@@ -76719,7 +76719,7 @@ phases:
     agent: integration-verifier
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_fix
     name: Pre-RPC stderr mapping fix for whitelisted child codes
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -76878,6 +76878,22 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T17:11:52.743048+00:00'
+    done_at: '2026-05-26T17:23:05.889388+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Python-executor retry task ses_19ab66dcbffe8NtKWqPqpsR84b
+      returned success with commit 9697861: fixed pre-RPC stderr mapping. Orchestrator
+      toggled all checklist items, squash-merged branch into main as dc5ea7a ([vectl]
+      step-pi_finalization_20260526.pre_rpc_stderr_mapping_fix completed), and verified
+      mainline. Changed files: contrib/pi-extension/larva.ts and tests/shell/test_pi_extension_contract.py.
+      Fix preserves whitelisted pre-RPC domain errors parsed by parseStartupError
+      through sessionFileFromState/finalText/prompt handling instead of mapping them
+      to LARVA_CHILD_PROTOCOL_FAILED; exact whitelist remains LARVA_PERSONA_NOT_FOUND,
+      LARVA_MODEL_UNAVAILABLE, LARVA_POLICY_INVALID, LARVA_TOOL_ENUMERATION_FAILED;
+      non-whitelisted pre-RPC and post-readiness stderr remain generic/diagnostic
+      behavior. Verification: `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py -q` passed 48/48; `uv run
+      invar guard --all` passed with 0 errors and only pre-existing warnings/infos.
+      Forbidden scope preserved: no plan/orchestrator state, no Python shared contract/schema
+      changes, no arbitrary stderr propagation, no B1/B2/B3/B4/B6 regression evidence.'
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     name: Read-only retest for pre-RPC stderr mapping
     status: pending
