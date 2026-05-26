@@ -78717,3 +78717,302 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.fix_extension_shape
     agent: frontend-engineer
+  - id: pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+    name: Retest Pi live smoke after active-tool startup fix
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      independence_level: L1
+
+
+      PROOF ARTIFACT:
+
+      As an independent verifier, rerun the full systematic Pi smoke/live coverage
+      after the active-tool startup remediation. This step replaces the failed green-retest
+      path as the gate-consumed closure proof. The old `pi_slash_autocomplete_20260527.retest_liveness`
+      remains an issue-detection artifact until the orchestrator skips/absorbs it;
+      it must not be used as the final gate-opening proof.
+
+
+      REQUIRED COVERAGE:
+
+      1. `uv run larva pi --help` raw stdout/stderr/exit code.
+
+      2. Live `uv run larva pi --persona vectl-planner` raw stdout/stderr/exit code;
+      startup must not fail closed with `LARVA_TOOL_ENUMERATION_FAILED` or active-tool
+      update errors.
+
+      3. Live slash autocomplete `/` PTY/TUI automation if practical. If not practical,
+      provide a faithful Pi/TUI fixture proof that reaches the same extension API
+      shape consumed by the editor and explicitly state why live PTY automation was
+      blocked.
+
+      4. Focused reported-failure regressions for slash autocomplete shape, startup
+      enumeration fallback, and active-tool startup degradation.
+
+      5. Targeted Pi extension/launcher tests covering `contrib/pi-extension/larva.ts`,
+      extension load, autocomplete, tool enumeration fallback, active-tool update,
+      denied-tool enforcement, and normal switch semantics.
+
+      6. Full `uv run invar guard --all` raw output and exit code.
+
+      7. Fixture-vs-live distinction and semantic closure fields for every proof item.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-LIVE-HELP-001 | runnable Pi CLI/TUI surface | help smoke remains exit 0
+      | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix | help
+      command raw output exit 0 | help_smoke | OWNED | final gate consumes |
+
+      | PI-LIVE-STARTUP-001 | failed retest live command | `uv run larva pi --persona
+      vectl-planner` starts without fail-closed extension-load/active-tool update
+      error | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+      | live persona startup raw output exit acceptable | persona_startup_live | OWNED
+      | final gate blocks without positive proof or explicit environment blocker |
+
+      | PI-LIVE-SLASH-001 | failed retest proof gap | slash autocomplete `/` is proven
+      live via PTY if practical, otherwise faithful fixture with explicit blocker/rationale
+      | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix | live
+      slash proof attempted and result recorded | slash_runtime_probe | OWNED | final
+      gate blocks on helper-only proof without rationale |
+
+      | PI-REGRESSION-001 | focused reported-failure tests | all focused regressions
+      pass | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+      | focused regressions raw output exit 0 | focused_regressions | OWNED | final
+      gate consumes |
+
+      | PI-TARGETED-001 | targeted Pi extension/launcher tests | targeted Pi tests
+      pass | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+      | targeted tests raw output exit 0 | targeted_pi_tests | OWNED | final gate
+      consumes |
+
+      | PI-GUARD-001 | AGENTS.md Invar baseline | full `uv run invar guard --all`
+      passes errors 0 | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
+      | guard raw output exit 0 | guard_output | OWNED | final gate consumes |
+
+
+      <side_effect_budget>
+
+      Allowed: read-only verification, runtime smoke execution, PTY/TUI automation,
+      and artifact collection. Forbidden: source/test mutation, rewriting prior evidence,
+      lifecycle actions, treating the failed prior retest as green closure proof,
+      or accepting helper-only/source-only proof when live or faithful runtime probes
+      are available.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Check for both old and new startup failure strings: `LARVA_TOOL_ENUMERATION_FAILED`,
+      `Pi active-tool update failed`, and uncaught extension-load errors.
+
+      - Exercise `/` autocomplete specifically, not only command launch or help output.
+
+      - Separate LIVE_TUI/LIVE_CLI proof from FAKE_PI_FIXTURE proof and explain any
+      live automation blockers precisely.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (must-green independent retest):
+
+      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      NOT READ reasons.
+
+      - [ ] `uv run larva pi --help` is run with raw stdout/stderr and exit code 0.
+
+      - [ ] Live `uv run larva pi --persona vectl-planner` is run with raw stdout/stderr
+      and does not fail closed at extension-load, tool-enumeration, or active-tool
+      update startup.
+
+      - [ ] Slash autocomplete `/` PTY/TUI live proof is attempted; if blocked, evidence
+      provides exact blocker plus faithful fixture proof reaching the same Pi editor
+      extension API shape.
+
+      - [ ] No `value.startsWith is not a function`, `LARVA_TOOL_ENUMERATION_FAILED`,
+      or `Pi active-tool update failed` uncaught startup failure appears in the relevant
+      live/fixture outputs.
+
+      - [ ] Focused reported-failure regressions pass with raw command output and
+      exit code 0.
+
+      - [ ] Targeted Pi extension/launcher tests pass with raw command output and
+      exit code 0.
+
+      - [ ] Full `uv run invar guard --all` passes with raw output, exit code 0, and
+      errors 0.
+
+      - [ ] Fixture-vs-live distinction is explicit for each proof item; helper-only/source-only
+      proof is rejected unless live automation is blocked and faithful fixture seam
+      is justified.
+
+      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for every owned
+      requirement.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      proof_gap_status, gate_open_allowed.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier (independent of frontend-engineer implementation)
+
+      **Scope**: Pi slash autocomplete, active-tool startup, live smoke, targeted
+      regressions, full guard
+
+      **Independence Level**: L1
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
+      READ: reason>
+
+      - tests/shell/test_pi_reported_failures_expected_red.py — <key passage or NOT
+      READ: reason>
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+
+      ## Fixture vs Live Matrix
+
+      | proof_item | evidence_class LIVE_CLI/LIVE_TUI/FAKE_PI_FIXTURE/STATIC | command_or_harness
+      | raw_output_ref | exit_code | status | blocker_if_any |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | help_smoke | <class> | `uv run larva pi --help` | <paste/ref> | <code> | PASS/FAIL
+      | <none/blocker> |
+
+      | persona_startup_live | <class> | `uv run larva pi --persona vectl-planner`
+      | <paste/ref> | <code> | PASS/FAIL | <none/blocker> |
+
+      | slash_runtime_probe | <class> | <PTY/TUI command or fixture> | <paste/ref>
+      | <code> | PASS/FAIL | <none/blocker> |
+
+      | focused_regressions | <class> | <command> | <paste/ref> | <code> | PASS/FAIL
+      | <none/blocker> |
+
+      | targeted_pi_tests | <class> | <command> | <paste/ref> | <code> | PASS/FAIL
+      | <none/blocker> |
+
+      | guard_output | <class> | `uv run invar guard --all` | <paste/ref> | <code>
+      | PASS/FAIL | <none/blocker> |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-LIVE-HELP-001 | Pi help command remains runnable | LIVE_CLI raw output
+      exit 0 | <ref> | PROVEN/UNPROVEN/BLOCKED | <closure> | <basis> |
+
+      | PI-LIVE-STARTUP-001 | persona startup does not fail closed on extension/tool/active
+      update | LIVE_CLI raw output without failure strings | <ref> | PROVEN/UNPROVEN/BLOCKED
+      | <closure> | <basis> |
+
+      | PI-LIVE-SLASH-001 | slash `/` autocomplete no longer crashes | LIVE_TUI PTY
+      proof or justified faithful fixture | <ref> | PROVEN/UNPROVEN/BLOCKED | <closure>
+      | <basis> |
+
+      | PI-REGRESSION-001 | focused regressions pass | raw pytest output | <ref> |
+      PROVEN/UNPROVEN/BLOCKED | <closure> | <basis> |
+
+      | PI-TARGETED-001 | targeted Pi tests pass | raw pytest output | <ref> | PROVEN/UNPROVEN/BLOCKED
+      | <closure> | <basis> |
+
+      | PI-GUARD-001 | full guard passes | raw guard output errors 0 | <ref> | PROVEN/UNPROVEN/BLOCKED
+      | <closure> | <basis> |
+
+
+      ## Raw Command Receipts
+
+      ### Help smoke
+
+      ```text
+
+      <raw stdout/stderr and exit code>
+
+      ```
+
+      ### Persona startup live smoke
+
+      ```text
+
+      <raw stdout/stderr and exit code>
+
+      ```
+
+      ### Slash runtime probe
+
+      ```text
+
+      <raw PTY/TUI/fixture output and exit code>
+
+      ```
+
+      ### Focused regressions
+
+      ```text
+
+      <raw stdout/stderr and exit code>
+
+      ```
+
+      ### Targeted Pi tests
+
+      ```text
+
+      <raw stdout/stderr and exit code>
+
+      ```
+
+      ### Full guard
+
+      ```text
+
+      <raw stdout/stderr and exit code>
+
+      ```
+
+
+      ## Semantic Closure Fields
+
+      verdict: PASS|FAIL
+
+      blockers: <list>
+
+      blocking_status: CLOSED|BLOCKED
+
+      proof_gap_status: none|live slash blocked with closure path|startup blocked
+      with closure path
+
+      gate_open_allowed: true|false
+
+      confidence: high|medium|low'
+    depends_on:
+    - pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+    agent: integration-verifier
