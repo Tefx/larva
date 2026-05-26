@@ -75397,7 +75397,7 @@ phases:
 
       - [x] Fake runtime receipt includes exact scenario name `abort-no-response-child-exited-kill-false`.
 
-      - [ ] Exact scenario `abort-no-response-child-exited-kill-false` returns parent
+      - [x] Exact scenario `abort-no-response-child-exited-kill-false` returns parent
       `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
       - [ ] Evidence explicitly shows the scenario no longer returns `LARVA_CHILD_START_FAILED`.
