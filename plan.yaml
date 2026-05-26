@@ -76056,7 +76056,7 @@ phases:
       persona/model/policy/tool initialization is not silently reintroduced through
       helper calls. 3. Confirm stderr and tool-policy failures remain fail-closed
       with stable public error codes.</risk_probes>'
-    verification: '- [ ] B1: Empty `LARVA_PI_CHILD_SESSION_DIR` is covered by a focused
+    verification: '- [x] B1: Empty `LARVA_PI_CHILD_SESSION_DIR` is covered by a focused
       regression and returns `failed` with `LARVA_CHILD_START_FAILED` instead of using
       the default child-session root.
 
