@@ -76,13 +76,16 @@ export type LarvaSubagentResult = {
 };
 
 type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
-type CommandDefinition = {
-  name: string;
+type CommandOptions = {
   description: string;
-  complete?: (prefix: string) => Promise<PiAutocompleteCandidate[]>;
+  getArgumentCompletions?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
   handler: (input?: string) => Promise<PersonaSwitchResult>;
 };
-export type PiAutocompleteCandidate = string | { value: string; label?: string; description?: string };
+type LegacyCommandDefinition = CommandOptions & {
+  name: string;
+  complete?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
+};
+export type PiAutocompleteCandidate = { value: string; label: string; description?: string };
 type ToolDefinition<Input, Output> = {
   name: string;
   description: string;
@@ -95,7 +98,7 @@ type PiApi = {
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
-  registerCommand?: (command: CommandDefinition) => void;
+  registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentResult>) => void;
   on?: (event: "before_agent_start" | "tool_call" | string, handler: (payload: unknown) => unknown) => void;
 };
@@ -240,6 +243,27 @@ export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }
       label: persona.id,
       description: persona.description ?? persona.model,
     }));
+}
+
+function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
+  const command: CommandOptions = {
+    description: "Switch active Larva persona",
+    getArgumentCompletions: async (prefix: string) => {
+      const candidates = await completePersonaIds(prefix, ctx);
+      return candidates.length > 0 ? candidates : null;
+    },
+    handler: (input?: string) => handlePersonaCommand(input, ctx, pi),
+  };
+  if (!pi.registerCommand) return;
+  if (pi.registerCommand.length >= 2) {
+    (pi.registerCommand as (name: string, options: CommandOptions) => void)("larva-persona", command);
+    return;
+  }
+  (pi.registerCommand as (command: LegacyCommandDefinition) => void)({
+    name: "larva-persona",
+    ...command,
+    complete: command.getArgumentCompletions,
+  });
 }
 
 export function getActiveEnvelope(): PersonaEnvelope | null {
@@ -777,12 +801,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   } else {
     await setStatus(ctx);
   }
-  pi.registerCommand?.({
-    name: "larva-persona",
-    description: "Switch active Larva persona",
-    complete: (prefix: string) => completePersonaIds(prefix, ctx),
-    handler: (input?: string) => handlePersonaCommand(input, ctx, pi),
-  });
+  registerLarvaPersonaCommand(ctx, pi);
   pi.registerTool?.({
     name: "larva_subagent",
     description: "Spawn or resume one Larva persona child Pi session and return its final assistant text.",

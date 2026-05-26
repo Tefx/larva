@@ -155,15 +155,16 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")
 
-    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerCommand")
+    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerLarvaPersonaCommand")
     assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("before_agent_start"')
     assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("tool_call"')
     assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerTool")
 
-    command_registration = re.search(r"registerCommand\?\.\(\{(?P<body>[\s\S]*?)\n  \}\);", body)
-    assert command_registration is not None
-    command_body = command_registration.group("body")
+    assert "registerLarvaPersonaCommand(ctx, pi)" in body
+    command_body = _function_body(source, "function registerLarvaPersonaCommand")
+    assert '"larva-persona", command' in command_body
     assert 'name: "larva-persona"' in command_body
+    assert "getArgumentCompletions" in command_body
     assert "completePersonaIds(prefix, ctx)" in command_body
     assert "handlePersonaCommand(input, ctx, pi)" in command_body
 
@@ -186,6 +187,75 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     assert "additionalProperties: false" in tool_body
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
     assert "abortSignal: ctx.abortSignal" in tool_body
+
+
+def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp_path: Path) -> None:
+    """Mirror Pi v0.75.5 slash autocomplete's registered command contract.
+
+    Pi's extension API is ``registerCommand(name, options)`` and its TUI maps
+    registered commands to autocomplete items by reading a string command name
+    into ``item.value`` before calling ``item.value.startsWith(prefix)``.
+    """
+
+    fake_cli = tmp_path / "fake-larva-list.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, flag] = process.argv;
+            if (command !== "list" || flag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: [
+                { id: "vectl-planner", description: "Plan with vectl", model: "provider/model" },
+                { id: "frontend-engineer", description: "Frontend", model: "provider/model" }
+              ]
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        let registered = null;
+        const ctx = {{
+          env: {{
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+          }},
+          ui: {{ setStatus: async () => undefined }},
+        }};
+        const pi = {{
+          registerCommand: (name, options) => {{ registered = {{ name, options }}; }},
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+        await mod.initializeExtension(ctx, pi);
+        const commandItem = {{ value: registered.name, label: registered.name }};
+        const argumentItems = await registered.options.getArgumentCompletions("vectl");
+        const canPiMatchCommand = commandItem.value.startsWith("larva");
+        const canPiMatchArgument = argumentItems[0].value.startsWith("vectl");
+        console.log(JSON.stringify({{
+          registeredNameType: typeof registered.name,
+          hasLegacyObjectName: typeof registered.name === "object",
+          commandItem,
+          canPiMatchCommand,
+          argumentItems,
+          canPiMatchArgument,
+          emptyResult: await registered.options.getArgumentCompletions("missing"),
+        }}));
+        """,
+    )
+
+    assert result["registeredNameType"] == "string"
+    assert result["hasLegacyObjectName"] is False
+    assert result["commandItem"] == {"value": "larva-persona", "label": "larva-persona"}
+    assert result["canPiMatchCommand"] is True
+    assert result["argumentItems"] == [
+        {"value": "vectl-planner", "label": "vectl-planner", "description": "Plan with vectl"}
+    ]
+    assert result["canPiMatchArgument"] is True
+    assert result["emptyResult"] is None
 
 
 def test_persona_switch_commits_envelope_model_and_status() -> None:
