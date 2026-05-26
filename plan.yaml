@@ -76253,7 +76253,7 @@ phases:
       pure helper tests. 2. Verify fake seams model Pi stdout/stderr readiness timing
       accurately enough to prove B5. 3. Verify any remaining runtime gap is assigned
       a blocker-class closure path before final gate.</risk_probes>'
-    verification: '- [ ] Runtime report includes raw command(s), stdout/stderr, exit
+    verification: '- [x] Runtime report includes raw command(s), stdout/stderr, exit
       codes, and harness path(s) for executable/fake TypeScript/Pi seam proof.
 
       - [ ] B1-B6 each have positive executable evidence or a blocker-class closure
