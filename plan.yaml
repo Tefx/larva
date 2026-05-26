@@ -75879,6 +75879,7 @@ phases:
     - pi_finalization_20260526.wiring_audit
     - pi_finalization_20260526.extension_runtime_conformance_proof
     - pi_finalization_20260526.pre_rpc_stderr_retest
+    - pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     - pi_finalization_20260526.end_to_end_liveness
     agent: integration-verifier
   - id: pi_finalization_20260526.gate
