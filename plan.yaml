@@ -73669,7 +73669,7 @@ phases:
       - [x] Unresolved items are classified with explicit blocking/non-intersection
       rationale.
 
-      - [ ] Implementation and liveness receipts include `## refs Read Confirmation`
+      - [x] Implementation and liveness receipts include `## refs Read Confirmation`
       with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
       reasons.'
     evidence_template: '## refs Read Confirmation
