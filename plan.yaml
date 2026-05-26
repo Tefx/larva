@@ -75124,7 +75124,7 @@ phases:
       - [x] Regression proof shows normal successful abort/kill still returns parent
       `status: cancelled` with `error.code: LARVA_CHILD_CANCELLED`.
 
-      - [ ] Behavioral proof register marks the unknowable-abort obligation `PROVEN`
+      - [x] Behavioral proof register marks the unknowable-abort obligation `PROVEN`
       or `BLOCKED` with explicit closure path; no OPEN recommendation is made while
       it is unproven.'
     evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
