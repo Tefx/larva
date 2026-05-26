@@ -74413,7 +74413,7 @@ phases:
       - [x] Behavioral proof register maps each verification target 6-41 to PROVEN,
       BLOCKED, or explicit closure path.
 
-      - [ ] Upstream receipts for persona projection, tool policy, subagent RPC, and
+      - [x] Upstream receipts for persona projection, tool policy, subagent RPC, and
       extension wiring include `## refs Read Confirmation` with `design/pi-coding-agent-integration.md`
       key passages or explicit NOT READ reasons.'
     evidence_template: '## refs Read Confirmation
