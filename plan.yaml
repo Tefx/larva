@@ -74023,7 +74023,7 @@ phases:
       env obligations PROVEN. Checklist toggled from verifier receipt.'
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
-  status: in_progress
+  status: done
   gate: Bundled Pi extension projects persona prompt/model/status, enforces tool policy,
     and exposes larva_subagent through real Pi extension hooks.
   depends_on:
@@ -74476,7 +74476,7 @@ phases:
       mark the extension runtime gate open.'
   - id: pi_extension_runtime_20260526.gate
     name: Gate extension runtime
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check; protects final\
       \ runnable Pi integration.\nAs an independent reviewer, decide whether the Pi\
       \ extension runtime satisfies the design's persona, policy, and subagent obligations.\n\
@@ -74563,6 +74563,25 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T15:26:00.505801+00:00'
+    done_at: '2026-05-26T15:39:30.284409+00:00'
+    evidence: 'GATE_OPEN_ACCEPTED. Gate-reviewer task ses_19b1abce7ffezUSm3C2KaMc0UR
+      returned status OPEN / gate_decision OPEN / blocking_status CLOSED / proof_gap_status
+      NONE; no files changed and worktree clean. Evidence included refs confirmation
+      for design/pi-coding-agent-integration.md, contrib/pi-extension/larva.ts, tests/shell/test_pi_extension_contract.py,
+      tests/shell/test_pi_extension_tool_policy_static.py, and plan evidence. Gate
+      reviewed all implementation and runtime proof receipts and reran checks: `uv
+      run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py`
+      passed 47/47; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos; current-source fake runtime abort retest, general subagent harness,
+      and persona/policy hook probe all passed. B1 target 35 is PROVEN: narrow abort-during
+      path emitted child RPC abort and returned cancelled/LARVA_CHILD_CANCELLED; abort-rpc-failure-kill-succeeds
+      returned cancelled/LARVA_CHILD_CANCELLED; exact `abort-no-response-child-exited-kill-false`
+      returned failed/LARVA_CHILD_PROTOCOL_FAILED and no longer LARVA_CHILD_START_FAILED.
+      Persona projection, tool policy, subagent success/failure/resume/busy, wiring,
+      and forbidden-scope checks are PROVEN; no unresolved blockers remain. Warnings
+      are non-blocking: temp fake runtime harnesses are not checked in, Node strip-only
+      required temp syntax transform, and invar has pre-existing warnings. Checklist
+      toggled from gate receipt.'
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
     status: done
@@ -75458,7 +75477,7 @@ phases:
       PROVEN. Checklist toggled from retest receipt.'
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
-  status: locked
+  status: pending
   gate: Design conformance, runtime liveness, docs sync, invar guard, and final deep
     review are complete.
   depends_on:
