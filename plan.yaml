@@ -73338,24 +73338,19 @@ phases:
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
     status: pending
-    description: 'step_type: verification
-
-      expected_result: green
-
-      verification_scope: full-plan-check; protects final gate.
-
-      As an independent verifier, run the repo-level verification required after Pi
-      integration changes, including the authoritative invar full guard command family
-      and targeted launcher/extension tests.
-
-      <side_effect_budget>Allowed: run verification commands and collect logs. Forbidden:
-      source mutation.</side_effect_budget>
-
-      <risk_probes>1. Guard failures from touched shell/core/package/test paths are
-      blocker-class regardless of provenance. 2. Node-backed extension tests may skip
-      only when environment lacks Node, with explicit blocker/non-blocker disposition.
-      3. Core contract/doctest failures must not be dismissed as unrelated without
-      non-intersection evidence.'
+    description: "step_type: verification\nexpected_result: green\nverification_scope:\
+      \ full-plan-check; protects final gate.\nAs an independent verifier, run the\
+      \ repo-level verification required after Pi integration changes, including the\
+      \ authoritative invar full guard command family and targeted launcher/extension\
+      \ tests.\n<side_effect_budget>Allowed: run verification commands and collect\
+      \ logs. Forbidden: source mutation.</side_effect_budget>\n<risk_probes>1. Guard\
+      \ failures from touched shell/core/package/test paths are blocker-class regardless\
+      \ of provenance. 2. Node-backed extension tests may skip only when environment\
+      \ lacks Node, with explicit blocker/non-blocker disposition. 3. Core contract/doctest\
+      \ failures must not be dismissed as unrelated without non-intersection evidence.\n\
+      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Targeted launcher and extension test commands run with raw
       stdout/stderr and exit codes.
 
