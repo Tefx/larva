@@ -72425,7 +72425,7 @@ phases:
       targets 6-41, and no product implementation edits.'
   - id: pi_contract_harness_20260526.gate
     name: Gate contract harness
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check; protects launcher\
       \ and extension implementation gates.\nAs an independent gate reviewer, assess\
       \ whether expected-red tests and the requirement-to-checklist matrix cover design/pi-coding-agent-integration.md\
@@ -72479,6 +72479,8 @@ phases:
     - pi_contract_harness_20260526.launcher_expected_red
     - pi_contract_harness_20260526.extension_expected_red
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T06:02:50.463962+00:00'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
