@@ -73654,7 +73654,7 @@ phases:
       \ refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md — key\
       \ passages read: <specific sections/targets used by this step>; NOT READ entries\
       \ only with reason.`\n"
-    verification: '- [ ] Gate decision basis reviews implementation and runtime liveness
+    verification: '- [x] Gate decision basis reviews implementation and runtime liveness
       receipts.
 
       - [ ] OPEN only if CLI entrypoint/startup path, env, extension flag, forwarded
