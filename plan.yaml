@@ -73792,7 +73792,7 @@ phases:
 
       ## refs Read Confirmation (MANDATORY)
 
-      - [ ] Completion evidence includes `design/pi-coding-agent-integration.md` key
+      - [x] Completion evidence includes `design/pi-coding-agent-integration.md` key
       passages for the launcher env contract, especially the lines/section requiring
       `LARVA_PI_TOOL_POLICY_FILE` and `LARVA_PI_LAUNCHED=1`.
 
