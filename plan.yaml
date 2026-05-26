@@ -72425,7 +72425,7 @@ phases:
       targets 6-41, and no product implementation edits.'
   - id: pi_contract_harness_20260526.gate
     name: Gate contract harness
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check; protects launcher\
       \ and extension implementation gates.\nAs an independent gate reviewer, assess\
       \ whether expected-red tests and the requirement-to-checklist matrix cover design/pi-coding-agent-integration.md\
@@ -72481,6 +72481,31 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T06:02:50.463962+00:00'
+    done_at: '2026-05-26T06:12:25.581137+00:00'
+    evidence: 'BLOCKED_GATE_RECONCILED_WITH_REMEDIATION. Independent gate-reviewer
+      task ses_19d1cbec2ffeR4vh1YcGycdcn8 returned `verdict: FAIL`, `gate_decision:
+      BLOCK`, `gate_open_allowed: false`, and `orchestrator_action_hint: DO_NOT_COMPLETE`
+      for harness coverage, not for expected-red execution alignment. Expected-red
+      execution was aligned: extension command `.venv/bin/python -m pytest tests/shell/test_pi_extension_contract.py`
+      returned 39 collected, 37 failed / 2 passed due missing contrib/pi-extension/larva.ts
+      and pyproject force-include; launcher command `.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py`
+      returned 9 failed due invalid choice ''pi''. Gate confirmed no product implementation
+      files were modified: e81fa1f added only tests/shell/test_pi_extension_contract.py;
+      bf5e82d added only tests/shell/test_pi_launcher_contract.py; gate worktree diff
+      was empty. Blockers detected and batched: B1 target 4 PATH shim/first real pi
+      missing; B2 target 5 no-settings-write assertion missing; B3 target 10 full
+      mode matrix missing; B4 targets 37/38 launcher bridge semantics ambiguous; B5
+      target 39 stderr/whitelist split conflated; B6 old upstream refs receipts only
+      summarized to reviewer. Planner remediation task ses_19d1948f1ffen5L0Q0y0TgTX9x
+      added `pi_contract_harness_20260526.coverage_remediation` and `pi_contract_harness_20260526.coverage_regate`
+      to own all B1-B6 before implementation; coverage_remediation depends on this
+      gate and coverage_regate depends on coverage_remediation, keeping downstream
+      Pi implementation phase-locked. Orchestrator additionally verified completed
+      upstream steps via vectl_show: both expected-red steps have checked refs confirmation
+      checklist rows and evidence states subagent refs Read Confirmation for design/pi-coding-agent-integration.md.
+      Gate checklist toggled after remediation ownership was created. This completion
+      records the gate review/blocked decision and remediation ownership; it does
+      NOT mark the contract harness as open.'
   - id: pi_contract_harness_20260526.coverage_remediation
     name: Coverage remediation for Pi contract expected-red harness
     status: pending
