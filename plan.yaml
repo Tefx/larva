@@ -76976,7 +76976,7 @@ phases:
     verification: '- [x] Retest is read-only and records exact commands/harness paths,
       raw stdout/stderr/RPC trace, and exit codes.
 
-      - [ ] Fake child pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
+      - [x] Fake child pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
       maps to parent `LARVA_PERSONA_NOT_FOUND`.
 
       - [ ] `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`
