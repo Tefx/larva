@@ -72081,3 +72081,11 @@ phases:
 
       All ten verification checklist items toggled checked via orchestrator after
       matching the worker checklist_receipt.'
+- id: pi-coding-agent-contract-harness-2026-05-26
+  name: Pi Coding Agent Contract Harness 2026-05-26
+  status: pending
+  gate: Pi contract harness and expected-red tests define the design obligations before
+    implementation.
+  depends_on:
+  - live-opencode-tool-policy-smoke-2026-05-25
+  - meta.gate
