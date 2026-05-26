@@ -72754,6 +72754,107 @@ phases:
 
       - larva_subagent_denial_no_handler: <evidence>'
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.subagent_rpc
+    name: Complete larva_subagent child RPC runtime
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Subagent spawning; API contracts
+      > Child RPC contract; Verification targets 18-36, 39-41
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET STATE: The Pi extension exposes `larva_subagent(persona_id, task, task_id?)`
+      as one custom tool handler invoked only after policy allows it; validates spawn
+      authority from the active parent persona; starts or resumes exactly one child
+      Pi RPC process per invocation using launcher-provided `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
+      and `LARVA_PI_EXTENSION_ENTRY`; validates child session paths; tracks process-local
+      busy resumes; propagates abort; and returns the documented `LarvaSubagentResult`
+      shape.
+
+      BOUNDING BOX: contrib/pi-extension/ subagent/RPC modules and tests/shell/test_pi_extension_contract.py.
+      Avoid shared hook registration in contrib/pi-extension/larva.ts until the wiring
+      step.
+
+      CONSTRAINTS: No batch subagent tool, no sidecar metadata, no filesystem lock
+      files, no cross-process resume coordination, no bare `pi` lookup in child paths,
+      no extension-entry derivation from module metadata/argv. Resume eligibility
+      is path-based only.
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; child
+      process commands, path taxonomy, busy state, abort handling, and result fields
+      must vary with inputs and RPC events.
+
+      <side_effect_budget>Allowed: add/modify extension subagent/RPC code and focused
+      tests. Forbidden: sidecar files, filesystem locks, scheduler/batch tool, worktree/credential
+      isolation, schema changes, or project policy hierarchy.</side_effect_budget>
+
+      <risk_probes>1. Same-task resume busy marker must clear on success, failure,
+      and cancellation. 2. Child fatal stderr whitelist must not parse arbitrary stderr.
+      3. Resume must send `switch_session` then append the new task via `prompt`.'
+    verification: '- [ ] `can_spawn` omitted/false/list/true cases and no-active-parent
+      cases return the documented stable error codes.
+
+      - [ ] Bad input and task_id path taxonomy cover null public task_id, persona_id
+      echo rules, outside-root paths, non-jsonl, missing, directory, unreadable, symlink
+      escape, and relative paths.
+
+      - [ ] Child startup uses only `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
+      `LARVA_PI_EXTENSION_ENTRY`, `--mode rpc`, and `--session-dir`; no bare `pi`
+      discovery occurs in the extension.
+
+      - [ ] New child flow performs get_state, validates `.jsonl` sessionFile under
+      root, sends prompt, waits for `agent_end`, and requires string `get_last_assistant_text.data.text`.
+
+      - [ ] Resume flow validates parent authority/path/busy state before child start,
+      sends `switch_session`, appends new task with prompt, clears busy marker, and
+      returns current invocation output.
+
+      - [ ] Abort flow maps cancel/success/unknowable states to documented result
+      statuses and error codes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Subagent spawning,
+      Child RPC contract, and Verification targets 18-36/39-41.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Implementation Receipt
+
+      - files_changed: <list>
+
+      - command: <focused subagent/RPC test command>
+
+      - raw_stdout: <paste>
+
+      - exit_code: <code>
+
+
+      ## Subagent Evidence
+
+      - spawn_authority_matrix: <table>
+
+      - path_taxonomy_matrix: <table>
+
+      - child_invocation_env: <evidence>
+
+      - rpc_sequence_traces: <new/resume/abort evidence>
+
+      - busy_set_cleanup: <evidence>
+
+      - no_sidecar_or_lock_files: <evidence>'
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
