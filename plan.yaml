@@ -76388,6 +76388,7 @@ phases:
       closure path.'
     depends_on:
     - pi_finalization_20260526.extension_runtime_conformance_proof
+    - pi_finalization_20260526.pre_rpc_stderr_retest
     agent: spec-verifier
   - id: pi_finalization_20260526.pre_rpc_stderr_fix
     name: Pre-RPC stderr fix for child persona errors
