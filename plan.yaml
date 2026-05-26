@@ -73802,7 +73802,7 @@ phases:
       CLI liveness tests exercising `_build_child_env`/`larva pi` child env with exit
       codes and stdout/stderr.
 
-      - [ ] Runtime or fixture artifact includes `LARVA_PI_TOOL_POLICY_FILE` and `LARVA_PI_LAUNCHED=1`
+      - [x] Runtime or fixture artifact includes `LARVA_PI_TOOL_POLICY_FILE` and `LARVA_PI_LAUNCHED=1`
       alongside the previously proven launcher env/argv values.
 
       - [ ] Updated/extended tests cover the env contract without relying only on
