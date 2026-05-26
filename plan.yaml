@@ -74499,7 +74499,7 @@ phases:
       trace containing child RPC `abort` plus cancelled `LARVA_CHILD_CANCELLED` parent
       result.
 
-      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_unknowable_retest`
+      - [x] Gate specifically reviews `pi_extension_runtime_20260526.abort_unknowable_retest`
       and blocks unless full design target 35 unknowable path is PROVEN by fake Pi
       runtime trace(s) where abort RPC failure and kill failure/unknowable state return
       parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
