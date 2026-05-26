@@ -74509,7 +74509,7 @@ phases:
       returns parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`
       and explicitly no longer returns `LARVA_CHILD_START_FAILED`.
 
-      - [ ] Gate confirms normal successful abort/kill cancellation still returns
+      - [x] Gate confirms normal successful abort/kill cancellation still returns
       cancelled `LARVA_CHILD_CANCELLED` after the unknowable-state and start-failure
       mapping fixes.
 
