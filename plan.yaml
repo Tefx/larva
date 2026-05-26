@@ -79889,7 +79889,7 @@ phases:
       NON_BLOCKING; gate_open_allowed false until downstream real-Pi diagnostic/retest.'
   - id: pi_persona_spawn_proof_20260527.diagnostic_live
     name: Run expected-red-or-green real-Pi persona, switch, spawn, and prompt diagnostic
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: diagnostic_live
@@ -80040,6 +80040,8 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.contract_design
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T21:58:13.512278+00:00'
   - id: pi_persona_spawn_proof_20260527.remediate_wiring
     name: Remediate bounded Pi persona, prompt, and spawn lifecycle wiring blockers
     status: pending
