@@ -75259,7 +75259,7 @@ phases:
       is changed from failed `LARVA_CHILD_START_FAILED` to failed `LARVA_CHILD_PROTOCOL_FAILED`
       when abort state is unknowable.
 
-      - [ ] Normal successful abort/cancelled regression remains `status: cancelled`
+      - [x] Normal successful abort/cancelled regression remains `status: cancelled`
       with `error.code: LARVA_CHILD_CANCELLED`.
 
       - [ ] Scope evidence shows child start failures outside the abort/no-response/termination-false
