@@ -76851,7 +76851,7 @@ phases:
       - [x] Post-readiness stderr, including whitelisted-looking text, remains diagnostic-only
       and does not override RPC/domain results.
 
-      - [ ] Runtime fake seam evidence is produced with raw command, stdout/stderr/RPC
+      - [x] Runtime fake seam evidence is produced with raw command, stdout/stderr/RPC
       trace, exit code, and harness path.
 
       - [ ] Existing B1/B2/B3/B4/B6 passing behaviors remain green or have explicit
