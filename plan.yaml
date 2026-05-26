@@ -75391,7 +75391,7 @@ phases:
       appears in the receipt. 2. Confirm parent result is failed `LARVA_CHILD_PROTOCOL_FAILED`,
       not failed `LARVA_CHILD_START_FAILED`. 3. Confirm the normal cancelled regression
       remains `cancelled` / `LARVA_CHILD_CANCELLED` after the fix.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md`
       abort/error-code passages and `contrib/pi-extension/larva.ts` abort mapping
       locations, or records explicit NOT READ reasons.
 
