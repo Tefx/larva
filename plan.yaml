@@ -75144,6 +75144,141 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T14:47:16.769173+00:00'
+  - id: pi_extension_runtime_20260526.abort_start_failure_fix
+    name: Fix abort no-response child-exit start-failure mapping
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      When an in-flight child abort reaches the abort/no-response path, child termination/exit
+      is observed, `kill` reports false, and the resulting abort state is unknowable,
+      the Pi extension runtime maps the parent result to `status: failed` with `error.code:
+      LARVA_CHILD_PROTOCOL_FAILED` instead of `LARVA_CHILD_START_FAILED`. The normal
+      successful abort/cancelled path remains `status: cancelled` with `error.code:
+      LARVA_CHILD_CANCELLED`.
+
+
+      BOUNDING BOX:
+
+      - `contrib/pi-extension/larva.ts`
+
+      - fake Pi extension runtime test/harness files that exercise child RPC abort/no-response/kill-false
+      behavior
+
+      - existing abort mapping helpers and error-code projection paths
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-ABORT-NO-RESPONSE-CHILD-EXITED-KILL-FALSE | failed retest: `abort-no-response-child-exited-kill-false`
+      returned failed `LARVA_CHILD_START_FAILED` | Abort/no-response plus child exit/start-failure
+      after `kill: false` maps to failed `LARVA_CHILD_PROTOCOL_FAILED` when abort
+      state is unknowable. | pi_extension_runtime_20260526.abort_start_failure_fix
+      | `- [ ] Parent result for abort-no-response-child-exited-kill-false is failed
+      LARVA_CHILD_PROTOCOL_FAILED.` | `abort_no_response_child_exited_kill_false_trace`
+      | OWNED | Blocks `pi_extension_runtime_20260526.gate` and final Pi integration
+      if absent. |
+
+      | PI-NORMAL-CANCELLED-REGRESSION | prior abort runtime proof | Normal successful
+      abort cancellation remains cancelled `LARVA_CHILD_CANCELLED`. | pi_extension_runtime_20260526.abort_start_failure_fix
+      | `- [ ] Normal cancelled path remains cancelled LARVA_CHILD_CANCELLED.` | `normal_cancelled_regression_trace`
+      | OWNED | Blocks gate if regressed. |
+
+
+      CONSTRAINTS:
+
+      - This is a focused implementation fix; do not broaden schema, Pi settings,
+      tool policy, persona projection, or launcher behavior.
+
+      - Preserve existing child RPC result shapes and parent error-code vocabulary.
+
+      - Do not convert all start failures globally; constrain the mapping to the abort/no-response/termination-false/unknowable-state
+      seam.
+
+      - Do not weaken the previously proven normal cancelled path.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      changed logic must process the actual abort/no-response, child-exit/start-failure,
+      and `kill: false` facts and produce result codes that vary according to those
+      inputs.
+
+
+      <side_effect_budget>Allowed: modify the focused Pi extension runtime mapping
+      and directly related fake-runtime regression coverage. Forbidden: schema changes,
+      broad error-code vocabulary changes, policy/persona/launcher rewrites, source-only
+      completion, or masking the scenario by changing the fake runtime case name.</side_effect_budget>
+
+      <risk_probes>1. Confirm the fix is scoped to abort-state unknowable mapping
+      and does not globally relabel child start failures. 2. Confirm `LARVA_CHILD_PROTOCOL_FAILED`
+      wins only for abort/no-response/termination-false unknowable state, not for
+      normal cancelled paths. 3. Confirm fake runtime coverage still exercises the
+      exact child-exit/kill-false fact pattern rather than a simplified throw path.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+      abort/error-code passages and `contrib/pi-extension/larva.ts` mapping locations,
+      or records explicit NOT READ reasons.
+
+      - [ ] Parent result for exact fake runtime scenario `abort-no-response-child-exited-kill-false`
+      is changed from failed `LARVA_CHILD_START_FAILED` to failed `LARVA_CHILD_PROTOCOL_FAILED`
+      when abort state is unknowable.
+
+      - [ ] Normal successful abort/cancelled regression remains `status: cancelled`
+      with `error.code: LARVA_CHILD_CANCELLED`.
+
+      - [ ] Scope evidence shows child start failures outside the abort/no-response/termination-false
+      unknowable seam are not globally remapped.
+
+      - [ ] Evidence includes the main path and highest-risk failure path, not only
+      static test success.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key abort/error-code passage or NOT
+      READ: reason>
+
+      - contrib/pi-extension/larva.ts — <key mapping passage or NOT READ: reason>
+
+
+      ## Fix Receipt
+
+      - changed_paths: <files changed>
+
+      - exact_scenario: abort-no-response-child-exited-kill-false
+
+      - before_observed_result: failed / LARVA_CHILD_START_FAILED
+
+      - after_expected_mapping: failed / LARVA_CHILD_PROTOCOL_FAILED
+
+      - normal_cancelled_regression_expected: cancelled / LARVA_CHILD_CANCELLED
+
+
+      ## Scope / Risk Evidence
+
+      - abort_unknowable_mapping_scope: <why mapping is constrained to abort/no-response/termination-false
+      unknowable state>
+
+      - non_abort_start_failure_preserved: <evidence or rationale>
+
+      - sibling_search: <related mapping paths inspected>
+
+      - residual_risk: <none or explicit blocker>'
+    depends_on:
+    - pi_extension_runtime_20260526.abort_unknowable_retest
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
