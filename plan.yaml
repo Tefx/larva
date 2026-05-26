@@ -76259,7 +76259,7 @@ phases:
       - [x] B1-B6 each have positive executable evidence or a blocker-class closure
       path; source/static-only claims are rejected.
 
-      - [ ] B7 gap inventory names prior source/static-only behaviors and maps each
+      - [x] B7 gap inventory names prior source/static-only behaviors and maps each
       to runtime evidence, explicit BLOCKED status, or a new remediation owner.
 
       - [ ] Proof separates fixture/runtime seam PASS from live Pi environment BLOCKED
