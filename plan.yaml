@@ -72177,6 +72177,98 @@ phases:
 
       - interactive_detector_edge_cases: <evidence>'
     agent: python-executor
+  - id: pi_contract_harness_20260526.extension_expected_red
+    name: Extension contract and expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Persona runtime projection;
+      Tool policy; Subagent spawning; API contracts; Verification targets 6-41
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET PROOF ARTIFACT: Expected-red extension tests pin the bundled Pi extension
+      contract before TypeScript implementation exists: active persona envelope, Larva
+      CLI resolve/list bridge, model projection, prompt watermark composition, UI
+      status, `/larva-persona` selector behavior, adapter-local tool policy, `pi.setActiveTools`,
+      `tool_call` denial, and `larva_subagent` child RPC/result semantics.
+
+      BOUNDING BOX: tests/shell/test_pi_extension_contract.py; contrib/pi-extension/;
+      package force-include checks modeled after tests/shell/test_opencode_plugin_contract.py.
+
+      CONSTRAINTS: Product extension code may not be implemented in this step; tests
+      may use fake Pi extension APIs/RPC child processes; do not add forbidden scopes
+      (PersonaSpec schema changes, ask action, worktree/file locks, policy hierarchy,
+      batch subagent tool, sidecar metadata).
+
+      <side_effect_budget>Allowed: add tests/fixtures only. Forbidden: modifying src/,
+      contrib/, pyproject.toml, PersonaSpec schema, Pi settings, credential isolation,
+      merge management, or filesystem lock files.</side_effect_budget>
+
+      <risk_probes>1. Denied `larva_subagent` must yield generic `ToolPolicyDecision`,
+      not `LarvaSubagentResult`. 2. Resume must append the new task and re-resolve
+      persona, not replay prior output. 3. Prompt watermark must replace, not duplicate.</risk_probes>'
+    verification: '- [ ] Tests are limited to tests/ fixtures and expose extension
+      gaps as expected-red without implementing product code.
+
+      - [ ] Requirement traceability matrix maps verification targets 6-41 to exact
+      tests and evidence fields.
+
+      - [ ] Tests cover persona resolve/list bridge through `LARVA_CLI_ARGV_JSON`,
+      fallback only when absent, and timeout/malformed output handling.
+
+      - [ ] Tests cover model parsing at first slash, atomic switch failure preservation,
+      prompt/status/selector behavior, and no prompt catalogue dump.
+
+      - [ ] Tests cover policy validation/filtering baseline, `setActiveTools`, `tool_call`
+      denial, and denied `larva_subagent` no-handler behavior.
+
+      - [ ] Tests cover subagent spawn authority, child process environment, path
+      validation, resume taxonomy, busy set, abort, and public result contract.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Persona runtime
+      projection, Tool policy, Subagent spawning, API contracts, and Verification
+      targets 6-41.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Expected-Red Test Receipt
+
+      - files_changed: <tests-only list>
+
+      - command: <exact pytest/node-backed pytest command>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+      - expected_failures_or_exposed_gaps: <extension gaps exposed>
+
+      - product_code_modified: false
+
+
+      ## Forbidden-Scope Guard Receipt
+
+      - schema_changes_absent: <evidence>
+
+      - no_pi_settings_or_sidecars_or_locks: <evidence>
+
+      - no_ask_or_policy_hierarchy_or_batch_tool: <evidence>'
+    agent: frontend-engineer
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
