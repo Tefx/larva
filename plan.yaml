@@ -72854,44 +72854,30 @@ phases:
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
     status: pending
-    description: 'step_type: implementation
-
-      tags: ["integration"]
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > API contracts; Architecture
-      basis; Implementation handoff
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: The bundled extension entry at `contrib/pi-extension/larva.ts`
-      registers Pi hooks/commands/tools and composes the persona projection, tool
-      policy, and subagent modules into Pi''s documented extension APIs without duplicating
-      their logic.
-
-      BOUNDING BOX: contrib/pi-extension/larva.ts; contrib/pi-extension/README.md
-      only if a local usage note is needed; tests/shell/test_pi_extension_contract.py.
-
-      UPSTREAM ARTIFACTS: persona projection, tool policy, and subagent modules from
-      this phase are authoritative; expected-red extension tests are PROTECTED.
-
-      CONSTRAINTS: This is the serial shared-wiring step; parallel module steps must
-      not independently append hook registration to the entry file. Do not write Pi
-      settings or add MCP transport.
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; registered
-      hooks must call real module logic and produce runtime-observable decisions/status/results.
-
-      <side_effect_budget>Allowed: modify extension entry/wiring and focused tests.
-      Forbidden: schema changes, Pi settings fallback, MCP bridge implementation,
-      sidecars, locks, ask action, batch subagent tool.</side_effect_budget>
-
-      <risk_probes>1. Entry exports/hooks must be reachable by packaged launcher path.
-      2. `tool_call` denial must run before custom tool handler side effects. 3. Initial
-      persona commit must occur before prompt/selector/status exposure.'
+    description: "step_type: implementation\ntags: [\"integration\"]\nagent_source:\
+      \ project\nspec_refs: design/pi-coding-agent-integration.md > API contracts;\
+      \ Architecture basis; Implementation handoff\nrefs: design/pi-coding-agent-integration.md\n\
+      TARGET STATE: The bundled extension entry at `contrib/pi-extension/larva.ts`\
+      \ registers Pi hooks/commands/tools and composes the persona projection, tool\
+      \ policy, and subagent modules into Pi's documented extension APIs without duplicating\
+      \ their logic.\nBOUNDING BOX: contrib/pi-extension/larva.ts; contrib/pi-extension/README.md\
+      \ only if a local usage note is needed; tests/shell/test_pi_extension_contract.py.\n\
+      UPSTREAM ARTIFACTS: persona projection, tool policy, and subagent modules from\
+      \ this phase are authoritative; expected-red extension tests are PROTECTED.\n\
+      CONSTRAINTS: This is the serial shared-wiring step; parallel module steps must\
+      \ not independently append hook registration to the entry file. Do not write\
+      \ Pi settings or add MCP transport.\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; registered\
+      \ hooks must call real module logic and produce runtime-observable decisions/status/results.\n\
+      <side_effect_budget>Allowed: modify extension entry/wiring and focused tests.\
+      \ Forbidden: schema changes, Pi settings fallback, MCP bridge implementation,\
+      \ sidecars, locks, ask action, batch subagent tool.</side_effect_budget>\n<risk_probes>1.\
+      \ Entry exports/hooks must be reachable by packaged launcher path. 2. `tool_call`\
+      \ denial must run before custom tool handler side effects. 3. Initial persona\
+      \ commit must occur before prompt/selector/status exposure.\n- [ ] Completion\
+      \ evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] `contrib/pi-extension/larva.ts` registers `before_agent_start`,
       `/larva-persona`, UI status, `tool_call`, `pi.setActiveTools`, and `larva_subagent`
       through Pi extension APIs.
