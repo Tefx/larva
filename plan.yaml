@@ -73290,56 +73290,36 @@ phases:
       real bin, extension flag, and extension entry.
 
       - [ ] No orphan public symbols, dead extension entry, or unconsumed config/env
-      fields remain without documented non-intersection.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      fields remain without documented non-intersection.
 
-      - design/pi-coding-agent-integration.md — key launcher, architecture, and wiring
-      passages.
+      - [ ] Upstream launcher and extension receipts include `## refs Read Confirmation`
+      with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
+      reasons.'
+    evidence_template: '## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this wiring audit>; NOT READ entries only with reason.
 
 
-      ## Wiring Audit Report
+      ## Upstream Receipt Refs Confirmation Audit
 
-      **CLI reachability**:
+      - launcher runtime receipts included refs confirmation: <yes/no; evidence refs>
 
-      ```
+      - extension runtime receipts included refs confirmation: <yes/no; evidence refs>
 
-      <import/dispatch/command output>
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
-      ```
 
-      **Package extension inclusion**:
+      ## Wiring Audit Evidence
 
-      ```
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      <build or source mapping evidence>
+      - reachability_traces: <CLI/package/extension/child RPC traces>
 
-      ```
+      - orphan_or_dead_code_findings: <none or findings with closure path>
 
-      **Extension hook/tool/command registration**:
-
-      ```
-
-      <trace or grep/import evidence>
-
-      ```
-
-      **Child RPC launch path**:
-
-      ```
-
-      <trace evidence>
-
-      ```
-
-      **Orphans / dead paths**:
-
-      ```
-
-      <none found or list>
-
-      ```
-
-      **Headline**: PASS | PASS_WITH_DEBT | FAIL'
+      '
     agent: wiring-auditor
   - id: pi_finalization_20260526.end_to_end_liveness
     name: End-to-end Pi runtime liveness proof
