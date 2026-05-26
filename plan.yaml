@@ -75748,7 +75748,7 @@ phases:
       changed-files guard passed. Checklist toggled from runtime receipt.'
   - id: pi_finalization_20260526.doc_sync
     name: Documentation sync for Pi integration
-    status: pending
+    status: claimed
     description: "step_type: documentation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Implementation handoff; Verification targets\nrefs: design/pi-coding-agent-integration.md\n\
       TARGET STATE: User-facing documentation describes how to use `larva pi`, configure\
@@ -75808,6 +75808,8 @@ phases:
     depends_on:
     - pi_finalization_20260526.spec_conformance_retest
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-05-26T18:32:41.700832+00:00'
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
     status: pending
