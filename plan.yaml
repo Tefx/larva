@@ -72767,7 +72767,7 @@ phases:
       independent OPEN/BLOCK decision.'
   - id: pi_contract_harness_20260526.coverage_regate
     name: Coverage regate for Pi contract expected-red harness
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -73078,6 +73078,26 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T06:33:32.972021+00:00'
+    done_at: '2026-05-26T07:19:29.381777+00:00'
+    evidence: 'BLOCKED_REGATE_RECONCILED_WITH_REMEDIATION. Independent read-only gate-reviewer
+      task ses_19cf817edffeRrfPoJfwcu41bJ returned `verdict: BLOCKED`, `gate_decision:
+      BLOCKED`, `gate_open_allowed: false`, `orchestrator_action_hint: RETRY`. Expected-red
+      failure alignment was valid: launcher tests fail because the `pi` CLI command
+      is not implemented; extension tests fail because bundled extension and force-include
+      are absent. Changed-file audit found no product implementation files changed:
+      e81fa1f added tests/shell/test_pi_extension_contract.py; c5bf440 modified tests/shell/test_pi_launcher_contract.py;
+      no product files. Gate produced a full target 1-41 coverage matrix and B1-B6
+      closure matrix. Remaining blocker ledger: R1/B2_TARGET5_INCOMPLETE — target
+      5 still lacks a test proving fallback to `--extension` when `-e` is absent;
+      existing test covers unsupported flag/no Pi settings writes only. R2/B3_TARGET10_INCOMPLETE
+      — target 10 still lacks `--mode=value` forms, empty `--mode=`, `--mode=unknown`,
+      explicit `--mode interactive`/`--mode=interactive`, and conflict precedence
+      with print/json markers. Planner remediation task ses_19cdbcf81ffe0Dz37rP9UaA3X9
+      added `pi_contract_harness_20260526.regate_gap_remediation` and `pi_contract_harness_20260526.final_regate`;
+      regate_gap_remediation depends on this step and final_regate depends on regate_gap_remediation,
+      keeping downstream Pi implementation locked. Checklist was toggled after remediation
+      ownership was created; this completion records a successful read-only issue-detection
+      gate and does NOT mark the harness OPEN.'
   - id: pi_contract_harness_20260526.regate_gap_remediation
     name: Regate gap remediation for Pi expected-red harness
     status: pending
