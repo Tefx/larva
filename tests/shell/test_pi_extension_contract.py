@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
+import textwrap
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
+
+import pytest
 
 ROOT: Final = Path(__file__).resolve().parents[2]
 EXTENSION: Final = ROOT / "contrib" / "pi-extension" / "larva.ts"
@@ -63,6 +68,30 @@ def _source() -> str:
         f"{EXTENSION.relative_to(ROOT)}"
     )
     return EXTENSION.read_text(encoding="utf-8")
+
+
+def _run_node(tmp_path: Path, script: str, *, timeout: float = 3.0) -> dict[str, Any]:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension runtime contract tests")
+
+    script_path = tmp_path / "scenario.mjs"
+    script_path.write_text(textwrap.dedent(script), encoding="utf-8")
+    completed = subprocess.run(
+        [node, str(script_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
+def _runtime_extension_copy(tmp_path: Path, appended_exports: str) -> Path:
+    extension = tmp_path / "larva-pi-runtime-test.ts"
+    extension.write_text(_source() + "\n" + textwrap.dedent(appended_exports), encoding="utf-8")
+    return extension
 
 
 def _assert_tokens(source: str, *tokens: str) -> None:
@@ -510,6 +539,7 @@ def test_child_stderr_startup_error_whitelist() -> None:
     assert "LARVA_CHILD_START_FAILED" not in re.search(r"const whitelist:[\s\S]*?\];", parser_body).group(0)
     assert "post-readiness stderr is diagnostic only" in source
     _assert_regex(source, r"larva pi: <ERROR_CODE>|larva pi:", "stderr parser shape is required")
+    _assert_regex(source, r"isLarvaError\(sessionFile\)|if \(isLarvaError\(value\)\) return value;", "early diagnostic errors must propagate through state requests without being overridden")
 
 
 def test_child_rpc_timeout_and_agent_end_wait_contract() -> None:

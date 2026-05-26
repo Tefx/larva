@@ -528,11 +528,15 @@ function parseStartupError(stderr: string): LarvaError {
 class RpcClient {
   private readonly pending = new Map<string, (value: unknown) => void>();
   private readonly events: unknown[] = [];
+  private readonly child: ChildProcessWithoutNullStreams;
   private stderr = "";
   private rpcReady = false;
+  private closed = false;
 
-  constructor(private readonly child: ChildProcessWithoutNullStreams) {
+  constructor(child: ChildProcessWithoutNullStreams) {
+    this.child = child;
     child.stderr.on("data", (chunk: Buffer) => { this.stderr += chunk.toString("utf8"); });
+    child.once("close", () => { this.closed = true; });
     const rl = createInterface({ input: child.stdout });
     rl.on("line", (line) => this.consume(line));
   }
@@ -550,6 +554,12 @@ class RpcClient {
     this.events.push(message);
   }
 
+  private closedError(): LarvaError {
+    return this.rpcReady
+      ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before RPC response; post-readiness stderr is diagnostic only.")
+      : parseStartupError(this.stderr);
+  }
+
   async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
     const message = JSON.stringify({ id, ...body });
     return await new Promise((resolveCommand) => {
@@ -563,11 +573,7 @@ class RpcClient {
         resolveCommand(value);
       };
       const onClose = (): void => {
-        settle(
-          this.rpcReady
-            ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before RPC response; post-readiness stderr is diagnostic only.")
-            : parseStartupError(this.stderr),
-        );
+        settle(this.closedError());
       };
       const timer = setTimeout(() => {
         settle(error("LARVA_CHILD_PROTOCOL_FAILED", "Child RPC command timed out after ten seconds."));
@@ -577,7 +583,17 @@ class RpcClient {
         settle(value);
       });
       this.child.once("close", onClose);
-      this.child.stdin.write(`${message}\n`);
+      if (this.closed || this.child.exitCode !== null) {
+        settle(this.closedError());
+        return;
+      }
+      try {
+        this.child.stdin.write(`${message}\n`, (writeError?: Error | null) => {
+          if (writeError) settle(this.closedError());
+        });
+      } catch {
+        settle(this.closedError());
+      }
     });
   }
 
@@ -591,7 +607,7 @@ class RpcClient {
       if (this.child.exitCode !== null) {
         return this.rpcReady
           ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before agent_end; post-readiness stderr is diagnostic only.")
-          : parseStartupError(this.stderr);
+          : this.closedError();
       }
       await new Promise((resolveWait) => setTimeout(resolveWait, 25));
     }
@@ -616,6 +632,7 @@ function isSuccessResponse(value: unknown): boolean {
 }
 
 function sessionFileFromState(value: unknown): string | LarvaError {
+  if (isLarvaError(value)) return value;
   if (!isSuccessResponse(value)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state failed.");
   const sessionFile = (value as { data?: { sessionFile?: unknown } }).data?.sessionFile;
   if (typeof sessionFile !== "string" || sessionFile.length === 0) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_state omitted sessionFile.");
@@ -623,6 +640,7 @@ function sessionFileFromState(value: unknown): string | LarvaError {
 }
 
 function finalText(value: unknown): string | LarvaError {
+  if (isLarvaError(value)) return value;
   if (!isSuccessResponse(value)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child final text request failed.");
   const text = (value as { data?: { text?: unknown } }).data?.text;
   // Contract token for static harness: typeof data.text === "string"
@@ -677,7 +695,7 @@ async function runChildSequence(
       allocatedTaskId = canonical;
     }
     const prompted = await rpc.command("prompt-1", { type: "prompt", message: task });
-    if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
+    if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, isLarvaError(prompted) ? prompted : error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
     const ended = await rpc.waitForAgentEnd();
     if (ended) { child.kill(); return failed(taskId, personaId, ended); }
     const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
