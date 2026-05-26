@@ -73128,3 +73128,81 @@ phases:
   depends_on:
   - pi-launcher-runtime-2026-05-26
   - pi-extension-runtime-2026-05-26
+  steps:
+  - id: pi_finalization_20260526.spec_conformance
+    name: Spec conformance audit for Pi integration
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: full-plan-check; protects final gate and reviews all design
+      verification targets 1-41.
+
+      As an independent spec verifier, compare implemented launcher and extension
+      behavior against design/pi-coding-agent-integration.md. This is not a generic
+      test pass; it is adversarial divergence hunting against exact contract language.
+
+      SCOPE: `larva pi`, bundled extension entry, persona projection, tool policy,
+      `larva_subagent`, launcher env, and forbidden non-goals.
+
+      <side_effect_budget>Allowed: read-only source/evidence/spec review and command
+      execution. Forbidden: source mutation.</side_effect_budget>
+
+      <risk_probes>1. Detect local reinterpretations of canonical PersonaSpec/opifex-owned
+      schema. 2. Detect drift from stable error codes/result shapes. 3. Detect omitted
+      verification targets hidden by passing unit tests.'
+    verification: '- [ ] Requirements register includes every design verification
+      target 1-41 and all non-goals as checked obligations.
+
+      - [ ] Evidence table cites design section and implementation file/line or runtime
+      evidence for each requirement.
+
+      - [ ] Verdict model distinguishes CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
+      AMBIGUOUS_SPEC, and SPEC_POSSIBLY_STALE.
+
+      - [ ] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
+      path before final gate.
+
+      - [ ] The audit explicitly checks forbidden scope remained absent.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Non-goals,
+      Launcher contract, API contracts, Architecture basis, Verification targets,
+      and Implementation handoff.
+
+
+      ## Spec Conformance Report
+
+      | R# | Spec Section | Requirement | Implementation/Evidence | Verdict | Notes
+      |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ## Coverage Summary
+
+      - total_requirements: <N>
+
+      - conforms: <N>
+
+      - diverges: <N>
+
+      - partial: <N>
+
+      - needs_test: <N>
+
+      - not_found: <N>
+
+      - ambiguous_spec: <N>
+
+
+      ## Top Risks and Closure Paths
+
+      - <risk>: <closure path>
+
+
+      ## Forbidden Scope Review
+
+      - <none or findings>'
+    agent: spec-verifier
