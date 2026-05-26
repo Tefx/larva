@@ -73798,7 +73798,7 @@ phases:
 
       - [x] Completion evidence cites the touched launcher/test files and explains
       any NOT READ ref with a concrete reason.'
-    verification: '- [ ] Raw command receipts show focused launcher env tests or fixture
+    verification: '- [x] Raw command receipts show focused launcher env tests or fixture
       CLI liveness tests exercising `_build_child_env`/`larva pi` child env with exit
       codes and stdout/stderr.
 
