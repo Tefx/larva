@@ -161,6 +161,7 @@ larva variant activate <id> <variant> [--json]
 larva variant delete <id> <variant> [--json]
 larva doctor [--json]
 larva opencode [OPENCODE_ARG ...]
+larva pi [--persona <id>] [--] <pi args...>
 ```
 
 Update rules: without `--variant`, contract-only patches update the shared
@@ -224,6 +225,43 @@ never reach the model, and no `/larva refresh` command is required. Adding or
 deleting persona ids still requires restarting `larva opencode` so OpenCode can
 see the new agent list. See `contrib/opencode-plugin/README.md` for current
 behavior, target refresh semantics, and failure handling.
+
+## Pi Coding Agent integration
+
+```bash
+larva pi --persona python-senior -- <pi args...>
+```
+
+`larva pi` launches the real Pi CLI with the bundled Larva Pi extension loaded
+through Pi's extension flag (`-e` or `--extension`) and forwards user Pi
+arguments after Larva-owned flags. It does not write `.pi/settings.json` or any
+other Pi settings file as a fallback. The launcher-owned environment includes the
+resolved real Pi binary, selected extension flag, bundled extension entry,
+Larva CLI argv prefix, optional initial persona id, policy-file path, and
+interactive-mode classification so parent and child Pi sessions use the same
+runtime context.
+
+Persona-specific Pi tool rules live in adapter-local `~/.pi/tool-policy.json`.
+That file is not a PersonaSpec field and is not interpreted by opifex. The Pi
+extension validates the active persona entry and supports only exact tool-name
+`allow` and `deny` arrays; there is no `ask` action, wildcard matching,
+project-level policy hierarchy, or PersonaSpec schema change.
+
+Inside Pi, `/larva-persona <id>` switches the active Larva persona atomically for
+the next model invocation. With no argument, it opens a selector only in
+interactive TUI mode; non-interactive modes return an input error without
+changing state. Pi status shows `larva: <id>` or `larva: none`.
+
+The bundled extension exposes one custom tool, `larva_subagent(persona_id, task,
+task_id?)`, when the active parent persona and tool policy allow it. A successful
+call returns a `LarvaSubagentResult` containing `task_id`, `persona_id`,
+`status`, `result_text`, and `error`; `task_id` is the public resume handle and
+is the child Pi `.jsonl` session path under `~/.pi/larva/child-sessions`. Resumes
+reuse that path, append the new `task`, and re-resolve the requested child
+persona from the current registry. There is no Larva sidecar metadata guarantee,
+batch subagent scheduler, worktree isolation, credential isolation, filesystem
+lock, MCP transport, or Pi permission platform in this integration. See
+`contrib/pi-extension/README.md` for user-facing policy and subagent details.
 
 ## Architecture
 
