@@ -74689,6 +74689,121 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.extension_runtime_proof
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.abort_runtime_retest
+    name: Retest in-flight abort runtime behavior
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects `pi_extension_runtime_20260526.gate`
+      and `pi-integration-finalization-2026-05-26` liveness/finalization gates.
+
+      agent_source: project
+
+      As an INDEPENDENT TESTER (`integration-verifier`), perform read-only fake Pi
+      runtime retest of B1 after `pi_extension_runtime_20260526.abort_rpc_fix`.
+
+
+      PROOF ARTIFACT:
+
+      A runtime evidence packet proving that abort during in-flight child execution
+      sends child RPC `abort`, returns a cancelled parent result with `LARVA_CHILD_CANCELLED`,
+      and does not regress existing `larva_subagent` success, failure, resume, or
+      busy behavior.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1-abort-propagation | extension runtime proof target 35 failure evidence;
+      `contrib/pi-extension/larva.ts` child RPC abort seam | Runtime abort during
+      in-flight child run emits RPC `abort` in trace | pi_extension_runtime_20260526.abort_runtime_retest
+      | `- [ ] Fake Pi runtime abort-during-result trace includes child RPC abort
+      command.` | `abort_rpc_trace` | OWNED | Blocks phase gate if absent. |
+
+      | B1-cancelled-result | extension runtime proof target 35 expected mapping |
+      Parent result is cancelled with `LARVA_CHILD_CANCELLED`, not success/final result
+      text | pi_extension_runtime_20260526.abort_runtime_retest | `- [ ] Abort-during-result
+      returns cancelled with LARVA_CHILD_CANCELLED and no success result_text.` |
+      `cancelled_result_shape` | OWNED | Blocks phase gate if absent. |
+
+      | B1-regressions | extension runtime proof targets for success/failure/resume/busy
+      | Existing success, failure-after-session-allocation, resume, and busy behaviors
+      remain green | pi_extension_runtime_20260526.abort_runtime_retest | `- [ ] No
+      regressions for success/failure/resume/busy scenarios.` | `regression_matrix`
+      | OWNED | Blocks phase gate if absent. |
+
+
+      SCOPE:
+
+      - Read-only verification; do not modify source, tests, docs, configs, or plan
+      state.
+
+      - Use fake Pi runtime / extension hook / child RPC seam evidence equivalent
+      to the proof that found B1.
+
+      - Raw traces and results are required; narrative summaries are insufficient.
+
+
+      <side_effect_budget>Allowed: run fake Pi runtime scenarios, inspect `contrib/pi-extension/larva.ts`
+      and generated traces/logs, collect evidence. Forbidden: source/test/doc mutation,
+      accepting source-only proof, or treating absence of thrown exceptions as cancellation
+      proof.</side_effect_budget>
+
+      <risk_probes>1. Verify the abort RPC appears before or during child cancellation,
+      not merely after final success. 2. Confirm cancelled result wins over any late
+      child output. 3. Confirm busy/session cleanup by rerunning busy/resume scenarios
+      after abort.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+      and the Pi extension runtime seam, or records explicit NOT READ reasons.
+
+      - [ ] Fake Pi runtime abort-during-result trace includes child RPC `abort` command.
+
+      - [ ] Abort-during-result returns cancelled with `LARVA_CHILD_CANCELLED` and
+      no success `result_text`.
+
+      - [ ] Raw evidence includes the before/after scenario name or target number
+      that closes B1 target 35.
+
+      - [ ] No regressions for success, failure-after-session-allocation, resume,
+      and busy scenarios; evidence includes actual outputs/traces for each.
+
+      - [ ] Behavioral proof register marks B1/target 35 `PROVEN` or `BLOCKED` with
+      explicit closure path; no OPEN recommendation is made with target 35 unproven.'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of frontend-engineer implementation)\n**Scope**: B1 in-flight\
+      \ abort retest for Pi extension child RPC runtime\n**Independence Level**: L1\
+      \ read-only runtime/seam verification\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- design/pi-coding-agent-integration.md — key passage\
+      \ or \"NOT READ: <reason>\"\n- contrib/pi-extension/larva.ts — key passage/location\
+      \ or \"NOT READ: <reason>\"\n\n## Runtime Evidence\n- command_or_harness: <exact\
+      \ command / script / fake runtime scenario>\n- scenario: abortDuringResult /\
+      \ target 35\n- raw_abort_trace:\n  ```\n  <JSONL/RPC trace showing abort command>\n\
+      \  ```\n- raw_parent_result:\n  ```\n  <cancelled result with LARVA_CHILD_CANCELLED>\n\
+      \  ```\n\n## Regression Matrix\n| scenario | raw evidence ref | verdict |\n\
+      | --- | --- | --- |\n| success | <trace/output> | PASS/FAIL/BLOCKED |\n| failure-after-session-allocation\
+      \ | <trace/output> | PASS/FAIL/BLOCKED |\n| resume | <trace/output> | PASS/FAIL/BLOCKED\
+      \ |\n| busy | <trace/output> | PASS/FAIL/BLOCKED |\n\n## Behavioral Proof Register\n\
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |\
+      \ status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | ---\
+      \ | --- | --- |\n| B1 target 35 | in-flight parent abort propagates to child\
+      \ RPC and cancels parent result | fake Pi runtime trace includes RPC abort plus\
+      \ cancelled `LARVA_CHILD_CANCELLED` result | <trace/result refs> | PROVEN/BLOCKED\
+      \ | <if blocked, exact missing proof/remediation> | phase gate may open only\
+      \ if PROVEN |\n\n## Headline\n- [ ] PASS: B1 closed and listed regressions green.\n\
+      - [ ] PASS_WITH_DEBT: B1 closed but non-blocking debt documented with non-intersection\
+      \ evidence.\n- [ ] FAIL: B1 still unproven, abort RPC missing, cancelled result\
+      \ missing, or regression found."
+    depends_on:
+    - pi_extension_runtime_20260526.abort_rpc_fix
+    agent: integration-verifier
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
