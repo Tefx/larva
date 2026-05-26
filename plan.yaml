@@ -76375,7 +76375,7 @@ phases:
       - [x] Retest rejects source-only/static-only proof for runtime behaviors unless
       the spec target is purely static and the non-runtime rationale is explicit.
 
-      - [ ] Retest confirms forbidden non-goals and canonical PersonaSpec authority
+      - [x] Retest confirms forbidden non-goals and canonical PersonaSpec authority
       remain preserved.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
