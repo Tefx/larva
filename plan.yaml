@@ -79789,20 +79789,20 @@ phases:
       cleanup instructions.
 
       </risk_probes>'
-    verification: '- [ ] Requirement traceability matrix covers all four Chinese acceptance
+    verification: '- [x] Requirement traceability matrix covers all four Chinese acceptance
       questions plus prior-regression preservation.
 
-      - [ ] Exact real-Pi observability method is defined for startup persona load,
+      - [x] Exact real-Pi observability method is defined for startup persona load,
       slash persona switch, spawn lifecycle, and prompt injection.
 
-      - [ ] Sentinel prompt strategy proves effective prompt/context injection, not
+      - [x] Sentinel prompt strategy proves effective prompt/context injection, not
       merely extension state storage; raw prompt exposure may be used only if actually
       available.
 
-      - [ ] Probe persona lifecycle includes cleanup/reset expectations so later tests
+      - [x] Probe persona lifecycle includes cleanup/reset expectations so later tests
       leave no persistent contamination.
 
-      - [ ] No product code is changed in this read-only design step.'
+      - [x] No product code is changed in this read-only design step.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
