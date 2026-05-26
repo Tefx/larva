@@ -74632,7 +74632,7 @@ phases:
       should be observable in JSONL/fake-runtime trace and should not leak busy state.
       3. Regression risk: success, failure, resume, and busy mappings must remain
       byte/shape-compatible with existing runtime proof expectations.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md`
       key passage(s) for child/subagent abort or cancellation semantics, or records
       explicit NOT READ reason.
 
