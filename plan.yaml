@@ -75508,7 +75508,7 @@ phases:
       - [x] Evidence table cites design section and implementation file/line or runtime
       evidence for each requirement.
 
-      - [ ] Verdict model distinguishes CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
+      - [x] Verdict model distinguishes CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
       AMBIGUOUS_SPEC, and SPEC_POSSIBLY_STALE.
 
       - [ ] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
