@@ -77780,7 +77780,7 @@ phases:
       \ command completion shape and tool enumeration fail-closed path."
   - id: pi_slash_autocomplete_20260527.fix_extension_shape
     name: Fix Pi extension autocomplete shape and startup enumeration fallback
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -77977,6 +77977,114 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T20:06:17.387299+00:00'
+    done_at: '2026-05-26T20:12:23.566164+00:00'
+    evidence: 'Pi extension autocomplete shape and startup enumeration fallback implementation
+      completed and merged into main.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — worker read extension API, completion/list
+      bridge, verification target passages; documented a scoped conflict where prior
+      fatal enumeration wording is superseded by this post-completion bugfix target
+      requiring safe unavailable startup behavior.
+
+      - contrib/pi-extension/larva.ts — worker read original `CommandDefinition.complete?:
+      (prefix: string) => Promise<string[]>`, raw string completion behavior, and
+      `enumerateTools` fail-closed behavior.
+
+      - tests/shell/test_pi_extension_contract.py — worker read command registration/list
+      bridge/tool-policy coverage.
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — worker read prior fail-closed
+      enumeration static expectation and updated it under a deviation record to the
+      new safe-fallback target.
+
+      - tests/shell/test_pi_launcher.py — NOT READ: absent; adjacent `tests/shell/test_pi_launcher_contract.py`
+      read.
+
+      - AGENTS.md — NOT READ as file absent in isolated worktree; injected AGENTS/invar
+      discipline followed.
+
+      - tests/shell/test_pi_reported_failures_expected_red.py — worker read the authoritative
+      expected-red tests for the slash crash and startup enumeration failure.
+
+
+      ## Fix Receipt
+
+      - changed_files: `contrib/pi-extension/larva.ts`; `tests/shell/test_pi_extension_tool_policy_static.py`.
+
+      - scope_diff_summary: changes limited to allowed Pi extension runtime and focused
+      static test; no PersonaSpec/schema/Python admission/launcher/prior phase evidence
+      changes.
+
+      - slash_root_cause: slash completion exposed raw `string[]`; reproduced Pi editor
+      path expected candidate values safe for `value.startsWith(...)`. Fix introduces
+      `PiAutocompleteCandidate = string | { value: string; label?: string; description?:
+      string }` and returns object candidates with string `value` from persona completion.
+
+      - startup_root_cause: `enumerateTools` treated absent/unsupported Pi tool enumeration
+      as fatal by throwing `LARVA_TOOL_ENUMERATION_FAILED`, causing initial persona
+      startup to fail closed. Fix delegates to safe enumeration fallback returning
+      `[]` when unavailable/non-array/throwing.
+
+      - deviations: focused test expectation changed from fatal enumeration to safe
+      fallback because the user-reported live startup failure and current bugfix step
+      supersede the older fatal-enumeration assumption; no design/source documents
+      were rewritten.
+
+      - worker commit: 16223bf44e6c5bfce87e6752f7503db2ef97f6e9.
+
+      - orchestrator merge: squash-merged to main as 43eec4c.
+
+
+      ## Verification
+
+      - worker slash regression: `.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_slash_autocomplete_candidates_expose_string_value_for_pi_editor
+      -q` exited 0; 1 passed.
+
+      - worker startup regression: `.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator
+      -q` exited 0; 1 passed.
+
+      - worker targeted regression suite: `.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py
+      tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_launcher_contract.py` exited 0; 82 passed.
+
+      - worker changed-files invar guard: passed with errors=0.
+
+      - mainline final-state verification after merge: `git diff --check HEAD~1..HEAD`
+      passed; `uv run pytest tests/shell/test_pi_reported_failures_expected_red.py
+      tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_launcher_contract.py -q` exited 0 with 82 passed in 1.19s;
+      `uv run invar guard --all` exited 0 with status passed, files_checked 41, errors
+      0, warnings 4, infos 3, doctest passed, property_tests passed; final `git status
+      --porcelain` clean.
+
+
+      ## Semantic Closure Fields
+
+      verdict: PASS
+
+      blockers: []
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NON_BLOCKING
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: COMPLETE
+
+      requirement_coverage:
+
+      - PI-SLASH-CRASH-001: PROVEN — slash regression passed and TS completion candidates
+      now include string `value`.
+
+      - PI-STARTUP-ENUM-001: PROVEN — startup enumeration regression passed and unavailable
+      enumeration returns empty baseline.
+
+      - PI-SCOPE-001: PROVEN — committed diff limited to allowed Pi extension and
+      focused test surfaces.'
   - id: pi_slash_autocomplete_20260527.retest_liveness
     name: Retest Pi startup, slash autocomplete, live smoke, and guard
     status: pending
