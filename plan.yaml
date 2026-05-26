@@ -74649,7 +74649,7 @@ phases:
       and includes actual output or trace excerpt, without claiming phase-wide retest
       ownership.
 
-      - [ ] Existing success, failure, resume, and busy runtime semantics are not
+      - [x] Existing success, failure, resume, and busy runtime semantics are not
       intentionally changed.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
