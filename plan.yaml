@@ -74963,7 +74963,7 @@ phases:
       - [x] Unknowable abort state returns failed `LARVA_CHILD_PROTOCOL_FAILED` for
       abort RPC failure or failed/unknowable kill.
 
-      - [ ] `child.kill()` false return is handled explicitly and cannot produce a
+      - [x] `child.kill()` false return is handled explicitly and cannot produce a
       cancelled success-path receipt.
 
       - [ ] Normal successful abort/kill path remains cancelled with `LARVA_CHILD_CANCELLED`.
