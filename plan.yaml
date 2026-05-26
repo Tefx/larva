@@ -75118,7 +75118,7 @@ phases:
       - [x] Fake runtime proof shows abort RPC failure returns parent `status: failed`
       with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
-      - [ ] Fake runtime proof shows kill failure or unknowable child state returns
+      - [x] Fake runtime proof shows kill failure or unknowable child state returns
       parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
       - [ ] Regression proof shows normal successful abort/kill still returns parent
