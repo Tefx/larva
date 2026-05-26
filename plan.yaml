@@ -72300,23 +72300,23 @@ phases:
       <risk_probes>1. Verify forwarded Pi args are unchanged after Larva-owned flags.\
       \ 2. Verify extension unsupported path does not write Pi settings. 3. Verify\
       \ malformed/unknown Pi mode is non-interactive for selector purposes.</risk_probes>\n\
-      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      - [x] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Tests are limited to tests/ fixtures and expose the launcher
+    verification: '- [x] Tests are limited to tests/ fixtures and expose the launcher
       gap as expected-red without implementing product code.
 
-      - [ ] Requirement traceability matrix maps verification targets 1-5, 10, and
+      - [x] Requirement traceability matrix maps verification targets 1-5, 10, and
       37-39 to exact test names and expected evidence fields.
 
-      - [ ] Test fixtures prove real Pi discovery, `-e` versus `--extension` selection,
+      - [x] Test fixtures prove real Pi discovery, `-e` versus `--extension` selection,
       unsupported extension failure, and no Pi settings fallback.
 
-      - [ ] Test fixtures prove `LARVA_PI_INITIAL_PERSONA_ID`, `LARVA_PI_REAL_BIN`,
+      - [x] Test fixtures prove `LARVA_PI_INITIAL_PERSONA_ID`, `LARVA_PI_REAL_BIN`,
       `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
       and `LARVA_PI_INTERACTIVE_TUI` are asserted.
 
-      - [ ] Expected-red evidence identifies downstream implementation owner `pi_launcher_runtime_20260526.implement_launcher_entry`.'
+      - [x] Expected-red evidence identifies downstream implementation owner `pi_launcher_runtime_20260526.implement_launcher_entry`.'
     evidence_template: '## refs Read Confirmation
 
       - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
