@@ -76989,7 +76989,7 @@ phases:
       - [x] Post-readiness stderr remains diagnostic-only and does not override a
       ready RPC/domain result.
 
-      - [ ] B1/B2/B3/B4/B6 previously passing conformance checks remain green or have
+      - [x] B1/B2/B3/B4/B6 previously passing conformance checks remain green or have
       explicit non-intersection evidence.
 
       - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
