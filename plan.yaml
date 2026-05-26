@@ -73499,7 +73499,7 @@ phases:
       Pi as `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`
       and sets all launcher-to-extension env vars named by the design.
 
-      - [ ] Missing persona, missing real Pi, missing extension, unsupported extension
+      - [x] Missing persona, missing real Pi, missing extension, unsupported extension
       flag, and bad args produce documented stderr codes and exit behavior.
 
       - [ ] Interactive detector covers exact print/json/mode markers, missing/empty/unknown
