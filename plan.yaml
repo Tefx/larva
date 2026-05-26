@@ -73576,7 +73576,7 @@ phases:
       - [x] Negative liveness cases prove missing Pi and unsupported extension fail
       before child Pi execution.
 
-      - [ ] Output includes raw stdout/stderr and exit codes, not narrative summaries.
+      - [x] Output includes raw stdout/stderr and exit codes, not narrative summaries.
 
       - [ ] Behavioral proof register marks launcher obligations PROVEN/BLOCKED with
       closure paths.
