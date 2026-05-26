@@ -72481,6 +72481,243 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T06:02:50.463962+00:00'
+  - id: pi_contract_harness_20260526.coverage_remediation
+    name: Coverage remediation for Pi contract expected-red harness
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      The expected-red contract harness positively owns all gate blockers B1-B6 from
+      `pi_contract_harness_20260526.gate` without implementing product code. The remediation
+      is limited to tests, fixtures, and test documentation for missing expected-red
+      coverage. Product implementation files remain unchanged, and failing/red results
+      are acceptable only when they expose the documented missing implementation obligations.
+
+
+      AUTHORITATIVE REFS:
+
+      - `design/pi-coding-agent-integration.md:1280-1281` — target 4, launcher Pi
+      binary discovery and Larva shim exclusion.
+
+      - `design/pi-coding-agent-integration.md:1282-1284` — target 5, unsupported
+      extension flag must not write Pi settings/config.
+
+      - `design/pi-coding-agent-integration.md:1296-1303` — target 10, exact launcher
+      mode detection matrix.
+
+      - `design/pi-coding-agent-integration.md:1385-1392` — targets 37/38, launcher
+      bridge argv prefix, inheritance, suffix/fallback/list failure semantics.
+
+      - `design/pi-coding-agent-integration.md:1393-1397` — target 39, launcher stderr
+      preservation and parent-child pre-RPC whitelist mapping.
+
+
+      BOUNDING BOX:
+
+      - Primary test files: `tests/shell/test_pi_launcher_contract.py`, `tests/shell/test_pi_extension_contract.py`.
+
+      - Fixture-only additions may be made under existing test fixture locations if
+      needed.
+
+      - Do not modify Pi launcher or extension product implementation modules.
+
+
+      POSITIVE REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1/T4 | `design/pi-coding-agent-integration.md:1280-1281` target 4 | Expected-red
+      launcher test covers PATH ordering, skips Larva shim path, and selects first
+      valid real `pi` when `LARVA_PI_BIN` is not overriding. | `pi_contract_harness_20260526.coverage_remediation`
+      | `B1 target 4 PATH discovery expected-red coverage added` | `B1_test_changes`,
+      `B1_command_receipt` | OWNED | Blocks launcher implementation until covered.
+      |
+
+      | B2/T5 | `design/pi-coding-agent-integration.md:1282-1284` target 5 | Expected-red
+      launcher test asserts unsupported extension flag path does not write Pi settings/config
+      files. | `pi_contract_harness_20260526.coverage_remediation` | `B2 target 5
+      no-settings-write expected-red assertion added` | `B2_test_changes`, `B2_command_receipt`
+      | OWNED | Blocks launcher implementation until covered. |
+
+      | B3/T10 | `design/pi-coding-agent-integration.md:1296-1303` target 10 | Parametrized
+      expected-red launcher mode matrix covers exact `-p`, `--print`, `--json`, `--mode
+      print/json/rpc/sdk`, missing/empty/unknown `--mode`, and conflict precedence.
+      | `pi_contract_harness_20260526.coverage_remediation` | `B3 target 10 full mode-detection
+      matrix added` | `B3_test_changes`, `B3_command_receipt` | OWNED | Blocks launcher
+      implementation until covered. |
+
+      | B4/T37-38 | `design/pi-coding-agent-integration.md:1385-1392` targets 37/38
+      | Launcher-context expected-red checks cover argv prefix construction/inheritance;
+      suffix/fallback/list failure behavior is explicitly owned by extension runtime
+      implementation if not fully expressible in launcher tests. | `pi_contract_harness_20260526.coverage_remediation`
+      | `B4 targets 37/38 launcher bridge expected-red coverage and ownership clarification
+      added` | `B4_test_changes`, `B4_ownership_note`, `B4_command_receipt` | OWNED
+      | Bridge suffix/fallback behavior must remain represented for downstream implementation
+      ownership; do not leave as unowned deferral. |
+
+      | B5/T39 | `design/pi-coding-agent-integration.md:1393-1397` target 39 | Expected-red
+      coverage separates launcher stderr preservation from parent-child pre-RPC whitelist
+      mapping and assigns explicit expected-red ownership for whitelist mapping. |
+      `pi_contract_harness_20260526.coverage_remediation` | `B5 target 39 split launcher
+      stderr and whitelist mapping expected-red coverage added` | `B5_test_changes`,
+      `B5_command_receipt` | OWNED | Blocks runtime implementation until both obligations
+      are represented or explicitly phase-owned. |
+
+      | B6/refs | Original gate B6 | Current remediation and regate evidence must
+      include auditable refs confirmation; unavailable upstream receipt artifacts
+      are accepted only if current positive proof is complete and non-intersecting.
+      | `pi_contract_harness_20260526.coverage_remediation`; `pi_contract_harness_20260526.coverage_regate`
+      | `B6 refs receipt replacement evidence added for current remediation` | `refs_read_confirmation`,
+      `upstream_receipt_limitations` | OWNED | Original receipt artifact gaps must
+      not be used to pass without current auditable proof. |
+
+
+      GATE CONTEXT TO PRESERVE:
+
+      - Original `pi_contract_harness_20260526.gate` returned FAIL/BLOCK with blockers
+      B1-B6.
+
+      - Gate reviewer confirmed no product implementation files were modified and
+      expected-red commands align with missing implementation.
+
+      - Do not remove, rewrite, or reinterpret original gate findings; this step closes
+      them through expected-red harness coverage only.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      - Allowed: modify expected-red test files, test fixtures, and test-only helper
+      data needed to encode B1-B6.
+
+      - Forbidden: modify product implementation code, launcher runtime code, extension
+      runtime code, production configuration, documentation outside test evidence,
+      or plan/lifecycle state.
+
+      - Forbidden: convert expected-red tests into product implementation, mask failures
+      with broad skips, or weaken existing expected-red assertions.
+
+
+      RISK_PROBES:
+
+      - Confirm PATH discovery tests cannot pass by accidentally selecting the Larva
+      shim path or a fake fixture path that does not model real `pi` discovery.
+
+      - Confirm mode detection matrix distinguishes equivalent-looking flags and conflict
+      precedence instead of only asserting generic interactive/default behavior.
+
+      - Confirm bridge/stderr obligations are not conflated: launcher stderr preservation,
+      argv bridge construction, and extension pre-RPC whitelist mapping must each
+      have distinct ownership/evidence.
+
+
+      ## Completion Criteria (test-only scope)
+
+      This is a TEST step. Product implementation completion is NOT acceptable here.
+      Success means the expected-red harness now exposes missing implementation obligations
+      with positive traceability. Expected failing/red results are valid only when
+      they are the documented red failures for missing implementation.
+
+
+      ## Checklist
+
+      - [ ] B1 target 4 PATH discovery expected-red coverage added: ordering, Larva
+      shim exclusion, and first valid real `pi` selection are asserted in launcher
+      contract tests.
+
+      - [ ] B2 target 5 no-settings-write expected-red assertion added: unsupported
+      extension flag path proves no Pi settings/config file write occurs.
+
+      - [ ] B3 target 10 full mode-detection matrix added: exact `-p`, `--print`,
+      `--json`, `--mode print/json/rpc/sdk`, missing/empty/unknown `--mode`, and conflict
+      precedence are parametrized or otherwise positively covered.
+
+      - [ ] B4 targets 37/38 launcher bridge expected-red coverage and ownership clarification
+      added: argv prefix construction/inheritance are launcher-tested; bridge suffix/fallback/list
+      failure semantics are explicitly represented and owned for downstream implementation.
+
+      - [ ] B5 target 39 split launcher stderr and whitelist mapping expected-red
+      coverage added: launcher stderr preservation and parent-child pre-RPC whitelist
+      mapping are distinct obligations with explicit tests or ownership notes.
+
+      - [ ] B6 refs receipt replacement evidence added: current remediation includes
+      refs confirmation with key passages, and any unavailable upstream receipt artifacts
+      are classified as limitations only after current positive coverage proof is
+      complete.
+
+      - [ ] Test changes are limited to expected-red tests/fixtures/helpers; no product
+      implementation files changed.
+
+      - [ ] Command receipts show expected-red behavior for the remediated harness,
+      including explicit red/failing assertions for missing implementation rather
+      than accidental green passes.
+
+      - [ ] Traceability matrix is updated or echoed in evidence so every blocker
+      B1-B6 maps to concrete tests/checklist/evidence fields.'
+    verification: '- [ ] Expected-red tests or fixtures for B1-B6 are present and
+      mapped to the positive requirement traceability matrix.
+
+      - [ ] Evidence includes refs confirmation with key passages from `design/pi-coding-agent-integration.md`
+      target lines 1280-1284, 1296-1303, and 1385-1397.
+
+      - [ ] Evidence includes exact files/tests changed and confirms the scope is
+      tests/fixtures/helpers only.
+
+      - [ ] Evidence includes raw command receipts showing the remediated harness
+      exposes the expected red gaps without product implementation changes.
+
+      - [ ] Evidence includes a no-product-code-changed confirmation with changed-file
+      list.
+
+      - [ ] Evidence explains any accepted limitation for unavailable upstream receipts
+      and why current positive proof makes it non-intersecting for downstream gates.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `design/pi-coding-agent-integration.md` — key passages for target\
+      \ 4 (lines 1280-1281), target 5 (1282-1284), target 10 (1296-1303), targets\
+      \ 37/38 (1385-1392), and target 39 (1393-1397), or `NOT READ: <reason>`.\n\n\
+      ## Exact Test/Fixture Changes\n- changed_files:\n  - `<path>` — `<B# targets\
+      \ covered; test names>`\n- product_files_changed: `NONE` (required)\n- if product_files_changed\
+      \ is not NONE: `BLOCKED: explain forbidden scope`\n\n## Blocker Coverage Evidence\n\
+      - B1_test_changes: `<test names/assertions for PATH ordering, Larva shim exclusion,\
+      \ first valid real pi>`\n- B1_command_receipt:\n  ```\n  <raw command + stdout/stderr/exit\
+      \ code>\n  ```\n- B2_test_changes: `<test names/assertions for no Pi settings/config\
+      \ write>`\n- B2_command_receipt:\n  ```\n  <raw command + stdout/stderr/exit\
+      \ code>\n  ```\n- B3_test_changes: `<mode matrix rows for -p, --print, --json,\
+      \ --mode print/json/rpc/sdk, missing/empty/unknown --mode, conflict precedence>`\n\
+      - B3_command_receipt:\n  ```\n  <raw command + stdout/stderr/exit code>\n  ```\n\
+      - B4_test_changes: `<launcher argv prefix/inheritance checks and downstream\
+      \ ownership clarification for suffix/fallback/list failure semantics>`\n- B4_ownership_note:\
+      \ `<where suffix/fallback/list failure behavior is owned if not launcher-testable>`\n\
+      - B4_command_receipt:\n  ```\n  <raw command + stdout/stderr/exit code>\n  ```\n\
+      - B5_test_changes: `<separate launcher stderr preservation tests and pre-RPC\
+      \ whitelist mapping ownership/tests>`\n- B5_command_receipt:\n  ```\n  <raw\
+      \ command + stdout/stderr/exit code>\n  ```\n- B6_refs_repair: `<current refs\
+      \ confirmation plus upstream receipt limitation classification, if any>`\n\n\
+      ## Changed-File Scope Receipt\n```text\n<changed-file list proving only tests/fixtures/helpers\
+      \ changed>\n```\n\n## Expected-Red Receipt\n- command: `<exact command(s)>`\n\
+      - exit_code: `<code>`\n- expected_result: `red`\n- exposed_gaps: `<which missing\
+      \ implementation obligations caused red/failure>`\n- accidental_green: `NO`\
+      \ (required unless justified as pre-existing implementation already satisfies\
+      \ a row)\n\n## Checklist Receipt\n- [ ] B1 target 4 PATH discovery expected-red\
+      \ coverage added.\n- [ ] B2 target 5 no-settings-write expected-red assertion\
+      \ added.\n- [ ] B3 target 10 full mode-detection matrix added.\n- [ ] B4 targets\
+      \ 37/38 launcher bridge expected-red coverage and ownership clarification added.\n\
+      - [ ] B5 target 39 split launcher stderr and whitelist mapping expected-red\
+      \ coverage added.\n- [ ] B6 refs receipt replacement evidence added.\n- [ ]\
+      \ No product code changed."
+    depends_on:
+    - pi_contract_harness_20260526.gate
+    agent: python-executor
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
