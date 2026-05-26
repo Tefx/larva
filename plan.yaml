@@ -76078,7 +76078,7 @@ phases:
       for targets 13 and 17, preserving prior active envelope where required and preventing
       denied tool invocation.
 
-      - [ ] Evidence includes exact files/tests changed and explains root cause vs
+      - [x] Evidence includes exact files/tests changed and explains root cause vs
       symptom for each B1-B6 blocker.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
