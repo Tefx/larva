@@ -74495,13 +74495,24 @@ phases:
       extension runtime proof.
 
       - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_runtime_retest`
-      and blocks unless B1 target 35 is PROVEN by fake Pi runtime trace containing
-      child RPC `abort` plus cancelled `LARVA_CHILD_CANCELLED` parent result.
+      and blocks unless B1 target 35 narrow cancelled path is PROVEN by fake Pi runtime
+      trace containing child RPC `abort` plus cancelled `LARVA_CHILD_CANCELLED` parent
+      result.
 
-      - [ ] OPEN only if persona projection, tool policy, and subagent obligations
-      have positive hook/RPC evidence or explicit non-intersection.
+      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_unknowable_retest`
+      and blocks unless full design target 35 unknowable path is PROVEN by fake Pi
+      runtime trace(s) where abort RPC failure and kill failure/unknowable state return
+      parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
-      - [ ] Gate rejects source-only proof for slash command/status/tool/runtime behavior.
+      - [ ] Gate confirms normal successful abort/kill cancellation still returns
+      cancelled `LARVA_CHILD_CANCELLED` after the unknowable-state fix.
+
+      - [ ] OPEN only if persona projection, tool policy, subagent obligations, narrow
+      abort cancellation, and unknowable abort failure obligations have positive hook/RPC
+      evidence or explicit non-intersection.
+
+      - [ ] Gate rejects source-only proof for slash command/status/tool/runtime/abort
+      behavior.
 
       - [ ] Gate rejects forbidden-scope additions: schema changes, ask action, worktree/file
       lock/credential logic, policy hierarchy, batch subagent, catalogue prompt dump,
@@ -74509,9 +74520,10 @@ phases:
 
       - [ ] Unresolved obligations include closure paths before finalization can open.
 
-      - [ ] All upstream implementation, wiring, runtime proof, abort fix, and abort
-      retest receipts include `## refs Read Confirmation` with `design/pi-coding-agent-integration.md`
-      key passages or explicit NOT READ reasons.'
+      - [ ] All upstream implementation, wiring, runtime proof, abort fix, abort retest,
+      abort unknowable fix, and abort unknowable retest receipts include `## refs
+      Read Confirmation` with `design/pi-coding-agent-integration.md` key passages
+      or explicit NOT READ reasons.'
     evidence_template: "## Gate Review Report\n\n**Reviewer**: gate-reviewer (independent\
       \ of phase implementation)\n**Phase**: pi-extension-runtime-2026-05-26\n\n###\
       \ refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
@@ -74537,6 +74549,8 @@ phases:
     - pi_extension_runtime_20260526.extension_runtime_proof
     - pi_extension_runtime_20260526.abort_rpc_fix
     - pi_extension_runtime_20260526.abort_runtime_retest
+    - pi_extension_runtime_20260526.abort_unknowable_fix
+    - pi_extension_runtime_20260526.abort_unknowable_retest
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T14:20:11.567307+00:00'
