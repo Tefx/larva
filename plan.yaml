@@ -74877,7 +74877,7 @@ phases:
       toggled from retest receipt.'
   - id: pi_extension_runtime_20260526.abort_unknowable_fix
     name: Fix abort unknowable-state handling
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -75010,6 +75010,26 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T14:32:57.988286+00:00'
+    done_at: '2026-05-26T14:46:38.480962+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Retry task ses_19b47f96effeoru1SgGaTtsUrj
+      returned passed with commit 2ec4d126: fixed Pi extension abort unknown-state
+      mapping. Orchestrator toggled all checklist items, squash-merged branch into
+      main as 6b5b225 ([vectl] step-pi_extension_runtime_20260526.abort_unknowable_fix
+      completed), and verified mainline. Changed files: contrib/pi-extension/larva.ts
+      and tests/shell/test_pi_extension_contract.py. Evidence included refs confirmation
+      for design/pi-coding-agent-integration.md lines 739-754, contrib/pi-extension/larva.ts,
+      and tests/shell/test_pi_extension_contract.py. Fix maps abort RPC failure, failed/unknown
+      child termination, or unknowable aborted non-success state to failed `LARVA_CHILD_PROTOCOL_FAILED`,
+      handles child termination false/unknown explicitly so it cannot produce cancelled
+      receipt, preserves confirmed abort cancellation as `LARVA_CHILD_CANCELLED`,
+      and adds focused coverage `test_abort_unknown_child_termination_returns_protocol_failed_not_cancelled`.
+      Verification: `uv run pytest tests/shell/test_pi_extension_contract.py -k abort
+      -q` passed 3 selected; focused unknown/normal cancelled tests passed 2 selected;
+      `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` passed 47/47; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos. Forbidden scope preserved: no plan/orchestrator state, schema
+      changes, sidecars/locks, credential/worktree logic, policy hierarchy, launcher
+      behavior, or docs-only proof.'
   - id: pi_extension_runtime_20260526.abort_unknowable_retest
     name: Retest abort unknowable-state handling
     status: pending
