@@ -75251,7 +75251,7 @@ phases:
       wins only for abort/no-response/termination-false unknowable state, not for
       normal cancelled paths. 3. Confirm fake runtime coverage still exercises the
       exact child-exit/kill-false fact pattern rather than a simplified throw path.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md`
       abort/error-code passages and `contrib/pi-extension/larva.ts` mapping locations,
       or records explicit NOT READ reasons.
 
