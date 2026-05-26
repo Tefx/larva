@@ -1,7 +1,8 @@
+import json
 import os
-import sys
 import subprocess
 import shutil
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -47,8 +48,9 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     `larva pi --persona known -- --version` invokes real Pi as
     `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`,
     sets `LARVA_PI_INITIAL_PERSONA_ID=known`, `LARVA_PI_REAL_BIN`,
-    `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, and
-    `LARVA_CLI_ARGV_JSON` for the extension process.
+    `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
+    `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED`, and `LARVA_CLI_ARGV_JSON`
+    for the extension process.
     """
     import io
     stdout = io.StringIO()
@@ -74,7 +76,76 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     assert env.get("LARVA_PI_REAL_BIN") == str(fake_pi_executable)
     assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
     assert env.get("LARVA_PI_EXTENSION_ENTRY") == cmd[2]
+    assert env.get("LARVA_PI_LAUNCHED") == "1"
+    assert env.get("LARVA_PI_TOOL_POLICY_FILE", "").endswith("/.pi/tool-policy.json")
+    assert Path(env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
     assert "LARVA_CLI_ARGV_JSON" in env
+
+
+def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
+    """
+    Launcher env contract is exercised by a real fixture child process, not only
+    by inspecting source or mocked call arguments.
+    """
+    artifact = tmp_path / "child-env.json"
+    pi_bin = tmp_path / "fake_pi_runtime.py"
+    pi_bin.write_text(
+        f"#!{sys.executable}\n"
+        "import json\n"
+        "import os\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "if '--help' in sys.argv[1:]:\n"
+        "    print('Options:\\n  -e, --extension  Extension path')\n"
+        "    raise SystemExit(0)\n"
+        "keys = [\n"
+        "    'LARVA_PI_INITIAL_PERSONA_ID',\n"
+        "    'LARVA_PI_REAL_BIN',\n"
+        "    'LARVA_PI_EXTENSION_FLAG',\n"
+        "    'LARVA_PI_EXTENSION_ENTRY',\n"
+        "    'LARVA_CLI_ARGV_JSON',\n"
+        "    'LARVA_PI_INTERACTIVE_TUI',\n"
+        "    'LARVA_PI_TOOL_POLICY_FILE',\n"
+        "    'LARVA_PI_LAUNCHED',\n"
+        "]\n"
+        "Path(os.environ['FAKE_PI_ARTIFACT']).write_text(\n"
+        "    json.dumps(\n"
+        "        {'argv': sys.argv[1:], 'env': {key: os.environ.get(key) for key in keys}},\n"
+        "        sort_keys=True,\n"
+        "    ),\n"
+        "    encoding='utf-8',\n"
+        ")\n"
+    )
+    pi_bin.chmod(0o755)
+    monkeypatch.setenv("LARVA_PI_BIN", str(pi_bin))
+    monkeypatch.setenv("FAKE_PI_ARTIFACT", str(artifact))
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(
+        ["pi", "--persona", "known", "--", "--version"],
+        facade=_make_facade(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+
+    payload = json.loads(artifact.read_text(encoding="utf-8"))
+    child_env = payload["env"]
+    assert payload["argv"][0] == "-e"
+    assert "extension" in payload["argv"][1]
+    assert payload["argv"][2] == "--version"
+    assert child_env["LARVA_PI_INITIAL_PERSONA_ID"] == "known"
+    assert child_env["LARVA_PI_REAL_BIN"] == str(pi_bin)
+    assert child_env["LARVA_PI_EXTENSION_FLAG"] == "-e"
+    assert child_env["LARVA_PI_EXTENSION_ENTRY"] == payload["argv"][1]
+    assert child_env["LARVA_CLI_ARGV_JSON"]
+    assert child_env["LARVA_PI_INTERACTIVE_TUI"] == "1"
+    assert child_env["LARVA_PI_TOOL_POLICY_FILE"].endswith("/.pi/tool-policy.json")
+    assert Path(child_env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
+    assert child_env["LARVA_PI_LAUNCHED"] == "1"
 
 def test_launcher_missing_persona(
     mock_shutil_which, mock_subprocess_run, tmp_path

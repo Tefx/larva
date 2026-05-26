@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 PI_EXTENSION_RELATIVE_PATH = Path("contrib/pi-extension/larva.ts")
 PACKAGED_EXTENSION_RELATIVE_PATH = Path("pi_extension/larva.ts")
 LARVA_PI_BIN_ENV = "LARVA_PI_BIN"
+LARVA_PI_TOOL_POLICY_FILE_ENV = "LARVA_PI_TOOL_POLICY_FILE"
+LARVA_PI_LAUNCHED_ENV = "LARVA_PI_LAUNCHED"
 
 
 def _launcher_failure(
@@ -188,6 +190,13 @@ def _larva_cli_argv_json() -> Result[str, object]:
     return Success(json.dumps([executable], separators=(",", ":")))
 
 
+def _tool_policy_file(environ: Mapping[str, str]) -> Result[str, object]:
+    override = environ.get(LARVA_PI_TOOL_POLICY_FILE_ENV)
+    if override:
+        return Success(override)
+    return Success(str((Path.home() / ".pi" / "tool-policy.json").resolve()))
+
+
 def _preflight_persona(persona_id: str | None, facade: LarvaFacade) -> Result[None, CliFailure]:
     if persona_id is None:
         return Success(None)
@@ -223,6 +232,8 @@ def _build_child_env(
     child_env["LARVA_PI_REAL_BIN"] = pi_bin
     child_env["LARVA_PI_EXTENSION_FLAG"] = extension_flag
     child_env["LARVA_PI_EXTENSION_ENTRY"] = str(extension_entry)
+    child_env[LARVA_PI_TOOL_POLICY_FILE_ENV] = _tool_policy_file(environ).unwrap()
+    child_env[LARVA_PI_LAUNCHED_ENV] = "1"
     child_env["LARVA_CLI_ARGV_JSON"] = _larva_cli_argv_json().unwrap()
     child_env["LARVA_PI_INTERACTIVE_TUI"] = _interactive_tui_value(pi_args).unwrap()
     return Success(child_env)
