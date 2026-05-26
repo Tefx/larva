@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, cast
 
-from returns.result import Failure, Result, Success
+from returns.result import Failure, Result
 
 from larva.cli_entrypoint import main  # noqa: F401  # compatibility re-export
 from larva.shell.cli_commands import (
@@ -270,6 +270,26 @@ def run_cli(
 
         return _emit_result(
             opencode_command(
+                argv_list[1:],
+                facade=facade,
+            ),
+            as_json=False,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if argv_list[0] == "pi":
+        from larva.shell.pi import pi_command
+
+        if argv_list[1:] in (["--help"], ["-h"]):
+            stdout.write(
+                "usage: larva pi [--persona PERSONA_ID] [--] [PI_ARG ...]\n\n"
+                "Launch Pi with the bundled larva extension.\n"
+            )
+            return EXIT_OK
+
+        return _emit_result(
+            pi_command(
                 argv_list[1:],
                 facade=facade,
             ),
