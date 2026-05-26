@@ -82,7 +82,7 @@ def test_commit_validates_policy_before_model_mutation_and_restores_tools() -> N
     assert "LARVA_TOOL_ENUMERATION_FAILED" in body
 
 
-def test_tool_enumeration_fail_closed_when_unavailable_or_update_throws() -> None:
+def test_tool_enumeration_degrades_to_empty_baseline_when_unavailable() -> None:
     source = _source()
     enumerate_match = re.search(
         r"async function enumerateTools\(pi: PiApi\): Promise<string\[]> \{(?P<body>[\s\S]*?)\n\}",
@@ -98,8 +98,9 @@ def test_tool_enumeration_fail_closed_when_unavailable_or_update_throws() -> Non
     enumerate_body = enumerate_match.group("body")
     commit_body = commit_match.group("body")
 
-    assert "if (!Array.isArray(tools)) throw" in enumerate_body
-    assert "LARVA_TOOL_ENUMERATION_FAILED" in enumerate_body
+    assert "safeToolEnumeration(pi)" in enumerate_body
+    assert "return []" in source
+    assert "Pi tool enumeration did not return an array" not in enumerate_body
     assert "try" in commit_body
     assert "catch" in commit_body
     assert "throw error(\"LARVA_TOOL_ENUMERATION_FAILED\", \"Pi active-tool update failed\")" in commit_body

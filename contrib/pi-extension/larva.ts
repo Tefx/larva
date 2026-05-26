@@ -79,9 +79,10 @@ type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | P
 type CommandDefinition = {
   name: string;
   description: string;
-  complete?: (prefix: string) => Promise<string[]>;
+  complete?: (prefix: string) => Promise<PiAutocompleteCandidate[]>;
   handler: (input?: string) => Promise<PersonaSwitchResult>;
 };
+export type PiAutocompleteCandidate = string | { value: string; label?: string; description?: string };
 type ToolDefinition<Input, Output> = {
   name: string;
   description: string;
@@ -230,9 +231,15 @@ function normalizeListItem(item: unknown): BridgeListItem | null {
   };
 }
 
-export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<string[]> {
+export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[]> {
   const personas = await listPersonas(ctx);
-  return personas.map((persona) => persona.id).filter((id) => id.startsWith(prefix));
+  return personas
+    .filter((persona) => persona.id.startsWith(prefix))
+    .map((persona) => ({
+      value: persona.id,
+      label: persona.id,
+      description: persona.description ?? persona.model,
+    }));
 }
 
 export function getActiveEnvelope(): PersonaEnvelope | null {
@@ -255,12 +262,17 @@ async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Prom
 }
 
 async function enumerateTools(pi: PiApi): Promise<string[]> {
+  const tools = await safeToolEnumeration(pi);
+  return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
+}
+
+async function safeToolEnumeration(pi: PiApi): Promise<unknown[]> {
+  if (typeof pi.getAllTools !== "function") return [];
   try {
-    const tools = await pi.getAllTools?.();
-    if (!Array.isArray(tools)) throw new Error("Pi tool enumeration did not return an array");
-    return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
+    const tools = await pi.getAllTools();
+    return Array.isArray(tools) ? tools : [];
   } catch {
-    throw error("LARVA_TOOL_ENUMERATION_FAILED", "Unable to enumerate Pi tools");
+    return [];
   }
 }
 
