@@ -292,6 +292,103 @@ def test_set_active_tools_and_tool_call_denial_contract() -> None:
     )
 
 
+def test_initial_active_tool_update_failure_degrades_startup_and_allows_later_switch(tmp_path: Path) -> None:
+    """Initial setActiveTools failure must not abort extension loading.
+
+    The degraded startup must remain visibly unavailable rather than committing a
+    false active persona, while later normal persona switches still update active
+    tools and keep fail-closed tool_call denial semantics.
+    """
+
+    fake_cli = tmp_path / "fake-larva-cli.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+    policy = tmp_path / "tool-policy.json"
+    policy.write_text(
+        json.dumps({"personas": {"ok": {"deny": ["bash"]}, "startup": {"deny": ["bash"]}}}),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const statuses = [];
+        const activeToolCalls = [];
+        let commandHandler = null;
+        let setActiveToolsAttempts = 0;
+        const ctx = {{
+          env: {{
+            LARVA_PI_INITIAL_PERSONA_ID: "startup",
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_TOOL_POLICY_FILE: {json.dumps(str(policy))},
+          }},
+          ui: {{ setStatus: async (status) => statuses.push(status) }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+        const pi = {{
+          getAllTools: async () => ["read", "bash", "larva_subagent"],
+          setActiveTools: async (tools) => {{
+            setActiveToolsAttempts += 1;
+            activeToolCalls.push(tools);
+            if (setActiveToolsAttempts === 1) throw new Error("active tool surface unavailable at startup");
+            return true;
+          }},
+          setModel: async () => true,
+          registerCommand: (command) => {{ commandHandler = command.handler; }},
+          registerTool: () => undefined,
+          on: () => undefined,
+        }};
+
+        await mod.initializeExtension(ctx, pi);
+        const degradedEnvelope = mod.getActiveEnvelope();
+        const degradedPrompt = mod.before_agent_start({{ systemPrompt: "base" }});
+        const switched = await commandHandler("ok");
+        const denied = mod.decideToolCall("bash");
+        const allowed = mod.decideToolCall("read");
+        console.log(JSON.stringify({{
+          statuses,
+          activeToolCalls,
+          degradedEnvelope,
+          degradedPrompt: degradedPrompt ?? null,
+          switched,
+          denied,
+          allowed,
+          finalEnvelope: mod.getActiveEnvelope(),
+        }}));
+        """,
+    )
+
+    assert result["degradedEnvelope"] is None
+    assert result["degradedPrompt"] is None
+    assert result["statuses"][0] == "larva: startup unavailable (LARVA_TOOL_ENUMERATION_FAILED)"
+    assert result["switched"]["ok"] is True
+    assert result["statuses"][-1] == "larva: ok"
+    assert result["activeToolCalls"] == [["read", "larva_subagent"], ["read", "larva_subagent"]]
+    assert result["denied"]["action"] == "deny"
+    assert result["denied"]["error"]["code"] == "LARVA_TOOL_DENIED"
+    assert result["allowed"] == {"action": "allow"}
+    assert result["finalEnvelope"]["persona_id"] == "ok"
+
+
 def test_subagent_spawn_authority_false_or_omitted() -> None:
     _assert_tokens(_source(), "can_spawn", "LARVA_SPAWN_NOT_ALLOWED")
 

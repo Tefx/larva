@@ -251,6 +251,10 @@ async function setStatus(ctx: PiContext): Promise<void> {
   await ctx.ui?.setStatus?.(state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
 }
 
+async function setStartupUnavailableStatus(ctx: PiContext, personaId: string, larvaError: LarvaError): Promise<void> {
+  await ctx.ui?.setStatus?.(`larva: ${personaId} unavailable (${larvaError.code})`);
+}
+
 async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
   const parsed = parseModel(spec.model);
   if (!parsed) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
@@ -763,7 +767,13 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
   const env = currentEnv(ctx);
   if (env.LARVA_PI_INITIAL_PERSONA_ID) {
     const committed = await commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi);
-    if (!committed.ok) throw new Error(`larva pi: ${committed.error.code}: ${committed.error.message}`);
+    if (!committed.ok) {
+      if (committed.error.code === "LARVA_TOOL_ENUMERATION_FAILED") {
+        await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
+      } else {
+        throw new Error(`larva pi: ${committed.error.code}: ${committed.error.message}`);
+      }
+    }
   } else {
     await setStatus(ctx);
   }
