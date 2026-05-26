@@ -73781,7 +73781,7 @@ phases:
     verification: '- [x] Missing policy file and missing active target entry commit
       the current model-facing baseline with no extra Larva restriction.
 
-      - [ ] Invalid JSON/unreadable/wrong top-level shape/unknown active keys/non-string
+      - [x] Invalid JSON/unreadable/wrong top-level shape/unknown active keys/non-string
       allow-deny entries fail the attempted commit and preserve previous active state.
 
       - [ ] Unknown current-runtime tool names are ignored; duplicates normalize;
