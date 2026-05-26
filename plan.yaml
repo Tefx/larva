@@ -77559,7 +77559,7 @@ phases:
   steps:
   - id: pi_slash_autocomplete_20260527.reproduce_contract
     name: Reproduce Pi slash autocomplete and startup enumeration failures
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -77719,6 +77719,65 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T19:59:37.017191+00:00'
+    done_at: '2026-05-26T20:05:47.190502+00:00'
+    evidence: "EXPECTED_RED_ACCEPTED. Pre-implementation reproduction/contract step\
+      \ captured both user-reported Pi failures and merged focused expected-red tests.\
+      \ No product implementation files were changed.\n\n## refs Read Confirmation\n\
+      - design/pi-coding-agent-integration.md — key passages read: launcher invokes\
+      \ real Pi with bundled extension (lines 98-111); initial persona startup tool\
+      \ enumeration failure fatal behavior (lines 128-135); `/larva-persona` command\
+      \ completion (lines 154-160); Pi API contract includes getAllTools/setActiveTools/completion/list\
+      \ bridge rules (lines 903-1084).\n- contrib/pi-extension/larva.ts — key passages\
+      \ read: `CommandDefinition.complete?: (prefix: string) => Promise<string[]>`;\
+      \ `completePersonaIds` returns persona id strings filtered by `id.startsWith(prefix)`;\
+      \ `enumerateTools` calls `pi.getAllTools?.()` and throws `LARVA_TOOL_ENUMERATION_FAILED`\
+      \ if not an array; `initializeExtension` commits initial persona before registering\
+      \ command/tool hooks.\n- tests/shell/test_pi_extension_contract.py — key passages\
+      \ read: existing source/harness-level extension contract tests; command registration\
+      \ uses `completePersonaIds(prefix, ctx)`; list bridge requires `data[].id` for\
+      \ suggestions.\n- tests/shell/test_pi_extension_tool_policy_static.py — key\
+      \ passages read: static policy tests avoid real Pi/TS runtime; existing static\
+      \ test pins fail-closed enumeration path when getAllTools is absent/non-array\
+      \ and maps to LARVA_TOOL_ENUMERATION_FAILED.\n- tests/shell/test_pi_launcher.py\
+      \ — NOT READ: file does not exist; adjacent `tests/shell/test_pi_launcher_contract.py`\
+      \ read, covering launcher env/args, extension flag selection, fatal extension\
+      \ stderr propagation.\n- AGENTS.md — NOT READ by file tool because not present\
+      \ in isolated worktree; repo execution/invar discipline was available from injected\
+      \ AGENTS.md instructions.\n\n## Expected-Red Reproduction Report\n- baseline_help:\
+      \ `uv run larva pi --help` exited 0; stdout printed `usage: larva pi [--persona\
+      \ PERSONA_ID] [--] [PI_ARG ...]` and `Launch Pi with the bundled larva extension.`\n\
+      - slash_autocomplete_surface: LIVE_TUI.\n- slash_command_or_fixture: PTY harness\
+      \ spawning `uv run larva pi`, waiting ~3s, writing `/` to stdin.\n- slash_exit_code:\
+      \ 1.\n- slash_raw_output: Pi v0.75.5 loaded extensions `larva.ts, pi-mcp-adapter`,\
+      \ then exited due to uncaughtException `TypeError: value.startsWith is not a\
+      \ function` in `CustomEditor.getBestAutocompleteMatchIndex`, `applyAutocompleteSuggestions`,\
+      \ and `runAutocompleteRequest`.\n- slash_failing_value_shape: Pi editor attempted\
+      \ `value.startsWith(...)`; current extension command completion type is `Promise<string[]>`;\
+      \ expected-red test identifies missing object candidate string `value` field.\n\
+      - slash_failure_alignment: matches user report exactly: same TypeError and Pi\
+      \ TUI editor stack family.\n- startup_surface: LIVE_CLI.\n- startup_command_or_fixture:\
+      \ `uv run larva pi --persona vectl-planner`.\n- startup_exit_code: 1.\n- startup_stderr:\
+      \ `Failed to load extension .../contrib/pi-extension/larva.ts: Failed to load\
+      \ extension: larva pi: LARVA_TOOL_ENUMERATION_FAILED: Unable to enumerate Pi\
+      \ tools`.\n- startup_failure_alignment: matches user report exactly: extension\
+      \ load fails with LARVA_TOOL_ENUMERATION_FAILED.\n- test_or_fixture_files_changed:\
+      \ `tests/shell/test_pi_reported_failures_expected_red.py` added.\n- product_files_modified:\
+      \ no.\n- worker commit: 0b2120cbe50fc2b2e9bad7e3e4d23579dd2e214d.\n- orchestrator\
+      \ merge: squash-merged to main as commit 20e62d6.\n\n## Mainline expected-red\
+      \ verification\n- `git diff --check HEAD~1..HEAD` passed.\n- `uv run pytest\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -q` returned EXPECTED_RED_EXIT=1\
+      \ with 2 failing tests aligned to the reproduced gaps:\n  1. `test_slash_autocomplete_candidates_expose_string_value_for_pi_editor`\
+      \ fails because `complete?: (prefix: string) => Promise<string[]>` remains in\
+      \ `contrib/pi-extension/larva.ts`.\n  2. `test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator`\
+      \ fails because `pi.getAllTools?.()` remains in `enumerateTools` fail-closed\
+      \ path.\n\n## Semantic Closure Fields\nstep_intent: test_define_red\nexpected_result:\
+      \ red\nobserved_result: red\nfailure_alignment: matches_reported_gaps\nverdict:\
+      \ PASS\nblockers: []\nblocking_status: CLOSED\nproof_gap_status: NONE\ngate_open_allowed:\
+      \ false\norchestrator_action_hint: COMPLETE\nrequirement_coverage:\n- PI-SLASH-CRASH-001:\
+      \ PROVEN — live PTY slash run reproduced exact TypeError and stack.\n- PI-STARTUP-ENUM-001:\
+      \ PROVEN — live `uv run larva pi --persona vectl-planner` reproduced exact enumeration\
+      \ startup failure.\n- PI-EXT-API-001: PROVEN — refs and expected-red tests cite\
+      \ command completion shape and tool enumeration fail-closed path."
   - id: pi_slash_autocomplete_20260527.fix_extension_shape
     name: Fix Pi extension autocomplete shape and startup enumeration fallback
     status: pending
