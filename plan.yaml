@@ -74527,7 +74527,7 @@ phases:
 
       - [x] Unresolved obligations include closure paths before finalization can open.
 
-      - [ ] All upstream implementation, wiring, runtime proof, abort fix, abort retest,
+      - [x] All upstream implementation, wiring, runtime proof, abort fix, abort retest,
       abort unknowable fix, abort unknowable retest, abort start-failure fix, and
       abort start-failure retest receipts include `## refs Read Confirmation` with
       `design/pi-coding-agent-integration.md` key passages or explicit NOT READ reasons.'
