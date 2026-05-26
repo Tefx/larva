@@ -77546,3 +77546,10 @@ phases:
       guard --all` passed with 0 errors and only pre-existing warnings/infos. Behavioral
       proof register covers B5/VT39 and B1/B2/B3/B4/B6 preservation/non-intersection.
       Checklist toggled from retest receipt.'
+- id: pi-slash-autocomplete-crash-fix-2026-05-27
+  name: Pi Slash Autocomplete Crash Fix 2026-05-27
+  status: pending
+  gate: Live/fake Pi slash autocomplete no longer crashes; focused tests and invar
+    pass.
+  depends_on:
+  - pi-integration-finalization-2026-05-26
