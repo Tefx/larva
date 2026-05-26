@@ -73941,7 +73941,7 @@ phases:
       - [x] The tool policy file value is non-empty and tied to the design-required
       policy file path/source rather than a placeholder.
 
-      - [ ] Negative liveness cases for missing Pi and unsupported extension prove
+      - [x] Negative liveness cases for missing Pi and unsupported extension prove
       failure occurs before child Pi execution.
 
       - [ ] Behavioral proof register marks launcher env obligations PROVEN or BLOCKED
