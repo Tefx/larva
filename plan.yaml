@@ -74491,7 +74491,7 @@ phases:
       \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
       \ key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Gate decision basis reviews all implementation receipts plus
+    verification: '- [x] Gate decision basis reviews all implementation receipts plus
       extension runtime proof.
 
       - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_runtime_retest`
