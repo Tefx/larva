@@ -78307,7 +78307,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_slash_autocomplete_20260527.gate
     name: Gate Pi slash autocomplete and live smoke fix
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: project
@@ -78591,6 +78591,8 @@ phases:
     - pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     - pi_slash_autocomplete_20260527.retest_live_slash_final
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T21:10:02.970847+00:00'
   - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     name: Fix Pi active-tool update startup degradation
     status: done
