@@ -74863,6 +74863,139 @@ phases:
       mechanical TS rewrite for local Node strip-only import outside worktree, and
       broader Pi semantics still partly covered by static contract tests. Checklist
       toggled from retest receipt.'
+  - id: pi_extension_runtime_20260526.abort_unknowable_fix
+    name: Fix abort unknowable-state handling
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: project
+
+      TARGET STATE:
+
+      When `larva_subagent` abort handling cannot prove that the child was stopped,
+      the Pi extension reports a failed parent result with `LARVA_CHILD_PROTOCOL_FAILED`
+      instead of reporting cancelled. This includes at least: `child.kill()` returning
+      `false`, abort RPC failure, or any aborted non-success child outcome whose state
+      is unknowable under the design target.
+
+
+      BOUNDING BOX:
+
+      - Primary runtime: `contrib/pi-extension/larva.ts` around lines 573-577 and
+      694-697 reported by the semantic gate.
+
+      - Authoritative design: `design/pi-coding-agent-integration.md` lines 739-754
+      requiring failed `LARVA_CHILD_PROTOCOL_FAILED` when abort/kill fail or child
+      state becomes unknowable.
+
+      - Existing regression baseline: `pi_extension_runtime_20260526.abort_runtime_retest`
+      proved the narrow abort RPC/cancelled path; preserve that path when abort/kill
+      succeeds.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-ABORT-UNKNOWABLE-FAILED | design/pi-coding-agent-integration.md:739-754
+      — abort/kill failure or unknowable child state must fail with `LARVA_CHILD_PROTOCOL_FAILED`
+      | Failed abort RPC, failed kill, or unknowable aborted non-success result returns
+      failed protocol error, not cancelled | pi_extension_runtime_20260526.abort_unknowable_fix
+      | `- [ ] Unknowable abort state returns failed LARVA_CHILD_PROTOCOL_FAILED.`
+      | `unknowable_failed_result` | OWNED | Blocks `pi_extension_runtime_20260526.gate`
+      and final Pi integration if unclosed. |
+
+      | PI-ABORT-CANCELLED-REGRESSION | previous abort retest proved normal in-flight
+      abort cancellation path | Normal successful abort/kill still returns cancelled
+      `LARVA_CHILD_CANCELLED` | pi_extension_runtime_20260526.abort_unknowable_retest
+      | `- [ ] Normal cancelled abort path remains green.` | `cancelled_regression_result`
+      | OWNED | Blocks phase gate if regressed. |
+
+
+      CONSTRAINTS:
+
+      - Preserve the proven normal cancelled path for successful abort/kill.
+
+      - Do not add schema changes, sidecar metadata, file/worktree locks, credential
+      logic, policy hierarchy changes, or launcher behavior.
+
+      - Do not convert all aborted outcomes to failed; only fail when the child stop/abort
+      state is failed or unknowable per design.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      runtime logic must inspect actual abort/kill/child-result state and produce
+      outcomes that vary between normal cancelled and unknowable failed paths.
+
+
+      <side_effect_budget>Allowed: mutate `contrib/pi-extension/larva.ts` and focused
+      fake-runtime tests/fixtures needed to expose abort RPC failure, kill failure,
+      and unknowable aborted non-success states. Forbidden: changing public shared
+      persona schema, Pi launcher scope, tool policy hierarchy, sidecar/worktree/credential
+      behavior, or using source-only proof as completion.</side_effect_budget>
+
+      <risk_probes>1. Verify `child.kill() === false` is not silently treated as cancelled.
+      2. Verify an abort RPC failure cannot be masked by generic aborted-result mapping.
+      3. Verify normal successful abort cancellation still returns `LARVA_CHILD_CANCELLED`.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md:739-754`
+      and `contrib/pi-extension/larva.ts` abort/kill mappings, or records explicit
+      NOT READ reasons.
+
+      - [ ] Unknowable abort state returns failed `LARVA_CHILD_PROTOCOL_FAILED` for
+      abort RPC failure or failed/unknowable kill.
+
+      - [ ] `child.kill()` false return is handled explicitly and cannot produce a
+      cancelled success-path receipt.
+
+      - [ ] Normal successful abort/kill path remains cancelled with `LARVA_CHILD_CANCELLED`.
+
+      - [ ] Evidence includes focused command/output or trace excerpt for both unknowable
+      failed and normal cancelled paths.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage for lines 739-754 or NOT
+      READ reason
+
+      - contrib/pi-extension/larva.ts — key passage for abort/kill/result mapping
+      or NOT READ reason
+
+
+      ## Fix Receipt
+
+      - files_changed: <paths>
+
+      - unknowable_failed_result: <trace/output proving failed LARVA_CHILD_PROTOCOL_FAILED>
+
+      - kill_false_handling: <trace/output or code anchor proving false return is
+      not ignored>
+
+      - cancelled_regression_result: <trace/output proving normal cancelled path remains
+      LARVA_CHILD_CANCELLED>
+
+      - forbidden_scope_preserved: <yes/no with notes>
+
+
+      ## Checklist Receipt
+
+      - refs confirmation: satisfied/failed/blocked/unobserved
+
+      - unknowable failed mapping: satisfied/failed/blocked/unobserved
+
+      - kill false explicit handling: satisfied/failed/blocked/unobserved
+
+      - normal cancelled regression: satisfied/failed/blocked/unobserved'
+    depends_on:
+    - pi_extension_runtime_20260526.abort_runtime_retest
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
