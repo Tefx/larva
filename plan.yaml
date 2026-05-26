@@ -74645,7 +74645,7 @@ phases:
       - [x] Focused abort runtime test/fixture coverage is added or updated so B1
       would fail on the previously observed success-without-abort behavior.
 
-      - [ ] Evidence identifies the focused command/scenario used for local validation
+      - [x] Evidence identifies the focused command/scenario used for local validation
       and includes actual output or trace excerpt, without claiming phase-wide retest
       ownership.
 
