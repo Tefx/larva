@@ -79683,3 +79683,167 @@ phases:
     unless blocker is purely environmental and not product.'
   depends_on:
   - pi-slash-autocomplete-crash-fix-2026-05-27
+  steps:
+  - id: pi_persona_spawn_proof_20260527.contract_design
+    name: Design real-Pi persona and spawn proof contract
+    status: pending
+    description: 'step_type: contract
+
+      agent_source: project
+
+      work_type: proof_closure
+
+
+      PROOF ARTIFACT:
+
+      Read-only proof design for real Pi persona loading, slash persona switching,
+      spawn lifecycle, and effective prompt/context injection. This step must identify
+      mechanically observable methods before any remediation work. It must define
+      probe personas/sentinel prompts whose runtime model-visible behavior can prove
+      effective system prompt injection when Pi cannot expose the raw prompt directly.
+
+
+      AUTHORITATIVE REFS / BOUNDING BOX:
+
+      - design/pi-coding-agent-integration.md
+
+      - contrib/pi-extension/larva.ts
+
+      - tests/shell/ (especially Pi launcher/extension/runtime tests)
+
+      - AGENTS.md
+
+      - Installed Pi API/source refs discovered from project dependencies when applicable
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user question 1 + Pi integration docs | prove `uv run larva pi --persona
+      <probe>` semantically loads persona, not only starts TUI | pi_persona_spawn_proof_20260527.diagnostic_live
+      | startup persona effective-load checklist | startup_persona_transcript, sentinel_response
+      | OWNED | none |
+
+      | R2 | user question 2 + slash command extension source | prove live `/larva-persona
+      <id>` switches persona and confirms loaded/effective state | pi_persona_spawn_proof_20260527.diagnostic_live
+      | slash switch checklist | slash_switch_transcript, post_switch_sentinel_response
+      | OWNED | none |
+
+      | R3 | user question 3 + spawn/subagent docs/source | prove `larva spawn` path
+      lifecycle end-to-end: request, spawned run, policy handoff, completion/failure,
+      cleanup/no orphan state | pi_persona_spawn_proof_20260527.diagnostic_live |
+      spawn lifecycle checklist | spawn_lifecycle_transcript, cleanup_state_probe
+      | OWNED | none |
+
+      | R4 | user question 4 + Pi prompt assembly/source | prove persona prompt enters
+      effective Pi system prompt/context; if raw prompt unavailable, use controlled
+      sentinel behavior that only passes when persona prompt is active | pi_persona_spawn_proof_20260527.diagnostic_live
+      | prompt injection checklist | prompt_route_map, sentinel_behavior_proof | OWNED
+      | none |
+
+      | R5 | prior completed slash autocomplete fix | preserve previous startup and
+      slash autocomplete non-crash behavior | pi_persona_spawn_proof_20260527.remediate_wiring
+      | regression preservation checklist | prior_smoke_regression_output | OWNED
+      | none |
+
+
+      CONTRACT OUTPUTS:
+
+      - Exact probe persona IDs/specs/sentinel phrases to create or reuse for positive
+      and switch-negative controls.
+
+      - Exact real Pi command/PTY strategy, including `uv run larva pi --persona <probe
+      persona>` and a live slash entry `/larva-persona <other probe persona>`.
+
+      - Exact spawn/subagent invocation path available in Pi (slash command, typed
+      prompt, or Pi-exposed command) with lifecycle observations.
+
+      - Prompt injection route map: persona registry resolution -> Pi extension/tool
+      state -> message/system prompt/context sent to model/runtime.
+
+      - If raw prompt inspection is impossible, define a sentinel prompt behavior
+      test that cannot pass from extension state alone.
+
+
+      <side_effect_budget>
+
+      Allowed: read specs/source/tests and inspect installed Pi API/source; design
+      probe personas/fixtures/tests by path/name only. Forbidden: product code changes,
+      plan lifecycle changes, claims/completions, fake evidence, non-Pi helper-only
+      proof as final acceptance.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify sentinel behavior cannot be satisfied by a default persona, slash autocomplete
+      label, or extension state echo.
+
+      - Verify spawn lifecycle proof observes cleanup/reset, not just spawn request
+      text.
+
+      - Verify probe personas do not contaminate persistent registry state without
+      cleanup instructions.
+
+      </risk_probes>'
+    verification: '- [ ] Requirement traceability matrix covers all four Chinese acceptance
+      questions plus prior-regression preservation.
+
+      - [ ] Exact real-Pi observability method is defined for startup persona load,
+      slash persona switch, spawn lifecycle, and prompt injection.
+
+      - [ ] Sentinel prompt strategy proves effective prompt/context injection, not
+      merely extension state storage; raw prompt exposure may be used only if actually
+      available.
+
+      - [ ] Probe persona lifecycle includes cleanup/reset expectations so later tests
+      leave no persistent contamination.
+
+      - [ ] No product code is changed in this read-only design step.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/ — <key passage/listed tests or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+      - installed Pi API/source refs — <path/package/version and key passage or NOT
+      READ: reason>
+
+
+      ## Proof Contract
+
+      - probe_personas: <ids, sentinel prompt text, cleanup plan>
+
+      - real_pi_startup_command: `uv run larva pi --persona <probe persona>`
+
+      - live_slash_switch_sequence: <PTY sequence including `/larva-persona <other
+      probe persona>`>
+
+      - spawn_lifecycle_sequence: <real Pi command/interaction path>
+
+      - prompt_injection_route_map: <registry -> extension -> prompt/context route>
+
+      - sentinel_behavior_proof_rule: <why this can only pass if prompt/context is
+      effective>
+
+
+      ## Requirement Traceability Matrix Receipt
+
+      <paste completed matrix with evidence fields>
+
+
+      ## Side Effect / Risk Probe Receipt
+
+      - side_effect_budget_respected: <yes/no>
+
+      - risk_probes_addressed: <yes/no with notes>'
+    agent: integration-verifier
