@@ -72281,7 +72281,7 @@ phases:
   steps:
   - id: pi_contract_harness_20260526.launcher_expected_red
     name: Launcher contract and expected-red tests
-    status: pending
+    status: claimed
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Runtime UX > Launch; Launcher contract; Verification targets 1-5, 10, 37-39\n\
@@ -72334,6 +72334,8 @@ phases:
 
       '
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-05-26T05:09:27.776638+00:00'
   - id: pi_contract_harness_20260526.extension_expected_red
     name: Extension contract and expected-red tests
     status: claimed
