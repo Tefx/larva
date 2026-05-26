@@ -73063,52 +73063,43 @@ phases:
       resume, busy set, and abort mappings with JSONL/RPC traces.
 
       - [ ] Behavioral proof register maps each verification target 6-41 to PROVEN,
-      BLOCKED, or explicit closure path.'
-    evidence_template: '## Verification Report
+      BLOCKED, or explicit closure path.
 
-      **Tester**: integration-verifier
+      - [ ] Upstream receipts for persona projection, tool policy, subagent RPC, and
+      extension wiring include `## refs Read Confirmation` with `design/pi-coding-agent-integration.md`
+      key passages or explicit NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-      **Independence Level**: L2
-
-
-      ## refs Read Confirmation (MANDATORY)
-
-      - design/pi-coding-agent-integration.md — key passages for persona projection,
-      tool policy, subagent, API contracts, and verification targets.
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this verification>; NOT READ entries only with reason.
 
 
-      ## Behavioral Proof Register
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
-      status | closure_path | gate_decision_basis |
+      - persona_projection receipt included refs confirmation: <yes/no; evidence ref>
 
-      | --- | --- | --- | --- | --- | --- | --- |
+      - tool_policy receipt included refs confirmation: <yes/no; evidence ref>
 
+      - subagent_rpc receipt included refs confirmation: <yes/no; evidence ref>
 
-      ## Runtime/Seam Evidence
+      - wire_extension_entry receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-      - command_or_node_scenario: <exact command>
-
-      - raw_stdout: <paste>
-
-      - raw_stderr: <paste>
-
-      - exit_code: <code>
-
-      - pi_hook_invocations: <evidence>
-
-      - rpc_jsonl_traces: <success/failure/resume/abort>
-
-      - tool_policy_denial_trace: <evidence>
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Headline
+      ## Runtime Verification Evidence
 
-      - [ ] PASS
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - [ ] PASS_WITH_DEBT
+      - command_or_fixture: <exact command/scenario>
 
-      - [ ] FAIL'
+      - raw_output_or_trace: <stdout/stderr/JSONL/RPC trace>
+
+      - behavioral_proof_register: <targets 6-41 and closure paths>
+
+      '
     depends_on:
     - pi_extension_runtime_20260526.wire_extension_entry
     agent: integration-verifier
