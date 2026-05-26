@@ -73705,7 +73705,7 @@ phases:
     agent: gate-reviewer
   - id: pi_launcher_runtime_20260526.env_contract_fix
     name: Set launcher child env contract values
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -73834,6 +73834,22 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-05-26T12:56:55.024234+00:00'
+    done_at: '2026-05-26T13:11:27.264420+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Python-senior task ses_19ba33e1effeuwTLmqQXnGn64o
+      returned success with commit efe8483: launcher env contract fix. Orchestrator
+      toggled all checklist items, squash-merged branch into main as 539ee46 ([vectl]
+      step-pi_launcher_runtime_20260526.env_contract_fix completed), and verified
+      mainline. Changed files: src/larva/shell/pi.py and tests/shell/test_pi_launcher_contract.py.
+      Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      src/larva/shell/pi.py, and tests/shell/test_pi_launcher_contract.py; env contract
+      receipt showing runtime artifact with `LARVA_PI_TOOL_POLICY_FILE=/Users/tefx/.pi/tool-policy.json`
+      and `LARVA_PI_LAUNCHED=1`, plus previously proven `LARVA_PI_INITIAL_PERSONA_ID`,
+      `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
+      `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`; negative preflight receipts
+      for missing Pi and unsupported extension; and no forbidden scope changes. Mainline
+      verification: `uv run pytest tests/shell/test_pi_launcher_contract.py` passed
+      32/32 in 0.67s; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos. No deviations.'
   - id: pi_launcher_runtime_20260526.env_liveness_retest
     name: Retest launcher env liveness contract
     status: pending
