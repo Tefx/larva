@@ -75511,7 +75511,7 @@ phases:
       - [x] Verdict model distinguishes CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND,
       AMBIGUOUS_SPEC, and SPEC_POSSIBLY_STALE.
 
-      - [ ] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
+      - [x] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
       path before final gate.
 
       - [ ] The audit explicitly checks forbidden scope remained absent.
