@@ -73808,7 +73808,7 @@ phases:
       - [x] Updated/extended tests cover the env contract without relying only on
       source inspection.
 
-      - [ ] Negative preflight proof confirms missing Pi and unsupported extension
+      - [x] Negative preflight proof confirms missing Pi and unsupported extension
       still fail before child Pi execution.
 
       - [ ] `invar guard` or the project canonical invar guard command is run after
