@@ -75395,7 +75395,7 @@ phases:
       abort/error-code passages and `contrib/pi-extension/larva.ts` abort mapping
       locations, or records explicit NOT READ reasons.
 
-      - [ ] Fake runtime receipt includes exact scenario name `abort-no-response-child-exited-kill-false`.
+      - [x] Fake runtime receipt includes exact scenario name `abort-no-response-child-exited-kill-false`.
 
       - [ ] Exact scenario `abort-no-response-child-exited-kill-false` returns parent
       `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
