@@ -80000,3 +80000,165 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.contract_design
     agent: integration-verifier
+  - id: pi_persona_spawn_proof_20260527.remediate_wiring
+    name: Remediate bounded Pi persona, prompt, and spawn lifecycle wiring blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      If the diagnostic step found PRODUCT_BLOCKER or INCONCLUSIVE acceptance gaps,
+      complete the implementation within existing Pi/larva extension boundaries so
+      that real Pi startup persona loading, slash persona switching, spawn/subagent
+      lifecycle handling, and prompt/context injection work as specified by the proof
+      contract. If the diagnostic step is fully green, make no product-code change
+      and produce a no-op disposition explaining which diagnostic evidence made remediation
+      unnecessary; focused tests may still be added only if required to preserve proof.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - pi_persona_spawn_proof_20260527.contract_design — proof contract and sentinel
+      rules are AUTHORITATIVE.
+
+      - pi_persona_spawn_proof_20260527.diagnostic_live — blocker classification and
+      transcripts are PROTECTED implementation input.
+
+
+      BOUNDING BOX / TOUCH PATHS:
+
+      - contrib/pi-extension/larva.ts
+
+      - Pi launcher/runtime shell paths discovered from design/pi-coding-agent-integration.md
+
+      - tests/shell/ focused Pi persona/spawn/prompt tests
+
+      - AGENTS.md only as read-only behavioral constraint source
+
+
+      CONSTRAINTS:
+
+      - Preserve prior slash autocomplete and Pi startup non-crash fixes from `pi-slash-autocomplete-crash-fix-2026-05-27`.
+
+      - Do not redesign persona schema or canonical shared contract semantics.
+
+      - Do not replace real Pi proof obligations with mocks; tests may supplement
+      but not substitute for final real-Pi evidence.
+
+      - Do not introduce hidden compatibility aliases or accept-and-clean malformed
+      shared input.
+
+      - Keep product changes bounded to Pi persona load/switch/spawn prompt/lifecycle
+      wiring and focused tests.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes or hardcoded sentinel
+      pass-throughs do not satisfy this requirement.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | diagnostic_live startup blocker(s) | fix Pi `--persona` semantic loading
+      and effective prompt/context handoff | pi_persona_spawn_proof_20260527.remediate_wiring
+      | startup persona remediation | changed_paths, focused_test_output, blocker_closed
+      | OWNED | none if blocker exists; no-op disposition if diagnostic PASS |
+
+      | R2 | diagnostic_live slash blocker(s) | fix live `/larva-persona` switching
+      and confirmation/effective prompt handoff | pi_persona_spawn_proof_20260527.remediate_wiring
+      | slash switch remediation | changed_paths, focused_test_output, blocker_closed
+      | OWNED | none if blocker exists; no-op disposition if diagnostic PASS |
+
+      | R3 | diagnostic_live spawn blocker(s) | fix Pi spawn/subagent lifecycle request,
+      policy handoff, completion/failure cleanup/no orphan state | pi_persona_spawn_proof_20260527.remediate_wiring
+      | spawn lifecycle remediation | changed_paths, focused_test_output, cleanup_logic_evidence
+      | OWNED | none if blocker exists; no-op disposition if diagnostic PASS |
+
+      | R4 | diagnostic_live prompt blocker(s) | fix prompt injection route so persona
+      prompt reaches effective Pi system prompt/context | pi_persona_spawn_proof_20260527.remediate_wiring
+      | prompt injection remediation | route_change_evidence, focused_test_output
+      | OWNED | none if blocker exists; no-op disposition if diagnostic PASS |
+
+      | R5 | prior phase refs/evidence | preserve slash autocomplete `/` and startup
+      non-crash behavior | pi_persona_spawn_proof_20260527.remediate_wiring | prior
+      regression preservation | focused_regression_output | OWNED | none |
+
+
+      KNOWN RISKS / GATE PREVIEW:
+
+      - Gate will reject helper-only proof, static source inspection, or extension-state-only
+      persona storage as insufficient.
+
+      - Gate will reject a fix that makes sentinel probes pass by echoing state rather
+      than injecting persona prompt into effective model/system context.
+
+      - Gate will reject unbounded spawn lifecycle state, orphan sessions/processes,
+      or cleanup that only works on the happy path.
+
+
+      <side_effect_budget>
+
+      Allowed: bounded product fixes in Pi extension/launcher persona load/switch/spawn
+      prompt/lifecycle wiring and focused tests/probe fixtures. Forbidden: broad schema
+      redesign, unrelated UI changes, worktree/plan lifecycle changes, hidden mocks
+      in live path, weakening prior slash autocomplete behavior, leaving probe persona/session
+      residue.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Exercise both startup persona and post-slash persona paths through the same
+      effective prompt/context assembly route where intended.
+
+      - Check spawn success and controlled failure cleanup paths for orphan state/process
+      leakage.
+
+      - Check previous autocomplete `/` path still uses valid Pi API shape after persona/spawn
+      fixes.
+
+      </risk_probes>'
+    verification: '- [ ] Diagnostic PRODUCT_BLOCKER/INCONCLUSIVE items are either
+      fixed with bounded code/tests or explicitly shown unnecessary by fully green
+      diagnostic evidence.
+
+      - [ ] Focused tests cover startup persona load, slash persona switch, prompt
+      injection/sentinel behavior, spawn lifecycle cleanup/no-orphan behavior, and
+      prior slash autocomplete/startup regression.
+
+      - [ ] Product changes, if any, are limited to Pi persona load/switch/spawn prompt/lifecycle
+      wiring and focused tests.
+
+      - [ ] No helper-only, mock-only, or extension-state-only path is used as proof
+      of acceptance.
+
+      - [ ] Prior slash autocomplete and Pi startup non-crash fixes are preserved.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/ — <key passage/listed tests or NOT READ: reason>\n- AGENTS.md\
+      \ — <key passage or NOT READ: reason>\n- installed Pi API/source refs — <path/package/version\
+      \ and key passage or NOT READ: reason>\n\n## Diagnostic Blocker Disposition\n\
+      | blocker_id | diagnostic verdict | product change? | changed paths | closure\
+      \ evidence |\n| --- | --- | --- | --- | --- |\n\n## Implementation Receipt\n\
+      - changed_paths: <paths or none/no-op>\n- startup_persona_fix: <summary or no-op\
+      \ reason>\n- slash_switch_fix: <summary or no-op reason>\n- spawn_lifecycle_fix:\
+      \ <summary or no-op reason>\n- prompt_injection_fix: <summary or no-op reason>\n\
+      - prior_regression_preservation: <evidence>\n\n## Focused Test Evidence\n- commands:\
+      \ |\n  <paste commands>\n- raw_output: |\n  <paste raw output>\n- exit_codes:\
+      \ <codes>\n\n## Side Effect / Risk Probe Receipt\n- side_effect_budget_respected:\
+      \ <yes/no>\n- no_stub_or_mock_only_completion: <yes/no>\n- cleanup_or_no_orphan_evidence:\
+      \ <evidence>"
+    depends_on:
+    - pi_persona_spawn_proof_20260527.diagnostic_live
+    agent: frontend-engineer
