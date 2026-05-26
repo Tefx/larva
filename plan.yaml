@@ -74724,7 +74724,7 @@ phases:
       no forbidden scope or deviations.'
   - id: pi_extension_runtime_20260526.abort_runtime_retest
     name: Retest in-flight abort runtime behavior
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -74839,6 +74839,28 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T14:04:37.284869+00:00'
+    done_at: '2026-05-26T14:19:24.351930+00:00'
+    evidence: 'PASS_READ_ONLY_RETEST. Integration-verifier task ses_19b655e52ffenIk2x4lBoKrELD
+      returned PASS_WITH_WARN / effective PASS for B1 target 35 closure; no files
+      changed and worktree remained clean. Evidence included refs confirmation for
+      design/pi-coding-agent-integration.md lines 739-756 and 538-660, contrib/pi-extension/larva.ts
+      lines 573-577 and 617-669, and tests/shell/test_pi_extension_contract.py target
+      35 / abort tests. Runtime fake Pi proof used `node --experimental-strip-types
+      ...runtime_harness.mjs` and produced raw traces: scenario `target-35-abort-during-result`
+      emitted child RPC `{id: abort-1, type: abort}` after prompt, returned parent
+      result `status: cancelled`, `error.code: LARVA_CHILD_CANCELLED`, and empty `result_text`.
+      Regression matrix passed: success-new-session returned success/result_text,
+      failure-after-session-allocation retained task_id and returned `LARVA_CHILD_PROTOCOL_FAILED`,
+      resume-existing-session sent switch_session then prompt and returned success,
+      busy-same-task returned `LARVA_SESSION_BUSY` with no second child RPC trace.
+      Supporting checks: `uv run pytest tests/shell/test_pi_extension_contract.py
+      -k abort -q` passed 2 selected; `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py -q` passed 46/46; `uv run
+      invar guard --all` passed with 0 errors and only pre-existing warnings/infos.
+      Warnings are non-blocking: fake Pi runtime rather than real Pi binary, temporary
+      mechanical TS rewrite for local Node strip-only import outside worktree, and
+      broader Pi semantics still partly covered by static contract tests. Checklist
+      toggled from retest receipt.'
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
