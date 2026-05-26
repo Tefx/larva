@@ -77666,30 +77666,30 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (expected-red):
 
-      - [ ] Refs confirmation includes key passages from `design/pi-coding-agent-integration.md`,
+      - [x] Refs confirmation includes key passages from `design/pi-coding-agent-integration.md`,
       `contrib/pi-extension/larva.ts`, relevant `tests/shell/` harness files, and
       `AGENTS.md`; or explicit NOT READ reasons.
 
-      - [ ] Slash autocomplete reproduction record includes exact live command or
+      - [x] Slash autocomplete reproduction record includes exact live command or
       faithful fixture invocation, environment, stdout/stderr/exit code, and failing
       value/type shape for `/` autocomplete.
 
-      - [ ] Extension-load startup reproduction record includes `uv run larva pi --persona
+      - [x] Extension-load startup reproduction record includes `uv run larva pi --persona
       vectl-planner` live output or faithful fixture output showing the `LARVA_TOOL_ENUMERATION_FAILED`
       / tool enumeration startup failure mode.
 
-      - [ ] `uv run larva pi --help` baseline is attempted or explicitly blocked,
+      - [x] `uv run larva pi --help` baseline is attempted or explicitly blocked,
       with raw stdout/stderr/exit code, to distinguish launcher availability from
       extension-specific failure.
 
-      - [ ] If live TUI automation is impractical, the fake Pi/TUI autocomplete harness
+      - [x] If live TUI automation is impractical, the fake Pi/TUI autocomplete harness
       reaches the same API shape consumed by Pi editor matching and records why live
       automation was not practical.
 
-      - [ ] Product code remains unchanged in this step; only test/fixture/proof artifacts
+      - [x] Product code remains unchanged in this step; only test/fixture/proof artifacts
       are changed when needed.
 
-      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      - [x] Semantic closure fields are present: verdict, blockers, blocking_status,
       proof_gap_status, expected_result=red, gate_open_allowed=false.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- `design/pi-coding-agent-integration.md` — <key passage or NOT READ:\
