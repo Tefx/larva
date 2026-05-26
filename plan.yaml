@@ -72662,6 +72662,98 @@ phases:
 
       - selector_status_cases: <interactive/non-interactive evidence>'
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.tool_policy
+    name: Complete adapter-local tool policy enforcement
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Tool policy; API contracts;
+      Verification targets 14-17
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET STATE: The Pi extension parses adapter-local `~/.pi/tool-policy.json`
+      only inside the extension, validates only the active target persona entry beyond
+      top-level shape, filters the current Pi model-facing tool baseline with allow/deny
+      semantics, calls `pi.setActiveTools(filteredTools)`, and enforces the same decision
+      through `tool_call` interception.
+
+      BOUNDING BOX: contrib/pi-extension/ policy modules and tests/shell/test_pi_extension_contract.py.
+      Avoid shared runtime hook registration in contrib/pi-extension/larva.ts until
+      the wiring step.
+
+      CONSTRAINTS: Policy is not canonical PersonaSpec. There is no `ask` action,
+      wildcard matching, command-level bash policy, or project/global hierarchy. Unknown
+      Pi tool names are ignored. Deny wins. Missing policy or missing active entry
+      equals current baseline.
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; filtered
+      tool sets and decisions must vary with baseline, active persona, allow, deny,
+      and invalid policy inputs.
+
+      <side_effect_budget>Allowed: add/modify extension policy code and focused tests.
+      Forbidden: PersonaSpec fields, launcher policy parsing, ask action, Pi settings
+      writes, project policy hierarchy, or batch policy machinery.</side_effect_budget>
+
+      <risk_probes>1. Prior Larva restrictions must not carry over across persona
+      commits. 2. Invalid non-target persona entries must be ignored until targeted.
+      3. Denied `larva_subagent` must bypass the handler entirely.'
+    verification: '- [ ] Missing policy file and missing active target entry commit
+      the current model-facing baseline with no extra Larva restriction.
+
+      - [ ] Invalid JSON/unreadable/wrong top-level shape/unknown active keys/non-string
+      allow-deny entries fail the attempted commit and preserve previous active state.
+
+      - [ ] Unknown current-runtime tool names are ignored; duplicates normalize;
+      deny wins; present allow is an allowlist; empty allow blocks all model-facing
+      tools.
+
+      - [ ] Successful commit enumerates the current baseline, calls `pi.setActiveTools(filteredTools)`,
+      and does not carry restrictions from previous commits.
+
+      - [ ] `tool_call` denial returns `ToolPolicyDecision` with `LARVA_TOOL_DENIED`;
+      denied `larva_subagent` produces no `LarvaSubagentResult`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Tool policy,
+      API contracts, and Verification targets 14-17.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Implementation Receipt
+
+      - files_changed: <list>
+
+      - command: <focused policy test command>
+
+      - raw_stdout: <paste>
+
+      - exit_code: <code>
+
+
+      ## Policy Evidence
+
+      - validation_matrix: <table>
+
+      - baseline_reset_cases: <evidence>
+
+      - set_active_tools_calls: <evidence>
+
+      - tool_call_denial_cases: <evidence>
+
+      - larva_subagent_denial_no_handler: <evidence>'
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
