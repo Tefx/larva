@@ -74394,7 +74394,7 @@ phases:
       <risk_probes>1. Runtime evidence must show commands/hooks/tools registered and\
       \ invoked. 2. Mocked Pi APIs are acceptable only when the source-to-sink hook\
       \ path is exercised. 3. Subagent RPC proof must include raw JSONL traces for\
-      \ success and failure paths.\n- [ ] Completion evidence includes:\n  `## refs\
+      \ success and failure paths.\n- [x] Completion evidence includes:\n  `## refs\
       \ Read Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages\
       \ read: <specific sections/targets used by this step>; NOT READ entries only\
       \ with reason.`\n"
