@@ -75516,7 +75516,7 @@ phases:
 
       - [x] The audit explicitly checks forbidden scope remained absent.
 
-      - [ ] Upstream Pi phase receipts reviewed by this audit include `## refs Read
+      - [x] Upstream Pi phase receipts reviewed by this audit include `## refs Read
       Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
       NOT READ reasons.'
     evidence_template: '## refs Read Confirmation
