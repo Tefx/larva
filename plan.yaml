@@ -72995,54 +72995,34 @@ phases:
       into module logic and back to Pi-observable result.
 
       - [ ] No forbidden-scope artifacts are introduced.'
-    evidence_template: '## Integration Evidence
+    evidence_template: '## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this step>; NOT READ entries only with reason.
 
 
-      ### refs Read Confirmation (MANDATORY)
+      ## Upstream Receipt Refs Confirmation Audit
 
-      - design/pi-coding-agent-integration.md — cite key API contract, Architecture
-      basis, and Implementation handoff passages.
+      - persona_projection receipt included refs confirmation: <yes/no; evidence ref>
 
+      - tool_policy receipt included refs confirmation: <yes/no; evidence ref>
 
-      ## Requirement-to-Checklist Traceability Matrix
+      - subagent_rpc receipt included refs confirmation: <yes/no; evidence ref>
 
-      | requirement_id | source_ref + key passage | obligation | owning_step_id |
-      checklist_item | evidence_field | status | non_intersection_or_escalation |
-
-      | --- | --- | --- | --- | --- | --- | --- | --- |
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      **Command or test exercising the full path**:
+      ## Integration Evidence
 
-      ```
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      <exact command/test>
+      - source_to_sink_path: <hook/tool/command registration through real module logic
+      to Pi-observable result>
 
-      ```
+      - forbidden_scope_preservation: <confirmation no forbidden Pi scope was added>
 
-
-      **Actual output**:
-
-      ```
-
-      <stdout/stderr>
-
-      ```
-
-
-      **Path exercised**: Pi hook/command/tool registration -> module logic -> Pi-observable
-      status/model/tools/result.
-
-
-      ## Wiring Receipt
-
-      - registered_hooks: <list>
-
-      - registered_commands: <list>
-
-      - registered_tools: <list>
-
-      - forbidden_scope_scan: <evidence>'
+      '
     depends_on:
     - pi_extension_runtime_20260526.persona_projection
     - pi_extension_runtime_20260526.tool_policy
