@@ -73370,46 +73370,46 @@ phases:
 
       ## Checklist
 
-      - [ ] Full target 1-41 matrix produced with design refs, owning tests/steps,
+      - [x] Full target 1-41 matrix produced with design refs, owning tests/steps,
       evidence refs, statuses, closure paths, and gate decision basis.
 
-      - [ ] R1 / B2_TARGET5_INCOMPLETE is `PROVEN` by expected-red test evidence for
+      - [x] R1 / B2_TARGET5_INCOMPLETE is `PROVEN` by expected-red test evidence for
       `--extension` fallback when `-e` is absent.
 
-      - [ ] R2 / B3_TARGET10_INCOMPLETE is `PROVEN` by expected-red matrix evidence
+      - [x] R2 / B3_TARGET10_INCOMPLETE is `PROVEN` by expected-red matrix evidence
       for all equal-form, empty/unknown, explicit interactive, and conflict-precedence
       cases.
 
-      - [ ] All previous blocker-class obligations are closed or concretely owned
+      - [x] All previous blocker-class obligations are closed or concretely owned
       with non-intersection; no blocker is closed by prose-only assertion.
 
-      - [ ] refs read confirmations are auditable for current proof.
+      - [x] refs read confirmations are auditable for current proof.
 
-      - [ ] Changed-file scope confirms no forbidden product implementation files
+      - [x] Changed-file scope confirms no forbidden product implementation files
       changed.
 
-      - [ ] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
+      - [x] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
       or explicitly owned with non-intersection; otherwise `BLOCKED`.'
-    verification: '- [ ] Read-only adversarial final regate completed by `gate-reviewer`
+    verification: '- [x] Read-only adversarial final regate completed by `gate-reviewer`
       independently of remediation author.
 
-      - [ ] Full target 1-41 coverage matrix is present and complete with design refs,
+      - [x] Full target 1-41 coverage matrix is present and complete with design refs,
       owning tests/steps, evidence refs, statuses, closure paths, and gate decision
       basis.
 
-      - [ ] R1 / B2_TARGET5_INCOMPLETE has positive expected-red proof for `--extension`
+      - [x] R1 / B2_TARGET5_INCOMPLETE has positive expected-red proof for `--extension`
       fallback when `-e` is absent.
 
-      - [ ] R2 / B3_TARGET10_INCOMPLETE has positive expected-red proof for `--mode=value`,
+      - [x] R2 / B3_TARGET10_INCOMPLETE has positive expected-red proof for `--mode=value`,
       empty/unknown, explicit interactive, and conflict-precedence cases.
 
-      - [ ] All blocker-class obligations are `PROVEN` or explicitly owned with non-intersection;
+      - [x] All blocker-class obligations are `PROVEN` or explicitly owned with non-intersection;
       any `NEEDS_TEST`, `UNPROVEN`, or `BLOCKED` item prevents OPEN.
 
-      - [ ] Changed-file audit confirms no product implementation, launcher runtime,
+      - [x] Changed-file audit confirms no product implementation, launcher runtime,
       extension runtime, docs, plan, or lifecycle files changed by the remediation.
 
-      - [ ] Gate decision basis explicitly states `OPEN` or `BLOCKED` and cites evidence
+      - [x] Gate decision basis explicitly states `OPEN` or `BLOCKED` and cites evidence
       for each R1/R2 closure claim.'
     evidence_template: "## Final Regate Report\n\n### refs Read Confirmation (MANDATORY)\n\
       For each ref in this step:\n- `design/pi-coding-agent-integration.md` — cite\
