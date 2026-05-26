@@ -74504,7 +74504,7 @@ phases:
       runtime trace(s) where abort RPC failure and kill failure/unknowable state return
       parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
-      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_start_failure_retest`
+      - [x] Gate specifically reviews `pi_extension_runtime_20260526.abort_start_failure_retest`
       and blocks unless exact fake runtime scenario `abort-no-response-child-exited-kill-false`
       returns parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`
       and explicitly no longer returns `LARVA_CHILD_START_FAILED`.
