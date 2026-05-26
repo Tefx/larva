@@ -72855,6 +72855,115 @@ phases:
 
       - no_sidecar_or_lock_files: <evidence>'
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.wire_extension_entry
+    name: Wire bundled Pi extension entry
+    status: pending
+    description: 'step_type: implementation
+
+      tags: ["integration"]
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > API contracts; Architecture
+      basis; Implementation handoff
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET STATE: The bundled extension entry at `contrib/pi-extension/larva.ts`
+      registers Pi hooks/commands/tools and composes the persona projection, tool
+      policy, and subagent modules into Pi''s documented extension APIs without duplicating
+      their logic.
+
+      BOUNDING BOX: contrib/pi-extension/larva.ts; contrib/pi-extension/README.md
+      only if a local usage note is needed; tests/shell/test_pi_extension_contract.py.
+
+      UPSTREAM ARTIFACTS: persona projection, tool policy, and subagent modules from
+      this phase are authoritative; expected-red extension tests are PROTECTED.
+
+      CONSTRAINTS: This is the serial shared-wiring step; parallel module steps must
+      not independently append hook registration to the entry file. Do not write Pi
+      settings or add MCP transport.
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; registered
+      hooks must call real module logic and produce runtime-observable decisions/status/results.
+
+      <side_effect_budget>Allowed: modify extension entry/wiring and focused tests.
+      Forbidden: schema changes, Pi settings fallback, MCP bridge implementation,
+      sidecars, locks, ask action, batch subagent tool.</side_effect_budget>
+
+      <risk_probes>1. Entry exports/hooks must be reachable by packaged launcher path.
+      2. `tool_call` denial must run before custom tool handler side effects. 3. Initial
+      persona commit must occur before prompt/selector/status exposure.'
+    verification: '- [ ] `contrib/pi-extension/larva.ts` registers `before_agent_start`,
+      `/larva-persona`, UI status, `tool_call`, `pi.setActiveTools`, and `larva_subagent`
+      through Pi extension APIs.
+
+      - [ ] Initial `LARVA_PI_INITIAL_PERSONA_ID` commit runs during extension initialization
+      before first prompt, selector, or `larva: none` status is exposed.
+
+      - [ ] Wiring uses launcher-provided `LARVA_PI_EXTENSION_ENTRY`, `LARVA_PI_REAL_BIN`,
+      `LARVA_PI_EXTENSION_FLAG`, `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`
+      exactly as specified.
+
+      - [ ] Focused tests prove source-to-sink path from hook/tool/command registration
+      into module logic and back to Pi-observable result.
+
+      - [ ] No forbidden-scope artifacts are introduced.'
+    evidence_template: '## Integration Evidence
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key API contract, Architecture
+      basis, and Implementation handoff passages.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      **Command or test exercising the full path**:
+
+      ```
+
+      <exact command/test>
+
+      ```
+
+
+      **Actual output**:
+
+      ```
+
+      <stdout/stderr>
+
+      ```
+
+
+      **Path exercised**: Pi hook/command/tool registration -> module logic -> Pi-observable
+      status/model/tools/result.
+
+
+      ## Wiring Receipt
+
+      - registered_hooks: <list>
+
+      - registered_commands: <list>
+
+      - registered_tools: <list>
+
+      - forbidden_scope_scan: <evidence>'
+    depends_on:
+    - pi_extension_runtime_20260526.persona_projection
+    - pi_extension_runtime_20260526.tool_policy
+    - pi_extension_runtime_20260526.subagent_rpc
+    agent: frontend-engineer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
