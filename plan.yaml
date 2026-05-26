@@ -72904,53 +72904,53 @@ phases:
 
       ## Checklist
 
-      - [ ] Full verification target 1-41 coverage matrix produced with design refs,
+      - [x] Full verification target 1-41 coverage matrix produced with design refs,
       owning tests/steps, evidence refs, statuses, closure paths, and gate decision
       basis.
 
-      - [ ] B1 target 4 evidence proves PATH ordering, Larva shim exclusion, and first
+      - [x] B1 target 4 evidence proves PATH ordering, Larva shim exclusion, and first
       valid real `pi` expected-red coverage.
 
-      - [ ] B2 target 5 evidence proves explicit no-settings/config-write expected-red
+      - [x] B2 target 5 evidence proves explicit no-settings/config-write expected-red
       assertion.
 
-      - [ ] B3 target 10 evidence proves full mode-detection matrix coverage.
+      - [x] B3 target 10 evidence proves full mode-detection matrix coverage.
 
-      - [ ] B4 targets 37/38 evidence proves launcher argv prefix/inheritance coverage
+      - [x] B4 targets 37/38 evidence proves launcher argv prefix/inheritance coverage
       and downstream ownership for suffix/fallback/list failure semantics if not directly
       launcher-testable.
 
-      - [ ] B5 target 39 evidence proves launcher stderr preservation and pre-RPC
+      - [x] B5 target 39 evidence proves launcher stderr preservation and pre-RPC
       whitelist mapping are separated and owned.
 
-      - [ ] B6 upstream/current refs receipt audit is explicit; any old artifact limitation
+      - [x] B6 upstream/current refs receipt audit is explicit; any old artifact limitation
       is accepted only with current positive proof and non-intersection rationale.
 
-      - [ ] No product implementation files changed in the expected-red harness phase.
+      - [x] No product implementation files changed in the expected-red harness phase.
 
-      - [ ] Gate decision basis rejects generic pass claims, sampled coverage, and
+      - [x] Gate decision basis rejects generic pass claims, sampled coverage, and
       prose-only closure.
 
-      - [ ] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
+      - [x] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
       or have explicit non-intersection ownership; otherwise `BLOCKED`.'
-    verification: '- [ ] Read-only adversarial regate completed by `gate-reviewer`
+    verification: '- [x] Read-only adversarial regate completed by `gate-reviewer`
       independently of remediation author.
 
-      - [ ] Full target 1-41 coverage matrix is present and includes design refs,
+      - [x] Full target 1-41 coverage matrix is present and includes design refs,
       owning tests/steps, evidence refs, statuses, closure paths, and gate decision
       basis.
 
-      - [ ] B1-B6 each have positive proof or explicit ownership with non-intersection;
+      - [x] B1-B6 each have positive proof or explicit ownership with non-intersection;
       no blocker is closed by narrative assertion alone.
 
-      - [ ] Upstream and current refs receipts are audited; any unavailable old receipt
+      - [x] Upstream and current refs receipts are audited; any unavailable old receipt
       artifact is classified as an accepted limitation only if current positive coverage
       proof is complete and non-intersecting.
 
-      - [ ] Changed-file scope is audited and confirms no forbidden product implementation
+      - [x] Changed-file scope is audited and confirms no forbidden product implementation
       files changed.
 
-      - [ ] OPEN/BLOCK decision is explicit and blocks downstream implementation if
+      - [x] OPEN/BLOCK decision is explicit and blocks downstream implementation if
       any B1-B6 obligation remains `NEEDS_TEST`, `UNPROVEN`, `BLOCKED`, or ambiguously
       owned.'
     evidence_template: '## Gate Review Report
