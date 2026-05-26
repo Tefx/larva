@@ -73705,7 +73705,7 @@ phases:
     agent: gate-reviewer
   - id: pi_launcher_runtime_20260526.env_contract_fix
     name: Set launcher child env contract values
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -73832,6 +73832,8 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.launcher_liveness_proof
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-26T12:56:55.024234+00:00'
   - id: pi_launcher_runtime_20260526.env_liveness_retest
     name: Retest launcher env liveness contract
     status: pending
