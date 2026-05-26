@@ -75911,3 +75911,178 @@ phases:
     - pi_finalization_20260526.doc_sync
     - pi_finalization_20260526.full_guard
     agent: gate-reviewer
+  - id: pi_finalization_20260526.spec_divergence_fix
+    name: Fix Pi extension spec divergences B1-B6
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      work_type: defect_repair
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > Subagent spawning > Child startup
+
+      - design/pi-coding-agent-integration.md > API contracts > Larva CLI bridge contract
+
+      - design/pi-coding-agent-integration.md > API contracts > Child RPC contract
+
+      - design/pi-coding-agent-integration.md > Verification targets 13, 17, 22, 26,
+      31, 34, 37, 38, 39
+
+      touch_paths:
+
+      - contrib/pi-extension/larva.ts
+
+      - tests/shell/test_pi_extension_contract.py
+
+      - tests/shell/test_pi_extension_tool_policy_static.py
+
+      - tests/shell/test_pi_launcher_contract.py
+
+      TARGET STATE: The Pi TypeScript extension and its contract tests conform to
+      the already-approved design for B1-B6 without changing canonical PersonaSpec
+      meaning or introducing new local compatibility aliases.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1/VT22 | design/pi-coding-agent-integration.md > Child startup / Verification
+      target 22: empty, relative, unreadable, or uncreatable child-session override
+      paths fail with LARVA_CHILD_START_FAILED | Empty LARVA_PI_CHILD_SESSION_DIR
+      must not fall back to default root | pi_finalization_20260526.spec_divergence_fix
+      | B1 checklist | b1_child_session_override | OWNED | Intersects final gate runtime/spec
+      conformance |
+
+      | B2/VT26/VT31/VT34 | Child startup / Verification targets 26,31,34: parent
+      starts child process and child extension owns persona/model/policy/tool initialization;
+      resume re-resolves inside child | Parent must not resolve child persona/model/policy/tool
+      envelope before child process startup/resume except parent authority checks
+      | pi_finalization_20260526.spec_divergence_fix | B2 checklist | b2_child_initialization_ownership
+      | OWNED | Intersects runtime proof and final gate |
+
+      | B3/VT37 | Larva CLI bridge contract / Verification target 37: returned resolve
+      data must satisfy canonical PersonaSpec contract | Resolve bridge rejects PersonaSpec
+      objects missing canonical required fields, including capabilities and spec_version
+      | pi_finalization_20260526.spec_divergence_fix | B3 checklist | b3_canonical_personaspec_validation
+      | OWNED | Intersects spec conformance and opifex authority |
+
+      | B4/VT38 | Larva CLI bridge contract / Verification target 38: an invalid list
+      item makes completion return no suggestions / selector failure | List bridge
+      must fail closed for any invalid item, not filter invalid items | pi_finalization_20260526.spec_divergence_fix
+      | B4 checklist | b4_list_fail_closed | OWNED | Intersects runtime selector/completion
+      proof |
+
+      | B5/VT39 | Child startup / Child RPC contract / Verification target 39: only
+      whitelisted pre-RPC fatal codes propagate; stderr diagnostics-only after RPC
+      readiness | Remove extra propagated LARVA_CHILD_START_FAILED whitelist behavior
+      and stop parsing stderr semantics after RPC readiness | pi_finalization_20260526.spec_divergence_fix
+      | B5 checklist | b5_stderr_semantics | OWNED | Intersects runtime child RPC
+      proof |
+
+      | B6/VT13/VT17 | Tool policy validation/semantics / Verification targets 13,17:
+      enumeration/update failures return documented errors and preserve prior envelope;
+      denied tools are enforced in setActiveTools and tool_call | Tighten tool enumeration
+      and tool update failure handling to documented fail-closed behavior | pi_finalization_20260526.spec_divergence_fix
+      | B6 checklist | b6_tool_failure_handling | OWNED | Intersects runtime proof
+      and final gate |
+
+
+      CONSTRAINTS:
+
+      - Do NOT change opifex-owned PersonaSpec schema, required canonical fields,
+      or shared contract interpretation.
+
+      - Do NOT add compatibility aliases or accept-and-clean malformed shared PersonaSpec
+      input.
+
+      - Do NOT move child persona/model/policy/tool resolution into the parent; child
+      initialization owns those semantics after process startup.
+
+      - Do NOT treat source/static test updates alone as sufficient; this step only
+      prepares behavior for the focused runtime proof and conformance retest.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      <side_effect_budget>Allowed: mutate the Pi extension and focused tests for the
+      B1-B6 divergences. Forbidden: mutate plan state, docs, canonical opifex schema,
+      registry semantics outside the extension bridge contract, or unrelated Pi features.</side_effect_budget>
+
+      <risk_probes>1. Confirm canonical PersonaSpec validation is at least as strict
+      as main admission for bridge resolve. 2. Confirm child-process ownership of
+      persona/model/policy/tool initialization is not silently reintroduced through
+      helper calls. 3. Confirm stderr and tool-policy failures remain fail-closed
+      with stable public error codes.</risk_probes>'
+    verification: '- [ ] B1: Empty `LARVA_PI_CHILD_SESSION_DIR` is covered by a focused
+      regression and returns `failed` with `LARVA_CHILD_START_FAILED` instead of using
+      the default child-session root.
+
+      - [ ] B2: Regression evidence shows parent child/resume paths do not call persona/model/policy/tool
+      resolution before child RPC startup, except documented parent input/path/spawn/busy
+      checks.
+
+      - [ ] B3: Resolve bridge rejects returned PersonaSpec data missing canonical
+      required fields including `capabilities` and `spec_version` with `LARVA_PERSONA_NOT_FOUND`.
+
+      - [ ] B4: List bridge treats any invalid `data[]` item as list failure/no suggestions,
+      not partial filtering.
+
+      - [ ] B5: Pre-RPC stderr propagation whitelist contains only `LARVA_PERSONA_NOT_FOUND`,
+      `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`;
+      post-readiness stderr is diagnostic only.
+
+      - [ ] B6: Tool enumeration/update failures exercise documented fail-closed paths
+      for targets 13 and 17, preserving prior active envelope where required and preventing
+      denied tool invocation.
+
+      - [ ] Evidence includes exact files/tests changed and explains root cause vs
+      symptom for each B1-B6 blocker.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passages from Child startup, Larva
+      CLI bridge contract, Child RPC contract, Tool policy, and Verification targets
+      13/17/22/26/31/34/37/38/39.
+
+
+      ## Divergence Fix Receipt
+
+      - changed_files: <paths>
+
+      - tests_added_or_updated: <test names>
+
+      - b1_child_session_override: <raw focused test output + behavior summary>
+
+      - b2_child_initialization_ownership: <evidence that parent no longer resolves
+      child envelope before process startup/resume>
+
+      - b3_canonical_personaspec_validation: <minimal invalid PersonaSpec fixture
+      + result>
+
+      - b4_list_fail_closed: <invalid list item fixture + result>
+
+      - b5_stderr_semantics: <whitelist/post-readiness stderr proof>
+
+      - b6_tool_failure_handling: <enumeration/update failure proof>
+
+      - root_cause_vs_symptom: <per-blocker notes>
+
+      - residual_risk: <none or explicit owner>'
+    depends_on:
+    - pi_finalization_20260526.spec_conformance
+    - pi_finalization_20260526.wiring_audit
+    agent: frontend-engineer
