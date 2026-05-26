@@ -78928,7 +78928,7 @@ phases:
       - PI-LIVE-SLASH-GAP-001: OWNED_BY_RETEST — no live slash proof claimed.'
   - id: pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     name: Retest Pi live smoke after active-tool startup fix
-    status: claimed
+    status: skipped
     description: 'step_type: test
 
       step_intent: retest_green
@@ -79227,6 +79227,7 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T20:36:43.836843+00:00'
+    skipped_reason: absorbed
   - id: pi_slash_autocomplete_20260527.fix_live_slash_autocomplete_api
     name: Fix live Pi slash autocomplete API shape
     status: pending
