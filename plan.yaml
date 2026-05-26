@@ -73502,18 +73502,18 @@ phases:
       - Verify no product implementation or test files are changed by this closure.
 
       </risk_probes>'
-    verification: '- [ ] EXPECTED_RED_ACCEPTED marker is present in evidence.
+    verification: '- [x] EXPECTED_RED_ACCEPTED marker is present in evidence.
 
-      - [ ] verdict, gate_decision, gate_open_allowed, blocking_status, and blockers
+      - [x] verdict, gate_decision, gate_open_allowed, blocking_status, and blockers
       fields record green/open closure.
 
-      - [ ] Evidence states both failed pytest commands were expected-red pre-implementation
+      - [x] Evidence states both failed pytest commands were expected-red pre-implementation
       artifacts.
 
-      - [ ] Evidence states downstream implementation/finalization gates now close
+      - [x] Evidence states downstream implementation/finalization gates now close
       gate intersection for product behavior.
 
-      - [ ] No implementation work or historical evidence alteration is requested.'
+      - [x] No implementation work or historical evidence alteration is requested.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       No refs for this step.
