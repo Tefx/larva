@@ -75402,7 +75402,7 @@ phases:
 
       - [x] Evidence explicitly shows the scenario no longer returns `LARVA_CHILD_START_FAILED`.
 
-      - [ ] Normal successful abort/cancelled regression returns parent `status: cancelled`
+      - [x] Normal successful abort/cancelled regression returns parent `status: cancelled`
       with `error.code: LARVA_CHILD_CANCELLED`.
 
       - [ ] Behavioral proof register marks the abort start-failure-after-unknowable
