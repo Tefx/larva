@@ -76372,7 +76372,7 @@ phases:
       - [x] B7 runtime proof gaps are either closed by executable/fake TypeScript/Pi
       seam evidence or assigned remediation ownership before final gate.
 
-      - [ ] Retest rejects source-only/static-only proof for runtime behaviors unless
+      - [x] Retest rejects source-only/static-only proof for runtime behaviors unless
       the spec target is purely static and the non-runtime rationale is explicit.
 
       - [ ] Retest confirms forbidden non-goals and canonical PersonaSpec authority
