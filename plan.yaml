@@ -75580,7 +75580,7 @@ phases:
       - [x] No orphan public symbols, dead extension entry, or unconsumed config/env
       fields remain without documented non-intersection.
 
-      - [ ] Upstream launcher and extension receipts include `## refs Read Confirmation`
+      - [x] Upstream launcher and extension receipts include `## refs Read Confirmation`
       with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
       reasons.'
     evidence_template: '## refs Read Confirmation
