@@ -75514,7 +75514,7 @@ phases:
       - [x] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
       path before final gate.
 
-      - [ ] The audit explicitly checks forbidden scope remained absent.
+      - [x] The audit explicitly checks forbidden scope remained absent.
 
       - [ ] Upstream Pi phase receipts reviewed by this audit include `## refs Read
       Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
