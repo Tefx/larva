@@ -75943,7 +75943,7 @@ phases:
     agent: gate-reviewer
   - id: pi_finalization_20260526.spec_divergence_fix
     name: Fix Pi extension spec divergences B1-B6
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -76116,6 +76116,8 @@ phases:
     - pi_finalization_20260526.spec_conformance
     - pi_finalization_20260526.wiring_audit
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T15:59:08.642042+00:00'
   - id: pi_finalization_20260526.extension_runtime_conformance_proof
     name: Focused extension runtime conformance proof for B1-B7
     status: pending
