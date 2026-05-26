@@ -73948,7 +73948,7 @@ phases:
       with explicit closure paths; gate-opening recommendation is forbidden while
       any required env value is UNPROVEN/BLOCKED.
 
-      - [ ] Evidence includes `## refs Read Confirmation` for `design/pi-coding-agent-integration.md`
+      - [x] Evidence includes `## refs Read Confirmation` for `design/pi-coding-agent-integration.md`
       with key passages or explicit NOT READ reasons.'
     evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
       \ of implementation)\n**Scope**: launcher child env contract liveness retest\n\
