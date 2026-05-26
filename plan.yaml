@@ -76074,7 +76074,7 @@ phases:
       `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`;
       post-readiness stderr is diagnostic only.
 
-      - [ ] B6: Tool enumeration/update failures exercise documented fail-closed paths
+      - [x] B6: Tool enumeration/update failures exercise documented fail-closed paths
       for targets 13 and 17, preserving prior active envelope where required and preventing
       denied tool invocation.
 
