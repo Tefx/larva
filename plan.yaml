@@ -75763,23 +75763,23 @@ phases:
       \ code/test mutation and forbidden-scope claims.</side_effect_budget>\n<risk_probes>1.\
       \ Docs must state extension flag loading rather than settings writes. 2. Policy\
       \ docs must say adapter-local and exact allow/deny only. 3. Subagent docs must\
-      \ present task_id path resume semantics without sidecar guarantees.\n- [ ] Completion\
+      \ present task_id path resume semantics without sidecar guarantees.\n- [x] Completion\
       \ evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Documentation shows `larva pi --persona <id> -- <pi args...>`
+    verification: '- [x] Documentation shows `larva pi --persona <id> -- <pi args...>`
       and names the launcher-owned environment at a user-appropriate level.
 
-      - [ ] Documentation explains `~/.pi/tool-policy.json` shape, validation boundary,
+      - [x] Documentation explains `~/.pi/tool-policy.json` shape, validation boundary,
       allow/deny semantics, no `ask`, and no PersonaSpec schema changes.
 
-      - [ ] Documentation explains `/larva-persona` selector/non-interactive behavior
+      - [x] Documentation explains `/larva-persona` selector/non-interactive behavior
       and status `larva: <id>|none`.
 
-      - [ ] Documentation explains `larva_subagent` input/result shape, public `task_id`
+      - [x] Documentation explains `larva_subagent` input/result shape, public `task_id`
       resume handle, child session root, busy semantics, and abort behavior.
 
-      - [ ] Documentation lists non-goals/forbidden scopes so users do not infer unsupported
+      - [x] Documentation lists non-goals/forbidden scopes so users do not infer unsupported
       security/sandbox guarantees.'
     evidence_template: '## refs Read Confirmation
 
