@@ -74521,7 +74521,7 @@ phases:
       - [x] Gate rejects source-only proof for slash command/status/tool/runtime/abort
       behavior.
 
-      - [ ] Gate rejects forbidden-scope additions: schema changes, ask action, worktree/file
+      - [x] Gate rejects forbidden-scope additions: schema changes, ask action, worktree/file
       lock/credential logic, policy hierarchy, batch subagent, catalogue prompt dump,
       sidecar metadata, Pi settings fallback.
 
