@@ -75671,7 +75671,7 @@ phases:
     verification: '- [x] Exact launch command/fixture target for `larva pi --persona
       <id> -- <pi args>` is recorded.
 
-      - [ ] Runtime artifact shows the bundled extension loaded through selected flag
+      - [x] Runtime artifact shows the bundled extension loaded through selected flag
       and status shows `larva: <persona-id>` or `larva: none` as appropriate.
 
       - [ ] One safe `/larva-persona` interaction and one denied tool-call or `larva_subagent`
