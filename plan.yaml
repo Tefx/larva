@@ -76256,7 +76256,7 @@ phases:
     verification: '- [x] Runtime report includes raw command(s), stdout/stderr, exit
       codes, and harness path(s) for executable/fake TypeScript/Pi seam proof.
 
-      - [ ] B1-B6 each have positive executable evidence or a blocker-class closure
+      - [x] B1-B6 each have positive executable evidence or a blocker-class closure
       path; source/static-only claims are rejected.
 
       - [ ] B7 gap inventory names prior source/static-only behaviors and maps each
