@@ -73986,7 +73986,7 @@ phases:
       - [x] Focused tests prove source-to-sink path from hook/tool/command registration
       into module logic and back to Pi-observable result.
 
-      - [ ] No forbidden-scope artifacts are introduced.'
+      - [x] No forbidden-scope artifacts are introduced.'
     evidence_template: '## refs Read Confirmation
 
       - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
