@@ -73500,3 +73500,98 @@ phases:
     - pi_finalization_20260526.wiring_audit
     - pi_finalization_20260526.end_to_end_liveness
     agent: integration-verifier
+  - id: pi_finalization_20260526.gate
+    name: Final deep review gate for Pi integration
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check; final gate for Pi Coding Agent integration.
+
+      As an independent final reviewer, perform deep review of implementation evidence,
+      docs, spec conformance, wiring, runtime liveness, and full guard outputs before
+      plan completion.
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: new runnable CLI surface, bundled TypeScript extension,
+      child RPC process management, prompt/model/tool governance, and multiple forbidden-scope
+      hazards.
+
+      <side_effect_budget>Allowed: read-only deep review and command/evidence inspection.
+      Forbidden: code mutation or lifecycle completion.</side_effect_budget>
+
+      <risk_probes>1. Build/test/source evidence cannot substitute for launched CLI/TUI/RPC
+      liveness. 2. Absence of known defects is not positive proof for design targets
+      1-41. 3. Any forbidden-scope addition or undocumented side effect blocks final
+      OPEN.'
+    verification: '- [ ] Final gate decision basis reviews spec conformance, wiring
+      audit, end-to-end liveness, doc sync, and full guard receipts.
+
+      - [ ] OPEN only if every owned design verification target 1-41 is PROVEN or
+      has explicit non-intersection accepted by the reviewer.
+
+      - [ ] Gate rejects helper-only/source-only/build-only evidence for runnable
+      CLI/TUI/RPC surfaces.
+
+      - [ ] Gate rejects any forbidden-scope implementation or documentation claim.
+
+      - [ ] Gate records OPEN/BLOCK verdict, unresolved statuses, closure paths, and
+      final remediation owners.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key passages from all material sections,
+      especially Verification targets and Non-goals.
+
+
+      ## Final Gate Decision Basis
+
+      | requirement_ref | checklist_item | evidence_ref | positive_proof_status |
+      unresolved_status | blocks_completion | rationale |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Evidence Review
+
+      | Artifact | Reviewer verdict | Concerns |
+
+      | --- | --- | --- |
+
+      | spec_conformance | <verdict> | <notes> |
+
+      | wiring_audit | <verdict> | <notes> |
+
+      | end_to_end_liveness | <verdict> | <notes> |
+
+      | doc_sync | <verdict> | <notes> |
+
+      | full_guard | <verdict> | <notes> |
+
+
+      ## Forbidden Scope Verdict
+
+      - schema_changes: <absent/present>
+
+      - ask_action: <absent/present>
+
+      - worktree_or_lock_or_credential_isolation: <absent/present>
+
+      - policy_hierarchy_or_batch_subagent_or_catalogue_dump: <absent/present>
+
+      - sidecar_metadata_or_pi_settings_fallback: <absent/present>
+
+
+      ## Gate Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED
+
+      - required_actions_if_blocked: <list>'
+    depends_on:
+    - pi_finalization_20260526.spec_conformance
+    - pi_finalization_20260526.wiring_audit
+    - pi_finalization_20260526.end_to_end_liveness
+    - pi_finalization_20260526.doc_sync
+    - pi_finalization_20260526.full_guard
+    agent: gate-reviewer
