@@ -75170,7 +75170,7 @@ phases:
       the exact start-failure/protocol-error mapping.'
   - id: pi_extension_runtime_20260526.abort_start_failure_fix
     name: Fix abort no-response child-exit start-failure mapping
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -75305,6 +75305,25 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T15:04:06.607050+00:00'
+    done_at: '2026-05-26T15:13:29.159208+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Python-executor retry task ses_19b2c5279ffeDQy8Q2IR7Lxq02
+      returned success with commit ce533be: adjusted Pi extension TypeScript result-code
+      mapping so the local fake runtime scenario `abort-no-response-child-exited-kill-false`
+      maps to failed `LARVA_CHILD_PROTOCOL_FAILED` rather than misleading `LARVA_CHILD_START_FAILED`,
+      while preserving confirmed cancellation as cancelled `LARVA_CHILD_CANCELLED`.
+      Orchestrator toggled all checklist items, squash-merged branch into main as
+      7b3bdc1 ([vectl] step-pi_extension_runtime_20260526.abort_start_failure_fix
+      completed), and verified mainline. Changed file: contrib/pi-extension/larva.ts
+      only. Evidence included refs confirmation for design/pi-coding-agent-integration.md,
+      contrib/pi-extension/larva.ts, and tests/shell/test_pi_extension_contract.py;
+      mapping fix is scoped to the abort/unknown-state seam and does not globally
+      relabel unrelated child start failures. Verification: `uv run pytest tests/shell/test_pi_extension_contract.py
+      -k abort -q` passed; `uv run pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py -q` passed 47/47; `uv run
+      invar guard --all` passed with 0 errors and only pre-existing warnings/infos.
+      Forbidden scope preserved: no plan/orchestrator state, schema changes, sidecars,
+      locks, credential/worktree logic, policy hierarchy, launcher behavior, or docs-only
+      proof.'
   - id: pi_extension_runtime_20260526.abort_start_failure_retest
     name: Retest abort no-response child-exit start-failure mapping
     status: pending
