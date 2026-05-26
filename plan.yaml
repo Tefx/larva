@@ -78315,10 +78315,14 @@ phases:
 
       review_depth_rationale:
 
-      - Phase covers runnable CLI/TUI surfaces and two user-reported live failures.
+      - Phase covers runnable CLI/TUI surfaces and two user-reported live failures
+      plus a failed retest-discovered active-tool startup blocker.
 
-      - User explicitly asked whether full smoke/live testing was done; gate must
-      answer with evidence, not assumption.
+      - The failed `pi_slash_autocomplete_20260527.retest_liveness` is issue-detection
+      evidence only; it is not sufficient gate-opening proof.
+
+      - Gate must consume the new remediation retest `pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix`
+      for closure.
 
       - Helper-only/source-only proof is insufficient for runnable Pi CLI/TUI surfaces
       unless live automation is documented impossible and a faithful fixture seam
@@ -78329,22 +78333,26 @@ phases:
 
       As an independent read-only gate reviewer, decide whether the post-completion
       Pi slash autocomplete and live smoke fix can open. This gate must explicitly
-      answer the user''s concern: systematic smoke/live coverage was supplemented
-      and includes both reported repros.
+      verify the batched remediation closed both failed-retest issues: active-tool
+      update startup failure and missing live slash proof.
 
 
       GATE SCOPE:
 
       - Review `pi_slash_autocomplete_20260527.reproduce_contract`, `pi_slash_autocomplete_20260527.fix_extension_shape`,
-      and `pi_slash_autocomplete_20260527.retest_liveness` evidence.
+      `pi_slash_autocomplete_20260527.fix_active_tool_update_startup`, and `pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix`
+      evidence.
 
-      - Confirm BOTH reported failures were covered: slash autocomplete `/` crash
-      and `uv run larva pi --persona vectl-planner` extension-load/tool-enumeration
-      startup failure.
+      - Treat `pi_slash_autocomplete_20260527.retest_liveness` as a failed-retest/issue-detection
+      artifact pending orchestrator skip/absorb disposition, not as closure proof.
 
-      - Confirm retest includes systematic smoke/live coverage: `uv run larva pi --help`,
-      persona startup, slash autocomplete liveness, targeted Pi tests, and full `uv
-      run invar guard --all`.
+      - Confirm all reported and retest-discovered failures were covered: slash autocomplete
+      `/` crash, `uv run larva pi --persona vectl-planner` extension-load/tool-enumeration
+      startup failure, and active-tool update startup failure.
+
+      - Confirm systematic smoke/live coverage includes help, live persona startup,
+      slash autocomplete liveness attempt/proof, targeted Pi tests, focused regressions,
+      and full `uv run invar guard --all`.
 
       - Verify no prior completed phase evidence was modified.
 
@@ -78375,9 +78383,21 @@ phases:
       pi_slash_autocomplete_20260527.gate | red/green startup evidence pair reviewed
       | startup_red_green_pair | OWNED | gate cannot open without positive proof |
 
+      | PI-GATE-ACTIVE-001 | failed retest: active-tool update failed during extension
+      load | active-tool startup update failure degrades safely and does not crash
+      initial persona startup | pi_slash_autocomplete_20260527.gate | active-tool
+      remediation/retest evidence reviewed | active_tool_startup_decision | OWNED
+      | gate cannot open without new retest proof |
+
+      | PI-GATE-LIVE-SLASH-001 | failed retest proof gap | slash autocomplete `/`
+      receives live PTY proof if practical or a justified faithful fixture proof |
+      pi_slash_autocomplete_20260527.gate | live slash proof disposition reviewed
+      | live_slash_decision | OWNED | gate blocks on unjustified fixture-only proof
+      |
+
       | PI-GATE-SMOKE-001 | user concern: full smoke/live testing may not have been
       done | systematic smoke/live coverage includes help, persona startup, slash
-      liveness, targeted tests, and full guard | pi_slash_autocomplete_20260527.gate
+      liveness, targeted tests, focused regressions, and full guard | pi_slash_autocomplete_20260527.gate
       | smoke/live matrix reviewed | smoke_live_decision | OWNED | gate blocks on
       helper-only/source-only proof gap |
 
@@ -78397,115 +78417,175 @@ phases:
 
       <risk_probes>
 
-      - Reject sampled or helper-only proof if retest could exercise Pi startup or
-      slash autocomplete through live or faithful runtime paths.
+      - Reject using the failed `retest_liveness` as a green closure artifact; it
+      may only explain why remediation was needed.
 
       - Check `blockers: []`, `proof_gap_status: none`, and `gate_open_allowed=true`
-      are explicit before OPEN/PASS.
+      are explicit in the new retest before OPEN/PASS.
+
+      - Check active-tool startup degradation did not weaken denied-tool enforcement
+      or normal switch semantics.
 
       - Check autocomplete candidates are positively proven as strings or documented
-      Pi API objects, and startup enumeration unavailability is positively proven
-      safe, not merely absence of old stack traces.
-
-      </risk_probes>'
+      Pi API objects, and startup enumeration/active-tool unavailability is positively
+      proven safe, not merely absence of old stack traces.'
     verification: 'ACCEPTABLE GATE DECISION:
 
       - [ ] Refs confirmation includes key passages from all provided refs or explicit
       NOT READ reasons.
 
-      - [ ] Red reproduction/contract evidence exists for BOTH failures: slash autocomplete
-      `/` crash/shape gap and persona startup/tool-enumeration fail-closed gap.
+      - [ ] Red reproduction/contract evidence exists for slash autocomplete `/` crash/shape
+      gap and persona startup/tool-enumeration fail-closed gap.
 
-      - [ ] Implementation diff is limited to allowed scope and preserves non-goals.
+      - [ ] Failed `pi_slash_autocomplete_20260527.retest_liveness` is treated only
+      as issue-detection evidence; it is not used as gate-opening proof.
 
-      - [ ] Retest evidence includes `uv run larva pi --help` raw output/exit, `uv
-      run larva pi --persona vectl-planner` or faithful startup fixture proof, slash
-      autocomplete `/` live/fixture liveness proof, targeted Pi tests, and full `uv
-      run invar guard --all`.
+      - [ ] Implementation diff for both fix steps is limited to allowed scope and
+      preserves non-goals.
+
+      - [ ] New retest evidence includes `uv run larva pi --help` raw output/exit,
+      live `uv run larva pi --persona vectl-planner` raw output/exit, slash autocomplete
+      `/` live PTY proof if practical or justified faithful fixture proof, focused
+      regressions, targeted Pi tests, and full `uv run invar guard --all`.
+
+      - [ ] New retest evidence shows no uncaught `value.startsWith is not a function`,
+      `LARVA_TOOL_ENUMERATION_FAILED`, or `Pi active-tool update failed` startup failure.
 
       - [ ] Fixture-vs-live distinction is explicit for every proof item, with faithful
       seam rationale whenever live automation is documented impossible.
+
+      - [ ] Denied-tool enforcement and normal active-tool switch semantics remain
+      positively proven after the startup degradation fix.
 
       - [ ] No helper-only/source-only proof is accepted for runnable CLI/TUI surfaces
       unless live automation is documented impossible and a faithful fixture seam
       reaches the same API shape.
 
-      - [ ] Gate decision explicitly answers: systematic smoke/live coverage was supplemented
-      and includes both reported repros.
+      - [ ] No prior completed phase evidence was mutated.
+
+      - [ ] Behavioral proof register maps every OWNED requirement to PROVEN or gives
+      explicit blocker/closure path; gate does not open with unresolved blocker-class
+      proof gaps.
 
       - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
       proof_gap_status, gate_open_allowed.
 
       - [ ] Gate opens only with verdict PASS or OPEN, blockers [], blocking_status=non-blocking/none,
       proof_gap_status=none, and gate_open_allowed=true.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+    evidence_template: '## Gate Review Report
+
+      **Reviewer**: gate-reviewer (independent of frontend-engineer and integration-verifier
+      execution evidence)
+
+      **Phase**: pi-slash-autocomplete-crash-fix-2026-05-27
+
+
+      ## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
 
-      - `design/pi-coding-agent-integration.md` — <key passage or NOT READ: reason>
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
 
-      - `contrib/pi-extension/larva.ts` — <key passage or NOT READ: reason>
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
 
-      - `tests/shell/test_pi_extension_contract.py` — <key passage or NOT READ: reason>
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>
 
-      - `tests/shell/test_pi_extension_tool_policy_static.py` — <key passage or NOT
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT
       READ: reason>
 
-      - `tests/shell/test_pi_launcher.py` — <key passage or NOT READ: reason>
+      - tests/shell/test_pi_reported_failures_expected_red.py — <key passage or NOT
+      READ: reason>
 
-      - `AGENTS.md` — <key passage or NOT READ: reason>
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+
+      ## Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | pi_slash_autocomplete_20260527.reproduce_contract | <status> | <quality> |
+      <concerns> |
+
+      | pi_slash_autocomplete_20260527.fix_extension_shape | <status> | <quality>
+      | <concerns> |
+
+      | pi_slash_autocomplete_20260527.retest_liveness | failed issue-detection artifact
+      | <quality> | must not be closure proof |
+
+      | pi_slash_autocomplete_20260527.fix_active_tool_update_startup | <status> |
+      <quality> | <concerns> |
+
+      | pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix | <status>
+      | <quality> | <concerns> |
 
 
       ## Gate Decision Basis
 
-      | requirement_id | evidence_ref_reviewed | positive_proof_status | unresolved_status
-      | decision |
+      | requirement_ref | evidence_refs_reviewed | matrix_rows_reviewed | proof_status
+      PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | blocks_gate | rationale |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | PI-GATE-SLASH-001 | <refs> | <rows> | <status> | yes/no | <rationale> |
+
+      | PI-GATE-STARTUP-001 | <refs> | <rows> | <status> | yes/no | <rationale> |
+
+      | PI-GATE-ACTIVE-001 | <refs> | <rows> | <status> | yes/no | <rationale> |
+
+      | PI-GATE-LIVE-SLASH-001 | <refs> | <rows> | <status> | yes/no | <rationale>
+      |
+
+      | PI-GATE-SMOKE-001 | <refs> | <rows> | <status> | yes/no | <rationale> |
+
+      | PI-GATE-SCOPE-001 | <refs> | <rows> | <status> | yes/no | <rationale> |
+
+
+      ## Issues Identified
+
+      | Severity | Description | Related Step | Blocking? | Required Action |
 
       | --- | --- | --- | --- | --- |
 
-      | PI-GATE-SLASH-001 | <refs> | PROVEN/UNPROVEN/BLOCKED | <none/NEEDS_TEST/UNPROVEN>
-      | <OPEN/BLOCK> |
-
-      | PI-GATE-STARTUP-001 | <refs> | PROVEN/UNPROVEN/BLOCKED | <none/NEEDS_TEST/UNPROVEN>
-      | <OPEN/BLOCK> |
-
-      | PI-GATE-SMOKE-001 | <refs> | PROVEN/UNPROVEN/BLOCKED | <none/NEEDS_TEST/UNPROVEN>
-      | <OPEN/BLOCK> |
-
-      | PI-GATE-SCOPE-001 | <refs> | PROVEN/UNPROVEN/BLOCKED | <none/NEEDS_TEST/UNPROVEN>
-      | <OPEN/BLOCK> |
+      | <blocker/should_fix/suggestion/tech_debt> | <issue> | <step_id> | YES/NO |
+      <action> |
 
 
-      ## User Concern Answer
+      ## Final Gate Decision
 
-      - systematic_smoke_live_supplemented: yes/no
+      - [ ] OPEN: Phase passes gate; new remediation retest proves all blocker-class
+      obligations.
 
-      - both_reported_repros_covered: yes/no
-
-      - helper_only_source_only_proof_accepted: yes/no; if yes, documented_live_impossible_and_faithful_fixture:
-      yes/no
+      - [ ] BLOCKED: Issues/proof gaps must be resolved before proceeding.
 
 
-      ## Semantic Closure
+      ## Semantic Closure Fields
 
-      verdict: OPEN | BLOCKED | PASS | FAIL
+      verdict: OPEN|BLOCKED
 
-      blockers: []
+      blockers: <list>
 
-      blocking_status: <none/non-blocking/blocking>
+      blocking_status: none|BLOCKED
 
-      proof_gap_status: <none or explicit gaps>
+      proof_gap_status: none|<gap>
 
-      gate_open_allowed: <true/false>'
+      gate_open_allowed: true|false
+
+      existing_failed_retest_disposition: issue-detection artifact; orchestrator should
+      skip/absorb after new retest path is complete'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/larva.ts
     - tests/shell/test_pi_extension_contract.py
     - tests/shell/test_pi_extension_tool_policy_static.py
-    - tests/shell/test_pi_launcher.py
+    - tests/shell/test_pi_reported_failures_expected_red.py
     - AGENTS.md
     depends_on:
-    - pi_slash_autocomplete_20260527.retest_liveness
+    - pi_slash_autocomplete_20260527.reproduce_contract
+    - pi_slash_autocomplete_20260527.fix_extension_shape
+    - pi_slash_autocomplete_20260527.fix_active_tool_update_startup
+    - pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     agent: gate-reviewer
   - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     name: Fix Pi active-tool update startup degradation
