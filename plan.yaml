@@ -72767,7 +72767,7 @@ phases:
       independent OPEN/BLOCK decision.'
   - id: pi_contract_harness_20260526.coverage_regate
     name: Coverage regate for Pi contract expected-red harness
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -73076,6 +73076,8 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.coverage_remediation
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T06:33:32.972021+00:00'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
