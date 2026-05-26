@@ -75279,6 +75279,118 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.abort_unknowable_retest
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.abort_start_failure_retest
+    name: Retest abort no-response child-exit start-failure mapping
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects `pi_extension_runtime_20260526.gate`
+      and `pi-integration-finalization-2026-05-26`.
+
+      agent_source: project
+
+
+      As an INDEPENDENT TESTER (`integration-verifier`), perform read-only fake Pi
+      runtime retest after `pi_extension_runtime_20260526.abort_start_failure_fix`.
+
+
+      PROOF ARTIFACT:
+
+      A fake runtime evidence packet proving the exact scenario `abort-no-response-child-exited-kill-false`
+      returns parent `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`,
+      while normal successful abort/cancelled behavior still returns parent `status:
+      cancelled` with `error.code: LARVA_CHILD_CANCELLED`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-ABORT-NO-RESPONSE-CHILD-EXITED-KILL-FALSE | failed retest scenario `abort-no-response-child-exited-kill-false`
+      | Exact fake runtime scenario returns failed `LARVA_CHILD_PROTOCOL_FAILED`.
+      | pi_extension_runtime_20260526.abort_start_failure_retest | `- [ ] Exact scenario
+      abort-no-response-child-exited-kill-false returns failed LARVA_CHILD_PROTOCOL_FAILED.`
+      | `abort_no_response_child_exited_kill_false_trace` | OWNED | Blocks phase gate
+      if absent. |
+
+      | PI-NORMAL-CANCELLED-REGRESSION | prior abort runtime proof | Normal successful
+      abort/kill path remains cancelled `LARVA_CHILD_CANCELLED`. | pi_extension_runtime_20260526.abort_start_failure_retest
+      | `- [ ] Normal cancelled path remains cancelled LARVA_CHILD_CANCELLED.` | `normal_cancelled_trace`
+      | OWNED | Blocks phase gate if regressed. |
+
+
+      SCOPE:
+
+      - Read-only verification only; do not modify source, tests, docs, configs, or
+      plan state.
+
+      - Use fake Pi runtime evidence that names the exact scenario `abort-no-response-child-exited-kill-false`.
+
+      - Raw traces/results are required; narrative summaries or static-test-only receipts
+      are insufficient.
+
+
+      <side_effect_budget>Allowed: run fake Pi runtime scenario(s), inspect traces/logs/source
+      for evidence, and report blockers. Forbidden: source/test/doc/config mutation,
+      changing expected results, source-only proof, or accepting a scenario that does
+      not include abort no-response + child exited/start-failure + kill false.</side_effect_budget>
+
+      <risk_probes>1. Confirm the exact scenario name `abort-no-response-child-exited-kill-false`
+      appears in the receipt. 2. Confirm parent result is failed `LARVA_CHILD_PROTOCOL_FAILED`,
+      not failed `LARVA_CHILD_START_FAILED`. 3. Confirm the normal cancelled regression
+      remains `cancelled` / `LARVA_CHILD_CANCELLED` after the fix.</risk_probes>'
+    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+      abort/error-code passages and `contrib/pi-extension/larva.ts` abort mapping
+      locations, or records explicit NOT READ reasons.
+
+      - [ ] Fake runtime receipt includes exact scenario name `abort-no-response-child-exited-kill-false`.
+
+      - [ ] Exact scenario `abort-no-response-child-exited-kill-false` returns parent
+      `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
+
+      - [ ] Evidence explicitly shows the scenario no longer returns `LARVA_CHILD_START_FAILED`.
+
+      - [ ] Normal successful abort/cancelled regression returns parent `status: cancelled`
+      with `error.code: LARVA_CHILD_CANCELLED`.
+
+      - [ ] Behavioral proof register marks the abort start-failure-after-unknowable
+      obligation `PROVEN` or `BLOCKED` with explicit closure path; no OPEN recommendation
+      is made while it is unproven.'
+    evidence_template: "## Verification Report\n\n**Tester**: integration-verifier\
+      \ (independent of implementation)\n**Scope**: fake Pi runtime abort no-response\
+      \ child-exit/start-failure mapping\n**Independence Level**: L1\n**Timestamp**:\
+      \ <ISO 8601>\n\n### refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key abort/error-code passage\
+      \ or NOT READ: reason>\n- contrib/pi-extension/larva.ts — <key mapping passage\
+      \ or NOT READ: reason>\n\n### Required Fake Runtime Scenario\n- scenario_name:\
+      \ abort-no-response-child-exited-kill-false\n- command_or_harness: <exact command\
+      \ or harness invocation>\n- raw_output: |\n    <paste raw trace/output>\n- observed_parent_status:\
+      \ <failed>\n- observed_parent_error_code: <LARVA_CHILD_PROTOCOL_FAILED>\n- forbidden_regression_absent:\
+      \ <evidence LARVA_CHILD_START_FAILED is not returned for this scenario>\n\n\
+      ### Normal Cancelled Regression\n- scenario_name: <normal cancelled scenario\
+      \ name>\n- command_or_harness: <exact command or harness invocation>\n- raw_output:\
+      \ |\n    <paste raw trace/output>\n- observed_parent_status: <cancelled>\n-\
+      \ observed_parent_error_code: <LARVA_CHILD_CANCELLED>\n\n### Behavioral Proof\
+      \ Register\n| requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref\
+      \ | status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- |\
+      \ --- | --- | --- |\n| PI-ABORT-NO-RESPONSE-CHILD-EXITED-KILL-FALSE | exact\
+      \ scenario maps to failed LARVA_CHILD_PROTOCOL_FAILED | fake runtime raw trace\
+      \ | <artifact/ref> | PROVEN/BLOCKED | <path> | blocks gate unless PROVEN |\n\
+      | PI-NORMAL-CANCELLED-REGRESSION | normal abort path remains cancelled LARVA_CHILD_CANCELLED\
+      \ | fake runtime raw trace | <artifact/ref> | PROVEN/BLOCKED | <path> | blocks\
+      \ gate if regressed |\n\n### Headline\n- [ ] PASS: both required runtime proofs\
+      \ are present and match expected parent result codes.\n- [ ] FAIL: blocking\
+      \ runtime proof gap or wrong code remains."
+    depends_on:
+    - pi_extension_runtime_20260526.abort_start_failure_fix
+    agent: integration-verifier
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
