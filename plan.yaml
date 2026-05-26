@@ -74636,7 +74636,7 @@ phases:
       key passage(s) for child/subagent abort or cancellation semantics, or records
       explicit NOT READ reason.
 
-      - [ ] In-flight abort path wires abortSignal to `RpcClient.abort` while child
+      - [x] In-flight abort path wires abortSignal to `RpcClient.abort` while child
       sequence is running.
 
       - [ ] Child result resolution after an abort cannot overwrite the cancelled
