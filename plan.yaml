@@ -77558,7 +77558,7 @@ phases:
   - pi-integration-finalization-2026-05-26
   steps:
   - id: pi_slash_autocomplete_20260527.reproduce_contract
-    name: Reproduce and contract Pi slash autocomplete crash
+    name: Reproduce Pi slash autocomplete and startup enumeration failures
     status: pending
     description: 'step_type: test
 
@@ -77571,10 +77571,14 @@ phases:
 
       PROOF ARTIFACT:
 
-      Capture a minimal expected-red proof for the live Pi crash reported by the user:
-      inside `uv run larva pi`, typing `/` triggers Pi TUI autocomplete and exits
-      with uncaught `TypeError: value.startsWith is not a function` from `@earendil-works/pi-tui`
-      editor autocomplete.
+      Capture minimal expected-red proof for BOTH live Pi failures reported by the
+      user, without changing product code:
+
+      1. Inside `uv run larva pi`, typing `/` triggers Pi TUI autocomplete and exits
+      with uncaught `TypeError: value.startsWith is not a function` from `@earendil-works/pi-tui/dist/components/editor.js`.
+
+      2. `uv run larva pi --persona vectl-planner` fails during extension load/tool
+      enumeration with `LARVA_TOOL_ENUMERATION_FAILED: Unable to enumerate Pi tools`.
 
 
       BOUNDING BOX:
@@ -77583,9 +77587,10 @@ phases:
 
       - `contrib/pi-extension/larva.ts`
 
-      - `tests/shell/test_pi_extension_contract.py`
+      - Pi launcher/extension tests under `tests/shell/`
 
-      - `tests/shell/test_pi_extension_tool_policy_static.py`
+      - CLI/TUI entrypoints exercised by `uv run larva pi`, `uv run larva pi --persona
+      vectl-planner`, and `uv run larva pi --help`
 
 
       REQUIREMENT TRACEABILITY MATRIX:
@@ -77595,86 +77600,122 @@ phases:
 
       | --- | --- | --- | --- | --- | --- | --- | --- |
 
-      | PI-SLASH-CRASH-001 | user report `pi内输入/ 后出错`; stack `value.startsWith is
-      not a function` | `/` slash autocomplete must be reproducible as crash or contract
-      gap before fix | pi_slash_autocomplete_20260527.reproduce_contract | reproduce
-      slash autocomplete failure or same return-shape gap | reproduction_record |
-      OWNED | blocks this phase gate |
+      | PI-SLASH-CRASH-001 | user report: typing `/` in `uv run larva pi` crashes
+      with `value.startsWith is not a function` | `/` slash autocomplete must be reproduced
+      as live crash or faithfully fixture-exposed invalid autocomplete candidate shape
+      | pi_slash_autocomplete_20260527.reproduce_contract | reproduce slash autocomplete
+      failure or same return-shape gap | slash_reproduction_record | OWNED | blocks
+      this phase gate |
 
-      | PI-EXT-API-001 | `design/pi-coding-agent-integration.md`; Pi extension API
-      registration/autocomplete contract | extension autocomplete results must use
-      shapes Pi editor accepts | pi_slash_autocomplete_20260527.reproduce_contract
-      | cite API shape and failing returned value shape | pi_api_contract_shape |
-      OWNED | blocks implementation anchor |
+      | PI-STARTUP-ENUM-001 | user report: `uv run larva pi --persona vectl-planner`
+      fails extension load with `LARVA_TOOL_ENUMERATION_FAILED` | startup/tool-enumeration
+      failure must be reproduced live or faithfully fixture-exposed | pi_slash_autocomplete_20260527.reproduce_contract
+      | reproduce extension-load startup failure or same enumeration fallback gap
+      | startup_reproduction_record | OWNED | blocks this phase gate |
+
+      | PI-EXT-API-001 | `design/pi-coding-agent-integration.md` + `contrib/pi-extension/larva.ts`
+      | extension command/autocomplete/tool enumeration surfaces must return Pi-accepted
+      shapes and must not fail closed before the TUI starts | pi_slash_autocomplete_20260527.reproduce_contract
+      | cite API shape, failing value shape, and enumeration failure mode | pi_api_contract_shape
+      | OWNED | blocks implementation anchor |
 
 
       CONSTRAINTS:
 
       - Do NOT mutate product code in this step.
 
-      - Test/fixture-only changes are allowed when needed to express the expected-red
-      regression.
+      - Test/fixture-only changes are allowed when needed to express expected-red
+      regressions.
 
-      - If live TUI automation is impractical, inspect the Pi extension public registration/autocomplete
-      API and build a regression fixture that exercises the same command/autocomplete
-      return shape causing `value.startsWith` on a non-string.
+      - Live attempts must capture raw stdout/stderr/exit codes and distinguish LIVE_TUI/LIVE_CLI
+      from FAKE_PI_FIXTURE.
 
-      - Completion is allowed while the fixture is red if the crash/gap is reproduced
-      and no product code changed.
+      - If live TUI automation for typing `/` is impractical, build a faithful fake
+      Pi/TUI autocomplete harness that reaches the same extension API shape consumed
+      by Pi editor matching (`startsWith` on candidate value/string-bearing field).
+
+      - If live startup is environment-blocked, fixture the extension-load/tool-enumeration
+      seam so the reported `LARVA_TOOL_ENUMERATION_FAILED` fail-closed startup behavior
+      is exposed without masking it as success.
+
+      - Completion is allowed while fixtures are red if both bugs/gaps are reproduced
+      or faithfully exposed and no product code changed.
 
 
       <side_effect_budget>
 
-      Allowed: add or adjust focused regression tests/fixtures under `tests/shell/`
-      that expose the slash-autocomplete shape mismatch; capture live/fake Pi command
-      output. Forbidden: edit `contrib/pi-extension/larva.ts`, PersonaSpec/schema/contracts,
-      launcher behavior unrelated to slash autocomplete, or prior completed phase
-      evidence.
+      Allowed: add or adjust focused regression tests/fixtures under `tests/shell/`;
+      run/capture live/fake Pi commands. Forbidden: edit `contrib/pi-extension/larva.ts`,
+      PersonaSpec/schema/contracts, launcher behavior, prior completed phase evidence,
+      or production code.
 
       </side_effect_budget>
 
 
       <risk_probes>
 
-      - Verify the reproduced shape reaches the same Pi editor autocomplete expectation
+      - Verify the slash reproduction reaches the same Pi editor autocomplete expectation
       (`startsWith` on candidate value) rather than an unrelated launcher failure.
 
-      - Verify the fixture uses documented Pi extension API shapes, not a test-only
-      convenience wrapper.
+      - Verify the startup reproduction reaches extension load/tool enumeration, not
+      only argument parsing.
 
-      - Verify `/` autocomplete is covered even if no command is executed after autocomplete
-      opens.
+      - Verify fixtures use documented Pi extension API shapes and user-facing launcher
+      commands, not test-only convenience wrappers that cannot fail the same way.
 
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (expected-red):
 
-      - [ ] Refs confirmation includes key passages from design/pi-coding-agent-integration.md
-      and contrib/pi-extension/larva.ts about Pi extension registration/autocomplete
-      shape.
+      - [ ] Refs confirmation includes key passages from `design/pi-coding-agent-integration.md`,
+      `contrib/pi-extension/larva.ts`, relevant `tests/shell/` harness files, and
+      `AGENTS.md`; or explicit NOT READ reasons.
 
-      - [ ] Reproduction record includes exact command or fixture invocation, environment,
-      stdout/stderr/exit, and the failing value/type shape.
+      - [ ] Slash autocomplete reproduction record includes exact live command or
+      faithful fixture invocation, environment, stdout/stderr/exit code, and failing
+      value/type shape for `/` autocomplete.
 
-      - [ ] If live TUI automation is impractical, a focused regression fixture exercises
-      the same slash autocomplete return-shape path and is expected red before implementation.
+      - [ ] Extension-load startup reproduction record includes `uv run larva pi --persona
+      vectl-planner` live output or faithful fixture output showing the `LARVA_TOOL_ENUMERATION_FAILED`
+      / tool enumeration startup failure mode.
+
+      - [ ] `uv run larva pi --help` baseline is attempted or explicitly blocked,
+      with raw stdout/stderr/exit code, to distinguish launcher availability from
+      extension-specific failure.
+
+      - [ ] If live TUI automation is impractical, the fake Pi/TUI autocomplete harness
+      reaches the same API shape consumed by Pi editor matching and records why live
+      automation was not practical.
 
       - [ ] Product code remains unchanged in this step; only test/fixture/proof artifacts
       are changed when needed.
 
-      - [ ] Semantic closure fields are present: verdict, blockers, expected_result=red,
-      gate_open_allowed=false.'
+      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      proof_gap_status, expected_result=red, gate_open_allowed=false.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
-      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
-      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
-      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>\n\
-      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT\
-      \ READ: reason>\n\n## Expected-Red Reproduction Record\n- command_or_fixture:\
-      \ <exact invocation>\n- environment: <OS/node/npm/pi package versions when available>\n\
-      - stdout: |\n  <raw stdout>\n- stderr: |\n  <raw stderr>\n- exit_code: <code>\n\
-      - failing_shape: <value, typeof value, candidate object/string shape>\n- live_vs_fixture:\
-      \ LIVE_TUI | FAKE_PI_FIXTURE\n- product_code_changed: false\n\n## Semantic Closure\n\
-      - verdict: EXPECTED_RED_REPRODUCED | BLOCKED\n- blockers: []\n- gate_open_allowed:\
-      \ false\n- downstream_anchor_for_fix: pi_slash_autocomplete_20260527.fix_extension_shape"
+      \ step:\n- `design/pi-coding-agent-integration.md` — <key passage or NOT READ:\
+      \ reason>\n- `contrib/pi-extension/larva.ts` — <key passage or NOT READ: reason>\n\
+      - `tests/shell/test_pi_extension_contract.py` — <key passage or NOT READ: reason>\n\
+      - `tests/shell/test_pi_extension_tool_policy_static.py` — <key passage or NOT\
+      \ READ: reason>\n- `tests/shell/test_pi_launcher.py` — <key passage or NOT READ:\
+      \ reason>\n- `AGENTS.md` — <key passage or NOT READ: reason>\n\n## Expected-Red\
+      \ Reproduction Report\n- slash_autocomplete_surface: LIVE_TUI | FAKE_PI_FIXTURE\n\
+      - slash_command_or_fixture: <exact invocation>\n- slash_raw_stdout: |\n    <paste>\n\
+      - slash_raw_stderr: |\n    <paste>\n- slash_exit_code: <code>\n- slash_failing_value_shape:\
+      \ <type/value/field path>\n- startup_surface: LIVE_CLI | FAKE_PI_FIXTURE\n-\
+      \ startup_command_or_fixture: `uv run larva pi --persona vectl-planner` or <fixture>\n\
+      - startup_raw_stdout: |\n    <paste>\n- startup_raw_stderr: |\n    <paste>\n\
+      - startup_exit_code: <code>\n- startup_failure_signature: <LARVA_TOOL_ENUMERATION_FAILED\
+      \ or gap>\n- help_baseline_stdout_stderr_exit: <raw proof>\n\n## Semantic Closure\n\
+      verdict: RED_REPRODUCED | RED_FIXTURE_EXPOSED | BLOCKED\nblockers: []\nblocking_status:\
+      \ <blocking/non-blocking with rationale>\nproof_gap_status: <none or explicit\
+      \ gaps>\ngate_open_allowed: false"
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_tool_policy_static.py
+    - tests/shell/test_pi_launcher.py
+    - AGENTS.md
     agent: integration-verifier
   - id: pi_slash_autocomplete_20260527.fix_extension_shape
     name: Fix Pi extension slash autocomplete return shape
