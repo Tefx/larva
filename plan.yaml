@@ -76041,7 +76041,7 @@ phases:
       command/receipt evidence.'
   - id: pi_finalization_20260526.gate
     name: Final deep review gate for Pi integration
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: full-plan-check; final gate\
       \ for Pi Coding Agent integration.\nAs an independent final reviewer, perform\
       \ deep review of implementation evidence, docs, spec conformance, wiring, runtime\
@@ -76127,6 +76127,8 @@ phases:
     - pi_finalization_20260526.doc_sync
     - pi_finalization_20260526.full_guard
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T18:55:36.798357+00:00'
   - id: pi_finalization_20260526.spec_divergence_fix
     name: Fix Pi extension spec divergences B1-B6
     status: done
