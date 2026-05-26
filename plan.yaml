@@ -74513,7 +74513,7 @@ phases:
       cancelled `LARVA_CHILD_CANCELLED` after the unknowable-state and start-failure
       mapping fixes.
 
-      - [ ] OPEN only if persona projection, tool policy, subagent obligations, narrow
+      - [x] OPEN only if persona projection, tool policy, subagent obligations, narrow
       abort cancellation, unknowable abort failure obligations, and abort no-response
       child-exit/kill-false failure obligations have positive hook/RPC evidence or
       explicit non-intersection.
