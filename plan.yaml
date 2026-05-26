@@ -73078,6 +73078,155 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T06:33:32.972021+00:00'
+  - id: pi_contract_harness_20260526.regate_gap_remediation
+    name: Regate gap remediation for Pi expected-red harness
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Add one batched expected-red test/fixture remediation slice that closes BOTH
+      remaining semantic regate blockers R1 and R2 before any Pi launcher or extension
+      implementation proceeds. This is a contract-harness step only: expected-red
+      tests may expose missing implementation, but product behavior must remain unimplemented
+      here.
+
+
+      SCOPE / TOUCH PATHS:
+
+      - Primary touch path: `tests/shell/test_pi_launcher_contract.py`.
+
+      - Optional touch paths: test-only fixtures/helpers under `tests/` if needed
+      to express the expected-red contract cleanly.
+
+      - Authoritative design ref: `design/pi-coding-agent-integration.md`.
+
+
+      POSITIVE REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | R1 / B2_TARGET5_INCOMPLETE | `design/pi-coding-agent-integration.md:1282-1284`
+      — extension loading preflight prefers `-e`, otherwise `--extension`, and fails
+      before Pi settings writes if neither is supported. | Expected-red launcher coverage
+      must prove fallback to `--extension` when help lacks `-e` but contains `--extension`.
+      | `pi_contract_harness_20260526.regate_gap_remediation` | R1 target 5 `--extension`
+      fallback expected-red test added | `R1_test_changes`, `R1_command_receipt`,
+      `R1_expected_red_alignment` | OWNED |
+
+      | R2 / B3_TARGET10_INCOMPLETE | `design/pi-coding-agent-integration.md:823-829`
+      and `1296-1303` — `--mode` supports space/equal forms; empty, missing, unknown,
+      and conflicting markers are non-interactive; interactive only wins when no non-interactive/unknown/malformed
+      marker is present. | Expected-red mode matrix must cover `--mode=value` forms,
+      empty/unknown forms, explicit interactive forms, and conflict precedence with
+      print/json markers. | `pi_contract_harness_20260526.regate_gap_remediation`
+      | R2 target 10 extended mode-detection expected-red matrix added | `R2_test_changes`,
+      `R2_command_receipt`, `R2_expected_red_alignment` | OWNED |
+
+
+      REMEDIATION OBLIGATIONS:
+
+      - R1: Add an expected-red launcher test where Pi help lacks `-e` but contains
+      `--extension`, asserting the selected extension flag is exactly `--extension`.
+
+      - R2: Extend the parametrized target 10 matrix to cover `--mode=rpc`, `--mode=print`,
+      `--mode=json`, `--mode=sdk`, `--mode=`, `--mode=unknown`, `--mode interactive`,
+      `--mode=interactive`, and conflict precedence where print/json markers force
+      non-interactive even with interactive markers.
+
+      - Preserve expected-red semantics: failures before product implementation are
+      acceptable only when aligned with missing implementation, not with malformed
+      tests, import errors, or accidental fixture defects.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      - Allowed: modify expected-red tests and test-only fixtures/helpers needed to
+      express R1/R2 contract coverage.
+
+      - Forbidden: modify product implementation files, launcher runtime code, extension
+      runtime code, design docs, plan state, lifecycle state, or production configuration.
+
+      - Forbidden: make tests pass by implementing Pi launcher/extension behavior
+      in this step.
+
+
+      RISK_PROBES:
+
+      - Verify target 5 exercises actual extension flag-selection fallback, not only
+      unsupported-flag failure and no-settings-write behavior.
+
+      - Verify target 10 covers both `--mode <value>` and `--mode=<value>` forms,
+      and that non-interactive conflict precedence wins over interactive markers.
+
+      - Verify changed-file scope remains contract-harness-only and expected-red failures
+      still point at missing implementation.
+
+
+      ## Checklist
+
+      - [ ] R1 target 5 expected-red test added for help text with no `-e` and supported
+      `--extension`, asserting selected flag `--extension`.
+
+      - [ ] R2 target 10 expected-red matrix includes `--mode=rpc`, `--mode=print`,
+      `--mode=json`, `--mode=sdk`, `--mode=`, and `--mode=unknown`.
+
+      - [ ] R2 target 10 expected-red matrix includes `--mode interactive` and `--mode=interactive`
+      interactive cases when no non-interactive, unknown, or malformed marker is present.
+
+      - [ ] R2 target 10 expected-red matrix includes conflict precedence cases where
+      print/json or other non-interactive markers force `LARVA_PI_INTERACTIVE_TUI=0`
+      despite interactive markers.
+
+      - [ ] Expected-red command receipt shows failures are aligned with missing implementation
+      and not test syntax/import/fixture errors.
+
+      - [ ] Changed-file evidence confirms no product implementation, design doc,
+      plan, or lifecycle files changed.'
+    verification: '- [ ] refs confirmation cites key passages from `design/pi-coding-agent-integration.md:823-829`,
+      `1282-1284`, and `1296-1303`.
+
+      - [ ] R1 target 5 `--extension` fallback expected-red coverage is present and
+      tied to the design obligation.
+
+      - [ ] R2 target 10 extended mode matrix coverage is present for equal-form modes,
+      empty/unknown modes, explicit interactive forms, and conflict precedence.
+
+      - [ ] Raw command receipt identifies the exact targeted test command(s), exit
+      code, stdout/stderr, and expected-red failure alignment.
+
+      - [ ] Changed-file receipt confirms only expected-red tests/test fixtures changed
+      and no product implementation files changed.
+
+      - [ ] Downstream implementation remains blocked pending `pi_contract_harness_20260526.final_regate`.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `design/pi-coding-agent-integration.md` — cite key passages for lines\
+      \ 823-829, 1282-1284, and 1296-1303, or `NOT READ: <reason>`.\n\n## Exact Test\
+      \ Changes\n- files_changed:\n  - <test file or fixture path>\n- R1_test_changes:\
+      \ <test name(s), assertion shape, and why it proves `--extension` fallback>\n\
+      - R2_test_changes: <param/test names and complete mode-case matrix added>\n\n\
+      ## Expected-Red Command Receipt\n- command: <exact targeted command(s) run>\n\
+      - exit_code: <code>\n- raw_stdout_stderr: |\n    <paste raw output>\n- expected_red_alignment:\
+      \ <which failures are expected because implementation is missing; note any unexpected\
+      \ failures>\n\n## No Product-Code Change Receipt\n- changed_files: |\n    <paste\
+      \ git diff --name-only or equivalent changed-file listing>\n- product_code_changed:\
+      \ yes/no\n- forbidden_scope_present: yes/no\n\n## Checklist Receipt\n- R1 target\
+      \ 5 fallback: SATISFIED/FAILED/BLOCKED with evidence ref\n- R2 target 10 matrix:\
+      \ SATISFIED/FAILED/BLOCKED with evidence ref\n- Expected-red only: SATISFIED/FAILED/BLOCKED\
+      \ with evidence ref"
+    depends_on:
+    - pi_contract_harness_20260526.coverage_regate
+    agent: python-executor
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
