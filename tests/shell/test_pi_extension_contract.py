@@ -412,6 +412,32 @@ def test_in_flight_abort_is_forwarded_to_child_rpc_and_wins_cancelled_race() -> 
     )
 
 
+def test_abort_unknown_child_termination_returns_protocol_failed_not_cancelled() -> None:
+    source = _source()
+    abort_body = _function_body(source, "async abort()")
+    sequence_body = _function_body(source, "async function runChildSequence")
+    subagent_body = _function_body(source, "export async function larva_subagent")
+
+    _assert_tokens(
+        abort_body,
+        "isSuccessResponse(aborted)",
+        "const killed = this.child.kill()",
+        'return killed ? "cancelled" : "unknowable"',
+    )
+    _assert_tokens(
+        sequence_body,
+        'outcome === "cancelled"',
+        "LARVA_CHILD_PROTOCOL_FAILED",
+        "Child abort state became unknowable.",
+    )
+    assert 'ctx?.abortSignal?.aborted && result.status !== "success"' not in subagent_body
+    _assert_regex(
+        sequence_body,
+        r"outcome === \"cancelled\"[\s\S]+return cancelled[\s\S]+return failed[\s\S]+LARVA_CHILD_PROTOCOL_FAILED",
+        "unknowable abort outcome must stay failed with LARVA_CHILD_PROTOCOL_FAILED",
+    )
+
+
 def test_nested_subagent_exposure_uses_child_authority_and_policy() -> None:
     source = _source()
     _assert_tokens(source, "larva_subagent", "can_spawn", "LARVA_PI_PARENT_PERSONA_ID")

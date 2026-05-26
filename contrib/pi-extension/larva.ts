@@ -572,8 +572,13 @@ class RpcClient {
 
   async abort(): Promise<"success" | "cancelled" | "unknowable"> {
     const aborted = await this.command("abort-1", { type: "abort" }, 5_000);
-    if (!isLarvaError(aborted)) return "cancelled";
-    try { this.child.kill(); return "cancelled"; } catch { return "unknowable"; }
+    if (isSuccessResponse(aborted)) return "cancelled";
+    try {
+      const killed = this.child.kill();
+      return killed ? "cancelled" : "unknowable";
+    } catch {
+      return "unknowable";
+    }
   }
 }
 
@@ -693,7 +698,6 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
   try {
     if (ctx?.abortSignal?.aborted) return cancelled(canonicalTaskId, personaId);
     const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, ctx?.abortSignal);
-    if (ctx?.abortSignal?.aborted && result.status !== "success") return cancelled(result.task_id, personaId);
     return result;
   } finally {
     if (canonicalTaskId) activeTaskIds.delete(canonicalTaskId);
