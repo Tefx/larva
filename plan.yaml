@@ -73458,7 +73458,7 @@ phases:
       receipt. This opens the Pi contract harness phase for downstream implementation.'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
-  status: in_progress
+  status: done
   gate: Launcher starts real Pi with bundled extension and Larva-owned environment,
     without writing Pi settings.
   depends_on:
@@ -73640,7 +73640,7 @@ phases:
       evidence and remediation ownership, not a green launcher gate.'
   - id: pi_launcher_runtime_20260526.gate
     name: Gate launcher runtime
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check; protects downstream\
       \ Pi extension/finalization gates that consume launcher env contracts.\nAs an\
       \ independent reviewer, decide whether the launcher runtime surface is complete\
@@ -73705,6 +73705,22 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T13:22:33.461904+00:00'
+    done_at: '2026-05-26T13:32:18.641113+00:00'
+    evidence: 'GATE_OPEN_ACCEPTED. Gate-reviewer task ses_19b8be69cffeFfMwhop2hbY2UT
+      returned status OPEN / gate_decision OPEN with no blockers and no repository
+      files modified. Evidence included refs Read Confirmation for design/pi-coding-agent-integration.md,
+      tests/shell/test_pi_launcher_contract.py, src/larva/shell/pi.py, src/larva/shell/cli.py,
+      and contrib/pi-extension/larva.ts. Gate reviewed launcher implementation and
+      runtime liveness receipts, rejected helper-only proof, and verified positive
+      proof for CLI entrypoint/startup path, env contract, extension flag selection,
+      forwarded args, documented error exits, and absence of forbidden scope. Read-only
+      checks: `uv run larva pi --help` exit 0 with usage; `uv run pytest tests/shell/test_pi_launcher_contract.py`
+      passed 32/32; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos; `uv run larva pi --persona` produced expected `LARVA_PI_BAD_ARGS`;
+      inline extension-missing probe produced expected `LARVA_PI_EXTENSION_NOT_FOUND`;
+      git status clean. Gate confirmed no PersonaSpec schema changes, Pi settings
+      writes, worktree/file-lock/credential logic, policy hierarchy scope creep, or
+      unresolved blockers. Checklist toggled from gate receipt.'
   - id: pi_launcher_runtime_20260526.env_contract_fix
     name: Set launcher child env contract values
     status: done
