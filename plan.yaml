@@ -72359,26 +72359,26 @@ phases:
       \ filesystem lock files.</side_effect_budget>\n<risk_probes>1. Denied `larva_subagent`\
       \ must yield generic `ToolPolicyDecision`, not `LarvaSubagentResult`. 2. Resume\
       \ must append the new task and re-resolve persona, not replay prior output.\
-      \ 3. Prompt watermark must replace, not duplicate.</risk_probes>\n- [ ] Completion\
+      \ 3. Prompt watermark must replace, not duplicate.</risk_probes>\n- [x] Completion\
       \ evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Tests are limited to tests/ fixtures and expose extension
+    verification: '- [x] Tests are limited to tests/ fixtures and expose extension
       gaps as expected-red without implementing product code.
 
-      - [ ] Requirement traceability matrix maps verification targets 6-41 to exact
+      - [x] Requirement traceability matrix maps verification targets 6-41 to exact
       tests and evidence fields.
 
-      - [ ] Tests cover persona resolve/list bridge through `LARVA_CLI_ARGV_JSON`,
+      - [x] Tests cover persona resolve/list bridge through `LARVA_CLI_ARGV_JSON`,
       fallback only when absent, and timeout/malformed output handling.
 
-      - [ ] Tests cover model parsing at first slash, atomic switch failure preservation,
+      - [x] Tests cover model parsing at first slash, atomic switch failure preservation,
       prompt/status/selector behavior, and no prompt catalogue dump.
 
-      - [ ] Tests cover policy validation/filtering baseline, `setActiveTools`, `tool_call`
+      - [x] Tests cover policy validation/filtering baseline, `setActiveTools`, `tool_call`
       denial, and denied `larva_subagent` no-handler behavior.
 
-      - [ ] Tests cover subagent spawn authority, child process environment, path
+      - [x] Tests cover subagent spawn authority, child process environment, path
       validation, resume taxonomy, busy set, abort, and public result contract.'
     evidence_template: '## refs Read Confirmation
 
