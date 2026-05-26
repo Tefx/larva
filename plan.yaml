@@ -74805,7 +74805,7 @@ phases:
       - [x] Raw evidence includes the before/after scenario name or target number
       that closes B1 target 35.
 
-      - [ ] No regressions for success, failure-after-session-allocation, resume,
+      - [x] No regressions for success, failure-after-session-allocation, resume,
       and busy scenarios; evidence includes actual outputs/traces for each.
 
       - [ ] Behavioral proof register marks B1/target 35 `PROVEN` or `BLOCKED` with
