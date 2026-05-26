@@ -76842,7 +76842,7 @@ phases:
     verification: '- [x] Pre-RPC fake child stderr `larva pi: LARVA_PERSONA_NOT_FOUND:
       child invalid` before JSONL/RPC readiness maps to parent `LARVA_PERSONA_NOT_FOUND`.
 
-      - [ ] Exact whitelist is preserved: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
+      - [x] Exact whitelist is preserved: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
       `LARVA_POLICY_INVALID`, `LARVA_TOOL_ENUMERATION_FAILED`.
 
       - [ ] Non-whitelisted pre-RPC stderr remains mapped to child start/protocol
