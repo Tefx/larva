@@ -79673,3 +79673,13 @@ phases:
       via focused regressions; PI-FINAL-TARGETED-001 via targeted Pi tests; PI-FINAL-GUARD-001
       via guard output. Checklist items were toggled based on verifier receipt before
       completion.'
+- id: pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
+  name: Pi Persona Load, Slash Switch, Spawn, and Prompt Injection Proof 2026-05-27
+  status: pending
+  gate: 'All four user questions have deterministic real-Pi evidence: `--persona`
+    semantically loads the persona, `/larva-persona <id>` switches and confirms effective
+    load, `larva spawn`/subagent lifecycle is exercised end-to-end, and persona prompt
+    content reaches Pi effective system prompt/context. Real Pi fallback is gate-blocking
+    unless blocker is purely environmental and not product.'
+  depends_on:
+  - pi-slash-autocomplete-crash-fix-2026-05-27
