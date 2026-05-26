@@ -73778,7 +73778,7 @@ phases:
       \ Confirmation`\n  `- design/pi-coding-agent-integration.md — key passages read:\
       \ <specific sections/targets used by this step>; NOT READ entries only with\
       \ reason.`\n"
-    verification: '- [ ] Missing policy file and missing active target entry commit
+    verification: '- [x] Missing policy file and missing active target entry commit
       the current model-facing baseline with no extra Larva restriction.
 
       - [ ] Invalid JSON/unreadable/wrong top-level shape/unknown active keys/non-string
