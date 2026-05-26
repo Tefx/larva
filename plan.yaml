@@ -74540,7 +74540,7 @@ phases:
     agent: gate-reviewer
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -74704,6 +74704,24 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T13:52:21.237185+00:00'
+    done_at: '2026-05-26T14:03:58.676864+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Frontend-engineer task ses_19b707b11ffet1L9P3yx4R5HWA
+      returned passed with commit 296b9bc: wired in-flight parent abortSignal into
+      child RPC execution. Orchestrator toggled all checklist items, squash-merged
+      branch into main as a3c632e ([vectl] step-pi_extension_runtime_20260526.abort_rpc_fix
+      completed), and verified mainline. Changed files: contrib/pi-extension/larva.ts
+      and tests/shell/test_pi_extension_contract.py. Evidence included refs confirmation
+      for design/pi-coding-agent-integration.md, contrib/pi-extension/larva.ts, and
+      tests/shell/test_pi_extension_contract.py; B1 fix receipt showed runChildSequence
+      accepts abortSignal, registers abort listener, invokes rpc.abort(), sends child
+      RPC `{id: abort-1, type: abort}`, races abort outcome against normal sequence,
+      and returns cancelled/failed abort result before later success can overwrite.
+      Focused coverage: `uv run pytest tests/shell/test_pi_extension_contract.py -k
+      abort -q` passed 2 selected tests; full extension/static verification `uv run
+      pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py`
+      passed 46/46; `uv run invar guard --all` passed with 0 errors and only pre-existing
+      warnings/infos. Regression notes preserve success/failure/resume/busy semantics;
+      no forbidden scope or deviations.'
   - id: pi_extension_runtime_20260526.abort_runtime_retest
     name: Retest in-flight abort runtime behavior
     status: pending
