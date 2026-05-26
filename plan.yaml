@@ -73100,7 +73100,7 @@ phases:
       gate and does NOT mark the harness OPEN.'
   - id: pi_contract_harness_20260526.regate_gap_remediation
     name: Regate gap remediation for Pi expected-red harness
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -73249,6 +73249,23 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-05-26T07:35:29.233875+00:00'
+    done_at: '2026-05-26T07:48:17.567469+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED. Worktree branch vectl/step-pi_contract_harness_20260526.regate_gap_remediation
+      squash-merged into main as 202b892 ([vectl] step-pi_contract_harness_20260526.regate_gap_remediation
+      completed). Branch diff added only 38 lines to tests/shell/test_pi_launcher_contract.py;
+      no product implementation, design doc, plan, or lifecycle files changed. Checklist
+      items toggled by orchestrator from receipt. Mainline targeted verification:
+      `uv run pytest tests/shell/test_pi_launcher_contract.py` returned expected red
+      with 31 failed in 0.28s, all aligned with missing `pi` CLI command/launcher
+      implementation (argparse invalid choice: ''pi''), not syntax/import/fixture
+      errors. R1 coverage added `test_launcher_extension_fallback_to_long_flag` for
+      help text with no `-e` and supported `--extension`, asserting selected flag
+      `--extension`. R2 coverage extended `test_launcher_interactive_tui_classification`
+      with `--mode=rpc`, `--mode=print`, `--mode=json`, `--mode=sdk`, `--mode=`, `--mode=unknown`,
+      `--mode interactive`, `--mode=interactive`, and conflict precedence cases where
+      `--json`/`-p` force non-interactive despite interactive markers. Evidence includes
+      refs confirmation for design/pi-coding-agent-integration.md lines 823-829, 1282-1284,
+      and 1296-1303; downstream implementation remains blocked pending `pi_contract_harness_20260526.final_regate`.'
   - id: pi_contract_harness_20260526.final_regate
     name: Final regate for Pi expected-red contract harness
     status: pending
