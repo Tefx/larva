@@ -73567,7 +73567,7 @@ phases:
       \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
       \ key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Exact command/invocation exercising `larva pi` through the
+    verification: '- [x] Exact command/invocation exercising `larva pi` through the
       packaged CLI entrypoint is recorded.
 
       - [ ] Runtime artifact shows selected extension flag, bundled extension entry,
