@@ -80162,3 +80162,190 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.diagnostic_live
     agent: frontend-engineer
+  - id: pi_persona_spawn_proof_20260527.final_real_pi_retest
+    name: Final real-Pi retest for persona load, slash switch, spawn lifecycle, and
+      prompt injection
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      independence_level: L2
+
+
+      PROOF ARTIFACT:
+
+      From a fresh perspective after remediation/no-op disposition, rerun the exact
+      real Pi commands/PTY sequences and focused tests. This step must positively
+      answer all four user questions with deterministic runtime evidence. Source inspection,
+      helper tests, static logs, or extension-state-only evidence are insufficient.
+
+
+      PROTECTS DOWNSTREAM GATE:
+
+      This phase gate may open only if this retest provides positive real-Pi evidence
+      for all four acceptance areas, or records a purely environmental blocker that
+      the gate must treat as BLOCKED unless demonstrably not product.
+
+
+      REQUIRED REAL COMMANDS / PTY ACTIONS:
+
+      - `uv run larva pi --persona <probe persona>`
+
+      - Live PTY sequence entering `/larva-persona <other probe persona>` and then
+      a post-switch sentinel prompt.
+
+      - Real Pi spawn/subagent invocation from the contract/diagnostic path, observing
+      request, spawned run/session, policy handoff, completion/failure handling, cleanup/state
+      reset, and no orphan processes/sessions.
+
+      - Targeted focused tests added/updated by diagnostic/remediation.
+
+      - Full `uv run pytest`.
+
+      - Full `uv run invar guard --all`.
+
+
+      FORBIDDEN ACCEPTANCE SUBSTITUTES:
+
+      - helper-only tests without real Pi PTY transcript
+
+      - static/source-only prompt route assertions
+
+      - extension state showing persona id without sentinel behavior evidence
+
+      - mock spawn tests without real Pi lifecycle observation
+
+      - startup-only smoke that never asks persona-specific sentinel prompts
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user question 1 | prove `--persona` loads persona semantically/effectively
+      | pi_persona_spawn_proof_20260527.final_real_pi_retest | startup persona final
+      proof | startup_command, startup_transcript, sentinel_response | OWNED | gate-blocking
+      if not positive or environmental-only blocker |
+
+      | R2 | user question 2 | prove slash command switches persona and confirms effective
+      load | pi_persona_spawn_proof_20260527.final_real_pi_retest | slash switch final
+      proof | slash_pty_transcript, switch_confirmation, post_switch_sentinel_response
+      | OWNED | gate-blocking if not positive or environmental-only blocker |
+
+      | R3 | user question 3 | prove `larva spawn`/subagent lifecycle end-to-end in
+      real Pi | pi_persona_spawn_proof_20260527.final_real_pi_retest | spawn lifecycle
+      final proof | spawn_transcript, lifecycle_table, cleanup_probe | OWNED | gate-blocking
+      if not positive or environmental-only blocker |
+
+      | R4 | user question 4 | prove persona prompt content enters effective Pi system
+      prompt/context | pi_persona_spawn_proof_20260527.final_real_pi_retest | prompt
+      injection final proof | prompt_route_observed, sentinel_behavior_proof | OWNED
+      | gate-blocking if not positive or environmental-only blocker |
+
+      | R5 | prior phase | prove previous slash autocomplete/startup fixes still hold
+      | pi_persona_spawn_proof_20260527.final_real_pi_retest | prior regression final
+      proof | slash_autocomplete_transcript, startup_no_crash_output | OWNED | gate-blocking
+      if regressed |
+
+      | R6 | repo quality baseline | prove full tests and Invar guard are green after
+      any changes | pi_persona_spawn_proof_20260527.final_real_pi_retest | full repo
+      quality proof | pytest_output, invar_guard_output | OWNED | gate-blocking if
+      not green unless unrelated pre-existing issue has non-intersection evidence
+      |
+
+
+      <side_effect_budget>
+
+      Allowed: run real Pi commands/PTY, targeted tests, full pytest, and invar guard;
+      collect transcripts/logs; cleanup probe personas/sessions per contract. Forbidden:
+      product code changes, marking helper/static proof as final, suppressing failures,
+      leaving orphan process/session/probe state.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm startup and slash-switch sentinel responses are different where the
+      probe personas require different behavior.
+
+      - Confirm spawn cleanup/no-orphan evidence is collected after both completion
+      and any controlled failure path exercised.
+
+      - Confirm full `uv run pytest` and `uv run invar guard --all` are run in the
+      same repo state as the Pi live retest.
+
+      </risk_probes>'
+    verification: '- [ ] `uv run larva pi --persona <probe persona>` raw stdout/stderr/PTY
+      transcript proves startup persona semantic load and effective sentinel prompt
+      behavior.
+
+      - [ ] Live PTY slash `/larva-persona <other probe persona>` transcript proves
+      switch confirmation and post-switch effective sentinel prompt behavior.
+
+      - [ ] Real Pi spawn/subagent invocation transcript proves request, spawned run/session,
+      model/tool policy handoff, completion/failure handling, cleanup/state reset,
+      and no orphan processes/sessions.
+
+      - [ ] Prompt injection route evidence plus sentinel behavior proves persona
+      prompt content entered effective Pi system prompt/context; extension-state-only
+      proof fails this checklist.
+
+      - [ ] Previous slash autocomplete `/` and Pi startup non-crash behavior is positively
+      re-proven.
+
+      - [ ] Focused targeted tests pass with raw output.
+
+      - [ ] Full `uv run pytest` passes with raw output.
+
+      - [ ] Full `uv run invar guard --all` passes with raw output.
+
+      - [ ] Forbidden-string searches show no stale/default persona markers, extension-only
+      echo acceptance, orphan state/process markers, or previous crash signatures.
+
+      - [ ] Any non-green item is classified as product blocker or environmental blocker;
+      environmental blockers are not treated as PASS.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/ — <key passage/listed tests or NOT READ: reason>\n- AGENTS.md\
+      \ — <key passage or NOT READ: reason>\n- installed Pi API/source refs — <path/package/version\
+      \ and key passage or NOT READ: reason>\n\n## Final Real Pi Retest Receipt\n\
+      ### A1 Startup persona (`--persona`)\n- command: `uv run larva pi --persona\
+      \ <probe persona>`\n- raw_stdout_stderr_or_pty: |\n  <paste>\n- sentinel_response:\
+      \ <paste>\n- status: PROVEN | BLOCKED_PRODUCT | BLOCKED_ENV\n\n### A2 Slash\
+      \ switch (`/larva-persona`)\n- pty_sequence: <including slash entry>\n- raw_pty_transcript:\
+      \ |\n  <paste>\n- switch_confirmation: <paste>\n- post_switch_sentinel_response:\
+      \ <paste>\n- status: PROVEN | BLOCKED_PRODUCT | BLOCKED_ENV\n\n### A3 Spawn\
+      \ lifecycle\n- invocation_path: <real Pi spawn/subagent path>\n- raw_transcript:\
+      \ |\n  <paste>\n- lifecycle_table:\n  | event | observed evidence |\n  | request\
+      \ | <evidence> |\n  | spawned_run/session | <evidence> |\n  | model_tool_policy_handoff\
+      \ | <evidence> |\n  | completion_or_failure | <evidence> |\n  | cleanup_state_reset\
+      \ | <evidence> |\n  | no_orphan_process/session | <evidence> |\n- status: PROVEN\
+      \ | BLOCKED_PRODUCT | BLOCKED_ENV\n\n### A4 Prompt injection\n- route_evidence:\
+      \ <registry -> extension -> effective model/system prompt/context>\n- raw_prompt_exposed:\
+      \ <yes/no>\n- sentinel_behavior_proof: <paste output and explanation>\n- status:\
+      \ PROVEN | BLOCKED_PRODUCT | BLOCKED_ENV\n\n### A5 Prior regression preservation\n\
+      - slash_autocomplete_transcript: |\n  <paste>\n- startup_no_crash_output: |\n\
+      \  <paste>\n- status: PROVEN | BLOCKED_PRODUCT | BLOCKED_ENV\n\n## Targeted\
+      \ and Full Command Output\n- focused_tests_command: <command>\n- focused_tests_output:\
+      \ |\n  <paste>\n- pytest_command: `uv run pytest`\n- pytest_output: |\n  <paste>\n\
+      - invar_command: `uv run invar guard --all`\n- invar_output: |\n  <paste>\n\n\
+      ## Forbidden String Searches\n- stale/default persona markers: <command/output>\n\
+      - extension-only echo acceptance markers: <command/output>\n- orphan state/process\
+      \ markers: <command/output>\n- prior crash signatures: <command/output>\n\n\
+      ## Final Answers to User Questions\n1. `--persona` loaded? <YES with evidence\
+      \ ref / BLOCKED>\n2. slash switch loaded? <YES with evidence ref / BLOCKED>\n\
+      3. spawn lifecycle tested? <YES with evidence ref / BLOCKED>\n4. prompt entered\
+      \ effective system prompt/context? <YES with evidence ref / BLOCKED>"
+    depends_on:
+    - pi_persona_spawn_proof_20260527.remediate_wiring
+    agent: integration-verifier
