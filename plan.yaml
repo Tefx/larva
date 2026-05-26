@@ -72964,6 +72964,90 @@ phases:
     - pi_extension_runtime_20260526.tool_policy
     - pi_extension_runtime_20260526.subagent_rpc
     agent: frontend-engineer
+  - id: pi_extension_runtime_20260526.extension_runtime_proof
+    name: Extension runtime and seam proof
+    status: pending
+    description: 'step_type: verification
+
+      expected_result: green
+
+      verification_scope: phase-check; protects the Pi extension runtime gate and
+      final liveness gate.
+
+      As an independent verifier, exercise the bundled Pi extension through fake or
+      real Pi extension APIs/RPC process seams and prove the user-observable slash
+      command/status/tool behavior, not only source structure.
+
+      <side_effect_budget>Allowed: run tests, Node/fixture scenarios, and inspect
+      artifacts. Forbidden: source mutation or accepting unit-only proof for runtime
+      hook surfaces.</side_effect_budget>
+
+      <risk_probes>1. Runtime evidence must show commands/hooks/tools registered and
+      invoked. 2. Mocked Pi APIs are acceptable only when the source-to-sink hook
+      path is exercised. 3. Subagent RPC proof must include raw JSONL traces for success
+      and failure paths.'
+    verification: '- [ ] Runtime scenario proves `/larva-persona <valid>`, no-arg
+      interactive selector path, non-interactive bad-input path, and UI status updates.
+
+      - [ ] Runtime scenario proves prompt watermark composition/replacement and model
+      projection through Pi model registry/setModel seam.
+
+      - [ ] Runtime scenario proves policy baseline filtering, `pi.setActiveTools`,
+      `tool_call` denial, and denied `larva_subagent` no-handler behavior.
+
+      - [ ] Runtime scenario proves `larva_subagent` success, failure-after-session-allocation,
+      resume, busy set, and abort mappings with JSONL/RPC traces.
+
+      - [ ] Behavioral proof register maps each verification target 6-41 to PROVEN,
+      BLOCKED, or explicit closure path.'
+    evidence_template: '## Verification Report
+
+      **Tester**: integration-verifier
+
+      **Independence Level**: L2
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key passages for persona projection,
+      tool policy, subagent, API contracts, and verification targets.
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Runtime/Seam Evidence
+
+      - command_or_node_scenario: <exact command>
+
+      - raw_stdout: <paste>
+
+      - raw_stderr: <paste>
+
+      - exit_code: <code>
+
+      - pi_hook_invocations: <evidence>
+
+      - rpc_jsonl_traces: <success/failure/resume/abort>
+
+      - tool_policy_denial_trace: <evidence>
+
+
+      ## Headline
+
+      - [ ] PASS
+
+      - [ ] PASS_WITH_DEBT
+
+      - [ ] FAIL'
+    depends_on:
+    - pi_extension_runtime_20260526.wire_extension_entry
+    agent: integration-verifier
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
