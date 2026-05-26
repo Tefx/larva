@@ -73144,22 +73144,18 @@ phases:
   - id: pi_finalization_20260526.wiring_audit
     name: Wiring and package reachability audit
     status: pending
-    description: 'step_type: verification
-
-      expected_result: green
-
-      verification_scope: full-plan-check; protects final gate.
-
-      As an independent wiring auditor, verify that the `larva pi` CLI command, package
-      force-include, bundled extension entry, Pi hook/command/tool registrations,
-      and child RPC launch path are reachable at runtime.
-
-      <side_effect_budget>Allowed: read-only scans/import traces/package build inspection
-      and command execution. Forbidden: source mutation.</side_effect_budget>
-
-      <risk_probes>1. Packaged extension file must be included and used by launcher.
-      2. CLI parser/dispatch must expose `pi` from the installed console script path.
-      3. Extension registration must not be dead code or disconnected from hook exports.'
+    description: "step_type: verification\nexpected_result: green\nverification_scope:\
+      \ full-plan-check; protects final gate.\nAs an independent wiring auditor, verify\
+      \ that the `larva pi` CLI command, package force-include, bundled extension\
+      \ entry, Pi hook/command/tool registrations, and child RPC launch path are reachable\
+      \ at runtime.\n<side_effect_budget>Allowed: read-only scans/import traces/package\
+      \ build inspection and command execution. Forbidden: source mutation.</side_effect_budget>\n\
+      <risk_probes>1. Packaged extension file must be included and used by launcher.\
+      \ 2. CLI parser/dispatch must expose `pi` from the installed console script\
+      \ path. 3. Extension registration must not be dead code or disconnected from\
+      \ hook exports.\n- [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n\
+      \  `- design/pi-coding-agent-integration.md — key passages read: <specific sections/targets\
+      \ used by this step>; NOT READ entries only with reason.`\n"
     verification: '- [ ] CLI reachability evidence shows `larva pi` is registered
       through the real console script/CLI dispatch path.
 
