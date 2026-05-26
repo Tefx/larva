@@ -76897,7 +76897,7 @@ phases:
       changes, no arbitrary stderr propagation, no B1/B2/B3/B4/B6 regression evidence.'
   - id: pi_finalization_20260526.pre_rpc_stderr_mapping_retest
     name: Read-only retest for pre-RPC stderr mapping
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -77021,3 +77021,5 @@ phases:
     depends_on:
     - pi_finalization_20260526.pre_rpc_stderr_mapping_fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T17:24:16.360458+00:00'
