@@ -73224,47 +73224,39 @@ phases:
       - [ ] All DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND rows have severity and closure
       path before final gate.
 
-      - [ ] The audit explicitly checks forbidden scope remained absent.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      - [ ] The audit explicitly checks forbidden scope remained absent.
 
-      - design/pi-coding-agent-integration.md — cite key passages from Non-goals,
-      Launcher contract, API contracts, Architecture basis, Verification targets,
-      and Implementation handoff.
+      - [ ] Upstream Pi phase receipts reviewed by this audit include `## refs Read
+      Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
+      NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Spec Conformance Report
-
-      | R# | Spec Section | Requirement | Implementation/Evidence | Verdict | Notes
-      |
-
-      | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this spec conformance audit>; NOT READ entries only with reason.
 
 
-      ## Coverage Summary
+      ## Upstream Receipt Refs Confirmation Audit
 
-      - total_requirements: <N>
+      - contract harness receipts included refs confirmation: <yes/no; evidence refs>
 
-      - conforms: <N>
+      - launcher runtime receipts included refs confirmation: <yes/no; evidence refs>
 
-      - diverges: <N>
+      - extension runtime receipts included refs confirmation: <yes/no; evidence refs>
 
-      - partial: <N>
-
-      - needs_test: <N>
-
-      - not_found: <N>
-
-      - ambiguous_spec: <N>
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Top Risks and Closure Paths
+      ## Spec Conformance Evidence
 
-      - <risk>: <closure path>
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
+      - requirements_register: <targets 1-41 and non-goals>
 
-      ## Forbidden Scope Review
+      - evidence_table: <requirement, implementation/runtime evidence, verdict, closure
+      path>
 
-      - <none or findings>'
+      '
     agent: spec-verifier
   - id: pi_finalization_20260526.wiring_audit
     name: Wiring and package reachability audit
