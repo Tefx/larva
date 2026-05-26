@@ -75577,7 +75577,7 @@ phases:
       - [x] Child process invocation trace shows child RPC uses launcher-provided
       real bin, extension flag, and extension entry.
 
-      - [ ] No orphan public symbols, dead extension entry, or unconsumed config/env
+      - [x] No orphan public symbols, dead extension entry, or unconsumed config/env
       fields remain without documented non-intersection.
 
       - [ ] Upstream launcher and extension receipts include `## refs Read Confirmation`
