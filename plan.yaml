@@ -76215,3 +76215,123 @@ phases:
     depends_on:
     - pi_finalization_20260526.spec_divergence_fix
     agent: integration-verifier
+  - id: pi_finalization_20260526.spec_conformance_retest
+    name: Spec conformance retest after Pi divergence fixes
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check; protects final gate by re-running the spec
+      conformance decision after B1-B6 fixes and B7 executable proof.
+
+      agent_source: project
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > Verification targets 1-41
+
+      - design/pi-coding-agent-integration.md > API contracts
+
+      - design/pi-coding-agent-integration.md > Subagent spawning
+
+      PROOF ARTIFACT: A fresh adversarial conformance retest that consumes the fix
+      receipt and runtime proof, then updates the prior FAIL/BLOCKED findings with
+      PROVEN/BLOCKED closure status.
+
+
+      RETEST SCOPE:
+
+      - Re-check prior B1-B6 divergences against exact spec text.
+
+      - Re-check B7 proof gaps and ensure runtime evidence is executable/fake TypeScript/Pi
+      seam evidence, not static/source-only substitution.
+
+      - Re-check that wiring-audit warnings do not conceal final-gate blockers; if
+      they intersect target 1-41, assign remediation owner.
+
+
+      <side_effect_budget>Allowed: read-only source/spec/evidence review and command
+      execution. Forbidden: source mutation or lifecycle completion.</side_effect_budget>
+
+      <risk_probes>1. Do not accept sampled evidence when the prior audit named concrete
+      failed verification targets. 2. Treat any unresolved B1-B7 row as final-gate
+      blocker unless non-intersection is explicit. 3. Confirm no forbidden PersonaSpec/schema/tool-policy
+      scope was added while fixing divergences.</risk_probes>'
+    verification: '- [ ] Requirements register covers all verification targets 1-41
+      and explicitly marks B1-B7 as retested.
+
+      - [ ] Evidence table cites the fix receipt and runtime proof artifacts for B1-B7,
+      with verdicts CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC,
+      or SPEC_POSSIBLY_STALE.
+
+      - [ ] B1-B6 are either CONFORMS with positive evidence or have blocker-class
+      closure paths before final gate.
+
+      - [ ] B7 runtime proof gaps are either closed by executable/fake TypeScript/Pi
+      seam evidence or assigned remediation ownership before final gate.
+
+      - [ ] Retest rejects source-only/static-only proof for runtime behaviors unless
+      the spec target is purely static and the non-runtime rationale is explicit.
+
+      - [ ] Retest confirms forbidden non-goals and canonical PersonaSpec authority
+      remain preserved.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passages from Verification targets
+      1-41, API contracts, and Subagent spawning sections.
+
+
+      ## Spec Conformance Retest Report
+
+      **Prior failed audit**: pi_finalization_20260526.spec_conformance
+
+      **Fix receipt reviewed**: pi_finalization_20260526.spec_divergence_fix
+
+      **Runtime proof reviewed**: pi_finalization_20260526.extension_runtime_conformance_proof
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Prior finding | Retest verdict | Evidence
+      ref | Closure path |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## B1-B7 Closure Table
+
+      | blocker | target(s) | prior gap | retest evidence | verdict | final_gate_disposition
+      |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | B1 | VT22 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B2 | VT26/31/34 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B3 | VT37 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B4 | VT38 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B5 | VT39 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B6 | VT13/17 | <prior> | <artifact> | <verdict> | <disposition> |
+
+      | B7 | runtime proof gaps | <prior> | <artifact> | <verdict> | <disposition>
+      |
+
+
+      ## Headline
+
+      - [ ] PASS: No blocker-class divergence or proof gap remains.
+
+      - [ ] BLOCKED: One or more B1-B7 or target 1-41 blockers remain with explicit
+      closure path.'
+    depends_on:
+    - pi_finalization_20260526.extension_runtime_conformance_proof
+    agent: spec-verifier
