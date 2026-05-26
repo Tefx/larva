@@ -77553,3 +77553,123 @@ phases:
     pass.
   depends_on:
   - pi-integration-finalization-2026-05-26
+  steps:
+  - id: pi_slash_autocomplete_20260527.reproduce_contract
+    name: Reproduce and contract Pi slash autocomplete crash
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Capture a minimal expected-red proof for the live Pi crash reported by the user:
+      inside `uv run larva pi`, typing `/` triggers Pi TUI autocomplete and exits
+      with uncaught `TypeError: value.startsWith is not a function` from `@earendil-works/pi-tui`
+      editor autocomplete.
+
+
+      BOUNDING BOX:
+
+      - `design/pi-coding-agent-integration.md`
+
+      - `contrib/pi-extension/larva.ts`
+
+      - `tests/shell/test_pi_extension_contract.py`
+
+      - `tests/shell/test_pi_extension_tool_policy_static.py`
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-SLASH-CRASH-001 | user report `pi内输入/ 后出错`; stack `value.startsWith is
+      not a function` | `/` slash autocomplete must be reproducible as crash or contract
+      gap before fix | pi_slash_autocomplete_20260527.reproduce_contract | reproduce
+      slash autocomplete failure or same return-shape gap | reproduction_record |
+      OWNED | blocks this phase gate |
+
+      | PI-EXT-API-001 | `design/pi-coding-agent-integration.md`; Pi extension API
+      registration/autocomplete contract | extension autocomplete results must use
+      shapes Pi editor accepts | pi_slash_autocomplete_20260527.reproduce_contract
+      | cite API shape and failing returned value shape | pi_api_contract_shape |
+      OWNED | blocks implementation anchor |
+
+
+      CONSTRAINTS:
+
+      - Do NOT mutate product code in this step.
+
+      - Test/fixture-only changes are allowed when needed to express the expected-red
+      regression.
+
+      - If live TUI automation is impractical, inspect the Pi extension public registration/autocomplete
+      API and build a regression fixture that exercises the same command/autocomplete
+      return shape causing `value.startsWith` on a non-string.
+
+      - Completion is allowed while the fixture is red if the crash/gap is reproduced
+      and no product code changed.
+
+
+      <side_effect_budget>
+
+      Allowed: add or adjust focused regression tests/fixtures under `tests/shell/`
+      that expose the slash-autocomplete shape mismatch; capture live/fake Pi command
+      output. Forbidden: edit `contrib/pi-extension/larva.ts`, PersonaSpec/schema/contracts,
+      launcher behavior unrelated to slash autocomplete, or prior completed phase
+      evidence.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the reproduced shape reaches the same Pi editor autocomplete expectation
+      (`startsWith` on candidate value) rather than an unrelated launcher failure.
+
+      - Verify the fixture uses documented Pi extension API shapes, not a test-only
+      convenience wrapper.
+
+      - Verify `/` autocomplete is covered even if no command is executed after autocomplete
+      opens.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (expected-red):
+
+      - [ ] Refs confirmation includes key passages from design/pi-coding-agent-integration.md
+      and contrib/pi-extension/larva.ts about Pi extension registration/autocomplete
+      shape.
+
+      - [ ] Reproduction record includes exact command or fixture invocation, environment,
+      stdout/stderr/exit, and the failing value/type shape.
+
+      - [ ] If live TUI automation is impractical, a focused regression fixture exercises
+      the same slash autocomplete return-shape path and is expected red before implementation.
+
+      - [ ] Product code remains unchanged in this step; only test/fixture/proof artifacts
+      are changed when needed.
+
+      - [ ] Semantic closure fields are present: verdict, blockers, expected_result=red,
+      gate_open_allowed=false.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_contract.py — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_tool_policy_static.py — <key passage or NOT\
+      \ READ: reason>\n\n## Expected-Red Reproduction Record\n- command_or_fixture:\
+      \ <exact invocation>\n- environment: <OS/node/npm/pi package versions when available>\n\
+      - stdout: |\n  <raw stdout>\n- stderr: |\n  <raw stderr>\n- exit_code: <code>\n\
+      - failing_shape: <value, typeof value, candidate object/string shape>\n- live_vs_fixture:\
+      \ LIVE_TUI | FAKE_PI_FIXTURE\n- product_code_changed: false\n\n## Semantic Closure\n\
+      - verdict: EXPECTED_RED_REPRODUCED | BLOCKED\n- blockers: []\n- gate_open_allowed:\
+      \ false\n- downstream_anchor_for_fix: pi_slash_autocomplete_20260527.fix_extension_shape"
+    agent: integration-verifier
