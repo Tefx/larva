@@ -74966,7 +74966,7 @@ phases:
       - [x] `child.kill()` false return is handled explicitly and cannot produce a
       cancelled success-path receipt.
 
-      - [ ] Normal successful abort/kill path remains cancelled with `LARVA_CHILD_CANCELLED`.
+      - [x] Normal successful abort/kill path remains cancelled with `LARVA_CHILD_CANCELLED`.
 
       - [ ] Evidence includes focused command/output or trace excerpt for both unknowable
       failed and normal cancelled paths.'
