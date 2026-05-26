@@ -73442,28 +73442,30 @@ phases:
 
       - [ ] Documentation lists non-goals/forbidden scopes so users do not infer unsupported
       security/sandbox guarantees.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+    evidence_template: '## refs Read Confirmation
 
-      - design/pi-coding-agent-integration.md — cite key passages from Non-goals,
-      Runtime UX, Tool policy, Subagent spawning, and Implementation handoff.
-
-
-      ## Documentation Receipt
-
-      - docs_changed: <list>
-
-      - sections_updated: <list>
-
-      - examples_verified_against_runtime: <evidence>
-
-      - forbidden_scope_language_checked: <evidence>
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this documentation sync>; NOT READ entries only with reason.
 
 
-      ## Requirement-to-Docs Matrix
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | requirement_family | source_ref | doc_section | status | notes |
+      - spec_conformance receipt included refs confirmation: <yes/no; evidence ref>
 
-      | --- | --- | --- | --- | --- |'
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
+
+
+      ## Documentation Sync Evidence
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
+
+      - docs_changed: <files and sections>
+
+      - forbidden_scope_preservation: <confirmation docs do not imply forbidden Pi
+      scope>
+
+      '
     depends_on:
     - pi_finalization_20260526.spec_conformance
     agent: doc-reviewer
