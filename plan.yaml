@@ -76369,7 +76369,7 @@ phases:
       - [x] B1-B6 are either CONFORMS with positive evidence or have blocker-class
       closure paths before final gate.
 
-      - [ ] B7 runtime proof gaps are either closed by executable/fake TypeScript/Pi
+      - [x] B7 runtime proof gaps are either closed by executable/fake TypeScript/Pi
       seam evidence or assigned remediation ownership before final gate.
 
       - [ ] Retest rejects source-only/static-only proof for runtime behaviors unless
