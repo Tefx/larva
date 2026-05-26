@@ -72089,6 +72089,94 @@ phases:
   depends_on:
   - live-opencode-tool-policy-smoke-2026-05-25
   - meta.gate
+  steps:
+  - id: pi_contract_harness_20260526.launcher_expected_red
+    name: Launcher contract and expected-red tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+      spec_refs: design/pi-coding-agent-integration.md > Runtime UX > Launch; Launcher
+      contract; Verification targets 1-5, 10, 37-39
+
+      refs: design/pi-coding-agent-integration.md
+
+      TARGET PROOF ARTIFACT: Expected-red launcher tests pin `larva pi [--persona
+      <id>] [--] <pi args...>`, real Pi discovery, extension flag selection, extension
+      packaging path, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`
+      classification before launcher implementation exists.
+
+      BOUNDING BOX: tests/shell/test_pi_launcher_contract.py; src/larva/shell/cli.py;
+      src/larva/shell/cli_parser.py; pyproject.toml force-include expectations.
+
+      CONSTRAINTS: Product code may not be implemented in this step; tests may use
+      fake executable Pi fixtures and fake Larva resolve/list fixtures; do not parse
+      `~/.pi/tool-policy.json` in launcher tests except to prove launcher does not
+      parse it.
+
+      <side_effect_budget>Allowed: add expected-red tests/fixtures only under tests/.
+      Forbidden: modifying src/, contrib/, pyproject.toml, PersonaSpec schema, Pi
+      settings files, worktree/lock/credential logic.</side_effect_budget>
+
+      <risk_probes>1. Verify forwarded Pi args are unchanged after Larva-owned flags.
+      2. Verify extension unsupported path does not write Pi settings. 3. Verify malformed/unknown
+      Pi mode is non-interactive for selector purposes.</risk_probes>'
+    verification: '- [ ] Tests are limited to tests/ fixtures and expose the launcher
+      gap as expected-red without implementing product code.
+
+      - [ ] Requirement traceability matrix maps verification targets 1-5, 10, and
+      37-39 to exact test names and expected evidence fields.
+
+      - [ ] Test fixtures prove real Pi discovery, `-e` versus `--extension` selection,
+      unsupported extension failure, and no Pi settings fallback.
+
+      - [ ] Test fixtures prove `LARVA_PI_INITIAL_PERSONA_ID`, `LARVA_PI_REAL_BIN`,
+      `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
+      and `LARVA_PI_INTERACTIVE_TUI` are asserted.
+
+      - [ ] Expected-red evidence identifies downstream implementation owner `pi_launcher_runtime_20260526.implement_launcher_entry`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — cite key passages from Launch, Launcher
+      contract, and Verification targets 1-5/10/37-39.
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+
+      ## Expected-Red Test Receipt
+
+      - files_changed: <tests-only list>
+
+      - command: <exact pytest command>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+      - expected_failures_or_exposed_gaps: <launcher gaps exposed>
+
+      - product_code_modified: false
+
+
+      ## Side Effect / Risk Probe Receipt
+
+      - no_pi_settings_write_evidence: <evidence>
+
+      - arg_forwarding_evidence: <evidence>
+
+      - interactive_detector_edge_cases: <evidence>'
+    agent: python-executor
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
