@@ -73693,23 +73693,23 @@ phases:
       \ logic.</side_effect_budget>\n<risk_probes>1. Model parsing must split at the\
       \ first slash. 2. No-arg selector opens only when `LARVA_PI_INTERACTIVE_TUI=1`,\
       \ not merely `ctx.hasUI`. 3. Prompt watermark replacement must be idempotent.\n\
-      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      - [x] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
       \ — key passages read: <specific sections/targets used by this step>; NOT READ\
       \ entries only with reason.`\n"
-    verification: '- [ ] Resolve/list bridge uses `LARVA_CLI_ARGV_JSON` plus suffixes
+    verification: '- [x] Resolve/list bridge uses `LARVA_CLI_ARGV_JSON` plus suffixes
       and falls back to `larva`/`uvx larva` only when env is absent.
 
-      - [ ] `/larva-persona <valid>` commits one envelope, calls model lookup/setModel,
+      - [x] `/larva-persona <valid>` commits one envelope, calls model lookup/setModel,
       updates status, and affects the next model invocation without rewriting conversation
       history.
 
-      - [ ] No active persona status is `larva: none`; invalid switch, bad model,
+      - [x] No active persona status is `larva: none`; invalid switch, bad model,
       invalid policy hook, or tool enumeration failure preserves previous envelope.
 
-      - [ ] No-argument selector behavior follows interactive/non-interactive rules
+      - [x] No-argument selector behavior follows interactive/non-interactive rules
       and cancellation returns `LARVA_BAD_INPUT` without state change.
 
-      - [ ] Prompt composition preserves existing Pi project/user context and replaces
+      - [x] Prompt composition preserves existing Pi project/user context and replaces
       an existing Larva watermark block instead of appending duplicates.'
     evidence_template: '## refs Read Confirmation
 
