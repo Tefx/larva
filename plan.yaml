@@ -76518,3 +76518,154 @@ phases:
     depends_on:
     - pi_finalization_20260526.extension_runtime_conformance_proof
     agent: frontend-engineer
+  - id: pi_finalization_20260526.pre_rpc_stderr_retest
+    name: Read-only retest for pre-RPC stderr code propagation
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects final gate by rechecking B5/VT39 after
+      the focused pre-RPC stderr fix.
+
+      agent_source: project
+
+      spec_refs:
+
+      - design/pi-coding-agent-integration.md > API contracts > Child RPC contract
+
+      - design/pi-coding-agent-integration.md > Verification target 39
+
+      refs:
+
+      - design/pi-coding-agent-integration.md
+
+      PROOF ARTIFACT: A read-only runtime/fake-seam retest report proving the parent
+      error mapping for pre-RPC stderr and the preserved diagnostic handling for post-readiness
+      stderr.
+
+
+      BEHAVIORAL PROOF REGISTER REQUIRED:
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B5/VT39-pre-rpc-persona | fake child writes `larva pi: LARVA_PERSONA_NOT_FOUND:
+      child invalid` before readiness and exits | parent returns `LARVA_PERSONA_NOT_FOUND`
+      | pre_rpc_persona_runtime | PROVEN/UNPROVEN/BLOCKED | fix/retest or final gate
+      block | final gate |
+
+      | B5/VT39-whitelist | exact whitelist remains `LARVA_PERSONA_NOT_FOUND`, `MODEL_UNAVAILABLE`,
+      `POLICY_INVALID`, `TOOL_ENUMERATION_FAILED` | focused tests or runtime fixture
+      cover all named codes and at least one non-whitelisted code | whitelist_runtime
+      | PROVEN/UNPROVEN/BLOCKED | fix/retest or final gate block | final gate |
+
+      | B5/VT39-post-readiness | stderr after RPC readiness remains diagnostic/protocol
+      failure handling | fake child emits post-readiness stderr and parent does not
+      replace RPC/domain result with stderr code | post_readiness_runtime | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest or final gate block | final gate |
+
+      | B1/B2/B3/B4/B6-preservation | previously passing behaviors are not regressed
+      by B5 fix | focused existing conformance commands remain green or non-intersection
+      is explicit | preservation_runtime | PROVEN/UNPROVEN/BLOCKED | fix/retest or
+      final gate block | final gate |
+
+
+      <side_effect_budget>Allowed: read-only command execution, fake child/runtime
+      seam invocation, stdout/stderr/RPC trace collection, source inspection for evidence.
+      Forbidden: source mutation, lifecycle completion, live Pi dependency as a prerequisite
+      for fixture proof.</side_effect_budget>
+
+      <risk_probes>1. Verify the fake seam truly exits before RPC readiness for the
+      persona-not-found case. 2. Verify readiness timing, not stderr text alone, decides
+      propagation. 3. Verify evidence includes raw stderr/stdout/RPC traces rather
+      than summaries.</risk_probes>'
+    verification: '- [ ] Retest is read-only and records exact commands/harness paths,
+      raw stdout/stderr/RPC trace, and exit codes.
+
+      - [ ] Fake child pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
+      maps to parent `LARVA_PERSONA_NOT_FOUND`.
+
+      - [ ] `MODEL_UNAVAILABLE`, `POLICY_INVALID`, and `TOOL_ENUMERATION_FAILED` pre-RPC
+      whitelist behavior remains covered or explicitly proven equivalent by a table-driven
+      fixture.
+
+      - [ ] A non-whitelisted pre-RPC stderr case remains a child start/protocol failure
+      and is not propagated as a domain code.
+
+      - [ ] Post-readiness stderr remains diagnostic/protocol handling and does not
+      override a ready RPC result.
+
+      - [ ] B1/B2/B3/B4/B6 previously passing conformance checks remain green or have
+      explicit non-intersection evidence.
+
+      - [ ] Behavioral proof register includes requirement_ref, behavior_claim, runtime_proof_expected,
+      evidence_ref, status, closure_path, and gate_decision_basis for B5/VT39 and
+      preservation rows.'
+    evidence_template: '## Verification Report
+
+
+      **Tester**: integration-verifier (independent of implementation)
+
+      **Scope**: B5/VT39 pre-RPC stderr propagation and post-readiness diagnostic
+      boundary
+
+      **Independence Level**: L1
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — key passage or "NOT READ: <reason>"
+
+
+      ### Runtime/Fake Seam Execution
+
+      - commands_executed: <exact commands>
+
+      - harness_paths: <paths>
+
+      - raw_stdout: <paste>
+
+      - raw_stderr: <paste>
+
+      - rpc_trace: <paste or artifact path>
+
+      - exit_codes: <codes>
+
+
+      ### Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B5/VT39-pre-rpc-persona | <claim> | <expected> | <evidence> | PROVEN/UNPROVEN/BLOCKED
+      | <path> | <basis> |
+
+      | B5/VT39-whitelist | <claim> | <expected> | <evidence> | PROVEN/UNPROVEN/BLOCKED
+      | <path> | <basis> |
+
+      | B5/VT39-post-readiness | <claim> | <expected> | <evidence> | PROVEN/UNPROVEN/BLOCKED
+      | <path> | <basis> |
+
+      | B1/B2/B3/B4/B6-preservation | <claim> | <expected> | <evidence> | PROVEN/UNPROVEN/BLOCKED
+      | <path> | <basis> |
+
+
+      ### Headline
+
+      - [ ] PASS: B5/VT39 and preservation checks proven
+
+      - [ ] PASS_WITH_DEBT: only explicit non-blocking debt remains with non-intersection
+
+      - [ ] FAIL: blocking runtime proof gap or regression remains'
+    depends_on:
+    - pi_finalization_20260526.pre_rpc_stderr_fix
+    agent: integration-verifier
