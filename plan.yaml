@@ -75400,7 +75400,7 @@ phases:
       - [x] Exact scenario `abort-no-response-child-exited-kill-false` returns parent
       `status: failed` with `error.code: LARVA_CHILD_PROTOCOL_FAILED`.
 
-      - [ ] Evidence explicitly shows the scenario no longer returns `LARVA_CHILD_START_FAILED`.
+      - [x] Evidence explicitly shows the scenario no longer returns `LARVA_CHILD_START_FAILED`.
 
       - [ ] Normal successful abort/cancelled regression returns parent `status: cancelled`
       with `error.code: LARVA_CHILD_CANCELLED`.
