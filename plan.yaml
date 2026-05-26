@@ -74799,7 +74799,7 @@ phases:
 
       - [x] Fake Pi runtime abort-during-result trace includes child RPC `abort` command.
 
-      - [ ] Abort-during-result returns cancelled with `LARVA_CHILD_CANCELLED` and
+      - [x] Abort-during-result returns cancelled with `LARVA_CHILD_CANCELLED` and
       no success `result_text`.
 
       - [ ] Raw evidence includes the before/after scenario name or target number
