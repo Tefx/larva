@@ -74407,7 +74407,7 @@ phases:
       - [x] Runtime scenario proves policy baseline filtering, `pi.setActiveTools`,
       `tool_call` denial, and denied `larva_subagent` no-handler behavior.
 
-      - [ ] Runtime scenario proves `larva_subagent` success, failure-after-session-allocation,
+      - [x] Runtime scenario proves `larva_subagent` success, failure-after-session-allocation,
       resume, busy set, and abort mappings with JSONL/RPC traces.
 
       - [ ] Behavioral proof register maps each verification target 6-41 to PROVEN,
