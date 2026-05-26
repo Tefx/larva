@@ -75680,7 +75680,7 @@ phases:
       - [x] Child RPC liveness shows public result shape or documented failed/cancelled
       shape with raw JSONL/stdout/stderr evidence.
 
-      - [ ] If real Pi is unavailable, the receipt distinguishes fixture PASS from
+      - [x] If real Pi is unavailable, the receipt distinguishes fixture PASS from
       live-environment BLOCKED and lists exact missing external dependency without
       failing implementation proof.
 
