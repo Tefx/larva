@@ -72663,47 +72663,32 @@ phases:
   - id: pi_extension_runtime_20260526.persona_projection
     name: Complete persona projection and slash command runtime
     status: pending
-    description: 'step_type: implementation
-
-      agent_source: project
-
-      spec_refs: design/pi-coding-agent-integration.md > Persona runtime projection;
-      Runtime UX > Persona switching; UI status; API contracts; Verification targets
-      6-13, 37-38
-
-      refs: design/pi-coding-agent-integration.md
-
-      TARGET STATE: The bundled Pi extension maintains session-local active persona
-      state, resolves/list personas through the Larva CLI bridge, projects model via
-      `ctx.modelRegistry.find` plus `pi.setModel`, composes an idempotent Larva prompt
-      watermark through `before_agent_start`, sets `larva: <id>` or `larva: none`
-      UI status, and implements `/larva-persona` completion/selector behavior exactly
-      as specified.
-
-      BOUNDING BOX: contrib/pi-extension/ persona/bridge/status modules and tests/shell/test_pi_extension_contract.py.
-      Avoid shared runtime wiring in contrib/pi-extension/larva.ts except exported
-      seams intentionally consumed by the later wiring step.
-
-      UPSTREAM ARTIFACTS: `pi_contract_harness_20260526.extension_expected_red` tests
-      are PROTECTED.
-
-      CONSTRAINTS: Do not dump a subagent/persona catalogue into the prompt. Do not
-      alter PersonaSpec schema. Commit switch state atomically only after resolve,
-      model, policy readiness hooks supplied by sibling modules can succeed.
-
-      ## Completion Criteria (stub exclusion)
-
-      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; returned
-      prompt/model/status values must vary with resolved persona and runtime mode
-      inputs.
-
-      <side_effect_budget>Allowed: add/modify Pi extension TypeScript modules and
-      focused tests. Forbidden: schema changes, policy hierarchy, ask action, Pi settings
-      writes, worktree/lock/credential logic.</side_effect_budget>
-
-      <risk_probes>1. Model parsing must split at the first slash. 2. No-arg selector
-      opens only when `LARVA_PI_INTERACTIVE_TUI=1`, not merely `ctx.hasUI`. 3. Prompt
-      watermark replacement must be idempotent.'
+    description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
+      \ > Persona runtime projection; Runtime UX > Persona switching; UI status; API\
+      \ contracts; Verification targets 6-13, 37-38\nrefs: design/pi-coding-agent-integration.md\n\
+      TARGET STATE: The bundled Pi extension maintains session-local active persona\
+      \ state, resolves/list personas through the Larva CLI bridge, projects model\
+      \ via `ctx.modelRegistry.find` plus `pi.setModel`, composes an idempotent Larva\
+      \ prompt watermark through `before_agent_start`, sets `larva: <id>` or `larva:\
+      \ none` UI status, and implements `/larva-persona` completion/selector behavior\
+      \ exactly as specified.\nBOUNDING BOX: contrib/pi-extension/ persona/bridge/status\
+      \ modules and tests/shell/test_pi_extension_contract.py. Avoid shared runtime\
+      \ wiring in contrib/pi-extension/larva.ts except exported seams intentionally\
+      \ consumed by the later wiring step.\nUPSTREAM ARTIFACTS: `pi_contract_harness_20260526.extension_expected_red`\
+      \ tests are PROTECTED.\nCONSTRAINTS: Do not dump a subagent/persona catalogue\
+      \ into the prompt. Do not alter PersonaSpec schema. Commit switch state atomically\
+      \ only after resolve, model, policy readiness hooks supplied by sibling modules\
+      \ can succeed.\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable; returned prompt/model/status\
+      \ values must vary with resolved persona and runtime mode inputs.\n<side_effect_budget>Allowed:\
+      \ add/modify Pi extension TypeScript modules and focused tests. Forbidden: schema\
+      \ changes, policy hierarchy, ask action, Pi settings writes, worktree/lock/credential\
+      \ logic.</side_effect_budget>\n<risk_probes>1. Model parsing must split at the\
+      \ first slash. 2. No-arg selector opens only when `LARVA_PI_INTERACTIVE_TUI=1`,\
+      \ not merely `ctx.hasUI`. 3. Prompt watermark replacement must be idempotent.\n\
+      - [ ] Completion evidence includes:\n  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md\
+      \ — key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Resolve/list bridge uses `LARVA_CLI_ARGV_JSON` plus suffixes
       and falls back to `larva`/`uvx larva` only when env is absent.
 
