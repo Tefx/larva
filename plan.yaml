@@ -73852,7 +73852,7 @@ phases:
       warnings/infos. No deviations.'
   - id: pi_launcher_runtime_20260526.env_liveness_retest
     name: Retest launcher env liveness contract
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -73982,6 +73982,8 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.env_contract_fix
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T13:11:56.568832+00:00'
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: in_progress
