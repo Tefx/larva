@@ -74473,6 +74473,10 @@ phases:
     verification: '- [ ] Gate decision basis reviews all implementation receipts plus
       extension runtime proof.
 
+      - [ ] Gate specifically reviews `pi_extension_runtime_20260526.abort_runtime_retest`
+      and blocks unless B1 target 35 is PROVEN by fake Pi runtime trace containing
+      child RPC `abort` plus cancelled `LARVA_CHILD_CANCELLED` parent result.
+
       - [ ] OPEN only if persona projection, tool policy, and subagent obligations
       have positive hook/RPC evidence or explicit non-intersection.
 
@@ -74484,46 +74488,34 @@ phases:
 
       - [ ] Unresolved obligations include closure paths before finalization can open.
 
-      - [ ] All upstream implementation, wiring, and runtime proof receipts include
-      `## refs Read Confirmation` with `design/pi-coding-agent-integration.md` key
-      passages or explicit NOT READ reasons.'
-    evidence_template: '## refs Read Confirmation
-
-      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
-      used by this gate>; NOT READ entries only with reason.
-
-
-      ## Upstream Receipt Refs Confirmation Audit
-
-      - persona_projection receipt included refs confirmation: <yes/no; evidence ref>
-
-      - tool_policy receipt included refs confirmation: <yes/no; evidence ref>
-
-      - subagent_rpc receipt included refs confirmation: <yes/no; evidence ref>
-
-      - wire_extension_entry receipt included refs confirmation: <yes/no; evidence
-      ref>
-
-      - extension_runtime_proof receipt included refs confirmation: <yes/no; evidence
-      ref>
-
-      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
-
-
-      ## Gate Evidence
-
-      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
-      evidence refs>
-
-      - gate_decision: <OPEN/BLOCK with decision basis>
-
-      '
+      - [ ] All upstream implementation, wiring, runtime proof, abort fix, and abort
+      retest receipts include `## refs Read Confirmation` with `design/pi-coding-agent-integration.md`
+      key passages or explicit NOT READ reasons.'
+    evidence_template: "## Gate Review Report\n\n**Reviewer**: gate-reviewer (independent\
+      \ of phase implementation)\n**Phase**: pi-extension-runtime-2026-05-26\n\n###\
+      \ refs Read Confirmation (MANDATORY)\nFor each ref in this step:\n- design/pi-coding-agent-integration.md\
+      \ — key passage or \"NOT READ: <reason>\"\n\n### Execution Review\n| Step ID\
+      \ | Status | Evidence Quality | Concerns |\n| --- | --- | --- | --- |\n| pi_extension_runtime_20260526.extension_runtime_proof\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| pi_extension_runtime_20260526.abort_rpc_fix\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n| pi_extension_runtime_20260526.abort_runtime_retest\
+      \ | ✅/⚠️/❌ | excellent/adequate/insufficient/missing | <notes> |\n\n### B1 Decision\
+      \ Basis\n| requirement_ref | evidence_ref | positive_proof_status | gate_effect\
+      \ |\n| --- | --- | --- | --- |\n| B1 target 35 abort propagation | <abort_runtime_retest\
+      \ trace> | PROVEN/UNPROVEN/BLOCKED | OPEN only if PROVEN |\n| B1 target 35 cancelled\
+      \ result | <abort_runtime_retest result> | PROVEN/UNPROVEN/BLOCKED | OPEN only\
+      \ if PROVEN |\n| success/failure/resume/busy regressions | <regression matrix>\
+      \ | PROVEN/UNPROVEN/BLOCKED | OPEN only if PROVEN or explicit non-intersection\
+      \ |\n\n### Gate Decision\n- [ ] OPEN: Phase passes gate, including B1 closure.\n\
+      - [ ] BLOCKED: B1 or another phase obligation remains unproven.\n  - Blocking\
+      \ issues: <list>\n  - Required actions: <what needs to happen>"
     depends_on:
     - pi_extension_runtime_20260526.persona_projection
     - pi_extension_runtime_20260526.tool_policy
     - pi_extension_runtime_20260526.subagent_rpc
     - pi_extension_runtime_20260526.wire_extension_entry
     - pi_extension_runtime_20260526.extension_runtime_proof
+    - pi_extension_runtime_20260526.abort_rpc_fix
+    - pi_extension_runtime_20260526.abort_runtime_retest
     agent: gate-reviewer
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
