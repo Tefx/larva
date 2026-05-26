@@ -73458,7 +73458,7 @@ phases:
       receipt. This opens the Pi contract harness phase for downstream implementation.'
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
-  status: pending
+  status: in_progress
   gate: Launcher starts real Pi with bundled extension and Larva-owned environment,
     without writing Pi settings.
   depends_on:
@@ -73466,7 +73466,7 @@ phases:
   steps:
   - id: pi_launcher_runtime_20260526.implement_launcher_entry
     name: Complete larva pi launcher and package entry
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Runtime UX > Launch; Launcher contract; Architecture basis; Verification\
       \ targets 1-5, 10, 37-39\nrefs: design/pi-coding-agent-integration.md\nTARGET\
@@ -73528,6 +73528,8 @@ phases:
 
       '
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-05-26T07:57:29.995964+00:00'
   - id: pi_launcher_runtime_20260526.launcher_liveness_proof
     name: Launcher runtime liveness proof
     status: pending
