@@ -74476,7 +74476,7 @@ phases:
       mark the extension runtime gate open.'
   - id: pi_extension_runtime_20260526.gate
     name: Gate extension runtime
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check; protects final\
       \ runnable Pi integration.\nAs an independent reviewer, decide whether the Pi\
       \ extension runtime satisfies the design's persona, policy, and subagent obligations.\n\
@@ -74538,6 +74538,8 @@ phases:
     - pi_extension_runtime_20260526.abort_rpc_fix
     - pi_extension_runtime_20260526.abort_runtime_retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-26T14:20:11.567307+00:00'
   - id: pi_extension_runtime_20260526.abort_rpc_fix
     name: Wire in-flight abort into child RPC runtime
     status: done
