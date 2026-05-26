@@ -73227,6 +73227,176 @@ phases:
     depends_on:
     - pi_contract_harness_20260526.coverage_regate
     agent: python-executor
+  - id: pi_contract_harness_20260526.final_regate
+    name: Final regate for Pi expected-red contract harness
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      agent_source: project
+
+      read_only: true
+
+      expected_result: green
+
+
+      DECISION ARTIFACT:
+
+      As an INDEPENDENT READ-ONLY adversarial gate reviewer, perform the final regate
+      after `pi_contract_harness_20260526.regate_gap_remediation`. Your job is to
+      decide whether the Pi expected-red contract harness is now complete enough to
+      unblock downstream Pi launcher and extension implementation phases. Finding
+      remaining gaps is a successful gate outcome; do not rubber-stamp.
+
+
+      SCOPE:
+
+      - Freshly review `design/pi-coding-agent-integration.md` and the expected-red
+      harness evidence.
+
+      - Produce a full target 1-41 matrix, not sampled coverage.
+
+      - Explicitly close or block the two remaining semantic blockers: R1 / B2_TARGET5_INCOMPLETE
+      and R2 / B3_TARGET10_INCOMPLETE.
+
+      - Read-only: do not modify code, tests, fixtures, docs, plan state, lifecycle
+      state, or product implementation.
+
+
+      POSITIVE REQUIREMENT TRACEABILITY MATRIX TO VERIFY:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | required_status_for_OPEN |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | R1 / B2_TARGET5_INCOMPLETE | `design/pi-coding-agent-integration.md:1282-1284`
+      — extension preflight prefers `-e`, otherwise uses `--extension` when supported.
+      | Positive expected-red proof exists for fallback to `--extension` when `-e`
+      is absent. | `pi_contract_harness_20260526.regate_gap_remediation` | R1 target
+      5 fallback coverage reviewed | `R1_closure_evidence`, `R1_test_command_ref`,
+      `R1_status` | PROVEN |
+
+      | R2 / B3_TARGET10_INCOMPLETE | `design/pi-coding-agent-integration.md:823-829`
+      and `1296-1303` — mode detection covers space/equal forms, empty/missing/unknown
+      values, interactive forms, and conflict precedence. | Positive expected-red
+      proof exists for all enumerated target 10 mode cases. | `pi_contract_harness_20260526.regate_gap_remediation`
+      | R2 target 10 full mode matrix reviewed | `R2_closure_evidence`, `R2_test_command_ref`,
+      `R2_status` | PROVEN |
+
+
+      FULL TARGET 1-41 MATRIX REQUIREMENT:
+
+      Produce a target-by-target matrix for targets 1 through 41 with columns: `target_number`,
+      `design_ref`, `requirement_summary`, `owning_step_or_test`, `evidence_ref`,
+      `status`, `closure_path`, `gate_decision_basis`. Status must be one of `PROVEN`,
+      `OWNED`, `NEEDS_TEST`, `UNPROVEN`, `BLOCKED`, or `NOT_APPLICABLE_WITH_AUTHORITY`.
+      Any `NEEDS_TEST`, `UNPROVEN`, or `BLOCKED` target must block OPEN unless it
+      has explicit non-intersection evidence and a concrete owning downstream step.
+
+
+      OPEN/BLOCK RULE:
+
+      Allow `OPEN` only if R1 and R2 are positively closed, all previous blockers
+      are closed or concretely owned with non-intersection, the full target 1-41 matrix
+      is complete, refs receipts are auditable, expected-red failures remain aligned
+      with missing implementation, and no forbidden product implementation scope is
+      present. Return `BLOCKED` if any blocker remains unproven, ownership is prose-only,
+      matrix rows are missing, or forbidden scope appears.
+
+
+      SIDE_EFFECT_BUDGET:
+
+      - Allowed: read design refs, plan evidence, tests/fixtures, diffs, and command
+      receipts; run read-only verification commands if needed.
+
+      - Forbidden: modify code, tests, fixtures, docs, plan state, lifecycle state,
+      product implementation, launcher runtime, or extension runtime.
+
+      - Forbidden: approve from sampled evidence or generic pass claims.
+
+
+      RISK_PROBES:
+
+      - Check R1 proves positive fallback to `--extension`, not merely unsupported
+      extension failure or no-settings-write behavior.
+
+      - Check R2 matrix includes exact `--mode=value` forms, empty/unknown values,
+      explicit interactive forms, and conflict precedence with print/json markers.
+
+      - Check no product implementation was introduced to make expected-red tests
+      green before the implementation phase.
+
+
+      ## Checklist
+
+      - [ ] Full target 1-41 matrix produced with design refs, owning tests/steps,
+      evidence refs, statuses, closure paths, and gate decision basis.
+
+      - [ ] R1 / B2_TARGET5_INCOMPLETE is `PROVEN` by expected-red test evidence for
+      `--extension` fallback when `-e` is absent.
+
+      - [ ] R2 / B3_TARGET10_INCOMPLETE is `PROVEN` by expected-red matrix evidence
+      for all equal-form, empty/unknown, explicit interactive, and conflict-precedence
+      cases.
+
+      - [ ] All previous blocker-class obligations are closed or concretely owned
+      with non-intersection; no blocker is closed by prose-only assertion.
+
+      - [ ] refs read confirmations are auditable for current proof.
+
+      - [ ] Changed-file scope confirms no forbidden product implementation files
+      changed.
+
+      - [ ] Final decision is `OPEN` only when all blocker-class obligations are `PROVEN`
+      or explicitly owned with non-intersection; otherwise `BLOCKED`.'
+    verification: '- [ ] Read-only adversarial final regate completed by `gate-reviewer`
+      independently of remediation author.
+
+      - [ ] Full target 1-41 coverage matrix is present and complete with design refs,
+      owning tests/steps, evidence refs, statuses, closure paths, and gate decision
+      basis.
+
+      - [ ] R1 / B2_TARGET5_INCOMPLETE has positive expected-red proof for `--extension`
+      fallback when `-e` is absent.
+
+      - [ ] R2 / B3_TARGET10_INCOMPLETE has positive expected-red proof for `--mode=value`,
+      empty/unknown, explicit interactive, and conflict-precedence cases.
+
+      - [ ] All blocker-class obligations are `PROVEN` or explicitly owned with non-intersection;
+      any `NEEDS_TEST`, `UNPROVEN`, or `BLOCKED` item prevents OPEN.
+
+      - [ ] Changed-file audit confirms no product implementation, launcher runtime,
+      extension runtime, docs, plan, or lifecycle files changed by the remediation.
+
+      - [ ] Gate decision basis explicitly states `OPEN` or `BLOCKED` and cites evidence
+      for each R1/R2 closure claim.'
+    evidence_template: "## Final Regate Report\n\n### refs Read Confirmation (MANDATORY)\n\
+      For each ref in this step:\n- `design/pi-coding-agent-integration.md` — cite\
+      \ key passages for lines 823-829, 1282-1284, 1296-1303, and any other target\
+      \ rows used in the 1-41 matrix, or `NOT READ: <reason>`.\n\n## Full Target 1-41\
+      \ Matrix\n| target_number | design_ref | requirement_summary | owning_step_or_test\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- | --- |\n| 1 | <ref> | <summary> | <owner> |\
+      \ <evidence> | PROVEN/OWNED/NEEDS_TEST/UNPROVEN/BLOCKED/NOT_APPLICABLE_WITH_AUTHORITY\
+      \ | <closure> | <basis> |\n\n## Remaining Blocker Closure\n| blocker_id | required_closure\
+      \ | evidence_ref | status | decision_basis |\n| --- | --- | --- | --- | ---\
+      \ |\n| R1 / B2_TARGET5_INCOMPLETE | target 5 `--extension` fallback when `-e`\
+      \ absent | <test name + command receipt> | PROVEN/UNPROVEN/BLOCKED | <basis>\
+      \ |\n| R2 / B3_TARGET10_INCOMPLETE | target 10 complete mode matrix including\
+      \ equal forms, empty/unknown, interactive, and conflict precedence | <test name\
+      \ + command receipt> | PROVEN/UNPROVEN/BLOCKED | <basis> |\n\n## Scope Audit\n\
+      - changed_files_reviewed: |\n    <paste changed-file listing reviewed>\n- forbidden_product_scope_present:\
+      \ yes/no\n- expected_red_alignment: <aligned / not aligned, with rationale>\n\
+      \n## Gate Decision\n- [ ] OPEN: all blocker-class obligations are proven or\
+      \ explicitly owned with non-intersection and no forbidden scope is present.\n\
+      - [ ] BLOCKED: blockers, matrix gaps, proof gaps, or forbidden scope remain.\n\
+      - decision: OPEN/BLOCKED\n- required_followup_if_blocked: <precise remediation\
+      \ ledger>"
+    depends_on:
+    - pi_contract_harness_20260526.regate_gap_remediation
+    agent: gate-reviewer
 - id: pi-launcher-runtime-2026-05-26
   name: Pi Launcher Runtime 2026-05-26
   status: locked
