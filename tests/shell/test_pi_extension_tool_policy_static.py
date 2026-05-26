@@ -78,3 +78,30 @@ def test_commit_validates_policy_before_model_mutation_and_restores_tools() -> N
     assert body.index("const tool_policy = await loadPolicy") < body.index("await validateModel(spec, ctx, pi)")
     assert "rollbackTools" in body
     assert "await pi.setActiveTools?.(rollbackTools)" in body
+    assert "Pi active-tool update failed" in body
+    assert "LARVA_TOOL_ENUMERATION_FAILED" in body
+
+
+def test_tool_enumeration_fail_closed_when_unavailable_or_update_throws() -> None:
+    source = _source()
+    enumerate_match = re.search(
+        r"async function enumerateTools\(pi: PiApi\): Promise<string\[]> \{(?P<body>[\s\S]*?)\n\}",
+        source,
+    )
+    commit_match = re.search(
+        r"export async function commitPersona\(personaId: string, ctx: PiContext, pi: PiApi = ctx\): Promise<PersonaSwitchResult> \{(?P<body>[\s\S]*?)\n\}",
+        source,
+    )
+    assert enumerate_match is not None
+    assert commit_match is not None
+
+    enumerate_body = enumerate_match.group("body")
+    commit_body = commit_match.group("body")
+
+    assert "if (!Array.isArray(tools)) throw" in enumerate_body
+    assert "LARVA_TOOL_ENUMERATION_FAILED" in enumerate_body
+    assert "try" in commit_body
+    assert "catch" in commit_body
+    assert "throw error(\"LARVA_TOOL_ENUMERATION_FAILED\", \"Pi active-tool update failed\")" in commit_body
+    assert "state.envelope = previousEnvelope" in commit_body
+    assert "state.activeTools = previousActiveTools" in commit_body

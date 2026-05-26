@@ -283,12 +283,16 @@ def test_subagent_bad_input_public_result_contract() -> None:
 
 
 def test_child_session_root_default_override_and_invalid_override() -> None:
+    source = _source()
     _assert_tokens(
-        _source(),
+        source,
         "LARVA_PI_CHILD_SESSION_DIR",
         ".pi/larva/child-sessions",
         "LARVA_CHILD_START_FAILED",
     )
+    body = _function_body(source, "async function childSessionRoot")
+    assert "configured !== undefined && configured.length === 0" in body
+    assert body.index("configured !== undefined && configured.length === 0") < body.index("join(homedir()")
 
 
 def test_task_id_outside_child_root_is_bad_input() -> None:
@@ -356,12 +360,17 @@ def test_resume_busy_same_task_returns_session_busy() -> None:
 
 def test_resume_parent_preflight_defers_child_persona_initialization() -> None:
     source = _source()
+    subagent_body = _function_body(source, "export async function larva_subagent")
+    child_sequence_body = _function_body(source, "async function runChildSequence")
     _assert_tokens(source, "switch_session", "LARVA_PI_INITIAL_PERSONA_ID")
     _assert_regex(
         source,
         r"validateTaskId[\s\S]+canSpawn[\s\S]+activeTaskIds",
         "parent resume preflight should validate path, spawn authority, and busy state only",
     )
+    assert "resolvePersona" not in subagent_body
+    assert "resolvePersona" not in child_sequence_body
+    assert child_sequence_body.index("startChild(env, root, personaId)") < child_sequence_body.index('rpc.command("switch-1"')
 
 
 def test_concurrent_same_task_resume_uses_in_memory_busy_set() -> None:
@@ -377,11 +386,15 @@ def test_busy_state_is_process_local_without_lock_files() -> None:
 
 def test_resume_re_resolves_persona_in_new_child_process() -> None:
     source = _source()
-    _assert_tokens(source, "resolvePersona", "LARVA_PI_INITIAL_PERSONA_ID", "switch_session")
+    start_child_body = _function_body(source, "function startChild")
+    child_sequence_body = _function_body(source, "async function runChildSequence")
+    _assert_tokens(source, "LARVA_PI_INITIAL_PERSONA_ID", "switch_session")
+    assert "LARVA_PI_INITIAL_PERSONA_ID: personaId" in start_child_body
+    assert "resolvePersona" not in child_sequence_body
     _assert_regex(
         source,
-        r"resolvePersona[\s\S]+switch_session|switch_session[\s\S]+resolvePersona",
-        "resume must re-resolve the supplied persona in a new child process",
+        r"startChild\(env, root, personaId\)[\s\S]+switch_session",
+        "resume must start a child process with the supplied persona before switching session",
     )
 
 
@@ -445,6 +458,7 @@ def test_nested_subagent_exposure_uses_child_authority_and_policy() -> None:
 
 def test_persona_resolve_bridge_uses_larva_cli_argv_json_and_fallback_rules() -> None:
     source = _source()
+    is_persona_spec_body = _function_body(source, "function isPersonaSpec")
     _assert_tokens(
         source,
         "LARVA_CLI_ARGV_JSON",
@@ -461,28 +475,40 @@ def test_persona_resolve_bridge_uses_larva_cli_argv_json_and_fallback_rules() ->
     )
     _assert_regex(source, r"timeout|AbortSignal|setTimeout", "bridge must time out")
     _assert_regex(source, r"JSON\.parse[\s\S]+LARVA_PERSONA_NOT_FOUND", "malformed output maps to persona-not-found")
+    assert "isRecord(value.capabilities)" in is_persona_spec_body
+    assert 'typeof value.spec_version === "string"' in is_persona_spec_body
 
 
 def test_persona_list_bridge_uses_larva_cli_argv_json_for_completion_and_selector() -> None:
     source = _source()
+    list_match = re.search(
+        r"export async function listPersonas\(ctx\?: \{ env\?: RuntimeEnv \}\): Promise<BridgeListItem\[]> \{(?P<body>[\s\S]*?)\n\}",
+        source,
+    )
+    assert list_match is not None
+    list_body = list_match.group("body")
     _assert_tokens(source, "LARVA_CLI_ARGV_JSON", "list", "--json", "completePersonaIds")
     _assert_regex(
         source,
         r"data\[\]\.id|item\.id|persona\.id",
         "list bridge must require only data[].id for suggestions",
     )
+    assert "items.some((item) => item === null)" in list_body
+    assert "return []" in list_body
 
 
 def test_child_stderr_startup_error_whitelist() -> None:
     source = _source()
+    parser_body = _function_body(source, "function parseStartupError")
     for code in (
         "LARVA_PERSONA_NOT_FOUND",
         "LARVA_MODEL_UNAVAILABLE",
         "LARVA_POLICY_INVALID",
         "LARVA_TOOL_ENUMERATION_FAILED",
-        "LARVA_CHILD_START_FAILED",
     ):
-        _assert_tokens(source, code)
+        assert code in parser_body
+    assert "LARVA_CHILD_START_FAILED" not in re.search(r"const whitelist:[\s\S]*?\];", parser_body).group(0)
+    assert "post-readiness stderr is diagnostic only" in source
     _assert_regex(source, r"larva pi: <ERROR_CODE>|larva pi:", "stderr parser shape is required")
 
 

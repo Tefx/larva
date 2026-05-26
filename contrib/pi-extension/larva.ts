@@ -46,8 +46,8 @@ export type PersonaSpec = {
   description?: string;
   prompt: string;
   model: string;
-  capabilities?: Record<string, unknown>;
-  spec_version?: string;
+  capabilities: Record<string, unknown>;
+  spec_version: string;
   spec_digest?: string;
   can_spawn?: boolean | string[];
 };
@@ -200,8 +200,9 @@ function isPersonaSpec(value: unknown): value is PersonaSpec {
     value.id.length > 0 &&
     typeof value.prompt === "string" &&
     typeof value.model === "string" &&
-    (value.capabilities === undefined || isRecord(value.capabilities)) &&
-    (value.spec_version === undefined || typeof value.spec_version === "string")
+    isRecord(value.capabilities) &&
+    typeof value.spec_version === "string" &&
+    value.spec_version.length > 0
   );
 }
 
@@ -212,7 +213,9 @@ export async function listPersonas(ctx?: { env?: RuntimeEnv }): Promise<BridgeLi
     const parsed = JSON.parse(result.stdout) as unknown;
     const data = isRecord(parsed) ? parsed.data : undefined;
     if (!Array.isArray(data)) return [];
-    return data.map((item) => normalizeListItem(item)).filter((item): item is BridgeListItem => item !== null);
+    const items = data.map((item) => normalizeListItem(item));
+    if (items.some((item) => item === null)) return [];
+    return items as BridgeListItem[];
   } catch {
     return [];
   }
@@ -254,7 +257,7 @@ async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Prom
 async function enumerateTools(pi: PiApi): Promise<string[]> {
   try {
     const tools = await pi.getAllTools?.();
-    if (!Array.isArray(tools)) return [];
+    if (!Array.isArray(tools)) throw new Error("Pi tool enumeration did not return an array");
     return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
   } catch {
     throw error("LARVA_TOOL_ENUMERATION_FAILED", "Unable to enumerate Pi tools");
@@ -322,7 +325,12 @@ export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi
     rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
     const activeTools = filterPolicyTools(baseline, tool_policy);
-    const applied = await pi.setActiveTools?.(activeTools);
+    let applied: boolean | void | undefined;
+    try {
+      applied = await pi.setActiveTools?.(activeTools);
+    } catch {
+      throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    }
     if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
     activeToolsUpdated = true;
     await validateModel(spec, ctx, pi);
@@ -428,7 +436,8 @@ function validateInput(input: LarvaSubagentInput): { personaId: string; task: st
 
 async function childSessionRoot(env: RuntimeEnv): Promise<string | LarvaError> {
   const configured = env.LARVA_PI_CHILD_SESSION_DIR;
-  const root = configured && configured.length > 0 ? configured : join(homedir(), DEFAULT_CHILD_SESSION_ROOT_SUFFIX);
+  if (configured !== undefined && configured.length === 0) return error("LARVA_CHILD_START_FAILED", "Child session root override must be non-empty.");
+  const root = configured ?? join(homedir(), DEFAULT_CHILD_SESSION_ROOT_SUFFIX);
   if (!isAbsolute(root)) return error("LARVA_CHILD_START_FAILED", "Child session root must be absolute.");
   try {
     await mkdir(root, { recursive: true, mode: 0o700 });
@@ -509,7 +518,6 @@ function parseStartupError(stderr: string): LarvaError {
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
     "LARVA_TOOL_ENUMERATION_FAILED",
-    "LARVA_CHILD_START_FAILED",
   ];
   if (match && whitelist.includes(match[1] as LarvaErrorCode)) {
     return error(match[1] as LarvaErrorCode, "Child startup failed with a Larva startup error.");
@@ -521,6 +529,7 @@ class RpcClient {
   private readonly pending = new Map<string, (value: unknown) => void>();
   private readonly events: unknown[] = [];
   private stderr = "";
+  private rpcReady = false;
 
   constructor(private readonly child: ChildProcessWithoutNullStreams) {
     child.stderr.on("data", (chunk: Buffer) => { this.stderr += chunk.toString("utf8"); });
@@ -544,14 +553,30 @@ class RpcClient {
   async command(id: string, body: Record<string, unknown>, timeoutMs = 10_000): Promise<unknown | LarvaError> {
     const message = JSON.stringify({ id, ...body });
     return await new Promise((resolveCommand) => {
-      const timer = setTimeout(() => {
+      let settled = false;
+      const settle = (value: unknown | LarvaError): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         this.pending.delete(id);
-        resolveCommand(error("LARVA_CHILD_PROTOCOL_FAILED", "Child RPC command timed out after ten seconds."));
+        this.child.off("close", onClose);
+        resolveCommand(value);
+      };
+      const onClose = (): void => {
+        settle(
+          this.rpcReady
+            ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before RPC response; post-readiness stderr is diagnostic only.")
+            : parseStartupError(this.stderr),
+        );
+      };
+      const timer = setTimeout(() => {
+        settle(error("LARVA_CHILD_PROTOCOL_FAILED", "Child RPC command timed out after ten seconds."));
       }, timeoutMs);
       this.pending.set(id, (value) => {
-        clearTimeout(timer);
-        resolveCommand(value);
+        this.rpcReady = true;
+        settle(value);
       });
+      this.child.once("close", onClose);
       this.child.stdin.write(`${message}\n`);
     });
   }
@@ -563,7 +588,11 @@ class RpcClient {
       if (this.events.some((eventValue) => typeof eventValue === "object" && eventValue !== null && (eventValue as { type?: unknown }).type === "protocol_error")) {
         return error("LARVA_CHILD_PROTOCOL_FAILED", "Child emitted malformed JSONL.");
       }
-      if (this.child.exitCode !== null) return parseStartupError(this.stderr);
+      if (this.child.exitCode !== null) {
+        return this.rpcReady
+          ? error("LARVA_CHILD_PROTOCOL_FAILED", "Child exited before agent_end; post-readiness stderr is diagnostic only.")
+          : parseStartupError(this.stderr);
+      }
       await new Promise((resolveWait) => setTimeout(resolveWait, 25));
     }
   }
@@ -609,11 +638,6 @@ async function runChildSequence(
   taskId: string | null,
   abortSignal?: AbortSignal,
 ): Promise<LarvaSubagentResult> {
-  try {
-    await resolvePersona(personaId, { env });
-  } catch (caught) {
-    return failed(taskId, personaId, isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Child persona could not be resolved."));
-  }
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
   const rpc = new RpcClient(child);
