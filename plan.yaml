@@ -75865,7 +75865,7 @@ phases:
       git status --porcelain returned no output.'
   - id: pi_finalization_20260526.full_guard
     name: Full repository guard and test verification
-    status: claimed
+    status: done
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ full-plan-check; protects final gate.\nAs an independent verifier, run the\
       \ repo-level verification required after Pi integration changes, including the\
@@ -75939,6 +75939,106 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T18:32:46.390692+00:00'
+    done_at: '2026-05-26T18:55:04.080726+00:00'
+    evidence: 'Full repository guard and test verification completed successfully
+      after context retry. Read-only verification; no product/source/docs/test/plan
+      files modified.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — key passages read: integration scope
+      lines 9-21; non-goals lines 34-46; launcher/extension loading and real Pi forwarding
+      lines 95-150; adapter-local tool policy and allow/deny/no-ask semantics lines
+      280-397; child process/RPC/env and whitelisted pre-RPC stderr mapping lines
+      459-521 and 1089-1117; verification targets 1-41 lines 1267-1405.
+
+
+      ## Upstream Receipt Refs Confirmation Audit
+
+      - spec_conformance receipt included refs confirmation: yes; orchestrator-supplied
+      plan evidence states the audit included refs confirmation for design, launcher/extension
+      source, pyproject, contract tests, and upstream Pi phase receipts.
+
+      - wiring_audit receipt included refs confirmation: yes; plan evidence states
+      refs Read Confirmation for design, pyproject, launcher/extension source, targeted
+      tests, and plan receipts.
+
+      - end_to_end_liveness receipt included refs confirmation: yes; plan evidence
+      states refs confirmation for design, launcher/extension contract tests, and
+      contrib/pi-extension/larva.ts.
+
+      - missing_or_incomplete_refs_confirmation: none.
+
+
+      ## Full Guard Evidence
+
+      - checklist_receipt: all description and verification checklist items toggled
+      by orchestrator from worker receipt.
+
+      - targeted_tests: `uv run pytest -vv tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py`
+      exited 0; collected 80 items; 80 passed in 2.60s; no skips observed.
+
+      - repo_tests: `uv run pytest -vv` exited 0; collected 638 items; 638 passed
+      in 34.39s; full raw output artifact recorded by worker at `/Users/tefx/.local/share/opencode/tool-output/tool_e659e8138001Q9Ii1ZE5f91DXU`.
+
+      - invar_guard: first `uv run invar guard --all` hit 120s shell timeout with
+      no output; same authoritative command rerun with larger timeout exited 0. Output
+      excerpt: status passed; files_checked 41; errors 0; warnings 4; infos 3; doctest
+      passed; crosshair verified from cache; property_tests passed with 6 functions
+      and 600 examples.
+
+      - failure_dispositions: only first invar timeout, classified as infra timeout
+      resolved by successful rerun; no targeted test failures, no repo test failures,
+      no invar errors. Guard warnings/infos non-blocking because guard status passed
+      with 0 errors and findings were budget/size/info warnings.
+
+      - fixture_vs_live_pi: targeted tests and upstream liveness prove fixture/fake
+      Pi runtime behavior; upstream liveness explicitly distinguishes fixture proof
+      from live Pi dependency proof and states real Pi existed/advertised extension
+      flags but fixture was intentionally used to avoid credentials/interactivity.
+      No unsupported live proof claimed.
+
+      - product_files_modified: no; worker final `git status --short --branch` showed
+      only branch line. Orchestrator inspection showed worktree status clean and no
+      diff against main.
+
+      - commit_hashes: none (read-only verification).
+
+
+      ## Semantic Closure Fields
+
+      step_intent: verify_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      verdict: PASS
+
+      blockers: []
+
+      behavioral_proof_register: required design ref read PROVEN; targeted launcher/extension
+      contract suite PROVEN by 80 passed; full repository suite PROVEN by 638 passed;
+      full invar guard PROVEN by exit 0/status passed/errors 0; upstream receipt refs
+      confirmation audit PROVEN by plan-evidence excerpts; no product/orchestrator
+      mutation PROVEN by clean status.
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      blocking_status: CLOSED
+
+      uncertainty_sources: none for requested final gate; live interactive Pi proof
+      remains intentionally fixture-scoped per upstream liveness receipt and is not
+      a blocker for this full_guard step.
+
+      requirement_coverage: all checklist and material requirements PROVEN with concrete
+      command/receipt evidence.'
   - id: pi_finalization_20260526.gate
     name: Final deep review gate for Pi integration
     status: pending
