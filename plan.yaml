@@ -73581,58 +73581,46 @@ phases:
       - [ ] Gate rejects any forbidden-scope implementation or documentation claim.
 
       - [ ] Gate records OPEN/BLOCK verdict, unresolved statuses, closure paths, and
-      final remediation owners.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      final remediation owners.
 
-      - design/pi-coding-agent-integration.md — key passages from all material sections,
-      especially Verification targets and Non-goals.
+      - [ ] All upstream finalization and Pi phase receipts include `## refs Read
+      Confirmation` with `design/pi-coding-agent-integration.md` key passages or explicit
+      NOT READ reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Final Gate Decision Basis
-
-      | requirement_ref | checklist_item | evidence_ref | positive_proof_status |
-      unresolved_status | blocks_completion | rationale |
-
-      | --- | --- | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this final gate>; NOT READ entries only with reason.
 
 
-      ## Evidence Review
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | Artifact | Reviewer verdict | Concerns |
+      - spec_conformance receipt included refs confirmation: <yes/no; evidence ref>
 
-      | --- | --- | --- |
+      - wiring_audit receipt included refs confirmation: <yes/no; evidence ref>
 
-      | spec_conformance | <verdict> | <notes> |
+      - end_to_end_liveness receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-      | wiring_audit | <verdict> | <notes> |
+      - doc_sync receipt included refs confirmation: <yes/no; evidence ref>
 
-      | end_to_end_liveness | <verdict> | <notes> |
+      - full_guard receipt included refs confirmation: <yes/no; evidence ref>
 
-      | doc_sync | <verdict> | <notes> |
+      - launcher/extension phase gate receipts included upstream refs confirmation
+      audits: <yes/no; evidence refs>
 
-      | full_guard | <verdict> | <notes> |
-
-
-      ## Forbidden Scope Verdict
-
-      - schema_changes: <absent/present>
-
-      - ask_action: <absent/present>
-
-      - worktree_or_lock_or_credential_isolation: <absent/present>
-
-      - policy_hierarchy_or_batch_subagent_or_catalogue_dump: <absent/present>
-
-      - sidecar_metadata_or_pi_settings_fallback: <absent/present>
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Gate Decision
+      ## Final Gate Evidence
 
-      - [ ] OPEN
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
 
-      - [ ] BLOCKED
+      - final_decision: <OPEN/BLOCK>
 
-      - required_actions_if_blocked: <list>'
+      - unresolved_statuses_and_closure_paths: <records>
+
+      '
     depends_on:
     - pi_finalization_20260526.spec_conformance
     - pi_finalization_20260526.wiring_audit
