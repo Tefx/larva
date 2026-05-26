@@ -75674,7 +75674,7 @@ phases:
       - [x] Runtime artifact shows the bundled extension loaded through selected flag
       and status shows `larva: <persona-id>` or `larva: none` as appropriate.
 
-      - [ ] One safe `/larva-persona` interaction and one denied tool-call or `larva_subagent`
+      - [x] One safe `/larva-persona` interaction and one denied tool-call or `larva_subagent`
       fixture interaction are exercised through runtime hooks.
 
       - [ ] Child RPC liveness shows public result shape or documented failed/cancelled
