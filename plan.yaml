@@ -76064,7 +76064,7 @@ phases:
       resolution before child RPC startup, except documented parent input/path/spawn/busy
       checks.
 
-      - [ ] B3: Resolve bridge rejects returned PersonaSpec data missing canonical
+      - [x] B3: Resolve bridge rejects returned PersonaSpec data missing canonical
       required fields including `capabilities` and `spec_version` with `LARVA_PERSONA_NOT_FOUND`.
 
       - [ ] B4: List bridge treats any invalid `data[]` item as list failure/no suggestions,
