@@ -76366,7 +76366,7 @@ phases:
       with verdicts CONFORMS, DIVERGES, PARTIAL, NEEDS_TEST, NOT_FOUND, AMBIGUOUS_SPEC,
       or SPEC_POSSIBLY_STALE.
 
-      - [ ] B1-B6 are either CONFORMS with positive evidence or have blocker-class
+      - [x] B1-B6 are either CONFORMS with positive evidence or have blocker-class
       closure paths before final gate.
 
       - [ ] B7 runtime proof gaps are either closed by executable/fake TypeScript/Pi
