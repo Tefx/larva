@@ -76265,7 +76265,7 @@ phases:
       - [x] Proof separates fixture/runtime seam PASS from live Pi environment BLOCKED
       when real Pi is unavailable.
 
-      - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
+      - [x] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
       evidence_ref, status, closure_path, and gate_decision_basis for each B1-B7 row.
 
       - [ ] The report is produced by an independent verifier and does not mutate
