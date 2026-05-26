@@ -307,14 +307,18 @@ export function filterPolicyTools(baseline: string[], policy: PiToolPolicy): str
 export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
   const previousEnvelope = state.envelope;
   const previousActiveTools = new Set(state.activeTools);
+  let rollbackTools: string[] | null = null;
+  let activeToolsUpdated = false;
   try {
     const spec = await resolvePersona(personaId, ctx);
-    await validateModel(spec, ctx, pi);
     const baseline = await enumerateTools(pi);
+    rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
     const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
     const activeTools = filterPolicyTools(baseline, tool_policy);
     const applied = await pi.setActiveTools?.(activeTools);
     if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    activeToolsUpdated = true;
+    await validateModel(spec, ctx, pi);
     const envelope: PersonaEnvelope = {
       persona_id: spec.id,
       spec_digest: spec.spec_digest ?? "",
@@ -328,6 +332,9 @@ export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi
     await setStatus(ctx);
     return { ok: true, envelope };
   } catch (caught) {
+    if (activeToolsUpdated && rollbackTools) {
+      try { await pi.setActiveTools?.(rollbackTools); } catch { /* preserve previous active tool rules best-effort */ }
+    }
     state.envelope = previousEnvelope; // previousEnvelope rollback preserves model-facing state.
     state.activeTools = previousActiveTools;
     const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
@@ -373,7 +380,7 @@ export function before_agent_start(event: unknown): { systemPrompt: string } | u
 }
 
 export function decideToolCall(tool: string): ToolPolicyDecision {
-  if (state.activeTools.size === 0 || state.activeTools.has(tool)) return { action: "allow" };
+  if (!state.envelope || state.activeTools.has(tool)) return { action: "allow" };
   return { action: "deny", error: error("LARVA_TOOL_DENIED", `Larva policy denied ${tool}`) };
 }
 
