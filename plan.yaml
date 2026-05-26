@@ -73852,7 +73852,7 @@ phases:
       warnings/infos. No deviations.'
   - id: pi_launcher_runtime_20260526.env_liveness_retest
     name: Retest launcher env liveness contract
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -73984,6 +73984,25 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T13:11:56.568832+00:00'
+    done_at: '2026-05-26T13:21:57.304276+00:00'
+    evidence: 'PASS_READ_ONLY_VERIFICATION. Integration-verifier task ses_19b95a181ffewy8UEYQNjN8zQV
+      returned PASS with `blocking_status: CLOSED`, `proof_gap_status: NONE`, `verdict:
+      PASS`, `orchestrator_action_hint: COMPLETE`; worktree was clean and no files
+      changed. Evidence included refs Read Confirmation for design/pi-coding-agent-integration.md
+      and tests/shell/test_pi_launcher_contract.py. Exact packaged CLI liveness command
+      through `uv run larva pi --persona python-senior -- --version` executed a fixture
+      child and exited 0 with stdout `fake pi runtime invoked`. Runtime child artifact
+      proved argv `[-e, <bundled contrib/pi-extension/larva.ts>, --version]` and env
+      values `LARVA_PI_TOOL_POLICY_FILE=/Users/tefx/.pi/tool-policy.json`, `LARVA_PI_LAUNCHED=1`,
+      `LARVA_PI_REAL_BIN=<fixture path>`, `LARVA_PI_EXTENSION_FLAG=-e`, `LARVA_PI_EXTENSION_ENTRY=<bundled
+      extension path>`, `LARVA_CLI_ARGV_JSON=[.../.venv/bin/larva]`, and `LARVA_PI_INTERACTIVE_TUI=1`;
+      policy path is non-empty absolute expansion of design-required `~/.pi/tool-policy.json`.
+      Negative liveness: missing Pi exited 127 with `LARVA_PI_NOT_FOUND` and no child
+      artifact; unsupported extension exited 2 with `LARVA_PI_EXTENSION_LOAD_UNSUPPORTED`
+      and no child artifact. Supporting verification: `uv run pytest tests/shell/test_pi_launcher_contract.py
+      -q` passed 32/32; full invar guard scan completed ok=true with errors=0 and
+      only pre-existing warnings/infos. Behavioral proof register marked all launcher
+      env obligations PROVEN. Checklist toggled from verifier receipt.'
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: in_progress
