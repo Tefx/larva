@@ -78087,7 +78087,7 @@ phases:
       focused test surfaces.'
   - id: pi_slash_autocomplete_20260527.retest_liveness
     name: Retest Pi startup, slash autocomplete, live smoke, and guard
-    status: claimed
+    status: skipped
     description: 'step_type: test
 
       step_intent: retest_green
@@ -78304,6 +78304,7 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T20:12:59.174217+00:00'
+    skipped_reason: absorbed
   - id: pi_slash_autocomplete_20260527.gate
     name: Gate Pi slash autocomplete and live smoke fix
     status: pending
