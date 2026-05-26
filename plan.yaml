@@ -78590,7 +78590,7 @@ phases:
     agent: gate-reviewer
   - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     name: Fix Pi active-tool update startup degradation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -78798,6 +78798,8 @@ phases:
     depends_on:
     - pi_slash_autocomplete_20260527.fix_extension_shape
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T20:26:17.673991+00:00'
   - id: pi_slash_autocomplete_20260527.retest_live_smoke_after_active_tool_fix
     name: Retest Pi live smoke after active-tool startup fix
     status: pending
