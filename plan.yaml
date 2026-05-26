@@ -72999,25 +72999,20 @@ phases:
   - id: pi_extension_runtime_20260526.gate
     name: Gate extension runtime
     status: pending
-    description: 'step_type: gate
-
-      verification_scope: phase-check; protects final runnable Pi integration.
-
-      As an independent reviewer, decide whether the Pi extension runtime satisfies
-      the design''s persona, policy, and subagent obligations.
-
-      review_depth: THOROUGH
-
-      review_depth_rationale: TypeScript runtime hooks, prompt/model/tool governance,
-      child process/RPC, process-local busy state, and user-visible slash command/status
-      behavior.
-
-      <side_effect_budget>Allowed: read-only evidence review. Forbidden: source mutation
-      or accepting source-only evidence for runtime extension surfaces.</side_effect_budget>
-
-      <risk_probes>1. Any unproven tool-policy denial or subagent result contract
-      intersects final gates. 2. Any forbidden sidecar/lock/schema/policy hierarchy
-      change blocks. 3. Unit-only proof cannot substitute for hook/RPC seam evidence.'
+    description: "step_type: gate\nverification_scope: phase-check; protects final\
+      \ runnable Pi integration.\nAs an independent reviewer, decide whether the Pi\
+      \ extension runtime satisfies the design's persona, policy, and subagent obligations.\n\
+      review_depth: THOROUGH\nreview_depth_rationale: TypeScript runtime hooks, prompt/model/tool\
+      \ governance, child process/RPC, process-local busy state, and user-visible\
+      \ slash command/status behavior.\n<side_effect_budget>Allowed: read-only evidence\
+      \ review. Forbidden: source mutation or accepting source-only evidence for runtime\
+      \ extension surfaces.</side_effect_budget>\n<risk_probes>1. Any unproven tool-policy\
+      \ denial or subagent result contract intersects final gates. 2. Any forbidden\
+      \ sidecar/lock/schema/policy hierarchy change blocks. 3. Unit-only proof cannot\
+      \ substitute for hook/RPC seam evidence.\n- [ ] Completion evidence includes:\n\
+      \  `## refs Read Confirmation`\n  `- design/pi-coding-agent-integration.md —\
+      \ key passages read: <specific sections/targets used by this step>; NOT READ\
+      \ entries only with reason.`\n"
     verification: '- [ ] Gate decision basis reviews all implementation receipts plus
       extension runtime proof.
 
