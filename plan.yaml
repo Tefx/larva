@@ -72338,7 +72338,7 @@ phases:
     claimed_at: '2026-05-26T05:09:27.776638+00:00'
   - id: pi_contract_harness_20260526.extension_expected_red
     name: Extension contract and expected-red tests
-    status: claimed
+    status: done
     description: "step_type: test\nstep_intent: test_define_red\nexpected_result:\
       \ red\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Persona runtime projection; Tool policy; Subagent spawning; API contracts;\
@@ -72399,6 +72399,18 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T05:09:10.167525+00:00'
+    done_at: '2026-05-26T05:21:26.495887+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED. Worktree branch vectl/step-pi_contract_harness_20260526.extension_expected_red
+      squash-merged into main as e81fa1f ([vectl] step-pi_contract_harness_20260526.extension_expected_red
+      completed). Diff added only tests/shell/test_pi_extension_contract.py (410 insertions);
+      branch diff showed no plan.yaml changes and no product code modifications. Checklist
+      items toggled by orchestrator from receipt. Mainline targeted verification:
+      `uv run pytest tests/shell/test_pi_extension_contract.py` collected 39 items
+      and produced expected red outcome: 37 failed / 2 passed in 0.68s. Failures align
+      with declared gaps: missing bundled Pi extension target contrib/pi-extension/larva.ts
+      and missing pyproject force-include mapping. Subagent evidence included refs
+      Read Confirmation for design/pi-coding-agent-integration.md, requirement traceability
+      targets 6-41, and no product implementation edits.'
   - id: pi_contract_harness_20260526.gate
     name: Gate contract harness
     status: pending
