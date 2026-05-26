@@ -73810,6 +73810,138 @@ phases:
     depends_on:
     - pi_launcher_runtime_20260526.launcher_liveness_proof
     agent: python-senior
+  - id: pi_launcher_runtime_20260526.env_liveness_retest
+    name: Retest launcher env liveness contract
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: local-check; protects the launcher runtime gate and downstream
+      Pi integration finalization gate.
+
+      agent_source: default
+
+      As an INDEPENDENT TESTER (`integration-verifier`), re-run the launcher CLI liveness
+      proof after `pi_launcher_runtime_20260526.env_contract_fix` from a read-only
+      perspective.
+
+
+      PROOF ARTIFACT:
+
+      A raw, reproducible launcher liveness receipt proving the CLI entrypoint launches
+      the fixture Pi with the design-required child env and still rejects negative
+      preflight cases before child Pi execution.
+
+
+      SCOPE:
+
+      - Read-only verification only; do not mutate source, tests, fixtures, settings,
+      or plan state.
+
+      - Exercise the same fixture CLI liveness path used by `pi_launcher_runtime_20260526.launcher_liveness_proof`
+      and explicitly inspect env/argv artifacts.
+
+      - Negative preflights must include missing Pi and unsupported extension cases.
+
+
+      <side_effect_budget>Allowed: run CLI/test/fixture commands and inspect generated
+      runtime artifacts. Forbidden: code mutation, fixture mutation, Pi settings writes,
+      credential changes, or accepting implementation/source inspection as a substitute
+      for runtime env artifact proof.</side_effect_budget>
+
+      <risk_probes>1. Verify the proof goes through the packaged `larva pi` CLI entrypoint
+      rather than helper-only tests. 2. Verify `LARVA_PI_TOOL_POLICY_FILE` and `LARVA_PI_LAUNCHED=1`
+      are present in the child artifact, not merely in parent process env. 3. Verify
+      negative preflight artifacts prove no child Pi execution occurred.</risk_probes>
+
+
+      ## Requirement-to-Checklist Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-LAUNCH-ENV-001 | `design/pi-coding-agent-integration.md` lines 835-853
+      — launcher child env contract | Runtime child env artifact includes `LARVA_PI_TOOL_POLICY_FILE`
+      | `pi_launcher_runtime_20260526.env_liveness_retest` | verification item 2 |
+      `runtime_env_artifact.tool_policy_file` | OWNED | Blocks launcher gate if absent.
+      |
+
+      | PI-LAUNCH-ENV-002 | `design/pi-coding-agent-integration.md` lines 835-853
+      — launcher child env contract | Runtime child env artifact includes `LARVA_PI_LAUNCHED=1`
+      | `pi_launcher_runtime_20260526.env_liveness_retest` | verification item 2 |
+      `runtime_env_artifact.launched_flag` | OWNED | Blocks launcher gate if absent.
+      |
+
+      | PI-LAUNCH-NEG-001 | prior liveness proof and launcher contract | Missing Pi
+      and unsupported extension fail before child Pi execution | `pi_launcher_runtime_20260526.env_liveness_retest`
+      | verification item 4 | `negative_preflight_receipts` | OWNED | Blocks launcher
+      gate if not proven. |
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - [ ] Completion evidence includes `design/pi-coding-agent-integration.md` key
+      passages for the launcher env contract, especially `LARVA_PI_TOOL_POLICY_FILE`
+      and `LARVA_PI_LAUNCHED=1`.
+
+      - [ ] Completion evidence cites any liveness proof fixture/test docs used or
+      records NOT READ reasons.'
+    verification: '- [ ] Exact fixture CLI liveness command/invocation through the
+      packaged `larva pi` entrypoint is recorded with raw stdout/stderr and exit code.
+
+      - [ ] Runtime child env/argv artifact shows `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED=1`,
+      `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
+      `LARVA_CLI_ARGV_JSON`, and `LARVA_PI_INTERACTIVE_TUI`.
+
+      - [ ] The tool policy file value is non-empty and tied to the design-required
+      policy file path/source rather than a placeholder.
+
+      - [ ] Negative liveness cases for missing Pi and unsupported extension prove
+      failure occurs before child Pi execution.
+
+      - [ ] Behavioral proof register marks launcher env obligations PROVEN or BLOCKED
+      with explicit closure paths; gate-opening recommendation is forbidden while
+      any required env value is UNPROVEN/BLOCKED.
+
+      - [ ] Evidence includes `## refs Read Confirmation` for `design/pi-coding-agent-integration.md`
+      with key passages or explicit NOT READ reasons.'
+    evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
+      \ of implementation)\n**Scope**: launcher child env contract liveness retest\n\
+      **Independence Level**: L1\n\n### refs Read Confirmation (MANDATORY)\nFor each\
+      \ ref in this step:\n- design/pi-coding-agent-integration.md — key passage or\
+      \ \"NOT READ: <reason>\"\n\n### Fixture CLI Liveness Receipt\n- command: <exact\
+      \ packaged CLI/fixture command>\n- raw_stdout_stderr: |\n    <paste output>\n\
+      - exit_code: <code>\n- artifact_path: <env/argv artifact path>\n\n### Runtime\
+      \ Child Env / Argv Artifact\n- LARVA_PI_TOOL_POLICY_FILE: <value>\n- LARVA_PI_LAUNCHED:\
+      \ <value; must be 1>\n- LARVA_PI_REAL_BIN: <value>\n- LARVA_PI_EXTENSION_FLAG:\
+      \ <value>\n- LARVA_PI_EXTENSION_ENTRY: <value>\n- LARVA_CLI_ARGV_JSON: <value\
+      \ and parse result>\n- LARVA_PI_INTERACTIVE_TUI: <value>\n\n### Negative Preflight\
+      \ Evidence\n- missing_pi_command: <exact command>\n- missing_pi_raw_output:\
+      \ |\n    <paste output>\n- missing_pi_exit_code: <code>\n- missing_pi_child_executed:\
+      \ yes/no (must be no)\n- unsupported_extension_command: <exact command>\n- unsupported_extension_raw_output:\
+      \ |\n    <paste output>\n- unsupported_extension_exit_code: <code>\n- unsupported_extension_child_executed:\
+      \ yes/no (must be no)\n\n### Behavioral Proof Register\n| requirement_ref |\
+      \ behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path\
+      \ | gate_decision_basis |\n| --- | --- | --- | --- | --- | --- | --- |\n| design/pi-coding-agent-integration.md\
+      \ env contract | `LARVA_PI_TOOL_POLICY_FILE` reaches child env | fixture child\
+      \ env artifact | <artifact> | PROVEN/BLOCKED | <fix/retest path> | <OPEN/BLOCK>\
+      \ |\n| design/pi-coding-agent-integration.md env contract | `LARVA_PI_LAUNCHED=1`\
+      \ reaches child env | fixture child env artifact | <artifact> | PROVEN/BLOCKED\
+      \ | <fix/retest path> | <OPEN/BLOCK> |\n| launcher negative preflight contract\
+      \ | missing Pi/unsupported extension fail before child execution | raw command\
+      \ receipts and no child artifact | <receipts> | PROVEN/BLOCKED | <fix/retest\
+      \ path> | <OPEN/BLOCK> |\n\n### Headline\n- [ ] PASS: Env contract and negative\
+      \ preflights are proven with raw artifacts.\n- [ ] PASS_WITH_DEBT: Only explicit\
+      \ non-blocking debt remains with non-intersection rationale.\n- [ ] FAIL: Any\
+      \ required env value or negative preflight remains unproven/blocking."
+    depends_on:
+    - pi_launcher_runtime_20260526.env_contract_fix
+    agent: integration-verifier
 - id: pi-extension-runtime-2026-05-26
   name: Pi Extension Runtime 2026-05-26
   status: in_progress
