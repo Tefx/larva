@@ -73931,7 +73931,7 @@ phases:
 
       - [x] Completion evidence cites any liveness proof fixture/test docs used or
       records NOT READ reasons.'
-    verification: '- [ ] Exact fixture CLI liveness command/invocation through the
+    verification: '- [x] Exact fixture CLI liveness command/invocation through the
       packaged `larva pi` entrypoint is recorded with raw stdout/stderr and exit code.
 
       - [ ] Runtime child env/argv artifact shows `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED=1`,
