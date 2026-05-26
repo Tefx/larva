@@ -76262,7 +76262,7 @@ phases:
       - [x] B7 gap inventory names prior source/static-only behaviors and maps each
       to runtime evidence, explicit BLOCKED status, or a new remediation owner.
 
-      - [ ] Proof separates fixture/runtime seam PASS from live Pi environment BLOCKED
+      - [x] Proof separates fixture/runtime seam PASS from live Pi environment BLOCKED
       when real Pi is unavailable.
 
       - [ ] Behavioral proof register contains requirement_ref, behavior_claim, runtime_proof_expected,
