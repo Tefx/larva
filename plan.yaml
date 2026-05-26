@@ -73048,6 +73048,78 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.wire_extension_entry
     agent: integration-verifier
+  - id: pi_extension_runtime_20260526.gate
+    name: Gate extension runtime
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects final runnable Pi integration.
+
+      As an independent reviewer, decide whether the Pi extension runtime satisfies
+      the design''s persona, policy, and subagent obligations.
+
+      review_depth: THOROUGH
+
+      review_depth_rationale: TypeScript runtime hooks, prompt/model/tool governance,
+      child process/RPC, process-local busy state, and user-visible slash command/status
+      behavior.
+
+      <side_effect_budget>Allowed: read-only evidence review. Forbidden: source mutation
+      or accepting source-only evidence for runtime extension surfaces.</side_effect_budget>
+
+      <risk_probes>1. Any unproven tool-policy denial or subagent result contract
+      intersects final gates. 2. Any forbidden sidecar/lock/schema/policy hierarchy
+      change blocks. 3. Unit-only proof cannot substitute for hook/RPC seam evidence.'
+    verification: '- [ ] Gate decision basis reviews all implementation receipts plus
+      extension runtime proof.
+
+      - [ ] OPEN only if persona projection, tool policy, and subagent obligations
+      have positive hook/RPC evidence or explicit non-intersection.
+
+      - [ ] Gate rejects source-only proof for slash command/status/tool/runtime behavior.
+
+      - [ ] Gate rejects forbidden-scope additions: schema changes, ask action, worktree/file
+      lock/credential logic, policy hierarchy, batch subagent, catalogue prompt dump,
+      sidecar metadata, Pi settings fallback.
+
+      - [ ] Unresolved obligations include closure paths before finalization can open.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      - design/pi-coding-agent-integration.md — key extension/runtime passages reviewed.
+
+
+      ## Gate Decision Basis
+
+      | requirement_ref | evidence_ref | status | unresolved_status | blocks_finalization
+      | rationale |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      ## Execution Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: extension phase passes
+
+      - [ ] BLOCKED: required actions listed
+
+
+      ## Forbidden Scope Review
+
+      - findings: <none or list>'
+    depends_on:
+    - pi_extension_runtime_20260526.persona_projection
+    - pi_extension_runtime_20260526.tool_policy
+    - pi_extension_runtime_20260526.subagent_rpc
+    - pi_extension_runtime_20260526.wire_extension_entry
+    - pi_extension_runtime_20260526.extension_runtime_proof
+    agent: gate-reviewer
 - id: pi-integration-finalization-2026-05-26
   name: Pi Integration Finalization 2026-05-26
   status: locked
