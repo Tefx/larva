@@ -80349,3 +80349,234 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.remediate_wiring
     agent: integration-verifier
+  - id: pi_persona_spawn_proof_20260527.gate
+    name: Gate real-Pi persona load, slash switch, spawn lifecycle, and prompt injection
+      proof
+    status: pending
+    description: 'step_type: gate
+
+      agent_source: project
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+
+      DECISION ARTIFACT:
+
+      As an INDEPENDENT REVIEWER, assess whether this follow-up phase conclusively
+      answers the four post-gate user questions. You are the quality gate. Block progress
+      unless deterministic real Pi command/PTY evidence proves all four acceptance
+      areas or a purely environmental blocker is documented. Because the user explicitly
+      required real Pi, fallback is gate-blocking unless the blocker is purely environmental
+      and not product.
+
+
+      BLIND-TESTER MODE D REQUIREMENT:
+
+      Apply black-box/live-surface scrutiny equivalent to blind-tester Mode D when
+      reviewing the retest evidence: trust only public real Pi commands, PTY transcripts,
+      observable runtime behavior, process/session cleanup probes, and raw command
+      outputs. Do not accept internal helper assertions, source-only inspection, extension-state-only
+      persona IDs, or mock spawn tests as substitutes.
+
+
+      DEPENDENCY / INDEPENDENCE:
+
+      - Gate depends on all other phase steps.
+
+      - Gate reviewer must be independent from `frontend-engineer` remediation and
+      `integration-verifier` diagnostic/retest work.
+
+
+      GATE DECISION BASIS MUST MAP:
+
+      - requirement refs and proof-obligation refs
+
+      - requirement-to-checklist traceability matrix rows reviewed
+
+      - artifact/evidence refs from contract, diagnostic, remediation, and final retest
+
+      - positive proof status for every OWNED requirement: PROVEN, UNPROVEN, NEEDS_TEST,
+      BLOCKED
+
+      - unresolved statuses and whether they are product blockers or purely environmental
+      blockers
+
+      - final OPEN/BLOCK recommendation
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user question 1 + final retest A1 | `--persona` semantic/effective load
+      proven by real Pi | pi_persona_spawn_proof_20260527.gate | gate reviews startup
+      persona proof | decision_basis.R1 | OWNED | BLOCK if not PROVEN |
+
+      | R2 | user question 2 + final retest A2 | `/larva-persona` switch and effective
+      load proven by real Pi PTY | pi_persona_spawn_proof_20260527.gate | gate reviews
+      slash switch proof | decision_basis.R2 | OWNED | BLOCK if not PROVEN |
+
+      | R3 | user question 3 + final retest A3 | spawn/subagent lifecycle tested end-to-end
+      with cleanup/no-orphan proof | pi_persona_spawn_proof_20260527.gate | gate reviews
+      spawn lifecycle proof | decision_basis.R3 | OWNED | BLOCK if not PROVEN |
+
+      | R4 | user question 4 + final retest A4 | persona prompt content reaches effective
+      Pi system prompt/context | pi_persona_spawn_proof_20260527.gate | gate reviews
+      prompt injection proof | decision_basis.R4 | OWNED | BLOCK if not PROVEN |
+
+      | R5 | prior phase + final retest A5 | previous slash autocomplete/startup fixes
+      preserved | pi_persona_spawn_proof_20260527.gate | gate reviews regression proof
+      | decision_basis.R5 | OWNED | BLOCK if regressed |
+
+      | R6 | repo quality baseline + final retest commands | focused tests, `uv run
+      pytest`, and `uv run invar guard --all` green | pi_persona_spawn_proof_20260527.gate
+      | gate reviews full command proof | decision_basis.R6 | OWNED | BLOCK if not
+      green without explicit non-intersection evidence |
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence, inspect artifacts/transcripts, optionally rerun read-only/public
+      real Pi checks if needed for gate confidence. Forbidden: product code changes,
+      accepting incomplete proof, converting product blockers into environmental blockers,
+      marking phase complete, lifecycle/claim mutations.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Challenge whether sentinel outputs could be faked by extension-state echo
+      or default persona behavior.
+
+      - Challenge whether spawn cleanup/no-orphan evidence covers failure as well
+      as success where feasible.
+
+      - Challenge whether environment blockers are genuinely external and not product/runtime
+      packaging defects.
+
+      </risk_probes>'
+    verification: '- [ ] Gate decision basis maps all six requirement rows to concrete
+      evidence artifacts and checklist items.
+
+      - [ ] `--persona` startup persona proof is deterministic real Pi command/PTY
+      evidence with effective sentinel behavior, not startup-only or source-only proof.
+
+      - [ ] `/larva-persona <id>` switch proof is deterministic live PTY evidence
+      with post-switch effective sentinel behavior.
+
+      - [ ] `larva spawn`/subagent lifecycle proof covers request, spawned run/session,
+      model/tool policy handoff, completion/failure handling, cleanup/state reset,
+      and no orphan processes/sessions.
+
+      - [ ] Prompt injection proof demonstrates persona prompt content reached effective
+      Pi system prompt/context; extension-state-only proof is rejected.
+
+      - [ ] Previous slash autocomplete/startup crash fix evidence remains positive.
+
+      - [ ] Focused tests, `uv run pytest`, and `uv run invar guard --all` raw outputs
+      are reviewed and green, or non-green issues have explicit product/environment
+      classification and gate-blocking disposition.
+
+      - [ ] Blind-tester Mode D standard is applied: public real Pi behavior is privileged
+      over internal implementation claims.
+
+      - [ ] Final decision is OPEN only if all blocker-class obligations are PROVEN;
+      otherwise BLOCKED with required remediation/retest path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - tests/shell/ — <key passage/listed tests or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+      - installed Pi API/source refs — <path/package/version and key passage or NOT
+      READ: reason>
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer (independent)
+
+      **Phase**: pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
+
+      **Mode**: Blind-tester Mode D scrutiny applied to real Pi evidence
+
+
+      ## Requirement Decision Basis
+
+      | R# | Question / obligation | Evidence artifact ref | Status (PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED)
+      | Blocks gate? | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | R1 | `--persona` semantic load | <ref> | <status> | <yes/no> | <notes> |
+
+      | R2 | slash switch semantic load | <ref> | <status> | <yes/no> | <notes> |
+
+      | R3 | spawn lifecycle | <ref> | <status> | <yes/no> | <notes> |
+
+      | R4 | prompt injection | <ref> | <status> | <yes/no> | <notes> |
+
+      | R5 | prior regression preservation | <ref> | <status> | <yes/no> | <notes>
+      |
+
+      | R6 | pytest + invar + focused tests | <ref> | <status> | <yes/no> | <notes>
+      |
+
+
+      ## Evidence Quality Review
+
+      | Step ID | Status | Evidence Quality | Concerns |
+
+      | --- | --- | --- | --- |
+
+      | pi_persona_spawn_proof_20260527.contract_design | <status> | <quality> | <concerns>
+      |
+
+      | pi_persona_spawn_proof_20260527.diagnostic_live | <status> | <quality> | <concerns>
+      |
+
+      | pi_persona_spawn_proof_20260527.remediate_wiring | <status> | <quality> |
+      <concerns> |
+
+      | pi_persona_spawn_proof_20260527.final_real_pi_retest | <status> | <quality>
+      | <concerns> |
+
+
+      ## Issues Identified
+
+      | Severity | Description | Related Step | Product or Environment | Blocking?
+      |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: all four user questions plus regression/full-quality obligations
+      are PROVEN by deterministic real Pi evidence.
+
+      - [ ] BLOCKED: missing proof, product blocker, or environmental blocker prevents
+      acceptance.
+
+
+      ## Required Follow-up if BLOCKED
+
+      - remediation_owner: <agent/step family>
+
+      - retest_required: <real Pi command/PTY/test evidence required>'
+    depends_on:
+    - pi_persona_spawn_proof_20260527.contract_design
+    - pi_persona_spawn_proof_20260527.diagnostic_live
+    - pi_persona_spawn_proof_20260527.remediate_wiring
+    - pi_persona_spawn_proof_20260527.final_real_pi_retest
+    agent: gate-reviewer
