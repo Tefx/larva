@@ -73947,7 +73947,7 @@ phases:
       or integration conflicts.'
   - id: pi_extension_runtime_20260526.wire_extension_entry
     name: Wire bundled Pi extension entry
-    status: claimed
+    status: done
     description: "step_type: implementation\ntags: [\"integration\"]\nagent_source:\
       \ project\nspec_refs: design/pi-coding-agent-integration.md > API contracts;\
       \ Architecture basis; Implementation handoff\nrefs: design/pi-coding-agent-integration.md\n\
@@ -74022,6 +74022,25 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-26T10:56:20.632728+00:00'
+    done_at: '2026-05-26T10:56:33.740361+00:00'
+    evidence: 'WORKTREE_MERGED_AND_MAINLINE_VERIFIED. Frontend task ses_19c1a36ceffePkcxeaZO0x1DAA
+      returned passed with commit 445f60f: wired bundled Pi extension runtime entry.
+      Orchestrator toggled all checklist items, squash-merged branch into main as
+      abadccf ([vectl] step-pi_extension_runtime_20260526.wire_extension_entry completed),
+      repaired a ghost claim bookkeeping conflict with vectl_repair_claims, reclaimed
+      the step, and verified mainline. Changed files: contrib/pi-extension/larva.ts
+      and tests/shell/test_pi_extension_contract.py. Evidence included refs Read Confirmation
+      for design/pi-coding-agent-integration.md, tests/shell/test_pi_extension_contract.py,
+      and contrib/pi-extension/larva.ts; checklist receipt covered registration of
+      before_agent_start, /larva-persona, UI status, tool_call, pi.setActiveTools,
+      and larva_subagent through Pi extension APIs; initial LARVA_PI_INITIAL_PERSONA_ID
+      commit before prompt/selector/none status; use of launcher-provided env vars;
+      focused source-to-sink registration tests; and no forbidden scope. Mainline
+      verification: `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py`
+      passed 45/45 in 0.11s; `uv run invar guard --all` passed with 0 errors and only
+      pre-existing warnings/infos. Forbidden scope preserved: no Pi settings writes,
+      MCP bridge, sidecars, locks, ask action, batch subagent tool, plan/orchestrator
+      state changes, or schema changes.'
   - id: pi_extension_runtime_20260526.extension_runtime_proof
     name: Extension runtime and seam proof
     status: pending
