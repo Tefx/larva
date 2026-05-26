@@ -72103,3 +72103,11 @@ phases:
     and exposes larva_subagent through real Pi extension hooks.
   depends_on:
   - pi-coding-agent-contract-harness-2026-05-26
+- id: pi-integration-finalization-2026-05-26
+  name: Pi Integration Finalization 2026-05-26
+  status: locked
+  gate: Design conformance, runtime liveness, docs sync, invar guard, and final deep
+    review are complete.
+  depends_on:
+  - pi-launcher-runtime-2026-05-26
+  - pi-extension-runtime-2026-05-26
