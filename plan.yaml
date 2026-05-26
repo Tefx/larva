@@ -78693,30 +78693,30 @@ phases:
       `_Stub*`, `_Placeholder*`) do not satisfy this requirement.'
     verification: 'ACCEPTABLE RECEIPT (green implementation remediation):
 
-      - [ ] Refs confirmation includes key passages from all provided refs or explicit
+      - [x] Refs confirmation includes key passages from all provided refs or explicit
       NOT READ reasons.
 
-      - [ ] Diff summary confirms changes are limited to `contrib/pi-extension/larva.ts`
+      - [x] Diff summary confirms changes are limited to `contrib/pi-extension/larva.ts`
       plus focused Pi tests/fixtures.
 
-      - [ ] A focused regression proves `setActiveTools`/active-tool update failure
+      - [x] A focused regression proves `setActiveTools`/active-tool update failure
       during extension-load startup degrades safely instead of throwing `LARVA_TOOL_ENUMERATION_FAILED`.
 
-      - [ ] Evidence shows degraded startup produces an unavailable/warning state
+      - [x] Evidence shows degraded startup produces an unavailable/warning state
       and does not falsely mark failed tools active.
 
-      - [ ] Denied-tool enforcement remains fail-closed for actual forbidden tool
+      - [x] Denied-tool enforcement remains fail-closed for actual forbidden tool
       use.
 
-      - [ ] Normal active-tool switch/update semantics remain green after startup.
+      - [x] Normal active-tool switch/update semantics remain green after startup.
 
-      - [ ] Focused reported-failure regressions and targeted Pi extension/launcher
+      - [x] Focused reported-failure regressions and targeted Pi extension/launcher
       tests pass with raw command output.
 
-      - [ ] No PersonaSpec/schema/shared contract/Python admission/unrelated launcher/prior
+      - [x] No PersonaSpec/schema/shared contract/Python admission/unrelated launcher/prior
       evidence mutation occurred.
 
-      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      - [x] Semantic closure fields are present: verdict, blockers, blocking_status,
       proof_gap_status, gate_open_allowed=false until independent retest/gate.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
