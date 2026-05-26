@@ -77548,7 +77548,7 @@ phases:
       Checklist toggled from retest receipt.'
 - id: pi-slash-autocomplete-crash-fix-2026-05-27
   name: Pi Slash Autocomplete and Live Smoke Fix 2026-05-27
-  status: in_progress
+  status: done
   gate: 'Systematic Pi smoke/live coverage proves both reported live failures are
     reproduced or faithfully fixture-exposed, fixed, retested, and gate-reviewed:
     slash autocomplete `/` does not crash, `uv run larva pi --persona vectl-planner`
@@ -78307,7 +78307,7 @@ phases:
     skipped_reason: absorbed
   - id: pi_slash_autocomplete_20260527.gate
     name: Gate Pi slash autocomplete and live smoke fix
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: project
@@ -78593,6 +78593,55 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-26T21:10:02.970847+00:00'
+    done_at: '2026-05-26T21:22:54.190992+00:00'
+    evidence: 'Gate review and mandatory supplemental liveness proof completed. Read-only
+      gate worktree stayed clean; no source/test/doc/plan mutations by reviewers;
+      no merge commit required.
+
+
+      Gate-reviewer evidence: verdict PASS, headline PASS, GATE OPEN, blockers [],
+      blocking_status CLOSED, proof_gap_status NONE, gate_open_allowed true. Refs
+      confirmation completed for design/pi-coding-agent-integration.md, contrib/pi-extension/larva.ts,
+      tests/shell/test_pi_extension_contract.py, tests/shell/test_pi_extension_tool_policy_static.py,
+      tests/shell/test_pi_reported_failures_expected_red.py; AGENTS.md explicitly
+      NOT READ because absent in isolated worktree, with equivalent injected repo
+      discipline noted. No CONSTITUTION.md found. CLI/TUI surface matrix complete:
+      `larva pi` launcher help works, `/larva-persona` registration/handler/completion
+      path exists, `larva_subagent` registration exists; no removed/broken commands.
+      Wiring audit PROVEN for launcher_to_extension, extension_command_registration,
+      argument_completion_to_pi_editor_shape, persona_switch_handler, and tool_policy_paths.
+      Failed earlier retests were treated only as issue-detection artifacts, not closure
+      proof.
+
+
+      Gate verification receipts: `uv run larva pi --help` exit 0 with usage output;
+      live PTY `uv run larva pi --persona vectl-planner`, send `/`, harness exit 0
+      and no `value.startsWith`, no `LARVA_TOOL_ENUMERATION_FAILED`, no `Pi active-tool
+      update failed`; focused Pi extension/regression tests exit 0 with 52 passed;
+      Pi launcher contract tests exit 0 with 32 passed; full `uv run pytest` exit
+      0 with 642 passed; `uv run invar guard --all` first timed out at 120s then retry
+      passed with static errors 0 and warnings 4. Requirement coverage all PROVEN:
+      PI-GATE-SLASH-001, PI-GATE-STARTUP-001, PI-GATE-ACTIVE-001, PI-GATE-LIVE-SLASH-001,
+      PI-GATE-SMOKE-001, PI-GATE-SCOPE-001.
+
+
+      Supplemental blind-tester Mode D liveness proof (run before accepting gate verdict):
+      public black-box `uv run larva pi --help` exit 0; live PTY startup for `uv run
+      larva pi --persona vectl-planner` rendered Pi TUI with larva extension and remained
+      alive until harness SIGTERM (exit 143 harness termination, not product crash);
+      live PTY slash probe sent `/`, slash command UI rendered and process remained
+      alive until harness SIGTERM. Forbidden string searches all false: `TypeError:
+      value.startsWith is not a function`, `value.startsWith`, `LARVA_TOOL_ENUMERATION_FAILED`,
+      `Pi active-tool update failed`, `uncaughtException`. Blind-tester verdict PASS,
+      blockers [], proof_gap_status NONE, gate_open_allowed true.
+
+
+      Checklist receipt: all 13 gate checklist items proven/toggled before completion,
+      including refs confirmation, expected-red reproduction coverage, failed-retest
+      disposition, scoped diffs, final retest proof classes, forbidden crash-string
+      absence, denied-tool/normal-switch preservation, live proof over helper-only
+      proof, no prior evidence mutation, behavioral proof mapping, and semantic closure
+      fields.'
   - id: pi_slash_autocomplete_20260527.fix_active_tool_update_startup
     name: Fix Pi active-tool update startup degradation
     status: done
