@@ -74326,7 +74326,7 @@ phases:
       state changes, or schema changes.'
   - id: pi_extension_runtime_20260526.extension_runtime_proof
     name: Extension runtime and seam proof
-    status: pending
+    status: claimed
     description: "step_type: verification\nexpected_result: green\nverification_scope:\
       \ phase-check; protects the Pi extension runtime gate and final liveness gate.\n\
       As an independent verifier, exercise the bundled Pi extension through fake or\
@@ -74394,6 +74394,8 @@ phases:
     depends_on:
     - pi_extension_runtime_20260526.wire_extension_entry
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-26T11:02:38.483144+00:00'
   - id: pi_extension_runtime_20260526.gate
     name: Gate extension runtime
     status: pending
