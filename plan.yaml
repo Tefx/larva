@@ -76060,7 +76060,7 @@ phases:
       regression and returns `failed` with `LARVA_CHILD_START_FAILED` instead of using
       the default child-session root.
 
-      - [ ] B2: Regression evidence shows parent child/resume paths do not call persona/model/policy/tool
+      - [x] B2: Regression evidence shows parent child/resume paths do not call persona/model/policy/tool
       resolution before child RPC startup, except documented parent input/path/spawn/busy
       checks.
 
