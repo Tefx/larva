@@ -76839,7 +76839,7 @@ phases:
       persona-not-found scenario. 2. Verify exact `LARVA_`-prefixed whitelist semantics
       and at least one non-whitelisted negative case. 3. Verify post-readiness stderr
       remains diagnostic-only even when it contains whitelisted-looking text.</risk_probes>'
-    verification: '- [ ] Pre-RPC fake child stderr `larva pi: LARVA_PERSONA_NOT_FOUND:
+    verification: '- [x] Pre-RPC fake child stderr `larva pi: LARVA_PERSONA_NOT_FOUND:
       child invalid` before JSONL/RPC readiness maps to parent `LARVA_PERSONA_NOT_FOUND`.
 
       - [ ] Exact whitelist is preserved: `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
