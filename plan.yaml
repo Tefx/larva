@@ -76979,7 +76979,7 @@ phases:
       - [x] Fake child pre-RPC stderr `larva pi: LARVA_PERSONA_NOT_FOUND: child invalid`
       maps to parent `LARVA_PERSONA_NOT_FOUND`.
 
-      - [ ] `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`
+      - [x] `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`, and `LARVA_TOOL_ENUMERATION_FAILED`
       pre-RPC whitelist behavior is covered by runtime fake seam evidence or an explicitly
       equivalent table-driven executable fixture.
 
