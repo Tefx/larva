@@ -386,7 +386,30 @@ def test_resume_re_resolves_persona_in_new_child_process() -> None:
 
 
 def test_abort_contract() -> None:
-    _assert_tokens(_source(), "abort", "LARVA_CHILD_CANCELLED", "kill", "cancelled")
+    source = _source()
+    _assert_tokens(source, "abort", "LARVA_CHILD_CANCELLED", "kill", "cancelled")
+
+
+def test_in_flight_abort_is_forwarded_to_child_rpc_and_wins_cancelled_race() -> None:
+    source = _source()
+    body = _function_body(source, "async function runChildSequence")
+
+    _assert_tokens(
+        body,
+        "abortSignal?.addEventListener",
+        "rpc.abort()",
+        "Promise.race",
+        "abortPromise",
+        "cancelled(",
+        "removeEventListener",
+    )
+    assert body.index("abortSignal?.addEventListener") < body.index('rpc.command("prompt-1"')
+    assert body.index("const first = await Promise.race") < body.index("return first")
+    _assert_regex(
+        body,
+        r"first\.status === \"cancelled\"[\s\S]+return first",
+        "cancelled abort outcome must not be overwritten by a later successful child result",
+    )
 
 
 def test_nested_subagent_exposure_uses_child_authority_and_policy() -> None:

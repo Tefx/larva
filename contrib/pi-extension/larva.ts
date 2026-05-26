@@ -596,7 +596,14 @@ function finalText(value: unknown): string | LarvaError {
   return error("LARVA_CHILD_PROTOCOL_FAILED", "Child get_last_assistant_text data.text was malformed.");
 }
 
-async function runChildSequence(env: RuntimeEnv, root: string, personaId: string, task: string, taskId: string | null): Promise<LarvaSubagentResult> {
+async function runChildSequence(
+  env: RuntimeEnv,
+  root: string,
+  personaId: string,
+  task: string,
+  taskId: string | null,
+  abortSignal?: AbortSignal,
+): Promise<LarvaSubagentResult> {
   try {
     await resolvePersona(personaId, { env });
   } catch (caught) {
@@ -605,28 +612,61 @@ async function runChildSequence(env: RuntimeEnv, root: string, personaId: string
   const child = startChild(env, root, personaId);
   if (isLarvaError(child)) return failed(taskId, personaId, child);
   const rpc = new RpcClient(child);
-  if (taskId) {
-    const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
-    if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
-      child.kill();
-      return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
+  let allocatedTaskId = taskId;
+  let abortStarted = false;
+  const abortChild = async (): Promise<LarvaSubagentResult> => {
+    abortStarted = true;
+    const outcome = await rpc.abort();
+    if (outcome === "cancelled") return cancelled(allocatedTaskId, personaId);
+    return failed(allocatedTaskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child abort state became unknowable."));
+  };
+  let abortPromise: Promise<LarvaSubagentResult> | null = null;
+  let resolveAbortRace: ((value: LarvaSubagentResult) => void) | null = null;
+  const abortRace = new Promise<LarvaSubagentResult>((resolveAbort) => { resolveAbortRace = resolveAbort; });
+  const requestAbort = (): void => {
+    if (!abortPromise) {
+      abortPromise = abortChild();
+      abortPromise.then((result) => resolveAbortRace?.(result));
     }
-  } else {
-    const stateResult = await rpc.command("state-1", { type: "get_state" });
-    const sessionFile = sessionFileFromState(stateResult);
-    if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
-    const canonical = await validateTaskId(sessionFile, root);
-    if (isLarvaError(canonical)) { child.kill(); return failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")); }
-    taskId = canonical;
+  };
+  if (abortSignal?.aborted) requestAbort();
+  abortSignal?.addEventListener("abort", requestAbort, { once: true });
+  const sequence = async (): Promise<LarvaSubagentResult> => {
+    if (taskId) {
+      const switched = await rpc.command("switch-1", { type: "switch_session", sessionPath: taskId });
+      if (!isSuccessResponse(switched) || (switched as { data?: { cancelled?: unknown } }).data?.cancelled === true) {
+        child.kill();
+        return failed(taskId, personaId, isLarvaError(switched) ? switched : error("LARVA_CHILD_PROTOCOL_FAILED", "Child switch_session failed."));
+      }
+    } else {
+      const stateResult = await rpc.command("state-1", { type: "get_state" });
+      const sessionFile = sessionFileFromState(stateResult);
+      if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
+      const canonical = await validateTaskId(sessionFile, root);
+      if (isLarvaError(canonical)) { child.kill(); return failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")); }
+      taskId = canonical;
+      allocatedTaskId = canonical;
+    }
+    const prompted = await rpc.command("prompt-1", { type: "prompt", message: task });
+    if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
+    const ended = await rpc.waitForAgentEnd();
+    if (ended) { child.kill(); return failed(taskId, personaId, ended); }
+    const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
+    const text = finalText(last);
+    if (isLarvaError(text)) return failed(taskId, personaId, text);
+    return success(taskId, personaId, text);
+  };
+  try {
+    const sequencePromise = sequence();
+    const first = await Promise.race([sequencePromise, abortRace]);
+    if (abortStarted && abortPromise) {
+      if (first.status === "cancelled" || first.status === "failed") return first;
+      return await Promise.race([sequencePromise, abortPromise]);
+    }
+    return first;
+  } finally {
+    abortSignal?.removeEventListener("abort", requestAbort);
   }
-  const prompted = await rpc.command("prompt-1", { type: "prompt", message: task });
-  if (!isSuccessResponse(prompted)) { child.kill(); return failed(taskId, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child prompt failed.")); }
-  const ended = await rpc.waitForAgentEnd();
-  if (ended) { child.kill(); return failed(taskId, personaId, ended); }
-  const last = await rpc.command("last-1", { type: "get_last_assistant_text" });
-  const text = finalText(last);
-  if (isLarvaError(text)) return failed(taskId, personaId, text);
-  return success(taskId, personaId, text);
 }
 
 export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: RuntimeEnv; abortSignal?: AbortSignal }): Promise<LarvaSubagentResult> {
@@ -652,7 +692,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
 
   try {
     if (ctx?.abortSignal?.aborted) return cancelled(canonicalTaskId, personaId);
-    const result = await runChildSequence(env, root, personaId, task, canonicalTaskId);
+    const result = await runChildSequence(env, root, personaId, task, canonicalTaskId, ctx?.abortSignal);
     if (ctx?.abortSignal?.aborted && result.status !== "success") return cancelled(result.task_id, personaId);
     return result;
   } finally {
