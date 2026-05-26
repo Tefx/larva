@@ -73731,7 +73731,7 @@ phases:
     claimed_at: '2026-05-26T07:57:06.594490+00:00'
   - id: pi_extension_runtime_20260526.tool_policy
     name: Complete adapter-local tool policy enforcement
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: project\nspec_refs: design/pi-coding-agent-integration.md\
       \ > Tool policy; API contracts; Verification targets 14-17\nrefs: design/pi-coding-agent-integration.md\n\
       TARGET STATE: The Pi extension parses adapter-local `~/.pi/tool-policy.json`\
@@ -73790,6 +73790,8 @@ phases:
 
       '
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-26T07:57:24.068041+00:00'
   - id: pi_extension_runtime_20260526.subagent_rpc
     name: Complete larva_subagent child RPC runtime
     status: claimed
