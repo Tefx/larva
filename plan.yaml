@@ -74642,7 +74642,7 @@ phases:
       - [x] Child result resolution after an abort cannot overwrite the cancelled
       outcome.
 
-      - [ ] Focused abort runtime test/fixture coverage is added or updated so B1
+      - [x] Focused abort runtime test/fixture coverage is added or updated so B1
       would fail on the previously observed success-without-abort behavior.
 
       - [ ] Evidence identifies the focused command/scenario used for local validation
