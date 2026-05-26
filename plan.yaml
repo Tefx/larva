@@ -74794,7 +74794,7 @@ phases:
       not merely after final success. 2. Confirm cancelled result wins over any late
       child output. 3. Confirm busy/session cleanup by rerunning busy/resume scenarios
       after abort.</risk_probes>'
-    verification: '- [ ] refs confirmation cites `design/pi-coding-agent-integration.md`
+    verification: '- [x] refs confirmation cites `design/pi-coding-agent-integration.md`
       and the Pi extension runtime seam, or records explicit NOT READ reasons.
 
       - [ ] Fake Pi runtime abort-during-result trace includes child RPC `abort` command.
