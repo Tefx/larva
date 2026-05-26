@@ -72667,36 +72667,36 @@ phases:
       logic, or policy hierarchy scope creep.
 
       - [ ] Unresolved items are classified with explicit blocking/non-intersection
-      rationale.'
-    evidence_template: '## refs Read Confirmation (MANDATORY)
+      rationale.
 
-      - design/pi-coding-agent-integration.md — key launcher/runtime passages reviewed.
+      - [ ] Implementation and liveness receipts include `## refs Read Confirmation`
+      with `design/pi-coding-agent-integration.md` key passages or explicit NOT READ
+      reasons.'
+    evidence_template: '## refs Read Confirmation
 
-
-      ## Gate Decision Basis
-
-      | obligation | evidence_ref | status | blocks_downstream | rationale |
-
-      | --- | --- | --- | --- | --- |
+      - design/pi-coding-agent-integration.md — key passages read: <specific sections/targets
+      used by this gate>; NOT READ entries only with reason.
 
 
-      ## Execution Review
+      ## Upstream Receipt Refs Confirmation Audit
 
-      | Step ID | Status | Evidence Quality | Concerns |
+      - implement_launcher_entry receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-      | --- | --- | --- | --- |
+      - launcher_liveness_proof receipt included refs confirmation: <yes/no; evidence
+      ref>
 
-
-      ## Gate Decision
-
-      - [ ] OPEN: launcher phase passes
-
-      - [ ] BLOCKED: required actions listed
+      - missing_or_incomplete_refs_confirmation: <none or list with blocking disposition>
 
 
-      ## Forbidden Scope Review
+      ## Gate Evidence
 
-      - findings: <none or list>'
+      - checklist_receipt: <satisfied/failed/blocked/unobserved checklist items with
+      evidence refs>
+
+      - gate_decision: <OPEN/BLOCK with decision basis>
+
+      '
     depends_on:
     - pi_launcher_runtime_20260526.implement_launcher_entry
     - pi_launcher_runtime_20260526.launcher_liveness_proof
