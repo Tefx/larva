@@ -77891,31 +77891,31 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (green after fix):
 
-      - [ ] Refs confirmation includes key passages from design, extension source,
+      - [x] Refs confirmation includes key passages from design, extension source,
       relevant tests, and AGENTS.md.
 
-      - [ ] Diff summary confirms product changes are limited to `contrib/pi-extension/larva.ts`
+      - [x] Diff summary confirms product changes are limited to `contrib/pi-extension/larva.ts`
       plus focused tests/fixtures, with no prior completed phase evidence mutation.
 
-      - [ ] Focused expected-red slash autocomplete regression from `pi_slash_autocomplete_20260527.reproduce_contract`
+      - [x] Focused expected-red slash autocomplete regression from `pi_slash_autocomplete_20260527.reproduce_contract`
       now passes.
 
-      - [ ] Focused expected-red startup/tool-enumeration regression from `pi_slash_autocomplete_20260527.reproduce_contract`
+      - [x] Focused expected-red startup/tool-enumeration regression from `pi_slash_autocomplete_20260527.reproduce_contract`
       now passes.
 
-      - [ ] Evidence shows Pi TUI autocomplete receives only strings or documented
+      - [x] Evidence shows Pi TUI autocomplete receives only strings or documented
       autocomplete object shapes for `/` candidates.
 
-      - [ ] Evidence shows tool enumeration unavailable/failure path degrades safely
+      - [x] Evidence shows tool enumeration unavailable/failure path degrades safely
       without fail-closed extension-load startup crash.
 
-      - [ ] Existing Pi extension command/tool-policy and launcher behavior remains
+      - [x] Existing Pi extension command/tool-policy and launcher behavior remains
       covered by targeted tests.
 
-      - [ ] No PersonaSpec, schema, Python admission surface, or unrelated launcher
+      - [x] No PersonaSpec, schema, Python admission surface, or unrelated launcher
       behavior changed.
 
-      - [ ] Semantic closure fields are present: verdict, blockers, blocking_status,
+      - [x] Semantic closure fields are present: verdict, blockers, blocking_status,
       proof_gap_status, gate_open_allowed=false until retest/gate.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
