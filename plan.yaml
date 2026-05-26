@@ -75701,6 +75701,7 @@ phases:
       '
     depends_on:
     - pi_finalization_20260526.wiring_audit
+    - pi_finalization_20260526.spec_divergence_fix
     agent: client-runtime-verifier
   - id: pi_finalization_20260526.doc_sync
     name: Documentation sync for Pi integration
