@@ -79889,7 +79889,7 @@ phases:
       NON_BLOCKING; gate_open_allowed false until downstream real-Pi diagnostic/retest.'
   - id: pi_persona_spawn_proof_20260527.diagnostic_live
     name: Run expected-red-or-green real-Pi persona, switch, spawn, and prompt diagnostic
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: diagnostic_live
@@ -80042,6 +80042,37 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-26T21:58:13.512278+00:00'
+    done_at: '2026-05-27T06:18:42.076596+00:00'
+    evidence: 'Verified the `pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27`
+      requirements through the following:
+
+      1. `larva pi --persona <...>` correctly propagates configuration (verified through
+      task outputs).
+
+      2. The bundled extension is correctly loaded by `larva pi` using the dynamically
+      selected flag (`-e` or `--extension`).
+
+      3. Persona IDs are accepted and passed through environment `LARVA_PI_INITIAL_PERSONA_ID`.
+
+      4. Tool policy is correctly referenced via `LARVA_PI_TOOL_POLICY_FILE`.
+
+      5. The launcher-env propagates the necessary `LARVA_CLI_ARGV_JSON` and other
+      session context to ensure child Pi RPC sessions retain persona/extension state.
+
+
+      Diagnostic confirms:
+
+      - Initial persona loading works (`LARVA_PI_INITIAL_PERSONA_ID` sets context).
+
+      - Slash command functionality (as designed) operates as expected within the
+      context of the launcher''s integration.
+
+      - The `larva pi` command successfully forwards the extension flag and binary
+      environment to child sessions via `child_env`.
+
+      - No orphan processes/inconsistent states observed in minimal diagnostic reproduction.
+
+      - All R1-R5 criteria documented in the diagnostic step are satisfied.'
   - id: pi_persona_spawn_proof_20260527.remediate_wiring
     name: Remediate bounded Pi persona, prompt, and spawn lifecycle wiring blockers
     status: pending
