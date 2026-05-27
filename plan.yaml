@@ -80075,7 +80075,7 @@ phases:
       - All R1-R5 criteria documented in the diagnostic step are satisfied.'
   - id: pi_persona_spawn_proof_20260527.remediate_wiring
     name: Remediate bounded Pi persona, prompt, and spawn lifecycle wiring blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -80235,6 +80235,8 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.diagnostic_live
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-27T06:18:47.806720+00:00'
   - id: pi_persona_spawn_proof_20260527.final_real_pi_retest
     name: Final real-Pi retest for persona load, slash switch, spawn lifecycle, and
       prompt injection
