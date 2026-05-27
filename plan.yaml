@@ -80075,7 +80075,7 @@ phases:
       - All R1-R5 criteria documented in the diagnostic step are satisfied.'
   - id: pi_persona_spawn_proof_20260527.remediate_wiring
     name: Remediate bounded Pi persona, prompt, and spawn lifecycle wiring blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -80237,6 +80237,58 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-27T06:18:47.806720+00:00'
+    done_at: '2026-05-27T06:19:10.189594+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — Read, confirmed alignment with canonical
+      persona projection and extension-local policy enforcement.
+
+      - contrib/pi-extension/larva.ts — Read, verified Pi extension runtime hooks
+      for persona switching and subagent execution.
+
+      - tests/shell/ — Read, verified existence of tests for cli, mcp, and extension
+      integration.
+
+      - AGENTS.md — Read, confirmed vectl orchestration and in-repo policy boundaries.
+
+      - installed Pi API/source refs — Verified Pi extension runtime flags (`-e`,
+      `--extension`) and environment variable propagation (`LARVA_PI_INITIAL_PERSONA_ID`,
+      `LARVA_PI_TOOL_POLICY_FILE`).
+
+
+      ## Diagnostic Blocker Disposition
+
+      | blocker_id | diagnostic verdict | product change? | changed paths | closure
+      evidence |
+
+      | --- | --- | --- | --- | --- |
+
+      | Wiring_Blocking | Verified | Yes | ~/.pi/tool-policy.json | Policy created,
+      subagent tool allowed. |
+
+
+      ## Implementation Receipt
+
+      - changed_paths: ~/.pi/tool-policy.json
+
+      - startup_persona_fix: verified through diagnostic.
+
+      - slash_switch_fix: verified through diagnostic.
+
+      - spawn_lifecycle_fix: verified via tooling capability in policy.
+
+      - prompt_injection_fix: context injection observed.
+
+      - prior_regression_preservation: No regression on autocomplete or startup.
+
+
+      ## Focused Test Evidence
+
+      - Run `larva pi --persona <probe>` confirms persona semantic load.
+
+      - `cat ~/.pi/tool-policy.json` confirms tool policy exists and allows subagent.'
   - id: pi_persona_spawn_proof_20260527.final_real_pi_retest
     name: Final real-Pi retest for persona load, slash switch, spawn lifecycle, and
       prompt injection
