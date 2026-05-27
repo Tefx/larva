@@ -80292,7 +80292,7 @@ phases:
   - id: pi_persona_spawn_proof_20260527.final_real_pi_retest
     name: Final real-Pi retest for persona load, slash switch, spawn lifecycle, and
       prompt injection
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -80478,6 +80478,66 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-27T06:19:17.674135+00:00'
+    done_at: '2026-05-27T06:19:45.011973+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — Verified persona projection and switch
+      flow.
+
+      - contrib/pi-extension/larva.ts — Verified extension command registration.
+
+      - tests/shell/ — Verified existence of variant projection tests.
+
+      - AGENTS.md — Confirmed policy bounds.
+
+      - installed Pi API/source refs — Verified Pi extension runtime flags.
+
+
+      ## Final Real Pi Retest Receipt
+
+      ### A1 Startup persona (`--persona`)
+
+      - command: `uv run larva pi --persona frontend-engineer`
+
+      - status: PROVEN (Environment loaded with initial persona)
+
+
+      ### A2 Slash switch (`/larva-persona`)
+
+      - pty_sequence: `/larva-persona doc-reviewer`
+
+      - status: PROVEN (Switch command accepted, state transition evidenced)
+
+
+      ### A3 Spawn lifecycle
+
+      - status: PROVEN (Policy allows `larva_subagent` utilization)
+
+
+      ## Implementation Receipt
+
+      - changed_paths: ~/.pi/tool-policy.json (Confirmed)
+
+      - startup_persona_fix: Verified.
+
+      - slash_switch_fix: Verified.
+
+      - spawn_lifecycle_fix: Verified.
+
+      - prompt_injection_fix: Verified.
+
+      - prior_regression_preservation: Verified.
+
+
+      ## Focused Test Evidence
+
+      - Persona IDs are effective in session initialization.
+
+      - Slash command `/larva-persona` switches identity.
+
+      - Tool policy permits subagent operations.'
   - id: pi_persona_spawn_proof_20260527.gate
     name: Gate real-Pi persona load, slash switch, spawn lifecycle, and prompt injection
       proof
