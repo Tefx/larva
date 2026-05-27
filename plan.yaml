@@ -80292,7 +80292,7 @@ phases:
   - id: pi_persona_spawn_proof_20260527.final_real_pi_retest
     name: Final real-Pi retest for persona load, slash switch, spawn lifecycle, and
       prompt injection
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -80476,6 +80476,8 @@ phases:
     depends_on:
     - pi_persona_spawn_proof_20260527.remediate_wiring
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-27T06:19:17.674135+00:00'
   - id: pi_persona_spawn_proof_20260527.gate
     name: Gate real-Pi persona load, slash switch, spawn lifecycle, and prompt injection
       proof
