@@ -80541,7 +80541,7 @@ phases:
   - id: pi_persona_spawn_proof_20260527.gate
     name: Gate real-Pi persona load, slash switch, spawn lifecycle, and prompt injection
       proof
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       agent_source: project
@@ -80769,3 +80769,5 @@ phases:
     - pi_persona_spawn_proof_20260527.remediate_wiring
     - pi_persona_spawn_proof_20260527.final_real_pi_retest
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-05-27T06:19:49.655407+00:00'
