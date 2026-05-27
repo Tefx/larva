@@ -79986,28 +79986,28 @@ phases:
       does not get treated as PASS.
 
       </risk_probes>'
-    verification: '- [ ] Real `uv run larva pi --persona <probe persona>` transcript
+    verification: '- [x] Real `uv run larva pi --persona <probe persona>` transcript
       proves startup persona semantic load and effective sentinel behavior, or records
       a blocker with reproduction details.
 
-      - [ ] Real PTY slash `/larva-persona <other probe persona>` transcript proves
+      - [x] Real PTY slash `/larva-persona <other probe persona>` transcript proves
       persona switch and post-switch effective sentinel behavior, or records a blocker
       with reproduction details.
 
-      - [ ] Real Pi spawn/subagent path transcript proves request, spawned run/session,
+      - [x] Real Pi spawn/subagent path transcript proves request, spawned run/session,
       model/tool policy handoff, completion/failure handling, cleanup/state reset,
       and no orphan processes/sessions, or records a blocker with reproduction details.
 
-      - [ ] Prompt injection route evidence proves persona prompt reaches effective
+      - [x] Prompt injection route evidence proves persona prompt reaches effective
       system prompt/context; extension-state-only evidence is explicitly marked insufficient.
 
-      - [ ] Previous Pi startup and slash autocomplete non-crash behavior is rechecked
+      - [x] Previous Pi startup and slash autocomplete non-crash behavior is rechecked
       during diagnostic.
 
-      - [ ] Any focused tests/probe fixtures are limited to diagnostic support and
+      - [x] Any focused tests/probe fixtures are limited to diagnostic support and
       do not implement product fixes.
 
-      - [ ] Diagnostic result classifies each acceptance area as PASS, PRODUCT_BLOCKER,
+      - [x] Diagnostic result classifies each acceptance area as PASS, PRODUCT_BLOCKER,
       ENV_BLOCKER, or INCONCLUSIVE with remediation input.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
