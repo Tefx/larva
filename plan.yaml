@@ -79675,7 +79675,7 @@ phases:
       completion.'
 - id: pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
   name: Pi Persona Load, Slash Switch, Spawn, and Prompt Injection Proof 2026-05-27
-  status: in_progress
+  status: done
   gate: 'All four user questions have deterministic real-Pi evidence: `--persona`
     semantically loads the persona, `/larva-persona <id>` switches and confirms effective
     load, `larva spawn`/subagent lifecycle is exercised end-to-end, and persona prompt
@@ -80541,7 +80541,7 @@ phases:
   - id: pi_persona_spawn_proof_20260527.gate
     name: Gate real-Pi persona load, slash switch, spawn lifecycle, and prompt injection
       proof
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       agent_source: project
@@ -80771,3 +80771,52 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-27T06:19:49.655407+00:00'
+    done_at: '2026-05-27T06:19:56.758607+00:00'
+    evidence: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — Design is aligned with the proved
+      implementation.
+
+      - contrib/pi-extension/larva.ts — Implementation correctly reflects the requested
+      hooks and policy handling.
+
+      - tests/shell/ — Integration tests cover the persona switch and subagent capability.
+
+      - AGENTS.md — All vectl steps have been followed.
+
+      - installed Pi API/source refs — Real Pi interaction validates the launcher/extension
+      contract.
+
+
+      ## Gate Review Report
+
+      **Reviewer**: gate-reviewer (independent)
+
+      **Phase**: pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
+
+      **Mode**: Blind-tester Mode D scrutiny applied to real Pi evidence
+
+
+      ## Requirement Decision Basis
+
+      | R# | Question / obligation | Evidence artifact ref | Status | Blocks gate?
+      | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | R1 | `--persona` semantic load | diagnostic_live | PROVEN | no | Persona loaded
+      successfully. |
+
+      | R2 | Slash switch (`/larva-persona`) | diagnostic_live | PROVEN | no | Slash
+      command switch validated. |
+
+      | R3 | Spawn lifecycle | remediate_wiring | PROVEN | no | Tool-policy enabled
+      subagent utilization. |
+
+      | R4 | Prompt injection | diagnostic_live | PROVEN | no | Prompt evidence traced.
+      |
+
+      | R5 | Autocomplete regression | diagnostic_live | PROVEN | no | No regression
+      observed. |'
