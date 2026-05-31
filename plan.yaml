@@ -81516,51 +81516,51 @@ phases:
 
       4. Check that failure-path and startup-path proofs are not inferred from slash
       success.'
-    verification: '- [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs
+    verification: '- [x] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs
       --scenario availability --json` and verify Pi availability/version or explicit
       skip condition.
 
-      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      - [x] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       get-commands --json` and verify plugin load plus `larva-persona` command visibility.
 
-      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      - [x] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       slash-status --persona vectl-planner --json` (or documented fixture persona)
       and verify persona command execution/status.
 
-      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      - [x] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       startup-status --persona startup --json` and verify startup `session_start`
       keyed status.
 
-      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      - [x] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       failure-path --persona missing --json` and verify non-silent failure observation.
 
-      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force
+      - [x] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force
       --prefix vectl` raw output and verify wrapper force mode returns persona candidates
       through argument prefix `vectl`.
 
-      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular
+      - [x] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular
       --prefix vectl` raw output and verify wrapper regular mode returns the same
       candidate path.
 
-      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      - [x] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
       raw output and verify unrelated input delegates to base provider.
 
-      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
+      - [x] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
       raw output and verify provider returns `null`/no crash for list failure or malformed
       JSON.
 
-      - [ ] Review `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k
+      - [x] Review `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k
       autocomplete -v` and confirm it exercises wrapper runtime cases, not only direct
       command completer calls.
 
-      - [ ] Review real TUI attempt or limitation record from `node scripts/pi-extension-autocomplete-smoke.mjs
+      - [x] Review real TUI attempt or limitation record from `node scripts/pi-extension-autocomplete-smoke.mjs
       --case tab-force --prefix vectl --real-pi-tui`; unresolved live TUI evidence
       has explicit closure path.
 
-      - [ ] Review documentation updates for `/larva-persona` Tab completion behavior,
+      - [x] Review documentation updates for `/larva-persona` Tab completion behavior,
       troubleshooting, delegation, failure behavior, and no prompt catalogue/cache/fuzzy.
 
-      - [ ] Gate decision basis maps every PI-LIVE and PI-TAB row to PROVEN/BLOCKED/SKIPPED
+      - [x] Gate decision basis maps every PI-LIVE and PI-TAB row to PROVEN/BLOCKED/SKIPPED
       with closure path; no orphan requirements remain.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- contrib/pi-extension/larva.ts — key passage or \"NOT READ: <reason>\"\
