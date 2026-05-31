@@ -83430,7 +83430,7 @@ phases:
     agent: integration-verifier
   - id: pi-adapter-local-model-map-config-2026-06-01.docs
     name: docs
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -83592,6 +83592,8 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.extension-impl
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-05-31T19:01:43.023506+00:00'
   - id: pi-adapter-local-model-map-config-2026-06-01.gate
     name: gate
     status: pending
