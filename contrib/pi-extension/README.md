@@ -118,8 +118,10 @@ slash-command line shaped as:
 
 It passes exactly `<prefix>` (for example, `vectl` in `/larva-persona vectl`) to
 the same persona-id completer used by command-level completion. Forced Tab and
-regular completion use the same path. All other editor input is delegated to Pi's
-base provider so global and file completion remain Pi-owned.
+regular completion use the same path. In `larva pi`, typing
+`/larva-persona <prefix>` and pressing Tab should show matching persona ids from
+the current `larva list --json` output. All other editor input is delegated to
+Pi's base provider so global and file completion remain Pi-owned.
 
 Completion candidates have Pi's command item shape:
 
@@ -131,6 +133,16 @@ If `larva list --json` fails or returns malformed JSON, the provider returns
 `null` and does not throw through the Pi TUI. The extension does not inject a
 persona catalogue into prompts, cache completion results, or perform fuzzy
 matching; matching is exact `startsWith(<prefix>)` over current persona ids.
+
+Troubleshooting commands for runtime autocomplete behavior:
+
+```bash
+node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix vectl
+node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix vectl
+node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input
+node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure
+uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v
+```
 
 ## `larva_subagent` custom tool
 

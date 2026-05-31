@@ -255,11 +255,21 @@ changing state. Pi status shows `larva: <id>` or `larva: none`.
 For Tab completion, the bundled extension preserves Pi's command-level
 `/larva-persona` argument completer and, when the Pi TUI exposes
 `ctx.ui.addAutocompleteProvider`, installs a narrow editor provider for only
-`/larva-persona <prefix>`. The provider sends exactly the argument prefix to
-`larva list --json`, uses exact `startsWith` matching, returns `null` without
-throwing on list failures or malformed JSON, and delegates every other input back
-to Pi's base autocomplete provider. It does not inject persona catalogues into
-prompts, cache persona lists, or perform fuzzy matching.
+`/larva-persona <prefix>`. In `larva pi`, typing that command shape and pressing
+Tab should show matching persona ids from `larva list --json`. The provider sends
+exactly the argument prefix to the Larva-specific completion path, uses exact
+`startsWith` matching, returns `null` without throwing on list failures or
+malformed JSON, and delegates every other input back to Pi's base autocomplete
+provider. It does not inject persona catalogues into prompts, cache persona
+lists, or perform fuzzy matching. Runtime troubleshooting uses:
+
+```bash
+node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix vectl
+node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix vectl
+node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input
+node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure
+uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v
+```
 
 The bundled extension exposes one custom tool, `larva_subagent(persona_id, task,
 task_id?)`, when the active parent persona and tool policy allow it. A successful
