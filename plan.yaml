@@ -81205,7 +81205,7 @@ phases:
       behavior, and avoided source-token-only assertions.'
   - id: real_pi_rpc_liveness
     name: Run real Pi RPC liveness proof for command and persona status
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi_runtime_liveness_hardening_20260601.gate`
@@ -81299,6 +81299,8 @@ phases:
     depends_on:
     - supplemental_runtime_tests
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-31T17:50:19.754528+00:00'
   - id: ci_local_gate_wiring
     name: Wire supplemental Pi runtime tests into local and CI gate
     status: claimed
