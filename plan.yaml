@@ -81956,7 +81956,7 @@ phases:
     agent: integration-verifier
   - id: pi_tab_autocomplete_docs
     name: Document Larva persona Tab completion behavior and troubleshooting
-    status: claimed
+    status: done
     description: 'step_type: documentation
 
       agent_source: default
@@ -82061,6 +82061,15 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-05-31T17:35:57.107411+00:00'
+    done_at: '2026-05-31T17:48:19.759285+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi_tab_autocomplete_docs
+      into main as 37e2bd7 ([vectl] step-pi_tab_autocomplete_docs completed). Checklist
+      verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `git diff --check HEAD~1..HEAD` after merge; exit 0 with no output. Worker
+      evidence summary: docs update covered /larva-persona <prefix> Tab behavior,
+      wrapper boundary/delegation, fail-soft larva list behavior, non-goals (no prompt
+      catalogue/cache/fuzzy), and exact autocomplete smoke/pytest troubleshooting
+      commands.'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
