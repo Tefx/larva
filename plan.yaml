@@ -81081,7 +81081,7 @@ phases:
       passed.'
   - id: supplemental_runtime_tests
     name: Add supplemental Pi runtime smoke tests and event harness
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red_or_green
@@ -81192,6 +81192,17 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-31T17:36:09.200826+00:00'
+    done_at: '2026-05-31T17:49:39.066191+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-supplemental_runtime_tests
+      into main as 7e49c36 ([vectl] step-supplemental_runtime_tests completed). Checklist
+      verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `node scripts/pi-extension-runtime-smoke.mjs --help && uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -v`; help listed required scenarios availability, get-commands, slash-status,
+      startup-status, failure-path, tool-shape, and tool-call-block; pytest collected
+      12 items and passed 12 in 14.01s. Worker evidence summary: added supplemental
+      real-runtime smoke script, deterministic fake Larva CLI fixture, runtime tests
+      for real Pi availability/RPC dispositions, runtime object tool-shape and tool-call-block
+      behavior, and avoided source-token-only assertions.'
   - id: real_pi_rpc_liveness
     name: Run real Pi RPC liveness proof for command and persona status
     status: pending
