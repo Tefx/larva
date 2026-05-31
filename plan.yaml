@@ -80967,16 +80967,16 @@ phases:
       crash the Pi TUI.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes PI-TAB-001..PI-TAB-011 with every row mapped
+    verification: '- [x] Evidence includes PI-TAB-001..PI-TAB-011 with every row mapped
       to an owning step, checklist item, and evidence field.
 
-      - [ ] Evidence explicitly states that direct `getArgumentCompletions("vectl")`
+      - [x] Evidence explicitly states that direct `getArgumentCompletions("vectl")`
       and source-token search are insufficient to close PI-TAB runtime completion.
 
-      - [ ] Evidence preserves existing PI-LIVE-001..PI-LIVE-009 obligations or explicitly
+      - [x] Evidence preserves existing PI-LIVE-001..PI-LIVE-009 obligations or explicitly
       references their existing ownership in this phase.
 
-      - [ ] Evidence names the exact downstream commands/scripts: `node scripts/pi-extension-autocomplete-smoke.mjs
+      - [x] Evidence names the exact downstream commands/scripts: `node scripts/pi-extension-autocomplete-smoke.mjs
       --case tab-force --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
       --case tab-regular --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
       --case delegate-other-input`, `node scripts/pi-extension-autocomplete-smoke.mjs
