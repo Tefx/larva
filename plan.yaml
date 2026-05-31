@@ -82489,45 +82489,45 @@ phases:
 
       ## Checklist
 
-      - [ ] Availability scenario receipt includes Pi binary path/version or explicit
+      - [x] Availability scenario receipt includes Pi binary path/version or explicit
       `SKIP_NO_PI_BINARY` evidence.
 
-      - [ ] `get-commands` receipt proves real plugin load and `larva-persona` visibility.
+      - [x] `get-commands` receipt proves real plugin load and `larva-persona` visibility.
 
-      - [ ] `slash-status --persona ok` receipt proves `statusKey=larva`, `statusText=larva:
+      - [x] `slash-status --persona ok` receipt proves `statusKey=larva`, `statusText=larva:
       ok`, and notify `Larva persona active: ok`.
 
-      - [ ] `startup-status --persona startup` receipt proves `statusText=larva: startup`
+      - [x] `startup-status --persona startup` receipt proves `statusText=larva: startup`
       after real session start.
 
-      - [ ] `failure-path --persona missing` receipt proves slash-command missing/unparseable
+      - [x] `failure-path --persona missing` receipt proves slash-command missing/unparseable
       failure topology with stable non-silent observation.
 
-      - [ ] Semantic closure fields are present and green: `verdict: PASS`, `blockers:
+      - [x] Semantic closure fields are present and green: `verdict: PASS`, `blockers:
       []`, `gate_open_allowed: true`, and `orchestrator_action_hint` does not say
       `DO_NOT_COMPLETE`.
 
-      - [ ] Raw JSON/stdout/stderr artifacts are preserved for every scenario and
+      - [x] Raw JSON/stdout/stderr artifacts are preserved for every scenario and
       include enough data for gate review to independently verify the claims.'
-    verification: '- [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario
+    verification: '- [x] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario
       availability --json` and attach raw stdout/stderr/exit code.
 
-      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
+      - [x] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
       --json` and attach raw stdout/stderr/exit code.
 
-      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status
+      - [x] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status
       --persona ok --json` and attach raw stdout/stderr/exit code proving keyed status
       and active notify.
 
-      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
+      - [x] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
       --persona startup --json` and attach raw stdout/stderr/exit code proving startup
       keyed status.
 
-      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path
+      - [x] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path
       --persona missing --json` and attach raw stdout/stderr/exit code proving slash-command
       failure topology.
 
-      - [ ] Evidence explicitly reports `verdict`, `blockers`, `gate_open_allowed`,
+      - [x] Evidence explicitly reports `verdict`, `blockers`, `gate_open_allowed`,
       and `orchestrator_action_hint` and maps them to gate OPEN/BLOCK basis.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ:\
