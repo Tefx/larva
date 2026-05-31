@@ -80832,112 +80832,187 @@ phases:
   - pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
   steps:
   - id: proof_contract
-    name: Define Pi runtime liveness proof contract and traceability matrix
+    name: Define Pi runtime liveness and persona Tab autocomplete proof contract
     status: pending
     description: 'step_type: contract
 
-      agent_source: default (Larva registry unavailable during planning; using default
-      integration-verifier)
+      agent_source: default (user forbids larva MCP/tela_larva_* discovery; using
+      default integration-verifier)
+
+      work_type: defect_repair
 
 
-      PROOF ARTIFACT:
+      ACCEPTED CONTRACT ARTIFACT:
 
-      Define the supplemental Pi runtime liveness proof contract so future Done definitions
-      cannot be satisfied by source-token, mock-only, or assumption tests.
+      Extend the pending Pi runtime liveness proof contract to cover the reported
+      `/larva-persona <prefix>` Tab argument-completion failure. The known diagnosis
+      is that real Pi RPC `get_commands` exposes `larva-persona`, the command-level
+      `getArgumentCompletions("vectl")` can return persona candidates, and the likely
+      broken path is Pi TUI editor Tab behavior after a space falling back to file
+      autocomplete instead of reliably invoking the command''s argument completer.
 
 
-      Requirement-to-checklist traceability matrix:
+      Requirement-to-checklist traceability matrix additions:
 
       | requirement_id | source_ref + key passage | obligation | owning_step_id |
       checklist_item | evidence_field | status | non_intersection_or_escalation |
 
-      | PI-LIVE-001 | user context: real Pi v0.75.x default plugin entry is `export
-      default function(pi)` | record real Pi CLI availability/version or explicit
-      skip/xfail condition | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
-      | `pi --version` or equivalent availability probe captured | `pi_binary_availability`
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-TAB-001 | user report + diagnosis: `/larva-persona` visible/executable
+      but `/larva-persona <prefix>` Tab has no persona completion | record root cause
+      as TUI argument Tab path, not registry/launcher failure | pi_tab_autocomplete_contract
+      | contract states registry/launcher are non-targets | `root_cause_boundary`
       | OWNED | none |
 
-      | PI-LIVE-002 | user context: `pi --mode rpc --no-session --offline -e contrib/pi-extension/larva.ts`
-      loads plugin | prove real Pi RPC plugin load | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
-      | real Pi RPC process starts with extension file | `plugin_load_stdout_stderr`
+      | PI-TAB-002 | `contrib/pi-extension/larva.ts` currently registers `pi.registerCommand("larva-persona",
+      { getArgumentCompletions, handler })` | preserve existing command registration
+      and handler behavior | pi_tab_autocomplete_extension_impl | existing command
+      path remains registered | `command_registration_preserved` | OWNED | none |
+
+      | PI-TAB-003 | target design: runtime context can expose `ctx.ui.addAutocompleteProvider`
+      | additionally register a Larva-specific TUI autocomplete provider wrapper when
+      real runtime context supports it, e.g. during `session_start`/runtime initialization
+      | pi_tab_autocomplete_extension_impl | wrapper installed only when provider
+      API exists | `provider_registration` | OWNED | none |
+
+      | PI-TAB-004 | target design: wrapper only intercepts `/larva-persona <prefix>`
+      | parse parameter prefix from the slash-command line, not the whole line | pi_tab_autocomplete_runtime_tests
+      | `--case tab-force --prefix vectl` proves prefix is `vectl` | `argument_prefix_used`
       | OWNED | none |
 
-      | PI-LIVE-003 | user context: `get_commands` returns `larva-persona` registered
-      via `pi.registerCommand` | prove command visible through real RPC | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
-      | RPC `get_commands` includes `larva-persona` | `get_commands_response` | OWNED
-      | none |
-
-      | PI-LIVE-004 | user context: `/larva-persona <fake-id>` uses command runtime
-      ctx and keyed status | prove slash prompt commits persona and emits keyed status/notify
-      | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness | prompt `/larva-persona
-      ok` yields fake bridge commit plus `statusKey=larva`, `statusText=larva: ok`
-      | `slash_command_status_events` | OWNED | none |
-
-      | PI-LIVE-005 | user context: `LARVA_PI_INITIAL_PERSONA_ID=<fake-id>` commits
-      on real `session_start` | prove startup persona status in real RPC | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
-      | startup env yields `statusText=larva: startup` | `startup_status_events` |
+      | PI-TAB-005 | target design: all other inputs delegate to base provider | wrapper
+      must not steal global completion or file completion | pi_tab_autocomplete_runtime_tests
+      | `--case delegate-other-input` proves delegation | `delegate_other_input` |
       OWNED | none |
 
-      | PI-LIVE-006 | user context: missing/unparseable persona must not be silent
-      | prove command failure path has stable notify/error observation | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
-      | fake bridge failure produces notify/error or stable RPC error | `failure_observation`
+      | PI-TAB-006 | target design: force true/false same persona completer | both
+      `force=true` and `force=false` call `completePersonaIds(prefix, ctx)` | pi_tab_autocomplete_runtime_tests
+      | tab-force and tab-regular both return candidates | `force_parity` | OWNED
+      | none |
+
+      | PI-TAB-007 | target design: returned item shape | returned items are `{ value:
+      persona.id, label: persona.id, description }` and `value` is a string | pi_tab_autocomplete_runtime_tests
+      | candidate value type and shape asserted | `candidate_shape` | OWNED | none
+      |
+
+      | PI-TAB-008 | target design: `larva list --json` failure/malformed JSON returns
+      `null` | provider returns `null` and does not crash Pi when list fails or JSON
+      is malformed | pi_tab_autocomplete_runtime_tests | `--case list-failure` proves
+      null/no crash | `list_failure_null` | OWNED | none |
+
+      | PI-TAB-009 | target design: no prompt catalogue/cache/fuzzy | no persona catalogue
+      is injected into prompt; no cache; exact prefix startsWith behavior only | pi_tab_autocomplete_extension_impl
+      | scope guard evidence confirms no prompt/cache/fuzzy | `non_goals_preserved`
       | OWNED | none |
 
-      | PI-LIVE-007 | user context: custom tool current shape is `parameters + execute`;
-      RPC observability may be limited | verify tool discovery through Pi prompt/tools
-      if possible, otherwise runtime object test explains RPC limitation | pi_runtime_liveness_hardening_20260601.supplemental_runtime_tests
-      | `larva_subagent` observed or object shape verified with explicit rationale
-      | `custom_tool_shape` | OWNED | none |
+      | PI-TAB-010 | user requests real TUI/RPC observation | attempt real Pi TUI/RPC
+      smoke; if TUI automation is impractical, record why wrapper runtime harness
+      is minimum reliable evidence and keep real Pi `get_commands`/command execution
+      smoke | pi_tab_autocomplete_real_tui_smoke_or_limit | real smoke or limitation
+      disposition recorded | `real_tui_disposition` | OWNED | none |
 
-      | PI-LIVE-008 | user context: `tool_call` event uses `event.toolName` and returns
-      `{block:true, reason}` | prove with runtime event harness, not string token
-      search | pi_runtime_liveness_hardening_20260601.supplemental_runtime_tests |
-      runtime harness emits tool_call with `toolName=larva_subagent` and observes
-      block result | `tool_call_block_result` | OWNED | none |
+      | PI-TAB-011 | documentation obligation | README/design explains `/larva-persona`
+      Tab completion behavior and troubleshooting | pi_tab_autocomplete_docs | docs
+      mention wrapper, exact prefix, and failure handling | `docs_update` | OWNED
+      | none |
 
-      | PI-LIVE-009 | user context: CI/local gate must run supplemental tests with
-      Pi skip/xfail policy | wire local/CI gate command and document missing-Pi behavior
-      | pi_runtime_liveness_hardening_20260601.ci_local_gate_wiring | exact supplemental
-      command runs locally/CI or records skip reason | `ci_gate_command` | OWNED |
-      none |
+
+      CONSTRAINTS:
+
+      - Keep existing `pi.registerCommand("larva-persona", { getArgumentCompletions,
+      handler })` behavior intact.
+
+      - Register the additional TUI provider only when real runtime UI context exposes
+      `addAutocompleteProvider`; absence of the API must not break Pi.
+
+      - The wrapper may intercept only `/larva-persona <prefix>` and must delegate
+      every other input to the base provider.
+
+      - For `/larva-persona <prefix>`, `force=true` and `force=false` must use the
+      same `completePersonaIds(prefix, ctx)` path.
+
+      - Candidate item shape is exactly `{ value: persona.id, label: persona.id, description
+      }`; `prefix` is the argument prefix, never the whole slash command line.
+
+      - `larva list --json` command failure or malformed JSON must return `null` from
+      the provider and must not throw through Pi.
+
+      - Do not put persona catalogue content into prompts, do not add caching, and
+      do not add fuzzy matching.
 
 
       <side_effect_budget>
 
-      Allowed: add or update test-only fixtures, runtime smoke scripts, CI/local test
-      wiring, and documentation needed to make the supplemental Pi runtime gate executable.
+      Allowed: extend the existing Pi runtime proof contract; add or update extension
+      runtime tests/scripts/docs and the Pi extension wrapper needed for `/larva-persona`
+      Tab argument completion.
 
-      Forbidden: change production Pi plugin behavior, weaken Larva shared contract
-      admission, replace real Pi checks with source-token assertions, or mark missing
-      Pi binary as PASS without an explicit skip/xfail reason.
+      Forbidden: modify Larva registry semantics, launcher behavior, PersonaSpec/opifex
+      shared contract fields, prompt catalogue injection, cache layers, fuzzy matching,
+      or global autocomplete behavior outside the exact `/larva-persona <prefix>`
+      wrapper path.
 
       </side_effect_budget>
 
       <risk_probes>
 
-      1. Verify the harness is exercising current Pi runtime APIs, not a local imitation
-      of obsolete extension APIs.
+      1. Verify the wrapper observes Pi runtime editor/provider inputs rather than
+      only direct `getArgumentCompletions` calls.
 
-      2. Verify keyed UI status comes from `ctx.ui.setStatus("larva", ...)` observations,
-      not plain string matching in source.
+      2. Verify non-`/larva-persona` inputs still reach the base provider, preserving
+      file/global autocomplete.
 
-      3. Verify failure-path observations are stable enough to fail CI when persona
-      commit silently stops working.
+      3. Verify list-failure/malformed JSON handling is fail-soft (`null`) and cannot
+      crash the Pi TUI.
 
       </risk_probes>'
-    verification: '- [ ] `uv run pytest tests/shell/test_pi_extension_contract.py
-      -q` remains runnable after adding the proof contract artifacts or documents
-      why no code artifact was changed.
+    verification: '- [ ] Evidence includes PI-TAB-001..PI-TAB-011 with every row mapped
+      to an owning step, checklist item, and evidence field.
 
-      - [ ] The evidence includes the full PI-LIVE-001..PI-LIVE-009 matrix with each
-      row mapped to a concrete downstream step and evidence field.
+      - [ ] Evidence explicitly states that direct `getArgumentCompletions("vectl")`
+      and source-token search are insufficient to close PI-TAB runtime completion.
 
-      - [ ] The evidence explicitly states that mock/source-token tests are non-sufficient
-      for PI-LIVE-002..PI-LIVE-006 and PI-LIVE-008.
+      - [ ] Evidence preserves existing PI-LIVE-001..PI-LIVE-009 obligations or explicitly
+      references their existing ownership in this phase.
 
-      - [ ] The evidence names the exact supplemental script/test paths that downstream
-      steps must create or run: `scripts/pi-extension-runtime-smoke.mjs`, `tests/shell/test_pi_extension_real_runtime.py`,
-      and `tests/fixtures/pi/fake-larva-cli.mjs`.'
+      - [ ] Evidence names the exact downstream commands/scripts: `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-regular --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case delegate-other-input`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case list-failure`, and `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -k autocomplete -v`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/README.md — key passage or "NOT READ: <reason>"
+
+      - README.md — key passage or "NOT READ: <reason>"
+
+
+      ## Contract Addendum Receipt
+
+      - root_cause_boundary: <why TUI Tab provider path is target; registry/launcher
+      are non-targets>
+
+      - pi_tab_matrix: <PI-TAB-001..011 table with OWNED/DEFERRED/EXCLUDED/AMBIGUOUS
+      statuses>
+
+      - non_goals: <no prompt catalogue/cache/fuzzy/global interception>
+
+      - downstream_commands: <exact script/test commands named>
+
+
+      ## Checklist Receipt
+
+      - PI-TAB-001..011: <satisfied/blocked/unobserved with notes>'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - README.md
     agent: integration-verifier
   - id: supplemental_runtime_tests
     name: Add supplemental Pi runtime smoke tests and event harness
