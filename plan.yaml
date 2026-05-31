@@ -82364,7 +82364,7 @@ phases:
       topology), preserved sticky constraints, and reported no deviations.'
   - id: retest_real_pi_rpc_liveness_semantics
     name: Retest real Pi RPC liveness semantic closure
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -82570,6 +82570,8 @@ phases:
     depends_on:
     - fix_real_pi_rpc_liveness_blockers
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-31T18:13:11.111689+00:00'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
