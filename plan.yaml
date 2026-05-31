@@ -80822,7 +80822,7 @@ phases:
       observed. |'
 - id: pi_runtime_liveness_hardening_20260601
   name: Pi Runtime Liveness Gate Hardening 2026-06-01
-  status: pending
+  status: in_progress
   gate: Supplemental Pi runtime liveness is not accepted from source-token, mock-only,
     or assumption tests. The phase opens only when real Pi RPC evidence or explicitly
     recorded Pi-binary skip/xfail conditions prove plugin load, command visibility/execution,
@@ -80833,7 +80833,7 @@ phases:
   steps:
   - id: proof_contract
     name: Define Pi runtime liveness and persona Tab autocomplete proof contract
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       agent_source: default (user forbids larva MCP/tela_larva_* discovery; using
@@ -81014,6 +81014,8 @@ phases:
     - contrib/pi-extension/README.md
     - README.md
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-31T17:24:25.785990+00:00'
   - id: supplemental_runtime_tests
     name: Add supplemental Pi runtime smoke tests and event harness
     status: pending
