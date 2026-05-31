@@ -81758,23 +81758,23 @@ phases:
       supports subcases.
 
       </risk_probes>'
-    verification: '- [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case
+    verification: '- [x] `node scripts/pi-extension-autocomplete-smoke.mjs --case
       tab-force --prefix vectl` exits 0 and shows candidate `value: "vectl-planner"`
       (or fixture-equivalent) from the wrapper.
 
-      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix
+      - [x] `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix
       vectl` exits 0 and shows the same candidate path as force mode.
 
-      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      - [x] `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
       exits 0 and proves base-provider delegation.
 
-      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
+      - [x] `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
       exits 0 and proves `null`/no-crash behavior.
 
-      - [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      - [x] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
       -v` passes and includes the wrapper runtime cases.
 
-      - [ ] Evidence includes raw stdout/stderr for each command and explicitly rejects
+      - [x] Evidence includes raw stdout/stderr for each command and explicitly rejects
       source-token/direct-completer-only evidence.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
