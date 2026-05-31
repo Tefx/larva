@@ -81667,7 +81667,7 @@ phases:
       prompt catalogue/cache/fuzzy matching.'
   - id: pi_tab_autocomplete_runtime_tests
     name: Add runtime autocomplete harness for Larva persona Tab completion
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -81837,6 +81837,8 @@ phases:
     depends_on:
     - pi_tab_autocomplete_extension_impl
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-31T17:50:15.240393+00:00'
   - id: pi_tab_autocomplete_real_tui_smoke_or_limit
     name: Attempt real Pi TUI/RPC smoke for persona Tab autocomplete or record automation
       limit
