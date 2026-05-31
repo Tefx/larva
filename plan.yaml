@@ -81081,7 +81081,7 @@ phases:
       passed.'
   - id: supplemental_runtime_tests
     name: Add supplemental Pi runtime smoke tests and event harness
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red_or_green
@@ -81190,6 +81190,8 @@ phases:
     depends_on:
     - proof_contract
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-31T17:36:09.200826+00:00'
   - id: real_pi_rpc_liveness
     name: Run real Pi RPC liveness proof for command and persona status
     status: pending
