@@ -82931,7 +82931,7 @@ phases:
     agent: software-architect
   - id: pi-adapter-local-model-map-config-2026-06-01.extension-impl
     name: extension_impl
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -83140,6 +83140,8 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.contract
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-31T18:52:31.744707+00:00'
   - id: pi-adapter-local-model-map-config-2026-06-01.runtime-tests
     name: runtime_tests
     status: pending
