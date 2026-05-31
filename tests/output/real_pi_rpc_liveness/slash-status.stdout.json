@@ -1,0 +1,77 @@
+{
+  "scenario": "slash-status",
+  "pi": {
+    "binary": "pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/real_pi_rpc_liveness/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "4d333154-3931-4ef7-9d1d-7517fd83812f",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "d645d5a1-2c8f-466b-acb1-b364d000374a",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "09fde168-9f87-424c-8f4b-b2f1223c26b3",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_MODEL_UNAVAILABLE: Model unavailable fake/model",
+        "notifyType": "error"
+      }
+    ],
+    "responses": [
+      {
+        "id": "prompt-1",
+        "type": "response",
+        "command": "prompt",
+        "success": true
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "4d333154-3931-4ef7-9d1d-7517fd83812f",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "d645d5a1-2c8f-466b-acb1-b364d000374a",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "09fde168-9f87-424c-8f4b-b2f1223c26b3",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_MODEL_UNAVAILABLE: Model unavailable fake/model",
+        "notifyType": "error"
+      }
+    ]
+  },
+  "runtime": {}
+}

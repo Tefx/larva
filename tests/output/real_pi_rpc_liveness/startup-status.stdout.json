@@ -1,0 +1,108 @@
+{
+  "scenario": "startup-status",
+  "pi": {
+    "binary": "pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/real_pi_rpc_liveness/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "e3edb1a5-9351-46b7-aec2-c59b51ec4404",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: startup unavailable (LARVA_MODEL_UNAVAILABLE)"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "8e4061a8-0d40-41d6-8b40-e3606bbc2917",
+        "method": "notify",
+        "message": "Larva startup persona unavailable: LARVA_MODEL_UNAVAILABLE: Model unavailable fake/model",
+        "notifyType": "error"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "126ed05f-29ac-433e-9127-dbfe2c8cab10",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ],
+    "responses": [
+      {
+        "id": "state-1",
+        "type": "response",
+        "command": "get_state",
+        "success": true,
+        "data": {
+          "model": {
+            "id": "google/gemini-3.1-pro-preview",
+            "name": "Google: Gemini 3.1 Pro Preview",
+            "api": "openai-completions",
+            "provider": "openrouter",
+            "baseUrl": "https://openrouter.ai/api/v1",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 2,
+              "output": 12,
+              "cacheRead": 0.19999999999999998,
+              "cacheWrite": 0.375
+            },
+            "contextWindow": 1048576,
+            "maxTokens": 65536
+          },
+          "thinkingLevel": "medium",
+          "isStreaming": false,
+          "isCompacting": false,
+          "steeringMode": "one-at-a-time",
+          "followUpMode": "one-at-a-time",
+          "sessionId": "019e7f2c-3a20-7b53-8fd2-001b02b6aeed",
+          "autoCompactionEnabled": true,
+          "messageCount": 0,
+          "pendingMessageCount": 0
+        }
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "e3edb1a5-9351-46b7-aec2-c59b51ec4404",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: startup unavailable (LARVA_MODEL_UNAVAILABLE)"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "8e4061a8-0d40-41d6-8b40-e3606bbc2917",
+        "method": "notify",
+        "message": "Larva startup persona unavailable: LARVA_MODEL_UNAVAILABLE: Model unavailable fake/model",
+        "notifyType": "error"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "126ed05f-29ac-433e-9127-dbfe2c8cab10",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ]
+  },
+  "runtime": {}
+}
