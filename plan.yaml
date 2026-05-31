@@ -81617,17 +81617,57 @@ phases:
       TARGET STATE:
 
       Complete the implementation within `contrib/pi-extension/larva.ts` so Pi model
-      resolution uses the contract from `pi-adapter-local-model-map-config-2026-06-01.contract`.
-      Startup persona application and `/larva-persona` switching must call the same
-      model-map-aware resolver before `ctx.modelRegistry.find` and `pi.setModel`.
+      resolution and tool-policy path resolution follow the contract from `pi-adapter-local-model-map-config-2026-06-01.contract`.
+
+
+      Model-map implementation requirements:
+
+      - Use `LARVA_PI_MODEL_MAP_FILE` when set; otherwise default to `~/.pi/larva/model-map.json`.
+
+      - If the selected model-map file is absent, preserve current fallback: split
+      `PersonaSpec.model` on the first `/`.
+
+      - If the file exists, strictly parse the full controlled language with `models`
+      and `prefix_rules`.
+
+      - Resolve exact `models[spec.model]` before any prefix rule.
+
+      - Resolve prefix rules by longest literal `from_prefix` match; same-length matching
+      conflicts surface `LARVA_MODEL_MAP_INVALID`.
+
+      - Prefix rules only strip `from_prefix` and prepend `to_model_id_prefix` to
+      the remainder; do not use wildcard, regex, fuzzy, or vendor guessing.
+
+      - After mapping, call Pi `modelRegistry.find(provider, model_id)`.
+
+      - Map/parse/schema/rule errors surface `LARVA_MODEL_MAP_INVALID`.
+
+      - Valid mapping with registry miss or set-model rejection remains `LARVA_MODEL_UNAVAILABLE`.
+
+      - Startup persona and `/larva-persona` switching must call one shared resolver
+      path.
+
+
+      Tool-policy implementation requirements:
+
+      - Continue to honor `LARVA_PI_TOOL_POLICY_FILE`; if set, use only that path.
+
+      - Otherwise prefer `~/.pi/larva/tool-policy.json` when it exists.
+
+      - Otherwise fall back to legacy `~/.pi/tool-policy.json` when it exists.
+
+      - Otherwise pass/use `~/.pi/larva/tool-policy.json` and preserve missing-file
+      empty-policy behavior.
+
+      - Do not auto-migrate, copy, or write user policy files.
 
 
       BOUNDING BOX:
 
-      - Primary source: `contrib/pi-extension/larva.ts`
+      - Primary source: `contrib/pi-extension/larva.ts`.
 
-      - Documentation/tests are out of scope here except minimal local self-test hooks
-      needed by this file.
+      - Narrowly related Pi-extension harness/test script hooks are allowed only when
+      needed to expose resolver behavior.
 
 
       CONSTRAINTS:
@@ -81635,27 +81675,19 @@ phases:
       - Do not modify canonical PersonaSpec schema or accept Pi-specific fields in
       PersonaSpec.
 
-      - Do not add fuzzy matching, provider guessing, aliases, or automatic nearest-model
-      behavior.
+      - Do not add fuzzy matching, provider guessing, aliases, regex, wildcard behavior,
+      or automatic nearest-model behavior.
 
-      - Preserve current missing-file and key-miss fallback: split PersonaSpec.model
-      on first `/` exactly as current `parseModel` does.
+      - Do not change unrelated Pi policy behavior except path resolution precedence.
 
-      - Validate map file strictly when it exists: top-level object; keys exact strings;
-      values object with string `provider` and string `model_id`; no acceptance-cleaning
-      of malformed entries.
-
-      - Project invalid map shape as `LARVA_MODEL_MAP_INVALID`; mapped but unavailable
-      model remains `LARVA_MODEL_UNAVAILABLE`.
-
-      - Include `LARVA_PI_MODEL_MAP_FILE` env override and default `~/.pi/larva/model-map.json`.
+      - Do not write user runtime files under `~/.pi`.
 
 
       ## Completion Criteria (stub exclusion)
 
       This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
       deliverable MUST contain substantive logic that reads, validates, and applies
-      model map data based on runtime inputs.
+      model-map/tool-policy runtime inputs.
 
 
       Gate Preview (what the gate WILL reject):
@@ -81664,11 +81696,14 @@ phases:
 
       2. Separate startup and `/larva-persona` model paths that can diverge.
 
-      3. Silent fallback on invalid existing map files.
+      3. Silent fallback on invalid existing model-map files.
 
-      4. Fuzzy matching or guessed provider/model substitutions.
+      4. Wildcard/regex/fuzzy matching or guessed provider/model substitutions.
 
       5. Treating mapped registry miss as `LARVA_MODEL_MAP_INVALID` instead of `LARVA_MODEL_UNAVAILABLE`.
+
+      6. Hard-cutting legacy `~/.pi/tool-policy.json` fallback or writing/migrating
+      user files.
 
 
       Requirement-to-checklist traceability matrix:
@@ -81676,53 +81711,63 @@ phases:
       | requirement_id | source_ref + key passage | obligation | owning_step_id |
       checklist_item | evidence_field | status | non_intersection_or_escalation |
 
-      | I1 | contract step R1-R5 | implement shared resolver | pi-adapter-local-model-map-config-2026-06-01.extension_impl
-      | shared resolver used by startup and slash | implementation_notes.shared_resolver
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | I1 | contract R1-R6 | implement full shared model resolver | pi-adapter-local-model-map-config-2026-06-01.extension-impl
+      | shared resolver used by startup and slash | implementation_notes.shared_model_resolver
       | OWNED | n/a |
 
-      | I2 | larva.ts current parseModel/validateModel | preserve fallback | pi-adapter-local-model-map-config-2026-06-01.extension_impl
-      | missing/key-miss fallback test hook | behavior_matrix.fallback | OWNED | n/a
-      |
+      | I2 | contract R2 | exact before prefix; longest prefix; conflict invalid |
+      pi-adapter-local-model-map-config-2026-06-01.extension-impl | prefix semantics
+      covered | behavior_matrix.prefix_rules | OWNED | n/a |
 
-      | I3 | user brief invalid structure | stable invalid error | pi-adapter-local-model-map-config-2026-06-01.extension_impl
-      | invalid map projects LARVA_MODEL_MAP_INVALID | behavior_matrix.invalid | OWNED
+      | I3 | contract R4-R5 | call registry and preserve invalid/unavailable split
+      | pi-adapter-local-model-map-config-2026-06-01.extension-impl | error projection
+      covered | behavior_matrix.errors | OWNED | n/a |
+
+      | I4 | contract R7 | implement tool-policy path precedence | pi-adapter-local-model-map-config-2026-06-01.extension-impl
+      | tool-policy path resolver covered | behavior_matrix.tool_policy_paths | OWNED
       | n/a |
-
-      | I4 | user brief mapped miss | unavailable projection | pi-adapter-local-model-map-config-2026-06-01.extension_impl
-      | mapped miss projects LARVA_MODEL_UNAVAILABLE | behavior_matrix.unavailable
-      | OWNED | n/a |
 
 
       <side_effect_budget>
 
       Allowed: edit `contrib/pi-extension/larva.ts` and narrowly related Pi-extension
       test fixtures/hooks. Forbidden: edit canonical schema, opifex contracts, registry
-      PersonaSpec parsing, unrelated Pi policy behavior, or `/Users/tefx/dotfiles/agent/models.yaml`.
+      PersonaSpec parsing, unrelated Pi behavior, dotfiles, or runtime user files
+      under `~/.pi`.
 
       </side_effect_budget>
 
       <risk_probes>
 
-      - Confirm env override is read from the same runtime env abstraction used by
-      other Pi extension env inputs.
+      - Confirm env overrides use the same runtime environment abstraction as existing
+      Pi extension env inputs.
 
-      - Confirm malformed map fails closed at startup/switch instead of being ignored.
+      - Confirm malformed existing model-map fails closed at startup and slash switch
+      instead of being ignored.
 
-      - Confirm embedded slash model IDs such as `openai/gpt-5.5` remain intact after
-      mapping.
+      - Confirm tool-policy no-file behavior still yields empty policy while using
+      the new canonical path.
 
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|modelRegistry.find\|parseModel"
+      - [ ] Run `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|prefix_rules\|modelRegistry.find\|LARVA_PI_TOOL_POLICY_FILE\|tool-policy.json"
       contrib/pi-extension/larva.ts` and include raw output.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-unit.mjs` showing cases
-      for missing file, key miss fallback, exact key hit, invalid JSON/schema, mapped
-      registry miss, and `pi.setModel(false)`.
+      - [ ] Run `node contrib/pi-extension/test-model-map-unit.mjs` showing exact
+      hit, prefix hit, same-length prefix conflict invalid, missing config fallback,
+      invalid config, mapped unavailable, startup persona, slash switch, and slash-switch-after-startup
+      behavior.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-shared-path.mjs` showing
-      startup persona and `/larva-persona` call the same resolver path.
+      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs` showing env
+      override, new canonical path exists, legacy fallback, and no file => new canonical
+      empty policy.
+
+      - [ ] Run `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` and paste raw output, or record exact missing harness reason if these tests
+      are intentionally superseded by node scripts.
 
       - [ ] Evidence includes main path and highest-risk failure path outputs; narrative
       summaries alone are insufficient.'
@@ -81732,49 +81777,41 @@ phases:
 
       - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
 
-      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
 
 
-      ## Implementation Notes
+      ## Implementation Evidence
 
-      - shared_resolver: <function/path used by both startup and slash switch>
+      - shared_model_resolver: <startup + slash shared path notes>
 
-      - env_override: <how LARVA_PI_MODEL_MAP_FILE is read>
+      - prefix_rules: <exact/prefix/conflict evidence>
 
-      - default_path: <how ~/.pi/larva/model-map.json is resolved>
+      - errors: <invalid vs unavailable evidence>
 
-
-      ## Behavior Matrix
-
-      | case | command | expected | actual | status |
-
-      | missing_file | node contrib/pi-extension/test-model-map-unit.mjs | fallback
-      split | <paste> | PASS/FAIL |
-
-      | key_miss | node contrib/pi-extension/test-model-map-unit.mjs | fallback split
-      | <paste> | PASS/FAIL |
-
-      | key_hit | node contrib/pi-extension/test-model-map-unit.mjs | mapped provider/model_id
-      | <paste> | PASS/FAIL |
-
-      | invalid | node contrib/pi-extension/test-model-map-unit.mjs | LARVA_MODEL_MAP_INVALID
-      | <paste> | PASS/FAIL |
-
-      | unavailable | node contrib/pi-extension/test-model-map-unit.mjs | LARVA_MODEL_UNAVAILABLE
-      | <paste> | PASS/FAIL |
-
-      | startup_and_slash | node contrib/pi-extension/test-model-map-shared-path.mjs
-      | same resolver | <paste> | PASS/FAIL |
+      - tool_policy_paths: <path precedence evidence>
 
 
-      ## Raw Command Output
+      ## Command Output
 
-      - `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|modelRegistry.find\|parseModel"
-      contrib/pi-extension/larva.ts`: <paste>
+      - grep_output: <raw output>
 
-      - `node contrib/pi-extension/test-model-map-unit.mjs`: <paste>
+      - node_model_map_unit: <raw output>
 
-      - `node contrib/pi-extension/test-model-map-shared-path.mjs`: <paste>'
+      - node_tool_policy_paths: <raw output>
+
+      - pytest_output: <raw output or explicit supersession reason>
+
+
+      ## Checklist Receipt
+
+      - [ ] all implementation checklist items satisfied
+
+      - [ ] no forbidden side effects performed
+
+      '
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.contract
     agent: frontend-engineer
