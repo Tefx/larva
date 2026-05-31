@@ -86,6 +86,8 @@ type LegacyCommandDefinition = CommandOptions & {
   complete?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
 };
 export type PiAutocompleteCandidate = { value: string; label: string; description?: string };
+type PiAutocompleteResult = PiAutocompleteCandidate[] | null;
+type PiAutocompleteProvider = (...args: unknown[]) => PiAutocompleteResult | Promise<PiAutocompleteResult>;
 type ToolDefinition<Input, Output> = {
   name: string;
   label?: string;
@@ -106,6 +108,7 @@ type BridgeListItem = { id: string; description?: string; model?: string };
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
 type PiUi = {
   setStatus?: StatusSetter;
+  addAutocompleteProvider?: (provider: PiAutocompleteProvider) => unknown;
   notify?: (message: string, notifyType?: "info" | "warning" | "error") => void | Promise<void>;
   select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
 };
@@ -277,6 +280,60 @@ export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }
       label: persona.id,
       description: persona.description ?? persona.model,
     }));
+}
+
+function autocompleteLineFromArgs(args: unknown[]): string | null {
+  for (const arg of args) {
+    if (typeof arg === "string") return arg;
+    if (!isRecord(arg)) continue;
+    for (const key of ["line", "input", "value", "text"] as const) {
+      const candidate = arg[key];
+      if (typeof candidate === "string") return candidate;
+    }
+  }
+  return null;
+}
+
+function autocompleteBaseProviderFromArgs(args: unknown[], fallback?: PiAutocompleteProvider): PiAutocompleteProvider | undefined {
+  for (const arg of args) {
+    if (typeof arg === "function") return arg as PiAutocompleteProvider;
+    if (!isRecord(arg)) continue;
+    for (const key of ["baseProvider", "delegate", "next"] as const) {
+      const candidate = arg[key];
+      if (typeof candidate === "function") return candidate as PiAutocompleteProvider;
+    }
+  }
+  return fallback;
+}
+
+export function larvaPersonaArgumentPrefix(line: string): string | null {
+  const matched = /^\/larva-persona\s+([^\s]*)$/.exec(line);
+  return matched ? matched[1] : null;
+}
+
+export function createLarvaPersonaAutocompleteProvider(
+  ctx: PiContext,
+  baseProvider?: PiAutocompleteProvider,
+): PiAutocompleteProvider {
+  return async (...args: unknown[]): Promise<PiAutocompleteResult> => {
+    const line = autocompleteLineFromArgs(args);
+    const prefix = line === null ? null : larvaPersonaArgumentPrefix(line);
+    if (prefix === null) {
+      const delegate = autocompleteBaseProviderFromArgs(args, baseProvider);
+      return delegate ? await delegate(...args) : null;
+    }
+    try {
+      const candidates = await completePersonaIds(prefix, ctx);
+      return candidates.length > 0 ? candidates : null;
+    } catch {
+      return null;
+    }
+  };
+}
+
+function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
+  if (typeof ctx.ui?.addAutocompleteProvider !== "function") return;
+  ctx.ui.addAutocompleteProvider(createLarvaPersonaAutocompleteProvider(ctx));
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
@@ -869,6 +926,7 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     required: ["persona_id", "task"],
     additionalProperties: false,
   };
+  registerLarvaPersonaAutocompleteProvider(ctx);
   pi.registerTool?.({
     name: "larva_subagent",
     label: "Larva Subagent",

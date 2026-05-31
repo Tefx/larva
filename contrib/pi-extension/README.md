@@ -105,6 +105,33 @@ or, when no persona is active:
 larva: none
 ```
 
+### `/larva-persona` Tab completion
+
+The command keeps Pi's command-level argument completer and, when the runtime UI
+context exposes `ctx.ui.addAutocompleteProvider`, installs a narrow TUI
+autocomplete provider for editor Tab completion. The provider intercepts only a
+slash-command line shaped as:
+
+```text
+/larva-persona <prefix>
+```
+
+It passes exactly `<prefix>` (for example, `vectl` in `/larva-persona vectl`) to
+the same persona-id completer used by command-level completion. Forced Tab and
+regular completion use the same path. All other editor input is delegated to Pi's
+base provider so global and file completion remain Pi-owned.
+
+Completion candidates have Pi's command item shape:
+
+```json
+{"value": "persona-id", "label": "persona-id", "description": "optional description or model"}
+```
+
+If `larva list --json` fails or returns malformed JSON, the provider returns
+`null` and does not throw through the Pi TUI. The extension does not inject a
+persona catalogue into prompts, cache completion results, or perform fuzzy
+matching; matching is exact `startsWith(<prefix>)` over current persona ids.
+
 ## `larva_subagent` custom tool
 
 When the active parent persona and Pi tool policy allow it, the extension exposes

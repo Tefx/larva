@@ -252,6 +252,15 @@ the next model invocation. With no argument, it opens a selector only in
 interactive TUI mode; non-interactive modes return an input error without
 changing state. Pi status shows `larva: <id>` or `larva: none`.
 
+For Tab completion, the bundled extension preserves Pi's command-level
+`/larva-persona` argument completer and, when the Pi TUI exposes
+`ctx.ui.addAutocompleteProvider`, installs a narrow editor provider for only
+`/larva-persona <prefix>`. The provider sends exactly the argument prefix to
+`larva list --json`, uses exact `startsWith` matching, returns `null` without
+throwing on list failures or malformed JSON, and delegates every other input back
+to Pi's base autocomplete provider. It does not inject persona catalogues into
+prompts, cache persona lists, or perform fuzzy matching.
+
 The bundled extension exposes one custom tool, `larva_subagent(persona_id, task,
 task_id?)`, when the active parent persona and tool policy allow it. A successful
 call returns a `LarvaSubagentResult` containing `task_id`, `persona_id`,
