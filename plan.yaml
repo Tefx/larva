@@ -81823,3 +81823,159 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.contract
     agent: frontend-engineer
+  - id: pi-adapter-local-model-map-config-2026-06-01.runtime-tests
+    name: runtime_tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects pi-adapter-local-model-map-config-2026-06-01.gate
+      and downstream Pi liveness gates.
+
+      agent_source: default
+
+
+      PROOF ARTIFACT:
+
+      Create or extend the minimal real Pi runtime harness so model-map behavior is
+      exercised through the Pi extension runtime path, not by source-token inspection
+      alone. The harness must prove these cases:
+
+      1. no config file: current split behavior remains active;
+
+      2. missing env override path: current split behavior remains active;
+
+      3. config exists and exact key hit: mapped `{provider, model_id}` is passed
+      to `modelRegistry.find`;
+
+      4. config exists but malformed/invalid schema: stable `LARVA_MODEL_MAP_INVALID`
+      is surfaced;
+
+      5. valid mapping but Pi registry miss: `LARVA_MODEL_UNAVAILABLE` is surfaced;
+
+      6. startup persona and `/larva-persona` switch both use the mapping path.
+
+
+      Runtime boundary rule:
+
+      Mock-only unit tests are insufficient. At least one command must launch Pi or
+      the closest repo-supported Pi RPC/runtime harness with the extension loaded.
+      If the real Pi binary cannot run, the proof must record an explicit Pi-binary
+      skip/xfail condition compatible with the existing Pi liveness hardening phase.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | T1 | user brief runtime cases | six runtime cases covered | pi-adapter-local-model-map-config-2026-06-01.runtime_tests
+      | all six cases in harness output | runtime_case_matrix | OWNED | n/a |
+
+      | T2 | existing Pi liveness phase gate | real/minimal runtime evidence | pi-adapter-local-model-map-config-2026-06-01.runtime_tests
+      | real Pi/RPC command output included | launched_runtime_evidence | OWNED |
+      n/a |
+
+      | T3 | contract shared resolver | startup and slash parity | pi-adapter-local-model-map-config-2026-06-01.runtime_tests
+      | startup and slash rows pass | runtime_case_matrix.shared_path | OWNED | n/a
+      |
+
+
+      <side_effect_budget>
+
+      Allowed: add/extend Pi extension runtime harness scripts and test fixtures under
+      `contrib/pi-extension/` or existing Pi test locations. Forbidden: product behavior
+      changes beyond test harness support, modifying dotfiles, or lowering existing
+      Pi liveness expectations.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Check that the invalid-map case fails because the file exists and is invalid,
+      not because the file is absent.
+
+      - Check that mapped unavailable uses a valid map file and only the registry
+      lookup misses.
+
+      - Check that startup and slash switch evidence comes from distinct runtime operations,
+      not the same unit call labeled twice.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case no-config`
+      and paste raw output.
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case missing-env-file`
+      and paste raw output.
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-hit`
+      and paste raw output showing mapped provider/model_id.
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case invalid-config`
+      and paste raw output showing `LARVA_MODEL_MAP_INVALID`.
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-unavailable`
+      and paste raw output showing `LARVA_MODEL_UNAVAILABLE`.
+
+      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case startup-and-slash`
+      and paste raw output showing both startup and `/larva-persona` switch use mapping.
+
+      - [ ] Run `pi --list-models --offline` or record the explicit compatible skip/xfail
+      reason if Pi is unavailable.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
+
+
+      ## Launched Runtime Evidence
+
+      - pi_registry_command: `pi --list-models --offline`
+
+      - pi_registry_output_or_skip: <paste>
+
+      - harness: `node contrib/pi-extension/test-model-map-runtime.mjs`
+
+
+      ## Runtime Case Matrix
+
+      | case | exact_command | raw_output | expected_code_or_mapping | status |
+
+      | no-config | node contrib/pi-extension/test-model-map-runtime.mjs --case no-config
+      | <paste> | fallback split | PASS/FAIL |
+
+      | missing-env-file | node contrib/pi-extension/test-model-map-runtime.mjs --case
+      missing-env-file | <paste> | fallback split | PASS/FAIL |
+
+      | mapped-hit | node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-hit
+      | <paste> | mapped provider/model_id | PASS/FAIL |
+
+      | invalid-config | node contrib/pi-extension/test-model-map-runtime.mjs --case
+      invalid-config | <paste> | LARVA_MODEL_MAP_INVALID | PASS/FAIL |
+
+      | mapped-unavailable | node contrib/pi-extension/test-model-map-runtime.mjs
+      --case mapped-unavailable | <paste> | LARVA_MODEL_UNAVAILABLE | PASS/FAIL |
+
+      | startup-and-slash | node contrib/pi-extension/test-model-map-runtime.mjs --case
+      startup-and-slash | <paste> | shared resolver for both | PASS/FAIL |
+
+
+      ## Headline
+
+      - [ ] PASS
+
+      - [ ] PASS_WITH_DEBT
+
+      - [ ] FAIL'
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.extension-impl
+    - pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
+    agent: integration-verifier
