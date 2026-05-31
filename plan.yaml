@@ -81303,7 +81303,7 @@ phases:
     claimed_at: '2026-05-31T17:50:19.754528+00:00'
   - id: ci_local_gate_wiring
     name: Wire supplemental Pi runtime tests into local and CI gate
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -81388,6 +81388,16 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-31T17:50:10.601614+00:00'
+    done_at: '2026-05-31T17:58:31.323420+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-ci_local_gate_wiring into
+      main as dab4781 ([vectl] step-ci_local_gate_wiring completed). Checklist verification
+      was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED: ran `uv
+      run pytest tests/shell/test_pi_extension_real_runtime.py -v` => 13 passed in
+      14.44s; ran `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -v` => 59 passed in 14.63s. Worker evidence: CI workflow `.github/workflows/ci.yml`
+      wires the combined Pi supplemental runtime gate; README documents local supplemental
+      gate; skip/xfail policy scoped to absent Pi binary or unsupported observability,
+      not product failures; deviations none.'
   - id: gate
     name: Gate Pi runtime liveness and Larva persona Tab autocomplete hardening
     status: pending
