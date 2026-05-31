@@ -79,7 +79,7 @@ type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | P
 type CommandOptions = {
   description: string;
   getArgumentCompletions?: (prefix: string) => Promise<PiAutocompleteCandidate[] | null>;
-  handler: (input?: string) => Promise<PersonaSwitchResult>;
+  handler: (input?: string, ctx?: PiContext) => Promise<PersonaSwitchResult>;
 };
 type LegacyCommandDefinition = CommandOptions & {
   name: string;
@@ -88,27 +88,43 @@ type LegacyCommandDefinition = CommandOptions & {
 export type PiAutocompleteCandidate = { value: string; label: string; description?: string };
 type ToolDefinition<Input, Output> = {
   name: string;
+  label?: string;
   description: string;
-  inputSchema: Record<string, unknown>;
-  handler: (input: Input) => Promise<Output>;
+  inputSchema?: Record<string, unknown>;
+  parameters?: Record<string, unknown>;
+  handler?: (input: Input) => Promise<Output>;
+  execute?: (
+    toolCallId: string,
+    params: Input,
+    signal?: AbortSignal,
+    onUpdate?: (update: unknown) => void,
+    ctx?: PiContext,
+  ) => Promise<Output>;
 };
 type SelectorOption = { id: string; label: string; description?: string };
 type BridgeListItem = { id: string; description?: string; model?: string };
+type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
+type PiUi = {
+  setStatus?: StatusSetter;
+  notify?: (message: string, notifyType?: "info" | "warning" | "error") => void | Promise<void>;
+  select?: (title: string, options: string[] | SelectorOption[]) => Promise<string | SelectorOption | null | undefined>;
+};
 type PiApi = {
   setModel?: (model: unknown) => boolean | void | Promise<boolean | void>;
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
   registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentResult>) => void;
-  on?: (event: "before_agent_start" | "tool_call" | string, handler: (payload: unknown) => unknown) => void;
+  on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown) => void;
 };
 type PiContext = PiApi & {
   env?: RuntimeEnv;
-  ui?: { setStatus?: (status: string) => void | Promise<void> };
+  ui?: PiUi;
   modelRegistry?: ModelRegistry;
   hasUI?: boolean;
   openSelector?: (options: SelectorOption[]) => Promise<string | null>;
   abortSignal?: AbortSignal;
+  signal?: AbortSignal;
 };
 type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string> };
 type ParsedModel = { provider: string; modelId: string };
@@ -127,6 +143,24 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 function currentEnv(ctx?: { env?: RuntimeEnv }): RuntimeEnv {
   const nodeEnv = typeof process === "undefined" ? {} : process.env;
   return { ...nodeEnv, ...(ctx?.env ?? {}) } as RuntimeEnv;
+}
+
+function withRuntimeEnv(ctx: PiContext | undefined, env: RuntimeEnv): PiContext {
+  return { ...(ctx ?? {}), env: { ...env, ...(ctx?.env ?? {}) } } as PiContext;
+}
+
+async function setLarvaStatus(ctx: PiContext, statusText: string): Promise<void> {
+  const setter = ctx.ui?.setStatus as ((keyOrStatus: string, status?: string) => void | Promise<void>) | undefined;
+  if (!setter) return;
+  if (setter.length >= 2) {
+    await setter("larva", statusText);
+    return;
+  }
+  await setter(statusText);
+}
+
+async function notify(ctx: PiContext, message: string, notifyType: "info" | "warning" | "error" = "info"): Promise<void> {
+  await ctx.ui?.notify?.(message, notifyType);
 }
 
 export function parseModel(model: string): ParsedModel | null {
@@ -246,13 +280,19 @@ export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
+  const baseEnv = currentEnv(ctx);
   const command: CommandOptions = {
     description: "Switch active Larva persona",
     getArgumentCompletions: async (prefix: string) => {
-      const candidates = await completePersonaIds(prefix, ctx);
+      const candidates = await completePersonaIds(prefix, withRuntimeEnv(ctx, baseEnv));
       return candidates.length > 0 ? candidates : null;
     },
-    handler: (input?: string) => handlePersonaCommand(input, ctx, pi),
+    handler: async (input?: string, commandCtx?: PiContext) => {
+      const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
+      const result = await handlePersonaCommand(input, runtimeCtx, pi);
+      await notifyPersonaSwitchResult(runtimeCtx, result);
+      return result;
+    },
   };
   if (!pi.registerCommand) return;
   if (pi.registerCommand.length >= 2) {
@@ -272,11 +312,19 @@ export function getActiveEnvelope(): PersonaEnvelope | null {
 
 async function setStatus(ctx: PiContext): Promise<void> {
   const inactiveStatus = "larva: none";
-  await ctx.ui?.setStatus?.(state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
+  await setLarvaStatus(ctx, state.envelope ? `larva: ${state.envelope.persona_id}` : inactiveStatus);
 }
 
 async function setStartupUnavailableStatus(ctx: PiContext, personaId: string, larvaError: LarvaError): Promise<void> {
-  await ctx.ui?.setStatus?.(`larva: ${personaId} unavailable (${larvaError.code})`);
+  await setLarvaStatus(ctx, `larva: ${personaId} unavailable (${larvaError.code})`);
+}
+
+async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchResult): Promise<void> {
+  if (result.ok) {
+    await notify(ctx, `Larva persona active: ${result.envelope.persona_id}`, "info");
+    return;
+  }
+  await notify(ctx, `Larva persona switch failed: ${result.error.code}: ${result.error.message}`, "error");
 }
 
 async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
@@ -405,6 +453,11 @@ export async function openPersonaSelector(ctx: PiContext): Promise<string | null
   const personas = await listPersonas(ctx);
   if (personas.length === 0) throw error("LARVA_PERSONA_NOT_FOUND", "No personas available");
   const options = personas.map((persona) => ({ id: persona.id, label: persona.id, description: persona.description ?? persona.model }));
+  if (ctx.ui?.select) {
+    const selected = await ctx.ui.select("Select Larva persona", options.map((option) => option.id));
+    if (typeof selected === "string") return selected;
+    if (isRecord(selected) && typeof selected.id === "string") return selected.id;
+  }
   return ctx.openSelector ? ctx.openSelector(options) : null;
 }
 
@@ -787,40 +840,60 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
   }
 }
 
-export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
+async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
   if (env.LARVA_PI_INITIAL_PERSONA_ID) {
     const committed = await commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi);
     if (!committed.ok) {
-      if (committed.error.code === "LARVA_TOOL_ENUMERATION_FAILED") {
-        await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
-      } else {
-        throw new Error(`larva pi: ${committed.error.code}: ${committed.error.message}`);
-      }
+      await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
+      await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
     }
   } else {
     await setStatus(ctx);
   }
+}
+
+export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Promise<void> {
+  const env = currentEnv(ctx);
+  if (pi !== ctx) {
+    await initializeSession(withRuntimeEnv(ctx, env), pi);
+  }
   registerLarvaPersonaCommand(ctx, pi);
+  const subagentSchema = {
+    type: "object",
+    properties: {
+      persona_id: { type: "string", description: "Target Larva persona id." },
+      task: { type: "string", description: "Instruction to send to the child session." },
+      task_id: { type: "string", description: "Optional child session .jsonl path to resume." },
+    },
+    required: ["persona_id", "task"],
+    additionalProperties: false,
+  };
   pi.registerTool?.({
     name: "larva_subagent",
+    label: "Larva Subagent",
     description: "Spawn or resume one Larva persona child Pi session and return its final assistant text.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        persona_id: { type: "string", description: "Target Larva persona id." },
-        task: { type: "string", description: "Instruction to send to the child session." },
-        task_id: { type: "string", description: "Optional child session .jsonl path to resume." },
-      },
-      required: ["persona_id", "task"],
-      additionalProperties: false,
+    inputSchema: subagentSchema,
+    parameters: subagentSchema,
+    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }),
+    execute: (_toolCallId, input, signal, _onUpdate, toolCtx) => {
+      const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
+      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal });
     },
-    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal }),
   });
-  pi.on?.("before_agent_start", before_agent_start);
+  pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
+    await initializeSession(withRuntimeEnv(eventCtx ?? ctx, env), pi);
+  });
+  pi.on?.("before_agent_start", (payload: unknown) => before_agent_start(payload));
   pi.on?.("tool_call", (payload: unknown) => {
-    const name = isRecord(payload) && typeof payload.name === "string" ? payload.name : "";
-    return decideToolCall(name);
+    const name = isRecord(payload) && typeof payload.toolName === "string"
+      ? payload.toolName
+      : isRecord(payload) && typeof payload.name === "string"
+        ? payload.name
+        : "";
+    const decision = decideToolCall(name);
+    if (decision.action === "deny") return { block: true, reason: `${decision.error.code}: ${decision.error.message}` };
+    return undefined;
   });
   void openPersonaSelector;
 }
@@ -830,7 +903,7 @@ export const __contract_examples = {
   failedAfterAllocation: { task_id: "/tmp/example.jsonl", persona_id: "doc-reviewer", status: "failed", result_text: "", error: { code: "LARVA_CHILD_PROTOCOL_FAILED", message: "failed after allocation" } },
   deniedSubagentNoHandler: "handler larva_subagent LARVA_TOOL_DENIED no LarvaSubagentResult",
   startupShape: "larva pi: <ERROR_CODE>: <human-readable message>",
-  piApiTokens: "modelRegistry.find ctx.ui.setStatus typeof data.text === \"string\"",
+  piApiTokens: "modelRegistry.find ctx.ui.setStatus(\"larva\", statusText) typeof data.text === \"string\"",
 };
 
 export default initializeExtension;

@@ -146,8 +146,8 @@ def test_initial_persona_commit_is_before_user_visible_none_state() -> None:
     )
     _assert_regex(
         source,
-        r"LARVA_PI_INITIAL_PERSONA_ID[\s\S]+commitPersona[\s\S]+setStatus",
-        "initial persona must be committed before any user-visible status/selector path",
+        r"async function initializeSession[\s\S]+LARVA_PI_INITIAL_PERSONA_ID[\s\S]+commitPersona[\s\S]+setStatus",
+        "initial persona must be committed by the session-start runtime before status/selector paths",
     )
 
 
@@ -155,20 +155,22 @@ def test_initialize_extension_wires_pi_surfaces_to_module_logic() -> None:
     source = _source()
     body = _function_body(source, "export async function initializeExtension")
 
-    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerLarvaPersonaCommand")
-    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("before_agent_start"')
-    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index('on?.("tool_call"')
-    assert body.index("commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID") < body.index("registerTool")
+    assert "initializeSession(withRuntimeEnv(ctx, env), pi)" in body
+    assert 'on?.("session_start"' in body
+    assert body.index("registerLarvaPersonaCommand") < body.index('on?.("before_agent_start"')
+    assert body.index("registerTool") < body.index('on?.("tool_call"')
 
     assert "registerLarvaPersonaCommand(ctx, pi)" in body
     command_body = _function_body(source, "function registerLarvaPersonaCommand")
     assert '"larva-persona", command' in command_body
     assert 'name: "larva-persona"' in command_body
     assert "getArgumentCompletions" in command_body
-    assert "completePersonaIds(prefix, ctx)" in command_body
-    assert "handlePersonaCommand(input, ctx, pi)" in command_body
+    assert "completePersonaIds(prefix, withRuntimeEnv(ctx, baseEnv))" in command_body
+    assert "handlePersonaCommand(input, runtimeCtx, pi)" in command_body
+    assert "notifyPersonaSwitchResult(runtimeCtx, result)" in command_body
 
-    assert 'on?.("before_agent_start", before_agent_start)' in body
+    assert 'on?.("session_start", async' in body
+    assert 'on?.("before_agent_start", (payload: unknown) => before_agent_start(payload))' in body
     tool_call_registration = re.search(r"on\?\.\(\"tool_call\", \(payload: unknown\) => \{(?P<body>[\s\S]*?)\n  \}\);", body)
     assert tool_call_registration is not None
     assert "decideToolCall(name)" in tool_call_registration.group("body")
@@ -182,11 +184,13 @@ def test_larva_subagent_tool_registration_returns_pi_observable_result() -> None
     tool_body = tool_registration.group("body")
 
     assert 'name: "larva_subagent"' in tool_body
-    assert "inputSchema" in tool_body
-    assert 'required: ["persona_id", "task"]' in tool_body
-    assert "additionalProperties: false" in tool_body
+    assert "inputSchema: subagentSchema" in tool_body
+    assert "parameters: subagentSchema" in tool_body
+    assert 'required: ["persona_id", "task"]' in source
+    assert "additionalProperties: false" in source
     assert "handler: (input: LarvaSubagentInput) => larva_subagent" in tool_body
-    assert "abortSignal: ctx.abortSignal" in tool_body
+    assert "execute:" in tool_body
+    assert "abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal" in tool_body
 
 
 def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp_path: Path) -> None:
@@ -258,6 +262,95 @@ def test_live_pi_command_registration_uses_two_arg_argument_completion_shape(tmp
     assert result["emptyResult"] is None
 
 
+def test_current_pi_factory_uses_event_context_for_startup_status_and_commands(tmp_path: Path) -> None:
+    """Mirror Pi v0.75.x's default extension factory contract.
+
+    Current Pi calls the extension default export as ``factory(pi)`` and supplies
+    UI/model context later to lifecycle and command handlers.  Larva must
+    therefore commit startup personas from ``session_start`` and use the command
+    handler context for `/larva-persona`, not a load-time pseudo-context.
+    """
+
+    fake_cli = tmp_path / "fake-larva-resolve.mjs"
+    fake_cli.write_text(
+        textwrap.dedent(
+            """
+            const [, , command, personaId, jsonFlag] = process.argv;
+            if (command !== "resolve" || jsonFlag !== "--json") process.exit(3);
+            process.stdout.write(JSON.stringify({
+              data: {
+                id: personaId,
+                description: `Persona ${personaId}`,
+                prompt: `Prompt for ${personaId}`,
+                model: "provider/model",
+                capabilities: {},
+                spec_version: "0.1.0",
+                spec_digest: `sha256:${personaId}`,
+                can_spawn: true
+              }
+            }));
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_node(
+        tmp_path,
+        f"""
+        const mod = await import({json.dumps(EXTENSION.as_uri())});
+        const statuses = [];
+        const notifications = [];
+        const handlers = {{}};
+        let registered = null;
+        let registeredTool = null;
+        const pi = {{
+          getAllTools: async () => ["read", "bash", "larva_subagent"],
+          setActiveTools: async () => true,
+          setModel: async () => true,
+          registerCommand: (name, options) => {{ registered = {{ name, options }}; }},
+          registerTool: (tool) => {{ registeredTool = tool; }},
+          on: (event, handler) => {{ handlers[event] = handler; }},
+        }};
+
+        await mod.default(pi);
+        const runtimeCtx = {{
+          env: {{
+            LARVA_PI_INITIAL_PERSONA_ID: "startup",
+            LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, {json.dumps(str(fake_cli))}]),
+            LARVA_PI_INTERACTIVE_TUI: "0",
+          }},
+          ui: {{
+            setStatus: async (key, status) => statuses.push({{ key, status }}),
+            notify: async (message, notifyType) => notifications.push({{ message, notifyType }}),
+          }},
+          modelRegistry: {{ find: async () => ({{ id: "model" }}) }},
+        }};
+
+        await handlers.session_start({{ reason: "startup" }}, runtimeCtx);
+        const switchResult = await registered.options.handler("ok", runtimeCtx);
+
+        console.log(JSON.stringify({{
+          registeredName: registered.name,
+          hasSessionStart: typeof handlers.session_start === "function",
+          toolHasCurrentShape: registeredTool.parameters !== undefined && typeof registeredTool.execute === "function",
+          statuses,
+          notifications,
+          switchResult,
+          finalEnvelope: mod.getActiveEnvelope(),
+        }}));
+        """,
+    )
+
+    assert result["registeredName"] == "larva-persona"
+    assert result["hasSessionStart"] is True
+    assert result["toolHasCurrentShape"] is True
+    assert result["statuses"][0] == {"key": "larva", "status": "larva: startup"}
+    assert result["statuses"][-1] == {"key": "larva", "status": "larva: ok"}
+    assert result["notifications"][-1] == {"message": "Larva persona active: ok", "notifyType": "info"}
+    assert result["switchResult"]["ok"] is True
+    assert result["finalEnvelope"]["persona_id"] == "ok"
+
+
 def test_persona_switch_commits_envelope_model_and_status() -> None:
     source = _source()
     _assert_tokens(
@@ -267,13 +360,13 @@ def test_persona_switch_commits_envelope_model_and_status() -> None:
         "spec_digest",
         "modelRegistry.find",
         "setModel",
-        "ctx.ui.setStatus",
+        "setLarvaStatus",
         "larva:",
     )
 
 
 def test_no_active_persona_sets_none_status() -> None:
-    _assert_tokens(_source(), "larva: none", "ctx.ui.setStatus")
+    _assert_tokens(_source(), "larva: none", "setLarvaStatus")
 
 
 def test_prompt_watermark_composes_replaces_and_never_dumps_catalogue() -> None:
