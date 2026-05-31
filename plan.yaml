@@ -81356,104 +81356,106 @@ phases:
   - id: pi-adapter-local-model-map-config-2026-06-01.contract
     name: contract
     status: pending
-    description: 'step_type: contract
-
-      contract_purity: ENFORCED
-
-      agent_source: default
-
-
-      ACCEPTED CONTRACT ARTIFACT:
-
-      Define the Pi adapter-local model-map contract without changing canonical PersonaSpec
-      schema. The contract must pin:
-
-      - default path: `~/.pi/larva/model-map.json`
-
-      - env override: `LARVA_PI_MODEL_MAP_FILE=/absolute/or/relative/path/to/model-map.json`
-
-      - schema: JSON object keyed by exact `PersonaSpec.model` strings, where each
-      value is `{ "provider": string, "model_id": string }`
-
-      - ownership: Larva Pi extension adapter-local only; not opifex, not PersonaSpec,
-      not Pi global settings
-
-      - missing file: preserve current behavior from `parseModel` splitting on first
-      `/`
-
-      - file exists + exact key hit: call `ctx.modelRegistry.find(provider, model_id)`
-      with mapped values
-
-      - file exists + key miss: preserve current split behavior
-
-      - invalid JSON/schema: throw/project `LARVA_MODEL_MAP_INVALID`
-
-      - mapped values valid but Pi registry miss or `pi.setModel` rejects: keep `LARVA_MODEL_UNAVAILABLE`
-
-      - non-goals: no fuzzy matching, no auto-guessing, no PersonaSpec Pi fields,
-      no multi-layer complex config, no canonical schema changes
-
-
-      Requirement-to-checklist traceability matrix:
-
-      | requirement_id | source_ref + key passage | obligation | owning_step_id |
-      checklist_item | evidence_field | status | non_intersection_or_escalation |
-
-      | R1 | user brief: adapter-local optional model map | map is adapter-local only
-      | pi-adapter-local-model-map-config-2026-06-01.contract | contract pins ownership/non-goals
-      | contract_sections.ownership | OWNED | n/a |
-
-      | R2 | user brief: default path/env override | path and env override specified
-      | pi-adapter-local-model-map-config-2026-06-01.contract | path/env schema documented
-      | contract_sections.path_env | OWNED | n/a |
-
-      | R3 | user brief: missing file fallback | preserve split behavior | pi-adapter-local-model-map-config-2026-06-01.contract
-      | fallback semantics documented | contract_sections.fallback | OWNED | n/a |
-
-      | R4 | user brief: invalid structure error | stable invalid-map error | pi-adapter-local-model-map-config-2026-06-01.contract
-      | LARVA_MODEL_MAP_INVALID documented | contract_sections.errors | OWNED | n/a
-      |
-
-      | R5 | user brief: mapped unavailable error | preserve unavailable error | pi-adapter-local-model-map-config-2026-06-01.contract
-      | LARVA_MODEL_UNAVAILABLE documented | contract_sections.errors | OWNED | n/a
-      |
-
-
-      <side_effect_budget>
-
-      Allowed: add contract notes/types/stubs/tests under `contrib/pi-extension/`
-      that define adapter-local model-map behavior. Forbidden: modifying PersonaSpec
-      schema, opifex contracts, Pi global settings, or product runtime logic beyond
-      stubs/contracts in this step.
-
-      </side_effect_budget>
-
-      <risk_probes>
-
-      - Verify the contract uses exact string keys and explicitly rejects fuzzy/nearest
-      model matching.
-
-      - Verify mapped `model_id` preserves embedded slashes after provider separation.
-
-      - Verify startup persona and `/larva-persona` switch are specified as consumers
-      of one shared resolution path.
-
-      </risk_probes>'
+    description: "step_type: contract\ncontract_purity: ENFORCED\nagent_source: default\n\
+      \nACCEPTED CONTRACT ARTIFACT:\nDefine the Pi adapter-local configuration contract\
+      \ without changing canonical PersonaSpec schema or opifex shared contracts.\n\
+      \nModel-map contract:\n- canonical path: `~/.pi/larva/model-map.json`\n- env\
+      \ override: `LARVA_PI_MODEL_MAP_FILE`; when set, read only that path for the\
+      \ model map.\n- schema:\n  ```json\n  {\n    \"models\": {\n      \"<PersonaSpec.model>\"\
+      : { \"provider\": \"<pi-provider>\", \"model_id\": \"<pi-model-id>\" }\n   \
+      \ },\n    \"prefix_rules\": [\n      { \"from_prefix\": \"<literal-prefix>\"\
+      , \"to_provider\": \"<pi-provider>\", \"to_model_id_prefix\": \"<literal-prefix-or-empty>\"\
+      \ }\n    ]\n  }\n  ```\n- exact mapping order: first check `models[spec.model]`.\n\
+      - prefix mapping order: if no exact hit, evaluate only literal `prefix_rules`;\
+      \ choose the longest `from_prefix` that matches `spec.model`.\n- same-length\
+      \ matching prefix conflict is invalid and MUST surface `LARVA_MODEL_MAP_INVALID`.\n\
+      - prefix rules may only strip `from_prefix` and prepend `to_model_id_prefix`\
+      \ to the remaining model string; they MUST NOT guess vendors, use wildcards,\
+      \ regex, fuzzy matching, or nearest-model behavior.\n- after exact or prefix\
+      \ mapping, call Pi `modelRegistry.find(provider, model_id)` with the mapped\
+      \ values.\n- mapped values valid but Pi registry miss or `pi.setModel` rejection\
+      \ remains `LARVA_MODEL_UNAVAILABLE`.\n- missing config file preserves current\
+      \ fallback: split `PersonaSpec.model` on the first `/` into provider/modelId.\n\
+      - invalid JSON/schema/rules in an existing config file MUST fail closed with\
+      \ `LARVA_MODEL_MAP_INVALID`.\n- key miss with no prefix hit preserves current\
+      \ split fallback.\n- startup persona application and `/larva-persona` switching\
+      \ MUST share the same resolver path.\n\nConfirmed model-map example to document\
+      \ and test:\n```json\n{\n  \"models\": {\n    \"openai/gpt-5.5\": { \"provider\"\
+      : \"openai-codex\", \"model_id\": \"gpt-5.5\" },\n    \"ollama-cloud/glm-5.1\"\
+      : { \"provider\": \"openrouter\", \"model_id\": \"z-ai/glm-5.1\" },\n    \"\
+      ollama-cloud/kimi-k2.5\": { \"provider\": \"openrouter\", \"model_id\": \"moonshotai/kimi-k2.5\"\
+      \ },\n    \"ollama-cloud/minimax-m2.7\": { \"provider\": \"openrouter\", \"\
+      model_id\": \"minimax/minimax-m2.7\" }\n  },\n  \"prefix_rules\": [\n    { \"\
+      from_prefix\": \"openrouter/\", \"to_provider\": \"openrouter\", \"to_model_id_prefix\"\
+      : \"\" }\n  ]\n}\n```\n`openrouter/google/gemini-3.1-pro-preview` is covered\
+      \ by the `openrouter/` prefix rule. `ollama-cloud/kimi-k2.6:cloud` is intentionally\
+      \ not mapped and MUST NOT be covered by wildcard-like behavior.\n\nTool-policy\
+      \ path contract:\n- canonical path: `~/.pi/larva/tool-policy.json`\n- env override\
+      \ remains `LARVA_PI_TOOL_POLICY_FILE`.\n- default resolution order:\n  1. If\
+      \ `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.\n  2. Else if `~/.pi/larva/tool-policy.json`\
+      \ exists, use it.\n  3. Else if legacy `~/.pi/tool-policy.json` exists, use\
+      \ legacy fallback.\n  4. Else pass/use new canonical path; missing file means\
+      \ empty policy as today.\n- Do not auto-migrate or write user files.\n- Documentation\
+      \ must mark `~/.pi/tool-policy.json` as legacy fallback.\n\nRequirement-to-checklist\
+      \ traceability matrix:\n| requirement_id | source_ref + key passage | obligation\
+      \ | owning_step_id | checklist_item | evidence_field | status | non_intersection_or_escalation\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| R1 | user decision:\
+      \ canonical model map path/env | pin `~/.pi/larva/model-map.json` and `LARVA_PI_MODEL_MAP_FILE`\
+      \ | pi-adapter-local-model-map-config-2026-06-01.contract | path/env contract\
+      \ recorded | contract_sections.model_map_path_env | OWNED | n/a |\n| R2 | user\
+      \ decision: complete controlled language | define exact mappings plus restricted\
+      \ prefix rules | pi-adapter-local-model-map-config-2026-06-01.contract | exact/prefix\
+      \ schema and ordering recorded | contract_sections.model_map_language | OWNED\
+      \ | n/a |\n| R3 | user decision: no wildcard/regex/fuzzy/vendor guessing | forbid\
+      \ unsupported matching semantics | pi-adapter-local-model-map-config-2026-06-01.contract\
+      \ | non-goals recorded | contract_sections.non_goals | OWNED | n/a |\n| R4 |\
+      \ user decision: registry validation | mapped result calls Pi `modelRegistry.find(provider,\
+      \ model_id)` | pi-adapter-local-model-map-config-2026-06-01.contract | registry\
+      \ validation recorded | contract_sections.registry_validation | OWNED | n/a\
+      \ |\n| R5 | user decision: errors/fallback | missing file split fallback, invalid\
+      \ config `LARVA_MODEL_MAP_INVALID`, mapped miss `LARVA_MODEL_UNAVAILABLE` |\
+      \ pi-adapter-local-model-map-config-2026-06-01.contract | fallback/error contract\
+      \ recorded | contract_sections.errors | OWNED | n/a |\n| R6 | user decision:\
+      \ confirmed exact/prefix examples | map four exact aliases; cover `openrouter/`;\
+      \ exclude `kimi-k2.6:cloud` | pi-adapter-local-model-map-config-2026-06-01.contract\
+      \ | example config recorded | contract_sections.example | OWNED | n/a |\n| R7\
+      \ | user decision: tool-policy namespace | define new canonical path, env override\
+      \ precedence, legacy fallback, no migration | pi-adapter-local-model-map-config-2026-06-01.contract\
+      \ | tool-policy path contract recorded | contract_sections.tool_policy | OWNED\
+      \ | n/a |\n\n<side_effect_budget>\nAllowed: add/update contract notes, type\
+      \ declarations, stubs, and test-harness contracts under `contrib/pi-extension/`\
+      \ that define adapter-local config behavior. Forbidden: modifying PersonaSpec\
+      \ schema, opifex contracts, Pi global settings, user runtime files under `~/.pi`,\
+      \ or product runtime logic beyond contract/stub artifacts in this step.\n</side_effect_budget>\n\
+      <risk_probes>\n- Verify same-length prefix conflicts are invalid even when either\
+      \ rule would otherwise map to a valid model.\n- Verify prefix mapping preserves\
+      \ embedded slashes in the remainder, e.g. `openrouter/google/gemini-3.1-pro-preview`\
+      \ -> provider `openrouter`, model_id `google/gemini-3.1-pro-preview`.\n- Verify\
+      \ startup persona and `/larva-persona` switch consume one shared resolver for\
+      \ both model-map and unavailable-model error projection.\n</risk_probes>"
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE"
+      - [ ] Run `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE\|LARVA_PI_TOOL_POLICY_FILE"
       contrib/pi-extension/larva.ts contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
-      and cite the current model projection passages.
+      and cite current model/tool-policy projection passages.
 
       - [ ] Contract artifact explicitly includes `~/.pi/larva/model-map.json`, `LARVA_PI_MODEL_MAP_FILE`,
-      exact-key JSON schema, missing-file/key-miss fallback, `LARVA_MODEL_MAP_INVALID`,
-      and `LARVA_MODEL_UNAVAILABLE`.
+      `models`, `prefix_rules`, exact-before-prefix ordering, longest-prefix matching,
+      same-length conflict `LARVA_MODEL_MAP_INVALID`, and no wildcard/regex/fuzzy/vendor
+      guessing.
 
-      - [ ] Contract artifact explicitly states no PersonaSpec schema change and no
-      fuzzy/automatic guessing.
+      - [ ] Contract artifact explicitly includes the confirmed JSON example and states
+      `ollama-cloud/kimi-k2.6:cloud` is intentionally not mapped.
 
-      - [ ] Contract artifact maps startup persona and `/larva-persona` switch to
-      the same future resolver.'
+      - [ ] Contract artifact explicitly requires mapped values to call Pi `modelRegistry.find(provider,
+      model_id)` and preserve `LARVA_MODEL_UNAVAILABLE` for mapped registry misses.
+
+      - [ ] Contract artifact explicitly includes tool-policy resolution order for
+      `LARVA_PI_TOOL_POLICY_FILE`, `~/.pi/larva/tool-policy.json`, legacy `~/.pi/tool-policy.json`,
+      and no-file empty policy.
+
+      - [ ] Contract artifact states no PersonaSpec schema change, no opifex contract
+      change, and no automatic user-file migration.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -81467,27 +81469,32 @@ phases:
 
       ## Contract Sections
 
-      - ownership: <adapter-local / no schema change>
+      - model_map_path_env: <path/env text>
 
-      - path_env: <default path + env override>
+      - model_map_language: <schema/order/conflict rules>
 
-      - schema: <exact JSON shape>
+      - registry_validation: <modelRegistry.find rule>
 
-      - fallback: <missing file + key miss>
+      - errors: <fallback/invalid/unavailable text>
 
-      - errors: <invalid map + unavailable mapped model>
+      - example: <confirmed JSON example>
 
-      - consumers: <startup persona + /larva-persona shared resolver>
+      - tool_policy: <path precedence + legacy fallback + no migration>
+
+      - non_goals: <no schema/opifex/wildcard/regex/fuzzy/vendor guessing>
 
 
-      ## Command Evidence
+      ## Checklist Receipt
 
-      - command: `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE"
-      contrib/pi-extension/larva.ts contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      - [ ] all contract checklist items satisfied
 
-      - raw_stdout: <paste>
+      - [ ] no forbidden side effects performed
 
-      - exit_code: <code>'
+      '
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
     agent: software-architect
   - id: pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
     name: dotfiles_model_inventory
