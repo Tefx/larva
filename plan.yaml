@@ -83078,23 +83078,23 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|prefix_rules\|modelRegistry.find\|LARVA_PI_TOOL_POLICY_FILE\|tool-policy.json"
+      - [x] Run `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|prefix_rules\|modelRegistry.find\|LARVA_PI_TOOL_POLICY_FILE\|tool-policy.json"
       contrib/pi-extension/larva.ts` and include raw output.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-unit.mjs` showing exact
+      - [x] Run `node contrib/pi-extension/test-model-map-unit.mjs` showing exact
       hit, prefix hit, same-length prefix conflict invalid, missing config fallback,
       invalid config, mapped unavailable, startup persona, slash switch, and slash-switch-after-startup
       behavior.
 
-      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs` showing env
+      - [x] Run `node contrib/pi-extension/test-tool-policy-paths.mjs` showing env
       override, new canonical path exists, legacy fallback, and no file => new canonical
       empty policy.
 
-      - [ ] Run `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      - [x] Run `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
       -q` and paste raw output, or record exact missing harness reason if these tests
       are intentionally superseded by node scripts.
 
-      - [ ] Evidence includes main path and highest-risk failure path outputs; narrative
+      - [x] Evidence includes main path and highest-risk failure path outputs; narrative
       summaries alone are insufficient.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
