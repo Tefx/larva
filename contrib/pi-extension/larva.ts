@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { access, mkdir, realpath, stat } from "node:fs/promises";
+import { access, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -145,6 +145,9 @@ type PiContext = PiApi & {
 };
 type ActiveState = { envelope: PersonaEnvelope | null; activeTools: Set<string> };
 type ParsedModel = { provider: string; modelId: string };
+type ModelMapResolution =
+  | { kind: "mapped"; parsed: ParsedModel }
+  | { kind: "fallback" };
 
 const CLI_TIMEOUT_MS = 10_000;
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
@@ -193,6 +196,116 @@ function piModelLookupFor(parsed: ParsedModel): ParsedModel {
     return { provider: "openai-codex", modelId: "gpt-5.5" };
   }
   return parsed;
+}
+
+function homeDir(env: RuntimeEnv): string {
+  return env.HOME && env.HOME.length > 0 ? env.HOME : homedir();
+}
+
+function modelMapPath(env: RuntimeEnv): string {
+  return env.LARVA_PI_MODEL_MAP_FILE ?? join(homeDir(env), ".pi", "larva", "model-map.json");
+}
+
+function toolPolicyPathCandidates(env: RuntimeEnv): string[] {
+  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) return [env.LARVA_PI_TOOL_POLICY_FILE];
+  const home = homeDir(env);
+  return [join(home, ".pi", "larva", "tool-policy.json"), join(home, ".pi", "tool-policy.json")];
+}
+
+async function pathExists(file: string): Promise<boolean> {
+  try {
+    await access(file, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function selectedToolPolicyPath(env: RuntimeEnv): Promise<string> {
+  const [canonicalOrOverride, legacy] = toolPolicyPathCandidates(env);
+  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined || !legacy) return canonicalOrOverride;
+  if (await pathExists(canonicalOrOverride)) return canonicalOrOverride;
+  if (await pathExists(legacy)) return legacy;
+  return canonicalOrOverride;
+}
+
+function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
+  const allowed = new Set(keys);
+  if (Object.keys(value).some((key) => !allowed.has(key))) throw new Error("unexpected key");
+}
+
+function parseModelMapConfig(raw: string): PiModelMapConfig {
+  const parsed = JSON.parse(raw) as unknown;
+  if (!isRecord(parsed)) throw new Error("invalid model-map top-level");
+  assertOnlyKeys(parsed, ["models", "prefix_rules"]);
+  if (!isRecord(parsed.models) || !Array.isArray(parsed.prefix_rules)) throw new Error("invalid model-map shape");
+  const models: PiModelMapConfig["models"] = {};
+  for (const [key, value] of Object.entries(parsed.models)) {
+    if (key.length === 0 || !isRecord(value)) throw new Error("invalid model-map model entry");
+    assertOnlyKeys(value, ["provider", "model_id"]);
+    if (typeof value.provider !== "string" || value.provider.length === 0) throw new Error("invalid model provider");
+    if (typeof value.model_id !== "string" || value.model_id.length === 0) throw new Error("invalid model id");
+    models[key] = { provider: value.provider, model_id: value.model_id };
+  }
+  const prefix_rules = parsed.prefix_rules.map((rule): PiModelMapConfig["prefix_rules"][number] => {
+    if (!isRecord(rule)) throw new Error("invalid prefix rule");
+    assertOnlyKeys(rule, ["from_prefix", "to_provider", "to_model_id_prefix"]);
+    if (typeof rule.from_prefix !== "string" || rule.from_prefix.length === 0) throw new Error("invalid from_prefix");
+    if (typeof rule.to_provider !== "string" || rule.to_provider.length === 0) throw new Error("invalid to_provider");
+    if (typeof rule.to_model_id_prefix !== "string") throw new Error("invalid to_model_id_prefix");
+    return {
+      from_prefix: rule.from_prefix,
+      to_provider: rule.to_provider,
+      to_model_id_prefix: rule.to_model_id_prefix,
+    };
+  });
+  return { models, prefix_rules };
+}
+
+function resolveFromModelMap(specModel: string, config: PiModelMapConfig): ModelMapResolution {
+  const exact = config.models[specModel];
+  if (exact !== undefined) return { kind: "mapped", parsed: { provider: exact.provider, modelId: exact.model_id } };
+
+  const matches = config.prefix_rules.filter((rule) => specModel.startsWith(rule.from_prefix));
+  if (matches.length === 0) return { kind: "fallback" };
+  const longest = Math.max(...matches.map((rule) => rule.from_prefix.length));
+  const winners = matches.filter((rule) => rule.from_prefix.length === longest);
+  if (winners.length !== 1) throw new Error("same-length prefix conflict");
+  const [winner] = winners;
+  return {
+    kind: "mapped",
+    parsed: {
+      provider: winner.to_provider,
+      modelId: `${winner.to_model_id_prefix}${specModel.slice(winner.from_prefix.length)}`,
+    },
+  };
+}
+
+async function resolvePiModel(spec: PersonaSpec, env: RuntimeEnv): Promise<ParsedModel> {
+  const file = modelMapPath(env);
+  let raw: string | null;
+  try {
+    raw = await readFile(file, "utf8").catch((readError: unknown) => {
+      const code = isRecord(readError) ? readError.code : undefined;
+      if (code === "ENOENT") return null;
+      throw readError;
+    });
+  } catch {
+    throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
+  }
+
+  if (raw !== null) {
+    try {
+      const resolution = resolveFromModelMap(spec.model, parseModelMapConfig(raw));
+      if (resolution.kind === "mapped") return resolution.parsed;
+    } catch {
+      throw error("LARVA_MODEL_MAP_INVALID", "Invalid Larva Pi model map");
+    }
+  }
+
+  const fallback = parseModel(spec.model);
+  if (!fallback) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
+  return fallback;
 }
 
 async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
@@ -412,9 +525,7 @@ async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchRe
 }
 
 async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
-  const parsed = parseModel(spec.model);
-  if (!parsed) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
-  const lookup = piModelLookupFor(parsed);
+  const lookup = await resolvePiModel(spec, currentEnv(ctx));
   const model = await ctx.modelRegistry?.find?.(lookup.provider, lookup.modelId);
   if (!model) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${spec.model}`);
   const accepted = await pi.setModel?.(model);
@@ -444,11 +555,11 @@ function toolName(tool: unknown): string | null {
 }
 
 async function loadPolicy(personaId: string, env: RuntimeEnv): Promise<PiToolPolicy> {
-  const file = env.LARVA_PI_TOOL_POLICY_FILE;
-  if (!file) return {};
+  const policyOverride = env.LARVA_PI_TOOL_POLICY_FILE;
+  const file = await selectedToolPolicyPath(env);
+  void policyOverride;
   try {
-    const fs = await import("node:fs/promises");
-    const raw = await fs.readFile(file, "utf8").catch((readError: unknown) => {
+    const raw = await readFile(file, "utf8").catch((readError: unknown) => {
       const code = isRecord(readError) ? readError.code : undefined;
       if (code === "ENOENT") return null;
       throw readError;
@@ -693,6 +804,7 @@ function parseStartupError(stderr: string): LarvaError {
   const match = /larva pi: (LARVA_[A-Z_]+):/.exec(stderr);
   const whitelist: LarvaErrorCode[] = [
     "LARVA_PERSONA_NOT_FOUND",
+    "LARVA_MODEL_MAP_INVALID",
     "LARVA_MODEL_UNAVAILABLE",
     "LARVA_POLICY_INVALID",
     "LARVA_TOOL_ENUMERATION_FAILED",
