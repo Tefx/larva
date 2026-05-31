@@ -32,8 +32,11 @@ def test_autocomplete_tui_provider_uses_argument_prefix_for_force_modes(case: st
     assert payload["command"] == "larva-persona"
     assert payload["force"] is force
     assert payload["prefix"] == "vectl"
+    assert payload["editorLine"] == "/larva-persona vectl"
     assert payload["values"] == ["vectl-planner", "vectl-reviewer"]
     assert payload["allValuesAreStrings"] is True
+    assert payload["valuesEqualPersonaIds"] is True
+    assert payload["provesArgumentPrefix"] is True
     assert payload["exactShape"] is True
 
 

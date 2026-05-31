@@ -1,5 +1,3 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -16,25 +14,7 @@ if (!scenario) throw new Error("missing --case");
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const extensionUrl = pathToFileURL(join(root, "contrib", "pi-extension", "larva.ts")).href;
 const mod = await import(extensionUrl);
-
-const temp = await mkdtemp(join(tmpdir(), "larva-pi-autocomplete-"));
-const fakeCli = join(temp, "fake-larva-cli.mjs");
-await writeFile(
-  fakeCli,
-  `
-const mode = process.env.FAKE_LARVA_LIST_MODE || "ok";
-if (mode === "exit") process.exit(17);
-if (mode === "malformed") { process.stdout.write("{not json"); process.exit(0); }
-const [, , command, flag] = process.argv;
-if (command !== "list" || flag !== "--json") process.exit(3);
-process.stdout.write(JSON.stringify({data: [
-  {id: "vectl-planner", description: "Plan with vectl", model: "provider/model"},
-  {id: "vectl-reviewer", model: "provider/model"},
-  {id: "frontend-engineer", description: "Frontend", model: "provider/model"}
-]}));
-`,
-  "utf8",
-);
+const fakeCli = join(root, "tests", "fixtures", "pi", "fake-larva-cli.mjs");
 
 let installedProvider = null;
 let registeredCommand = null;
@@ -66,14 +46,22 @@ if (typeof registeredCommand.options?.getArgumentCompletions !== "function") {
 if (typeof installedProvider !== "function") throw new Error("autocomplete provider was not installed");
 
 async function runTab(force) {
-  const items = await installedProvider(`/larva-persona ${prefix}`, { force });
+  const editorLine = `/larva-persona ${prefix}`;
+  const items = await installedProvider(editorLine, { force });
+  const values = items?.map((item) => item.value) ?? null;
   return {
     command: registeredCommand.name,
     force,
     prefix,
+    editorLine,
     items,
-    values: items?.map((item) => item.value) ?? null,
+    values,
     allValuesAreStrings: Array.isArray(items) && items.every((item) => typeof item.value === "string"),
+    valuesEqualPersonaIds: Array.isArray(items) && items.every((item) => item.value === item.label),
+    provesArgumentPrefix: Array.isArray(values)
+      && values.includes("vectl-planner")
+      && values.every((value) => value.startsWith(prefix))
+      && !values.some((value) => value.startsWith(editorLine)),
     exactShape: Array.isArray(items) && items.every((item) => (
       typeof item.value === "string"
       && item.label === item.value
@@ -97,9 +85,9 @@ if (scenario === "tab-force") {
   const items = await provider("/not-larva vectl", { force: true });
   output = { calls, items, delegated: items === baseResult };
 } else if (scenario === "list-failure") {
-  process.env.FAKE_LARVA_LIST_MODE = "exit";
+  process.env.FAKE_LARVA_SCENARIO = "list-exit";
   const failed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: true });
-  process.env.FAKE_LARVA_LIST_MODE = "malformed";
+  process.env.FAKE_LARVA_SCENARIO = "list-malformed";
   const malformed = await installedProvider(`/larva-persona ${prefix || "vectl"}`, { force: false });
   output = { failed, malformed, noCrash: failed === null && malformed === null };
 } else {

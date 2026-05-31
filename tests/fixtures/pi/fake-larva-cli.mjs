@@ -6,8 +6,8 @@ const scenario = process.env.FAKE_LARVA_SCENARIO || "ok";
 const personas = [
   { id: "ok", description: "Deterministic success persona", model: "fake/model" },
   { id: "startup", description: "Deterministic startup persona", model: "fake/model" },
-  { id: "vectl-planner", description: "Plan with vectl", model: "fake/model" },
-  { id: "vectl-reviewer", description: "Review with vectl", model: "fake/model" },
+  { id: "vectl-planner", description: "Plan with vectl" },
+  { id: "vectl-reviewer", description: "Review with vectl" },
 ];
 
 function writeJson(value) {
