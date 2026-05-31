@@ -81554,7 +81554,7 @@ phases:
     agent: gate-reviewer
   - id: pi_tab_autocomplete_extension_impl
     name: Implement Larva persona TUI autocomplete provider wrapper
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default (user forbids larva\
       \ MCP/tela_larva_* discovery; TypeScript/Pi extension work routed to frontend-engineer)\n\
       touch_paths:\n- contrib/pi-extension/larva.ts\nupstream_artifacts:\n- path:\
@@ -81642,6 +81642,16 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-31T17:36:02.827362+00:00'
+    done_at: '2026-05-31T17:48:53.510347+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi_tab_autocomplete_extension_impl
+      into main as 4024586 ([vectl] step-pi_tab_autocomplete_extension_impl completed).
+      Checklist verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `uv run pytest tests/shell/test_pi_extension_contract.py -v`; 46 passed
+      in 0.70s. Worker evidence summary: implementation preserved `pi.registerCommand("larva-persona",
+      { getArgumentCompletions, handler })`, added fail-soft `ctx.ui.addAutocompleteProvider`
+      wrapper when available, used argument prefix for both force modes, delegated
+      non-Larva input, returned null on list failure/malformed JSON, and did not add
+      prompt catalogue/cache/fuzzy matching.'
   - id: pi_tab_autocomplete_runtime_tests
     name: Add runtime autocomplete harness for Larva persona Tab completion
     status: pending
