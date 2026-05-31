@@ -82120,6 +82120,226 @@ phases:
       wrapper boundary/delegation, fail-soft larva list behavior, non-goals (no prompt
       catalogue/cache/fuzzy), and exact autocomplete smoke/pytest troubleshooting
       commands.'
+  - id: fix_real_pi_rpc_liveness_blockers
+    name: Fix real Pi RPC liveness semantic blockers
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+      work_type: defect_repair
+
+
+      TARGET STATE:
+
+      The real Pi RPC liveness smoke environment proves actual Pi plugin/runtime behavior
+      for Larva persona success and failure paths without requiring prior conversation
+      context. The fake Larva CLI/persona fixture or smoke environment/model-map setup
+      must allow deterministic success for documented fixture personas (`ok`, `startup`)
+      while preserving real Pi process execution. The smoke scenarios must also prove
+      the slash-command missing/unparseable failure topology, not only startup initial-persona
+      failure via `get_state`.
+
+
+      EXACT FAILED CONTEXT TO FIX:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario availability --json`
+      succeeded and detected Pi extension flag `-e`.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+      loaded the real Pi RPC plugin and returned `larva-persona`.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      ok --json` failed semantic liveness: observed notify error `Larva persona switch
+      failed: LARVA_MODEL_UNAVAILABLE: Model unavailable fake/model`; expected `statusKey=larva`,
+      `statusText=larva: ok`, and notify `Larva persona active: ok`.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status --persona
+      startup --json` failed semantic liveness: observed `statusText=larva: startup
+      unavailable (LARVA_MODEL_UNAVAILABLE)` and notify error; expected `statusText=larva:
+      startup`.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path --persona
+      missing --json` was non-silent but only proved startup initial-persona missing
+      flow via `get_state`; it did NOT prove slash-command missing/unparseable failure
+      topology.
+
+
+      LIKELY ROOT CAUSE BOUNDING BOX:
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - `contrib/pi-extension/larva.ts`
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+      - Any fake Larva CLI fixture or smoke-only environment/model-map setup used
+      by the real Pi runtime smoke.
+
+      This bounding box does not authorize broad product redesign; preserve existing
+      command contract and real Pi RPC execution.
+
+
+      CONSTRAINTS:
+
+      - This is a Pi plugin/runtime liveness repair, not opencode.
+
+      - Pi config namespace must remain `~/.pi/larva/` wherever config is relevant.
+
+      - Do NOT modify PersonaSpec schema.
+
+      - Do NOT accept mock-only/source-token proof as sufficient for real Pi liveness.
+
+      - Do NOT add persona catalogue injection into prompts, caching, fuzzy matching,
+      wildcard matching, regex matching, or fuzzy model guessing.
+
+      - Preserve model preference semantics: `openai/gpt-5.5` maps to `openai-codex/gpt-5.5`;
+      do not introduce broad wildcard model guessing.
+
+      - Preserve real Pi process use for plugin load, command visibility, slash-command
+      success, startup status, and failure-path scenarios; a fake Larva bridge is
+      allowed only for deterministic Larva CLI/persona commit behavior.
+
+      - Do not mark `real_pi_rpc_liveness` complete and do not rewrite salvaged failure
+      evidence under `tests/output/real_pi_rpc_liveness/`.
+
+
+      ## Requirement Traceability Matrix
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-LIVE-FIX-001 | failed `slash-status --persona ok` evidence: `LARVA_MODEL_UNAVAILABLE:
+      Model unavailable fake/model` | success fixture persona `ok` resolves/commits
+      in real Pi smoke and emits keyed status + active notify | fix_real_pi_rpc_liveness_blockers
+      | slash-status semantic success fixed | slash_status_fix | OWNED | blocks phase
+      gate |
+
+      | PI-LIVE-FIX-002 | failed `startup-status --persona startup` evidence: `startup
+      unavailable (LARVA_MODEL_UNAVAILABLE)` | startup fixture persona `startup` resolves/commits
+      in real Pi smoke and emits `statusText=larva: startup` | fix_real_pi_rpc_liveness_blockers
+      | startup-status semantic success fixed | startup_status_fix | OWNED | blocks
+      phase gate |
+
+      | PI-LIVE-FIX-003 | failed `failure-path --persona missing` evidence: startup-only
+      `get_state` flow | slash-command missing/unparseable path produces stable non-silent
+      notify/error topology | fix_real_pi_rpc_liveness_blockers | slash-command failure
+      topology fixed | failure_topology_fix | OWNED | blocks phase gate |
+
+      | PI-LIVE-FIX-004 | sticky user constraints | preserve Pi namespace, schema,
+      no mock-only proof, no catalogue/cache/fuzzy/wildcard model guessing | fix_real_pi_rpc_liveness_blockers
+      | sticky constraints preserved | constraints_preserved | OWNED | blocks phase
+      gate |
+
+
+      <side_effect_budget>
+
+      Allowed: modify Pi extension runtime smoke harness, fake Larva CLI fixture/model-map
+      setup, focused Pi extension code, and focused tests needed to close the listed
+      semantic liveness blockers; write new test/evidence output only in normal test-output
+      locations.
+
+      Forbidden: modify PersonaSpec schema; redefine shared contract meaning; add
+      prompt persona catalogue injection; add caching/fuzzy/wildcard/regex model guessing;
+      treat mock/source-token proof as real Pi liveness; change config namespace away
+      from `~/.pi/larva/`; erase salvaged failure artifacts from `tests/output/real_pi_rpc_liveness/`.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Verify that success was obtained by fixing deterministic fixture/model-map
+      setup or legitimate adapter mapping, not by weakening assertions that check
+      `statusKey=larva`, exact `statusText`, or active notify text.
+
+      2. Verify slash-command failure-path topology separately from startup initial-persona
+      failure; the evidence must identify the slash prompt/RPC command path used.
+
+      3. Verify no broad wildcard/fuzzy model guessing or prompt catalogue/cache path
+      was introduced while handling `fake/model` versus `openai/gpt-5.5 -> openai-codex/gpt-5.5`
+      mapping.
+
+      </risk_probes>
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs. Private stub classes or hardcoded green
+      outputs do not satisfy this requirement.
+
+
+      ## Checklist
+
+      - [ ] `slash-status --persona ok` root cause is identified and repaired so the
+      real Pi smoke observes `statusKey=larva`, `statusText=larva: ok`, and notify
+      `Larva persona active: ok` instead of `Larva persona switch failed: LARVA_MODEL_UNAVAILABLE:
+      Model unavailable fake/model`.
+
+      - [ ] `startup-status --persona startup` root cause is identified and repaired
+      so the real Pi smoke observes `statusText=larva: startup` instead of `larva:
+      startup unavailable (LARVA_MODEL_UNAVAILABLE)`.
+
+      - [ ] `failure-path --persona missing` scenario topology is corrected or extended
+      to prove slash-command missing/unparseable failure behavior, not only startup
+      initial-persona missing via `get_state`.
+
+      - [ ] Existing availability and `get-commands` real Pi success paths remain
+      intact and are not replaced by mocks.
+
+      - [ ] Sticky constraints are preserved: Pi namespace `~/.pi/larva/`, no PersonaSpec
+      schema change, no prompt catalogue/cache/fuzzy/wildcard/regex model guessing,
+      no mock-only/source-token liveness proof.
+
+      - [ ] Focused regression coverage or smoke assertions exist for all three blocker
+      classes above.'
+    verification: '- [ ] Diff/evidence identifies the root cause for the `fake/model`
+      `LARVA_MODEL_UNAVAILABLE` success-path failures and the failure-path topology
+      gap.
+
+      - [ ] Focused checks or smoke assertions prove `slash-status --persona ok`,
+      `startup-status --persona startup`, and slash-command `failure-path --persona
+      missing` expectations are enforced.
+
+      - [ ] Main path evidence preserves real Pi RPC plugin load and command visibility.
+
+      - [ ] Highest-risk failure path evidence proves missing/unparseable persona
+      through slash-command topology.
+
+      - [ ] Constraint audit shows no PersonaSpec schema change, no Pi namespace drift,
+      and no catalogue/cache/fuzzy/wildcard/regex model guessing.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage or NOT READ:\
+      \ reason>\n- tests/output/real_pi_rpc_liveness/ — <failure artifact names/key\
+      \ passages or NOT READ: reason>\n\n## Root Cause vs Symptom\n- slash_status_root_cause:\
+      \ <why `ok` resolved to unavailable `fake/model`>\n- startup_status_root_cause:\
+      \ <why `startup` resolved to unavailable `fake/model`>\n- failure_topology_root_cause:\
+      \ <why prior scenario only proved startup/get_state missing flow>\n- symptom_strings_confirmed:\n\
+      \  - `Larva persona switch failed: LARVA_MODEL_UNAVAILABLE: Model unavailable\
+      \ fake/model`\n  - `larva: startup unavailable (LARVA_MODEL_UNAVAILABLE)`\n\n\
+      ## Fix Evidence\n- changed_files: <list>\n- slash_status_fix: <what changed\
+      \ and why it preserves real Pi runtime>\n- startup_status_fix: <what changed\
+      \ and why it preserves real Pi runtime>\n- failure_topology_fix: <what changed\
+      \ and how slash-command missing/unparseable is exercised>\n- constraints_preserved:\n\
+      \  - pi_namespace: <evidence>\n  - persona_spec_schema_unchanged: <evidence>\n\
+      \  - no_prompt_catalogue_or_cache: <evidence>\n  - no_fuzzy_wildcard_regex_model_guessing:\
+      \ <evidence>\n  - model_preference_mapping_preserved: <evidence for `openai/gpt-5.5`\
+      \ -> `openai-codex/gpt-5.5` if touched>\n\n## Regression Receipt\n- commands_run:\n\
+      \  ```\n  <focused commands>\n  ```\n- raw_stdout: |\n  <paste raw stdout>\n\
+      - raw_stderr: |\n  <paste raw stderr>\n- exit_codes: <codes>\n\n## Checklist\
+      \ Receipt\n- slash-status semantic success fixed: satisfied|failed|blocked|unobserved\
+      \ — <evidence>\n- startup-status semantic success fixed: satisfied|failed|blocked|unobserved\
+      \ — <evidence>\n- slash-command failure topology fixed: satisfied|failed|blocked|unobserved\
+      \ — <evidence>\n- constraints preserved: satisfied|failed|blocked|unobserved\
+      \ — <evidence>"
+    depends_on:
+    - real_pi_rpc_liveness
+    agent: frontend-engineer
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
