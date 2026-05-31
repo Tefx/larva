@@ -81205,7 +81205,7 @@ phases:
       behavior, and avoided source-token-only assertions.'
   - id: real_pi_rpc_liveness
     name: Run real Pi RPC liveness proof for command and persona status
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi_runtime_liveness_hardening_20260601.gate`
@@ -81301,6 +81301,24 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-31T18:19:30.685754+00:00'
+    done_at: '2026-05-31T18:24:32.161250+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-real_pi_rpc_liveness into
+      main as a26f72d ([vectl] step-real_pi_rpc_liveness completed). Checklist verification
+      was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED: ran `node
+      scripts/pi-extension-runtime-smoke.mjs --scenario availability --json` => exit
+      0 with Pi available and extension flag `-e`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario get-commands --json` => exit 0 with real RPC `get_commands` response
+      including extension command `larva-persona`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario slash-status --persona ok --json` => exit 0 with `statusKey=larva`,
+      `statusText=larva: ok`, and notify `Larva persona active: ok`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario startup-status --persona startup --json` => exit 0 with `statusText=larva:
+      startup`; ran `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path
+      --persona missing --json` => exit 0 with `prompt-missing` and `prompt-unparseable`
+      responses and non-silent error notifies; ran `command -v pi && pi --version`
+      => `/opt/homebrew/bin/pi`, `0.75.5`. Worker evidence included saved raw JSON/stdout/stderr/exit
+      artifacts for every scenario, verdict PASS, blockers [], gate_open_allowed true,
+      orchestrator_action_hint COMPLETE, and product_implementation_files_modified:
+      no.'
   - id: ci_local_gate_wiring
     name: Wire supplemental Pi runtime tests into local and CI gate
     status: done
