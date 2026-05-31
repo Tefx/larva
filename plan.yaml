@@ -81481,3 +81481,171 @@ phases:
 
       - exit_code: <code>'
     agent: software-architect
+  - id: pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
+    name: dotfiles_model_inventory
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      `/Users/tefx/dotfiles/agent/models.yaml` keeps its existing abstract-alias semantics
+      while gaining the minimum explicit Pi model-map material needed for the currently
+      used model strings. The step may modify only `/Users/tefx/dotfiles/agent/models.yaml`
+      and/or an adjacent clearly named mapping material file if preserving YAML semantics
+      requires separation. Do not alter unrelated aliases or commented alternatives.
+
+
+      Current observed model strings from `/Users/tefx/dotfiles/agent/models.yaml`
+      at plan time:
+
+      - `openai/gpt-5.5`
+
+      - `ollama-cloud/glm-5.1`
+
+      - `openrouter/openai/gpt-5.5` (commented alternative; inventory only unless
+      currently active)
+
+      - `ollama-cloud/kimi-k2.5`
+
+      - `ollama-cloud/kimi-k2.6:cloud`
+
+      - `ollama-cloud/minimax-m2.7`
+
+      - `openrouter/google/gemini-3.1-pro-preview`
+
+
+      Pi offline registry evidence from `pi --list-models --offline` at plan time
+      showed these usable targets:
+
+      - `openai-codex` / `gpt-5.5`
+
+      - `openrouter` / `openai/gpt-5.5`
+
+      - `openrouter` / `z-ai/glm-5.1`
+
+      - `openrouter` / `moonshotai/kimi-k2.5`
+
+      - `openrouter` / `moonshotai/kimi-k2.6`
+
+      - `openrouter` / `minimax/minimax-m2.7`
+
+      - `openrouter` / `google/gemini-3.1-pro-preview`
+
+
+      Mapping policy:
+
+      - Use exact Pi registry names only.
+
+      - If a source model has an unambiguous Pi target in the registry, add the mapping
+      material.
+
+      - If target choice is ambiguous (`openai/gpt-5.5` could map to `openai-codex/gpt-5.5`
+      or `openrouter/openai/gpt-5.5`), do not guess; leave a minimal TODO/comment
+      or report it in `needs_user_confirmation`.
+
+      - For `ollama-cloud/*`, prefer the exact OpenRouter canonical model listed above
+      only when provider/model identity is clear; otherwise mark TODO.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | D1 | /Users/tefx/dotfiles/agent/models.yaml active aliases | inventory every
+      model string | pi-adapter-local-model-map-config-2026-06-01.dotfiles_model_inventory
+      | inventory includes active/commented status | inventory_table | OWNED | n/a
+      |
+
+      | D2 | `pi --list-models --offline` output | use real Pi names | pi-adapter-local-model-map-config-2026-06-01.dotfiles_model_inventory
+      | registry evidence included | pi_registry_excerpt | OWNED | n/a |
+
+      | D3 | user brief: do not guess | ambiguous models not guessed | pi-adapter-local-model-map-config-2026-06-01.dotfiles_model_inventory
+      | unresolved mappings listed | needs_user_confirmation | OWNED | n/a |
+
+      | D4 | user brief: don''t break YAML semantics | preserve alias semantics |
+      pi-adapter-local-model-map-config-2026-06-01.dotfiles_model_inventory | diff
+      summary proves no unrelated edits | diff_summary | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: edit `/Users/tefx/dotfiles/agent/models.yaml` mapping material only,
+      or create an adjacent explicit model-map material file if that is the least
+      semantic-preserving option. Forbidden: changing Larva repo product code, changing
+      unrelated dotfiles agent aliases, removing comments, or inventing unverified
+      model targets.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Confirm whether active `openai/gpt-5.5` should use `openai-codex/gpt-5.5`
+      or `openrouter/openai/gpt-5.5` before writing a binding.
+
+      - Confirm that `ollama-cloud/kimi-k2.6:cloud` intentionally maps to `openrouter/moonshotai/kimi-k2.6`
+      rather than preserving provider-specific cloud routing.
+
+      - Confirm generated material can be consumed by the planned `~/.pi/larva/model-map.json`
+      schema without changing existing models.yaml alias lookup semantics.
+
+      </risk_probes>'
+    verification: "ACCEPTABLE RECEIPT:\n- [ ] Run `python3 - <<'PY'\nimport pathlib,re\n\
+      p=pathlib.Path('/Users/tefx/dotfiles/agent/models.yaml')\nfor i,line in enumerate(p.read_text().splitlines(),1):\n\
+      \    if '/' in line and not line.lstrip().startswith('#'):\n        print(f'{i}:\
+      \ {line}')\nPY` and include raw inventory output.\n- [ ] Run `pi --list-models\
+      \ --offline` and include excerpts for every target model used or considered.\n\
+      - [ ] Run `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and summarize\
+      \ only intended mapping-material changes.\n- [ ] If any mapping is not unambiguous,\
+      \ list it under `needs_user_confirmation` instead of guessing.\n- [ ] Preserve\
+      \ existing `models.yaml` alias values unless the diff summary explains a user-authorized\
+      \ mapping-material-only addition."
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - /Users/tefx/dotfiles/agent/models.yaml — <key passage or NOT READ: reason>
+
+
+      ## Inventory Table
+
+      | source_line | alias/comment_state | model_string | pi_target_provider | pi_target_model_id
+      | status |
+
+
+      ## Pi Registry Excerpt
+
+      - command: `pi --list-models --offline`
+
+      - matching_rows: <paste rows for targets>
+
+
+      ## Diff Summary
+
+      - command: `git -C /Users/tefx/dotfiles diff -- agent/models.yaml`
+
+      - raw_diff_or_summary: <paste>
+
+      - unrelated_changes: <none or list>
+
+
+      ## Needs User Confirmation
+
+      - <model string>: <why ambiguous, candidate targets>
+
+
+      ## Checklist Receipt
+
+      - [ ] inventory_complete
+
+      - [ ] real_pi_names_used
+
+      - [ ] no_guessing
+
+      - [ ] yaml_semantics_preserved'
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.contract
+    agent: software-architect
