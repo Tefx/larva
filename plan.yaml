@@ -81952,7 +81952,7 @@ phases:
     agent: integration-verifier
   - id: pi_tab_autocomplete_docs
     name: Document Larva persona Tab completion behavior and troubleshooting
-    status: pending
+    status: claimed
     description: 'step_type: documentation
 
       agent_source: default
@@ -82055,6 +82055,8 @@ phases:
     depends_on:
     - proof_contract
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-05-31T17:35:57.107411+00:00'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
