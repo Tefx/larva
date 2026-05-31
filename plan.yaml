@@ -81889,7 +81889,7 @@ phases:
   - id: pi_tab_autocomplete_real_tui_smoke_or_limit
     name: Attempt real Pi TUI/RPC smoke for persona Tab autocomplete or record automation
       limit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check; protects Pi runtime liveness and `/larva-persona`
@@ -82028,6 +82028,23 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-31T18:24:58.267903+00:00'
+    done_at: '2026-05-31T18:31:23.521439+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi_tab_autocomplete_real_tui_smoke_or_limit
+      into main as a4cc056 ([vectl] step-pi_tab_autocomplete_real_tui_smoke_or_limit
+      completed). Checklist verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+      => exit 0 with real RPC `get_commands` response including `larva-persona`; ran
+      `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      vectl-planner --json` => exit 0 with `statusText=larva: vectl-planner` and notify
+      `Larva persona active: vectl-planner`; ran `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl --real-pi-tui` => exit 0 and showed wrapper
+      provider path with `values: ["vectl-planner", "vectl-reviewer"]`, `provesArgumentPrefix:
+      true`, `exactShape: true`; ran tab-regular/delegate-other-input/list-failure
+      wrapper harness commands => all exit 0, delegation true, list failures null/no
+      crash. Corrected worker evidence records true rendered TUI observation as EXCLUDED_OR_DEFERRED
+      due missing PTY/Pi TUI automation seam with non-intersection evidence; gate_open_allowed
+      true, verdict PASS, blockers [], orchestrator_action_hint COMPLETE; product
+      implementation files modified: no.'
   - id: pi_tab_autocomplete_docs
     name: Document Larva persona Tab completion behavior and troubleshooting
     status: done
