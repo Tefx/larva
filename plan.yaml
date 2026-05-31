@@ -81408,6 +81408,94 @@ phases:
     - real_pi_rpc_liveness
     - ci_local_gate_wiring
     agent: gate-reviewer
+  - id: pi_tab_autocomplete_extension_impl
+    name: Implement Larva persona TUI autocomplete provider wrapper
+    status: pending
+    description: "step_type: implementation\nagent_source: default (user forbids larva\
+      \ MCP/tela_larva_* discovery; TypeScript/Pi extension work routed to frontend-engineer)\n\
+      touch_paths:\n- contrib/pi-extension/larva.ts\nupstream_artifacts:\n- path:\
+      \ pi_runtime_liveness_hardening_20260601.proof_contract\n  from_step: proof_contract\n\
+      \  tier: contract\n\nTARGET STATE:\n`contrib/pi-extension/larva.ts` preserves\
+      \ the existing `pi.registerCommand(\"larva-persona\", { getArgumentCompletions,\
+      \ handler })` path and additionally installs a Larva-specific TUI autocomplete\
+      \ provider wrapper when the real runtime UI context exposes `ctx.ui.addAutocompleteProvider`.\n\
+      \nCONSTRAINTS:\n- The wrapper intercepts only `/larva-persona <prefix>` inputs.\n\
+      - Every other input delegates to the base provider; do not steal file/global\
+      \ autocomplete.\n- For `/larva-persona <prefix>`, both `force=true` and `force=false`\
+      \ call the same `completePersonaIds(prefix, ctx)` path.\n- Candidate item shape\
+      \ remains `{ value: persona.id, label: persona.id, description }`; `value` must\
+      \ be a string.\n- The prefix passed to `completePersonaIds` is the argument\
+      \ prefix (for example `vectl`), not the whole line `/larva-persona vectl`.\n\
+      - `larva list --json` failure or malformed JSON must make the provider return\
+      \ `null` without throwing through Pi.\n- Do not add prompt catalogue injection,\
+      \ cache, fuzzy matching, registry changes, or launcher changes.\n\n## Completion\
+      \ Criteria (stub exclusion)\nThis is an IMPLEMENTATION step. Stub-only completion\
+      \ is NOT acceptable. Each deliverable MUST contain substantive runtime wrapper\
+      \ logic that processes Pi autocomplete inputs and produces outputs that vary\
+      \ based on those inputs. Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`)\
+      \ do not satisfy this requirement.\n\n## Gate Preview (what the gate WILL reject)\n\
+      1. Only preserving/directly testing `getArgumentCompletions(\"vectl\")` without\
+      \ a runtime autocomplete provider wrapper.\n2. A wrapper that uses the whole\
+      \ slash line as prefix or only works for `force=true`.\n3. A wrapper that returns\
+      \ non-string `value`, caches persona lists, injects persona catalogue text into\
+      \ prompts, uses fuzzy matching, or intercepts unrelated inputs.\n4. Failure/malformed\
+      \ list behavior that throws and can crash Pi.\n\n<side_effect_budget>\nAllowed:\
+      \ modify `contrib/pi-extension/larva.ts` and type definitions needed to register/wrap\
+      \ autocomplete providers.\nForbidden: modify Larva registry/launcher behavior,\
+      \ prompt composition, PersonaSpec shared contracts, or global autocomplete semantics\
+      \ outside the exact wrapper delegation path.\n</side_effect_budget>\n<risk_probes>\n\
+      1. Inspect whether provider registration happens at a runtime context point\
+      \ where `ctx.ui` is real enough to expose `addAutocompleteProvider`.\n2. Confirm\
+      \ base-provider delegation survives both non-command input and other slash commands.\n\
+      3. Confirm fail-soft `null` behavior is on the provider path, not only command-level\
+      \ completion.\n</risk_probes>"
+    verification: '- [ ] `contrib/pi-extension/larva.ts` still registers `pi.registerCommand("larva-persona",
+      { getArgumentCompletions, handler })`.
+
+      - [ ] Runtime wrapper registration uses `ctx.ui.addAutocompleteProvider` only
+      when available and does not throw when unavailable.
+
+      - [ ] Wrapper calls `completePersonaIds(prefix, ctx)` for `/larva-persona <prefix>`
+      for both `force=true` and `force=false`.
+
+      - [ ] Wrapper delegates non-`/larva-persona <prefix>` input to the base provider.
+
+      - [ ] Failure/malformed `larva list --json` path returns `null` and does not
+      crash.
+
+      - [ ] No prompt catalogue, cache, or fuzzy matching is added.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/README.md — key passage or "NOT READ: <reason>"
+
+
+      ## Implementation Receipt
+
+      - command_registration_preserved: <evidence existing command path remains>
+
+      - provider_registration: <where wrapper is installed and when>
+
+      - wrapper_intercept_rule: <exact `/larva-persona <prefix>` parser behavior>
+
+      - delegation_rule: <how base provider is called for other input>
+
+      - force_parity: <why force true/false use same completePersonaIds path>
+
+      - failure_behavior: <how list failure/malformed JSON returns null>
+
+      - non_goals_preserved: <no prompt catalogue/cache/fuzzy/global interception>
+
+
+      ## Checklist Receipt
+
+      - implementation checklist: <satisfied/blocked/unobserved with notes>'
+    depends_on:
+    - proof_contract
+    agent: frontend-engineer
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
