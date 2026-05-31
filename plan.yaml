@@ -82338,7 +82338,7 @@ phases:
       \ — <evidence>\n- constraints preserved: satisfied|failed|blocked|unobserved\
       \ — <evidence>"
     depends_on:
-    - real_pi_rpc_liveness
+    - supplemental_runtime_tests
     agent: frontend-engineer
   - id: retest_real_pi_rpc_liveness_semantics
     name: Retest real Pi RPC liveness semantic closure
