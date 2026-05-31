@@ -81679,7 +81679,7 @@ phases:
       prompt catalogue/cache/fuzzy matching.'
   - id: pi_tab_autocomplete_runtime_tests
     name: Add runtime autocomplete harness for Larva persona Tab completion
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -81851,6 +81851,21 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-31T17:50:15.240393+00:00'
+    done_at: '2026-05-31T17:59:02.890824+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi_tab_autocomplete_runtime_tests
+      into main as 55515d4 ([vectl] step-pi_tab_autocomplete_runtime_tests completed).
+      Checklist verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl` => exit 0 with `value: "vectl-planner"`, `force: true`, `prefix: "vectl"`,
+      `allValuesAreStrings: true`, `valuesEqualPersonaIds: true`; ran `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-regular --prefix vectl` => exit 0 with same candidate path and `force:
+      false`; ran `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      => exit 0 with `delegated: true`; ran `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case list-failure` => exit 0 with `failed: null`, `malformed: null`, `noCrash:
+      true`; ran `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -v` => 4 passed, 9 deselected in 0.75s. Worker evidence included refs read confirmation,
+      semantic verdict PASS, blockers [], and explicit rejection of source-token/direct-completer-only
+      proof.'
   - id: pi_tab_autocomplete_real_tui_smoke_or_limit
     name: Attempt real Pi TUI/RPC smoke for persona Tab autocomplete or record automation
       limit
