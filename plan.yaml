@@ -81979,3 +81979,114 @@ phases:
     - pi-adapter-local-model-map-config-2026-06-01.extension-impl
     - pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
     agent: integration-verifier
+  - id: pi-adapter-local-model-map-config-2026-06-01.docs
+    name: docs
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      Update Pi extension user/developer documentation to explain the adapter-local
+      model map feature. Documentation must cover:
+
+      - default path `~/.pi/larva/model-map.json`
+
+      - env override `LARVA_PI_MODEL_MAP_FILE`
+
+      - JSON example keyed by exact PersonaSpec.model strings
+
+      - fallback behavior for missing file and key miss
+
+      - `LARVA_MODEL_MAP_INVALID` vs `LARVA_MODEL_UNAVAILABLE`
+
+      - startup persona and `/larva-persona` shared behavior
+
+      - non-goals: no fuzzy matching, no automatic guessing, no PersonaSpec schema
+      changes, no Pi fields in PersonaSpec, no multi-layer config
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | DOC1 | contract step | document path/env/schema | pi-adapter-local-model-map-config-2026-06-01.docs
+      | README contains path/env/schema | docs_diff_summary | OWNED | n/a |
+
+      | DOC2 | contract step | document fallback/errors | pi-adapter-local-model-map-config-2026-06-01.docs
+      | README contains fallback/errors | docs_diff_summary | OWNED | n/a |
+
+      | DOC3 | user non-goals | document exclusions | pi-adapter-local-model-map-config-2026-06-01.docs
+      | README contains non-goals | docs_diff_summary | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: edit `contrib/pi-extension/README.md` and, if already used for Pi behavior,
+      `design/pi-coding-agent-integration.md`. Forbidden: changing canonical PersonaSpec
+      docs/schema or documenting behavior not implemented by previous steps.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Verify docs do not imply opifex or canonical PersonaSpec owns the map.
+
+      - Verify examples use exact keys, not wildcard/provider-only aliases.
+
+      - Verify docs distinguish invalid map shape from unavailable mapped model.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Run `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|fuzzy\|PersonaSpec
+      schema" contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      and paste raw output.
+
+      - [ ] Run `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      and summarize documentation-only changes.
+
+      - [ ] Documentation includes a parseable JSON example with at least one key
+      containing embedded slashes in the mapped `model_id`.
+
+      - [ ] Documentation non-goals explicitly ban fuzzy matching, automatic guessing,
+      PersonaSpec schema changes, and Pi-specific PersonaSpec fields.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+
+      ## Docs Diff Summary
+
+      - command: `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+
+      - summary: <paste>
+
+
+      ## Grep Evidence
+
+      - command: `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|fuzzy\|PersonaSpec
+      schema" contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+
+      - raw_stdout: <paste>
+
+
+      ## Checklist Receipt
+
+      - [ ] path_env_documented
+
+      - [ ] schema_example_documented
+
+      - [ ] fallback_and_errors_documented
+
+      - [ ] non_goals_documented'
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.extension-impl
+    agent: doc-reviewer
