@@ -82124,7 +82124,7 @@ phases:
       commands.'
   - id: fix_real_pi_rpc_liveness_blockers
     name: Fix real Pi RPC liveness semantic blockers
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -82344,6 +82344,24 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-31T18:04:00.987714+00:00'
+    done_at: '2026-05-31T18:12:43.992976+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-fix_real_pi_rpc_liveness_blockers
+      into main as 39bd0fa ([vectl] step-fix_real_pi_rpc_liveness_blockers completed).
+      Checklist verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      ok --json` => exit 0 with `statusKey=larva`, `statusText=larva: ok`, notify
+      `Larva persona active: ok`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario startup-status --persona startup --json` => exit 0 with `statusText=larva:
+      startup` and model provider `openai-codex`, id `gpt-5.5`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario failure-path --persona missing --json` => exit 0 with slash prompt
+      responses `prompt-missing` and `prompt-unparseable` and non-silent notify errors;
+      ran `node scripts/pi-extension-runtime-smoke.mjs --scenario availability --json`
+      => exit 0 with Pi available and extension flag `-e`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario get-commands --json` => exit 0 with real RPC command list including
+      `larva-persona`; ran `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      tests/shell/test_pi_extension_contract.py` => 63 passed in 23.58s. Worker evidence
+      identified root causes (`fake/model` unavailable fixture and startup-only failure
+      topology), preserved sticky constraints, and reported no deviations.'
   - id: retest_real_pi_rpc_liveness_semantics
     name: Retest real Pi RPC liveness semantic closure
     status: pending
