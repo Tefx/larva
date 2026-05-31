@@ -81334,14 +81334,22 @@ phases:
     - ci_local_gate_wiring
     agent: gate-reviewer
 - id: pi-adapter-local-model-map-config-2026-06-01
-  name: Pi Adapter-Local Model Map Config 2026-06-01
+  name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
-  gate: Adapter-local Pi model mapping is accepted only when startup persona and /larva-persona
-    switch both resolve PersonaSpec.model through the same optional map logic, missing
-    map preserves current split behavior, invalid map fails stably with LARVA_MODEL_MAP_INVALID,
-    mapped-but-unavailable models remain LARVA_MODEL_UNAVAILABLE, dotfiles mapping
-    material is reconciled without changing models.yaml alias semantics, and evidence
-    includes real/minimal Pi runtime harness output rather than source-token checks.
+  gate: Adapter-local Pi configuration is accepted only when the full controlled model-map
+    language is specified, implemented, documented, and proven through runtime harness
+    cases for exact hit, prefix hit, conflict invalid, missing config, invalid config,
+    mapped unavailable, startup persona, and slash switch; tool-policy path resolution
+    is proven for env override, new canonical file, legacy fallback, and no-file empty-policy
+    behavior; docs mark ~/.pi/tool-policy.json as legacy fallback; no wildcard/regex/fuzzy
+    model mapping or automatic user-file migration is introduced.
+  context: Update Pi adapter-local configuration plan for full controlled model-map
+    language and Larva-Pi tool-policy path resolution. Canonical model map path is
+    ~/.pi/larva/model-map.json with LARVA_PI_MODEL_MAP_FILE override. Tool policy
+    canonical path is ~/.pi/larva/tool-policy.json with LARVA_PI_TOOL_POLICY_FILE
+    override and legacy ~/.pi/tool-policy.json fallback. Do not directly edit plan.yaml
+    or user runtime files; execution steps may update repo/dotfiles source artifacts
+    only as scoped.
   depends_on:
   - pi_runtime_liveness_hardening_20260601
   steps:
