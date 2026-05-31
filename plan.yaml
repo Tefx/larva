@@ -81552,7 +81552,7 @@ phases:
     agent: gate-reviewer
   - id: pi_tab_autocomplete_extension_impl
     name: Implement Larva persona TUI autocomplete provider wrapper
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default (user forbids larva\
       \ MCP/tela_larva_* discovery; TypeScript/Pi extension work routed to frontend-engineer)\n\
       touch_paths:\n- contrib/pi-extension/larva.ts\nupstream_artifacts:\n- path:\
@@ -81638,6 +81638,8 @@ phases:
     depends_on:
     - proof_contract
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-31T17:36:02.827362+00:00'
   - id: pi_tab_autocomplete_runtime_tests
     name: Add runtime autocomplete harness for Larva persona Tab completion
     status: pending
