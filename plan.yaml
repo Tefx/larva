@@ -81333,3 +81333,14 @@ phases:
     - real_pi_rpc_liveness
     - ci_local_gate_wiring
     agent: gate-reviewer
+- id: pi-adapter-local-model-map-config-2026-06-01
+  name: Pi Adapter-Local Model Map Config 2026-06-01
+  status: locked
+  gate: Adapter-local Pi model mapping is accepted only when startup persona and /larva-persona
+    switch both resolve PersonaSpec.model through the same optional map logic, missing
+    map preserves current split behavior, invalid map fails stably with LARVA_MODEL_MAP_INVALID,
+    mapped-but-unavailable models remain LARVA_MODEL_UNAVAILABLE, dotfiles mapping
+    material is reconciled without changing models.yaml alias semantics, and evidence
+    includes real/minimal Pi runtime harness output rather than source-token checks.
+  depends_on:
+  - pi_runtime_liveness_hardening_20260601
