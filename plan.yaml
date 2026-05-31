@@ -82745,26 +82745,26 @@ phases:
       \ both model-map and unavailable-model error projection.\n</risk_probes>"
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE\|LARVA_PI_TOOL_POLICY_FILE"
+      - [x] Run `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE\|LARVA_PI_TOOL_POLICY_FILE"
       contrib/pi-extension/larva.ts contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
       and cite current model/tool-policy projection passages.
 
-      - [ ] Contract artifact explicitly includes `~/.pi/larva/model-map.json`, `LARVA_PI_MODEL_MAP_FILE`,
+      - [x] Contract artifact explicitly includes `~/.pi/larva/model-map.json`, `LARVA_PI_MODEL_MAP_FILE`,
       `models`, `prefix_rules`, exact-before-prefix ordering, longest-prefix matching,
       same-length conflict `LARVA_MODEL_MAP_INVALID`, and no wildcard/regex/fuzzy/vendor
       guessing.
 
-      - [ ] Contract artifact explicitly includes the confirmed JSON example and states
+      - [x] Contract artifact explicitly includes the confirmed JSON example and states
       `ollama-cloud/kimi-k2.6:cloud` is intentionally not mapped.
 
-      - [ ] Contract artifact explicitly requires mapped values to call Pi `modelRegistry.find(provider,
+      - [x] Contract artifact explicitly requires mapped values to call Pi `modelRegistry.find(provider,
       model_id)` and preserve `LARVA_MODEL_UNAVAILABLE` for mapped registry misses.
 
-      - [ ] Contract artifact explicitly includes tool-policy resolution order for
+      - [x] Contract artifact explicitly includes tool-policy resolution order for
       `LARVA_PI_TOOL_POLICY_FILE`, `~/.pi/larva/tool-policy.json`, legacy `~/.pi/tool-policy.json`,
       and no-file empty policy.
 
-      - [ ] Contract artifact states no PersonaSpec schema change, no opifex contract
+      - [x] Contract artifact states no PersonaSpec schema change, no opifex contract
       change, and no automatic user-file migration.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
