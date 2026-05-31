@@ -81274,27 +81274,27 @@ phases:
       handler.
 
       </risk_probes>'
-    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario availability
+    verification: '- [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario availability
       --json` captures Pi binary path and version, or emits `SKIP_NO_PI_BINARY` with
       command-not-found evidence.
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
       proves real `pi --mode rpc --no-session --offline -e contrib/pi-extension/larva.ts`
       loads and returns `larva-persona` in `get_commands`.
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
       ok --json` proves `/larva-persona ok` emits `statusKey=larva`, `statusText=larva:
       ok`, and active-persona notify.
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
       --persona startup --json` proves startup env `LARVA_PI_INITIAL_PERSONA_ID=startup`
       emits `statusText=larva: startup` after session start.
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path --persona
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path --persona
       missing --json` proves missing/unparseable persona produces a stable notify/error/RPC
       error and is not silent.
 
-      - [ ] The evidence includes raw stdout/stderr or saved JSON artifacts for every
+      - [x] The evidence includes raw stdout/stderr or saved JSON artifacts for every
       scenario, not only a summary.'
     depends_on:
     - retest_real_pi_rpc_liveness_semantics
