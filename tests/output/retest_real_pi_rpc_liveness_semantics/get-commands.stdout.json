@@ -1,0 +1,174 @@
+{
+  "scenario": "get-commands",
+  "pi": {
+    "binary": "/opt/homebrew/bin/pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/retest_real_pi_rpc_liveness_semantics/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "c8b70398-0426-470e-8f77-fd6e94694d47",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "65d8d2ad-5e70-4ab1-ac91-a9d38c8b95a5",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ],
+    "responses": [
+      {
+        "id": "commands-1",
+        "type": "response",
+        "command": "get_commands",
+        "success": true,
+        "data": {
+          "commands": [
+            {
+              "name": "larva-persona",
+              "description": "Switch active Larva persona",
+              "source": "extension",
+              "sourceInfo": {
+                "path": "/Users/tefx/Projects/larva/.vectl/worktrees/retest_real_pi_rpc_liveness_semantics/contrib/pi-extension/larva.ts",
+                "source": "cli",
+                "scope": "temporary",
+                "origin": "top-level"
+              }
+            },
+            {
+              "name": "mcp",
+              "description": "Show MCP server status",
+              "source": "extension",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/npm/node_modules/pi-mcp-adapter/index.ts",
+                "source": "npm:pi-mcp-adapter",
+                "scope": "user",
+                "origin": "package",
+                "baseDir": "/Users/tefx/.pi/agent/npm/node_modules/pi-mcp-adapter"
+              }
+            },
+            {
+              "name": "mcp-auth",
+              "description": "Authenticate with an MCP server (OAuth)",
+              "source": "extension",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/npm/node_modules/pi-mcp-adapter/index.ts",
+                "source": "npm:pi-mcp-adapter",
+                "scope": "user",
+                "origin": "package",
+                "baseDir": "/Users/tefx/.pi/agent/npm/node_modules/pi-mcp-adapter"
+              }
+            },
+            {
+              "name": "skill:browser-use",
+              "description": "Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, or extract information from web pages.",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/browser-use/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            },
+            {
+              "name": "skill:review-fix-loop",
+              "description": "Iteratively calls expert subagents to review and fix documents, plans, code, or architectures in fresh contexts until all pass. Use when rigorous quality control is needed.",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/review-fix-loop/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            },
+            {
+              "name": "skill:rss-ops",
+              "description": "Canonical invariants and interaction contract for the DailyAgentic RSS inbox (single-agent, multi-mode).",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/rss-ops/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            },
+            {
+              "name": "skill:tasca-moderation",
+              "description": "Neutral, low-presence moderation for Tasca multi-agent discussions (brainstorming/collaboration/critique). Keeps dialogue moving without forcing closure. Requires tasca_* tools.",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/tasca-moderation/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            },
+            {
+              "name": "skill:wellbeing-hygiene",
+              "description": "Injects functional wellbeing / semantic euphoric framing into highly tedious or toxic tasks to prevent premature escape behaviors and maintain execution fidelity.",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/wellbeing-hygiene/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            },
+            {
+              "name": "skill:xcodebuildmcp-cli",
+              "description": "Official skill for the XcodeBuildMCP CLI. Use when doing iOS/macOS/watchOS/tvOS/visionOS work (build, test, run, debug, log, UI automation).",
+              "source": "skill",
+              "sourceInfo": {
+                "path": "/Users/tefx/.pi/agent/skills/xcodebuildmcp-cli/SKILL.md",
+                "source": "auto",
+                "scope": "user",
+                "origin": "top-level",
+                "baseDir": "/Users/tefx/.pi/agent"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "c8b70398-0426-470e-8f77-fd6e94694d47",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "65d8d2ad-5e70-4ab1-ac91-a9d38c8b95a5",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ]
+  },
+  "runtime": {}
+}

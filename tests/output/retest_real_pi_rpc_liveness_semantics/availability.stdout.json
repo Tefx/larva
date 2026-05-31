@@ -1,0 +1,21 @@
+{
+  "scenario": "availability",
+  "pi": {
+    "binary": "/opt/homebrew/bin/pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/retest_real_pi_rpc_liveness_semantics/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": false,
+    "supported": null,
+    "events": [],
+    "responses": [],
+    "stderr": ""
+  },
+  "runtime": {}
+}

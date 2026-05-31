@@ -1,0 +1,97 @@
+{
+  "scenario": "failure-path",
+  "pi": {
+    "binary": "/opt/homebrew/bin/pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/retest_real_pi_rpc_liveness_semantics/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "faa9d26b-c0b4-4099-ad0b-ea21b82b43c0",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "2b8215d7-430f-482a-9792-5018039166e6",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "b6f8e7f4-1fa7-4619-97fc-6c92674a05b9",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Unable to resolve persona missing",
+        "notifyType": "error"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "7bd858e5-38f4-46e7-bbe9-dfe4b8524586",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Invalid persona payload for unparseable",
+        "notifyType": "error"
+      }
+    ],
+    "responses": [
+      {
+        "id": "prompt-missing",
+        "type": "response",
+        "command": "prompt",
+        "success": true
+      },
+      {
+        "id": "prompt-unparseable",
+        "type": "response",
+        "command": "prompt",
+        "success": true
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "faa9d26b-c0b4-4099-ad0b-ea21b82b43c0",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "2b8215d7-430f-482a-9792-5018039166e6",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "b6f8e7f4-1fa7-4619-97fc-6c92674a05b9",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Unable to resolve persona missing",
+        "notifyType": "error"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "7bd858e5-38f4-46e7-bbe9-dfe4b8524586",
+        "method": "notify",
+        "message": "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Invalid persona payload for unparseable",
+        "notifyType": "error"
+      }
+    ]
+  },
+  "runtime": {}
+}
