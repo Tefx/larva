@@ -81668,6 +81668,146 @@ phases:
     depends_on:
     - pi_tab_autocomplete_extension_impl
     agent: integration-verifier
+  - id: pi_tab_autocomplete_real_tui_smoke_or_limit
+    name: Attempt real Pi TUI/RPC smoke for persona Tab autocomplete or record automation
+      limit
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check; protects Pi runtime liveness and `/larva-persona`
+      Tab completion release readiness.
+
+      agent_source: default
+
+      independence_level: L2
+
+
+      PROOF ARTIFACT:
+
+      Attempt observable real Pi validation for the reported surface. If true TUI
+      Tab automation is impractical in the current environment, produce a limitation
+      record explaining why the wrapper runtime harness is the minimum reliable evidence
+      for Tab provider behavior while preserving real Pi RPC smoke for plugin load,
+      `get_commands`, and `/larva-persona` command execution.
+
+
+      REQUIRED SMOKE COMMANDS:
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+      must show the real Pi RPC extension loads and exposes `larva-persona`.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      vectl-planner --json` or the fixture-equivalent persona used by the existing
+      smoke must show command execution/status behavior when Pi is available.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl --real-pi-tui` should be attempted if the script can support real TUI
+      automation; if unsupported, evidence must explain the missing automation seam
+      and cite the wrapper harness commands that cover the provider logic.
+
+
+      CONSTRAINTS:
+
+      - Do not mark real TUI proof as PASS from source search, direct `getArgumentCompletions`,
+      or command visibility alone.
+
+      - Missing Pi binary or non-automatable TUI is a BLOCKED/SKIPPED environmental
+      disposition, not a product PASS.
+
+      - The limitation record must still preserve real Pi `get_commands` and slash
+      command execution smoke when Pi is available.
+
+
+      <side_effect_budget>
+
+      Allowed: run/read smoke artifacts and document environmental limitations.
+
+      Forbidden: mutate production code, fabricate TUI proof, or treat command registration
+      visibility as sufficient Tab argument-completion proof.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Distinguish command visibility (`get_commands`) from editor Tab argument
+      completion.
+
+      2. Confirm any TUI limitation is environmental/tooling-specific and not a hidden
+      product failure.
+
+      3. Confirm existing Pi liveness evidence remains compatible with this new autocomplete
+      wrapper evidence.
+
+      </risk_probes>'
+    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
+      --json` raw output is reviewed for real Pi plugin load and `larva-persona` visibility,
+      or explicit Pi-binary skip/xfail is recorded.
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      vectl-planner --json` (or documented fixture persona) raw output is reviewed
+      for real command execution/status, or explicit Pi-binary skip/xfail is recorded.
+
+      - [ ] Real TUI Tab automation is attempted with `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl --real-pi-tui` if supported; otherwise evidence
+      records why current automation cannot observe editor Tab provider calls reliably.
+
+      - [ ] Limitation record states why wrapper runtime harness commands are the
+      minimum reliable evidence for Tab provider behavior and what future real TUI
+      proof would need.
+
+      - [ ] Direct command completer evidence is not treated as sufficient for Tab
+      completion closure.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/README.md — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+
+      ## Real Pi/TUI Smoke Receipt
+
+      - get_commands_command: `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      get-commands --json`
+
+      - get_commands_stdout: <raw stdout/stderr + exit code or skip/xfail reason>
+
+      - slash_status_command: `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      slash-status --persona vectl-planner --json` (or documented fixture persona)
+
+      - slash_status_stdout: <raw stdout/stderr + exit code or skip/xfail reason>
+
+      - real_tui_attempt_command: `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl --real-pi-tui`
+
+      - real_tui_result: <raw output OR limitation record>
+
+
+      ## Limitation / Closure Path
+
+      - real_tui_status: LIVE_PROVEN | ENV_BLOCKED | AUTOMATION_LIMITED | NOT_ATTEMPTED_WITH_REASON
+
+      - minimum_reliable_evidence_rationale: <why wrapper harness covers provider
+      logic when real TUI is limited>
+
+      - future_real_tui_probe_needed: <what would close the live Tab path fully>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-TAB-010 | real TUI/RPC observation disposition | real TUI proof or limitation
+      + real RPC command visibility/execution | <artifact> | PROVEN/BLOCKED/SKIPPED
+      | <path> | <basis> |'
+    depends_on:
+    - pi_tab_autocomplete_runtime_tests
+    - real_pi_rpc_liveness
+    agent: integration-verifier
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
