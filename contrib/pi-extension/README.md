@@ -28,13 +28,110 @@ forwarded Pi arguments look interactive. Child Pi RPC sessions reuse those
 launcher-provided values rather than rediscovering Pi or deriving extension
 paths.
 
-## Adapter-local tool policy
+## Adapter-local model map
 
-Persona-specific Pi tool filtering is configured in:
+PersonaSpec `model` remains canonical Larva data. Pi-provider aliases are
+adapter-local Larva-Pi configuration and must not be added to PersonaSpec or
+opifex shared contracts.
+
+The canonical model-map path is:
 
 ```text
-~/.pi/tool-policy.json
+~/.pi/larva/model-map.json
 ```
+
+Set `LARVA_PI_MODEL_MAP_FILE` to override the path for tests or local adapter
+experiments. When it is set, the extension reads only that path for the model
+map.
+
+Shape:
+
+```json
+{
+  "models": {
+    "<PersonaSpec.model>": { "provider": "<pi-provider>", "model_id": "<pi-model-id>" }
+  },
+  "prefix_rules": [
+    { "from_prefix": "<literal-prefix>", "to_provider": "<pi-provider>", "to_model_id_prefix": "<literal-prefix-or-empty>" }
+  ]
+}
+```
+
+Resolution rules:
+
+- First check `models[spec.model]` for an exact mapping.
+- If there is no exact hit, evaluate only literal `prefix_rules`.
+- Choose the longest `from_prefix` that matches `spec.model`.
+- If two or more matching prefixes have the same longest length, the config is
+  invalid and must surface `LARVA_MODEL_MAP_INVALID`.
+- Prefix rules only strip `from_prefix` and prepend `to_model_id_prefix` to the
+  remaining model string. Embedded slashes in the remainder are preserved.
+- Wildcards, regex, fuzzy matching, nearest-model behavior, and vendor guessing
+  are forbidden.
+- After exact or prefix mapping, call Pi
+  `modelRegistry.find(provider, model_id)` with the mapped values.
+- If mapped values are valid but Pi registry lookup misses, or if `pi.setModel`
+  rejects the model, keep using `LARVA_MODEL_UNAVAILABLE`.
+- If the model-map file is missing, preserve the current fallback: split
+  `PersonaSpec.model` on the first `/` into provider/model id.
+- If the config file exists but has invalid JSON, invalid schema, or invalid
+  rules, fail closed with `LARVA_MODEL_MAP_INVALID`.
+- If there is no exact hit and no prefix hit, preserve the current split fallback.
+- Startup persona application and `/larva-persona` switching must use the same
+  resolver path.
+
+Confirmed example:
+
+```json
+{
+  "models": {
+    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" },
+    "ollama-cloud/glm-5.1": { "provider": "openrouter", "model_id": "z-ai/glm-5.1" },
+    "ollama-cloud/kimi-k2.5": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.5" },
+    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" }
+  },
+  "prefix_rules": [
+    { "from_prefix": "openrouter/", "to_provider": "openrouter", "to_model_id_prefix": "" }
+  ]
+}
+```
+
+`openrouter/google/gemini-3.1-pro-preview` is covered by the literal
+`openrouter/` prefix rule and maps to Pi provider `openrouter`, model id
+`google/gemini-3.1-pro-preview`. `ollama-cloud/kimi-k2.6:cloud` is intentionally
+not mapped and must not be covered by wildcard-like behavior.
+
+Contract verification cases for the implementation step:
+
+- The four exact aliases in the example resolve through `models` before any
+  prefix rule is considered.
+- `openrouter/google/gemini-3.1-pro-preview` preserves the embedded slash in the
+  model id after the `openrouter/` prefix is stripped.
+- `ollama-cloud/kimi-k2.6:cloud` falls back to first-slash parsing and is not
+  matched by any wildcard-like rule.
+- Two matching prefix rules with the same `from_prefix` length fail closed with
+  `LARVA_MODEL_MAP_INVALID`.
+- Startup persona application and `/larva-persona` switching use the same model
+  resolver and the same unavailable-model error projection.
+
+## Adapter-local tool policy
+
+Persona-specific Pi tool filtering is configured at the canonical path:
+
+```text
+~/.pi/larva/tool-policy.json
+```
+
+Set `LARVA_PI_TOOL_POLICY_FILE` to override the path. Resolution order is:
+
+1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
+2. Else if `~/.pi/larva/tool-policy.json` exists, use it.
+3. Else if legacy `~/.pi/tool-policy.json` exists, use that legacy fallback.
+4. Else pass/use the new canonical path; a missing file means empty policy as
+   today.
+
+The extension must not auto-migrate, rewrite, or create user policy files.
+`~/.pi/tool-policy.json` is a legacy fallback only.
 
 This file is adapter-local Larva-Pi configuration. It is not a canonical
 PersonaSpec field, is not interpreted by opifex, and does not change the meaning
@@ -228,6 +325,10 @@ child completes during the grace period, the normal success result is returned.
 Do not infer these guarantees from `larva pi` or this extension:
 
 - No PersonaSpec schema changes and no Pi-specific policy fields in PersonaSpec.
+- No opifex shared-contract changes for Pi model aliases or tool policy.
+- No automatic migration or writes to user config files under `~/.pi`.
+- No wildcard, regex, fuzzy, nearest-model, or vendor-guessing semantics for
+  model-map resolution.
 - No `ask` permission action; tool policy is exact `allow`/`deny` only.
 - No Pi settings fallback for extension loading.
 - No worktree isolation, file locking, merge management, sandboxing, or credential

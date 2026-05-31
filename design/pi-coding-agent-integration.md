@@ -17,7 +17,7 @@ The integration owns four runtime behaviors:
 
 1. start Pi with an optional active Larva persona;
 2. switch the active persona in-place during a Pi session;
-3. apply persona-specific model and tool rules;
+3. apply persona-specific model-map and tool rules;
 4. spawn a child Pi session as a Larva persona through one subagent tool.
 
 ## Rationale
@@ -177,7 +177,7 @@ Switch commit is atomic:
 
 1. resolve the target persona;
 2. validate that Pi can select the persona model;
-3. load and validate `~/.pi/tool-policy.json` if present;
+3. load and validate adapter-local model-map and tool-policy config if present;
 4. compute the active tool rules for the target persona, ignoring policy names for
    tools Pi does not currently expose;
 5. commit active persona state and update Pi model/status.
@@ -252,14 +252,79 @@ contains a previous Larva watermark block, the extension replaces that block for
 the current committed envelope instead of appending a second copy.
 
 Model projection uses Pi's documented `pi.setModel(model)` API. The PersonaSpec
-`model` string for this adapter is parsed at the first slash: the provider is the
-substring before the first slash, and the model id is the remaining substring
-after it. Both parts must be non-empty. This supports current Larva model strings
-such as `openrouter/google/gemini-3.1-pro-preview`. Missing slash, empty provider,
-or empty model id maps to `LARVA_MODEL_UNAVAILABLE` without changing the canonical
-PersonaSpec schema. The extension looks up the parsed model through
-`ctx.modelRegistry.find(provider, modelId)`, then calls `pi.setModel(model)`.
-Missing model or `false` from `pi.setModel` maps to `LARVA_MODEL_UNAVAILABLE`.
+`model` string stays canonical Larva data; Pi-provider aliases are adapter-local
+Larva-Pi configuration only.
+
+Adapter-local model map:
+
+- canonical path: `~/.pi/larva/model-map.json`;
+- env override: `LARVA_PI_MODEL_MAP_FILE`; when set, read only that path;
+- no PersonaSpec schema change and no opifex shared-contract change.
+
+Model-map shape:
+
+```json
+{
+  "models": {
+    "<PersonaSpec.model>": { "provider": "<pi-provider>", "model_id": "<pi-model-id>" }
+  },
+  "prefix_rules": [
+    { "from_prefix": "<literal-prefix>", "to_provider": "<pi-provider>", "to_model_id_prefix": "<literal-prefix-or-empty>" }
+  ]
+}
+```
+
+Model-map resolution rules:
+
+- First check `models[spec.model]` for an exact hit.
+- If there is no exact hit, evaluate only literal `prefix_rules`.
+- Pick the longest `from_prefix` that matches `spec.model`.
+- Same-length matching prefix conflict is invalid and must surface
+  `LARVA_MODEL_MAP_INVALID`, even if either rule would otherwise map to a valid
+  Pi model.
+- Prefix rules may only strip `from_prefix` and prepend `to_model_id_prefix` to
+  the remaining model string; embedded slashes in the remainder are preserved.
+- Wildcards, regex, fuzzy matching, nearest-model behavior, and vendor guessing
+  are forbidden.
+- After exact or prefix mapping, call
+  `ctx.modelRegistry.find(provider, model_id)` with the mapped values, then call
+  `pi.setModel(model)`.
+- Mapped values valid but missing from Pi's registry, or rejected by
+  `pi.setModel`, remain `LARVA_MODEL_UNAVAILABLE`.
+- Missing model-map file preserves the current fallback: split
+  `PersonaSpec.model` on the first `/` into provider/model id.
+- Existing config with invalid JSON, invalid schema, or invalid rules fails closed
+  with `LARVA_MODEL_MAP_INVALID`.
+- Key miss with no prefix hit preserves the current split fallback.
+- Startup persona application and `/larva-persona` switching must share the same
+  resolver path.
+
+The split fallback parses at the first slash: provider is the substring before the
+first slash and model id is the remaining substring after it. Both parts must be
+non-empty. This supports current Larva model strings such as
+`openrouter/google/gemini-3.1-pro-preview`. Missing slash, empty provider, or
+empty model id maps to `LARVA_MODEL_UNAVAILABLE`.
+
+Confirmed model-map example:
+
+```json
+{
+  "models": {
+    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" },
+    "ollama-cloud/glm-5.1": { "provider": "openrouter", "model_id": "z-ai/glm-5.1" },
+    "ollama-cloud/kimi-k2.5": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.5" },
+    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" }
+  },
+  "prefix_rules": [
+    { "from_prefix": "openrouter/", "to_provider": "openrouter", "to_model_id_prefix": "" }
+  ]
+}
+```
+
+`openrouter/google/gemini-3.1-pro-preview` is covered by the `openrouter/`
+prefix rule and maps to provider `openrouter`, model id
+`google/gemini-3.1-pro-preview`. `ollama-cloud/kimi-k2.6:cloud` is intentionally
+not mapped and must not be covered by wildcard-like behavior.
 
 The watermark example:
 
@@ -281,8 +346,18 @@ This keeps context use bounded when the registry contains many personas.
 
 ### Ownership
 
-`~/.pi/tool-policy.json` is a Larva-Pi adapter file. It is not a canonical
+`~/.pi/larva/tool-policy.json` is the canonical Larva-Pi adapter file. It is not a canonical
 PersonaSpec field and is not interpreted by opifex.
+
+`LARVA_PI_TOOL_POLICY_FILE` remains the env override. Resolution order:
+
+1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
+2. Else if `~/.pi/larva/tool-policy.json` exists, use it.
+3. Else if legacy `~/.pi/tool-policy.json` exists, use that legacy fallback.
+4. Else pass/use the new canonical path; missing file means empty policy as today.
+
+The adapter must not auto-migrate, rewrite, or create user policy files.
+`~/.pi/tool-policy.json` is a legacy fallback only.
 
 The policy is keyed by canonical persona id. It expresses Pi tool rules for that
 persona.
@@ -335,10 +410,10 @@ of scope.
 
 ### Validation boundary
 
-The launcher does not parse `~/.pi/tool-policy.json`. It only passes the policy
-file path to the bundled Pi extension through `LARVA_PI_TOOL_POLICY_FILE`. The Pi
-extension owns all policy parsing and validation for initial startup, in-session
-persona switches, and child startup.
+The launcher does not parse the tool-policy file. It only passes the selected
+policy file path to the bundled Pi extension through `LARVA_PI_TOOL_POLICY_FILE`
+when an override is needed. The Pi extension owns path resolution, parsing, and
+validation for initial startup, in-session persona switches, and child startup.
 
 | Validation item | Launcher preflight | Extension commit |
 | --- | --- | --- |
@@ -367,7 +442,7 @@ Tool filtering baseline:
   commit.
 - The target persona policy is applied to that baseline only. Prior Larva
   restrictions from an earlier persona commit do not carry over.
-- Missing `~/.pi/tool-policy.json`: no extra Larva-Pi tool restriction; the
+- Missing configured tool-policy file: no extra Larva-Pi tool restriction; the
   committed active tools are the current baseline.
 - Missing active target persona entry: no extra Larva-Pi tool restriction for that
   persona; the committed active tools are the current baseline.
@@ -431,10 +506,10 @@ allowed:
 If no parent Larva persona is active, `larva_subagent` returns `failed` with
 `LARVA_NO_ACTIVE_PERSONA`.
 
-`can_spawn` controls spawn authority. `~/.pi/tool-policy.json` controls Pi tools
-inside the parent or child session. A policy denying `larva_subagent` also blocks
-the tool if the parent persona has an active allow/deny policy entry for that
-tool.
+`can_spawn` controls spawn authority. The resolved adapter-local tool-policy file
+controls Pi tools inside the parent or child session. A policy denying
+`larva_subagent` also blocks the tool if the parent persona has an active
+allow/deny policy entry for that tool.
 
 ### Child startup
 
@@ -470,7 +545,8 @@ metadata or argv inspection.
 Environment:
 
 - `LARVA_PI_INITIAL_PERSONA_ID=<child persona id>`
-- `LARVA_PI_TOOL_POLICY_FILE=<policy path>`
+- `LARVA_PI_MODEL_MAP_FILE=<model-map override path>` only when an override is set
+- `LARVA_PI_TOOL_POLICY_FILE=<policy override path>` only when an override is set
 - `LARVA_PI_PARENT_PERSONA_ID=<parent persona id>`
 - `LARVA_PI_REAL_BIN=<resolved real Pi executable>`
 - `LARVA_PI_EXTENSION_FLAG=<-e or --extension>`
@@ -478,8 +554,8 @@ Environment:
 - `LARVA_CLI_ARGV_JSON=<same Larva CLI argv prefix>`
 - `LARVA_PI_INTERACTIVE_TUI=0`
 
-Child extension initialization resolves the child persona, selects its model, loads
-policy, enumerates available Pi tools, and commits the child persona envelope
+Child extension initialization resolves the child persona, selects its model using
+the shared model resolver, loads policy, enumerates available Pi tools, and commits the child persona envelope
 before replying to the first `get_state` request. Policy names for tools not
 present in the child Pi runtime are ignored. If initialization fails before RPC
 readiness, the child writes one stderr line using this shape and exits non-zero:
@@ -835,8 +911,10 @@ Interactive-mode detection for `LARVA_PI_INTERACTIVE_TUI`:
 Internal launcher-to-extension environment:
 
 - `LARVA_PI_INITIAL_PERSONA_ID`: set only when `--persona` is supplied.
-- `LARVA_PI_TOOL_POLICY_FILE`: absolute path to `~/.pi/tool-policy.json` unless a
-  test harness overrides it.
+- `LARVA_PI_MODEL_MAP_FILE`: optional absolute path override for
+  `~/.pi/larva/model-map.json`; when set, the extension reads only that path.
+- `LARVA_PI_TOOL_POLICY_FILE`: optional absolute path override for tool-policy
+  resolution; when set, the extension reads only that path.
 - `LARVA_PI_CHILD_SESSION_DIR`: optional absolute child session root override for
   tests.
 - `LARVA_PI_REAL_BIN`: absolute path to the resolved real Pi executable.
@@ -918,6 +996,7 @@ type LarvaErrorCode =
   | "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED"
   | "LARVA_NO_ACTIVE_PERSONA"
   | "LARVA_PERSONA_NOT_FOUND"
+  | "LARVA_MODEL_MAP_INVALID"
   | "LARVA_MODEL_UNAVAILABLE"
   | "LARVA_POLICY_INVALID"
   | "LARVA_TOOL_ENUMERATION_FAILED"
@@ -984,11 +1063,15 @@ Command and hook contracts:
   `systemPrompt`; it never replaces Pi's project/user context wholesale.
 - Prompt injection is idempotent: an existing Larva watermark block is replaced,
   not duplicated.
-- Model switching uses `ctx.modelRegistry.find(provider, modelId)` followed by
-  `pi.setModel(model)`. PersonaSpec `model` is parsed at the first slash:
-  provider is before the first slash and model id is the remainder. Missing slash,
-  empty provider, empty model id, missing model, or `false` from `pi.setModel`
-  maps to `LARVA_MODEL_UNAVAILABLE`.
+- Model switching resolves PersonaSpec `model` through the adapter-local model map
+  first: exact `models[spec.model]`, then longest literal `prefix_rules` match.
+  Same-length matching prefix conflict, invalid JSON, invalid schema, or invalid
+  rules in an existing config maps to `LARVA_MODEL_MAP_INVALID`. Missing config or
+  key miss with no prefix hit preserves split-on-first-slash fallback. Mapped or
+  fallback provider/model id then uses `ctx.modelRegistry.find(provider, model_id)`
+  followed by `pi.setModel(model)`. Missing slash, empty provider, empty model id,
+  Pi registry miss, or `false` from `pi.setModel` maps to
+  `LARVA_MODEL_UNAVAILABLE`.
 - Policy enforcement is two-stage. At every commit, the extension enumerates the
   current Pi model-facing tools as that commit's baseline, applies the target
   persona allow/deny policy to that baseline, and calls
@@ -1005,7 +1088,7 @@ Command and hook contracts:
 - `larva_subagent` accepts `LarvaSubagentInput` and returns
   `LarvaSubagentResult` only when the custom tool handler is actually invoked.
 - Extension initialization reads only `LARVA_PI_INITIAL_PERSONA_ID`,
-  `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
+  `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
   `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
   `LARVA_PI_INTERACTIVE_TUI`, and `LARVA_PI_LAUNCHED` from the launcher
@@ -1134,7 +1217,8 @@ architecture_basis:
     Pi extension flag: "LARVA_PI_EXTENSION_FLAG selected by launcher from Pi help"
     Pi extension entry: "LARVA_PI_EXTENSION_ENTRY absolute bundled extension path resolved by launcher"
     Pi interactive classification: "Launcher scan of forwarded pi_args for exact print/json/mode markers"
-    Pi tool rules: "~/.pi/tool-policy.json, adapter-local, parsed only by Pi extension"
+    Pi model map: "~/.pi/larva/model-map.json or LARVA_PI_MODEL_MAP_FILE override, adapter-local, parsed only by Pi extension"
+    Pi tool rules: "~/.pi/larva/tool-policy.json or LARVA_PI_TOOL_POLICY_FILE override, with legacy ~/.pi/tool-policy.json fallback, adapter-local, parsed only by Pi extension"
     Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each persona commit"
     child session root: "~/.pi/larva/child-sessions or absolute LARVA_PI_CHILD_SESSION_DIR test override"
     child session identity: "Pi child session file path returned as task_id"
@@ -1166,7 +1250,7 @@ architecture_basis:
 
   state_strata:
     canonical_state: "PersonaSpec and registry entries managed by Larva"
-    adapter_config_state: "~/.pi/tool-policy.json"
+    adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides and legacy tool-policy fallback"
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
@@ -1412,18 +1496,21 @@ Suggested order:
    It must discover real Pi, select `-e` or `--extension`, launch with that flag,
    preserve forwarded user Pi args, and pass `LARVA_PI_REAL_BIN`,
    `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
-   `LARVA_PI_INTERACTIVE_TUI`, and the policy file path without parsing policy.
+   `LARVA_PI_INTERACTIVE_TUI`, and any explicit adapter config path overrides
+   without parsing policy or model-map content.
 2. Add the Pi extension command for active persona state, completion, UI status,
    persona resolve/list through `LARVA_CLI_ARGV_JSON`, model switch through
    `pi.setModel`, and snapshot prompt composition through `before_agent_start`.
-3. Add `~/.pi/tool-policy.json` parsing and tool-call blocking inside the Pi
-   extension, including `pi.setActiveTools(filteredTools)` plus `tool_call`
-   interception.
-4. Add `larva_subagent` backed by one child Pi RPC process per invocation using
+3. Add adapter-local model-map resolution inside the Pi extension without changing
+   PersonaSpec or opifex contracts.
+4. Add canonical `~/.pi/larva/tool-policy.json` parsing and tool-call blocking
+   inside the Pi extension, including legacy `~/.pi/tool-policy.json` fallback,
+   `pi.setActiveTools(filteredTools)`, and `tool_call` interception.
+5. Add `larva_subagent` backed by one child Pi RPC process per invocation using
    `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
    `LARVA_PI_EXTENSION_ENTRY`, the child session root, public `task_id` path
    validation, process-local same-`task_id` busy tracking, and `task_id` resume.
-5. Add documentation and verification tests for the behaviors listed above.
+6. Add documentation and verification tests for the behaviors listed above.
 
 Watch for:
 

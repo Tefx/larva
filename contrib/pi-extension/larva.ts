@@ -13,6 +13,7 @@ type LarvaErrorCode =
   | "LARVA_PI_EXTENSION_LOAD_UNSUPPORTED"
   | "LARVA_NO_ACTIVE_PERSONA"
   | "LARVA_PERSONA_NOT_FOUND"
+  | "LARVA_MODEL_MAP_INVALID"
   | "LARVA_MODEL_UNAVAILABLE"
   | "LARVA_POLICY_INVALID"
   | "LARVA_TOOL_ENUMERATION_FAILED"
@@ -28,8 +29,21 @@ type LarvaErrorCode =
 type LarvaError = { code: LarvaErrorCode; message: string };
 type PiToolPolicy = { allow?: string[]; deny?: string[] };
 
+// Adapter-local model map contract only. Runtime implementation is owned by a
+// later implementation step; this declaration pins the Pi extension boundary
+// without changing PersonaSpec or opifex shared contracts.
+type PiModelMapConfig = {
+  models: Record<string, { provider: string; model_id: string }>;
+  prefix_rules: Array<{
+    from_prefix: string;
+    to_provider: string;
+    to_model_id_prefix: string;
+  }>;
+};
+
 type RuntimeEnv = Record<string, string | undefined> & {
   LARVA_PI_INITIAL_PERSONA_ID?: string;
+  LARVA_PI_MODEL_MAP_FILE?: string;
   LARVA_PI_TOOL_POLICY_FILE?: string;
   LARVA_PI_CHILD_SESSION_DIR?: string;
   LARVA_PI_PARENT_PERSONA_ID?: string;
@@ -976,6 +990,25 @@ export const __contract_examples = {
   deniedSubagentNoHandler: "handler larva_subagent LARVA_TOOL_DENIED no LarvaSubagentResult",
   startupShape: "larva pi: <ERROR_CODE>: <human-readable message>",
   piApiTokens: "modelRegistry.find ctx.ui.setStatus(\"larva\", statusText) typeof data.text === \"string\"",
+  modelMapContract: {
+    canonicalPath: "~/.pi/larva/model-map.json",
+    envOverride: "LARVA_PI_MODEL_MAP_FILE",
+    schema: "PiModelMapConfig models prefix_rules from_prefix to_provider to_model_id_prefix",
+    order: "exact models[spec.model] before longest literal prefix_rules match",
+    conflicts: "same-length matching prefix conflict -> LARVA_MODEL_MAP_INVALID",
+    noGuessing: "no wildcard regex fuzzy nearest-model vendor guessing",
+    registryValidation: "mapped provider/model_id -> modelRegistry.find(provider, model_id); registry miss or pi.setModel rejection -> LARVA_MODEL_UNAVAILABLE",
+    fallback: "missing model-map file or key miss with no prefix hit preserves split-on-first-slash fallback",
+    invalid: "existing invalid JSON/schema/rules fail closed with LARVA_MODEL_MAP_INVALID",
+    sharedResolver: "startup persona application and /larva-persona switching use one shared resolver path",
+    example: "openai/gpt-5.5 -> openai-codex/gpt-5.5; ollama-cloud/glm-5.1 -> openrouter/z-ai/glm-5.1; ollama-cloud/kimi-k2.5 -> openrouter/moonshotai/kimi-k2.5; ollama-cloud/minimax-m2.7 -> openrouter/minimax/minimax-m2.7; openrouter/google/gemini-3.1-pro-preview covered by openrouter/ prefix; ollama-cloud/kimi-k2.6:cloud intentionally not mapped",
+  } satisfies Record<string, string>,
+  toolPolicyPathContract: {
+    canonicalPath: "~/.pi/larva/tool-policy.json",
+    envOverride: "LARVA_PI_TOOL_POLICY_FILE",
+    order: "env override only, else canonical path if exists, else legacy ~/.pi/tool-policy.json if exists, else canonical missing means empty policy",
+    noMigration: "do not auto-migrate or write user files",
+  } satisfies Record<string, string>,
 };
 
 export default initializeExtension;
