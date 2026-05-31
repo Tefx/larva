@@ -81170,22 +81170,22 @@ phases:
       3. Ensure skip/xfail cannot mask a present-but-broken Pi binary.
 
       </risk_probes>'
-    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --help` exits
+    verification: '- [x] `node scripts/pi-extension-runtime-smoke.mjs --help` exits
       0 and lists scenarios for `availability`, `get-commands`, `slash-status`, `startup-status`,
       `failure-path`, `tool-shape`, and `tool-call-block`.
 
-      - [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -v` executes
+      - [x] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -v` executes
       the supplemental tests; if Pi is absent, each skipped/xfail case includes captured
       Pi availability evidence.
 
-      - [ ] The tool-shape test verifies `larva_subagent.parameters` and `larva_subagent.execute`
+      - [x] The tool-shape test verifies `larva_subagent.parameters` and `larva_subagent.execute`
       on the runtime extension object, or records real Pi RPC discovery evidence if
       available.
 
-      - [ ] The tool-call test dispatches a runtime `tool_call` event with `toolName`
+      - [x] The tool-call test dispatches a runtime `tool_call` event with `toolName`
       and asserts a real `{ block: true, reason: <non-empty> }` handler result.
 
-      - [ ] No new assertion relies solely on matching source strings like `toolName`,
+      - [x] No new assertion relies solely on matching source strings like `toolName`,
       `setStatus`, or `registerCommand`.'
     depends_on:
     - proof_contract
