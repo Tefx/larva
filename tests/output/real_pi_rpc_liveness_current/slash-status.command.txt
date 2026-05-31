@@ -1,0 +1,1 @@
+node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona ok --json

@@ -1,0 +1,98 @@
+{
+  "scenario": "startup-status",
+  "pi": {
+    "binary": "pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/real_pi_rpc_liveness/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "465f4f46-d459-4060-b05e-e2878945a6cb",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: startup"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "c3779d1f-bfc5-4941-abbe-f037237b9e52",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ],
+    "responses": [
+      {
+        "id": "state-1",
+        "type": "response",
+        "command": "get_state",
+        "success": true,
+        "data": {
+          "model": {
+            "id": "gpt-5.5",
+            "name": "GPT-5.5",
+            "api": "openai-codex-responses",
+            "provider": "openai-codex",
+            "baseUrl": "https://chatgpt.com/backend-api",
+            "reasoning": true,
+            "thinkingLevelMap": {
+              "xhigh": "xhigh",
+              "minimal": "low"
+            },
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 5,
+              "output": 30,
+              "cacheRead": 0.5,
+              "cacheWrite": 0
+            },
+            "contextWindow": 272000,
+            "maxTokens": 128000
+          },
+          "thinkingLevel": "medium",
+          "isStreaming": false,
+          "isCompacting": false,
+          "steeringMode": "one-at-a-time",
+          "followUpMode": "one-at-a-time",
+          "sessionId": "019e7f44-a15f-7e0a-9b37-b78927069291",
+          "autoCompactionEnabled": true,
+          "messageCount": 0,
+          "pendingMessageCount": 0
+        }
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "465f4f46-d459-4060-b05e-e2878945a6cb",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: startup"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "c3779d1f-bfc5-4941-abbe-f037237b9e52",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      }
+    ]
+  },
+  "runtime": {}
+}

@@ -1,0 +1,91 @@
+{
+  "scenario": "slash-status",
+  "pi": {
+    "binary": "pi",
+    "available": true,
+    "helpExitCode": 0,
+    "extensionFlag": "-e",
+    "helpSnippet": "pi - AI coding assistant with read, bash, edit, write tools\n\nUsage:\n  pi [options] [@files...] [messages...]\n\nCommands:\n  pi install <source> [-l]     Install extension source and add to settings\n  pi remove <source> [-l]      Remove extension source from settings\n  pi uninstall <source> [-l]   Alias for remove\n  pi update [source|self|pi]   Update pi and installed extensions\n  pi list                      List installed extensions from settings\n  pi config                    Open TUI to enable/"
+  },
+  "extension": {
+    "path": "/Users/tefx/Projects/larva/.vectl/worktrees/real_pi_rpc_liveness/contrib/pi-extension/larva.ts"
+  },
+  "rpc": {
+    "attempted": true,
+    "supported": true,
+    "events": [
+      {
+        "type": "extension_ui_request",
+        "id": "75a8f8eb-4e94-4818-a0af-0e4245c2f1a3",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "f20e88d3-09a0-4a02-bf6c-bb188ab93f9d",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "dd3993ec-e1ae-4de6-8c17-974f10445864",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: ok"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "64228937-5d2c-445c-9ec2-a7c91df39ab3",
+        "method": "notify",
+        "message": "Larva persona active: ok",
+        "notifyType": "info"
+      }
+    ],
+    "responses": [
+      {
+        "id": "prompt-1",
+        "type": "response",
+        "command": "prompt",
+        "success": true
+      }
+    ],
+    "stderr": "",
+    "exit": {
+      "code": 143,
+      "signal": null
+    },
+    "uiRequests": [
+      {
+        "type": "extension_ui_request",
+        "id": "75a8f8eb-4e94-4818-a0af-0e4245c2f1a3",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: none"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "f20e88d3-09a0-4a02-bf6c-bb188ab93f9d",
+        "method": "setStatus",
+        "statusKey": "mcp",
+        "statusText": "\u001b[38;2;138;190;183mMCP: 0/4 servers\u001b[39m"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "dd3993ec-e1ae-4de6-8c17-974f10445864",
+        "method": "setStatus",
+        "statusKey": "larva",
+        "statusText": "larva: ok"
+      },
+      {
+        "type": "extension_ui_request",
+        "id": "64228937-5d2c-445c-9ec2-a7c91df39ab3",
+        "method": "notify",
+        "message": "Larva persona active: ok",
+        "notifyType": "info"
+      }
+    ]
+  },
+  "runtime": {}
+}
