@@ -174,6 +174,13 @@ export function parseModel(model: string): ParsedModel | null {
   return provider && modelId ? { provider, modelId } : null;
 }
 
+function piModelLookupFor(parsed: ParsedModel): ParsedModel {
+  if (parsed.provider === "openai" && parsed.modelId === "gpt-5.5") {
+    return { provider: "openai-codex", modelId: "gpt-5.5" };
+  }
+  return parsed;
+}
+
 async function runLarvaCommand(env: RuntimeEnv, suffix: string[]): Promise<{ ok: true; stdout: string } | { ok: false }> {
   const candidates = buildLarvaArgvCandidates(env, suffix);
   for (const argv of candidates) {
@@ -393,7 +400,8 @@ async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchRe
 async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Promise<unknown> {
   const parsed = parseModel(spec.model);
   if (!parsed) throw error("LARVA_MODEL_UNAVAILABLE", `Invalid model ${spec.model}`);
-  const model = await ctx.modelRegistry?.find?.(parsed.provider, parsed.modelId);
+  const lookup = piModelLookupFor(parsed);
+  const model = await ctx.modelRegistry?.find?.(lookup.provider, lookup.modelId);
   if (!model) throw error("LARVA_MODEL_UNAVAILABLE", `Model unavailable ${spec.model}`);
   const accepted = await pi.setModel?.(model);
   if (accepted === false) throw error("LARVA_MODEL_UNAVAILABLE", `Pi rejected model ${spec.model}`);

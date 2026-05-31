@@ -194,17 +194,24 @@ async function main() {
   }
   const scenario = args.get("scenario") || args.get("case");
   if (!SCENARIOS.includes(scenario)) throw new Error(`unknown or missing scenario: ${scenario ?? ""}`);
+  const persona = args.get("persona") || undefined;
   const evidence = baseEvidence(scenario);
   if (scenario === "availability") {
     await piAvailability(evidence);
   } else if (scenario === "get-commands") {
     await runPiRpc(evidence, { commands: [{ id: "commands-1", body: { type: "get_commands" } }] });
   } else if (scenario === "slash-status") {
-    await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: "/larva-persona ok" }, timeoutMs: 2_000 }] });
+    await runPiRpc(evidence, { commands: [{ id: "prompt-1", body: { type: "prompt", message: `/larva-persona ${persona ?? "ok"}` }, timeoutMs: 2_000 }] });
   } else if (scenario === "startup-status") {
-    await runPiRpc(evidence, { initialPersona: "startup", commands: [{ id: "state-1", body: { type: "get_state" } }] });
+    await runPiRpc(evidence, { initialPersona: persona ?? "startup", commands: [{ id: "state-1", body: { type: "get_state" } }] });
   } else if (scenario === "failure-path") {
-    await runPiRpc(evidence, { initialPersona: "missing", commands: [{ id: "state-1", body: { type: "get_state" } }] });
+    const missingPersona = persona ?? "missing";
+    await runPiRpc(evidence, {
+      commands: [
+        { id: "prompt-missing", body: { type: "prompt", message: `/larva-persona ${missingPersona}` }, timeoutMs: 2_000 },
+        { id: "prompt-unparseable", body: { type: "prompt", message: "/larva-persona unparseable" }, timeoutMs: 2_000 },
+      ],
+    });
   } else if (scenario === "tool-shape") {
     await runtimeHarness(evidence);
     const tool = evidence.runtime.larvaSubagent;

@@ -4,8 +4,8 @@ const [, , command, idOrFlag, maybeFlag] = process.argv;
 const scenario = process.env.FAKE_LARVA_SCENARIO || "ok";
 
 const personas = [
-  { id: "ok", description: "Deterministic success persona", model: "fake/model" },
-  { id: "startup", description: "Deterministic startup persona", model: "fake/model" },
+  { id: "ok", description: "Deterministic success persona", model: "openai/gpt-5.5" },
+  { id: "startup", description: "Deterministic startup persona", model: "openai/gpt-5.5" },
   { id: "vectl-planner", description: "Plan with vectl" },
   { id: "vectl-reviewer", description: "Review with vectl" },
 ];
@@ -36,7 +36,7 @@ if (command === "resolve" && maybeFlag === "--json") {
       id: idOrFlag,
       description: `Fake persona ${idOrFlag}`,
       prompt: `You are fake persona ${idOrFlag}.`,
-      model: "fake/model",
+      model: "openai/gpt-5.5",
       capabilities: {},
       spec_version: "1.0.0",
       spec_digest: `digest-${idOrFlag}`,

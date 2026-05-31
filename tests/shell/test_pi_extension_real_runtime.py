@@ -61,12 +61,15 @@ def test_autocomplete_list_failure_and_malformed_json_return_null_without_crash(
     }
 
 
-def _run_runtime_scenario(scenario: str, *, timeout: float = 8.0) -> dict[str, Any]:
+def _run_runtime_scenario(scenario: str, *, persona: str | None = None, timeout: float = 8.0) -> dict[str, Any]:
     node = shutil.which("node")
     if node is None:
         pytest.skip("node is required for Pi extension runtime smoke")
+    command = [node, str(RUNTIME_SMOKE), "--scenario", scenario]
+    if persona is not None:
+        command.extend(["--persona", persona])
     completed = subprocess.run(
-        [node, str(RUNTIME_SMOKE), "--scenario", scenario],
+        command,
         check=False,
         capture_output=True,
         text=True,
@@ -159,6 +162,48 @@ def test_real_pi_rpc_smoke_collects_extension_ui_evidence_or_explicit_xfail(scen
             "statusKey" in request or "statusText" in request or "status" in request
             for request in ui_requests
         )
+
+
+def test_real_pi_slash_status_commits_success_persona() -> None:
+    payload = _run_runtime_scenario("slash-status", persona="ok")
+    _xfail_if_rpc_surface_hidden(payload)
+
+    ui_requests = payload["rpc"].get("uiRequests", [])
+    assert any(
+        request.get("method") == "setStatus"
+        and request.get("statusKey") == "larva"
+        and request.get("statusText") == "larva: ok"
+        for request in ui_requests
+    )
+    assert any(
+        request.get("method") == "notify"
+        and request.get("message") == "Larva persona active: ok"
+        and request.get("notifyType") == "info"
+        for request in ui_requests
+    )
+
+
+def test_real_pi_startup_status_commits_startup_persona() -> None:
+    payload = _run_runtime_scenario("startup-status", persona="startup")
+    _xfail_if_rpc_surface_hidden(payload)
+
+    assert any(
+        request.get("method") == "setStatus"
+        and request.get("statusKey") == "larva"
+        and request.get("statusText") == "larva: startup"
+        for request in payload["rpc"].get("uiRequests", [])
+    )
+
+
+def test_real_pi_failure_path_uses_slash_command_topology() -> None:
+    payload = _run_runtime_scenario("failure-path", persona="missing")
+    _xfail_if_rpc_surface_hidden(payload)
+
+    responses = payload["rpc"].get("responses", [])
+    assert [response.get("id") for response in responses] == ["prompt-missing", "prompt-unparseable"]
+    messages = [request.get("message") for request in payload["rpc"].get("uiRequests", [])]
+    assert "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Unable to resolve persona missing" in messages
+    assert "Larva persona switch failed: LARVA_PERSONA_NOT_FOUND: Invalid persona payload for unparseable" in messages
 
 
 def test_runtime_object_registers_larva_subagent_parameters_and_execute() -> None:

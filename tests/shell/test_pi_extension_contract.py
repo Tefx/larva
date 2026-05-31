@@ -426,6 +426,14 @@ def test_model_parse_first_slash_and_atomic_failure_preservation() -> None:
     _assert_tokens(source, "LARVA_MODEL_UNAVAILABLE", "previousEnvelope")
 
 
+def test_pi_model_lookup_keeps_only_explicit_gpt55_preference_mapping() -> None:
+    source = _source()
+    _assert_tokens(source, "piModelLookupFor", "openai", "gpt-5.5", "openai-codex")
+    assert "*" not in re.search(
+        r"function piModelLookupFor[\s\S]{0,500}", source
+    ).group(0), "Pi model preference mapping must not introduce wildcard guessing"
+
+
 def test_policy_baseline_resets_on_each_commit() -> None:
     source = _source()
     _assert_tokens(source, "getAllTools", "baseline", "setActiveTools")
