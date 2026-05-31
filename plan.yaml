@@ -81808,6 +81808,111 @@ phases:
     - pi_tab_autocomplete_runtime_tests
     - real_pi_rpc_liveness
     agent: integration-verifier
+  - id: pi_tab_autocomplete_docs
+    name: Document Larva persona Tab completion behavior and troubleshooting
+    status: pending
+    description: 'step_type: documentation
+
+      agent_source: default
+
+      touch_paths:
+
+      - contrib/pi-extension/README.md
+
+      - README.md
+
+
+      TARGET STATE:
+
+      Project docs explain that `/larva-persona <prefix>` supports TUI Tab argument
+      completion through a Larva-specific autocomplete provider wrapper in addition
+      to the registered command''s `getArgumentCompletions` path.
+
+
+      REQUIRED CONTENT:
+
+      - State the user-facing behavior: in `larva pi`, typing `/larva-persona <prefix>`
+      and pressing Tab should show matching persona ids from `larva list --json`.
+
+      - State the wrapper boundary: only `/larva-persona <prefix>` is intercepted;
+      other input delegates to Pi/base autocomplete.
+
+      - State failure behavior: if `larva list --json` fails or returns malformed
+      JSON, completion returns no suggestions/null and must not crash Pi.
+
+      - State non-goals: persona catalogue is not injected into the prompt, no caching,
+      no fuzzy matching.
+
+      - Include troubleshooting commands: `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-regular --prefix vectl`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case delegate-other-input`, `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case list-failure`, and `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -k autocomplete -v`.
+
+
+      <side_effect_budget>
+
+      Allowed: update README/design docs to describe the autocomplete behavior and
+      troubleshooting.
+
+      Forbidden: introduce new product guarantees beyond the contract, change canonical
+      PersonaSpec meaning, or document cache/fuzzy/prompt-catalog behavior as supported.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Confirm docs do not imply global autocomplete interception.
+
+      2. Confirm docs separate command visibility/execution from Tab argument completion.
+
+      3. Confirm troubleshooting names runtime harness commands, not source-token
+      grep.
+
+      </risk_probes>'
+    verification: '- [ ] `contrib/pi-extension/README.md` documents `/larva-persona
+      <prefix>` Tab completion behavior, wrapper boundary, delegation, failure behavior,
+      and non-goals.
+
+      - [ ] `README.md` or appropriate top-level docs point Pi users to the extension
+      troubleshooting behavior without redefining canonical PersonaSpec semantics.
+
+      - [ ] Docs include the exact smoke/test commands requested for runtime autocomplete
+      troubleshooting.
+
+      - [ ] Docs do not say persona catalogues are injected into prompts, cached,
+      or fuzzy matched.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/README.md — key passage or "NOT READ: <reason>"
+
+      - README.md — key passage or "NOT READ: <reason>"
+
+
+      ## Documentation Receipt
+
+      - changed_docs: <files and sections>
+
+      - user_behavior_documented: <key passage>
+
+      - wrapper_boundary_documented: <key passage>
+
+      - failure_troubleshooting_documented: <key passage>
+
+      - non_goals_documented: <key passage>
+
+      - exact_commands_documented: <list>
+
+
+      ## Checklist Receipt
+
+      - docs checklist: <satisfied/blocked/unobserved with notes>'
+    depends_on:
+    - proof_contract
+    agent: doc-reviewer
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
