@@ -81307,7 +81307,7 @@ phases:
     - supplemental_runtime_tests
     agent: frontend-engineer
   - id: gate
-    name: Gate Pi runtime liveness hardening
+    name: Gate Pi runtime liveness and Larva persona Tab autocomplete hardening
     status: pending
     description: 'step_type: gate
 
@@ -81316,66 +81316,96 @@ phases:
 
       agent_source: default
 
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase covers user-observable Pi TUI/CLI behavior and prior slash autocomplete
+      rework patterns.
+
+      - New blocker is specifically a runtime editor Tab path that can false-green
+      through direct command completer tests.
+
+      - Gate must consume PI-LIVE and PI-TAB traceability matrices.
+
 
       DECISION ARTIFACT:
 
       As an independent gate reviewer, decide whether the supplemental Pi runtime
-      liveness gate closes the false-green risk where old plan/tests passed without
-      real Pi runtime completion.
+      liveness gate and `/larva-persona <prefix>` Tab autocomplete repair close the
+      false-green risk where command visibility/direct completer calls pass but the
+      real Pi TUI editor argument completion path remains broken.
 
 
       Review criteria:
 
-      1. The PI-LIVE-001..009 traceability matrix has positive proof or explicit environmental
-      block/skip for every row.
+      1. The PI-LIVE-001..009 and PI-TAB-001..011 traceability matrices have positive
+      proof or explicit environmental block/skip for every row.
 
-      2. Real Pi RPC evidence exists for plugin load, `get_commands`, slash persona
-      status, startup status, and failure path whenever Pi binary is available.
+      2. Existing real Pi RPC evidence still proves plugin load, `get_commands`, slash
+      persona status, startup status, and failure path whenever Pi binary is available.
 
-      3. Custom tool shape and `tool_call` blocking are proven through runtime object/event
-      harness or documented Pi RPC limitation plus executable nearest proof.
+      3. The existing `pi.registerCommand("larva-persona", { getArgumentCompletions,
+      handler })` path is preserved.
 
-      4. CI/local gate evidence includes exact commands and cannot silently pass product
+      4. The new runtime `ctx.ui.addAutocompleteProvider` wrapper is present when
+      available, intercepts only `/larva-persona <prefix>`, delegates all other inputs
+      to the base provider, and uses `completePersonaIds(prefix, ctx)` for both `force=true`
+      and `force=false`.
+
+      5. Runtime autocomplete harness evidence exists for tab-force, tab-regular,
+      delegate-other-input, and list-failure cases; source-token tests and direct
+      `getArgumentCompletions` calls are not sufficient.
+
+      6. Real Pi TUI/RPC smoke is either positively observed or has a precise limitation/skip
+      record; command visibility alone is not treated as Tab completion proof.
+
+      7. Docs explain behavior, troubleshooting, failure handling, and non-goals without
+      redefining PersonaSpec or promising prompt catalogues/cache/fuzzy matching.
+
+      8. CI/local gate evidence includes exact commands and cannot silently pass product
       failures.
-
-      5. Source-token, mock-only, and assumption tests are explicitly rejected as
-      sufficient evidence for runtime liveness.
 
 
       Gate Preview (what the gate WILL reject):
 
-      1. `uv run pytest` or `invar guard` alone with no real Pi RPC smoke artifacts.
+      1. `uv run pytest` or `invar guard` alone with no runtime smoke artifacts.
 
-      2. `larva-persona` proven only by source search rather than RPC `get_commands`.
+      2. `larva-persona` proven only by source search, direct `getArgumentCompletions("vectl")`,
+      or RPC `get_commands`.
 
-      3. Status proven by notify text only, without `statusKey=larva` and `statusText=larva:
-      <id>`.
+      3. A wrapper that uses whole-line prefix, fails for either force mode, returns
+      non-string values, or steals unrelated autocomplete/file completion.
 
-      4. `tool_call` coverage that only searches for the string `toolName`.
+      4. List failure/malformed JSON behavior that throws or crashes Pi instead of
+      returning `null`/no suggestions.
 
-      5. Missing Pi binary treated as green without explicit skip/xfail evidence and
-      non-product disposition.
+      5. Missing Pi binary or non-automatable TUI treated as green without explicit
+      skip/xfail/limitation evidence and non-product disposition.
 
 
       <side_effect_budget>
 
       Allowed: review evidence and block/open the phase.
 
-      Forbidden: mutate product code, rewrite evidence, or approve sampled evidence
-      that omits any owned PI-LIVE row.
+      Forbidden: mutate product code, rewrite evidence, approve sampled evidence that
+      omits owned PI-LIVE/PI-TAB rows, or accept source-token/direct-completer-only
+      proof for Tab completion.
 
       </side_effect_budget>
 
       <risk_probes>
 
-      1. Check for greenwashing: summaries that say "works" but omit raw RPC messages.
+      1. Check for greenwashing: summaries that say "works" but omit raw RPC/wrapper-harness
+      messages.
 
-      2. Check that real Pi version is captured and tied to the observed API.
+      2. Check that command visibility is not conflated with editor Tab argument completion.
 
-      3. Check that failure-path and startup-path proofs are not inferred from slash
-      success.
+      3. Check that global/base autocomplete remains delegated and non-Larva inputs
+      are unaffected.
 
-      </risk_probes>'
+      4. Check that failure-path and startup-path proofs are not inferred from slash
+      success.'
     verification: '- [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs
       --scenario availability --json` and verify Pi availability/version or explicit
       skip condition.
@@ -81384,8 +81414,8 @@ phases:
       get-commands --json` and verify plugin load plus `larva-persona` command visibility.
 
       - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
-      slash-status --persona ok --json` and verify persona commit, keyed status, and
-      notify.
+      slash-status --persona vectl-planner --json` (or documented fixture persona)
+      and verify persona command execution/status.
 
       - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       startup-status --persona startup --json` and verify startup `session_start`
@@ -81394,19 +81424,66 @@ phases:
       - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
       failure-path --persona missing --json` and verify non-silent failure observation.
 
-      - [ ] Review `uv run pytest tests/shell/test_pi_extension_real_runtime.py -v`
-      and combined contract/runtime pytest output.
+      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force
+      --prefix vectl` raw output and verify wrapper force mode returns persona candidates
+      through argument prefix `vectl`.
 
-      - [ ] Review custom tool `parameters + execute` and `tool_call` `toolName` block
-      proof; reject pure token tests.
+      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular
+      --prefix vectl` raw output and verify wrapper regular mode returns the same
+      candidate path.
 
-      - [ ] Gate decision basis maps every PI-LIVE row to PROVEN/BLOCKED/SKIPPED with
-      closure path; no orphan requirements remain.'
+      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      raw output and verify unrelated input delegates to base provider.
+
+      - [ ] Review `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
+      raw output and verify provider returns `null`/no crash for list failure or malformed
+      JSON.
+
+      - [ ] Review `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k
+      autocomplete -v` and confirm it exercises wrapper runtime cases, not only direct
+      command completer calls.
+
+      - [ ] Review real TUI attempt or limitation record from `node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl --real-pi-tui`; unresolved live TUI evidence
+      has explicit closure path.
+
+      - [ ] Review documentation updates for `/larva-persona` Tab completion behavior,
+      troubleshooting, delegation, failure behavior, and no prompt catalogue/cache/fuzzy.
+
+      - [ ] Gate decision basis maps every PI-LIVE and PI-TAB row to PROVEN/BLOCKED/SKIPPED
+      with closure path; no orphan requirements remain.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- contrib/pi-extension/larva.ts — key passage or \"NOT READ: <reason>\"\
+      \n- contrib/pi-extension/README.md — key passage or \"NOT READ: <reason>\"\n\
+      - README.md — key passage or \"NOT READ: <reason>\"\n\n## Gate Review Report\n\
+      **Reviewer**: gate-reviewer (independent of phase implementation)\n**Phase**:\
+      \ pi_runtime_liveness_hardening_20260601\n\n## Requirement Decision Basis\n\
+      | requirement_ref | evidence_ref | proof_status | unresolved_disposition | blocks_downstream?\
+      \ | closure_path |\n| --- | --- | --- | --- | --- | --- |\n| PI-LIVE-001..009\
+      \ | <artifacts> | PROVEN/BLOCKED/SKIPPED | <why> | YES/NO | <path> |\n| PI-TAB-001..011\
+      \ | <artifacts> | PROVEN/BLOCKED/SKIPPED | <why> | YES/NO | <path> |\n\n## Runtime\
+      \ Evidence Reviewed\n- availability: <raw artifact ref>\n- get_commands: <raw\
+      \ artifact ref>\n- slash_status: <raw artifact ref>\n- startup_status: <raw\
+      \ artifact ref>\n- failure_path: <raw artifact ref>\n- tab_force: <raw artifact\
+      \ ref>\n- tab_regular: <raw artifact ref>\n- delegate_other_input: <raw artifact\
+      \ ref>\n- list_failure: <raw artifact ref>\n- pytest_autocomplete: <raw artifact\
+      \ ref>\n- real_tui_attempt_or_limit: <artifact ref>\n\n## Gate Decision\n- [\
+      \ ] OPEN: phase passes gate, proceed to downstream Pi work\n- [ ] BLOCKED: issues\
+      \ must be resolved before proceeding\n  - Blocking issues: <list>\n  - Required\
+      \ actions: <what needs to happen>"
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - README.md
     depends_on:
     - proof_contract
     - supplemental_runtime_tests
     - real_pi_rpc_liveness
     - ci_local_gate_wiring
+    - pi_tab_autocomplete_extension_impl
+    - pi_tab_autocomplete_runtime_tests
+    - pi_tab_autocomplete_real_tui_smoke_or_limit
+    - pi_tab_autocomplete_docs
     agent: gate-reviewer
   - id: pi_tab_autocomplete_extension_impl
     name: Implement Larva persona TUI autocomplete provider wrapper
