@@ -81496,6 +81496,178 @@ phases:
     depends_on:
     - proof_contract
     agent: frontend-engineer
+  - id: pi_tab_autocomplete_runtime_tests
+    name: Add runtime autocomplete harness for Larva persona Tab completion
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: default
+
+      touch_paths:
+
+      - scripts/pi-extension-autocomplete-smoke.mjs
+
+      - tests/shell/test_pi_extension_real_runtime.py
+
+      - tests/fixtures/pi/fake-larva-cli.mjs
+
+
+      PROOF ARTIFACT:
+
+      Add runtime harness coverage that exercises the autocomplete provider wrapper
+      path, not source-token search and not only direct command `getArgumentCompletions`.
+      The tests must prove the wrapper''s behavior for `/larva-persona <prefix>` and
+      fail-soft list failures.
+
+
+      REQUIRED CASES:
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl` returns persona candidates through the wrapper when force is true.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix
+      vectl` returns persona candidates through the wrapper when force is false.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      proves unrelated input delegates to the base provider.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure` proves
+      larva-list failure/malformed JSON returns `null` without throwing.
+
+      - `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -v` exercises the same cases from the Python runtime test harness.
+
+
+      Spec-Fixture Conformance (MANDATORY):
+
+      Fixtures for persona list output must use the documented `larva list --json`
+      shape from the Larva CLI surface; include at least one minimal fixture with
+      persona ids and descriptions and no extra convenience-only fields required by
+      the test.
+
+
+      CONSTRAINTS:
+
+      - Source-token tests, string grep tests, and direct-only `getArgumentCompletions("vectl")`
+      tests are insufficient.
+
+      - Candidate assertions must check `value` is a string and equals the persona
+      id.
+
+      - Prefix assertion must prove `completePersonaIds` receives `vectl`, not `/larva-persona
+      vectl`.
+
+      - Failure/malformed list cases must return `null`, not `[]` if the provider
+      contract requires fail-soft no-result, and must not throw.
+
+
+      <side_effect_budget>
+
+      Allowed: add/update test fixtures, runtime smoke scripts, and focused Python
+      tests for the Pi extension autocomplete wrapper.
+
+      Forbidden: modify production behavior except through the implementation step,
+      depend on live registry state for deterministic harness tests, or accept source-token/direct-completer
+      tests as closure.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Confirm harness invokes the registered provider wrapper with realistic editor-line/force
+      inputs.
+
+      2. Confirm a base provider spy records delegation for non-Larva inputs.
+
+      3. Confirm list failure covers both nonzero exit and malformed JSON if the harness
+      supports subcases.
+
+      </risk_probes>'
+    verification: '- [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case
+      tab-force --prefix vectl` exits 0 and shows candidate `value: "vectl-planner"`
+      (or fixture-equivalent) from the wrapper.
+
+      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular --prefix
+      vectl` exits 0 and shows the same candidate path as force mode.
+
+      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input`
+      exits 0 and proves base-provider delegation.
+
+      - [ ] `node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure`
+      exits 0 and proves `null`/no-crash behavior.
+
+      - [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -v` passes and includes the wrapper runtime cases.
+
+      - [ ] Evidence includes raw stdout/stderr for each command and explicitly rejects
+      source-token/direct-completer-only evidence.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — key passage or "NOT READ: <reason>"
+
+      - tests/shell/test_pi_extension_contract.py — key passage or "NOT READ: <reason>"
+
+      - contrib/pi-extension/README.md — key passage or "NOT READ: <reason>"
+
+
+      ## Runtime Harness Receipt
+
+      - tab_force_command: `node scripts/pi-extension-autocomplete-smoke.mjs --case
+      tab-force --prefix vectl`
+
+      - tab_force_stdout: <raw stdout/stderr + exit code>
+
+      - tab_regular_command: `node scripts/pi-extension-autocomplete-smoke.mjs --case
+      tab-regular --prefix vectl`
+
+      - tab_regular_stdout: <raw stdout/stderr + exit code>
+
+      - delegate_command: `node scripts/pi-extension-autocomplete-smoke.mjs --case
+      delegate-other-input`
+
+      - delegate_stdout: <raw stdout/stderr + exit code>
+
+      - list_failure_command: `node scripts/pi-extension-autocomplete-smoke.mjs --case
+      list-failure`
+
+      - list_failure_stdout: <raw stdout/stderr + exit code>
+
+      - pytest_command: `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -k autocomplete -v`
+
+      - pytest_stdout: <raw stdout/stderr + exit code>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-TAB-004 | argument prefix only | tab-force/tab-regular spy shows prefix
+      `vectl` | <artifact> | PROVEN/BLOCKED | <path> | <basis> |
+
+      | PI-TAB-005 | delegation preserved | delegate-other-input base provider spy
+      | <artifact> | PROVEN/BLOCKED | <path> | <basis> |
+
+      | PI-TAB-006 | force parity | force and regular commands return candidates |
+      <artifact> | PROVEN/BLOCKED | <path> | <basis> |
+
+      | PI-TAB-007 | string candidate shape | candidate value/label are persona id
+      strings | <artifact> | PROVEN/BLOCKED | <path> | <basis> |
+
+      | PI-TAB-008 | list failure null/no crash | list-failure command returns null
+      | <artifact> | PROVEN/BLOCKED | <path> | <basis> |'
+    depends_on:
+    - pi_tab_autocomplete_extension_impl
+    agent: integration-verifier
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
