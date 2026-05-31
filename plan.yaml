@@ -81957,23 +81957,23 @@ phases:
       wrapper evidence.
 
       </risk_probes>'
-    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
+    verification: '- [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
       --json` raw output is reviewed for real Pi plugin load and `larva-persona` visibility,
       or explicit Pi-binary skip/xfail is recorded.
 
-      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      - [x] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
       vectl-planner --json` (or documented fixture persona) raw output is reviewed
       for real command execution/status, or explicit Pi-binary skip/xfail is recorded.
 
-      - [ ] Real TUI Tab automation is attempted with `node scripts/pi-extension-autocomplete-smoke.mjs
+      - [x] Real TUI Tab automation is attempted with `node scripts/pi-extension-autocomplete-smoke.mjs
       --case tab-force --prefix vectl --real-pi-tui` if supported; otherwise evidence
       records why current automation cannot observe editor Tab provider calls reliably.
 
-      - [ ] Limitation record states why wrapper runtime harness commands are the
+      - [x] Limitation record states why wrapper runtime harness commands are the
       minimum reliable evidence for Tab provider behavior and what future real TUI
       proof would need.
 
-      - [ ] Direct command completer evidence is not treated as sufficient for Tab
+      - [x] Direct command completer evidence is not treated as sufficient for Tab
       completion closure.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
