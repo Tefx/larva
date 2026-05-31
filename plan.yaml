@@ -81369,19 +81369,19 @@ phases:
       tests to prevent mistaken evidence substitution.
 
       </risk_probes>'
-    verification: '- [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+    verification: '- [x] `uv run pytest tests/shell/test_pi_extension_real_runtime.py
       -v` is documented as the local supplemental gate and exits green or explicit
       skip/xfail with Pi availability evidence.
 
-      - [ ] If CI workflow files exist, the supplemental gate is wired into the relevant
+      - [x] If CI workflow files exist, the supplemental gate is wired into the relevant
       local/CI test command; otherwise evidence states no CI workflow exists and documents
       the local gate command in `contrib/pi-extension/README.md` or equivalent.
 
-      - [ ] `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      - [x] `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
       -v` runs both legacy contract coverage and supplemental runtime coverage without
       replacing either class.
 
-      - [ ] Any skip/xfail marker is scoped to absent Pi binary or explicitly unsupported
+      - [x] Any skip/xfail marker is scoped to absent Pi binary or explicitly unsupported
       Pi RPC observability, not product failures.'
     depends_on:
     - supplemental_runtime_tests
