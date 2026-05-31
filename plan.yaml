@@ -81301,7 +81301,7 @@ phases:
     agent: integration-verifier
   - id: ci_local_gate_wiring
     name: Wire supplemental Pi runtime tests into local and CI gate
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -81384,6 +81384,8 @@ phases:
     depends_on:
     - supplemental_runtime_tests
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-31T17:50:10.601614+00:00'
   - id: gate
     name: Gate Pi runtime liveness and Larva persona Tab autocomplete hardening
     status: pending
