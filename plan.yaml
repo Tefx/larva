@@ -81593,21 +81593,21 @@ phases:
       \ base-provider delegation survives both non-command input and other slash commands.\n\
       3. Confirm fail-soft `null` behavior is on the provider path, not only command-level\
       \ completion.\n</risk_probes>"
-    verification: '- [ ] `contrib/pi-extension/larva.ts` still registers `pi.registerCommand("larva-persona",
+    verification: '- [x] `contrib/pi-extension/larva.ts` still registers `pi.registerCommand("larva-persona",
       { getArgumentCompletions, handler })`.
 
-      - [ ] Runtime wrapper registration uses `ctx.ui.addAutocompleteProvider` only
+      - [x] Runtime wrapper registration uses `ctx.ui.addAutocompleteProvider` only
       when available and does not throw when unavailable.
 
-      - [ ] Wrapper calls `completePersonaIds(prefix, ctx)` for `/larva-persona <prefix>`
+      - [x] Wrapper calls `completePersonaIds(prefix, ctx)` for `/larva-persona <prefix>`
       for both `force=true` and `force=false`.
 
-      - [ ] Wrapper delegates non-`/larva-persona <prefix>` input to the base provider.
+      - [x] Wrapper delegates non-`/larva-persona <prefix>` input to the base provider.
 
-      - [ ] Failure/malformed `larva list --json` path returns `null` and does not
+      - [x] Failure/malformed `larva list --json` path returns `null` and does not
       crash.
 
-      - [ ] No prompt catalogue, cache, or fuzzy matching is added.'
+      - [x] No prompt catalogue, cache, or fuzzy matching is added.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
