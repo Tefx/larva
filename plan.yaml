@@ -82090,3 +82090,157 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.extension-impl
     agent: doc-reviewer
+  - id: pi-adapter-local-model-map-config-2026-06-01.gate
+    name: gate
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects any downstream Pi integration/finalization
+      gates.
+
+      agent_source: default
+
+
+      DECISION ARTIFACT:
+
+      As an independent reviewer, decide whether Pi adapter-local model-map configuration
+      is complete and safe to proceed. This gate MUST reject source-token-only, mock-only,
+      or assumption-only proof as sufficient evidence for runtime behavior.
+
+
+      Review requirements:
+
+      - Contract is adapter-local and does not mutate canonical PersonaSpec schema.
+
+      - Dotfiles inventory/mapping material is reconciled or unresolved mappings are
+      explicitly listed without guessing.
+
+      - Implementation uses one shared model resolver for startup persona and `/larva-persona`
+      switch.
+
+      - Runtime harness proves no-config, missing env path, mapped hit, invalid map,
+      mapped unavailable, and startup/slash parity.
+
+      - Docs match implemented behavior and list non-goals.
+
+      - Every OWNED row in the phase requirement-to-checklist matrices has positive
+      proof or explicit BLOCKED status with closure path.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase touches Pi runtime startup and user-visible slash command behavior.
+
+      - Phase changes adapter-local config parsing and error projection.
+
+      - Current plan already has a pending Pi runtime liveness hardening phase; this
+      gate must align with it.
+
+
+      <side_effect_budget>
+
+      Allowed: read plan evidence, source diffs, dotfiles diff, and runtime outputs.
+      Forbidden: modifying product code, dotfiles, or plan state from this gate step.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Check that all runtime proof rows include raw command output, not summaries.
+
+      - Check invalid existing map fails closed and does not silently fallback.
+
+      - Check ambiguous dotfiles mappings are not converted into guessed targets.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case no-config`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case missing-env-file`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case mapped-hit`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case invalid-config` and confirm `LARVA_MODEL_MAP_INVALID`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case mapped-unavailable` and confirm `LARVA_MODEL_UNAVAILABLE`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case startup-and-slash` and confirm shared resolver path.
+
+      - [ ] Review `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and confirm
+      no unrelated dotfiles semantic changes.
+
+      - [ ] Review `git diff -- contrib/pi-extension/larva.ts contrib/pi-extension/README.md
+      design/pi-coding-agent-integration.md` and confirm product/docs scope is limited.
+
+      - [ ] Gate decision basis lists every requirement matrix row as PROVEN, BLOCKED,
+      or explicitly non-intersecting; generic PASS claims are rejected.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+      - /Users/tefx/dotfiles/agent/models.yaml — <key passage or NOT READ: reason>
+
+
+      ## Gate Decision Basis
+
+      | requirement_id | evidence_ref | proof_status | unresolved_status | blocks_downstream
+      | rationale |
+
+
+      ## Evidence Reviewed
+
+      - contract evidence: <step evidence ref>
+
+      - dotfiles diff: <raw diff/ref>
+
+      - implementation diff: <raw diff/ref>
+
+      - runtime harness outputs: <raw outputs/ref>
+
+      - docs diff: <raw diff/ref>
+
+
+      ## Reject Conditions Checked
+
+      - source_token_only_proof: PASS/FAIL
+
+      - mock_only_proof: PASS/FAIL
+
+      - invalid_map_silent_fallback: PASS/FAIL
+
+      - fuzzy_or_guessing_present: PASS/FAIL
+
+      - persona_schema_changed: PASS/FAIL
+
+      - startup_slash_divergence: PASS/FAIL
+
+
+      ## Final Decision
+
+      - [ ] OPEN
+
+      - [ ] BLOCKED
+
+      Blocking issues: <list or none>'
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.contract
+    - pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
+    - pi-adapter-local-model-map-config-2026-06-01.extension-impl
+    - pi-adapter-local-model-map-config-2026-06-01.runtime-tests
+    - pi-adapter-local-model-map-config-2026-06-01.docs
+    agent: gate-reviewer
