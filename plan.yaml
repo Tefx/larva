@@ -82017,17 +82017,17 @@ phases:
       grep.
 
       </risk_probes>'
-    verification: '- [ ] `contrib/pi-extension/README.md` documents `/larva-persona
+    verification: '- [x] `contrib/pi-extension/README.md` documents `/larva-persona
       <prefix>` Tab completion behavior, wrapper boundary, delegation, failure behavior,
       and non-goals.
 
-      - [ ] `README.md` or appropriate top-level docs point Pi users to the extension
+      - [x] `README.md` or appropriate top-level docs point Pi users to the extension
       troubleshooting behavior without redefining canonical PersonaSpec semantics.
 
-      - [ ] Docs include the exact smoke/test commands requested for runtime autocomplete
+      - [x] Docs include the exact smoke/test commands requested for runtime autocomplete
       troubleshooting.
 
-      - [ ] Docs do not say persona catalogues are injected into prompts, cached,
+      - [x] Docs do not say persona catalogues are injected into prompts, cached,
       or fuzzy matched.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
