@@ -80830,3 +80830,506 @@ phases:
     integration.
   depends_on:
   - pi-persona-load-slash-switch-spawn-and-prompt-injection-proof-2026-05-27
+  steps:
+  - id: proof_contract
+    name: Define Pi runtime liveness proof contract and traceability matrix
+    status: pending
+    description: 'step_type: contract
+
+      agent_source: default (Larva registry unavailable during planning; using default
+      integration-verifier)
+
+
+      PROOF ARTIFACT:
+
+      Define the supplemental Pi runtime liveness proof contract so future Done definitions
+      cannot be satisfied by source-token, mock-only, or assumption tests.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | PI-LIVE-001 | user context: real Pi v0.75.x default plugin entry is `export
+      default function(pi)` | record real Pi CLI availability/version or explicit
+      skip/xfail condition | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
+      | `pi --version` or equivalent availability probe captured | `pi_binary_availability`
+      | OWNED | none |
+
+      | PI-LIVE-002 | user context: `pi --mode rpc --no-session --offline -e contrib/pi-extension/larva.ts`
+      loads plugin | prove real Pi RPC plugin load | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
+      | real Pi RPC process starts with extension file | `plugin_load_stdout_stderr`
+      | OWNED | none |
+
+      | PI-LIVE-003 | user context: `get_commands` returns `larva-persona` registered
+      via `pi.registerCommand` | prove command visible through real RPC | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
+      | RPC `get_commands` includes `larva-persona` | `get_commands_response` | OWNED
+      | none |
+
+      | PI-LIVE-004 | user context: `/larva-persona <fake-id>` uses command runtime
+      ctx and keyed status | prove slash prompt commits persona and emits keyed status/notify
+      | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness | prompt `/larva-persona
+      ok` yields fake bridge commit plus `statusKey=larva`, `statusText=larva: ok`
+      | `slash_command_status_events` | OWNED | none |
+
+      | PI-LIVE-005 | user context: `LARVA_PI_INITIAL_PERSONA_ID=<fake-id>` commits
+      on real `session_start` | prove startup persona status in real RPC | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
+      | startup env yields `statusText=larva: startup` | `startup_status_events` |
+      OWNED | none |
+
+      | PI-LIVE-006 | user context: missing/unparseable persona must not be silent
+      | prove command failure path has stable notify/error observation | pi_runtime_liveness_hardening_20260601.real_pi_rpc_liveness
+      | fake bridge failure produces notify/error or stable RPC error | `failure_observation`
+      | OWNED | none |
+
+      | PI-LIVE-007 | user context: custom tool current shape is `parameters + execute`;
+      RPC observability may be limited | verify tool discovery through Pi prompt/tools
+      if possible, otherwise runtime object test explains RPC limitation | pi_runtime_liveness_hardening_20260601.supplemental_runtime_tests
+      | `larva_subagent` observed or object shape verified with explicit rationale
+      | `custom_tool_shape` | OWNED | none |
+
+      | PI-LIVE-008 | user context: `tool_call` event uses `event.toolName` and returns
+      `{block:true, reason}` | prove with runtime event harness, not string token
+      search | pi_runtime_liveness_hardening_20260601.supplemental_runtime_tests |
+      runtime harness emits tool_call with `toolName=larva_subagent` and observes
+      block result | `tool_call_block_result` | OWNED | none |
+
+      | PI-LIVE-009 | user context: CI/local gate must run supplemental tests with
+      Pi skip/xfail policy | wire local/CI gate command and document missing-Pi behavior
+      | pi_runtime_liveness_hardening_20260601.ci_local_gate_wiring | exact supplemental
+      command runs locally/CI or records skip reason | `ci_gate_command` | OWNED |
+      none |
+
+
+      <side_effect_budget>
+
+      Allowed: add or update test-only fixtures, runtime smoke scripts, CI/local test
+      wiring, and documentation needed to make the supplemental Pi runtime gate executable.
+
+      Forbidden: change production Pi plugin behavior, weaken Larva shared contract
+      admission, replace real Pi checks with source-token assertions, or mark missing
+      Pi binary as PASS without an explicit skip/xfail reason.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Verify the harness is exercising current Pi runtime APIs, not a local imitation
+      of obsolete extension APIs.
+
+      2. Verify keyed UI status comes from `ctx.ui.setStatus("larva", ...)` observations,
+      not plain string matching in source.
+
+      3. Verify failure-path observations are stable enough to fail CI when persona
+      commit silently stops working.
+
+      </risk_probes>'
+    verification: '- [ ] `uv run pytest tests/shell/test_pi_extension_contract.py
+      -q` remains runnable after adding the proof contract artifacts or documents
+      why no code artifact was changed.
+
+      - [ ] The evidence includes the full PI-LIVE-001..PI-LIVE-009 matrix with each
+      row mapped to a concrete downstream step and evidence field.
+
+      - [ ] The evidence explicitly states that mock/source-token tests are non-sufficient
+      for PI-LIVE-002..PI-LIVE-006 and PI-LIVE-008.
+
+      - [ ] The evidence names the exact supplemental script/test paths that downstream
+      steps must create or run: `scripts/pi-extension-runtime-smoke.mjs`, `tests/shell/test_pi_extension_real_runtime.py`,
+      and `tests/fixtures/pi/fake-larva-cli.mjs`.'
+    agent: integration-verifier
+  - id: supplemental_runtime_tests
+    name: Add supplemental Pi runtime smoke tests and event harness
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red_or_green
+
+      expected_result: red_if_real_behavior_missing_green_if_current_fix_present
+
+      agent_source: default
+
+
+      PROOF ARTIFACT:
+
+      Create executable supplemental tests/scripts that exercise Pi runtime semantics
+      rather than source-token assumptions.
+
+
+      BOUNDING BOX:
+
+      - `contrib/pi-extension/larva.ts`
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - `tests/fixtures/pi/fake-larva-cli.mjs`
+
+      - existing `tests/shell/test_pi_extension_contract.py` only as prior-regression
+      context, not as sufficient evidence.
+
+
+      TARGET TEST HARNESS STATE:
+
+      - `scripts/pi-extension-runtime-smoke.mjs` can launch `pi --mode rpc --no-session
+      --offline -e contrib/pi-extension/larva.ts`, send RPC requests/prompts, collect
+      extension UI requests, and emit structured JSON evidence.
+
+      - `tests/fixtures/pi/fake-larva-cli.mjs` provides deterministic fake persona
+      success and failure paths for `ok`, `startup`, and missing/unparseable persona
+      IDs.
+
+      - `tests/shell/test_pi_extension_real_runtime.py` calls the smoke script and
+      asserts structured evidence fields, while applying explicit skip/xfail only
+      when Pi binary is absent or current Pi RPC cannot expose a surface.
+
+      - A minimal runtime event harness verifies `larva_subagent` has `parameters
+      + execute` and verifies `tool_call` with `event.toolName` returns `{ block:
+      true, reason: <non-empty> }`; this harness must instantiate the exported plugin/runtime
+      object and dispatch real handler/event callbacks, not scan strings.
+
+
+      CONSTRAINTS:
+
+      - Do NOT modify production plugin behavior in this step except if strictly necessary
+      to expose test-only hooks already present by runtime API; prefer tests/scripts/fixtures.
+
+      - Do NOT satisfy tool-call coverage with regex/token assertions.
+
+      - If real Pi cannot expose custom tools through RPC, the evidence must explain
+      the limitation and show the runtime object test is the nearest executable current-API
+      proof.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is a TEST/HARNESS step. Stub-only completion is NOT acceptable. Scripts
+      must execute and produce structured output whose values vary by scenario.
+
+
+      <side_effect_budget>
+
+      Allowed: create/update supplemental test files, smoke scripts, and test fixtures;
+      add skip markers that require explicit Pi-binary absence evidence.
+
+      Forbidden: alter product semantics, remove existing Pi tests, or convert real-runtime
+      obligations into mock-only assertions.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Ensure fake Larva CLI bridge is only a Larva side dependency, while Pi process
+      is real.
+
+      2. Ensure RPC event parsing observes actual `extension_ui_request` payloads
+      with `statusKey`/`statusText` fields.
+
+      3. Ensure skip/xfail cannot mask a present-but-broken Pi binary.
+
+      </risk_probes>'
+    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --help` exits
+      0 and lists scenarios for `availability`, `get-commands`, `slash-status`, `startup-status`,
+      `failure-path`, `tool-shape`, and `tool-call-block`.
+
+      - [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py -v` executes
+      the supplemental tests; if Pi is absent, each skipped/xfail case includes captured
+      Pi availability evidence.
+
+      - [ ] The tool-shape test verifies `larva_subagent.parameters` and `larva_subagent.execute`
+      on the runtime extension object, or records real Pi RPC discovery evidence if
+      available.
+
+      - [ ] The tool-call test dispatches a runtime `tool_call` event with `toolName`
+      and asserts a real `{ block: true, reason: <non-empty> }` handler result.
+
+      - [ ] No new assertion relies solely on matching source strings like `toolName`,
+      `setStatus`, or `registerCommand`.'
+    depends_on:
+    - proof_contract
+    agent: frontend-engineer
+  - id: real_pi_rpc_liveness
+    name: Run real Pi RPC liveness proof for command and persona status
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check; protects `pi_runtime_liveness_hardening_20260601.gate`
+      and future Pi runtime Done definitions.
+
+      agent_source: default
+
+
+      PROOF ARTIFACT:
+
+      As an independent runtime verifier, execute the supplemental smoke scenarios
+      against the real Pi CLI/RPC process. This step must prove plugin liveness through
+      current Pi runtime surfaces or produce explicit environmental skip/xfail evidence
+      for missing Pi binary only.
+
+
+      SCENARIOS TO EXECUTE:
+
+      1. Pi binary availability/version.
+
+      2. Real plugin load using `pi --mode rpc --no-session --offline -e contrib/pi-extension/larva.ts`.
+
+      3. RPC `get_commands` includes extension command `larva-persona`.
+
+      4. RPC prompt `/larva-persona ok` with fake Larva CLI bridge triggers persona
+      commit and observes `extension_ui_request` keyed status `statusKey=larva`, `statusText=larva:
+      ok`, plus notify `Larva persona active: ok`.
+
+      5. Startup persona: `LARVA_PI_INITIAL_PERSONA_ID=startup` produces keyed status
+      `statusText=larva: startup` after real `session_start`.
+
+      6. Failure path: missing/unparseable persona via slash command produces notify/error/stable
+      non-silent observation.
+
+
+      CONSTRAINTS:
+
+      - Real Pi process must be used for scenarios 2-6 unless skipped solely because
+      Pi binary is unavailable.
+
+      - Fake Larva bridge is allowed only for Larva CLI/persona commit determinism;
+      it must not mock Pi.
+
+      - Captured evidence must include raw RPC messages or structured JSON derived
+      from raw messages.
+
+
+      <side_effect_budget>
+
+      Allowed: run local commands and create evidence artifacts under test output
+      locations.
+
+      Forbidden: mutate production source, edit plan state, or treat a failed real
+      Pi scenario as a successful test without blocker disposition.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Check whether Pi version drift changed RPC names or event envelopes; record
+      version and exact failure.
+
+      2. Check that keyed status is not confused with notify text.
+
+      3. Check that persona failure path is observable and not swallowed by the command
+      handler.
+
+      </risk_probes>'
+    verification: '- [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario availability
+      --json` captures Pi binary path and version, or emits `SKIP_NO_PI_BINARY` with
+      command-not-found evidence.
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+      proves real `pi --mode rpc --no-session --offline -e contrib/pi-extension/larva.ts`
+      loads and returns `larva-persona` in `get_commands`.
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      ok --json` proves `/larva-persona ok` emits `statusKey=larva`, `statusText=larva:
+      ok`, and active-persona notify.
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
+      --persona startup --json` proves startup env `LARVA_PI_INITIAL_PERSONA_ID=startup`
+      emits `statusText=larva: startup` after session start.
+
+      - [ ] `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path --persona
+      missing --json` proves missing/unparseable persona produces a stable notify/error/RPC
+      error and is not silent.
+
+      - [ ] The evidence includes raw stdout/stderr or saved JSON artifacts for every
+      scenario, not only a summary.'
+    depends_on:
+    - supplemental_runtime_tests
+    agent: integration-verifier
+  - id: ci_local_gate_wiring
+    name: Wire supplemental Pi runtime tests into local and CI gate
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      The repository exposes an explicit local/CI supplemental Pi runtime gate so
+      future maintainers cannot finish Pi extension work with pytest/invar only. The
+      gate must run the supplemental real-runtime tests and record the Pi-binary skip/xfail
+      policy.
+
+
+      BOUNDING BOX:
+
+      - project test configuration / CI workflow files if present
+
+      - `tests/shell/test_pi_extension_real_runtime.py`
+
+      - `scripts/pi-extension-runtime-smoke.mjs`
+
+      - contributor docs near `contrib/pi-extension/README.md` if gate invocation
+      needs documentation
+
+
+      CONSTRAINTS:
+
+      - Do NOT make missing Pi binary a silent PASS. It may be SKIP/XFAIL only with
+      captured availability evidence and only for real-Pi scenarios.
+
+      - Do NOT remove existing pytest/invar guard checks; this is additive supplemental
+      coverage.
+
+      - Do NOT require live network/session credentials; use `--offline`, fake Larva
+      CLI bridge, and unavailable/error states where appropriate.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step for test/gate wiring. Stub-only completion is
+      NOT acceptable. The gate command must run real scripts/tests and produce parseable
+      output.
+
+
+      <side_effect_budget>
+
+      Allowed: update CI/test workflow and docs to call supplemental scripts; add
+      pytest markers or environment-variable controls for Pi availability.
+
+      Forbidden: change product runtime semantics, weaken existing CI checks, or hide
+      real Pi failures behind unconditional skip.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Verify CI command cannot pass when Pi binary exists but plugin load or slash
+      command liveness fails.
+
+      2. Verify local developers can reproduce with one documented command.
+
+      3. Verify supplemental tests are named distinctly from old source-token contract
+      tests to prevent mistaken evidence substitution.
+
+      </risk_probes>'
+    verification: '- [ ] `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -v` is documented as the local supplemental gate and exits green or explicit
+      skip/xfail with Pi availability evidence.
+
+      - [ ] If CI workflow files exist, the supplemental gate is wired into the relevant
+      local/CI test command; otherwise evidence states no CI workflow exists and documents
+      the local gate command in `contrib/pi-extension/README.md` or equivalent.
+
+      - [ ] `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -v` runs both legacy contract coverage and supplemental runtime coverage without
+      replacing either class.
+
+      - [ ] Any skip/xfail marker is scoped to absent Pi binary or explicitly unsupported
+      Pi RPC observability, not product failures.'
+    depends_on:
+    - supplemental_runtime_tests
+    agent: frontend-engineer
+  - id: gate
+    name: Gate Pi runtime liveness hardening
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects all downstream Pi plugin Done definitions
+      and any future Pi extension release/readiness claims.
+
+      agent_source: default
+
+
+      DECISION ARTIFACT:
+
+      As an independent gate reviewer, decide whether the supplemental Pi runtime
+      liveness gate closes the false-green risk where old plan/tests passed without
+      real Pi runtime completion.
+
+
+      Review criteria:
+
+      1. The PI-LIVE-001..009 traceability matrix has positive proof or explicit environmental
+      block/skip for every row.
+
+      2. Real Pi RPC evidence exists for plugin load, `get_commands`, slash persona
+      status, startup status, and failure path whenever Pi binary is available.
+
+      3. Custom tool shape and `tool_call` blocking are proven through runtime object/event
+      harness or documented Pi RPC limitation plus executable nearest proof.
+
+      4. CI/local gate evidence includes exact commands and cannot silently pass product
+      failures.
+
+      5. Source-token, mock-only, and assumption tests are explicitly rejected as
+      sufficient evidence for runtime liveness.
+
+
+      Gate Preview (what the gate WILL reject):
+
+      1. `uv run pytest` or `invar guard` alone with no real Pi RPC smoke artifacts.
+
+      2. `larva-persona` proven only by source search rather than RPC `get_commands`.
+
+      3. Status proven by notify text only, without `statusKey=larva` and `statusText=larva:
+      <id>`.
+
+      4. `tool_call` coverage that only searches for the string `toolName`.
+
+      5. Missing Pi binary treated as green without explicit skip/xfail evidence and
+      non-product disposition.
+
+
+      <side_effect_budget>
+
+      Allowed: review evidence and block/open the phase.
+
+      Forbidden: mutate product code, rewrite evidence, or approve sampled evidence
+      that omits any owned PI-LIVE row.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Check for greenwashing: summaries that say "works" but omit raw RPC messages.
+
+      2. Check that real Pi version is captured and tied to the observed API.
+
+      3. Check that failure-path and startup-path proofs are not inferred from slash
+      success.
+
+      </risk_probes>'
+    verification: '- [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario availability --json` and verify Pi availability/version or explicit
+      skip condition.
+
+      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      get-commands --json` and verify plugin load plus `larva-persona` command visibility.
+
+      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      slash-status --persona ok --json` and verify persona commit, keyed status, and
+      notify.
+
+      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      startup-status --persona startup --json` and verify startup `session_start`
+      keyed status.
+
+      - [ ] Review evidence from `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      failure-path --persona missing --json` and verify non-silent failure observation.
+
+      - [ ] Review `uv run pytest tests/shell/test_pi_extension_real_runtime.py -v`
+      and combined contract/runtime pytest output.
+
+      - [ ] Review custom tool `parameters + execute` and `tool_call` `toolName` block
+      proof; reject pure token tests.
+
+      - [ ] Gate decision basis maps every PI-LIVE row to PROVEN/BLOCKED/SKIPPED with
+      closure path; no orphan requirements remain.'
+    depends_on:
+    - proof_contract
+    - supplemental_runtime_tests
+    - real_pi_rpc_liveness
+    - ci_local_gate_wiring
+    agent: gate-reviewer
