@@ -332,8 +332,14 @@ export function createLarvaPersonaAutocompleteProvider(
 }
 
 function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
-  if (typeof ctx.ui?.addAutocompleteProvider !== "function") return;
-  ctx.ui.addAutocompleteProvider(createLarvaPersonaAutocompleteProvider(ctx));
+  const addProvider = ctx.ui?.addAutocompleteProvider;
+  if (typeof addProvider !== "function") return;
+  try {
+    addProvider(createLarvaPersonaAutocompleteProvider(ctx));
+  } catch {
+    // Non-TUI or partially compatible Pi UI contexts may expose the field without
+    // accepting editor providers; keep /larva-persona command completion alive.
+  }
 }
 
 function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
