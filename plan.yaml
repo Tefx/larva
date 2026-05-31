@@ -81568,6 +81568,8 @@ phases:
     depends_on:
     - proof_contract
     - supplemental_runtime_tests
+    - fix_real_pi_rpc_liveness_blockers
+    - retest_real_pi_rpc_liveness_semantics
     - real_pi_rpc_liveness
     - ci_local_gate_wiring
     - pi_tab_autocomplete_extension_impl
