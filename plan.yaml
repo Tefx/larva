@@ -82057,23 +82057,56 @@ phases:
 
       TARGET STATE:
 
-      Update Pi extension user/developer documentation to explain the adapter-local
-      model map feature. Documentation must cover:
+      Update Pi extension user/developer documentation to explain the full adapter-local
+      model-map language and Larva-Pi tool-policy path resolution.
 
-      - default path `~/.pi/larva/model-map.json`
+
+      Model-map docs must cover:
+
+      - canonical path `~/.pi/larva/model-map.json`
 
       - env override `LARVA_PI_MODEL_MAP_FILE`
 
-      - JSON example keyed by exact PersonaSpec.model strings
+      - parseable JSON example with exact `models` and `prefix_rules` exactly matching
+      the user-confirmed example
 
-      - fallback behavior for missing file and key miss
+      - exact mappings resolve before prefix rules
 
-      - `LARVA_MODEL_MAP_INVALID` vs `LARVA_MODEL_UNAVAILABLE`
+      - prefix rules are literal only, longest `from_prefix` wins, same-length conflicts
+      surface `LARVA_MODEL_MAP_INVALID`
 
-      - startup persona and `/larva-persona` shared behavior
+      - prefix rules only strip/replace prefixes and do not guess vendors
 
-      - non-goals: no fuzzy matching, no automatic guessing, no PersonaSpec schema
-      changes, no Pi fields in PersonaSpec, no multi-layer config
+      - mapped values must call Pi `modelRegistry.find(provider, model_id)`
+
+      - missing config file and key/prefix miss preserve current first-slash split
+      fallback
+
+      - invalid config surfaces `LARVA_MODEL_MAP_INVALID`
+
+      - mapped registry miss remains `LARVA_MODEL_UNAVAILABLE`
+
+      - startup persona and `/larva-persona` share the same resolver behavior
+
+      - `ollama-cloud/kimi-k2.6:cloud` is intentionally not mapped by the example
+
+      - non-goals: no wildcard, regex, fuzzy matching, automatic guessing, PersonaSpec
+      schema changes, or Pi-specific PersonaSpec fields
+
+
+      Tool-policy docs must cover:
+
+      - new canonical path `~/.pi/larva/tool-policy.json`
+
+      - env override `LARVA_PI_TOOL_POLICY_FILE`
+
+      - resolution order: env override only; else new canonical when exists; else
+      legacy `~/.pi/tool-policy.json`; else new canonical missing means empty policy
+      as today
+
+      - no auto-migration and no user-file writes
+
+      - old `~/.pi/tool-policy.json` is a legacy fallback, not the preferred path
 
 
       Requirement-to-checklist traceability matrix:
@@ -82081,47 +82114,66 @@ phases:
       | requirement_id | source_ref + key passage | obligation | owning_step_id |
       checklist_item | evidence_field | status | non_intersection_or_escalation |
 
-      | DOC1 | contract step | document path/env/schema | pi-adapter-local-model-map-config-2026-06-01.docs
-      | README contains path/env/schema | docs_diff_summary | OWNED | n/a |
+      | --- | --- | --- | --- | --- | --- | --- | --- |
 
-      | DOC2 | contract step | document fallback/errors | pi-adapter-local-model-map-config-2026-06-01.docs
-      | README contains fallback/errors | docs_diff_summary | OWNED | n/a |
+      | DOC1 | contract R1-R6 | document full model-map language and example | pi-adapter-local-model-map-config-2026-06-01.docs
+      | docs include path/env/schema/example | docs_diff_summary.model_map | OWNED
+      | n/a |
+
+      | DOC2 | contract R5 | document fallback/errors | pi-adapter-local-model-map-config-2026-06-01.docs
+      | docs include invalid/unavailable/fallback | docs_diff_summary.errors | OWNED
+      | n/a |
 
       | DOC3 | user non-goals | document exclusions | pi-adapter-local-model-map-config-2026-06-01.docs
-      | README contains non-goals | docs_diff_summary | OWNED | n/a |
+      | docs include no wildcard/regex/fuzzy/schema changes | docs_diff_summary.non_goals
+      | OWNED | n/a |
+
+      | DOC4 | contract R7 | document tool-policy path resolution and legacy fallback
+      | pi-adapter-local-model-map-config-2026-06-01.docs | docs include precedence
+      and legacy marker | docs_diff_summary.tool_policy | OWNED | n/a |
 
 
       <side_effect_budget>
 
       Allowed: edit `contrib/pi-extension/README.md` and, if already used for Pi behavior,
       `design/pi-coding-agent-integration.md`. Forbidden: changing canonical PersonaSpec
-      docs/schema or documenting behavior not implemented by previous steps.
+      docs/schema, opifex contracts, product code, dotfiles, or documenting behavior
+      not implemented by previous steps.
 
       </side_effect_budget>
 
       <risk_probes>
 
-      - Verify docs do not imply opifex or canonical PersonaSpec owns the map.
+      - Verify docs do not imply opifex or canonical PersonaSpec owns the model map.
 
-      - Verify examples use exact keys, not wildcard/provider-only aliases.
+      - Verify docs do not present `~/.pi/tool-policy.json` as preferred; it must
+      be legacy fallback.
 
-      - Verify docs distinguish invalid map shape from unavailable mapped model.
+      - Verify JSON examples are parseable and do not include wildcard or `kimi-k2.6:cloud`
+      mapping.
 
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|fuzzy\|PersonaSpec
-      schema" contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
-      and paste raw output.
+      - [ ] Run `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|prefix_rules\|LARVA_MODEL_MAP_INVALID\|LARVA_MODEL_UNAVAILABLE\|tool-policy.json\|LARVA_PI_TOOL_POLICY_FILE\|legacy
+      fallback\|wildcard\|regex\|fuzzy\|PersonaSpec schema" contrib/pi-extension/README.md
+      design/pi-coding-agent-integration.md` and paste raw output.
 
       - [ ] Run `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
       and summarize documentation-only changes.
 
-      - [ ] Documentation includes a parseable JSON example with at least one key
-      containing embedded slashes in the mapped `model_id`.
+      - [ ] Documentation includes a parseable JSON example exactly covering the four
+      confirmed exact mappings and one `openrouter/` prefix rule.
 
-      - [ ] Documentation non-goals explicitly ban fuzzy matching, automatic guessing,
-      PersonaSpec schema changes, and Pi-specific PersonaSpec fields.'
+      - [ ] Documentation explicitly states `ollama-cloud/kimi-k2.6:cloud` is not
+      mapped by the example.
+
+      - [ ] Documentation marks `~/.pi/tool-policy.json` as legacy fallback and states
+      no auto-migration/user-file write occurs.
+
+      - [ ] Documentation non-goals explicitly ban wildcard, regex, fuzzy matching,
+      automatic guessing, PersonaSpec schema changes, and Pi-specific PersonaSpec
+      fields.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
@@ -82131,30 +82183,31 @@ phases:
       - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
 
 
-      ## Docs Diff Summary
+      ## Documentation Evidence
 
-      - command: `git diff -- contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      - model_map: <path/env/schema/example summary>
 
-      - summary: <paste>
+      - errors: <fallback/invalid/unavailable summary>
 
+      - non_goals: <exclusions summary>
 
-      ## Grep Evidence
+      - tool_policy: <path precedence + legacy fallback summary>
 
-      - command: `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|fuzzy\|PersonaSpec
-      schema" contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      - raw_grep_output: <output>
 
-      - raw_stdout: <paste>
+      - diff_summary: <output>
 
 
       ## Checklist Receipt
 
-      - [ ] path_env_documented
+      - [ ] all documentation checklist items satisfied
 
-      - [ ] schema_example_documented
+      - [ ] no forbidden side effects performed
 
-      - [ ] fallback_and_errors_documented
-
-      - [ ] non_goals_documented'
+      '
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.extension-impl
     agent: doc-reviewer
