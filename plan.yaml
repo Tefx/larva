@@ -81889,7 +81889,7 @@ phases:
   - id: pi_tab_autocomplete_real_tui_smoke_or_limit
     name: Attempt real Pi TUI/RPC smoke for persona Tab autocomplete or record automation
       limit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check; protects Pi runtime liveness and `/larva-persona`
@@ -82026,6 +82026,8 @@ phases:
     - pi_tab_autocomplete_runtime_tests
     - real_pi_rpc_liveness
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-05-31T18:24:58.267903+00:00'
   - id: pi_tab_autocomplete_docs
     name: Document Larva persona Tab completion behavior and troubleshooting
     status: done
