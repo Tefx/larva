@@ -82276,42 +82276,42 @@ phases:
 
       ## Checklist
 
-      - [ ] `slash-status --persona ok` root cause is identified and repaired so the
+      - [x] `slash-status --persona ok` root cause is identified and repaired so the
       real Pi smoke observes `statusKey=larva`, `statusText=larva: ok`, and notify
       `Larva persona active: ok` instead of `Larva persona switch failed: LARVA_MODEL_UNAVAILABLE:
       Model unavailable fake/model`.
 
-      - [ ] `startup-status --persona startup` root cause is identified and repaired
+      - [x] `startup-status --persona startup` root cause is identified and repaired
       so the real Pi smoke observes `statusText=larva: startup` instead of `larva:
       startup unavailable (LARVA_MODEL_UNAVAILABLE)`.
 
-      - [ ] `failure-path --persona missing` scenario topology is corrected or extended
+      - [x] `failure-path --persona missing` scenario topology is corrected or extended
       to prove slash-command missing/unparseable failure behavior, not only startup
       initial-persona missing via `get_state`.
 
-      - [ ] Existing availability and `get-commands` real Pi success paths remain
+      - [x] Existing availability and `get-commands` real Pi success paths remain
       intact and are not replaced by mocks.
 
-      - [ ] Sticky constraints are preserved: Pi namespace `~/.pi/larva/`, no PersonaSpec
+      - [x] Sticky constraints are preserved: Pi namespace `~/.pi/larva/`, no PersonaSpec
       schema change, no prompt catalogue/cache/fuzzy/wildcard/regex model guessing,
       no mock-only/source-token liveness proof.
 
-      - [ ] Focused regression coverage or smoke assertions exist for all three blocker
+      - [x] Focused regression coverage or smoke assertions exist for all three blocker
       classes above.'
-    verification: '- [ ] Diff/evidence identifies the root cause for the `fake/model`
+    verification: '- [x] Diff/evidence identifies the root cause for the `fake/model`
       `LARVA_MODEL_UNAVAILABLE` success-path failures and the failure-path topology
       gap.
 
-      - [ ] Focused checks or smoke assertions prove `slash-status --persona ok`,
+      - [x] Focused checks or smoke assertions prove `slash-status --persona ok`,
       `startup-status --persona startup`, and slash-command `failure-path --persona
       missing` expectations are enforced.
 
-      - [ ] Main path evidence preserves real Pi RPC plugin load and command visibility.
+      - [x] Main path evidence preserves real Pi RPC plugin load and command visibility.
 
-      - [ ] Highest-risk failure path evidence proves missing/unparseable persona
+      - [x] Highest-risk failure path evidence proves missing/unparseable persona
       through slash-command topology.
 
-      - [ ] Constraint audit shows no PersonaSpec schema change, no Pi namespace drift,
+      - [x] Constraint audit shows no PersonaSpec schema change, no Pi namespace drift,
       and no catalogue/cache/fuzzy/wildcard/regex model guessing.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ:\
