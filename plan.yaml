@@ -82225,24 +82225,37 @@ phases:
       DECISION ARTIFACT:
 
       As an independent reviewer, decide whether Pi adapter-local model-map configuration
-      is complete and safe to proceed. This gate MUST reject source-token-only, mock-only,
-      or assumption-only proof as sufficient evidence for runtime behavior.
+      and Larva-Pi tool-policy path resolution are complete and safe to proceed. This
+      gate MUST reject source-token-only, mock-only, or assumption-only proof as sufficient
+      evidence for runtime behavior.
 
 
       Review requirements:
 
-      - Contract is adapter-local and does not mutate canonical PersonaSpec schema.
+      - Contract is adapter-local and does not mutate canonical PersonaSpec schema
+      or opifex contracts.
 
-      - Dotfiles inventory/mapping material is reconciled or unresolved mappings are
-      explicitly listed without guessing.
+      - Model-map contract/implementation supports exact `models`, restricted literal
+      `prefix_rules`, exact-before-prefix ordering, longest-prefix matching, and same-length
+      prefix conflict as `LARVA_MODEL_MAP_INVALID`.
+
+      - Confirmed mapping material is represented exactly: four exact mappings, `openrouter/`
+      prefix rule, and no `ollama-cloud/kimi-k2.6:cloud` mapping.
+
+      - Dotfiles material is reconciled as checked-in source/template/generator material
+      without changing existing alias semantics or writing runtime `~/.pi` files.
 
       - Implementation uses one shared model resolver for startup persona and `/larva-persona`
       switch.
 
-      - Runtime harness proves no-config, missing env path, mapped hit, invalid map,
-      mapped unavailable, and startup/slash parity.
+      - Runtime harness proves exact hit, prefix hit, conflict invalid, missing config,
+      invalid config, mapped unavailable, startup persona, slash switch, and slash-switch-after-startup.
 
-      - Docs match implemented behavior and list non-goals.
+      - Tool-policy implementation and runtime harness prove env override, new canonical
+      path exists, legacy fallback, and no-file empty-policy behavior.
+
+      - Docs match implemented behavior and mark old `~/.pi/tool-policy.json` as legacy
+      fallback.
 
       - Every OWNED row in the phase requirement-to-checklist matrices has positive
       proof or explicit BLOCKED status with closure path.
@@ -82254,7 +82267,8 @@ phases:
 
       - Phase touches Pi runtime startup and user-visible slash command behavior.
 
-      - Phase changes adapter-local config parsing and error projection.
+      - Phase changes adapter-local config parsing, tool-policy path resolution, and
+      error projection.
 
       - Current plan already has a pending Pi runtime liveness hardening phase; this
       gate must align with it.
@@ -82263,7 +82277,8 @@ phases:
       <side_effect_budget>
 
       Allowed: read plan evidence, source diffs, dotfiles diff, and runtime outputs.
-      Forbidden: modifying product code, dotfiles, or plan state from this gate step.
+      Forbidden: modifying product code, dotfiles, runtime user files, or plan state
+      from this gate step.
 
       </side_effect_budget>
 
@@ -82271,21 +82286,27 @@ phases:
 
       - Check that all runtime proof rows include raw command output, not summaries.
 
-      - Check invalid existing map fails closed and does not silently fallback.
+      - Check invalid existing model-map fails closed and does not silently fallback.
 
-      - Check ambiguous dotfiles mappings are not converted into guessed targets.
+      - Check legacy tool-policy fallback remains available only when env and new
+      canonical path are absent.
 
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
       - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
-      --case no-config`.
+      --case exact-hit` and confirm `openai/gpt-5.5` maps to `openai-codex/gpt-5.5`
+      through `modelRegistry.find`.
 
       - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
-      --case missing-env-file`.
+      --case prefix-hit` and confirm `openrouter/google/gemini-3.1-pro-preview` maps
+      to `openrouter/google/gemini-3.1-pro-preview` without vendor guessing.
 
       - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
-      --case mapped-hit`.
+      --case conflict-invalid` and confirm `LARVA_MODEL_MAP_INVALID`.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case missing-config` and confirm first-slash fallback.
 
       - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case invalid-config` and confirm `LARVA_MODEL_MAP_INVALID`.
@@ -82294,10 +82315,25 @@ phases:
       --case mapped-unavailable` and confirm `LARVA_MODEL_UNAVAILABLE`.
 
       - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
-      --case startup-and-slash` and confirm shared resolver path.
+      --case startup-persona` and `--case slash-switch` and confirm shared resolver
+      path.
 
-      - [ ] Review `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and confirm
-      no unrelated dotfiles semantic changes.
+      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      --case slash-switch-after-startup` and confirm no resolver divergence.
+
+      - [ ] Review raw output from `node contrib/pi-extension/test-tool-policy-paths.mjs
+      --case env-override`, `--case new-path-exists`, `--case legacy-fallback`, and
+      `--case no-file-empty`.
+
+      - [ ] Review `pi --list-models --offline` evidence for all mapped targets or
+      explicit compatible skip/xfail reason.
+
+      - [ ] Review `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` output.
+
+      - [ ] Review `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and any
+      adjacent `agent/` template diff; confirm no unrelated dotfiles semantic changes
+      and no runtime `~/.pi` writes.
 
       - [ ] Review `git diff -- contrib/pi-extension/larva.ts contrib/pi-extension/README.md
       design/pi-coding-agent-integration.md` and confirm product/docs scope is limited.
@@ -82319,45 +82355,38 @@ phases:
 
       ## Gate Decision Basis
 
-      | requirement_id | evidence_ref | proof_status | unresolved_status | blocks_downstream
-      | rationale |
+      | requirement_ref | evidence_ref | checklist_item | proof_status | unresolved_reason
+      | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | <R/T/DOC row> | <artifact> | <item> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED |
+      <if any> | <path> | <basis> |
 
 
-      ## Evidence Reviewed
+      ## Runtime Evidence Reviewed
 
-      - contract evidence: <step evidence ref>
+      - model_map_cases: <raw output refs>
 
-      - dotfiles diff: <raw diff/ref>
+      - tool_policy_cases: <raw output refs>
 
-      - implementation diff: <raw diff/ref>
+      - pi_offline_registry: <raw output refs>
 
-      - runtime harness outputs: <raw outputs/ref>
-
-      - docs diff: <raw diff/ref>
+      - pytest_output: <raw output refs>
 
 
-      ## Reject Conditions Checked
+      ## Gate Decision
 
-      - source_token_only_proof: PASS/FAIL
+      - [ ] OPEN: Phase passes gate, proceed to downstream Pi gates.
 
-      - mock_only_proof: PASS/FAIL
+      - [ ] BLOCKED: Blocking proof gaps or defects remain.
 
-      - invalid_map_silent_fallback: PASS/FAIL
-
-      - fuzzy_or_guessing_present: PASS/FAIL
-
-      - persona_schema_changed: PASS/FAIL
-
-      - startup_slash_divergence: PASS/FAIL
-
-
-      ## Final Decision
-
-      - [ ] OPEN
-
-      - [ ] BLOCKED
-
-      Blocking issues: <list or none>'
+      '
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - /Users/tefx/dotfiles/agent/models.yaml
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.contract
     - pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
