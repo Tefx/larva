@@ -82645,7 +82645,7 @@ phases:
       COMPLETE, uncertainty_sources [].'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
-  status: pending
+  status: in_progress
   gate: Adapter-local Pi configuration is accepted only when the full controlled model-map
     language is specified, implemented, documented, and proven through runtime harness
     cases for exact hit, prefix hit, conflict invalid, missing config, invalid config,
@@ -82665,7 +82665,7 @@ phases:
   steps:
   - id: pi-adapter-local-model-map-config-2026-06-01.contract
     name: contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\nagent_source: default\n\
       \nACCEPTED CONTRACT ARTIFACT:\nDefine the Pi adapter-local configuration contract\
       \ without changing canonical PersonaSpec schema or opifex shared contracts.\n\
@@ -82806,6 +82806,8 @@ phases:
     - contrib/pi-extension/README.md
     - design/pi-coding-agent-integration.md
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-05-31T18:43:38.639881+00:00'
   - id: pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
     name: dotfiles_model_inventory
     status: pending
