@@ -82124,7 +82124,7 @@ phases:
       commands.'
   - id: fix_real_pi_rpc_liveness_blockers
     name: Fix real Pi RPC liveness semantic blockers
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: default
@@ -82342,6 +82342,8 @@ phases:
     depends_on:
     - supplemental_runtime_tests
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-05-31T18:04:00.987714+00:00'
   - id: retest_real_pi_rpc_liveness_semantics
     name: Retest real Pi RPC liveness semantic closure
     status: pending
