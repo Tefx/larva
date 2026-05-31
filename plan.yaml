@@ -82823,7 +82823,7 @@ phases:
       side effects.'
   - id: pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
     name: dotfiles_model_inventory
-    status: pending
+    status: claimed
     description: "step_type: implementation\nagent_source: default\n\nTARGET STATE:\n\
       `/Users/tefx/dotfiles/agent/models.yaml` keeps its existing abstract-alias semantics\
       \ while gaining explicit source material sufficient for a later execution agent\
@@ -82929,6 +82929,8 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.contract
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-05-31T19:05:46.291649+00:00'
   - id: pi-adapter-local-model-map-config-2026-06-01.extension-impl
     name: extension_impl
     status: done
