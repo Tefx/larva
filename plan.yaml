@@ -80833,7 +80833,7 @@ phases:
   steps:
   - id: proof_contract
     name: Define Pi runtime liveness and persona Tab autocomplete proof contract
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       agent_source: default (user forbids larva MCP/tela_larva_* discovery; using
@@ -81016,6 +81016,69 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-31T17:24:25.785990+00:00'
+    done_at: '2026-05-31T17:35:24.771364+00:00'
+    evidence: '## refs Read Confirmation
+
+      - contrib/pi-extension/larva.ts — read by worker; key passage: command-level
+      `larva-persona` registration and `completePersonaIds(prefix, ctx)` exact-prefix
+      candidate shape.
+
+      - contrib/pi-extension/README.md — read by worker; key passage: `/larva-persona
+      <persona-id>` switch behavior and Pi integration non-goals.
+
+      - README.md — read by worker; key passage: `larva pi` runtime switch behavior
+      and PersonaSpec non-goals.
+
+
+      ## Completion Evidence
+
+      - Worker evidence mapped PI-TAB-001..PI-TAB-011 to owning steps/checklist/evidence
+      fields; direct `getArgumentCompletions("vectl")` and source-token search explicitly
+      marked insufficient for Tab runtime completion.
+
+      - Worker implemented and committed branch proof artifacts: commit `02d94e5`
+      after conflict-resolved rebase; squash-merged to main as `840b3e6d` (`[vectl]
+      step-proof_contract completed`).
+
+      - Scope/deviation note: branch also included the allowed side-effect budget
+      artifacts for autocomplete wrapper/tests/docs. Rebase conflict in `contrib/pi-extension/larva.ts`
+      was resolved by `conflict-resolver`, preserving main Pi runtime-context/keyed-status
+      behavior plus autocomplete wrapper behavior.
+
+
+      ## Checklist Receipt
+
+      - Evidence includes PI-TAB-001..PI-TAB-011 with every row mapped to an owning
+      step, checklist item, and evidence field: PROVEN.
+
+      - Evidence explicitly states that direct `getArgumentCompletions("vectl")` and
+      source-token search are insufficient to close PI-TAB runtime completion: PROVEN.
+
+      - Evidence preserves existing PI-LIVE-001..PI-LIVE-009 obligations or explicitly
+      references their existing ownership in this phase: PROVEN.
+
+      - Evidence names exact downstream commands/scripts: PROVEN.
+
+
+      ## Mainline Verification
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl && node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular
+      --prefix vectl && node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input
+      && node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure` — exit
+      0; force/regular returned vectl candidates with string values; delegate-other-input
+      delegated to base provider; list-failure returned null/no crash.
+
+      - `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -v` — exit 0; 4 passed.
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -k ''autocomplete or command_registration or completion or persona_list_bridge''
+      -v && node -e ''import("./contrib/pi-extension/larva.ts").then(() => console.log("ok"))''`
+      — exit 0; 6 passed, import ok.
+
+      - Pre-commit hooks during squash commit: INVAR.md Protection passed; Invar Guard
+      passed.'
   - id: supplemental_runtime_tests
     name: Add supplemental Pi runtime smoke tests and event harness
     status: pending
