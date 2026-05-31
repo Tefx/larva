@@ -143,7 +143,13 @@ async function runPiRpc(evidence, { initialPersona, commands = [] } = {}) {
   evidence.rpc.exit = await Promise.race([closePromise, new Promise((resolveWait) => setTimeout(() => resolveWait({ timeout: true }), 1_500))]);
   evidence.rpc.supported = evidence.rpc.events.some((event) => event?.type === "extension_ui_request") || evidence.rpc.responses.some((response) => response && response.timeout !== true);
   evidence.rpc.uiRequests = evidence.rpc.events.filter((event) => event?.type === "extension_ui_request");
-  if (!evidence.rpc.supported) evidence.rpc.limitation = "Current Pi RPC did not expose extension UI/custom command surfaces during this smoke run.";
+  if (!evidence.rpc.supported && evidence.rpc.stderr.trim().length > 0) {
+    evidence.rpc.loadFailure = true;
+    evidence.rpc.limitation = "Pi RPC emitted stderr without observable extension UI/custom command surfaces; treating as plugin/runtime failure.";
+  } else if (!evidence.rpc.supported) {
+    evidence.rpc.loadFailure = false;
+    evidence.rpc.limitation = "Current Pi RPC did not expose extension UI/custom command surfaces during this smoke run.";
+  }
   return evidence.rpc;
 }
 

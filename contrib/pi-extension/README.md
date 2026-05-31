@@ -144,6 +144,31 @@ node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure
 uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete -v
 ```
 
+## Supplemental local/CI runtime gate
+
+Pi extension work is not complete with source-token contract checks or Invar
+alone. Run the supplemental runtime gate before handing off Pi extension changes:
+
+```bash
+uv run pytest tests/shell/test_pi_extension_real_runtime.py -v
+```
+
+CI runs the combined gate so legacy contract coverage and supplemental runtime
+coverage stay distinct and additive:
+
+```bash
+uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py -v
+```
+
+The supplemental gate uses `--offline` runtime scenarios and the deterministic
+fake Larva CLI bridge under `tests/fixtures/pi/fake-larva-cli.mjs`; it does not
+require live network access or session credentials. If the real Pi binary is not
+available or cannot report an extension flag, real-Pi scenarios skip with the
+captured availability evidence. If Pi is present but its RPC runtime does not
+expose extension UI/custom-command observability, those scenarios xfail with RPC
+evidence. Plugin load, slash-command liveness, and other product/runtime failures
+must fail the gate rather than being hidden behind unconditional skips.
+
 ## `larva_subagent` custom tool
 
 When the active parent persona and Pi tool policy allow it, the extension exposes

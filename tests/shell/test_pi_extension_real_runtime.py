@@ -82,11 +82,29 @@ def _skip_if_pi_absent(payload: dict[str, Any]) -> None:
 def _xfail_if_rpc_surface_hidden(payload: dict[str, Any]) -> None:
     _skip_if_pi_absent(payload)
     rpc = payload.get("rpc", {})
+    assert rpc.get("loadFailure") is not True, (
+        "Pi binary is present but plugin/RPC startup failed; "
+        f"rpc evidence={json.dumps(rpc, sort_keys=True)}"
+    )
     if rpc.get("supported") is not True:
         pytest.xfail(
             "current Pi RPC did not expose extension UI/custom command surfaces; "
             f"rpc evidence={json.dumps(rpc, sort_keys=True)}"
         )
+
+
+def test_rpc_skip_xfail_policy_does_not_hide_plugin_load_failure() -> None:
+    payload = {
+        "pi": {"available": True, "binary": "pi", "extensionFlag": "-e"},
+        "rpc": {
+            "supported": False,
+            "loadFailure": True,
+            "stderr": "failed to load contrib/pi-extension/larva.ts",
+        },
+    }
+
+    with pytest.raises(AssertionError, match="plugin/RPC startup failed"):
+        _xfail_if_rpc_surface_hidden(payload)
 
 
 def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
