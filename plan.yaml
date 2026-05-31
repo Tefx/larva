@@ -81344,3 +81344,140 @@ phases:
     includes real/minimal Pi runtime harness output rather than source-token checks.
   depends_on:
   - pi_runtime_liveness_hardening_20260601
+  steps:
+  - id: pi-adapter-local-model-map-config-2026-06-01.contract
+    name: contract
+    status: pending
+    description: 'step_type: contract
+
+      contract_purity: ENFORCED
+
+      agent_source: default
+
+
+      ACCEPTED CONTRACT ARTIFACT:
+
+      Define the Pi adapter-local model-map contract without changing canonical PersonaSpec
+      schema. The contract must pin:
+
+      - default path: `~/.pi/larva/model-map.json`
+
+      - env override: `LARVA_PI_MODEL_MAP_FILE=/absolute/or/relative/path/to/model-map.json`
+
+      - schema: JSON object keyed by exact `PersonaSpec.model` strings, where each
+      value is `{ "provider": string, "model_id": string }`
+
+      - ownership: Larva Pi extension adapter-local only; not opifex, not PersonaSpec,
+      not Pi global settings
+
+      - missing file: preserve current behavior from `parseModel` splitting on first
+      `/`
+
+      - file exists + exact key hit: call `ctx.modelRegistry.find(provider, model_id)`
+      with mapped values
+
+      - file exists + key miss: preserve current split behavior
+
+      - invalid JSON/schema: throw/project `LARVA_MODEL_MAP_INVALID`
+
+      - mapped values valid but Pi registry miss or `pi.setModel` rejects: keep `LARVA_MODEL_UNAVAILABLE`
+
+      - non-goals: no fuzzy matching, no auto-guessing, no PersonaSpec Pi fields,
+      no multi-layer complex config, no canonical schema changes
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user brief: adapter-local optional model map | map is adapter-local only
+      | pi-adapter-local-model-map-config-2026-06-01.contract | contract pins ownership/non-goals
+      | contract_sections.ownership | OWNED | n/a |
+
+      | R2 | user brief: default path/env override | path and env override specified
+      | pi-adapter-local-model-map-config-2026-06-01.contract | path/env schema documented
+      | contract_sections.path_env | OWNED | n/a |
+
+      | R3 | user brief: missing file fallback | preserve split behavior | pi-adapter-local-model-map-config-2026-06-01.contract
+      | fallback semantics documented | contract_sections.fallback | OWNED | n/a |
+
+      | R4 | user brief: invalid structure error | stable invalid-map error | pi-adapter-local-model-map-config-2026-06-01.contract
+      | LARVA_MODEL_MAP_INVALID documented | contract_sections.errors | OWNED | n/a
+      |
+
+      | R5 | user brief: mapped unavailable error | preserve unavailable error | pi-adapter-local-model-map-config-2026-06-01.contract
+      | LARVA_MODEL_UNAVAILABLE documented | contract_sections.errors | OWNED | n/a
+      |
+
+
+      <side_effect_budget>
+
+      Allowed: add contract notes/types/stubs/tests under `contrib/pi-extension/`
+      that define adapter-local model-map behavior. Forbidden: modifying PersonaSpec
+      schema, opifex contracts, Pi global settings, or product runtime logic beyond
+      stubs/contracts in this step.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Verify the contract uses exact string keys and explicitly rejects fuzzy/nearest
+      model matching.
+
+      - Verify mapped `model_id` preserves embedded slashes after provider separation.
+
+      - Verify startup persona and `/larva-persona` switch are specified as consumers
+      of one shared resolution path.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Run `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE"
+      contrib/pi-extension/larva.ts contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+      and cite the current model projection passages.
+
+      - [ ] Contract artifact explicitly includes `~/.pi/larva/model-map.json`, `LARVA_PI_MODEL_MAP_FILE`,
+      exact-key JSON schema, missing-file/key-miss fallback, `LARVA_MODEL_MAP_INVALID`,
+      and `LARVA_MODEL_UNAVAILABLE`.
+
+      - [ ] Contract artifact explicitly states no PersonaSpec schema change and no
+      fuzzy/automatic guessing.
+
+      - [ ] Contract artifact maps startup persona and `/larva-persona` switch to
+      the same future resolver.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
+
+      - design/pi-coding-agent-integration.md — <key passage or NOT READ: reason>
+
+
+      ## Contract Sections
+
+      - ownership: <adapter-local / no schema change>
+
+      - path_env: <default path + env override>
+
+      - schema: <exact JSON shape>
+
+      - fallback: <missing file + key miss>
+
+      - errors: <invalid map + unavailable mapped model>
+
+      - consumers: <startup persona + /larva-persona shared resolver>
+
+
+      ## Command Evidence
+
+      - command: `grep -n "modelRegistry.find\|parseModel\|LARVA_MODEL_UNAVAILABLE"
+      contrib/pi-extension/larva.ts contrib/pi-extension/README.md design/pi-coding-agent-integration.md`
+
+      - raw_stdout: <paste>
+
+      - exit_code: <code>'
+    agent: software-architect
