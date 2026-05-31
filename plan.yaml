@@ -81297,7 +81297,7 @@ phases:
       - [ ] The evidence includes raw stdout/stderr or saved JSON artifacts for every
       scenario, not only a summary.'
     depends_on:
-    - supplemental_runtime_tests
+    - retest_real_pi_rpc_liveness_semantics
     agent: integration-verifier
   - id: ci_local_gate_wiring
     name: Wire supplemental Pi runtime tests into local and CI gate
