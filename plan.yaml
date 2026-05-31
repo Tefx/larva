@@ -80822,7 +80822,7 @@ phases:
       observed. |'
 - id: pi_runtime_liveness_hardening_20260601
   name: Pi Runtime Liveness Gate Hardening 2026-06-01
-  status: in_progress
+  status: done
   gate: Supplemental Pi runtime liveness is not accepted from source-token, mock-only,
     or assumption tests. The phase opens only when real Pi RPC evidence or explicitly
     recorded Pi-binary skip/xfail conditions prove plugin load, command visibility/execution,
@@ -81418,7 +81418,7 @@ phases:
       not product failures; deviations none.'
   - id: gate
     name: Gate Pi runtime liveness and Larva persona Tab autocomplete hardening
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check; protects all downstream Pi plugin Done definitions
@@ -81599,6 +81599,20 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-05-31T18:31:51.554218+00:00'
+    done_at: '2026-05-31T18:42:34.392544+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-gate into main as c93b7f5
+      ([vectl] step-gate completed). Checklist verification was fully checked before
+      completion. MAINLINE_FINAL_STATE_GATE_PASSED: ran all gate commands after merge:
+      runtime smoke availability/get-commands/slash-status(vectl-planner)/startup-status/failure-path
+      all exited 0; autocomplete smoke tab-force/tab-regular/delegate-other-input/list-failure
+      all exited 0 with argument-prefix/candidate/delegation/null-no-crash evidence;
+      `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -v` => 4 passed; `uv run pytest tests/shell/test_pi_extension_real_runtime.py
+      -v` => 16 passed; `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -v` => 63 passed. Gate reviewer evidence: refs read confirmed, PI-LIVE-001..009
+      and PI-TAB-001..011 PROVEN, blockers [], headline PASS, verdict PASS, proof_gap_status
+      NONE, blocking_status CLOSED, gate_open_allowed true, orchestrator_action_hint
+      COMPLETE.'
   - id: pi_tab_autocomplete_extension_impl
     name: Implement Larva persona TUI autocomplete provider wrapper
     status: done
@@ -82631,7 +82645,7 @@ phases:
       COMPLETE, uncertainty_sources [].'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
-  status: locked
+  status: pending
   gate: Adapter-local Pi configuration is accepted only when the full controlled model-map
     language is specified, implemented, documented, and proven through runtime harness
     cases for exact hit, prefix hit, conflict invalid, missing config, invalid config,
