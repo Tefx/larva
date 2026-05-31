@@ -82364,7 +82364,7 @@ phases:
       topology), preserved sticky constraints, and reported no deviations.'
   - id: retest_real_pi_rpc_liveness_semantics
     name: Retest real Pi RPC liveness semantic closure
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -82572,6 +82572,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-05-31T18:13:11.111689+00:00'
+    done_at: '2026-05-31T18:18:56.844252+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-retest_real_pi_rpc_liveness_semantics
+      into main as 2dac666 ([vectl] step-retest_real_pi_rpc_liveness_semantics completed).
+      Checklist verification was fully checked before completion. MAINLINE_FINAL_STATE_GATE_PASSED:
+      ran `node scripts/pi-extension-runtime-smoke.mjs --scenario availability --json`
+      => exit 0 with Pi available and extension flag `-e`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario get-commands --json` => exit 0 with real RPC plugin load and `larva-persona`
+      in commands; ran `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status
+      --persona ok --json` => exit 0 with `statusKey=larva`, `statusText=larva: ok`,
+      and notify `Larva persona active: ok`; ran `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario startup-status --persona startup --json` => exit 0 with `statusText=larva:
+      startup`; ran `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path
+      --persona missing --json` => exit 0 with slash prompt ids `prompt-missing`/`prompt-unparseable`
+      and non-silent error notifies. Worker evidence committed 19 raw receipt artifacts,
+      reported verdict PASS, blockers [], gate_open_allowed true, orchestrator_action_hint
+      COMPLETE, uncertainty_sources [].'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
