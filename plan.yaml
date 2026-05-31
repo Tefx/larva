@@ -82931,7 +82931,7 @@ phases:
     agent: software-architect
   - id: pi-adapter-local-model-map-config-2026-06-01.extension-impl
     name: extension_impl
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -83142,6 +83142,60 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-05-31T18:52:31.744707+00:00'
+    done_at: '2026-05-31T19:01:26.528513+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi-adapter-local-model-map-config-2026-06-01.extension-impl
+      into main as 6b86f9f.
+
+
+      Mainline final-state verification (after merge):
+
+      1) `grep -n "LARVA_PI_MODEL_MAP_FILE\|LARVA_MODEL_MAP_INVALID\|prefix_rules\|modelRegistry.find\|LARVA_PI_TOOL_POLICY_FILE\|tool-policy.json"
+      contrib/pi-extension/larva.ts` exit 0 with matching lines for env names, model-map
+      invalid handling, prefix_rules parsing, modelRegistry.find documentation token,
+      and tool-policy canonical/legacy paths.
+
+      2) `node contrib/pi-extension/test-model-map-unit.mjs` exit 0:
+
+      - exact hit: PASS ["openai-codex","gpt-5.5"]
+
+      - prefix hit: PASS ["openrouter","google/gemini-3.1-pro-preview"]
+
+      - same-length prefix conflict invalid: PASS LARVA_MODEL_MAP_INVALID
+
+      - missing config fallback: PASS ["provider","model/with/slash"]
+
+      - invalid config: PASS LARVA_MODEL_MAP_INVALID
+
+      - mapped unavailable: PASS LARVA_MODEL_UNAVAILABLE
+
+      - startup persona: PASS ["openai-codex","gpt-5.5"]
+
+      - slash switch: PASS ["openrouter","google/gemini-3.1-pro-preview"]
+
+      - slash-switch-after-startup behavior: PASS [["openai-codex","gpt-5.5"],["openrouter","google/gemini-3.1-pro-preview"]]
+
+      - model-map unit: PASS
+
+      3) `node contrib/pi-extension/test-tool-policy-paths.mjs` exit 0:
+
+      - env override: PASS ["read"]
+
+      - new canonical path exists: PASS ["bash"]
+
+      - legacy fallback: PASS ["bash"]
+
+      - no file => new canonical empty policy: PASS ["read","bash"]
+
+      - tool-policy paths: PASS
+
+      4) `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` exit 0: 52 passed in 0.73s.
+
+
+      Checklist receipt: all five verification checklist items toggled to [x] by orchestrator
+      before completion. Worker reported no forbidden side effects; branch diff changed
+      only contrib/pi-extension/larva.ts and two Pi-extension node harness files;
+      no plan.yaml or runtime user files were modified by the worker.'
   - id: pi-adapter-local-model-map-config-2026-06-01.runtime-tests
     name: runtime_tests
     status: pending
