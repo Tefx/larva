@@ -82340,6 +82340,214 @@ phases:
     depends_on:
     - real_pi_rpc_liveness
     agent: frontend-engineer
+  - id: retest_real_pi_rpc_liveness_semantics
+    name: Retest real Pi RPC liveness semantic closure
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check; protects `pi_runtime_liveness_hardening_20260601.gate`
+      and downstream Pi runtime Done definitions.
+
+      agent_source: default
+
+
+      PROOF ARTIFACT:
+
+      As an independent runtime verifier, rerun the real Pi RPC liveness success and
+      failure scenarios after `fix_real_pi_rpc_liveness_blockers`. This retest is
+      the semantic closure point for the salvaged `real_pi_rpc_liveness` failure artifacts;
+      it must produce raw JSON/stdout/stderr receipts and explicit closure fields.
+
+
+      SCENARIOS TO RERUN:
+
+      1. `node scripts/pi-extension-runtime-smoke.mjs --scenario availability --json`
+
+      2. `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands --json`
+
+      3. `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      ok --json`
+
+      4. `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status --persona
+      startup --json`
+
+      5. `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path --persona
+      missing --json`
+
+
+      EXPECTED SEMANTICS:
+
+      - Availability succeeds or emits explicit `SKIP_NO_PI_BINARY` with command-not-found
+      evidence.
+
+      - `get-commands` proves real Pi RPC plugin load and command `larva-persona`
+      visibility.
+
+      - `slash-status --persona ok` proves `statusKey=larva`, `statusText=larva: ok`,
+      and notify `Larva persona active: ok`.
+
+      - `startup-status --persona startup` proves `statusText=larva: startup` after
+      real `session_start`.
+
+      - `failure-path --persona missing` proves slash-command missing/unparseable
+      failure topology with stable non-silent notify/error/RPC observation; startup-only
+      `get_state` evidence is insufficient.
+
+
+      CONSTRAINTS:
+
+      - Use the real Pi process for scenarios 2-5 unless Pi binary is unavailable.
+
+      - Do not accept mock-only/source-token proof as real Pi liveness.
+
+      - Do not treat `verdict: FAIL`, non-empty `blockers`, or `orchestrator_action_hint:
+      DO_NOT_COMPLETE` as closure.
+
+      - Preserve sticky constraints: Pi namespace `~/.pi/larva/`, no PersonaSpec schema
+      changes, no prompt catalogue/cache/fuzzy/wildcard/regex model guessing.
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | PI-LIVE-FIX-001 | slash persona `ok` activates through real Pi RPC | raw JSON/stdout
+      proving keyed status and active notify | retest evidence artifact | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest loop if not PROVEN | gate blocks unless PROVEN or Pi unavailable
+      skip |
+
+      | PI-LIVE-FIX-002 | startup persona `startup` activates through session start
+      | raw JSON/stdout proving `statusText=larva: startup` | retest evidence artifact
+      | PROVEN/UNPROVEN/BLOCKED | fix/retest loop if not PROVEN | gate blocks unless
+      PROVEN or Pi unavailable skip |
+
+      | PI-LIVE-FIX-003 | missing/unparseable persona slash-command failure is non-silent
+      | raw JSON/stdout proving slash-command failure topology | retest evidence artifact
+      | PROVEN/UNPROVEN/BLOCKED | fix/retest loop if not PROVEN | gate blocks unless
+      PROVEN or Pi unavailable skip |
+
+      | PI-LIVE-FIX-004 | runtime proof remains real Pi, not mock/source-token | command
+      lines, Pi version/path, raw RPC evidence | retest evidence artifact | PROVEN/UNPROVEN/BLOCKED
+      | fix/retest loop if not PROVEN | gate blocks unless PROVEN or Pi unavailable
+      skip |
+
+
+      <side_effect_budget>
+
+      Allowed: run local real Pi smoke commands and write evidence artifacts under
+      test output locations.
+
+      Forbidden: modify product source, alter plan state, complete/defer steps, rewrite
+      salvaged failure artifacts, approve mock-only/source-token proof, or greenwash
+      failed semantic output.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      1. Compare the new raw receipts against the exact prior failure strings `LARVA_MODEL_UNAVAILABLE:
+      Model unavailable fake/model` and `startup unavailable (LARVA_MODEL_UNAVAILABLE)`;
+      report any recurrence as blocker.
+
+      2. Confirm the failure-path proof uses slash-command prompt/RPC topology and
+      not only startup `get_state` initialization.
+
+      3. Confirm result fields are internally consistent: `verdict: PASS`, `blockers:
+      []`, `gate_open_allowed: true`, and `orchestrator_action_hint` is not `DO_NOT_COMPLETE`.
+
+      </risk_probes>
+
+
+      ## Checklist
+
+      - [ ] Availability scenario receipt includes Pi binary path/version or explicit
+      `SKIP_NO_PI_BINARY` evidence.
+
+      - [ ] `get-commands` receipt proves real plugin load and `larva-persona` visibility.
+
+      - [ ] `slash-status --persona ok` receipt proves `statusKey=larva`, `statusText=larva:
+      ok`, and notify `Larva persona active: ok`.
+
+      - [ ] `startup-status --persona startup` receipt proves `statusText=larva: startup`
+      after real session start.
+
+      - [ ] `failure-path --persona missing` receipt proves slash-command missing/unparseable
+      failure topology with stable non-silent observation.
+
+      - [ ] Semantic closure fields are present and green: `verdict: PASS`, `blockers:
+      []`, `gate_open_allowed: true`, and `orchestrator_action_hint` does not say
+      `DO_NOT_COMPLETE`.
+
+      - [ ] Raw JSON/stdout/stderr artifacts are preserved for every scenario and
+      include enough data for gate review to independently verify the claims.'
+    verification: '- [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario
+      availability --json` and attach raw stdout/stderr/exit code.
+
+      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands
+      --json` and attach raw stdout/stderr/exit code.
+
+      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status
+      --persona ok --json` and attach raw stdout/stderr/exit code proving keyed status
+      and active notify.
+
+      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status
+      --persona startup --json` and attach raw stdout/stderr/exit code proving startup
+      keyed status.
+
+      - [ ] Run `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path
+      --persona missing --json` and attach raw stdout/stderr/exit code proving slash-command
+      failure topology.
+
+      - [ ] Evidence explicitly reports `verdict`, `blockers`, `gate_open_allowed`,
+      and `orchestrator_action_hint` and maps them to gate OPEN/BLOCK basis.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage or NOT READ:\
+      \ reason>\n- tests/output/real_pi_rpc_liveness/ — <prior failure artifact names/key\
+      \ passages or NOT READ: reason>\n\n## Real Pi Runtime Receipt\nFor each scenario,\
+      \ provide command, exit_code, raw_stdout, raw_stderr, and artifact path.\n\n\
+      ### availability\ncommand: `node scripts/pi-extension-runtime-smoke.mjs --scenario\
+      \ availability --json`\nexit_code: <code>\nraw_stdout: |\n  <paste raw stdout>\n\
+      raw_stderr: |\n  <paste raw stderr>\nartifact: <path>\n\n### get-commands\n\
+      command: `node scripts/pi-extension-runtime-smoke.mjs --scenario get-commands\
+      \ --json`\nexit_code: <code>\nraw_stdout: |\n  <paste raw stdout>\nraw_stderr:\
+      \ |\n  <paste raw stderr>\nartifact: <path>\n\n### slash-status ok\ncommand:\
+      \ `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona\
+      \ ok --json`\nexit_code: <code>\nraw_stdout: |\n  <paste raw stdout>\nraw_stderr:\
+      \ |\n  <paste raw stderr>\nartifact: <path>\nobserved_statusKey: <value>\nobserved_statusText:\
+      \ <value>\nobserved_notify: <value>\n\n### startup-status startup\ncommand:\
+      \ `node scripts/pi-extension-runtime-smoke.mjs --scenario startup-status --persona\
+      \ startup --json`\nexit_code: <code>\nraw_stdout: |\n  <paste raw stdout>\n\
+      raw_stderr: |\n  <paste raw stderr>\nartifact: <path>\nobserved_statusText:\
+      \ <value>\n\n### failure-path missing\ncommand: `node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario failure-path --persona missing --json`\nexit_code: <code>\nraw_stdout:\
+      \ |\n  <paste raw stdout>\nraw_stderr: |\n  <paste raw stderr>\nartifact: <path>\n\
+      failure_topology: <slash-command prompt/RPC path proven>\nnon_silent_signal:\
+      \ <notify/error/RPC error observed>\n\n## Semantic Closure Fields\nverdict:\
+      \ PASS|FAIL|SKIP\nblockers: []\ngate_open_allowed: true|false\norchestrator_action_hint:\
+      \ <must not be DO_NOT_COMPLETE for PASS>\n\n## Behavioral Proof Register Completion\n\
+      | requirement_ref | status | evidence_ref | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- |\n| PI-LIVE-FIX-001 | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <artifact> | <path> | <OPEN/BLOCK basis> |\n| PI-LIVE-FIX-002 | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <artifact> | <path> | <OPEN/BLOCK basis> |\n| PI-LIVE-FIX-003 | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <artifact> | <path> | <OPEN/BLOCK basis> |\n| PI-LIVE-FIX-004 | <PROVEN/UNPROVEN/BLOCKED>\
+      \ | <artifact> | <path> | <OPEN/BLOCK basis> |\n\n## Checklist Receipt\n- availability:\
+      \ satisfied|failed|blocked|unobserved — <evidence>\n- get-commands: satisfied|failed|blocked|unobserved\
+      \ — <evidence>\n- slash-status ok: satisfied|failed|blocked|unobserved — <evidence>\n\
+      - startup-status startup: satisfied|failed|blocked|unobserved — <evidence>\n\
+      - failure-path missing: satisfied|failed|blocked|unobserved — <evidence>\n-\
+      \ semantic closure fields: satisfied|failed|blocked|unobserved — <evidence>"
+    depends_on:
+    - fix_real_pi_rpc_liveness_blockers
+    agent: integration-verifier
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
   status: locked
