@@ -84580,3 +84580,13 @@ phases:
 
       Checklist receipt: all eight focused regate checklist items are [x]. No forbidden
       side effects; no artifacts modified.'
+- id: pi-model-map-runtime-and-autocomplete-2026-06-01
+  name: Pi Model Map Runtime Completion and Persona Autocomplete
+  status: pending
+  gate: Phase accepted only when docs state the runtime model-map/autocomplete contract,
+    ~/.pi/larva/model-map.json exists or is updated exactly as requested, every mapping
+    is proven against `pi --list-models --offline`, autocomplete behavior and caching
+    are tested, and review confirms no PersonaSpec/opifex contract changes or resolver
+    wildcard/regex/fuzzy behavior were introduced.
+  depends_on:
+  - pi-adapter-local-model-map-config-2026-06-01
