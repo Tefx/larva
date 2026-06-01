@@ -66,8 +66,8 @@ Resolution rules:
   invalid and must surface `LARVA_MODEL_MAP_INVALID`.
 - Prefix rules only strip `from_prefix` and prepend `to_model_id_prefix` to the
   remaining model string. Embedded slashes in the remainder are preserved.
-- Wildcards, regex, fuzzy matching, nearest-model behavior, and vendor guessing
-  are forbidden.
+- Wildcards, regex, fuzzy matching, nearest-model behavior, and automatic guessing
+  (including vendor guessing) are forbidden.
 - After exact or prefix mapping, call Pi
   `modelRegistry.find(provider, model_id)` with the mapped values.
 - If mapped values are valid but Pi registry lookup misses, or if `pi.setModel`
@@ -324,11 +324,12 @@ child completes during the grace period, the normal success result is returned.
 
 Do not infer these guarantees from `larva pi` or this extension:
 
-- No PersonaSpec schema changes and no Pi-specific policy fields in PersonaSpec.
+- No PersonaSpec schema changes, Pi-specific PersonaSpec fields, or Pi-specific
+  policy fields in PersonaSpec.
 - No opifex shared-contract changes for Pi model aliases or tool policy.
 - No automatic migration or writes to user config files under `~/.pi`.
-- No wildcard, regex, fuzzy, nearest-model, or vendor-guessing semantics for
-  model-map resolution.
+- No wildcard, regex, fuzzy, nearest-model, automatic guessing, or
+  vendor-guessing semantics for model-map resolution.
 - No `ask` permission action; tool policy is exact `allow`/`deny` only.
 - No Pi settings fallback for extension loading.
 - No worktree isolation, file locking, merge management, sandboxing, or credential

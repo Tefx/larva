@@ -36,6 +36,7 @@ must not recreate OpenCode's full runtime or add unrelated workspace management.
 - No `PersonaSpec` schema changes.
 - No `tools`, `side_effect_policy`, local policy, active persona, variant, or Pi
   state fields inside canonical PersonaSpec JSON.
+- No Pi-specific PersonaSpec fields.
 - No `ask` permission action. Tool rules are only `allow` and `deny`.
 - No worktree isolation, file locking, merge management, sandboxing, or credential
   isolation.
@@ -284,11 +285,11 @@ Model-map resolution rules:
   Pi model.
 - Prefix rules may only strip `from_prefix` and prepend `to_model_id_prefix` to
   the remaining model string; embedded slashes in the remainder are preserved.
-- Wildcards, regex, fuzzy matching, nearest-model behavior, and vendor guessing
-  are forbidden.
-- After exact or prefix mapping, call
-  `ctx.modelRegistry.find(provider, model_id)` with the mapped values, then call
-  `pi.setModel(model)`.
+- Wildcards, regex, fuzzy matching, nearest-model behavior, and automatic guessing
+  (including vendor guessing) are forbidden.
+- After exact or prefix mapping, call Pi `modelRegistry.find(provider, model_id)`
+  with the mapped values (via the runtime registry lookup, such as
+  `ctx.modelRegistry.find(provider, model_id)`), then call `pi.setModel(model)`.
 - Mapped values valid but missing from Pi's registry, or rejected by
   `pi.setModel`, remain `LARVA_MODEL_UNAVAILABLE`.
 - Missing model-map file preserves the current fallback: split
