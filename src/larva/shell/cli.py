@@ -327,6 +327,20 @@ def run_cli(
         run_mcp_stdio()
         return 0  # type: ignore[return-value]
 
+    if getattr(args, "command", None) == "pi-model-map":
+        from larva.shell.pi_model_map_cli import pi_model_map_command
+
+        return _emit_result(
+            pi_model_map_command(
+                args,
+                as_json=cast("bool", getattr(args, "as_json", False)),
+                facade=facade,
+            ),
+            as_json=cast("bool", getattr(args, "as_json", False)),
+            stdout=stdout,
+            stderr=stderr,
+        )
+
     return _emit_result(
         _dispatch(args, facade=facade),
         as_json=cast("bool", getattr(args, "as_json", False)),

@@ -303,6 +303,51 @@ def _add_pi_command(subparsers: argparse._SubParsersAction[_CliParser]) -> None:
     )
 
 
+# @shell_orchestration: parser wiring for Pi model map tools
+def _add_pi_model_map_command(subparsers: argparse._SubParsersAction[_CliParser]) -> None:
+    pmm_parser = subparsers.add_parser(
+        "pi-model-map",
+        help="Manage Pi model mappings",
+        description="Helper commands for the Larva Pi extension model map.",
+    )
+    pmm_subparsers = pmm_parser.add_subparsers(
+        dest="pi_model_map_command",
+        required=True,
+        title="subcommands",
+        metavar="SUBCOMMAND",
+    )
+
+    draft_parser = pmm_subparsers.add_parser(
+        "draft",
+        help="Draft a Pi model map based on registry and Pi inventory",
+        description=(
+            "Compare the models used by the current Larva registry with models "
+            "available to Pi, then generate a draft for ~/.pi/larva/model-map.json."
+        ),
+    )
+    draft_parser.add_argument(
+        "--output",
+        metavar="PATH",
+        help="destination path used when writing. Default: ~/.pi/larva/model-map.json",
+    )
+    draft_parser.add_argument(
+        "--model-map",
+        metavar="PATH",
+        help="existing model-map file to merge from. Default is the same path as --output",
+    )
+    draft_parser.add_argument(
+        "--write",
+        action="store_true",
+        help="write the final draft to --output",
+    )
+    draft_parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="never prompt; fail if any required model has an ambiguous target",
+    )
+    _add_json_flag(draft_parser)
+
+
 # @shell_orchestration: parser composition only wires command definitions and flags
 def build_cli_parser() -> Result[_CliParser, object]:
     parser = _CliParser(
@@ -329,6 +374,7 @@ def build_cli_parser() -> Result[_CliParser, object]:
     _add_server_commands(subparsers)
     _add_opencode_command(subparsers)
     _add_pi_command(subparsers)
+    _add_pi_model_map_command(subparsers)
     return Success(parser)
 
 
