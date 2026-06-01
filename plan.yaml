@@ -92609,7 +92609,7 @@ phases:
       none'
   - id: pi_postspec_subagent_ux_runtime_proof_20260602
     name: Prove subagent ToolResult, session helper, and rendering runtime behavior
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -92742,6 +92742,8 @@ phases:
     depends_on:
     - pi_postspec_subagent_ux_impl_20260602
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-06-01T18:23:21.842019+00:00'
   - id: pi_postspec_subagent_ux_gate_20260602
     name: Gate subagent sessions and rendering UX
     status: pending
