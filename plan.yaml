@@ -91385,6 +91385,44 @@ phases:
 
       - [ ] Raw stdout/stderr/RPC/TUI captures or terminal snapshots are included;
       source inspection alone is insufficient.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for verifier>
+
+      - no_change_reason: <required; verifier should normally report no product changes>
+
+
+      ## Client Runtime Receipt
+
+      - surface_class: <CLI/TUI/editor/runtime surface>
+
+      - launch_command_target_version: <exact command/target/Pi version/build>
+
+      - autocomplete_artifacts: </larva-persona and @persona captures or unsupported-hook
+      evidence>
+
+      - prompt_overlay_artifacts: <before_agent_start captures proving Pi context
+      preservation and idempotent marker blocks>
+
+      - raw_captures: <stdout/stderr/RPC/TUI/snapshot refs>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
