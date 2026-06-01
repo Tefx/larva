@@ -85396,3 +85396,131 @@ phases:
     - pi_model_map_draft_contract_20260601
     - pi_model_map_draft_red_tests_20260601
     agent: python-senior
+  - id: pi_model_map_draft_fixture_retest_20260601
+    name: Retest Pi model-map draft fixture suite green
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: local-check
+
+      protected_gate: pi_model_map_draft_gate_20260601
+
+
+      PROOF ARTIFACT:
+
+      As an independent verifier, run the fixture/fake unit tests from `pi_model_map_draft_red_tests_20260601`
+      after implementation and prove deterministic behavior is green. This step validates
+      fixture logic only; it is not real Pi availability proof.
+
+
+      Required behavioral proof register fields:
+
+      - requirement_ref
+
+      - behavior_claim
+
+      - runtime_proof_expected
+
+      - evidence_ref
+
+      - status
+
+      - closure_path
+
+      - gate_decision_basis
+
+
+      SCOPE:
+
+      - tests/shell/ fixture tests for merge/dedup/prefix/candidate/output/error behavior
+
+      - doctests for any Core helpers
+
+      - no real Pi dependency required here
+
+
+      <side_effect_budget>
+
+      Allowed: read-only test execution and evidence collection; no product code changes
+      except if orchestrator creates a follow-up fix step. Forbidden: treating mocks
+      as real Pi proof, mutating ~/.pi/larva/model-map.json, or reading personal scaffold
+      files.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Ensure mock-heavy fixture tests are balanced by the separate live CLI proof
+      step.
+
+      - Ensure fixture pass includes negative cases, not just happy-path draft generation.
+
+      - Ensure optional --json behavior is either proven if implemented or explicitly
+      marked not implemented by authority.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the design verification targets and output/error
+      contracts.
+
+      - [ ] Focused fixture test command exits green and includes deduplication, merge,
+      prefix, ambiguity, malformed, redirect-safe stdout, non-interactive unresolved,
+      and write/error cases.
+
+      - [ ] Doctests for any Core helper pass.
+
+      - [ ] Behavioral proof register maps each owned fixture requirement to PROVEN,
+      NEEDS_TEST, BLOCKED, or explicit non-intersection.
+
+      - [ ] Evidence explicitly states that real Pi availability is not proven here
+      and is owned by `pi_model_map_draft_live_cli_proof_20260601`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passages or NOT READ: reason>
+
+
+      ## Fixture Retest Receipt
+
+      - command: <exact fixture/doctest command(s)>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | <design section> | <claim> | fixture/doctest | <test/output> | PROVEN/NEEDS_TEST/BLOCKED
+      | <path> | <basis> |
+
+
+      ## Mock/Realism Boundary
+
+      - fixture_only_statement: <explicit statement>
+
+      - live_proof_owner: pi_model_map_draft_live_cli_proof_20260601
+
+
+      ## Checklist Receipt
+
+      - fixture suite green: <satisfied/failed/blocked/unobserved>
+
+      - negative cases covered: <satisfied/failed/blocked/unobserved>
+
+      - no real Pi proof claimed: <satisfied/failed/blocked/unobserved>'
+    depends_on:
+    - pi_model_map_draft_impl_20260601
+    agent: integration-verifier
