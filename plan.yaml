@@ -93566,7 +93566,7 @@ phases:
     agent: gate-reviewer
   - id: pi_postspec_conformance_blockers_b1_b7_fix_20260602
     name: Batched fix for Pi post-spec conformance blockers B1-B7
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -93791,6 +93791,8 @@ phases:
     depends_on:
     - pi_postspec_full_spec_conformance_20260602
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T19:00:42.354934+00:00'
   - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
     status: pending
