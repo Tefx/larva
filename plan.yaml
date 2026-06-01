@@ -93408,7 +93408,7 @@ phases:
       gaps: none beyond blocker now owned by remediation steps."
   - id: pi_postspec_docs_sync_20260602
     name: Synchronize Pi docs after implementation proof
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -93501,6 +93501,8 @@ phases:
     depends_on:
     - pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-01T19:58:51.229831+00:00'
   - id: pi_postspec_deep_review_20260602
     name: Independent deep review of Pi post-spec implementation
     status: pending
