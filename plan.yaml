@@ -86243,7 +86243,7 @@ phases:
     claimed_at: '2026-06-01T08:30:42.642004+00:00'
   - id: pi_tool_policy_no_fallback_extension_impl_20260601
     name: Complete extension canonical-only tool-policy path behavior
-    status: claimed
+    status: done
     description: 'TARGET STATE:
 
       `contrib/pi-extension/larva.ts` resolves tool policy to canonical `~/.pi/larva/tool-policy.json`
@@ -86297,6 +86297,16 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T08:30:33.651198+00:00'
+    done_at: '2026-06-01T08:38:10.431530+00:00'
+    evidence: 'Applied isolated commit `dea27c91a51706e60a13d73ef70233d4bfb20384`
+      and committed mainline as `62f9cbf`. Implementation changed `contrib/pi-extension/larva.ts`
+      to remove implicit legacy `~/.pi/tool-policy.json` fallback while preserving
+      explicit `LARVA_PI_TOOL_POLICY_FILE` override. Mainline verification: `node
+      contrib/pi-extension/test-tool-policy-paths.mjs` passed full matrix (env override,
+      canonical, both-present conflict, old-only ignored, explicit old env, no-file
+      empty); `uv run python -m pytest tests/shell/test_pi_extension_contract.py::test_tool_policy_path_contract_rejects_implicit_legacy_fallback
+      -q` passed; `uv run invar guard` passed. Checklist receipt all PROVEN and toggled
+      before completion.'
   - id: pi_tool_policy_no_legacy_docs_20260601
     name: Update Pi docs to unsupported-old-path semantics
     status: done
