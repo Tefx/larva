@@ -90690,3 +90690,13 @@ phases:
       - No code files were changed during gate verification.\n- Personal scaffold\
       \ files were not read or required; `/Users/tefx/dotfiles/agent/models.yaml`\
       \ was not accessed.\n\n## Open Problems / Residual Risk\nnone"
+- id: pi-postspec-launcher-config-2026-06-02
+  name: Pi Post-Spec Launcher and Adapter Config Conformance 2026-06-02
+  status: pending
+  gate: Phase opens only when launcher/package/env contract and adapter-local model-map/tool-policy
+    semantics match commit 4616008, including absolute env overrides, canonical ~/.pi/larva/*
+    paths, LARVA_MODEL_MAP_INVALID, no implicit legacy tool-policy fallback, no PersonaSpec/opifex
+    changes, no compatibility aliases, and no malformed shared input acceptance.
+  depends_on:
+  - pi-subagent-sessionfile-protocol-2026-06-01
+  - meta.gate
