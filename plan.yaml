@@ -83904,51 +83904,51 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case exact-hit` and confirm `openai/gpt-5.5` maps to `openai-codex/gpt-5.5`
       through `modelRegistry.find`.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case prefix-hit` and confirm `openrouter/google/gemini-3.1-pro-preview` maps
       to `openrouter/google/gemini-3.1-pro-preview` without vendor guessing.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case conflict-invalid` and confirm `LARVA_MODEL_MAP_INVALID`.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case missing-config` and confirm first-slash fallback.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case invalid-config` and confirm `LARVA_MODEL_MAP_INVALID`.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case mapped-unavailable` and confirm `LARVA_MODEL_UNAVAILABLE`.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case startup-persona` and `--case slash-switch` and confirm shared resolver
       path.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-model-map-runtime.mjs
       --case slash-switch-after-startup` and confirm no resolver divergence.
 
-      - [ ] Review raw output from `node contrib/pi-extension/test-tool-policy-paths.mjs
+      - [x] Review raw output from `node contrib/pi-extension/test-tool-policy-paths.mjs
       --case env-override`, `--case new-path-exists`, `--case legacy-fallback`, and
       `--case no-file-empty`.
 
-      - [ ] Review `pi --list-models --offline` evidence for all mapped targets or
+      - [x] Review `pi --list-models --offline` evidence for all mapped targets or
       explicit compatible skip/xfail reason.
 
-      - [ ] Review `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      - [x] Review `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
       -q` output.
 
-      - [ ] Review `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and any
+      - [x] Review `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` and any
       adjacent `agent/` template diff; confirm no unrelated dotfiles semantic changes
       and no runtime `~/.pi` writes.
 
-      - [ ] Review `git diff -- contrib/pi-extension/larva.ts contrib/pi-extension/README.md
+      - [x] Review `git diff -- contrib/pi-extension/larva.ts contrib/pi-extension/README.md
       design/pi-coding-agent-integration.md` and confirm product/docs scope is limited.
 
-      - [ ] Gate decision basis lists every requirement matrix row as PROVEN, BLOCKED,
+      - [x] Gate decision basis lists every requirement matrix row as PROVEN, BLOCKED,
       or explicitly non-intersecting; generic PASS claims are rejected.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
