@@ -86673,7 +86673,7 @@ phases:
   steps:
   - id: pi_subagent_toolresult_red_tests_20260601
     name: Add expected-red renderer-safe larva_subagent result tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -86788,6 +86788,28 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T08:58:37.930925+00:00'
+    done_at: '2026-06-01T09:06:02.034778+00:00'
+    evidence: 'EXPECTED_RED_ACCEPTED: step_intent `test_define_red`, expected_result
+      `red`. Merged isolated test-only commit `452e6860607e7133268f3b46c3eb4695181e9ff2`
+      to main as `4053316`. Files changed only `scripts/pi-extension-runtime-smoke.mjs`
+      and `tests/shell/test_pi_extension_real_runtime.py`; product implementation
+      `contrib/pi-extension/larva.ts` was not modified. Refs confirmation cited Pi
+      renderer `/opt/homebrew/lib/node_modules/@earendil-works/pi-coding-agent/dist/core/tools/render-utils.js`
+      lines 35-40 using `result.content.filter(...)`, and current raw `LarvaSubagentResult`
+      return path in `contrib/pi-extension/larva.ts` (raw semantic fields, no `content`).
+      Added runtime smoke scenario `tool-result-renderer-shape` invoking registered
+      `larva_subagent.handler` for failed-before-session/no-active-persona and `larva_subagent.execute`
+      for cancelled and failed-after-allocation cases; assertions require renderer-safe
+      text content array. Mainline expected-red verification: `uv run python -m pytest
+      tests/shell/test_pi_extension_real_runtime.py::test_registered_larva_subagent_results_are_renderer_safe_toolresults
+      -vv` failed exactly at `tests/shell/test_pi_extension_real_runtime.py:241` because
+      assertions were `{''failedBeforeSession'': False, ''cancelled'': False, ''failedAfterAllocation'':
+      False}` instead of all true, proving raw results lack `content`. `uv run python
+      -m pytest tests/shell/test_pi_extension_real_runtime.py::test_runtime_smoke_help_lists_all_required_scenarios
+      -q` passed; `uv run invar guard` passed. Success path documented as EXCLUDED_OR_DEFERRED
+      because deterministic success requires a child Pi RPC process or product-owned
+      injection seam; downstream adapter implementation owns it. Checklist receipt
+      all accepted and toggled before completion.'
   - id: pi_subagent_toolresult_adapter_impl_20260601
     name: Complete Pi adapter-boundary ToolResult wrapper for larva_subagent
     status: pending
