@@ -90712,3 +90712,15 @@ phases:
   depends_on:
   - pi-postspec-launcher-config-2026-06-02
   - meta.gate
+- id: pi-postspec-subagent-ux-2026-06-02
+  name: Pi Post-Spec Subagent Result, Sessions, and Rendering UX 2026-06-02
+  status: locked
+  gate: Phase opens only when larva_subagent wrapper mirrors task_id/persona_id/status/result_text/error
+    in details and top-level metadata, isError derives from semantic status, non-null
+    task_id results include the visible resume footer, optional larva_subagent_sessions(limit?)
+    is process-local/newest-first/capped/no sidecars/no aliases, row-local renderCall/onUpdate/renderResult
+    behavior is proven, and visible preview bounds strip ANSI, normalize Unicode NFC,
+    collapse controls, and include ellipsis within 120/80/200-character limits.
+  depends_on:
+  - pi-postspec-editor-prompt-2026-06-02
+  - meta.gate
