@@ -87067,7 +87067,7 @@ phases:
   - id: pi_subagent_toolresult_interactive_crash_proof_20260601
     name: Prove Pi interactive/RPC path no longer crashes on larva_subagent result
       rendering
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87162,6 +87162,8 @@ phases:
     - pi_subagent_toolresult_adapter_impl_20260601
     - pi_subagent_toolresult_runtime_smoke_20260601
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-06-01T09:27:21.349238+00:00'
   - id: pi_subagent_toolresult_docs_20260601
     name: Document semantic LarvaSubagentResult versus Pi ToolResult wrapper
     status: done
