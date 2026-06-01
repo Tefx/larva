@@ -86282,7 +86282,7 @@ phases:
     agent: frontend-engineer
   - id: pi_tool_policy_no_legacy_docs_20260601
     name: Update Pi docs to unsupported-old-path semantics
-    status: pending
+    status: claimed
     description: 'CONFORMANCE ARTIFACT:
 
       Update Pi user/operator documentation to state that `~/.pi/tool-policy.json`
@@ -86327,6 +86327,8 @@ phases:
     depends_on:
     - pi_tool_policy_no_legacy_contract_20260601
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-01T08:22:34.151249+00:00'
   - id: pi_tool_policy_operator_migration_proof_20260601
     name: Prove one-time operator migration semantics
     status: pending
