@@ -84833,22 +84833,22 @@ phases:
       <risk_probes>- Balance mocks with at least one real provider/command-path smoke
       when available. - Prove concurrent in-flight dedupe by list invocation count
       during overlap. - Prove fail-closed does not guess aliases or stale data unexpectedly.</risk_probes>'
-    verification: '- [ ] refs confirmation quotes implementation/docs passages used
+    verification: '- [x] refs confirmation quotes implementation/docs passages used
       to derive tests.
 
-      - [ ] Raw Node output covers substring, case, prefix-first stable order, cache
+      - [x] Raw Node output covers substring, case, prefix-first stable order, cache
       reuse, and in-flight dedupe.
 
-      - [ ] Raw pytest or existing repo smoke output covers Pi extension/autocomplete
+      - [x] Raw pytest or existing repo smoke output covers Pi extension/autocomplete
       behavior where applicable.
 
-      - [ ] Raw failure-path output covers `larva list --json` error fail-closed behavior.
+      - [x] Raw failure-path output covers `larva list --json` error fail-closed behavior.
 
-      - [ ] Raw delegation output covers non-`/larva-persona` input to base provider.
+      - [x] Raw delegation output covers non-`/larva-persona` input to base provider.
 
-      - [ ] Raw `invar guard` output is included.
+      - [x] Raw `invar guard` output is included.
 
-      - [ ] Fixture evidence includes exact `larva list --json` shape and no hidden
+      - [x] Fixture evidence includes exact `larva list --json` shape and no hidden
       alias/fuzzy/regex/wildcard assumption.'
     refs:
     - contrib/pi-extension/larva.ts
