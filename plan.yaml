@@ -85119,6 +85119,169 @@ phases:
     depends_on:
     - pi_model_map_runtime_proof_20260601
     agent: general
+  - id: pi_model_map_openrouter_prefix_retest_20260601
+    name: Retest OpenRouter Gemini model-map prefix resolution
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: local-check
+
+      agent_source: project
+
+      PROOF ARTIFACT: read-only retest proving the local Pi model map now satisfies
+      R3 and still satisfies the previously proven exact mapping and offline target
+      availability requirements. This retest protects `pi_persona_autocomplete_gate_20260601`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R3-openrouter-prefix | Failed proof `pi_model_map_runtime_proof_20260601`:
+      `GEMINI_RESOLVE openrouter/google/gemini-3.1-pro-preview ... "source": "exact"`;
+      requirement says OpenRouter Gemini coverage must come from literal `openrouter/`
+      prefix rule. | Prove all three named Gemini OpenRouter personas from the original
+      proof set resolve via prefix, including `openrouter/google/gemini-3.1-pro-preview`.
+      | pi_model_map_openrouter_prefix_retest_20260601 | `all Gemini OpenRouter personas
+      resolve via prefix` | `gemini_resolution_table` | OWNED | Blocks phase gate
+      if any Gemini OpenRouter target resolves via exact. |
+
+      | R1-required-exacts-still-proven | Current failed proof says exact GPT/GLM/Kimi/Minimax
+      mappings and Pi offline list target availability were PROVEN. | Reconfirm exact
+      mappings and offline list availability remain valid after cleanup. | pi_model_map_openrouter_prefix_retest_20260601
+      | `required exact mappings and Pi offline targets still proven` | `offline_list_excerpts`,
+      `exact_mapping_status` | OWNED | Blocks phase gate if regressed. |
+
+      | R-safe-readonly-retest | User constraints: retest is read-only; forbid `/Users/tefx/dotfiles/agent/models.yaml`
+      and personal scaffold reads. | Retest must not write anything and must not consult
+      forbidden inventories. | pi_model_map_openrouter_prefix_retest_20260601 | `read-only
+      and no-scaffold proof provided` | `write_set`, `forbidden_read_attestation`
+      | OWNED | Blocks phase gate if violated. |
+
+
+      <side_effect_budget>Allowed: read `/Users/tefx/.pi/larva/model-map.json`, run
+      read-only Pi/list-model and model-resolution probes, and compute checksums.
+      Forbidden: writing any file, repo edits, reads or writes of `/Users/tefx/dotfiles/agent/models.yaml`,
+      reads of personal scaffold inventory, model guessing, and modifying `/Users/tefx/.pi/larva/model-map.json`.</side_effect_budget>
+
+      <risk_probes>- Ensure proof distinguishes `source: "prefix"` from `source: "exact"`
+      for each Gemini OpenRouter persona. - Ensure `pi --list-models --offline` excerpts
+      cover every mapped target used in the proof. - Ensure no green claim is based
+      on source inspection alone without command/runtime output.</risk_probes>
+
+
+      READ-ONLY RETEST SCOPE: Re-run the model-map proof from `pi_model_map_runtime_proof_20260601`
+      after cleanup, with extra focus on the three named Gemini OpenRouter personas
+      from the original evidence set. The retest may identify the three names from
+      the prior proof artifact or current persona registry, but must not consult forbidden
+      dotfiles/scaffold inventories.'
+    verification: '- [ ] refs confirmation states no repo refs and identifies the
+      prior failed proof fingerprint used for retest scope.
+
+      - [ ] Raw checksum of `/Users/tefx/.pi/larva/model-map.json` is captured before
+      and after retest and is identical, proving read-only behavior.
+
+      - [ ] Raw JSON excerpt shows no exact `openrouter/google/gemini-3.1-pro-preview`
+      key remains and shows the literal `openrouter/` prefix rule is present.
+
+      - [ ] `pi --list-models --offline` raw excerpts show availability of required
+      exact GPT/GLM/Kimi/Minimax targets and OpenRouter prefix-covered targets used
+      by the three Gemini personas.
+
+      - [ ] Resolution evidence table lists all three named Gemini OpenRouter personas
+      and shows `source: "prefix"` for each, including `openrouter/google/gemini-3.1-pro-preview`.
+
+      - [ ] Required exact GPT/GLM/Kimi/Minimax mappings remain PROVEN with exact-source
+      evidence where required.
+
+      - [ ] Retest evidence includes write_set `[]` and explicit no-read attestation
+      for `/Users/tefx/dotfiles/agent/models.yaml` plus personal scaffold inventory.
+
+      - [ ] Behavioral proof register marks R3 PROVEN or returns BLOCKED with exact
+      missing evidence and closure path.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No repo refs for this step. Prior failed proof fingerprint to confirm:
+
+      - `OPENROUTER_EXACT_ENTRIES: ["openrouter/google/gemini-3.1-pro-preview"]`
+
+      - `GEMINI_RESOLVE openrouter/google/gemini-3.1-pro-preview ... "source": "exact"`
+
+
+      ## Read-Only Retest Receipt
+
+      - target_file: `/Users/tefx/.pi/larva/model-map.json`
+
+      - checksum_before_retest: `<sha256>`
+
+      - checksum_after_retest: `<sha256; must equal before>`
+
+      - raw_json_excerpt: `<paste excerpt showing openrouter/ prefix and no exact
+      openrouter/google/gemini-3.1-pro-preview key>`
+
+      - offline_command: `pi --list-models --offline`
+
+      - offline_list_excerpts: `<paste raw excerpts for required exact GPT/GLM/Kimi/Minimax
+      targets and OpenRouter prefix-covered targets>`
+
+      - exact_mapping_status: `<GPT/GLM/Kimi/Minimax exact mappings still PROVEN>`
+
+
+      ## Gemini Prefix Resolution Table
+
+      | persona_or_model_ref | resolved_target | source | raw_output_excerpt |
+
+      | --- | --- | --- | --- |
+
+      | `<Gemini OpenRouter persona 1>` | `<target>` | `prefix` | `<raw JSON/log>`
+      |
+
+      | `<Gemini OpenRouter persona 2>` | `<target>` | `prefix` | `<raw JSON/log>`
+      |
+
+      | `openrouter/google/gemini-3.1-pro-preview` | `openrouter/google/gemini-3.1-pro-preview`
+      | `prefix` | `<raw JSON/log>` |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | R3-openrouter-prefix | All three named Gemini OpenRouter personas resolve
+      via literal `openrouter/` prefix, not exact entries. | Resolution output with
+      `source: "prefix"` for each. | `gemini_resolution_table` | PROVEN/BLOCKED |
+      `<if blocked, exact missing evidence>` | Gate may open only when PROVEN. |
+
+      | R1-required-exacts-still-proven | Required GPT/GLM/Kimi/Minimax exact mappings
+      and offline targets remain available. | Offline list excerpts and exact-source
+      resolution evidence. | `offline_list_excerpts`, `exact_mapping_status` | PROVEN/BLOCKED
+      | `<if blocked, exact missing evidence>` | Gate may open only when PROVEN. |
+
+
+      ## Side-Effect / Forbidden-Read Proof
+
+      - write_set: []
+
+      - forbidden_read_attestation: `Did not read /Users/tefx/dotfiles/agent/models.yaml
+      or personal scaffold inventory.`
+
+
+      ## Headline
+
+      - [ ] PASS: R3 and prior proven requirements are all PROVEN with raw evidence.
+
+      - [ ] BLOCKED: Evidence gap remains with exact closure path.'
+    depends_on:
+    - pi_model_map_openrouter_prefix_cleanup_20260601
+    agent: integration-verifier
 - id: pi-model-map-draft-helper-2026-06-01
   name: Pi Model-Map Draft Helper 2026-06-01
   status: locked
