@@ -86761,24 +86761,24 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (expected-red; narrative summaries rejected):
 
-      - [ ] refs confirmation cites the Pi renderer `result.content.filter` expectation
+      - [x] refs confirmation cites the Pi renderer `result.content.filter` expectation
       and current raw `LarvaSubagentResult` return path.
 
-      - [ ] Test-only diff is limited to contract/runtime/smoke harness files or new
+      - [x] Test-only diff is limited to contract/runtime/smoke harness files or new
       test fixtures.
 
-      - [ ] Registered `larva_subagent.handler` and/or `execute` is invoked through
+      - [x] Registered `larva_subagent.handler` and/or `execute` is invoked through
       the harness and asserts `content` is an array with at least one `{ type: "text",
       text: ... }` item.
 
-      - [ ] Failure-before-session/no-active-persona path is covered and currently
+      - [x] Failure-before-session/no-active-persona path is covered and currently
       fails because raw result lacks `content`.
 
-      - [ ] Success, failed-after-allocation, and cancelled cases are covered when
+      - [x] Success, failed-after-allocation, and cancelled cases are covered when
       fixture-feasible; any infeasible case has an explicit blocker and downstream
       owner.
 
-      - [ ] Raw expected-red output is pasted with failing assertion location and
+      - [x] Raw expected-red output is pasted with failing assertion location and
       no product-code changes.'
     refs:
     - contrib/pi-extension/larva.ts
