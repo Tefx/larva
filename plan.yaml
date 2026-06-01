@@ -84344,7 +84344,7 @@ phases:
       side effects: none.'
   - id: pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
     name: Focused regate for dotfiles alias drift
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -84502,3 +84502,5 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T02:06:46.113224+00:00'
