@@ -90150,3 +90150,11 @@ phases:
       invar guard` passed. Gate opened only because all blocker-class behavioral obligations
       were PROVEN and uncertainty_sources was empty. Checklist receipt all PROVEN
       and toggled before completion.'
+- id: pi-subagent-sessionfile-protocol-2026-06-01
+  name: Pi larva_subagent SessionFile Protocol Fix 2026-06-01
+  status: pending
+  gate: Phase gate opens only when focused regression/runtime proof shows the fresh
+    child sessionFile path is accepted before prompt without weakening root escape,
+    relative-path, resume-task_id, authority, or ToolResult invariants.
+  depends_on:
+  - pi-model-map-draft-helper-2026-06-01
