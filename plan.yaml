@@ -90850,7 +90850,7 @@ phases:
       \ none for this contract/proof step."
   - id: pi_postspec_launcher_config_residual_impl_20260602
     name: Complete residual launcher/config semantics from commit 4616008
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -90980,6 +90980,8 @@ phases:
     depends_on:
     - pi_postspec_launcher_config_traceability_20260602
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T16:52:40.171488+00:00'
   - id: pi_postspec_launcher_config_runtime_verify_20260602
     name: Verify launcher/config runtime and invar guard
     status: pending
