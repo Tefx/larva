@@ -86609,17 +86609,17 @@ phases:
       acceptance.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Gate decision basis maps each R1-R6 row to positive evidence or blocker
+      - [x] Gate decision basis maps each R1-R6 row to positive evidence or blocker
       remediation.
 
-      - [ ] Confirms no implicit legacy fallback remains in runtime code, extension
+      - [x] Confirms no implicit legacy fallback remains in runtime code, extension
       metadata, tests, or docs.
 
-      - [ ] Confirms operator migration evidence is safe and conflict-aware.
+      - [x] Confirms operator migration evidence is safe and conflict-aware.
 
-      - [ ] Confirms invar guard evidence is present and green.
+      - [x] Confirms invar guard evidence is present and green.
 
-      - [ ] Final decision is OPEN only if blocker-class runtime/docs/test obligations
+      - [x] Final decision is OPEN only if blocker-class runtime/docs/test obligations
       are PROVEN.'
     refs:
     - src/larva/shell/pi.py
