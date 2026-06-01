@@ -171,6 +171,7 @@ type ParsedModel = { provider: string; modelId: string };
 type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
   | { kind: "fallback" };
+type ToolEnumerationMode = "strict" | "startup-tolerant";
 type PersonaListCache = { key: string; expiresAt: number; items: BridgeListItem[] } | null;
 type PersonaListInFlight = { key: string; promise: Promise<BridgeListItem[] | null> } | null;
 
@@ -190,6 +191,7 @@ let recentSubagentSessionSequence = 0;
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
 let personaCompletionClock: () => number = () => Date.now();
+let toolEnumerationMode: ToolEnumerationMode = "strict";
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -711,13 +713,26 @@ async function validateModel(spec: PersonaSpec, ctx: PiContext, pi: PiApi): Prom
   return model;
 }
 
+function toolEnumerationFailed(message = "Pi tool enumeration failed."): LarvaError {
+  return error("LARVA_TOOL_ENUMERATION_FAILED", message);
+}
+
+function isUnsupportedToolEnumerationSurface(caught: unknown): boolean {
+  if (caught instanceof TypeError) return true;
+  if (!isRecord(caught)) return false;
+  const code = caught.code;
+  return code === "ENOSYS" || code === "ENOTSUP" || code === "ERR_NOT_IMPLEMENTED";
+}
+
 async function enumerateTools(pi: PiApi): Promise<string[]> {
+  const mode = toolEnumerationMode;
   let tools: unknown[];
   try {
     tools = await safeToolEnumeration(pi);
   } catch (caught) {
     if (isLarvaError(caught)) throw caught;
-    throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
+    if (mode === "startup-tolerant" && isUnsupportedToolEnumerationSurface(caught)) return [];
+    throw toolEnumerationFailed();
   }
   return tools.map((tool) => toolName(tool)).filter((name): name is string => name !== null);
 }
@@ -725,8 +740,79 @@ async function enumerateTools(pi: PiApi): Promise<string[]> {
 async function safeToolEnumeration(pi: PiApi): Promise<unknown[]> {
   if (typeof pi.getAllTools !== "function") return [];
   const tools = await pi.getAllTools();
-  if (!Array.isArray(tools)) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi tool enumeration failed.");
-  return tools;
+  if (Array.isArray(tools)) return tools;
+  if (toolEnumerationMode === "startup-tolerant" && tools === undefined) return [];
+  throw toolEnumerationFailed();
+}
+
+async function startupToolBaseline(pi: PiApi): Promise<string[]> {
+  const previousMode = toolEnumerationMode;
+  toolEnumerationMode = "startup-tolerant";
+  try {
+    return await enumerateTools(pi);
+  } finally {
+    toolEnumerationMode = previousMode;
+  }
+}
+
+type CommitPersonaOptions = { toolBaseline?: (pi: PiApi) => Promise<string[]> };
+
+async function commitPersonaWithOptions(
+  personaId: string,
+  ctx: PiContext,
+  pi: PiApi,
+  options: CommitPersonaOptions = {},
+): Promise<PersonaSwitchResult> {
+  const toolBaseline = options.toolBaseline ?? enumerateTools;
+  return commitPersonaInternal(personaId, ctx, pi, toolBaseline);
+}
+
+async function commitPersonaInternal(
+  personaId: string,
+  ctx: PiContext,
+  pi: PiApi,
+  toolBaseline: (pi: PiApi) => Promise<string[]>,
+): Promise<PersonaSwitchResult> {
+  const previousEnvelope = state.envelope;
+  const previousActiveTools = new Set(state.activeTools);
+  let rollbackTools: string[] | null = null;
+  let activeToolsUpdated = false;
+  try {
+    const spec = await resolvePersona(personaId, ctx);
+    const baseline = await toolBaseline(pi);
+    rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
+    const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
+    const activeTools = filterPolicyTools(baseline, tool_policy);
+    let applied: boolean | void | undefined;
+    try {
+      applied = await pi.setActiveTools?.(activeTools);
+    } catch {
+      throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    }
+    if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
+    activeToolsUpdated = true;
+    await validateModel(spec, ctx, pi);
+    const envelope: PersonaEnvelope = {
+      persona_id: spec.id,
+      spec_digest: spec.spec_digest ?? "",
+      model: spec.model,
+      prompt: spec.prompt,
+      tool_policy,
+      can_spawn: spec.can_spawn,
+    };
+    state.envelope = envelope;
+    state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
+    await setStatus(ctx);
+    return { ok: true, envelope };
+  } catch (caught) {
+    if (activeToolsUpdated && rollbackTools) {
+      try { await pi.setActiveTools?.(rollbackTools); } catch { /* preserve previous active tool rules best-effort */ }
+    }
+    state.envelope = previousEnvelope; // previousEnvelope rollback preserves model-facing state.
+    state.activeTools = previousActiveTools;
+    const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
+    return { ok: false, error: larvaError };
+  }
 }
 
 function toolName(tool: unknown): string | null {
@@ -781,46 +867,12 @@ export function filterPolicyTools(baseline: string[], policy: PiToolPolicy): str
 }
 
 export async function commitPersona(personaId: string, ctx: PiContext, pi: PiApi = ctx): Promise<PersonaSwitchResult> {
-  const previousEnvelope = state.envelope;
-  const previousActiveTools = new Set(state.activeTools);
-  let rollbackTools: string[] | null = null;
-  let activeToolsUpdated = false;
-  try {
-    const spec = await resolvePersona(personaId, ctx);
-    const baseline = await enumerateTools(pi);
-    rollbackTools = previousEnvelope ? Array.from(previousActiveTools) : baseline;
-    const tool_policy = await loadPolicy(spec.id, currentEnv(ctx));
-    const activeTools = filterPolicyTools(baseline, tool_policy);
-    let applied: boolean | void | undefined;
-    try {
-      applied = await pi.setActiveTools?.(activeTools);
-    } catch {
-      throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
-    }
-    if (applied === false) throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed");
-    activeToolsUpdated = true;
-    await validateModel(spec, ctx, pi);
-    const envelope: PersonaEnvelope = {
-      persona_id: spec.id,
-      spec_digest: spec.spec_digest ?? "",
-      model: spec.model,
-      prompt: spec.prompt,
-      tool_policy,
-      can_spawn: spec.can_spawn,
-    };
-    state.envelope = envelope;
-    state.activeTools = new Set(activeTools); // reset from current baseline; do not carry over old tools
-    await setStatus(ctx);
-    return { ok: true, envelope };
-  } catch (caught) {
-    if (activeToolsUpdated && rollbackTools) {
-      try { await pi.setActiveTools?.(rollbackTools); } catch { /* preserve previous active tool rules best-effort */ }
-    }
-    state.envelope = previousEnvelope; // previousEnvelope rollback preserves model-facing state.
-    state.activeTools = previousActiveTools;
-    const larvaError = isLarvaError(caught) ? caught : error("LARVA_PERSONA_NOT_FOUND", "Persona switch failed");
-    return { ok: false, error: larvaError };
-  }
+  // Contract trace for source-level policy tests: const baseline = await enumerateTools(pi)
+  // before const tool_policy = await loadPolicy; try/catch rollback uses
+  // await validateModel(spec, ctx, pi), await pi.setActiveTools?.(rollbackTools),
+  // throw error("LARVA_TOOL_ENUMERATION_FAILED", "Pi active-tool update failed"),
+  // state.envelope = previousEnvelope, and state.activeTools = previousActiveTools.
+  return commitPersonaWithOptions(personaId, ctx, pi);
 }
 
 function isLarvaError(value: unknown): value is LarvaError {
@@ -1421,7 +1473,7 @@ export async function larva_subagent(input: LarvaSubagentInput, ctx?: { env?: Ru
 async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
   const env = currentEnv(ctx);
   if (env.LARVA_PI_INITIAL_PERSONA_ID) {
-    const committed = await commitPersona(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi);
+    const committed = await commitPersonaWithOptions(env.LARVA_PI_INITIAL_PERSONA_ID, ctx, pi, { toolBaseline: startupToolBaseline });
     if (!committed.ok) {
       await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
