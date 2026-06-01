@@ -85082,6 +85082,13 @@ phases:
       - Core contract/doctest invariant preserved: <satisfied/failed/blocked/unobserved>
 
       - design traceability matrix complete: <satisfied/failed/blocked/unobserved>'
+    refs:
+    - design/pi-model-map-draft-helper.md
+    - src/larva/shell/pi.py
+    - src/larva/shell/cli.py
+    - contrib/pi-extension/README.md
+    - INVAR.md
+    - AGENTS.md
     agent: python-executor
   - id: pi_model_map_draft_red_tests_20260601
     name: Add expected-red fixture tests for Pi model-map draft helper
