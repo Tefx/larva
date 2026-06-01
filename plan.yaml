@@ -90240,26 +90240,26 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] Refs confirmation includes key passages from `contrib/pi-extension/larva.ts`
+      - [x] Refs confirmation includes key passages from `contrib/pi-extension/larva.ts`
       and the chosen smoke/test harness.
 
-      - [ ] The implementation separates strict resume `task_id` validation from fresh
+      - [x] The implementation separates strict resume `task_id` validation from fresh
       child `sessionFile` validation without broad refactor.
 
-      - [ ] Focused regression reproduces a child-reported absolute `.jsonl` path
+      - [x] Focused regression reproduces a child-reported absolute `.jsonl` path
       under childSessionRoot that does not exist before prompt and confirms it is
       accepted for the fresh child path.
 
-      - [ ] Regression coverage confirms user-provided resume `task_id` still rejects
+      - [x] Regression coverage confirms user-provided resume `task_id` still rejects
       a missing file.
 
-      - [ ] Regression coverage confirms relative paths, wrong suffix, parent/root
+      - [x] Regression coverage confirms relative paths, wrong suffix, parent/root
       escape, and symlink escape when existing remain rejected.
 
-      - [ ] Evidence confirms `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`, and ToolResult
+      - [x] Evidence confirms `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`, and ToolResult
       shape are preserved for larva_subagent success/error paths.
 
-      - [ ] No personal scaffold files were read or required by the implementation/tests.'
+      - [x] No personal scaffold files were read or required by the implementation/tests.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
       For each ref in this step:
