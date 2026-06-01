@@ -91958,22 +91958,22 @@ phases:
       or loses Pi operational context.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] All checklist items from tests, implementation, and runtime proof are
+      - [x] All checklist items from tests, implementation, and runtime proof are
       satisfied or have blocking remediation.
 
-      - [ ] Gate decision basis maps every editor/prompt requirement to positive evidence.
+      - [x] Gate decision basis maps every editor/prompt requirement to positive evidence.
 
-      - [ ] Runtime proof is not substituted by build/type/source evidence.
+      - [x] Runtime proof is not substituted by build/type/source evidence.
 
-      - [ ] OPEN/BLOCKED decision is explicit with unresolved obligations listed.'
+      - [x] OPEN/BLOCKED decision is explicit with unresolved obligations listed.'
     evidence_template: '## refs Read Confirmation
 
       For each ref in this step, include one bullet with the exact key passage used
