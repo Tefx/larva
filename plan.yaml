@@ -91044,6 +91044,42 @@ phases:
 
       - [ ] Gate decision basis rejects sampled/no-blocker-only evidence and records
       OPEN or BLOCKED.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for gate review>
+
+      - no_change_reason: <required; gate should normally report no product changes>
+
+
+      ## Gate Decision Basis
+
+      - evidence_reviewed: <step evidence/artifacts reviewed>
+
+      - matrix_review: <orphan requirements and unresolved rows>
+
+      - behavioral_register_review: <PROVEN/BLOCKED statuses and closure paths>
+
+      - hard_constraint_review: <legacy fallback/hidden settings/schema/alias checks>
+
+      - decision: <OPEN|BLOCKED>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
