@@ -85323,29 +85323,29 @@ phases:
       from the original evidence set. The retest may identify the three names from
       the prior proof artifact or current persona registry, but must not consult forbidden
       dotfiles/scaffold inventories.'
-    verification: '- [ ] refs confirmation states no repo refs and identifies the
+    verification: '- [x] refs confirmation states no repo refs and identifies the
       prior failed proof fingerprint used for retest scope.
 
-      - [ ] Raw checksum of `/Users/tefx/.pi/larva/model-map.json` is captured before
+      - [x] Raw checksum of `/Users/tefx/.pi/larva/model-map.json` is captured before
       and after retest and is identical, proving read-only behavior.
 
-      - [ ] Raw JSON excerpt shows no exact `openrouter/google/gemini-3.1-pro-preview`
+      - [x] Raw JSON excerpt shows no exact `openrouter/google/gemini-3.1-pro-preview`
       key remains and shows the literal `openrouter/` prefix rule is present.
 
-      - [ ] `pi --list-models --offline` raw excerpts show availability of required
+      - [x] `pi --list-models --offline` raw excerpts show availability of required
       exact GPT/GLM/Kimi/Minimax targets and OpenRouter prefix-covered targets used
       by the three Gemini personas.
 
-      - [ ] Resolution evidence table lists all three named Gemini OpenRouter personas
+      - [x] Resolution evidence table lists all three named Gemini OpenRouter personas
       and shows `source: "prefix"` for each, including `openrouter/google/gemini-3.1-pro-preview`.
 
-      - [ ] Required exact GPT/GLM/Kimi/Minimax mappings remain PROVEN with exact-source
+      - [x] Required exact GPT/GLM/Kimi/Minimax mappings remain PROVEN with exact-source
       evidence where required.
 
-      - [ ] Retest evidence includes write_set `[]` and explicit no-read attestation
+      - [x] Retest evidence includes write_set `[]` and explicit no-read attestation
       for `/Users/tefx/dotfiles/agent/models.yaml` plus personal scaffold inventory.
 
-      - [ ] Behavioral proof register marks R3 PROVEN or returns BLOCKED with exact
+      - [x] Behavioral proof register marks R3 PROVEN or returns BLOCKED with exact
       missing evidence and closure path.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
