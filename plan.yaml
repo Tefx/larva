@@ -94421,7 +94421,7 @@ phases:
       \ vectl_check.\nblockers: []\ngaps: []"
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     name: Retest initial startup tool enumerator fail-closed blocker
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -94568,3 +94568,31 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T19:50:52.151728+00:00'
+    done_at: '2026-06-01T19:58:28.497241+00:00'
+    evidence: "status: SUCCESS\nsemantic_verdict: PASS\nsummary: Independent retest\
+      \ passed; initial startup tool enumerator fail-closed blocker is closed and\
+      \ finalization gate may reopen.\nrefs_confirmation:\n  - design/pi-coding-agent-integration.md:\
+      \ read startup policy/tool enumeration and atomic switching behavior.\n  - contrib/pi-extension/README.md:\
+      \ read supplemental runtime gate and autocomplete smoke command policy.\n  -\
+      \ tests/shell/test_pi_reported_failures_expected_red.py: read formerly failing\
+      \ regression for absent/unsupported startup enumerator path.\n  - tests/shell/test_pi_extension_contract.py:\
+      \ read B5/atomicity and new startup tolerance coverage.\n  - contrib/pi-extension/larva.ts:\
+      \ read `startupToolBaseline()` and strict vs startup-tolerant enumeration handling.\n\
+      worker_receipts:\n  - broad_pi_contract_command: exit 0; `122 passed in 7.08s`;\
+      \ formerly failing test passed.\n  - b1_b7_regression_probe: exit 0; `29 passed\
+      \ in 0.18s`; formerly failing test passed.\n  - supplemental_pi_runtime: exit\
+      \ 0; `22 passed in 25.19s`.\n  - autocomplete_smoke: node smoke chain exit 0\
+      \ and targeted pytest autocomplete exit 0; `8 passed, 14 deselected in 1.45s`.\n\
+      \  - vt46_targeted_proof: exit 0; `1 passed in 0.23s`.\n  - invar_guard: exit\
+      \ 0; status passed; supplemental full scan ok true with errors=0.\nbehavioral_proof_register:\n\
+      \  - initial_startup_tool_enumerator_failclosed: PROVEN; blocker none.\n  -\
+      \ B5_atomicity: PROVEN; blocker none.\n  - supplemental_runtime: PROVEN; blocker\
+      \ none.\n  - autocomplete: PROVEN; blocker none.\n  - VT46: PROVEN; blocker\
+      \ none.\n  - invar_guard: PROVEN; blocker none.\nblockers: []\ngate_open_allowed:\
+      \ true\norchestrator_action_hint: COMPLETE\nchanged_files: none\nworker_commit:\
+      \ none — read-only verification\nchecklist_receipt: all 9 verification checklist\
+      \ items toggled complete via deterministic vectl_check.\nmainline_reconciliation:\n\
+      \  - merge: `git merge --squash vectl/step-pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602`\
+      \ returned `Already up to date. (nothing to squash)` because retest was read-only.\n\
+      \  - mainline verification: `uv run --group dev invar guard --changed` passed\
+      \ with no changed files.\ngaps: []"
