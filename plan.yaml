@@ -92829,7 +92829,7 @@ phases:
       none'
   - id: pi_postspec_subagent_ux_gate_20260602
     name: Gate subagent sessions and rendering UX
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -92945,6 +92945,8 @@ phases:
     - pi_postspec_subagent_ux_impl_20260602
     - pi_postspec_subagent_ux_runtime_proof_20260602
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T18:32:11.589599+00:00'
 - id: pi-postspec-finalization-2026-06-02
   name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
   status: locked
