@@ -93446,7 +93446,7 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
     depends_on:
-    - pi_postspec_full_runtime_gate_20260602
+    - pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     agent: doc-reviewer
   - id: pi_postspec_deep_review_20260602
     name: Independent deep review of Pi post-spec implementation
