@@ -92234,10 +92234,68 @@ phases:
       - [ ] Raw output from autocomplete smoke tests covers /larva-persona and @persona
       or documents unsupported hook behavior.
 
+      - [ ] Raw output from VT46 renderResult runtime/smoke proof covers collapsed
+      final view, expanded final view fields, resume footer behavior, parent `larva:`
+      footer preservation, and no-widget-dashboard prohibition.
+
       - [ ] Raw output from invar guard is included.
 
       - [ ] Behavioral proof register maps all runtime-sensitive requirements to PROVEN/BLOCKED
       statuses.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for verifier>
+
+      - no_change_reason: <required; verifier should normally report no product changes>
+
+
+      ## Consolidated Runtime/Test Receipt
+
+      - pi_contract_tests: <raw command lines, exit codes, stdout/stderr refs>
+
+      - supplemental_real_runtime_tests: <raw output or environment-supported skip/xfail
+      evidence>
+
+      - autocomplete_smoke: <raw output for /larva-persona and @persona or unsupported-hook
+      evidence>
+
+      - invar_guard: <raw command line, exit code, stdout/stderr>
+
+      - behavioral_proof_register: <requirement_ref | behavior_claim | evidence_ref
+      | status | closure_path | gate_decision_basis>
+
+
+      ## VT46 renderResult Runtime Receipt
+
+      - vt46_collapsed_final_view: <raw output/artifact ref proving persona + terminal
+      state>
+
+      - vt46_expanded_fields: <raw output/artifact refs proving persona id, mode,
+      full task, task_id when known, final status, error if any, final output, resume
+      footer>
+
+      - vt46_parent_larva_footer_preserved: <raw output/artifact ref>
+
+      - vt46_no_widget_dashboard: <raw output/artifact ref>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
