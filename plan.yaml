@@ -86534,7 +86534,7 @@ phases:
       status: SUCCESS'
   - id: pi_model_map_draft_fixture_retest_20260601
     name: Retest Pi model-map draft fixture suite green
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -86667,6 +86667,73 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T11:09:57.375463+00:00'
+    done_at: '2026-06-01T11:21:42.217456+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - `design/pi-model-map-draft-helper.md` — design verification targets, output/error
+      contracts, fixture-vs-live boundary, stdout/stderr separation, `--write` schema,
+      `--json` envelope, and named error codes reviewed.
+
+      - `tests/shell/test_pi_launcher_contract.py` — `larva pi` pass-through fixture
+      baseline reviewed.
+
+      - `tests/shell/test_pi_extension_contract.py` — Pi extension runtime contract
+      baseline reviewed.
+
+      - `INVAR.md` — Core @pre/@post/doctest and Shell I/O rules reviewed.
+
+
+      ## Fixture Retest Receipt
+
+      - `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      -q` exit 0: `15 passed`.
+
+      - `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      -vv` exit 0: all named tests passed, covering deduplication/stable output, exact
+      preservation/stale/invalid, prefix preservation/stale/invalid/conflict, ambiguity/no
+      preferences, malformed/no candidate, redirect-safe stdout, `--json`, `--write`,
+      and invalid model-map error.
+
+      - `uv run invar guard` exit 0: status passed; errors 0; warnings 0; doctest
+      passed.
+
+      - `git status --short` clean.
+
+
+      ## Behavioral Proof Register
+
+      All fixture requirements are PROVEN by the 15-test focused suite. Real Pi availability
+      is explicit non-intersection and remains owned by `pi_model_map_draft_live_cli_proof_20260601`.
+
+
+      ## Mock/Realism Boundary
+
+      This retest proves deterministic fixture/fake behavior only. It uses mocked/fake
+      Pi subprocess and synthetic registry summaries. It does not prove real Pi availability,
+      real local Pi inventory, or L2/L3 live external-service behavior.
+
+
+      ## checklist_receipt
+
+      All five checklist items were PROVEN and toggled with `vectl_check` before completion.
+
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — read-only fixture retest'
   - id: pi_model_map_draft_live_cli_proof_20260601
     name: Verify real Pi and registry runtime proof for model-map draft helper
     status: claimed
