@@ -82823,7 +82823,7 @@ phases:
       side effects.'
   - id: pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory
     name: dotfiles_model_inventory
-    status: claimed
+    status: done
     description: "step_type: implementation\nagent_source: default\n\nTARGET STATE:\n\
       `/Users/tefx/dotfiles/agent/models.yaml` keeps its existing abstract-alias semantics\
       \ while gaining explicit source material sufficient for a later execution agent\
@@ -82931,6 +82931,66 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-05-31T19:05:46.291649+00:00'
+    done_at: '2026-06-01T01:42:19.149310+00:00'
+    evidence: 'WORKTREE_MERGED: Larva isolated branch had no Larva tree delta relative
+      to its merge base; `git merge --squash vectl/step-pi-adapter-local-model-map-config-2026-06-01.dotfiles-model-inventory`
+      produced no staged changes, so no Larva squash commit was created for this external-dotfiles-only
+      step. External dotfiles repo commit: `/Users/tefx/dotfiles/agent` commit 61f73e99044da26a21976ad8cd5c2cd0de66dac5
+      (`docs(models): document pi model map template`).
+
+
+      refs Read Confirmation:
+
+      - /Users/tefx/dotfiles/agent/models.yaml — worker cited active aliases `default:
+      openai/gpt-5.5`, `glm51: ollama-cloud/glm-5.1`, `kimi-k25: ollama-cloud/kimi-k2.5`,
+      `kimi-k26: ollama-cloud/kimi-k2.6:cloud`, `minimax-m27: ollama-cloud/minimax-m2.7`,
+      and `gemini31pro: openrouter/google/gemini-3.1-pro-preview`.
+
+
+      Mainline/external final-state verification:
+
+      - `python3 - <<''PY'' ... /Users/tefx/dotfiles/agent/models.yaml ... PY` printed
+      active aliases and the new comment-only template lines, including the four exact
+      mappings, the `openrouter/` prefix rule, and `Intentionally unmapped: ollama-cloud/kimi-k2.6:cloud`.
+
+      - `pi --list-models --offline` ran successfully and included required registry
+      rows: `openai-codex gpt-5.5`, `openrouter google/gemini-3.1-pro-preview`, `openrouter
+      minimax/minimax-m2.7`, `openrouter moonshotai/kimi-k2.5`, and `openrouter z-ai/glm-5.1`.
+
+      - Required command `git -C /Users/tefx/dotfiles diff -- agent/models.yaml` was
+      exercised and reported `/Users/tefx/dotfiles` is not a git repository; worker
+      and orchestrator used the actual scoped repo `/Users/tefx/dotfiles/agent` for
+      diff proof.
+
+      - `git -C /Users/tefx/dotfiles/agent show --stat --patch --format=short HEAD
+      -- models.yaml` shows 19 inserted comment-only lines: canonical model-map template
+      source material, exact mappings for `openai/gpt-5.5`, `ollama-cloud/glm-5.1`,
+      `ollama-cloud/kimi-k2.5`, `ollama-cloud/minimax-m2.7`, one `openrouter/` prefix
+      rule, operator copy instruction for `~/.pi/larva/model-map.json`, and explicit
+      unmapped `ollama-cloud/kimi-k2.6:cloud`.
+
+
+      Requirement Proof Matrix:
+
+      - D1 PROVEN: raw inventory output includes active aliases and template comment
+      strings.
+
+      - D2 PROVEN: offline Pi registry output includes all required provider/model_id
+      targets.
+
+      - D3 PROVEN: dotfiles commit 61f73e9 adds the exact confirmed mappings and exact
+      `openrouter/` prefix rule as comment-only source material.
+
+      - D4 PROVEN: template explicitly says `ollama-cloud/kimi-k2.6:cloud` is intentionally
+      unmapped; no wildcard or exact mapping catches it.
+
+      - D5 PROVEN: no direct runtime file under `~/.pi` was written; follow-up is
+      operator/user copy from checked-in dotfiles material.
+
+
+      Checklist receipt: all six checklist items are [x]. Forbidden side effects:
+      no Larva product code changes; no runtime user-file writes under `~/.pi`; worker
+      reported unrelated pre-existing dotfiles changes remained unstaged.'
   - id: pi-adapter-local-model-map-config-2026-06-01.extension-impl
     name: extension_impl
     status: done
