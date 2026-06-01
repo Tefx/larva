@@ -84910,21 +84910,21 @@ phases:
       evidence must be current raw output, not stale notes or personal scaffold inventory.</risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation records docs/config/runtime file passages or unread
+      - [x] refs confirmation records docs/config/runtime file passages or unread
       reasons.
 
-      - [ ] Raw JSON validation output for `/Users/tefx/.pi/larva/model-map.json`
+      - [x] Raw JSON validation output for `/Users/tefx/.pi/larva/model-map.json`
       is included.
 
-      - [ ] Exact entries verified for `openai/gpt-5.5`, `ollama-cloud/glm-5.1`, `ollama-cloud/kimi-k2.6`,
+      - [x] Exact entries verified for `openai/gpt-5.5`, `ollama-cloud/glm-5.1`, `ollama-cloud/kimi-k2.6`,
       and `ollama-cloud/minimax-m2.7`.
 
-      - [ ] Prefix rule verified for `openrouter/` and the three named Gemini OpenRouter
+      - [x] Prefix rule verified for `openrouter/` and the three named Gemini OpenRouter
       personas.
 
-      - [ ] Raw `pi --list-models --offline` excerpts show target availability.
+      - [x] Raw `pi --list-models --offline` excerpts show target availability.
 
-      - [ ] Evidence states no writes occurred, no personal scaffold/model inventory
+      - [x] Evidence states no writes occurred, no personal scaffold/model inventory
       file was read, and no runtime guessing was added or relied on.'
     refs:
     - contrib/pi-extension/README.md
