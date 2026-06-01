@@ -84683,7 +84683,7 @@ phases:
       Checklist receipt all PROVEN and toggled before completion.
   - id: pi_persona_autocomplete_impl_20260601
     name: Complete Pi persona autocomplete substring cache implementation
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -84763,6 +84763,8 @@ phases:
     depends_on:
     - pi_persona_autocomplete_contract_docs_20260601
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T09:54:35.454133+00:00'
   - id: pi_persona_autocomplete_runtime_tests_20260601
     name: Add and run Pi autocomplete runtime tests
     status: pending
