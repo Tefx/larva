@@ -93436,23 +93436,23 @@ phases:
       sidecars, or provenance guarantees.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] README and design doc requirements match implementation evidence and runtime
+      - [x] README and design doc requirements match implementation evidence and runtime
       proof.
 
-      - [ ] Troubleshooting/test commands are accurate or corrections are made.
+      - [x] Troubleshooting/test commands are accurate or corrections are made.
 
-      - [ ] Explicit non-goals remain present and not contradicted by implementation
+      - [x] Explicit non-goals remain present and not contradicted by implementation
       evidence.
 
-      - [ ] Any doc changes preserve commit 4616008 authority or cite why authority
+      - [x] Any doc changes preserve commit 4616008 authority or cite why authority
       changed.'
     evidence_template: '## refs Read Confirmation
 
