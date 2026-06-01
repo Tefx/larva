@@ -90950,6 +90950,266 @@ phases:
   depends_on:
   - pi-postspec-launcher-config-2026-06-02
   - meta.gate
+  steps:
+  - id: pi_postspec_editor_prompt_red_tests_20260602
+    name: Add expected-red editor autocomplete and prompt overlay contract tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+      PROOF ARTIFACT: Behavior-defining tests for commit 4616008 editor UX and prompt
+      overlay requirements before residual implementation.
+
+
+      SCOPE:
+
+      - /larva-persona completion and selector behavior, including list failure returning
+      null/delegate behavior, process-local list cache, in-flight sharing, deterministic
+      TTL via injectable clock/test hook, and no prompt catalogue injection.
+
+      - Canonical @persona:<id> mention-only autocomplete for raw @, partial @persona:
+      namespace tokens, and @persona:<query>; preserve Pi file-reference suggestions;
+      no raw short-form @<id>; no automatic persona switch/subagent/prompt injection.
+
+      - before_agent_start prompt overlay/sandwich: preserve incoming Pi chained prompt,
+      add marker-bounded larva:identity-policy and larva:active-persona blocks, remove
+      only previous Larva-managed blocks, never match/rewrite Pi default identity
+      sentence, never rebuild Pi prompt builder, no provider payload rewrite.
+
+
+      <side_effect_budget>
+
+      Allowed: add/update tests, fixtures, smoke scripts, and test-only helpers. Forbidden:
+      product implementation logic, user dotfile writes, schema changes, prompt catalogue
+      dumps.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Verify unsupported ctx.ui.addAutocompleteProvider path keeps command-level
+      completion but no Larva editor provider.
+
+      - Verify base provider delegation/merge behavior keeps Pi file-reference candidates
+      first and exact value dedupe keeps first.
+
+      - Verify prompt overlay idempotence removes only marker-bounded Larva blocks
+      and leaves Pi operational context byte-for-byte otherwise.
+
+      </risk_probes>'
+    verification: '- [ ] Tests are limited to tests/fixtures/smoke harnesses and do
+      not modify product implementation code.
+
+      - [ ] Tests explicitly cover /larva-persona cache hit, expiry, in-flight sharing,
+      list failure null/delegate, and no prompt catalogue injection.
+
+      - [ ] Tests explicitly cover @, @p/@persona namespace partials, @persona:<query>,
+      raw @<id> non-support, Pi file-reference preservation, and no side effects from
+      mentions.
+
+      - [ ] Tests explicitly cover prompt overlay block shape, idempotence, Pi prompt
+      preservation, and forbidden Pi identity sentence/provider payload rewriting.
+
+      - [ ] Expected failures or exposed gaps are recorded and point to pi_postspec_editor_prompt_impl_20260602.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    agent: frontend-engineer
+  - id: pi_postspec_editor_prompt_impl_20260602
+    name: Complete active-persona editor UX and prompt overlay
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE: Pi extension active-persona editor UX and prompt overlay match
+      commit 4616008 across supported and unsupported runtime modes.
+
+
+      BOUNDING BOX:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension/test-autocomplete-runtime.mjs and autocomplete smoke
+      scripts
+
+      - tests/shell/test_pi_extension_contract.py and tests/shell/test_pi_extension_real_runtime.py
+
+
+      CONSTRAINTS:
+
+      - Do not dump persona catalogues into prompts.
+
+      - Do not add raw short-form @<id> support.
+
+      - Do not make @persona:<id> switch personas, force larva_subagent, or inject
+      mentioned prompt/spec.
+
+      - Do not intercept unrelated Pi @ file-reference input; preserve Pi file-reference
+      suggestions.
+
+      - Do not match or rewrite Pi''s default identity sentence; do not rebuild Pi
+      prompt builder or rewrite provider payloads.
+
+
+      ## Client Surface Completion Criteria (runtime output required)
+
+      Completion requires BOTH logic correctness and user-observable autocomplete/prompt
+      evidence. Data-only tests are insufficient.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      <side_effect_budget>
+
+      Allowed: bounded Pi extension and test harness changes for autocomplete/prompt
+      overlay. Forbidden: PersonaSpec/opifex changes, prompt catalogue injection,
+      raw @<id>, hidden provider payload rewrite, file-reference takeover.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - The supported editor-autocomplete claim must be gated by ctx.ui.addAutocompleteProvider
+      liveness.
+
+      - Completion cache must be process-local resettable memory only, with deterministic
+      tests and no disk files.
+
+      - Prompt overlay must preserve the incoming Pi chained prompt as operational
+      context between Larva marker blocks.
+
+      </risk_probes>'
+    verification: '- [ ] /larva-persona completion matches case-insensitive substring
+      ordering, cache TTL/expiry/in-flight sharing, selector/no-arg mode rules, and
+      null/delegate behavior on list failure.
+
+      - [ ] @persona mention provider handles only documented token classes, preserves/merges
+      Pi file-reference candidates, dedupes by exact value, and never supports raw
+      @<id> persona matching.
+
+      - [ ] Mention submission has no automatic persona switch, forced larva_subagent,
+      or prompt/spec injection.
+
+      - [ ] before_agent_start output includes marker-bounded larva:identity-policy
+      and larva:active-persona blocks, preserves Pi prompt, removes only prior Larva
+      blocks, and avoids Pi default identity sentence or provider payload rewrites.
+
+      - [ ] Runtime evidence or explicit unsupported-hook evidence is recorded for
+      ctx.ui.addAutocompleteProvider behavior.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_editor_prompt_red_tests_20260602
+    agent: frontend-engineer
+  - id: pi_postspec_editor_prompt_runtime_proof_20260602
+    name: Prove editor autocomplete liveness and prompt overlay runtime behavior
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      Independence Level: L2
+
+      PROOF ARTIFACT: Launched/supplemental Pi extension runtime evidence for editor
+      autocomplete and before_agent_start prompt overlay. This protects the phase
+      gate and final runtime gate.
+
+
+      <side_effect_budget>
+
+      Allowed: run Pi extension smoke/runtime tests and capture terminal/RPC/TUI evidence.
+      Forbidden: code edits, claiming editor autocomplete support without observed
+      ctx.ui.addAutocompleteProvider hook availability.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Distinguish command-level /larva-persona completion from editor autocomplete;
+      both need evidence for their claimed support class.
+
+      - If runtime hook unavailable, evidence must show graceful omission/delegation
+      rather than product failure.
+
+      - Prompt proof must show Pi chained prompt context survived, not just that Larva
+      prompt text appears.
+
+      </risk_probes>'
+    verification: '- [ ] Runtime proof identifies surface class, launch command/target,
+      tested Pi version/build, and whether ctx.ui.addAutocompleteProvider exists.
+
+      - [ ] Autocomplete smoke covers /larva-persona and @persona token classes with
+      Pi file-reference preservation or documents unsupported-hook omission.
+
+      - [ ] Prompt overlay proof captures effective before_agent_start prompt shape
+      with Pi context preserved and marker blocks idempotent.
+
+      - [ ] Raw stdout/stderr/RPC/TUI captures or terminal snapshots are included;
+      source inspection alone is insufficient.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_editor_prompt_impl_20260602
+    agent: client-runtime-verifier
+  - id: pi_postspec_editor_prompt_gate_20260602
+    name: Gate active-persona editor UX and prompt overlay
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+      DECISION ARTIFACT: Gate review for active-persona command/editor UX and prompt
+      overlay.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence and inspect repo state. Forbidden: code edits or accepting
+      source-only autocomplete/prompt claims.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Gate must reject any raw @<id> persona completion, prompt catalogue injection,
+      or mention side effect.
+
+      - Gate must reject editor-autocomplete support claims without ctx.ui.addAutocompleteProvider
+      liveness proof.
+
+      - Gate must reject prompt proof that rewrites Pi''s default identity sentence
+      or loses Pi operational context.
+
+      </risk_probes>'
+    verification: '- [ ] All checklist items from tests, implementation, and runtime
+      proof are satisfied or have blocking remediation.
+
+      - [ ] Gate decision basis maps every editor/prompt requirement to positive evidence.
+
+      - [ ] Runtime proof is not substituted by build/type/source evidence.
+
+      - [ ] OPEN/BLOCKED decision is explicit with unresolved obligations listed.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_editor_prompt_red_tests_20260602
+    - pi_postspec_editor_prompt_impl_20260602
+    - pi_postspec_editor_prompt_runtime_proof_20260602
+    agent: gate-reviewer
 - id: pi-postspec-subagent-ux-2026-06-02
   name: Pi Post-Spec Subagent Result, Sessions, and Rendering UX 2026-06-02
   status: locked
