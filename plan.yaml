@@ -91056,8 +91056,15 @@ phases:
       config.
 
       </risk_probes>'
-    verification: '- [ ] All phase steps completed with refs confirmation and raw
-      evidence.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] All phase steps completed with refs confirmation and raw evidence.
 
       - [ ] Requirement matrix has no ORPHAN_REQUIREMENT rows for launcher/config
       scope.
