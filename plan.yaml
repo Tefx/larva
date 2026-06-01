@@ -85981,7 +85981,7 @@ phases:
     agent: gate-reviewer
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
-  status: pending
+  status: in_progress
   gate: 'Phase accepted only when Pi tool-policy runtime and documentation remove
     legacy fallback semantics: absent env uses only ~/.pi/larva/tool-policy.json;
     absent env with only ~/.pi/tool-policy.json does not apply policy; explicit LARVA_PI_TOOL_POLICY_FILE
@@ -85992,7 +85992,7 @@ phases:
   steps:
   - id: pi_tool_policy_no_legacy_contract_20260601
     name: Freeze no-legacy Pi tool-policy contract
-    status: pending
+    status: claimed
     description: 'ACCEPTED CONTRACT ARTIFACT:
 
       Codify the changed requirement for Pi tool-policy path resolution across launcher,
@@ -86078,6 +86078,8 @@ phases:
     - tests/shell/test_pi_extension_contract.py
     - contrib/pi-extension/test-tool-policy-paths.mjs
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-06-01T08:10:44.657271+00:00'
   - id: pi_tool_policy_no_legacy_tests_20260601
     name: Add expected-red no-fallback policy tests
     status: pending
