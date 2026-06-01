@@ -85921,3 +85921,13 @@ phases:
     - pi_model_map_draft_live_cli_proof_20260601
     - pi_model_map_draft_spec_guard_20260601
     agent: gate-reviewer
+- id: pi-tool-policy-no-legacy-2026-06-01
+  name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
+  status: pending
+  gate: 'Phase accepted only when Pi tool-policy runtime and documentation remove
+    legacy fallback semantics: absent env uses only ~/.pi/larva/tool-policy.json;
+    absent env with only ~/.pi/tool-policy.json does not apply policy; explicit LARVA_PI_TOOL_POLICY_FILE
+    may still point to the old path; operator migration proof covers old-only move,
+    both-files conflict, no auto-merge, and no long-term fallback; invar guard passes.'
+  depends_on:
+  - pi-adapter-local-model-map-config-2026-06-01
