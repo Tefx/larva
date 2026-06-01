@@ -83373,49 +83373,49 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case exact-hit`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case exact-hit`
       and paste raw output showing `openai-codex/gpt-5.5`.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case prefix-hit`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case prefix-hit`
       and paste raw output showing `openrouter/google/gemini-3.1-pro-preview`.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case conflict-invalid`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case conflict-invalid`
       and paste raw output showing `LARVA_MODEL_MAP_INVALID`.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case missing-config`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case missing-config`
       and paste raw output showing first-slash fallback.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case invalid-config`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case invalid-config`
       and paste raw output showing `LARVA_MODEL_MAP_INVALID`.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-unavailable`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-unavailable`
       and paste raw output showing `LARVA_MODEL_UNAVAILABLE`.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case startup-persona`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case startup-persona`
       and paste raw output showing shared resolver use.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch`
       and paste raw output showing shared resolver use.
 
-      - [ ] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch-after-startup`
+      - [x] Run `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch-after-startup`
       and paste raw output showing no resolver divergence.
 
-      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case env-override`
+      - [x] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case env-override`
       and paste raw output.
 
-      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case new-path-exists`
+      - [x] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case new-path-exists`
       and paste raw output.
 
-      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case legacy-fallback`
+      - [x] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case legacy-fallback`
       and paste raw output.
 
-      - [ ] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case no-file-empty`
+      - [x] Run `node contrib/pi-extension/test-tool-policy-paths.mjs --case no-file-empty`
       and paste raw output.
 
-      - [ ] Run `pi --list-models --offline` and paste raw output/excerpts, or record
+      - [x] Run `pi --list-models --offline` and paste raw output/excerpts, or record
       explicit compatible skip/xfail reason if Pi is unavailable.
 
-      - [ ] Run `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      - [x] Run `pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
       -q` and paste raw output.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
