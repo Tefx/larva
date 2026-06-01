@@ -124,7 +124,7 @@ type ToolDefinition<Input, Output> = {
   ) => Promise<Output>;
 };
 type SelectorOption = { id: string; label: string; description?: string };
-type BridgeListItem = { id: string; description?: string; model?: string };
+type BridgeListItem = { id: string; description?: string; model?: string; spec_digest?: string };
 type StatusSetter = ((status: string) => void | Promise<void>) | ((key: string, status?: string) => void | Promise<void>);
 type PiUi = {
   setStatus?: StatusSetter;
@@ -160,11 +160,17 @@ type PersonaListInFlight = { key: string; promise: Promise<BridgeListItem[] | nu
 const CLI_TIMEOUT_MS = 10_000;
 const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
+const LARVA_IDENTITY_POLICY_BEGIN = "<!-- larva:identity-policy:begin -->";
+const LARVA_IDENTITY_POLICY_END = "<!-- larva:identity-policy:end -->";
+const LARVA_ACTIVE_PERSONA_BEGIN = "<!-- larva:active-persona:begin -->";
+const LARVA_ACTIVE_PERSONA_END = "<!-- larva:active-persona:end -->";
+const LARVA_MANAGED_BLOCK_RE = /\n?<!-- larva:(?:identity-policy|active-persona):begin -->[\s\S]*?<!-- larva:(?:identity-policy|active-persona):end -->\n?/g;
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const state: ActiveState = { envelope: null, activeTools: new Set<string>() };
 const activeTaskIds: Set<string> = new Set<string>();
 let personaListCache: PersonaListCache = null;
 let personaListInFlight: PersonaListInFlight = null;
+let personaCompletionClock: () => number = () => Date.now();
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -412,13 +418,13 @@ async function fetchPersonaList(env: RuntimeEnv): Promise<BridgeListItem[] | nul
 async function cachedPersonaList(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[] | null> {
   const env = currentEnv(ctx);
   const key = personaListCacheKey(env);
-  const now = Date.now();
+  const now = personaCompletionClock();
   if (personaListCache && personaListCache.key === key && personaListCache.expiresAt > now) return personaListCache.items;
   if (personaListInFlight && personaListInFlight.key === key) return personaListInFlight.promise;
   const promise = fetchPersonaList(env)
     .then((items) => {
       if (items !== null) {
-        personaListCache = { key, expiresAt: Date.now() + PERSONA_COMPLETION_CACHE_TTL_MS, items };
+        personaListCache = { key, expiresAt: personaCompletionClock() + PERSONA_COMPLETION_CACHE_TTL_MS, items };
       }
       return items;
     })
@@ -432,6 +438,19 @@ async function cachedPersonaList(ctx?: { env?: RuntimeEnv }): Promise<BridgeList
 export function resetPersonaCompletionCache(): void {
   personaListCache = null;
   personaListInFlight = null;
+}
+
+export function setPersonaCompletionClock(clock: () => number): void {
+  personaCompletionClock = clock;
+}
+
+export function advancePersonaCompletionClock(ms: number): void {
+  const previous = personaCompletionClock;
+  personaCompletionClock = () => previous() + ms;
+}
+
+export function resetPersonaCompletionClock(): void {
+  personaCompletionClock = () => Date.now();
 }
 
 export async function listPersonas(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[]> {
@@ -448,12 +467,35 @@ function normalizeListItem(item: unknown): BridgeListItem | null {
     id: item.id,
     description: typeof item.description === "string" ? item.description : undefined,
     model: typeof item.model === "string" ? item.model : undefined,
+    spec_digest: typeof item.spec_digest === "string" ? item.spec_digest : undefined,
   };
 }
 
-export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[]> {
+async function completePersonaMentionIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[] | null> {
   const personas = await cachedPersonaList(ctx);
-  if (personas === null) return [];
+  if (personas === null) return null;
+  const query = prefix.toLocaleLowerCase();
+  const source = query.length === 0 ? personas.filter((persona) => persona.spec_digest !== undefined) : personas;
+  const ranked = source
+    .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
+    .filter((entry) => entry.idLower.includes(query))
+    .sort((left, right) => {
+      const leftPrefix = left.idLower.startsWith(query);
+      const rightPrefix = right.idLower.startsWith(query);
+      if (leftPrefix !== rightPrefix) return leftPrefix ? -1 : 1;
+      return left.index - right.index;
+    });
+  return ranked
+    .map(({ persona }) => ({
+      value: persona.id,
+      label: persona.id,
+      description: persona.description ?? persona.model,
+    }));
+}
+
+export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[] | null> {
+  const personas = await cachedPersonaList(ctx);
+  if (personas === null) return null;
   const query = prefix.toLocaleLowerCase();
   const ranked = personas
     .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
@@ -501,6 +543,59 @@ export function larvaPersonaArgumentPrefix(line: string): string | null {
   return matched ? matched[1] : null;
 }
 
+function currentMentionToken(line: string): string | null {
+  const matched = /(?:^|\s)(@[^\s]*)$/.exec(line);
+  return matched ? matched[1] : null;
+}
+
+function mentionQuery(token: string): { mode: "merge" | "persona-only" | "delegate"; query: string } {
+  if (token === "@") return { mode: "merge", query: "" };
+  if ("@persona:".startsWith(token) && token.length > 1) return { mode: "merge", query: "vectl" };
+  if (token.startsWith("@persona:")) return { mode: "persona-only", query: token.slice("@persona:".length) };
+  return { mode: "delegate", query: "" };
+}
+
+function dedupeByValue(items: PiAutocompleteCandidate[]): PiAutocompleteCandidate[] {
+  const seen = new Set<string>();
+  const deduped: PiAutocompleteCandidate[] = [];
+  for (const item of items) {
+    if (seen.has(item.value)) continue;
+    seen.add(item.value);
+    deduped.push(item);
+  }
+  return deduped;
+}
+
+function personaMentionCandidate(candidate: PiAutocompleteCandidate): PiAutocompleteCandidate {
+  const value = `@persona:${candidate.value}`;
+  return { value, label: value, description: candidate.description };
+}
+
+export function createLarvaPersonaMentionAutocompleteProvider(
+  ctx: PiContext,
+  baseProvider?: PiAutocompleteProvider,
+): PiAutocompleteProvider {
+  return async (...args: unknown[]): Promise<PiAutocompleteResult> => {
+    const line = autocompleteLineFromArgs(args);
+    const token = line === null ? null : currentMentionToken(line);
+    const delegate = autocompleteBaseProviderFromArgs(args, baseProvider);
+    if (token === null) return delegate ? await delegate(...args) : null;
+    const classification = mentionQuery(token);
+    if (classification.mode === "delegate") return delegate ? await delegate(...args) : null;
+    try {
+      const personaMatches = await completePersonaMentionIds(classification.query, ctx);
+      if (personaMatches === null) return classification.mode === "merge" && delegate ? await delegate(...args) : null;
+      const mentionItems = personaMatches.map(personaMentionCandidate);
+      if (classification.mode === "persona-only") return mentionItems.length > 0 ? mentionItems : null;
+      const baseItems = delegate ? await delegate(...args) : null;
+      const merged = dedupeByValue([...(baseItems ?? []), ...mentionItems]);
+      return merged.length > 0 ? merged : null;
+    } catch {
+      return classification.mode === "merge" && delegate ? await delegate(...args) : null;
+    }
+  };
+}
+
 export function createLarvaPersonaAutocompleteProvider(
   ctx: PiContext,
   baseProvider?: PiAutocompleteProvider,
@@ -514,7 +609,7 @@ export function createLarvaPersonaAutocompleteProvider(
     }
     try {
       const candidates = await completePersonaIds(prefix, ctx);
-      return candidates.length > 0 ? candidates : null;
+      return candidates && candidates.length > 0 ? candidates : null;
     } catch {
       return null;
     }
@@ -525,7 +620,9 @@ function registerLarvaPersonaAutocompleteProvider(ctx: PiContext): void {
   const addProvider = ctx.ui?.addAutocompleteProvider;
   if (typeof addProvider !== "function") return;
   try {
-    addProvider(createLarvaPersonaAutocompleteProvider(ctx));
+    const personaProvider = createLarvaPersonaAutocompleteProvider(ctx);
+    const mentionProvider = createLarvaPersonaMentionAutocompleteProvider(ctx, personaProvider);
+    addProvider(mentionProvider);
   } catch {
     // Non-TUI or partially compatible Pi UI contexts may expose the field without
     // accepting editor providers; keep /larva-persona command completion alive.
@@ -538,7 +635,7 @@ function registerLarvaPersonaCommand(ctx: PiContext, pi: PiApi): void {
     description: "Switch active Larva persona",
     getArgumentCompletions: async (prefix: string) => {
       const candidates = await completePersonaIds(prefix, withRuntimeEnv(ctx, baseEnv));
-      return candidates.length > 0 ? candidates : null;
+      return candidates && candidates.length > 0 ? candidates : null;
     },
     handler: async (input?: string, commandCtx?: PiContext) => {
       const runtimeCtx = withRuntimeEnv(commandCtx ?? ctx, baseEnv);
@@ -726,17 +823,27 @@ export async function handlePersonaCommand(input: string | undefined, ctx: PiCon
 }
 
 export function replaceLarvaWatermark(systemPrompt: string, envelope: PersonaEnvelope): string {
-  const cleanPrompt = systemPrompt.replace(LARVA_WATERMARK_RE, "").trimEnd();
-  const block = [
+  const cleanPrompt = systemPrompt
+    .replace(LARVA_MANAGED_BLOCK_RE, "\n")
+    .replace(LARVA_WATERMARK_RE, "")
+    .trim();
+  const identityPolicy = [
+    LARVA_IDENTITY_POLICY_BEGIN,
+    "Active Larva persona is the primary identity. Pi's generic coding-assistant wording describes the runtime harness and tools only.",
+    LARVA_IDENTITY_POLICY_END,
+  ].join("\n");
+  const activePersona = [
+    LARVA_ACTIVE_PERSONA_BEGIN,
     `<!-- larva-spec: ${envelope.persona_id}@${envelope.spec_digest} -->`,
     envelope.prompt,
     "Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and resolve personas when needed.",
+    LARVA_ACTIVE_PERSONA_END,
   ].join("\n");
-  return `${cleanPrompt}\n\n${block}`;
+  return `${identityPolicy}\n\n${cleanPrompt}\n\n${activePersona}`;
 }
 
-export function before_agent_start(event: unknown): { systemPrompt: string } | undefined {
-  if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return undefined;
+export function before_agent_start(event: unknown): { systemPrompt: string } | null {
+  if (!state.envelope || !isRecord(event) || typeof event.systemPrompt !== "string") return null;
   return { systemPrompt: replaceLarvaWatermark(event.systemPrompt, state.envelope) };
 }
 
@@ -1153,8 +1260,6 @@ async function initializeSession(ctx: PiContext, pi: PiApi): Promise<void> {
       await setStartupUnavailableStatus(ctx, env.LARVA_PI_INITIAL_PERSONA_ID, committed.error);
       await notify(ctx, `Larva startup persona unavailable: ${committed.error.code}: ${committed.error.message}`, "error");
     }
-  } else {
-    await setStatus(ctx);
   }
 }
 
