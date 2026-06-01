@@ -84859,7 +84859,7 @@ phases:
     agent: integration-verifier
   - id: pi_model_map_runtime_proof_20260601
     name: Verify user-local Pi model-map runtime targets
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: local-check
@@ -84936,6 +84936,28 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T09:54:24.102802+00:00'
+    done_at: '2026-06-01T10:06:37.992891+00:00'
+    evidence: 'Verification artifact completed with blocker discovery and remediation
+      ownership. The integration verifier read required docs/config/runtime refs without
+      reading `/Users/tefx/dotfiles/agent/models.yaml` or personal scaffold/model
+      inventory; no files were changed. Raw JSON validation proved `/Users/tefx/.pi/larva/model-map.json`
+      is valid and preserved exact required mappings for `openai/gpt-5.5` -> `openai-codex/gpt-5.5`,
+      `ollama-cloud/glm-5.1` -> `openrouter/z-ai/glm-5.1`, `ollama-cloud/kimi-k2.6`
+      -> `openrouter/moonshotai/kimi-k2.6`, and `ollama-cloud/minimax-m2.7` -> `openrouter/minimax/minimax-m2.7`;
+      raw `pi --list-models --offline` excerpts showed target availability. The proof
+      found blocker R3: `openrouter/google/gemini-3.1-pro-preview` resolved via an
+      exact model-map entry (`OPENROUTER_EXACT_ENTRIES: ["openrouter/google/gemini-3.1-pro-preview"]`)
+      instead of the required literal `openrouter/` prefix rule, while the other two
+      Gemini targets resolved by prefix. No-write evidence: before/after checksum
+      and mtime for `/Users/tefx/.pi/larva/model-map.json` were unchanged, git status
+      clean, no runtime guessing added or relied on. Planner remediation was applied:
+      created `pi_model_map_openrouter_prefix_cleanup_20260601` to remove/neutralize
+      the redundant exact OpenRouter Gemini entry with write scope limited to `/Users/tefx/.pi/larva/model-map.json`,
+      and `pi_model_map_openrouter_prefix_retest_20260601` as read-only retest proving
+      all three Gemini personas resolve via prefix; phase gate rewired to depend on
+      retest. Checklist was toggled as addressed by the verification artifact plus
+      explicit remediation ownership; R3 remains a known blocker until cleanup/retest
+      complete.'
   - id: pi_persona_autocomplete_gate_20260601
     name: Gate Pi persona autocomplete and model-map proof
     status: pending
