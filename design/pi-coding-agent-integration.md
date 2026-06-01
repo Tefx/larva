@@ -671,7 +671,7 @@ task.
 
 ### Result contract
 
-The tool returns this public shape:
+`LarvaSubagentResult` is the semantic/domain payload for child-session outcomes:
 
 ```json
 {
@@ -682,6 +682,30 @@ The tool returns this public shape:
   "error": null
 }
 ```
+
+Pi custom-tool `handler` and `execute` calls return a Pi-facing ToolResult wrapper
+around that payload so Pi can render the tool output safely:
+
+```json
+{
+  "content": [{"type": "text", "text": "..."}],
+  "details": {
+    "task_id": "/absolute/path/to/child-session.jsonl",
+    "persona_id": "doc-reviewer",
+    "status": "success",
+    "result_text": "...",
+    "error": null
+  },
+  "isError": false
+}
+```
+
+The wrapper is adapter-local and does not define a new shared Larva/opifex schema.
+The machine-readable child-session fields `task_id`, `persona_id`, `status`,
+`result_text`, and `error` remain preserved in `details` and may also be mirrored
+as top-level metadata for Pi/runtime consumers. `status` is the semantic domain
+status; Pi `isError` is a renderer/tool-call flag derived from `status !==
+"success"` and must not be treated as a replacement status enum.
 
 `task_id` is canonically the child Pi session file path. It is the only public
 resume handle.
@@ -735,6 +759,13 @@ reports command failure, or lacks a string final assistant text field.
   "message": "Child session path is invalid."
 }
 ```
+
+The Pi-facing wrapper still includes `content` on `failed` and `cancelled`
+results. Failure content is stable human-readable error text derived from the
+semantic `error.code` and `error.message`; cancellation content states that the
+Larva subagent was cancelled. This covers failures before session allocation such
+as bad input or no active parent persona as well as failures after a child session
+path is known.
 
 Initial stable error codes:
 
@@ -1143,8 +1174,10 @@ Command and hook contracts:
   `action: "deny"` and `LARVA_TOOL_DENIED`; the custom tool handler is not
   invoked and no `LarvaSubagentResult` is produced.
 - Policy names not present in the current Pi runtime are ignored.
-- `larva_subagent` accepts `LarvaSubagentInput` and returns
-  `LarvaSubagentResult` only when the custom tool handler is actually invoked.
+- `larva_subagent` accepts `LarvaSubagentInput` and produces a semantic
+  `LarvaSubagentResult` only when the custom tool handler is actually invoked;
+  the registered Pi `handler`/`execute` return the Pi-facing ToolResult wrapper
+  with text `content`, preserved `details`, and `isError` derived from status.
 - Extension initialization reads only `LARVA_PI_INITIAL_PERSONA_ID`,
   `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
@@ -1368,8 +1401,8 @@ architecture_basis:
         rationale: "Stable machine-readable failure shape for tests and RPC clients."
       - name: "LarvaSubagentResult"
         owner_module: "contrib/pi-extension"
-        consumers: ["larva_subagent tool", "parent model"]
-        rationale: "Minimal public result shape: task_id, persona_id, status, result_text, error. Not produced when tool_call blocks the tool before handler invocation."
+        consumers: ["larva_subagent semantic result", "Pi ToolResult wrapper details"]
+        rationale: "Minimal semantic result shape: task_id, persona_id, status, result_text, error. Pi handler/execute wrap it with renderer-safe content and isError; no semantic result is produced when tool_call blocks the tool before handler invocation."
     shared_protocols: []
     shared_utilities: "N/A: no utility should be shared until implementation proves duplication."
     decision: "Only types that cross command/tool/session boundaries are shared; internals stay local."
@@ -1485,10 +1518,14 @@ Implementation gates must prove these observable behaviors:
     `LARVA_CHILD_START_FAILED`.
 23. Public `task_id` paths outside the canonical child session root are rejected
     with `LARVA_BAD_INPUT`.
-24. Successful `larva_subagent` returns `status: "success"`, public `task_id`,
-    string final assistant `result_text`, and `error: null`.
-25. Failed `larva_subagent` after session allocation returns public `task_id` when
-    known and a non-null `{code, message}` error object.
+24. Successful `larva_subagent` returns a Pi-facing ToolResult wrapper with text
+    `content`, `details` preserving semantic `status: "success"`, public
+    `task_id`, string final assistant `result_text`, `error: null`, and
+    `isError: false`.
+25. Failed `larva_subagent` after session allocation returns renderer-safe text
+    `content`, public `task_id` when known in preserved metadata/details, a
+    non-null `{code, message}` error object, and `isError: true`; pre-session
+    failures such as no active parent persona also include text `content`.
 26. Child startup uses `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
     `LARVA_PI_EXTENSION_ENTRY`, not bare `pi` or derived extension-entry paths;
     uses Pi RPC `get_state`, validates `data.sessionFile` as a readable `.jsonl`

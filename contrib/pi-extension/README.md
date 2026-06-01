@@ -326,7 +326,7 @@ Input:
 - `task`: required non-empty instruction for the child Pi session.
 - `task_id`: optional public resume handle returned by an earlier call.
 
-Result shape:
+Semantic/domain result payload (`LarvaSubagentResult`):
 
 ```json
 {
@@ -338,9 +338,19 @@ Result shape:
 }
 ```
 
-`status` is `success`, `failed`, or `cancelled`. On failures before a child
-session path exists, `task_id` is `null`; after a child session path is known,
-the result may include that public path with a non-null `{code, message}` error.
+The Pi custom-tool `handler`/`execute` return a renderer-safe ToolResult wrapper
+around that semantic payload, not a new Larva public schema. The wrapper includes
+`content: [{"type":"text","text":"..."}]` for Pi rendering and preserves the
+machine-readable `task_id`, `persona_id`, `status`, `result_text`, and `error`
+fields in `details` and mirrored top-level metadata. `status` is the Larva domain
+status (`success`, `failed`, or `cancelled`); Pi `isError` is derived separately
+from whether that status is not `success`.
+
+Failure and cancellation paths also return renderer-safe `content`: failures use
+the stable error code/message text, and cancelled runs use cancellation text. On
+failures before a child session path exists, `task_id` is `null`; after a child
+session path is known, the metadata may include that public path with a non-null
+`{code, message}` error.
 
 The child session root defaults to:
 
