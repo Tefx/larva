@@ -91722,7 +91722,7 @@ phases:
       none'
   - id: pi_postspec_editor_prompt_runtime_proof_20260602
     name: Prove editor autocomplete liveness and prompt overlay runtime behavior
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -91817,6 +91817,8 @@ phases:
     depends_on:
     - pi_postspec_editor_prompt_impl_20260602
     agent: client-runtime-verifier
+    claimed_by: client-runtime-verifier
+    claimed_at: '2026-06-01T17:36:01.459565+00:00'
   - id: pi_postspec_editor_prompt_gate_20260602
     name: Gate active-persona editor UX and prompt overlay
     status: pending
