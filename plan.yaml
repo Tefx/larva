@@ -84783,7 +84783,7 @@ phases:
       guard` passed. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_persona_autocomplete_runtime_tests_20260601
     name: Add and run Pi autocomplete runtime tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -84859,6 +84859,100 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T10:08:21.457746+00:00'
+    done_at: '2026-06-01T10:20:27.749922+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - `contrib/pi-extension/larva.ts` — implementation reads verified: autocomplete
+      lowercases query, filters with substring `includes`, ranks prefix matches before
+      non-prefix matches, maps candidates to `{value,label,description}`, delegates
+      non-`/larva-persona` input to base provider, and returns `null` on list failures.
+
+      - `contrib/pi-extension/README.md` — docs verified: `/larva-persona` completion
+      uses case-insensitive substring matching from `larva list --json`, prefix matches
+      rank first, forced/regular completion share behavior, non-larva input delegates,
+      cache/in-flight reuse is required, failures return `null`.
+
+      - `design/pi-coding-agent-integration.md` — design verified: only `/larva-persona
+      <query>` is handled, other editor input delegates, matching is case-insensitive
+      substring with prefix-first rank while preserving list order, parsed list results
+      are cached/shared in-flight, and fuzzy/alias/regex/wildcard behavior is forbidden.
+
+
+      ## Mainline verification barrier
+
+      Commit merged on main: `0998685 [vectl] step-pi_persona_autocomplete_runtime_tests_20260601
+      completed`.
+
+      Commands run on main after commit:
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case substring-case-ordering
+      --prefix DEV` exit 0: provider/command values `["DevOps", "devrel", "qa-dev",
+      "backend-dev"]`; `substringCaseInsensitive: true`; `prefixFirstStableOrder:
+      true`; `forcedAndCommandSharePath: true`.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case cache-inflight`
+      exit 0: `listInvocationCountDuringOverlap: 1`; `listInvocationCountAfterCacheReuse:
+      1`; `inFlightDedupeProven: true`; `cacheReuseProven: true`.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case delegation-failure
+      --prefix vectl` exit 0: `delegated: true`; calls `[["/not-larva vectl", "object"]]`;
+      `failed: null`; `malformed: null`; `failClosedNoCrash: true`.
+
+      - `node contrib/pi-extension/test-autocomplete-runtime.mjs --case fixture-shape`
+      exit 0: exact documented list shape has `id`, `description`, `spec_digest`,
+      `model`; candidate keys only `["description","label","value"]`; `noAliasFuzzyRegexWildcardFields:
+      true`.
+
+      - `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete`
+      exit 0: `8 passed, 13 deselected`.
+
+      - `uv run invar guard` exit 0: status passed; static passed true; errors 0;
+      warnings 0; infos 0; doctest passed true; crosshair/property_tests skipped because
+      no changed files.
+
+
+      ## Requirement Proof Coverage
+
+      - R1 substring + case-insensitive tests: PROVEN by Node substring-case-ordering
+      case.
+
+      - R2 prefix-first stable-order tests: PROVEN by provider/command order and `prefixFirstStableOrder:
+      true`.
+
+      - R3 cache + concurrent in-flight dedupe tests: PROVEN by single list invocation
+      during overlap and after cache reuse.
+
+      - R4 delegate-other-input and list failure fail-closed tests: PROVEN by delegated
+      base provider call plus failed/malformed list returning null with no crash.
+
+      - R5 `invar guard`: PROVEN by raw guard pass.
+
+      - Spec-fixture conformance: PROVEN by fixture-shape output using exact `larva
+      list --json` data shape and no alias/fuzzy/regex/wildcard fields.
+
+
+      ## checklist_receipt
+
+      All seven checklist items were PROVEN and toggled with `vectl_check` before
+      completion.
+
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: n/a
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false'
   - id: pi_model_map_runtime_proof_20260601
     name: Verify user-local Pi model-map runtime targets
     status: done
