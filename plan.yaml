@@ -93063,7 +93063,7 @@ phases:
   steps:
   - id: pi_postspec_full_spec_conformance_20260602
     name: Full commit 4616008 Pi spec conformance audit
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -93173,6 +93173,43 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-06-01T18:47:33.833071+00:00'
+    done_at: '2026-06-01T18:58:29.594192+00:00'
+    evidence: "status: SUCCESS\nsemantic_result: FAIL_AUDIT_COMPLETED_WITH_REMEDIATION_PATH\n\
+      spec_verifier_task_id: ses_17b7bb9caffeWgwE9EYk0Px5Wf\nplanner_remediation_task_id:\
+      \ ses_17b766965ffe6m9yCah7iFKr5R\nmerge_result: branch had no code changes;\
+      \ `git merge --squash vectl/step-pi_postspec_full_spec_conformance_20260602`\
+      \ reported already up to date.\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — used VT42-VT48 including VT46 renderResult requirements, non-goals forbidding\
+      \ PersonaSpec changes/sidecars/prompt catalogue/widget dashboard/legacy fallback/raw\
+      \ @<id>, and runtime proof obligations.\n- contrib/pi-extension/README.md —\
+      \ used launcher/config/editor/subagent runtime/operator requirements, tool-policy/model-map\
+      \ paths, ToolResult/session/rendering behavior, and final runtime gate expectations.\n\
+      \n## Changed Files / No-Change Report\n- changed_files: none\n- no_change_reason:\
+      \ verifier/audit only; no product edits made.\n\n## Full Spec Conformance Receipt\n\
+      - verdict: FAIL (issue-detection artifact accepted only after remediation path\
+      \ was created)\n- blockers_detected:\n  - B1: full conformance pytest suite\
+      \ failed 3 tests.\n  - B2: slash-status runtime smoke/status commit proof failed\
+      \ in spec-verifier environment.\n  - B3: failure-path runtime smoke timeout/no\
+      \ Larva error notify in spec-verifier environment.\n  - B4: `larva_subagent_sessions`\
+      \ contract timeout.\n  - B5: `getAllTools` failures swallowed instead of `LARVA_TOOL_ENUMERATION_FAILED`.\n\
+      \  - B6: child stderr whitelist includes unlisted `LARVA_MODEL_MAP_INVALID`.\n\
+      \  - B7: VT47 real editor-autocomplete hook proof marked NEEDS_TEST/UNPROVEN.\n\
+      - requirements_register: covered launcher/config/editor/prompt/subagent/runtime/non-goal/shared-surface\
+      \ families and VT42-VT48.\n- evidence_table: used CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST\
+      \ verdict taxonomy with closure paths for non-conforming rows.\n- VT46 rows:\
+      \ collapsed final view, expanded fields, resume footer, parent footer preservation,\
+      \ and no-widget-dashboard all independently mapped and marked CONFORMS.\n\n\
+      ## Remediation path created\nPlanner created and validated a batched remediation\
+      \ path:\n- `pi_postspec_conformance_blockers_b1_b7_fix_20260602` — one implementation\
+      \ fix step covering all blockers B1-B7.\n- `pi_postspec_conformance_blockers_b1_b7_reaudit_20260602`\
+      \ — independent re-audit step depending on the fix.\n- downstream `pi_postspec_full_runtime_gate_20260602`\
+      \ rewired to depend on re-audit.\n\n## Checklist receipt\nAll seven checklist\
+      \ obligations were toggled by orchestrator: refs confirmation, no-change/receipts/gaps,\
+      \ complete requirements register, required verdict taxonomy, closure paths for\
+      \ NEEDS_TEST/UNPROVEN/blockers, independent VT46 rows, and no-orphan/no-generic-proof-substitution\
+      \ audit.\n\n## Gaps / blockers\nBlockers B1-B7 remain open but are now owned\
+      \ by `pi_postspec_conformance_blockers_b1_b7_fix_20260602` and `pi_postspec_conformance_blockers_b1_b7_reaudit_20260602`;\
+      \ downstream gates remain blocked until those steps pass."
   - id: pi_postspec_full_runtime_gate_20260602
     name: Run supplemental Pi runtime, autocomplete smoke, contract tests, and invar
       guard
