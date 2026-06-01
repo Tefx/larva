@@ -88105,7 +88105,7 @@ phases:
       toggled by orchestrator.'
   - id: pi_model_map_draft_fail_closed_inventory_retest_20260601
     name: Retest fail-closed Pi inventory spec guard
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -88243,6 +88243,8 @@ phases:
     depends_on:
     - pi_model_map_draft_fail_closed_inventory_fix_20260601
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-06-01T12:03:35.969660+00:00'
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
   status: done
