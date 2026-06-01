@@ -85077,3 +85077,179 @@ phases:
 
       - design traceability matrix complete: <satisfied/failed/blocked/unobserved>'
     agent: python-executor
+  - id: pi_model_map_draft_red_tests_20260601
+    name: Add expected-red fixture tests for Pi model-map draft helper
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      PROOF ARTIFACT:
+
+      Add deterministic fixture/fake tests that expose the approved helper behavior
+      before implementation. Product implementation code must not be completed in
+      this step; tests should be expected-red until `pi_model_map_draft_impl_20260601`
+      fills the contract.
+
+
+      BOUNDING BOX:
+
+      - tests/shell/
+
+      - src/larva/core/pi_model_map.py only for doctest expectations if the contract
+      step introduced Core stubs
+
+      - src/larva/shell/pi_model_map.py only for import targets/stubs from the contract
+      step
+
+
+      Spec-Fixture Conformance (MANDATORY):
+
+      At least one fixture for each external-facing format must use the exact documented
+      shape from design/pi-model-map-draft-helper.md without convenience fields: Pi
+      inventory provider/model_id rows, existing model-map JSON with `models` and
+      `prefix_rules`, raw draft JSON output, optional Larva envelope for `--json`,
+      and CLI args.
+
+
+      Test inventory to encode:
+
+      - duplicate registry model grouping and stable sorted exact output
+
+      - valid existing exact mapping preservation only when target exists in Pi inventory
+
+      - stale exact mapping removal/reporting
+
+      - invalid existing exact target reporting and re-choice/unresolved handling
+
+      - valid existing prefix rule preservation
+
+      - stale prefix rule reporting/removal
+
+      - invalid prefix target reporting
+
+      - same-length prefix conflict rejection
+
+      - ambiguous OpenAI-like, Google-like, OpenRouter-like, other-provider, and unknown-provider
+      candidates without hard-coded preferences
+
+      - malformed source model: interactive manual/skip path; non-interactive unresolved
+      failure
+
+      - no-candidate manual/skip path
+
+      - `--non-interactive` unresolved failure with `LARVA_PI_MODEL_MAP_UNRESOLVED`
+
+      - redirect-safe stdout: raw JSON only in default dry-run mode; reports/warnings
+      on stderr
+
+      - optional `--json` envelope behavior if the CLI pattern includes it
+
+      - `--write` filesystem behavior without embedding report metadata
+
+      - invalid existing model-map fail-closed behavior
+
+
+      CONSTRAINTS:
+
+      - Do NOT use real Pi, real registry state, or personal scaffold files in fixture
+      tests.
+
+      - Do NOT make all fixtures convenient; minimal spec-shaped fixtures are mandatory.
+
+      - Do NOT encode provider-family preferences.
+
+
+      <side_effect_budget>
+
+      Allowed: tests, fixtures, minimal imports against contract stubs. Forbidden:
+      product implementation logic, real subprocess calls, reads from ~/.pi or /Users/tefx/dotfiles,
+      broad new prefix-rule invention.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify tests would catch stdout pollution with human report text.
+
+      - Verify tests would fail if an OpenAI/Google/OpenRouter hard-coded preference
+      table appears.
+
+      - Verify tests distinguish stale exact mappings from stale/invalid/conflicting
+      prefix rules.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the design sections that each fixture family derives
+      from.
+
+      - [ ] Test-only diff is limited to tests/fixtures plus contract-doctest expectations;
+      product implementation remains stubbed or absent.
+
+      - [ ] Fixture matrix covers deduplication, merge, exact mappings, prefix rules,
+      ambiguity, malformed models, non-interactive unresolved failure, redirect-safe
+      stdout, optional --json, --write, invalid model-map, and no personal scaffold
+      input.
+
+      - [ ] Expected-red evidence identifies the exposed gaps and names `pi_model_map_draft_impl_20260601`
+      as the downstream implementation owner.
+
+      - [ ] Spec-derived minimal fixtures are present and do not include convenience
+      fields beyond the approved draft/runtime shapes.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passages used for fixture formats
+      or NOT READ: reason>
+
+
+      ## Expected-Red Test Receipt
+
+      - changed_files: <tests/fixtures only plus allowed contract-doctest anchors>
+
+      - command: <exact focused test command>
+
+      - raw_stdout: <paste raw output showing expected failures or skipped import
+      targets>
+
+      - exit_code: <code>
+
+      - expected_failures: <list of gaps exposed>
+
+      - downstream_implementation_owner: pi_model_map_draft_impl_20260601
+
+
+      ## Fixture Matrix
+
+      | requirement | fixture/test | spec section cited | expected pre-impl status
+      |
+
+      | --- | --- | --- | --- |
+
+      | dedup/merge | <test> | <section> | red |
+
+      | prefix findings | <test> | <section> | red |
+
+      | ambiguity/no preference | <test> | <section> | red |
+
+      | malformed/non-interactive | <test> | <section> | red |
+
+      | redirect-safe stdout | <test> | <section> | red |
+
+
+      ## Checklist Receipt
+
+      - fixture families complete: <satisfied/failed/blocked/unobserved>
+
+      - tests remain expected-red before implementation: <satisfied/failed/blocked/unobserved>
+
+      - no personal scaffold or provider preference encoded: <satisfied/failed/blocked/unobserved>'
+    depends_on:
+    - pi_model_map_draft_contract_20260601
+    agent: python-executor
