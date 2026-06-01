@@ -91647,8 +91647,16 @@ phases:
       context.
 
       </risk_probes>'
-    verification: '- [ ] Tests are limited to tests/fixtures/smoke harnesses and do
-      not modify product implementation code.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Tests are limited to tests/fixtures/smoke harnesses and do not modify
+      product implementation code.
 
       - [ ] Tests cover success, failed-before-session, failed-after-allocation, cancelled,
       and policy-denied-no-LarvaSubagentResult paths where applicable.
