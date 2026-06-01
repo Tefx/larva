@@ -91735,11 +91735,91 @@ phases:
       - [ ] renderCall/onUpdate/renderResult produce row-local persona/mode/task/task_id/status/error/output
       visibility without changing parent footer.
 
+      - [ ] VT46 collapsed renderResult final view shows persona and terminal state.
+
+      - [ ] VT46 expanded renderResult final view shows persona id, mode, full task,
+      task_id when known, final status, error if any, final output, and resume footer
+      as independent evidence fields.
+
+      - [ ] VT46 renderResult preserves parent `larva:` footer state and never overwrites
+      it with child/resume footer content.
+
+      - [ ] VT46 renderResult does not introduce a widget dashboard or dashboard-like
+      aggregate surface.
+
       - [ ] Preview/truncation helper strips ANSI, collapses controls/newlines, NFC-normalizes,
       counts code points, and keeps ellipsis inside 120/80/200 bounds.
 
       - [ ] Child Pi RPC/session behavior and resume validation from the design doc
       remain unchanged.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none`>
+
+      - no_change_reason: <required when no files changed/proof-closure only>
+
+
+      ## Implementation Receipt
+
+      - toolresult_mirror_evidence: <details/top-level mirror and isError evidence>
+
+      - resume_footer_evidence: <non-null/null task_id behavior evidence>
+
+      - sessions_helper_evidence: <limit/cap/newest-first/details-only/no side effects
+      evidence>
+
+      - truncation_evidence: <ANSI/control/Unicode/ellipsis evidence>
+
+      - forbidden_side_effect_absence: <no sidecars/locks/scans/aliases/widget dashboard/schema
+      changes evidence>
+
+
+      ## VT46 renderResult Implementation Evidence
+
+      - vt46_collapsed_final_view: <artifact proving persona + terminal state>
+
+      - vt46_expanded_persona_id: <artifact>
+
+      - vt46_expanded_mode: <artifact>
+
+      - vt46_expanded_full_task: <artifact>
+
+      - vt46_expanded_task_id_when_known: <artifact or explicit null-task case>
+
+      - vt46_expanded_final_status: <artifact>
+
+      - vt46_expanded_error_if_any: <artifact or no-error case>
+
+      - vt46_expanded_final_output: <artifact>
+
+      - vt46_expanded_resume_footer: <artifact>
+
+      - vt46_parent_larva_footer_preserved: <artifact>
+
+      - vt46_no_widget_dashboard: <artifact>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines and exit codes, if any>
+
+      - raw_outputs_or_artifacts: <raw stdout/stderr/artifact refs>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
