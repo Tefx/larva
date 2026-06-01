@@ -90692,7 +90692,7 @@ phases:
       \ was not accessed.\n\n## Open Problems / Residual Risk\nnone"
 - id: pi-postspec-launcher-config-2026-06-02
   name: Pi Post-Spec Launcher and Adapter Config Conformance 2026-06-02
-  status: pending
+  status: in_progress
   gate: Phase opens only when launcher/package/env contract and adapter-local model-map/tool-policy
     semantics match commit 4616008, including absolute env overrides, canonical ~/.pi/larva/*
     paths, LARVA_MODEL_MAP_INVALID, no implicit legacy tool-policy fallback, no PersonaSpec/opifex
@@ -90703,7 +90703,7 @@ phases:
   steps:
   - id: pi_postspec_launcher_config_traceability_20260602
     name: Trace commit 4616008 launcher and config requirements
-    status: pending
+    status: claimed
     description: 'step_type: contract
 
       agent_source: project
@@ -90800,6 +90800,8 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
     agent: software-architect
+    claimed_by: software-architect
+    claimed_at: '2026-06-01T16:47:06.105436+00:00'
   - id: pi_postspec_launcher_config_residual_impl_20260602
     name: Complete residual launcher/config semantics from commit 4616008
     status: pending
