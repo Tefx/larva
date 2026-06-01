@@ -49,7 +49,7 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     `<real-pi-bin> <selected-extension-flag> <bundled extension> --version`,
     sets `LARVA_PI_INITIAL_PERSONA_ID=known`, `LARVA_PI_REAL_BIN`,
     `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`,
-    `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_LAUNCHED`, and `LARVA_CLI_ARGV_JSON`
+    `LARVA_PI_LAUNCHED`, and `LARVA_CLI_ARGV_JSON`
     for the extension process.
     """
     import io
@@ -77,8 +77,7 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
     assert env.get("LARVA_PI_EXTENSION_ENTRY") == cmd[2]
     assert env.get("LARVA_PI_LAUNCHED") == "1"
-    assert env.get("LARVA_PI_TOOL_POLICY_FILE", "").endswith("/.pi/larva/tool-policy.json")
-    assert Path(env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
+    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
     assert "LARVA_CLI_ARGV_JSON" in env
 
 
@@ -105,7 +104,6 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
         "    'LARVA_PI_EXTENSION_ENTRY',\n"
         "    'LARVA_CLI_ARGV_JSON',\n"
         "    'LARVA_PI_INTERACTIVE_TUI',\n"
-        "    'LARVA_PI_TOOL_POLICY_FILE',\n"
         "    'LARVA_PI_LAUNCHED',\n"
         "]\n"
         "Path(os.environ['FAKE_PI_ARTIFACT']).write_text(\n"
@@ -143,8 +141,7 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
     assert child_env["LARVA_PI_EXTENSION_ENTRY"] == payload["argv"][1]
     assert child_env["LARVA_CLI_ARGV_JSON"]
     assert child_env["LARVA_PI_INTERACTIVE_TUI"] == "1"
-    assert child_env["LARVA_PI_TOOL_POLICY_FILE"].endswith("/.pi/larva/tool-policy.json")
-    assert Path(child_env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
+    assert "LARVA_PI_TOOL_POLICY_FILE" not in child_env
     assert child_env["LARVA_PI_LAUNCHED"] == "1"
 
 
@@ -169,8 +166,8 @@ def test_launcher_absent_policy_env_ignores_legacy_tool_policy_path(
     assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
 
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(canonical.resolve())
-    assert env["LARVA_PI_TOOL_POLICY_FILE"] != str(legacy.resolve())
+    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
+    assert str(legacy.resolve()) not in env.values()
 
 
 def test_launcher_absent_policy_env_selects_canonical_tool_policy_path(
@@ -193,7 +190,7 @@ def test_launcher_absent_policy_env_selects_canonical_tool_policy_path(
     assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
 
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
-    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(canonical.resolve())
+    assert "LARVA_PI_TOOL_POLICY_FILE" not in env
 
 
 def test_launcher_explicit_policy_env_honors_legacy_tool_policy_path(
@@ -220,6 +217,25 @@ def test_launcher_explicit_policy_env_honors_legacy_tool_policy_path(
 
     env = mock_subprocess_run.call_args[1].get("env", os.environ)
     assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(legacy)
+
+
+@pytest.mark.parametrize("env_name", ["LARVA_PI_TOOL_POLICY_FILE", "LARVA_PI_MODEL_MAP_FILE"])
+def test_launcher_rejects_relative_config_override_before_starting_pi(
+    mock_shutil_which, mock_subprocess_run, env_name, monkeypatch
+):
+    monkeypatch.setenv(env_name, "relative/path.json")
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+
+    assert code != 0
+    assert "LARVA_PI_BAD_ARGS" in stderr.getvalue()
+    # One call is allowed for extension flag preflight, but Pi must not be launched.
+    launch_calls = [call for call in mock_subprocess_run.call_args_list if call.args[0][1:] != ["--help"]]
+    assert launch_calls == []
 
 def test_launcher_missing_persona(
     mock_shutil_which, mock_subprocess_run, tmp_path

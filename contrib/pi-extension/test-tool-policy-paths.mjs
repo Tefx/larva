@@ -100,12 +100,11 @@ const cases = {
       await writeFile(paths.canonical, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
       await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["bash"] } } }), "utf8");
     });
-    assert.equal(conflict.result.ok, false);
-    assert.equal(conflict.result.error.code, "LARVA_POLICY_INVALID");
-    assert.deepEqual(conflict.activeTools, undefined);
+    assert.equal(conflict.result.ok, true);
+    assert.deepEqual(conflict.activeTools, ["bash"]);
     assert.equal(await exists(conflict.paths.canonical), true);
     assert.equal(await exists(conflict.paths.legacy), true);
-    console.log("both-present-conflict PASS conflict reported without merge or overwrite");
+    console.log("both-present-conflict PASS runtime uses canonical only without legacy probing", JSON.stringify(conflict.activeTools));
   },
   "old-only-no-env-is-empty": async () => {
     const legacy = await runPolicyCase("old-only-no-env-is-empty", async (paths) => {
@@ -123,6 +122,14 @@ const cases = {
     assert.equal(explicitLegacy.result.ok, true);
     assert.deepEqual(explicitLegacy.activeTools, ["bash"]);
     console.log("explicit-env-old-path PASS explicit legacy activeTools", JSON.stringify(explicitLegacy.activeTools));
+  },
+  "relative-env-rejected": async () => {
+    const relative = await runPolicyCase("relative-env-rejected", async (_paths, env) => {
+      env.LARVA_PI_TOOL_POLICY_FILE = "relative-tool-policy.json";
+    });
+    assert.equal(relative.result.ok, false);
+    assert.equal(relative.result.error.code, "LARVA_POLICY_INVALID");
+    console.log("relative-env-rejected PASS LARVA_POLICY_INVALID");
   },
   "no-file-empty": async () => {
     const noFile = await runPolicyCase("no-file-canonical-empty", async () => undefined);

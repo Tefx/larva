@@ -214,37 +214,28 @@ function homeDir(env: RuntimeEnv): string {
 }
 
 function modelMapPath(env: RuntimeEnv): string {
-  return env.LARVA_PI_MODEL_MAP_FILE ?? join(homeDir(env), ".pi", "larva", "model-map.json");
+  if (env.LARVA_PI_MODEL_MAP_FILE !== undefined) {
+    if (!isAbsolute(env.LARVA_PI_MODEL_MAP_FILE)) {
+      throw error("LARVA_MODEL_MAP_INVALID", "LARVA_PI_MODEL_MAP_FILE must be an absolute path.");
+    }
+    return env.LARVA_PI_MODEL_MAP_FILE;
+  }
+  return join(homeDir(env), ".pi", "larva", "model-map.json");
 }
 
 function toolPolicyPathCandidates(env: RuntimeEnv): string[] {
-  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) return [env.LARVA_PI_TOOL_POLICY_FILE];
-  return [join(homeDir(env), ".pi", "larva", "tool-policy.json")];
-}
-
-async function pathExists(file: string): Promise<boolean> {
-  try {
-    await access(file, constants.F_OK);
-    return true;
-  } catch {
-    return false;
+  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) {
+    if (!isAbsolute(env.LARVA_PI_TOOL_POLICY_FILE)) {
+      throw error("LARVA_POLICY_INVALID", "LARVA_PI_TOOL_POLICY_FILE must be an absolute path.");
+    }
+    return [env.LARVA_PI_TOOL_POLICY_FILE];
   }
+  return [join(homeDir(env), ".pi", "larva", "tool-policy.json")];
 }
 
 async function selectedToolPolicyPath(env: RuntimeEnv): Promise<string> {
   const [canonicalOrOverride] = toolPolicyPathCandidates(env);
   return canonicalOrOverride;
-}
-
-async function assertNoImplicitLegacyToolPolicyConflict(env: RuntimeEnv, canonicalPath: string): Promise<void> {
-  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) return;
-  const legacyPath = join(homeDir(env), ".pi", "tool-policy.json");
-  if ((await pathExists(canonicalPath)) && (await pathExists(legacyPath))) {
-    throw error(
-      "LARVA_POLICY_INVALID",
-      `Conflicting Larva Pi tool policy files: ${canonicalPath} and ${legacyPath}. Set LARVA_PI_TOOL_POLICY_FILE explicitly or remove one file.`,
-    );
-  }
 }
 
 function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
@@ -624,7 +615,6 @@ async function loadPolicy(personaId: string, env: RuntimeEnv): Promise<PiToolPol
   const file = await selectedToolPolicyPath(env);
   void policyOverride;
   try {
-    await assertNoImplicitLegacyToolPolicyConflict(env, file);
     const raw = await readFile(file, "utf8").catch((readError: unknown) => {
       const code = isRecord(readError) ? readError.code : undefined;
       if (code === "ENOENT") return null;

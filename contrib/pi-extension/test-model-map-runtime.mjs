@@ -164,6 +164,27 @@ const cases = {
     assert.equal(observed.result.error.code, "LARVA_MODEL_MAP_INVALID");
     console.log("invalid-config PASS existing invalid file LARVA_MODEL_MAP_INVALID", JSON.stringify({ mapFile: observed.mapFile, error: observed.result.error }));
   },
+  "relative-override-invalid": async () => {
+    const mod = await importFresh("relative-override-invalid-direct");
+    const dir = await mkdtemp(join(tmpdir(), "larva-pi-model-runtime-relative-direct-"));
+    const cli = await makeFakeCli(dir);
+    const result = await mod.handlePersonaCommand("relative-override-invalid", {
+      env: {
+        LARVA_CLI_ARGV_JSON: JSON.stringify([process.execPath, cli]),
+        LARVA_PI_MODEL_MAP_FILE: "relative-model-map.json",
+        PERSONA_MODELS: JSON.stringify({ "relative-override-invalid": "provider/model" }),
+      },
+      modelRegistry: { find: async () => ({ id: "model" }) },
+      ui: { setStatus: async () => undefined },
+    }, {
+      getAllTools: async () => ["read"],
+      setActiveTools: async () => true,
+      setModel: async () => true,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.error.code, "LARVA_MODEL_MAP_INVALID");
+    console.log("relative-override-invalid PASS LARVA_MODEL_MAP_INVALID", JSON.stringify(result.error));
+  },
   "mapped-unavailable": async () => {
     const observed = await runCommit({
       name: "mapped-unavailable",

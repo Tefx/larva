@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 PI_EXTENSION_RELATIVE_PATH = Path("contrib/pi-extension/larva.ts")
 PACKAGED_EXTENSION_RELATIVE_PATH = Path("pi_extension/larva.ts")
 LARVA_PI_BIN_ENV = "LARVA_PI_BIN"
+LARVA_PI_MODEL_MAP_FILE_ENV = "LARVA_PI_MODEL_MAP_FILE"
 LARVA_PI_TOOL_POLICY_FILE_ENV = "LARVA_PI_TOOL_POLICY_FILE"
 LARVA_PI_LAUNCHED_ENV = "LARVA_PI_LAUNCHED"
 
@@ -190,11 +191,29 @@ def _larva_cli_argv_json() -> Result[str, object]:
     return Success(json.dumps([executable], separators=(",", ":")))
 
 
-def _tool_policy_file(environ: Mapping[str, str]) -> Result[str, object]:
-    if LARVA_PI_TOOL_POLICY_FILE_ENV in environ:
-        return Success(environ[LARVA_PI_TOOL_POLICY_FILE_ENV])
-    home = Path(environ.get("HOME", str(Path.home()))).expanduser()
-    return Success(str((home / ".pi" / "larva" / "tool-policy.json").resolve()))
+def _validate_absolute_override(
+    environ: Mapping[str, str],
+    name: str,
+) -> Result[None, CliFailure]:
+    value = environ.get(name)
+    if value is None:
+        return Success(None)
+    if Path(value).expanduser().is_absolute():
+        return Success(None)
+    return Failure(
+        _launcher_failure(
+            "LARVA_PI_BAD_ARGS",
+            f"{name} must be an absolute path when set",
+        ).unwrap()
+    )
+
+
+def _validate_config_overrides(environ: Mapping[str, str]) -> Result[None, CliFailure]:
+    for name in (LARVA_PI_MODEL_MAP_FILE_ENV, LARVA_PI_TOOL_POLICY_FILE_ENV):
+        validated = _validate_absolute_override(environ, name)
+        if isinstance(validated, Failure):
+            return Failure(validated.failure())
+    return Success(None)
 
 
 def _preflight_persona(persona_id: str | None, facade: LarvaFacade) -> Result[None, CliFailure]:
@@ -232,7 +251,6 @@ def _build_child_env(
     child_env["LARVA_PI_REAL_BIN"] = pi_bin
     child_env["LARVA_PI_EXTENSION_FLAG"] = extension_flag
     child_env["LARVA_PI_EXTENSION_ENTRY"] = str(extension_entry)
-    child_env[LARVA_PI_TOOL_POLICY_FILE_ENV] = _tool_policy_file(environ).unwrap()
     child_env[LARVA_PI_LAUNCHED_ENV] = "1"
     child_env["LARVA_CLI_ARGV_JSON"] = _larva_cli_argv_json().unwrap()
     child_env["LARVA_PI_INTERACTIVE_TUI"] = _interactive_tui_value(pi_args).unwrap()
@@ -264,6 +282,9 @@ def pi_command(
     persona_result = _preflight_persona(persona_id, facade)
     if isinstance(persona_result, Failure):
         return Failure(persona_result.failure())
+    overrides_result = _validate_config_overrides(active_environ)
+    if isinstance(overrides_result, Failure):
+        return Failure(overrides_result.failure())
 
     pi_bin = pi_result.unwrap()
     extension_flag = flag_result.unwrap()
