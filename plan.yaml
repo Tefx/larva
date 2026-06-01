@@ -84652,14 +84652,14 @@ phases:
       <risk_probes>- Docs must not imply prompt injection, hidden aliases, fuzzy/edit-distance/regex/wildcard
       matching, disk cache, or model guessing. - Docs must distinguish exact mappings
       from `openrouter/` prefix coverage. - Docs must say cache is process-local/resettable/testable.</risk_probes>'
-    verification: '- [ ] refs confirmation quotes docs passages for trigger/delegation,
+    verification: '- [x] refs confirmation quotes docs passages for trigger/delegation,
       matching/ranking, cache/in-flight, model-map, and non-goals.
 
-      - [ ] Docs already match or are minimally synced to every matrix row.
+      - [x] Docs already match or are minimally synced to every matrix row.
 
-      - [ ] Raw diff/status for the two docs files is included.
+      - [x] Raw diff/status for the two docs files is included.
 
-      - [ ] No product code, tests, runtime config, schema/opifex, or dependency file
+      - [x] No product code, tests, runtime config, schema/opifex, or dependency file
       changes are made.'
     refs:
     - contrib/pi-extension/README.md
