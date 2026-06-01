@@ -90859,8 +90859,16 @@ phases:
       must retain distinct error semantics.
 
       </risk_probes>'
-    verification: '- [ ] launcher_env_matrix shows real Pi bin, extension flag/entry,
-      Larva CLI argv, interactive flag, and explicit config overrides only.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] launcher_env_matrix shows real Pi bin, extension flag/entry, Larva CLI
+      argv, interactive flag, and explicit config overrides only.
 
       - [ ] model_map_matrix covers exact hit, longest literal prefix, same-length
       conflict -> LARVA_MODEL_MAP_INVALID, missing file fallback, invalid config fail-closed,
