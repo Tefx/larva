@@ -86047,21 +86047,21 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the design sections that each fixture family derives
+      - [x] refs confirmation cites the design sections that each fixture family derives
       from.
 
-      - [ ] Test-only diff is limited to tests/fixtures plus contract-doctest expectations;
+      - [x] Test-only diff is limited to tests/fixtures plus contract-doctest expectations;
       product implementation remains stubbed or absent.
 
-      - [ ] Fixture matrix covers deduplication, merge, exact mappings, prefix rules,
+      - [x] Fixture matrix covers deduplication, merge, exact mappings, prefix rules,
       ambiguity, malformed models, non-interactive unresolved failure, redirect-safe
       stdout, optional --json, --write, invalid model-map, and no personal scaffold
       input.
 
-      - [ ] Expected-red evidence identifies the exposed gaps and names `pi_model_map_draft_impl_20260601`
+      - [x] Expected-red evidence identifies the exposed gaps and names `pi_model_map_draft_impl_20260601`
       as the downstream implementation owner.
 
-      - [ ] Spec-derived minimal fixtures are present and do not include convenience
+      - [x] Spec-derived minimal fixtures are present and do not include convenience
       fields beyond the approved draft/runtime shapes.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
