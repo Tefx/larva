@@ -84952,3 +84952,17 @@ phases:
     - pi_persona_autocomplete_runtime_tests_20260601
     - pi_model_map_runtime_proof_20260601
     agent: gate-reviewer
+- id: pi-model-map-draft-helper-2026-06-01
+  name: Pi Model-Map Draft Helper 2026-06-01
+  status: locked
+  gate: 'Phase accepted only when contract/test/implementation/runtime evidence proves:
+    larva pi-model-map draft queries real Pi offline inventory and real Larva registry;
+    fixture tests cover deterministic deduplication, merge, prefix findings, malformed
+    models, ambiguity, redirect-safe channels, and non-interactive unresolved failure;
+    default stdout is raw draft JSON only; stderr carries human reports; optional
+    --json uses a structured Larva envelope; real pi --list-models --offline proof
+    is collected; current registry proof is collected; invar guard passes; no personal
+    scaffold path or provider-family preference table is used; and contrib/pi-extension
+    documentation is updated/superseded if it conflicts with the approved design.'
+  depends_on:
+  - pi-model-map-runtime-and-autocomplete-2026-06-01
