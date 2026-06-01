@@ -90304,3 +90304,168 @@ phases:
 
       - unobserved: <checklist item ids>'
     agent: frontend-engineer
+  - id: verify-gate-sessionfile-protocol
+    name: Verify and gate sessionFile protocol fix
+    status: pending
+    description: "step_type: gate\nverification_scope: phase-check\nagent_source:\
+      \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
+      \ evidence: real Pi child get_state produced missing-before-prompt sessionFile\
+      \ that should be accepted only for fresh child paths\n  - Boundary decision:\
+      \ strict resume task_id stays existing/readable; fresh child sessionFile may\
+      \ be not-yet-created if absolute .jsonl under childSessionRoot and symlink-safe\
+      \ if existing\n\ntouch_paths:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\nharness_refs:\n  - scripts/pi-extension-runtime-smoke.mjs\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\nauthoritative_interface:\
+      \ \"Pi larva_subagent runtime protocol: child get_state data.sessionFile fresh\
+      \ allocation is accepted before prompt when constrained to childSessionRoot;\
+      \ resume task_id remains strict.\"\n\nAs an INDEPENDENT REVIEWER/TESTER, assess\
+      \ whether the Pi larva_subagent sessionFile protocol fix is safe to merge. This\
+      \ is a combined focused runtime verification and phase gate. Your job is to\
+      \ find protocol and security regressions, not to rubber-stamp the implementation.\n\
+      \nCHECK PROTECTED GATES:\n- This phase gate protects the Pi extension runtime\
+      \ boundary and downstream larva_subagent retry behavior.\n- It must block if\
+      \ behavioral runtime evidence is missing or if root escape/resume strictness\
+      \ is weakened.\n\nREQUIRED BEHAVIORAL PROOF REGISTER:\n| requirement_ref | behavior_claim\
+      \ | runtime_proof_expected | evidence_ref | status | closure_path | gate_decision_basis\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- |\n| R1 | Fresh child sessionFile\
+      \ missing before prompt is accepted when absolute `.jsonl` under childSessionRoot\
+      \ | Focused smoke/test or real Pi get_state/spawn proof | child_missing_before_prompt_regression\
+      \ | PROVEN/UNPROVEN/BLOCKED | Fix/retest in this phase if not PROVEN | Required\
+      \ for OPEN |\n| R2 | User-provided resume task_id missing file is rejected |\
+      \ Focused negative test | strict_resume_regression | PROVEN/UNPROVEN/BLOCKED\
+      \ | Fix/retest in this phase if not PROVEN | Required for OPEN |\n| R3 | Relative,\
+      \ wrong suffix, outside-root, and symlink escape paths are rejected | Focused\
+      \ negative tests | path_escape_regression | PROVEN/UNPROVEN/BLOCKED | Fix/retest\
+      \ in this phase if not PROVEN | Required for OPEN |\n| R4 | `LARVA_NO_ACTIVE_PERSONA`,\
+      \ `can_spawn`, and ToolResult shape are preserved | Focused smoke/assertions\
+      \ or runtime proof | authority_toolresult_regression | PROVEN/UNPROVEN/BLOCKED\
+      \ | Fix/retest in this phase if not PROVEN | Required for OPEN |\n\n<side_effect_budget>\n\
+      Allowed: execute focused Pi extension runtime smokes/tests, inspect changed\
+      \ diff, run repo checks/invar guard. Forbidden: changing code, reading personal\
+      \ scaffold files, relaxing runtime authority, or treating unavailable real Pi\
+      \ as a pass without the fallback focused harness evidence.\n</side_effect_budget>\n\
+      \n<risk_probes>\n- Attempt malicious child sessionFile variants: relative path,\
+      \ parent traversal/outside root, wrong suffix, and existing symlink escape.\n\
+      - Attempt resume task_id with a missing but otherwise valid-looking `.jsonl`\
+      \ under root; it must remain rejected.\n- Compare ToolResult fields and authority\
+      \ errors before/after for shape drift.\n</risk_probes>\n\nGate Decision Basis:\n\
+      The gate may OPEN only if every OWNED row in the implementation step's Requirement-to-Checklist\
+      \ Traceability Matrix has positive proof or an explicit blocker with closure\
+      \ path. `No blocker found` is not enough; cite evidence for each row. Source-only,\
+      \ mock-only, or helper-only proof is insufficient unless paired with the child\
+      \ get_state-before-prompt reproduction harness or real Pi proof.\n\nREAL PI\
+      \ PROOF POLICY:\nIf a real Pi environment is available, run the exact child\
+      \ startup shape or equivalent documented command: `pi -e contrib/pi-extension/larva.ts\
+      \ --mode rpc --session-dir <root> --offline` with `LARVA_PI_INITIAL_PERSONA_ID=turing`\
+      \ and `LARVA_CLI_ARGV_JSON=[uv,run,larva]`, and capture get_state/spawn proof.\
+      \ If unavailable, report the exact blocker and rely on the focused local protocol\
+      \ harness; do not fabricate live proof."
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] Refs confirmation includes key passages from changed implementation and
+      regression harnesses.
+
+      - [ ] Focused regression/smoke output shows fresh child `sessionFile` missing
+      before prompt is accepted only when absolute `.jsonl` under childSessionRoot.
+
+      - [ ] Negative regression output shows resume `task_id` missing file remains
+      rejected.
+
+      - [ ] Negative regression output shows relative path, wrong suffix, outside-root,
+      and existing symlink escape are rejected.
+
+      - [ ] Real Pi child `get_state`/spawn proof is included when available; if unavailable,
+      exact environment blocker is recorded and focused local protocol proof is present.
+
+      - [ ] Repo checks include `invar guard` or the project-canonical guard command
+      plus focused TypeScript/Python runtime smoke commands, with raw stdout/stderr
+      and exit codes.
+
+      - [ ] Decision basis maps every requirement row to PROVEN/BLOCKED and blocks
+      on any unresolved runtime, authority, ToolResult, or root-escape proof gap.
+
+      - [ ] No personal scaffold files were read or required during verification.'
+    evidence_template: '## Gate / Runtime Verification Report
+
+      **Reviewer**: gate-reviewer (independent of frontend-engineer implementation)
+
+      **Phase**: pi-subagent-sessionfile-protocol-2026-06-01
+
+
+      ### refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage or NOT READ:
+      reason>
+
+
+      ## Commands Executed
+
+      | command | exit_code | raw_stdout_stderr_ref |
+
+      | --- | --- | --- |
+
+      | <focused runtime smoke/test> | <code> | <paste or artifact> |
+
+      | <invar guard / canonical guard> | <code> | <paste or artifact> |
+
+      | <real Pi proof if available> | <code or BLOCKED> | <paste or exact blocker>
+      |
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | R1 | fresh child missing-before-prompt accepted safely | focused or real Pi
+      get_state/spawn proof | <artifact> | <PROVEN/UNPROVEN/BLOCKED> | <fix/retest/non-intersection>
+      | <OPEN/BLOCK basis> |
+
+      | R2 | resume task_id missing file rejected | negative regression | <artifact>
+      | <PROVEN/UNPROVEN/BLOCKED> | <fix/retest/non-intersection> | <OPEN/BLOCK basis>
+      |
+
+      | R3 | path escape protections preserved | negative regressions | <artifact>
+      | <PROVEN/UNPROVEN/BLOCKED> | <fix/retest/non-intersection> | <OPEN/BLOCK basis>
+      |
+
+      | R4 | authority and ToolResult preserved | focused smoke/assertions | <artifact>
+      | <PROVEN/UNPROVEN/BLOCKED> | <fix/retest/non-intersection> | <OPEN/BLOCK basis>
+      |
+
+
+      ## Checklist Receipt
+
+      - satisfied: <checklist item ids>
+
+      - failed: <checklist item ids>
+
+      - blocked: <checklist item ids>
+
+      - unobserved: <checklist item ids>
+
+
+      ## Gate Decision
+
+      - [ ] OPEN: All blocker-class protocol, root-escape, authority, ToolResult,
+      and guard evidence is positive.
+
+      - [ ] BLOCKED: Required proof is missing or a blocker remains.
+
+
+      ## No Personal Scaffold Confirmation
+
+      - no_personal_scaffold_files_read: <yes/no + evidence>'
+    depends_on:
+    - fix-fresh-child-sessionfile-validation
+    agent: gate-reviewer
