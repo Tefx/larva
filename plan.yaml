@@ -86224,14 +86224,14 @@ phases:
       - Invar Core/Shell rules remain respected; this is Shell path behavior.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] `src/larva/shell/pi.py` has no absent-env default to `~/.pi/tool-policy.json`.
+      - [x] `src/larva/shell/pi.py` has no absent-env default to `~/.pi/tool-policy.json`.
 
-      - [ ] Explicit `LARVA_PI_TOOL_POLICY_FILE` override is preserved unchanged,
+      - [x] Explicit `LARVA_PI_TOOL_POLICY_FILE` override is preserved unchanged,
       including if user points it at old path.
 
-      - [ ] Focused launcher tests cover absent-env and explicit-env behavior.
+      - [x] Focused launcher tests cover absent-env and explicit-env behavior.
 
-      - [ ] No product code attempts long-term fallback, auto-migration, or merge.'
+      - [x] No product code attempts long-term fallback, auto-migration, or merge.'
     refs:
     - src/larva/shell/pi.py
     - tests/shell/test_pi_launcher_contract.py
