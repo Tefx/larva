@@ -84966,3 +84966,114 @@ phases:
     documentation is updated/superseded if it conflicts with the approved design.'
   depends_on:
   - pi-model-map-runtime-and-autocomplete-2026-06-01
+  steps:
+  - id: pi_model_map_draft_contract_20260601
+    name: Freeze Pi model-map draft helper contract
+    status: pending
+    description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
+      \  - CLI parser shape/stub or acceptance notes for `larva pi-model-map draft\
+      \ [--output PATH] [--write] [--non-interactive] [--model-map PATH]`\n  - TypedDict/type\
+      \ signatures or shell-local acceptance contracts for PiModelMapDraft, PiModelMapDraftResult,\
+      \ inventory items, unresolved models, and prefix findings\n  - pure-helper stubs\
+      \ only if extracting `src/larva/core/pi_model_map.py`\n\nACCEPTED CONTRACT ARTIFACT:\n\
+      Pin the approved design as the sole authority for the helper command. Define\
+      \ only acceptance-bearing interfaces/stubs and exact output/error contracts;\
+      \ do not ship merge, subprocess, prompt, filesystem, or CLI business logic in\
+      \ this step.\n\nRequirement-to-checklist traceability matrix:\n| requirement_id\
+      \ | source_ref + key passage | obligation | owning_step_id | checklist_item\
+      \ | evidence_field | status | non_intersection_or_escalation |\n| R1 | design/pi-model-map-draft-helper.md\
+      \ > Decision | Top-level `larva pi-model-map draft`; do not place under `larva\
+      \ pi` pass-through | pi_model_map_draft_contract_20260601 | contract pins top-level\
+      \ command | contract_surface | OWNED | n/a |\n| R2 | Source evidence and constraints\
+      \ / Architecture basis | Never use `/Users/tefx/dotfiles/agent/models.yaml`;\
+      \ personal scaffold is forbidden legacy context | pi_model_map_draft_impl_20260601\
+      \ | forbidden scaffold path absent from implementation input paths | forbidden_source_scan\
+      \ | OWNED | n/a |\n| R3 | Data sources | Registry usage from `facade.list()`,\
+      \ Pi inventory from `pi --list-models --offline`, existing map from `--model-map`\
+      \ | pi_model_map_draft_impl_20260601 | implementation uses authorized sources\
+      \ only | source_proof | OWNED | n/a |\n| R4 | Deduplication and merge policy\
+      \ | Stable merged draft; preserve valid exact mappings/prefix rules; mark stale/invalid/conflicts\
+      \ separately | pi_model_map_draft_red_tests_20260601 | fixture tests encode\
+      \ merge/prefix cases | fixture_matrix | OWNED | n/a |\n| R5 | Candidate discovery\
+      \ policy | No provider-family preference tables; ambiguous/missing/malformed\
+      \ require user choice or non-interactive unresolved failure | pi_model_map_draft_red_tests_20260601\
+      \ | fixture tests cover OpenAI-like, Google-like, unknown, malformed cases |\
+      \ ambiguity_matrix | OWNED | n/a |\n| R6 | Draft output contract / CLI contract\
+      \ | default stdout raw draft JSON only; reports/warnings to stderr; optional\
+      \ --json is Larva envelope | pi_model_map_draft_fixture_retest_20260601 | channel\
+      \ tests prove stdout/stderr split and optional envelope | channel_receipt |\
+      \ OWNED | n/a |\n| R7 | Error model | fail closed on Pi unavailable, invalid\
+      \ map, unresolved non-interactive, write failure, bad args | pi_model_map_draft_red_tests_20260601\
+      \ | tests encode error codes | error_matrix | OWNED | n/a |\n| R8 | Verification\
+      \ targets | fixture unit tests plus real Pi proof and current registry proof\
+      \ | pi_model_map_draft_live_cli_proof_20260601 | real CLI proof includes Pi\
+      \ inventory and registry evidence | live_receipt | OWNED | n/a |\n| R9 | Repo\
+      \ invariant | Core functions require @pre/@post and doctest; Shell handles I/O\
+      \ | pi_model_map_draft_gate_20260601 | invar guard and boundary review | guard_receipt\
+      \ | OWNED | n/a |\n\nBOUNDING BOX:\n- src/larva/core/pi_model_map.py (only if\
+      \ pure helpers are extracted)\n- src/larva/shell/pi_model_map.py\n- src/larva/shell/cli_parser.py\n\
+      - src/larva/shell/cli.py\n- tests/shell/\n- contrib/pi-extension/README.md\n\
+      \nCONSTRAINTS:\n- Do NOT implement runtime behavior in this contract step.\n\
+      - Do NOT read or reference `/Users/tefx/dotfiles/agent/models.yaml` as an input\
+      \ authority.\n- Do NOT add provider-family preferences such as OpenAI -> Codex,\
+      \ Google -> any fixed target, OpenRouter -> a hidden default, or unknown-provider\
+      \ defaults.\n- Do NOT change PersonaSpec/opifex shared contracts.\n\n<side_effect_budget>\n\
+      Allowed: contract-only stubs/types/docstrings/tests placeholders in the bounded\
+      \ Larva CLI/helper area. Forbidden: subprocess execution, file writes, prompt\
+      \ loops, finished mapping logic, personal dotfile reads, schema changes outside\
+      \ the adapter-local helper.\n</side_effect_budget>\n\n<risk_probes>\n- Verify\
+      \ the top-level command cannot be shadowed by the existing `larva pi` pass-through\
+      \ path.\n- Verify any Core extraction is pure and contract/doctest-ready before\
+      \ implementation.\n- Verify the contract keeps report metadata out of `model-map.json`.\n\
+      </risk_probes>"
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation includes key passages for Decision, CLI contract, Data
+      sources, Candidate discovery policy, Draft output contract, Error model, Architecture
+      basis, and Verification targets.
+
+      - [ ] Contract artifacts define the top-level command, data/result shapes, source
+      authorities, error codes, and stdout/stderr/--json semantics without implementing
+      runtime behavior.
+
+      - [ ] If `src/larva/core/pi_model_map.py` is introduced, every Core function
+      stub has @pre/@post contracts and at least one doctest before later implementation.
+
+      - [ ] Contract explicitly forbids `/Users/tefx/dotfiles/agent/models.yaml` and
+      provider-family preference tables.
+
+      - [ ] Requirement-to-checklist matrix is preserved or updated so every approved-design
+      requirement is owned by a later proof item.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passages from required sections
+      or NOT READ: reason>
+
+
+      ## Contract Receipt
+
+      - contract_surface: <files/symbols/stubs/CLI contract created or confirmed>
+
+      - requirement_matrix_update: <matrix rows added/updated>
+
+      - core_contract_status: <Core helpers introduced? @pre/@post/doctest status>
+
+      - forbidden_authority_status: </Users/tefx/dotfiles/agent/models.yaml forbidden
+      as input authority>
+
+      - non_goals_preserved: <no daemons/caches/provider preference tables/schema
+      changes>
+
+
+      ## Checklist Receipt
+
+      - contract pins top-level command: <satisfied/failed/blocked/unobserved>
+
+      - no runtime implementation shipped: <satisfied/failed/blocked/unobserved>
+
+      - Core contract/doctest invariant preserved: <satisfied/failed/blocked/unobserved>
+
+      - design traceability matrix complete: <satisfied/failed/blocked/unobserved>'
+    agent: python-executor
