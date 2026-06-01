@@ -202,6 +202,7 @@ def test_runtime_smoke_help_lists_all_required_scenarios() -> None:
         "failure-path",
         "tool-shape",
         "tool-result-renderer-shape",
+        "fresh-session-validation",
         "tool-call-block",
     ):
         assert scenario in completed.stdout
@@ -323,6 +324,38 @@ def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> No
             "result_text": case["result_text"],
             "error": case["error"],
         }
+
+
+def test_larva_subagent_fresh_child_sessionfile_validation_split() -> None:
+    payload = _run_runtime_scenario("fresh-session-validation")
+    validation = payload["runtime"]["freshSessionValidation"]
+    assertions = payload["runtime"]["assertions"]
+
+    fresh = validation["freshMissingBeforePrompt"]
+    assert validation["missingBeforePrompt"] is True
+    assert validation["createdDuringPrompt"] is True
+    assert fresh["status"] == "success"
+    assert fresh["result_text"] == "fresh child final text"
+    assert fresh["task_id"].endswith("fresh-created-on-prompt.jsonl")
+
+    missing_resume = validation["missingResume"]
+    assert missing_resume["status"] == "failed"
+    assert missing_resume["error"]["code"] == "LARVA_SESSION_NOT_FOUND"
+    assert validation["resumeSpawned"] is False
+
+    invalid = validation["invalidFresh"]
+    assert sorted(invalid) == ["danglingSymlinkEscape", "outsideRoot", "relative", "symlinkEscape", "wrongSuffix"]
+    for result in invalid.values():
+        assert result["status"] == "failed"
+        assert result["error"]["code"] == "LARVA_CHILD_PROTOCOL_FAILED"
+        assert result["error"]["message"] == "Child returned invalid sessionFile."
+
+    assert assertions == {
+        "freshMissingBeforePromptAccepted": True,
+        "strictResumeMissingRejected": True,
+        "invalidFreshRejected": True,
+        "authorityAndToolResultPreserved": True,
+    }
 
 
 def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:

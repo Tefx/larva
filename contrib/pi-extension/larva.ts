@@ -1,5 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { access, mkdir, readFile, realpath, stat } from "node:fs/promises";
+import { access, lstat, mkdir, readFile, realpath, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
@@ -854,6 +854,42 @@ async function validateTaskId(taskId: string, root: string): Promise<string | La
   return sessionPath;
 }
 
+async function validateFreshChildSessionFile(sessionFile: string, root: string): Promise<string | LarvaError> {
+  if (!isAbsolute(sessionFile)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile must be an absolute path.");
+  let canonicalParent: string;
+  try {
+    canonicalParent = await realpath(dirname(sessionFile));
+  } catch {
+    return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile parent cannot be canonicalized.");
+  }
+  const canonical = resolve(canonicalParent, sessionFile.split(/[\\/]/).pop() || "");
+  if (!isUnderRoot(root, canonical)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile must stay inside childSessionRoot.");
+  if (!canonical.endsWith(".jsonl")) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile must end in .jsonl.");
+  try {
+    await lstat(canonical);
+  } catch (caught) {
+    if (isRecord(caught) && caught.code === "ENOENT") return canonical;
+    return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile filesystem entry cannot be inspected.");
+  }
+
+  let sessionPath: string;
+  try {
+    sessionPath = await realpath(canonical);
+  } catch {
+    return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile cannot be canonicalized.");
+  }
+  if (!isUnderRoot(root, sessionPath)) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile symlink escape outside childSessionRoot.");
+  if (!sessionPath.endsWith(".jsonl")) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile must end in .jsonl.");
+  try {
+    const sessionStat = await stat(sessionPath);
+    if (!sessionStat.isFile()) return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile is not a readable file.");
+    await access(sessionPath, constants.R_OK);
+  } catch {
+    return error("LARVA_CHILD_PROTOCOL_FAILED", "Child sessionFile is invalid or unreadable.");
+  }
+  return sessionPath;
+}
+
 function launcherArgs(env: RuntimeEnv): string[] | LarvaError {
   const realBin = normalizeString(env.LARVA_PI_REAL_BIN);
   const flag = normalizeString(env.LARVA_PI_EXTENSION_FLAG);
@@ -1061,7 +1097,7 @@ async function runChildSequence(
       const stateResult = await rpc.command("state-1", { type: "get_state" });
       const sessionFile = sessionFileFromState(stateResult);
       if (isLarvaError(sessionFile)) { child.kill(); return failed(null, personaId, sessionFile); }
-      const canonical = await validateTaskId(sessionFile, root);
+      const canonical = await validateFreshChildSessionFile(sessionFile, root);
       if (isLarvaError(canonical)) { child.kill(); return failed(null, personaId, error("LARVA_CHILD_PROTOCOL_FAILED", "Child returned invalid sessionFile.")); }
       taskId = canonical;
       allocatedTaskId = canonical;

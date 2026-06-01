@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdtemp, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -15,6 +15,7 @@ const SCENARIOS = [
   "failure-path",
   "tool-shape",
   "tool-result-renderer-shape",
+  "fresh-session-validation",
   "tool-call-block",
 ];
 
@@ -242,6 +243,39 @@ function assertLarvaSubagentToolResultShape(name, result) {
   };
 }
 
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function writeFakeSubagentChild(scriptPath, { sessionFile, finalText = "fresh child final text" }) {
+  await writeFile(scriptPath, `
+    import { createInterface } from "node:readline";
+    import { writeFile } from "node:fs/promises";
+    const sessionFile = ${JSON.stringify(sessionFile)};
+    const finalText = ${JSON.stringify(finalText)};
+    const rl = createInterface({ input: process.stdin });
+    rl.on("line", async (line) => {
+      const message = JSON.parse(line);
+      if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile } }) + "\\n");
+      if (message.type === "switch_session") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
+      if (message.type === "prompt") {
+        await writeFile(sessionFile, JSON.stringify({ prompt: message.message }) + "\\n", "utf8");
+        process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
+        process.stdout.write(JSON.stringify({ type: "agent_end" }) + "\\n");
+      }
+      if (message.type === "get_last_assistant_text") {
+        process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { text: finalText } }) + "\\n");
+        process.exit(0);
+      }
+    });
+  `, "utf8");
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -352,6 +386,87 @@ async function main() {
         },
       ]),
     );
+  } else if (scenario === "fresh-session-validation") {
+    const successRoot = await mkdtemp(join(tmpdir(), "larva-pi-fresh-session-"));
+    const missingFreshSession = join(successRoot, "fresh-created-on-prompt.jsonl");
+    const successChild = join(successRoot, "fresh-child.mjs");
+    await writeFakeSubagentChild(successChild, { sessionFile: missingFreshSession });
+    const missingBeforePrompt = !(await exists(missingFreshSession));
+    await runtimeHarness(evidence, {
+      initialPersona: "ok",
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: successRoot, LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: successChild },
+    });
+    const successTool = evidence.runtime.larvaSubagent;
+    const freshMissingBeforePrompt = await successTool.execute("fresh-missing-before-prompt", { persona_id: "child", task: "finish fresh child" });
+    const createdDuringPrompt = await exists(missingFreshSession);
+
+    const resumeRoot = await mkdtemp(join(tmpdir(), "larva-pi-resume-missing-"));
+    const resumeMarker = join(resumeRoot, "spawned-marker.jsonl");
+    const resumeChild = join(resumeRoot, "resume-child.mjs");
+    await writeFakeSubagentChild(resumeChild, { sessionFile: resumeMarker });
+    await runtimeHarness(evidence, {
+      initialPersona: "ok",
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: resumeRoot, LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: resumeChild },
+    });
+    const resumeTool = evidence.runtime.larvaSubagent;
+    const missingResumeTaskId = join(resumeRoot, "missing-resume.jsonl");
+    const missingResume = await resumeTool.execute("resume-missing", { persona_id: "child", task: "resume missing", task_id: missingResumeTaskId });
+    const resumeSpawned = await exists(resumeMarker);
+
+    async function runInvalidFresh(name, sessionFile, rootOverride = null) {
+      const invalidRoot = rootOverride ?? await mkdtemp(join(tmpdir(), `larva-pi-invalid-${name}-`));
+      const invalidChild = join(invalidRoot, "invalid-child.mjs");
+      await writeFakeSubagentChild(invalidChild, { sessionFile, finalText: `unexpected ${name}` });
+      await runtimeHarness(evidence, {
+        initialPersona: "ok",
+        envOverrides: { LARVA_PI_CHILD_SESSION_DIR: invalidRoot, LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: invalidChild },
+      });
+      const tool = evidence.runtime.larvaSubagent;
+      return await tool.execute(`invalid-${name}`, { persona_id: "child", task: `reject ${name}` });
+    }
+
+    const wrongSuffixRoot = await mkdtemp(join(tmpdir(), "larva-pi-wrong-suffix-"));
+    const outsideRoot = await mkdtemp(join(tmpdir(), "larva-pi-outside-session-"));
+    const symlinkRoot = await mkdtemp(join(tmpdir(), "larva-pi-symlink-session-"));
+    const outsideTarget = join(outsideRoot, "outside-target.jsonl");
+    await writeFile(outsideTarget, "outside\n", "utf8");
+    const symlinkPath = join(symlinkRoot, "escape.jsonl");
+    await symlink(outsideTarget, symlinkPath);
+    const danglingSymlinkRoot = await mkdtemp(join(tmpdir(), "larva-pi-dangling-symlink-session-"));
+    const danglingSymlinkPath = join(danglingSymlinkRoot, "dangling-escape.jsonl");
+    await symlink(join(outsideRoot, "missing-target.jsonl"), danglingSymlinkPath);
+
+    const invalidFresh = {
+      relative: await runInvalidFresh("relative", "relative.jsonl"),
+      wrongSuffix: await runInvalidFresh("wrong-suffix", join(wrongSuffixRoot, "wrong.txt"), wrongSuffixRoot),
+      outsideRoot: await runInvalidFresh("outside-root", join(outsideRoot, "outside.jsonl")),
+      symlinkEscape: await runInvalidFresh("symlink-escape", symlinkPath, symlinkRoot),
+      danglingSymlinkEscape: await runInvalidFresh("dangling-symlink-escape", danglingSymlinkPath, danglingSymlinkRoot),
+    };
+
+    evidence.runtime.freshSessionValidation = {
+      freshMissingBeforePrompt,
+      missingBeforePrompt,
+      createdDuringPrompt,
+      missingResume,
+      missingResumeTaskId,
+      resumeSpawned,
+      invalidFresh,
+    };
+    evidence.runtime.assertions = {
+      freshMissingBeforePromptAccepted: missingBeforePrompt === true
+        && createdDuringPrompt === true
+        && freshMissingBeforePrompt.status === "success"
+        && freshMissingBeforePrompt.result_text === "fresh child final text"
+        && freshMissingBeforePrompt.task_id.endsWith("fresh-created-on-prompt.jsonl"),
+      strictResumeMissingRejected: missingResume.status === "failed"
+        && missingResume.error?.code === "LARVA_SESSION_NOT_FOUND"
+        && resumeSpawned === false,
+      invalidFreshRejected: Object.values(invalidFresh).every((result) => result.status === "failed" && result.error?.code === "LARVA_CHILD_PROTOCOL_FAILED"),
+      authorityAndToolResultPreserved: freshMissingBeforePrompt.isError === false
+        && Array.isArray(freshMissingBeforePrompt.content)
+        && freshMissingBeforePrompt.details?.status === "success",
+    };
   } else if (scenario === "tool-call-block") {
     await runtimeHarness(evidence);
     const result = await evidence.runtime.toolCallHandler?.({ toolName: "bash" });
