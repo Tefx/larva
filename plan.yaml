@@ -84581,12 +84581,23 @@ phases:
       Checklist receipt: all eight focused regate checklist items are [x]. No forbidden
       side effects; no artifacts modified.'
 - id: pi-model-map-runtime-and-autocomplete-2026-06-01
-  name: Pi Model Map Runtime Completion and Persona Autocomplete
+  name: Pi Persona Autocomplete Substring Cache and Model Map Proof 2026-06-01
   status: pending
-  gate: Phase accepted only when docs state the runtime model-map/autocomplete contract,
-    ~/.pi/larva/model-map.json exists or is updated exactly as requested, every mapping
-    is proven against `pi --list-models --offline`, autocomplete behavior and caching
-    are tested, and review confirms no PersonaSpec/opifex contract changes or resolver
-    wildcard/regex/fuzzy behavior were introduced.
+  gate: 'Phase accepted only when docs, implementation, tests, runtime model-map proof,
+    client/runtime autocomplete proof, invar guard, and independent gate evidence
+    show: case-insensitive substring persona matching; prefix matches ranked before
+    non-prefix substring matches with stable larva list --json order otherwise; process-local
+    in-memory parsed list cache; shared in-flight larva list --json request; no disk
+    cache, prompt injection, aliases, fuzzy/edit-distance/regex/wildcard matching;
+    non-/larva-persona input delegates to Pi base provider; ~/.pi/larva/model-map.json
+    maps only Pi-listed targets including the specified exact entries and openrouter/
+    prefix rule; and docs match behavior.'
+  context: 'Work type: new_capability with proof-closure companion. Architecture basis
+    READY. Preserve Pi extension shell boundary in contrib/pi-extension/larva.ts;
+    no PersonaSpec/opifex schema changes; no new dependencies; autocomplete remains
+    Tab-driven through Pi command completer/narrow TUI provider and delegates non-/larva-persona
+    input to Pi base provider. Runtime model-map work is verification-only for the
+    existing user-authorized ~/.pi/larva/model-map.json unless an executor returns
+    explicit evidence that a new user authorization is required.'
   depends_on:
   - pi-adapter-local-model-map-config-2026-06-01
