@@ -85253,3 +85253,146 @@ phases:
     depends_on:
     - pi_model_map_draft_contract_20260601
     agent: python-executor
+  - id: pi_model_map_draft_impl_20260601
+    name: Complete Pi model-map draft helper implementation
+    status: pending
+    description: "step_type: implementation\nupstream_artifacts:\n  - path: src/larva/core/pi_model_map.py\n\
+      \    from_step: pi_model_map_draft_contract_20260601\n    tier: contract\n \
+      \ - path: src/larva/shell/pi_model_map.py\n    from_step: pi_model_map_draft_contract_20260601\n\
+      \    tier: contract\n  - path: tests/shell/\n    from_step: pi_model_map_draft_red_tests_20260601\n\
+      \    tier: test\n\nFill in stub bodies and complete the implementation within\
+      \ the existing contract from `pi_model_map_draft_contract_20260601`. Replace\
+      \ NotImplementedError/pass/... markers with working logic. If a contract artifact\
+      \ is wrong or incomplete, document a deviation record; do NOT silently rewrite\
+      \ the public surface.\n\nTARGET STATE:\n`larva pi-model-map draft [--output\
+      \ PATH] [--write] [--non-interactive] [--model-map PATH]` generates a redirect-safe\
+      \ draft for the Pi extension's `model-map.json` by combining Larva registry\
+      \ model usage, real Pi offline inventory, and an optional existing model-map.\
+      \ The helper deduplicates, smart-merges valid existing exact mappings/prefix\
+      \ rules, reports stale/invalid/conflicting entries, asks the user only when\
+      \ interactive ambiguity requires it, and fails closed for non-interactive unresolved\
+      \ cases.\n\nBOUNDING BOX:\n- src/larva/core/pi_model_map.py (pure helpers only;\
+      \ @pre/@post + doctest required)\n- src/larva/shell/pi_model_map.py (Pi subprocess,\
+      \ registry facade, filesystem, prompts, rendering)\n- src/larva/shell/cli_parser.py\n\
+      - src/larva/shell/cli.py\n- tests/shell/\n- contrib/pi-extension/README.md if\
+      \ it conflicts with the approved helper policy\n\nCONSTRAINTS:\n- Preserve `larva\
+      \ pi` pass-through; this helper is top-level `larva pi-model-map draft`.\n-\
+      \ Use `facade.list()` for registry summaries, `pi --list-models --offline` for\
+      \ Pi inventory, and `--model-map`/`--output` for existing/final map state.\n\
+      - Do NOT read `/Users/tefx/dotfiles/agent/models.yaml` or any personal scaffold\
+      \ file.\n- Do NOT hard-code provider preferences for Google, OpenAI, OpenRouter,\
+      \ Anthropic, Codex, local, or unknown providers.\n- Do NOT invent broad new\
+      \ prefix rules by default.\n- Do NOT embed report metadata in the written model-map\
+      \ JSON.\n- Do NOT change PersonaSpec/opifex shared contracts.\n- Do NOT add\
+      \ daemons, background caches, persistent caches, watchers, or broad provider-family\
+      \ tables.\n\n## Completion Criteria (stub exclusion)\nThis is an IMPLEMENTATION\
+      \ step. Stub-only completion is NOT acceptable. Each deliverable MUST contain\
+      \ substantive logic that processes its inputs and produces outputs that vary\
+      \ based on those inputs. Private stub classes (`_Runtime*`, `_Stub*`, `_Placeholder*`)\
+      \ do not satisfy this requirement.\n\nFailure-mode checklist:\n- relative vs\
+      \ absolute `--output` and `--model-map` path behavior\n- missing existing model-map\
+      \ starts from empty map\n- invalid existing JSON/schema fails closed\n- stale\
+      \ exact mapping vs invalid exact target precedence\n- stale/invalid/conflicting\
+      \ prefix rules reported separately from exact mappings\n- partial-write/write\
+      \ failure returns `LARVA_PI_MODEL_MAP_WRITE_FAILED` without corrupting stdout\
+      \ JSON\n- Pi inventory command failure or parse failure returns `LARVA_PI_MODELS_UNAVAILABLE`\n\
+      - malformed source model interactive manual/skip vs non-interactive unresolved\
+      \ failure\n\nState semantics:\n- Existing valid exact mappings win only when\
+      \ their target exists in current Pi inventory and source is still used.\n- Coverage\
+      \ is final-draft exact mapping OR preserved valid prefix rule with current Pi\
+      \ target.\n- Report metadata is transient; only `models` and `prefix_rules`\
+      \ belong in the runtime map.\n- User choices are per-run transient state; no\
+      \ hidden persistence beyond optional `--write` draft output.\n\n## Gate Preview\
+      \ (what the gate WILL reject)\n1. Any default stdout text that is not raw draft\
+      \ JSON.\n2. Any provider preference table or hard-coded OpenAI/Google/OpenRouter/Codex\
+      \ mapping.\n3. Any read from `/Users/tefx/dotfiles/agent/models.yaml` or other\
+      \ personal scaffold source.\n4. Core functions without @pre/@post contracts\
+      \ and doctests.\n5. Implementation that passes fixture tests but lacks real\
+      \ Pi inventory and registry runtime proof downstream.\n\n<side_effect_budget>\n\
+      Allowed: bounded helper command implementation, fixture-compatible docs update\
+      \ in contrib/pi-extension/README.md, optional write to explicit --output only\
+      \ when user invokes --write. Forbidden: personal scaffold reads, schema/opifex\
+      \ changes, Pi extension runtime discovery/prompting responsibilities, background\
+      \ services/caches, provider-family preferences.\n</side_effect_budget>\n\n<risk_probes>\n\
+      - Check concurrent/parallel CLI invocations do not share mutable transient prompt/report\
+      \ state.\n- Check redirect safety under both success and unresolved/error cases.\n\
+      - Check candidate discovery is evidence-filter-based, not a disguised provider\
+      \ preference heuristic.\n</risk_probes>"
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation includes key design passages for command boundary, sources,
+      merge, candidates, output channels, errors, and architecture basis.
+
+      - [ ] Focused fixture tests from `pi_model_map_draft_red_tests_20260601` now
+      pass green for deterministic logic.
+
+      - [ ] Implementation scan shows no `/Users/tefx/dotfiles/agent/models.yaml`
+      or provider-family preference table is used as input logic.
+
+      - [ ] Core/Shell boundary evidence shows all I/O remains in Shell and any Core
+      helpers have @pre/@post contracts plus doctests.
+
+      - [ ] Manual or automated CLI receipt demonstrates default stdout is parseable
+      raw draft JSON and human reports/warnings are on stderr.
+
+      - [ ] Non-interactive unresolved/malformed behavior returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      rather than guessing.
+
+      - [ ] `--write` writes only runtime-compatible `models` and `prefix_rules` JSON,
+      without report metadata.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passages or NOT READ: reason>
+
+
+      ## Implementation Receipt
+
+      - contract_artifacts_used: <files from pi_model_map_draft_contract_20260601>
+
+      - protected_tests_used: <tests from pi_model_map_draft_red_tests_20260601>
+
+      - changed_files: <list>
+
+      - deviation_records: <none or structured deviations>
+
+
+      ## Deterministic Proof
+
+      - command: <focused fixture test command>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Safety Scans
+
+      - forbidden_source_scan: <scan output proving no personal scaffold input path>
+
+      - provider_preference_scan: <scan/output/inspection proving no provider-family
+      preference table>
+
+      - core_boundary_status: <@pre/@post/doctest + no I/O imports in Core>
+
+      - stdout_stderr_receipt: <raw stdout parse proof + stderr report proof>
+
+      - noninteractive_unresolved_receipt: <command/output showing LARVA_PI_MODEL_MAP_UNRESOLVED>
+
+      - write_receipt: <output file shape proof; no metadata>
+
+
+      ## Checklist Receipt
+
+      - deterministic fixture tests green: <satisfied/failed/blocked/unobserved>
+
+      - redirect-safe output channels: <satisfied/failed/blocked/unobserved>
+
+      - no guessing/provider preferences: <satisfied/failed/blocked/unobserved>
+
+      - Core/Shell invariant preserved: <satisfied/failed/blocked/unobserved>'
+    depends_on:
+    - pi_model_map_draft_contract_20260601
+    - pi_model_map_draft_red_tests_20260601
+    agent: python-senior
