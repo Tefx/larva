@@ -87027,18 +87027,18 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the prior smoke limitation and updated scenario.
+      - [x] refs confirmation cites the prior smoke limitation and updated scenario.
 
-      - [ ] Runtime smoke invokes registered `larva_subagent` execute/handler path
+      - [x] Runtime smoke invokes registered `larva_subagent` execute/handler path
       through fixture or harness.
 
-      - [ ] Smoke asserts `Array.isArray(result.content)` and a text item shape.
+      - [x] Smoke asserts `Array.isArray(result.content)` and a text item shape.
 
-      - [ ] Smoke asserts semantic metadata/details preservation for available fields.
+      - [x] Smoke asserts semantic metadata/details preservation for available fields.
 
-      - [ ] Raw smoke command output is pasted and exits green.
+      - [x] Raw smoke command output is pasted and exits green.
 
-      - [ ] If any path cannot be fixture-backed, blocker and downstream owner are
+      - [x] If any path cannot be fixture-backed, blocker and downstream owner are
       explicit.'
     refs:
     - scripts/pi-extension-runtime-smoke.mjs
