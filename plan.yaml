@@ -91995,7 +91995,66 @@ phases:
       - [ ] Gate decision basis maps each requirement to evidence and OPEN/BLOCKED
       decision.
 
+      - [ ] VT46 gate review maps collapsed final view, expanded final view fields,
+      resume footer behavior, parent `larva:` footer preservation, and no-widget-dashboard
+      prohibition to positive evidence.
+
       - [ ] Forbidden side effects are explicitly checked absent.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for gate review>
+
+      - no_change_reason: <required; gate should normally report no product changes>
+
+
+      ## Gate Decision Basis
+
+      - evidence_reviewed: <tests/implementation/runtime artifacts reviewed>
+
+      - requirement_mapping: <each subagent UX requirement mapped to positive evidence>
+
+      - runtime_liveness_review: <ToolResult/rendering/session runtime proof reviewed>
+
+      - hard_constraint_review: <details/top-level parity, sessions shape, no sidecars/scans/aliases,
+      no parent footer overwrite, no dashboard>
+
+      - decision: <OPEN|BLOCKED>
+
+
+      ## VT46 renderResult Gate Evidence Review
+
+      - vt46_collapsed_final_view: <evidence ref and PROVEN/BLOCKED status for persona
+      + terminal state>
+
+      - vt46_expanded_fields: <evidence refs and PROVEN/BLOCKED status for persona
+      id, mode, full task, task_id when known, final status, error if any, final output,
+      resume footer>
+
+      - vt46_parent_larva_footer_preserved: <evidence ref and PROVEN/BLOCKED status>
+
+      - vt46_no_widget_dashboard: <evidence ref and PROVEN/BLOCKED status>
+
+      - vt46_gate_decision_basis: <why unresolved VT46 rows block or do not intersect
+      remaining gates>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
