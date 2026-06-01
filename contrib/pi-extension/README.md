@@ -67,7 +67,7 @@ Resolution rules:
 - Prefix rules only strip `from_prefix` and prepend `to_model_id_prefix` to the
   remaining model string. Embedded slashes in the remainder are preserved.
 - Wildcards, regex, fuzzy matching, nearest-model behavior, and automatic guessing
-  (including vendor guessing) are forbidden.
+  (including vendor guessing) are forbidden at runtime.
 - After exact or prefix mapping, call Pi
   `modelRegistry.find(provider, model_id)` with the mapped values.
 - If mapped values are valid but Pi registry lookup misses, or if `pi.setModel`
@@ -80,15 +80,32 @@ Resolution rules:
 - Startup persona application and `/larva-persona` switching must use the same
   resolver path.
 
-Confirmed example:
+Runtime-map completion policy:
+
+- Build `~/.pi/larva/model-map.json` from observed Larva registry models,
+  `/Users/tefx/dotfiles/agent/models.yaml`, and `pi --list-models --offline`.
+- Add exact mappings only when the target provider/model id is present in Pi's
+  offline registry. If no verified target exists, leave the model unmapped so the
+  failure is explicit.
+- For `openai/gpt-*`, prefer `openai-codex/<same-id>` when Pi lists it; only fall
+  back to `openrouter/openai/<same-id>` when the Codex target is unavailable and
+  the OpenRouter target is listed.
+- `openrouter/*` models are covered by the literal `openrouter/` prefix rule and
+  do not need one exact entry per model.
+- Known adapter-local aliases may be mapped only after exact Pi registry proof:
+  `ollama-cloud/glm-*` to `openrouter/z-ai/*`, `ollama-cloud/kimi-*` to
+  `openrouter/moonshotai/*`, and `ollama-cloud/minimax-*` to
+  `openrouter/minimax/*`.
+
+Current verified example for the active local registry/dotfiles inventory:
 
 ```json
 {
   "models": {
-    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" },
     "ollama-cloud/glm-5.1": { "provider": "openrouter", "model_id": "z-ai/glm-5.1" },
-    "ollama-cloud/kimi-k2.5": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.5" },
-    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" }
+    "ollama-cloud/kimi-k2.6": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.6" },
+    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" },
+    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" }
   },
   "prefix_rules": [
     { "from_prefix": "openrouter/", "to_provider": "openrouter", "to_model_id_prefix": "" }
@@ -96,19 +113,18 @@ Confirmed example:
 }
 ```
 
-`openrouter/google/gemini-3.1-pro-preview` is covered by the literal
-`openrouter/` prefix rule and maps to Pi provider `openrouter`, model id
-`google/gemini-3.1-pro-preview`. `ollama-cloud/kimi-k2.6:cloud` is intentionally
-not mapped and must not be covered by wildcard-like behavior.
+`openrouter/google/gemini-3.1-pro-preview`,
+`openrouter/google/gemini-3.1-flash-lite`, and
+`openrouter/google/gemini-3.5-flash` are covered by the literal `openrouter/`
+prefix rule. The old `ollama-cloud/kimi-k2.6:cloud` spelling is not mapped unless
+an exact entry is added and verified against Pi's registry.
 
 Contract verification cases for the implementation step:
 
-- The four exact aliases in the example resolve through `models` before any
-  prefix rule is considered.
-- `openrouter/google/gemini-3.1-pro-preview` preserves the embedded slash in the
-  model id after the `openrouter/` prefix is stripped.
-- `ollama-cloud/kimi-k2.6:cloud` falls back to first-slash parsing and is not
-  matched by any wildcard-like rule.
+- Exact aliases in the example resolve through `models` before any prefix rule is
+  considered.
+- `openrouter/*` model ids preserve embedded slashes after the `openrouter/`
+  prefix is stripped.
 - Two matching prefix rules with the same `from_prefix` length fail closed with
   `LARVA_MODEL_MAP_INVALID`.
 - Startup persona application and `/larva-persona` switching use the same model
@@ -210,15 +226,20 @@ autocomplete provider for editor Tab completion. The provider intercepts only a
 slash-command line shaped as:
 
 ```text
-/larva-persona <prefix>
+/larva-persona <query>
 ```
 
-It passes exactly `<prefix>` (for example, `vectl` in `/larva-persona vectl`) to
-the same persona-id completer used by command-level completion. Forced Tab and
-regular completion use the same path. In `larva pi`, typing
-`/larva-persona <prefix>` and pressing Tab should show matching persona ids from
-the current `larva list --json` output. All other editor input is delegated to
-Pi's base provider so global and file completion remain Pi-owned.
+Target behavior for the next implementation step:
+
+- Typing `/larva-persona <query>` and pressing Tab shows matching persona ids
+  from `larva list --json`.
+- Matching is case-insensitive substring matching over persona ids, not only
+  prefix matching. For example, `senior` should match `python-senior`.
+- Prefix matches rank before non-prefix substring matches. Otherwise preserve the
+  registry order returned by `larva list --json`.
+- Forced Tab and regular completion use the same matching path.
+- All non-`/larva-persona` editor input is delegated to Pi's base provider so
+  global and file completion remain Pi-owned.
 
 Completion candidates have Pi's command item shape:
 
@@ -226,10 +247,18 @@ Completion candidates have Pi's command item shape:
 {"value": "persona-id", "label": "persona-id", "description": "optional description or model"}
 ```
 
-If `larva list --json` fails or returns malformed JSON, the provider returns
-`null` and does not throw through the Pi TUI. The extension does not inject a
-persona catalogue into prompts, cache completion results, or perform fuzzy
-matching; matching is exact `startsWith(<prefix>)` over current persona ids.
+Performance target:
+
+- The provider should cache the parsed `larva list --json` result in memory for a
+  short bounded TTL and share an in-flight list request between concurrent
+  completion calls.
+- The cache is process-local only. Do not write completion cache files and do not
+  inject the persona catalogue into prompts.
+- If `larva list --json` fails or returns malformed JSON, the provider returns
+  `null` and does not throw through the Pi TUI.
+
+This is substring matching, not fuzzy matching: no edit distance, wildcard,
+regex, nearest-persona guessing, or hidden aliases.
 
 Troubleshooting commands for runtime autocomplete behavior:
 

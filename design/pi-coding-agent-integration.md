@@ -160,6 +160,20 @@ The Pi extension registers:
 
 The command supports argument completion for persona ids.
 
+Completion target behavior:
+
+- TUI/editor completion is Tab-driven through Pi's command completer and narrow
+  `ctx.ui.addAutocompleteProvider` integration when available.
+- The `/larva-persona` completer performs case-insensitive substring matching over
+  persona ids. Prefix matches rank before non-prefix substring matches; remaining
+  order follows `larva list --json`.
+- The completer should cache parsed list results in process memory with a short
+  bounded TTL and share an in-flight list request between concurrent completion
+  calls. It must not write cache files or inject the persona catalogue into
+  prompts.
+- This is not fuzzy matching: no edit distance, wildcard, regex, nearest-persona
+  guessing, or hidden aliases.
+
 No-argument behavior:
 
 - In interactive TUI mode only, the extension opens a selector populated through
@@ -286,7 +300,7 @@ Model-map resolution rules:
 - Prefix rules may only strip `from_prefix` and prepend `to_model_id_prefix` to
   the remaining model string; embedded slashes in the remainder are preserved.
 - Wildcards, regex, fuzzy matching, nearest-model behavior, and automatic guessing
-  (including vendor guessing) are forbidden.
+  (including vendor guessing) are forbidden at runtime.
 - After exact or prefix mapping, call Pi `modelRegistry.find(provider, model_id)`
   with the mapped values (via the runtime registry lookup, such as
   `ctx.modelRegistry.find(provider, model_id)`), then call `pi.setModel(model)`.
@@ -306,15 +320,30 @@ non-empty. This supports current Larva model strings such as
 `openrouter/google/gemini-3.1-pro-preview`. Missing slash, empty provider, or
 empty model id maps to `LARVA_MODEL_UNAVAILABLE`.
 
-Confirmed model-map example:
+Runtime-map completion policy:
+
+- Generate the local runtime map from the current Larva registry,
+  `/Users/tefx/dotfiles/agent/models.yaml`, and `pi --list-models --offline`.
+- Add exact entries only for verified Pi provider/model targets. Do not silently
+  map to unlisted providers or model ids.
+- For `openai/gpt-*`, prefer `openai-codex/<same-id>` when listed by Pi; fall
+  back to `openrouter/openai/<same-id>` only when the Codex target is absent and
+  OpenRouter lists the target.
+- `openrouter/*` remains a literal prefix rule, not a generated list of exact
+  entries.
+- Adapter-local `ollama-cloud/*` mappings may use explicit verified families:
+  `glm-*` to `openrouter/z-ai/*`, `kimi-*` to `openrouter/moonshotai/*`, and
+  `minimax-*` to `openrouter/minimax/*`.
+
+Current verified model-map example:
 
 ```json
 {
   "models": {
-    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" },
     "ollama-cloud/glm-5.1": { "provider": "openrouter", "model_id": "z-ai/glm-5.1" },
-    "ollama-cloud/kimi-k2.5": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.5" },
-    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" }
+    "ollama-cloud/kimi-k2.6": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.6" },
+    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" },
+    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" }
   },
   "prefix_rules": [
     { "from_prefix": "openrouter/", "to_provider": "openrouter", "to_model_id_prefix": "" }
@@ -322,10 +351,11 @@ Confirmed model-map example:
 }
 ```
 
-`openrouter/google/gemini-3.1-pro-preview` is covered by the `openrouter/`
-prefix rule and maps to provider `openrouter`, model id
-`google/gemini-3.1-pro-preview`. `ollama-cloud/kimi-k2.6:cloud` is intentionally
-not mapped and must not be covered by wildcard-like behavior.
+`openrouter/google/gemini-3.1-pro-preview`,
+`openrouter/google/gemini-3.1-flash-lite`, and
+`openrouter/google/gemini-3.5-flash` are covered by the `openrouter/` prefix
+rule. The old `ollama-cloud/kimi-k2.6:cloud` spelling is not mapped unless an
+exact entry is added and verified against Pi's registry.
 
 The watermark example:
 
