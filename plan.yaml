@@ -91494,3 +91494,215 @@ phases:
   depends_on:
   - pi-postspec-subagent-ux-2026-06-02
   - meta.gate
+  steps:
+  - id: pi_postspec_full_spec_conformance_20260602
+    name: Full commit 4616008 Pi spec conformance audit
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+      Independence Level: L2
+
+      CONFORMANCE ARTIFACT: Adversarial conformance audit for all commit 4616008 Pi
+      integration requirements across launcher, editor UX, prompt overlay, config,
+      subagent result/session/rendering, child RPC/session behavior, README requirements,
+      and explicit non-goals.
+
+
+      <side_effect_budget>
+
+      Allowed: read code/docs/evidence and run conformance-oriented checks. Forbidden:
+      code edits or treating absence of reported defects as positive proof.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Search for orphan requirements from the updated architecture basis and verification
+      targets, especially rows 42-48.
+
+      - Check user-facing runtime obligations are backed by runtime artifacts, not
+      just unit tests.
+
+      - Verify hard constraints: no PersonaSpec/opifex changes, no aliases/malformed
+      input acceptance, no sidecars/legacy fallback/raw @<id>/prompt catalogue dumps.
+
+      </risk_probes>'
+    verification: '- [ ] Requirements register covers every material requirement family
+      from the design doc, README, implementation handoff, architecture basis change
+      notes, and verification targets.
+
+      - [ ] Evidence table uses CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
+      verdicts.
+
+      - [ ] NEEDS_TEST, UNPROVEN, and UNCERTAIN_BLOCKING items include closure paths.
+
+      - [ ] Audit explicitly checks no orphan requirements and no generic ''tested
+      it works'' proof substitutions.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    agent: spec-verifier
+  - id: pi_postspec_full_runtime_gate_20260602
+    name: Run supplemental Pi runtime, autocomplete smoke, contract tests, and invar
+      guard
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: full-plan-check
+
+      Independence Level: L2
+
+      PROOF ARTIFACT: Consolidated raw runtime/test evidence before final gate. This
+      is the nearest broad check for commands that downstream gate would otherwise
+      rerun.
+
+
+      Required target families:
+
+      - Unit/contract: Pi launcher, extension contract, model-map, model-map draft,
+      tool-policy, subagent result/session/rendering tests.
+
+      - Shell/runtime: tests/shell/test_pi_extension_real_runtime.py and supplemental
+      smoke scripts.
+
+      - Autocomplete smoke: /larva-persona and @persona mention behavior, including
+      ctx.ui.addAutocompleteProvider liveness or documented unsupported-hook evidence.
+
+      - Invar guard: changed files or full project command according to repo policy.
+
+
+      <side_effect_budget>
+
+      Allowed: run tests/smoke/guard and collect raw output. Forbidden: code edits,
+      network-dependent hidden assumptions, unconditional skips for product/runtime
+      failures.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Real Pi absence can skip only with captured availability evidence; plugin
+      load/product failures must fail.
+
+      - Runtime proof for supported editor autocomplete requires observed ctx.ui.addAutocompleteProvider
+      before claiming support.
+
+      - Contract tests and smoke tests are additive; one cannot substitute for the
+      other.
+
+      </risk_probes>'
+    verification: '- [ ] Raw output from Pi contract tests is included.
+
+      - [ ] Raw output from supplemental real runtime tests is included, with skip/xfail
+      reasons only when environment evidence supports them.
+
+      - [ ] Raw output from autocomplete smoke tests covers /larva-persona and @persona
+      or documents unsupported hook behavior.
+
+      - [ ] Raw output from invar guard is included.
+
+      - [ ] Behavioral proof register maps all runtime-sensitive requirements to PROVEN/BLOCKED
+      statuses.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_full_spec_conformance_20260602
+    agent: integration-verifier
+  - id: pi_postspec_docs_sync_20260602
+    name: Synchronize Pi docs after implementation proof
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      PROOF ARTIFACT: Documentation sync report confirming committed docs remain accurate
+      after implementation/proof or enumerating exact doc corrections needed.
+
+
+      <side_effect_budget>
+
+      Allowed: update docs only if implementation proof shows documented behavior
+      changed; otherwise produce no-op sync evidence. Forbidden: changing implementation
+      code, weakening hard constraints, documenting unsupported behavior as supported.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - README troubleshooting commands must match actual scripts/tests.
+
+      - Docs must distinguish supported ctx.ui.addAutocompleteProvider behavior from
+      unsupported-hook fallback.
+
+      - Docs must not imply raw @<id>, prompt catalogue injection, legacy fallback,
+      sidecars, or provenance guarantees.
+
+      </risk_probes>'
+    verification: '- [ ] README and design doc requirements match implementation evidence
+      and runtime proof.
+
+      - [ ] Troubleshooting/test commands are accurate or corrections are made.
+
+      - [ ] Explicit non-goals remain present and not contradicted by implementation
+      evidence.
+
+      - [ ] Any doc changes preserve commit 4616008 authority or cite why authority
+      changed.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_full_runtime_gate_20260602
+    agent: doc-reviewer
+  - id: pi_postspec_deep_review_20260602
+    name: Independent deep review of Pi post-spec implementation
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: full-plan-check
+
+      review_depth: THOROUGH
+
+      DECISION ARTIFACT: Final independent deep review for commit 4616008 Pi implementation
+      plan completion.
+
+
+      <side_effect_budget>
+
+      Allowed: inspect completed evidence and repo state. Forbidden: code edits, sampled
+      approval with unproven requirement rows, treating no blocker found as positive
+      proof.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Review must actively hunt for integration drift across launcher, extension,
+      runtime, docs, and tests.
+
+      - Check for client-runtime evidence class separation from design/spec conformance.
+
+      - Check hard constraints and unsupported guarantees are preserved across all
+      surfaces.
+
+      </risk_probes>'
+    verification: '- [ ] Reviews completed evidence for launcher/config, editor/prompt,
+      subagent UX, spec conformance, runtime gate, docs sync.
+
+      - [ ] Decision basis maps every OWNED requirement to positive proof or BLOCKED
+      remediation.
+
+      - [ ] No unresolved behavioral runtime, client-runtime, orphan requirement,
+      or hard-constraint violation is bypassed.
+
+      - [ ] Final decision is OPEN only if all blocker-class obligations are PROVEN
+      or have explicit non-intersection evidence.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_docs_sync_20260602
+    agent: gate-reviewer
