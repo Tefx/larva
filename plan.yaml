@@ -84197,3 +84197,163 @@ phases:
     depends_on:
     - pi-adapter-local-model-map-config-2026-06-01.gate
     agent: software-architect
+  - id: pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
+    name: Focused regate for dotfiles alias drift
+    status: pending
+    description: 'step_type: gate
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: phase-check
+
+      agent_source: project
+
+      work_type: defect_repair
+
+
+      PROOF ARTIFACT:
+
+      Focused independent regate for B1 only, plus key non-regression rows that can
+      intersect the current phase gate. This step must decide whether the B1 semantic
+      blocker is closed after `pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift`
+      without reopening or rewriting completed phase evidence.
+
+
+      SCOPE:
+
+      - Recheck B1: unrelated dotfiles alias semantic removals are restored or reviewed/accounted.
+
+      - Recheck non-regression rows: Pi model-map template intact, no `~/.pi` writes,
+      no Larva product code changes, Kimi remains intentionally unmapped.
+
+      - Optionally rerun existing model-map/runtime smoke commands only if needed
+      to prove non-intersection of the alias repair with already-proven phase requirements.
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1_ALIAS_DRIFT_REGATE | failed gate `pi-adapter-local-model-map-config-2026-06-01.gate`:
+      gate could not confirm dotfiles constraint without changing existing alias semantics
+      | Independently confirm alias drift is restored/accounted and no longer blocks
+      gate opening. | pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
+      | focused B1 decision includes verdict/blockers/gate_open_allowed/orchestrator_action_hint
+      | gate_decision | OWNED | Current phase cannot open until this focused decision
+      proves closure. |
+
+      | PI_TEMPLATE_NONREGRESSION | phase requirements already proven: Pi exact mappings
+      and `openrouter/` prefix template must remain intact | Verify alias remediation
+      did not alter Pi template source material. | pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
+      | prove Pi template intact after fix | pi_template_nonregression | OWNED | Required
+      because fix touches same dotfiles source. |
+
+      | NO_RUNTIME_OR_PRODUCT_WRITES | phase scope: dotfiles source only, no runtime
+      Pi or Larva product changes | Verify no `~/.pi` writes and no Larva product
+      code/shared contract changes occurred during fix. | pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
+      | prove forbidden side effects absent | side_effect_nonregression | OWNED |
+      Blocks if violated. |
+
+      | OPTIONAL_SMOKE_NONINTERSECTION | gate context: model-map/runtime harnesses
+      were already proven | Rerun existing smoke only if dotfiles changes could intersect
+      the runtime/template proof; otherwise record non-intersection rationale. | pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
+      | provide smoke rerun or non-intersection rationale | optional_smoke_or_nonintersection
+      | OWNED | Prevents broad retest churn while preserving gate safety. |
+
+
+      <side_effect_budget>
+
+      Allowed side effects:
+
+      - Read-only inspection of `/Users/tefx/dotfiles/agent/models.yaml`, dotfiles
+      git diff/status, and existing phase evidence.
+
+      - Optional read-only rerun of already-existing smoke/harness commands when necessary
+      for non-intersection proof.
+
+      Strictly forbidden side effects:
+
+      - Any edits to dotfiles, Larva product code, opifex contracts, or `~/.pi/**`.
+
+      - Completing, rewriting, or mutating the original failed gate evidence.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Treat absence of a diff as insufficient unless inventory also proves alias
+      and Pi template semantics are present.
+
+      - Confirm that any accounting artifact for unrelated alias drift is reviewed
+      and specific enough to preserve gate semantics; vague notes do not close B1.
+
+      - Confirm no runtime proof relies on user-state mutation under `~/.pi/**`.
+
+      </risk_probes>
+
+
+      GATE DECISION BASIS REQUIRED:
+
+      Return a focused decision artifact containing `verdict`, `blockers`, `gate_open_allowed`,
+      and `orchestrator_action_hint`. The only acceptable open recommendation is one
+      backed by positive proof for every OWNED row above; absence of newly observed
+      blockers is not enough.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      alone will be rejected):
+
+      - [ ] Raw `git -C /Users/tefx/dotfiles/agent status --short -- models.yaml`
+      output is pasted.
+
+      - [ ] Raw `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is
+      pasted and interpreted against B1.
+
+      - [ ] Inventory evidence proves dotfiles alias semantics are preserved for `#
+      glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`, `gpt53codexspark:
+      openai/gpt-5.3-codex-spark`, and `gpt54: openai/gpt-5.5`, or a reviewed accounting
+      artifact explicitly owns the unrelated removals.
+
+      - [ ] Inventory evidence proves the four Pi exact mappings and `openrouter/`
+      prefix template remain exactly present.
+
+      - [ ] Evidence confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
+      unmapped.
+
+      - [ ] Evidence confirms no writes under `~/.pi/**`, no Larva product-code changes,
+      and no opifex contract changes occurred in the fix path.
+
+      - [ ] Existing model-map/runtime smoke commands are rerun if needed for non-intersection;
+      otherwise the report includes an explicit non-intersection rationale.
+
+      - [ ] Gate decision includes `verdict`, `blockers`, `gate_open_allowed`, and
+      `orchestrator_action_hint` with `DO_COMPLETE_ORIGINAL_BLOCKED_GATE_THEN_COMPLETE_REGATE`
+      or equivalent only if B1 is proven closed.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `/Users/tefx/dotfiles/agent/models.yaml` — <key passage or relevant\
+      \ alias/template snippet, or `NOT READ: <reason>`>\n\n## Focused B1 Gate Decision\n\
+      - verdict: PASS | FAIL\n- blockers: <list; empty only if B1 closed>\n- gate_open_allowed:\
+      \ true | false\n- orchestrator_action_hint: <exact next action>\n\n## Dotfiles\
+      \ Raw Evidence\n- command: `git -C /Users/tefx/dotfiles/agent status --short\
+      \ -- models.yaml`\n- raw_stdout: |\n    <paste output>\n- command: `git -C /Users/tefx/dotfiles/agent\
+      \ diff -- models.yaml`\n- raw_stdout: |\n    <paste output>\n\n## Requirement\
+      \ Proof Rows\n- B1_ALIAS_DRIFT_REGATE: <PROVEN|BLOCKED plus evidence ref>\n\
+      - PI_TEMPLATE_NONREGRESSION: <PROVEN|BLOCKED plus evidence ref>\n- NO_RUNTIME_OR_PRODUCT_WRITES:\
+      \ <PROVEN|BLOCKED plus evidence ref>\n- OPTIONAL_SMOKE_NONINTERSECTION: <PROVEN|NOT_NEEDED_WITH_RATIONALE|BLOCKED>\n\
+      \n## Behavioral Proof Register\n| requirement_ref | behavior_claim | runtime_proof_expected\
+      \ | evidence_ref | status | closure_path | gate_decision_basis |\n| --- | ---\
+      \ | --- | --- | --- | --- | --- |\n| B1_ALIAS_DRIFT_REGATE | existing alias\
+      \ semantics preserved or reviewed/accounted | dotfiles diff/status + inventory\
+      \ | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <basis> |\n| PI_TEMPLATE_NONREGRESSION\
+      \ | Pi template remains intact | inventory | <ref> | PROVEN/UNPROVEN/BLOCKED\
+      \ | <path> | <basis> |\n| NO_RUNTIME_OR_PRODUCT_WRITES | no forbidden writes\
+      \ | side-effect audit | <ref> | PROVEN/UNPROVEN/BLOCKED | <path> | <basis> |\n\
+      \n## Checklist Receipt\n- checklist_receipt:\n  - satisfied: []\n  - failed:\
+      \ []\n  - blocked: []\n  - unobserved: []"
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+    agent: gate-reviewer
