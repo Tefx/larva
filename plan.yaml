@@ -93519,3 +93519,226 @@ phases:
     depends_on:
     - pi_postspec_docs_sync_20260602
     agent: gate-reviewer
+  - id: pi_postspec_conformance_blockers_b1_b7_fix_20260602
+    name: Batched fix for Pi post-spec conformance blockers B1-B7
+    status: pending
+    description: 'step_type: implementation
+
+      work_type: defect_repair
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      All blocker-class findings from `pi_postspec_full_spec_conformance_20260602`
+      are remediated as one coordinated fix, without creating serial one-off chains.
+      The implementation restores green or explicitly justified expected-xfail conformance
+      for B1-B7 while preserving commit 4616008 authority and hard non-goals.
+
+
+      ## Blockers to Fix (ALL of these, not just the first)
+
+      - B1: Required full conformance pytest suite failed (`3 failed, 76 passed`):
+      `test_real_pi_slash_status_commits_success_persona` assertion false; failure-path
+      smoke timed out after 8s; `test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases`
+      timed out after 8s.
+
+      - B2: Runtime slash-status smoke did not prove status commit: standalone `node
+      scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona ok`
+      returned `supported:false`, `prompt-1` timeout, and no UI status proof.
+
+      - B3: Runtime failure-path smoke timed out in pytest and standalone smoke returned
+      prompt timeouts/no Larva error notifications in the spec-verifier environment.
+
+      - B4: `larva_subagent_sessions` contract test timed out; fix helper/child lifecycle
+      performance or process cleanup and prove invalid limit/success/no-alias/no-scan
+      behavior.
+
+      - B5: `getAllTools` failures are swallowed; Pi tool enumeration failure must
+      map to `LARVA_TOOL_ENUMERATION_FAILED`, must not silently commit empty tools,
+      and must preserve prior active tool state.
+
+      - B6: Child stderr whitelist includes unlisted `LARVA_MODEL_MAP_INVALID`; VT39
+      allows only `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`, `LARVA_POLICY_INVALID`,
+      `LARVA_TOOL_ENUMERATION_FAILED` in the mapped/whitelisted child stderr family
+      unless a documented valid deviation is proven.
+
+      - B7: VT47 real editor-autocomplete runtime hook proof is NEEDS_TEST/UNPROVEN
+      due unstable/incomplete real Pi proof; produce/preserve successful real proof
+      or explicitly classify design-authorized supplemental proof as non-blocking
+      when the true hook is environment-limited.
+
+
+      ROOT-CAUSE EXPECTATIONS:
+
+      - Identify whether timeouts come from Pi RPC support detection, prompt lifecycle,
+      child process cleanup, subprocess stderr mapping, or session helper indexing;
+      do not patch only the observed assertion.
+
+      - For B5, treat `getAllTools` failure as a fail-closed transaction: no empty
+      active-tool commit, no swallowed exception success path, prior active-tool state
+      preserved.
+
+      - For B6, align the child stderr whitelist with design VT39/VT48 or produce
+      a cited design-authorized deviation; do not keep undocumented local mappings.
+
+      - For B7, distinguish real runtime proof from supplemental proof; supplemental
+      proof may close only if design/README authority permits it and the limitation
+      is environment-specific.
+
+
+      NON-GOALS / HARD CONSTRAINTS:
+
+      - Do NOT change PersonaSpec, opifex shared schema, shared canonical meaning,
+      or conformance authority.
+
+      - Do NOT add legacy fallback, raw `@<id>` persona injection, prompt catalogue
+      injection, sidecars, widget dashboard, sidecar session scans, or compatibility
+      aliases.
+
+      - Do NOT weaken tests by broad skipping or deleting assertions; expected-xfail
+      is allowed only with explicit authority, exact scope, and closure path.
+
+      - Do NOT make runtime proof depend on hidden network/credential assumptions
+      without reporting availability evidence.
+
+
+      <side_effect_budget>
+
+      Allowed: edit Pi extension/runtime/helper implementation, smoke harnesses, and
+      focused tests needed to close B1-B7; update docs only when required to document
+      an authority-preserving supplemental proof classification. Forbidden: shared
+      PersonaSpec/opifex schema changes, accepting malformed shared input, legacy
+      fallback/raw @<id>/prompt catalogue/sidecars/widget dashboard, weakening conformance
+      taxonomy, or silently converting blockers to skips.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Timeout fixes must prove child/process cleanup and bounded helper latency,
+      not merely increase timeouts.
+
+      - Tool enumeration failure must be atomic: error surfaced as `LARVA_TOOL_ENUMERATION_FAILED`
+      and previous active-tool state remains intact.
+
+      - Runtime proof evidence must separate real Pi liveness from supplemental/design-authorized
+      fallback so the gate cannot treat UNPROVEN as PROVEN.
+
+      </risk_probes>
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes inputs and produces
+      outputs that vary based on those inputs. Private stub classes (`_Runtime*`,
+      `_Stub*`, `_Placeholder*`) do not satisfy this requirement.
+
+
+      ## Gate Preview (what the retest/gate WILL reject)
+
+      1. Any B1-B7 blocker left as NEEDS_TEST/UNPROVEN without a documented closure
+      path and design-authorized non-blocking classification.
+
+      2. Runtime smoke output that lacks status/notify proof or contains prompt timeouts
+      for slash-status/failure-path scenarios.
+
+      3. `getAllTools` failure paths that commit `[]`, return ok, or lose prior active-tool
+      state instead of surfacing `LARVA_TOOL_ENUMERATION_FAILED`.
+
+      4. Child stderr whitelist containing undocumented codes or omitting the exact
+      allowed design family.
+
+      5. Session helper evidence that relies on sidecars, filesystem scans, aliases,
+      or unbounded detail loading.'
+    verification: '- [ ] `## refs Read Confirmation` cites key passages for VT39,
+      VT42-VT48, `getAllTools` failure semantics, slash-status runtime proof, failure-path
+      notification behavior, and `larva_subagent_sessions(limit?)`.
+
+      - [ ] Full conformance pytest suite that previously reported `3 failed, 76 passed`
+      is green, or any remaining expected-xfail is exact, authority-cited, and includes
+      a closure path.
+
+      - [ ] Slash-status runtime smoke produces status commit and notify evidence
+      without prompt timeouts.
+
+      - [ ] Failure-path runtime smoke produces Larva error notification evidence
+      without prompt timeouts.
+
+      - [ ] `larva_subagent_sessions` helper contract no longer times out and proves
+      invalid limit, success, no sidecar, no filesystem scan, no alias, and details-only
+      behavior.
+
+      - [ ] `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does not
+      silently commit empty tools, and preserves prior active-tool state.
+
+      - [ ] Child stderr whitelist exactly matches the design-authorized family or
+      a documented valid deviation is cited and tested.
+
+      - [ ] VT47 editor-autocomplete runtime hook proof is PROVEN, or explicitly classified
+      as design-authorized supplemental proof with non-blocking rationale and environment
+      limitation.
+
+      - [ ] No PersonaSpec/opifex/shared schema changes, no legacy fallback/raw `@<id>`/prompt
+      catalogue/sidecars/widget dashboard were introduced.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passages for VT39, VT42-VT48,
+      getAllTools failure, sessions helper, autocomplete proof>
+
+      - contrib/pi-extension/README.md — <key passages for runtime smoke, autocomplete/status
+      behavior, helper contract, documented commands>
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## Batched Fix Receipt
+
+      - changed_files: <paths or none>
+
+      - blockers_fixed: <B1-B7 mapping>
+
+      - root_cause_summary: <cause family and why this is not symptom-only>
+
+      - no_change_report_for_forbidden_surfaces: <PersonaSpec/opifex/schema/legacy
+      fallback/raw @<id>/prompt catalogue/sidecars/widget dashboard>
+
+
+      ## Raw Verification Commands
+
+      ```text
+
+      <paste commands and raw stdout/stderr for full conformance suite, slash-status
+      smoke, failure-path smoke, sessions helper tests, getAllTools failure probe,
+      child stderr whitelist probe, VT47 proof>
+
+      ```
+
+
+      ## Closure Table
+
+      | blocker | status | evidence_ref | remaining_gap | closure_path |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B2 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B3 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B4 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B5 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B6 | <PROVEN/BLOCKED> | <artifact> | <gap/none> | <path> |
+
+      | B7 | <PROVEN/SUPPLEMENTAL_NON_BLOCKING/BLOCKED> | <artifact> | <gap/none>
+      | <path> |'
+    depends_on:
+    - pi_postspec_full_spec_conformance_20260602
