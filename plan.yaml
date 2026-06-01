@@ -93954,40 +93954,40 @@ phases:
       Behavioral proof register required fields for each blocker/VT row: `requirement_ref`,
       `behavior_claim`, `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`,
       `gate_decision_basis`.'
-    verification: '- [ ] `## refs Read Confirmation` cites key passages for VT42-VT48
+    verification: '- [x] `## refs Read Confirmation` cites key passages for VT42-VT48
       and every blocker-specific rule used in the verdict.
 
-      - [ ] Full conformance audit is rerun with raw commands and raw stdout/stderr
+      - [x] Full conformance audit is rerun with raw commands and raw stdout/stderr
       captured.
 
-      - [ ] B1 full conformance suite result is green, or each expected-xfail has
+      - [x] B1 full conformance suite result is green, or each expected-xfail has
       exact authority, reason, and closure path.
 
-      - [ ] B2 slash-status runtime smoke includes status commit and notify proof
+      - [x] B2 slash-status runtime smoke includes status commit and notify proof
       without timeouts.
 
-      - [ ] B3 failure-path runtime smoke includes Larva error notification proof
+      - [x] B3 failure-path runtime smoke includes Larva error notification proof
       without timeouts.
 
-      - [ ] B4 sessions helper contract proves invalid limit, success, no sidecar,
+      - [x] B4 sessions helper contract proves invalid limit, success, no sidecar,
       no scan, no alias, and details-only behavior without timeout.
 
-      - [ ] B5 `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does
+      - [x] B5 `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does
       not commit empty active tools, and preserves prior active-tool state.
 
-      - [ ] B6 child stderr whitelist exactly matches design or records a cited valid
+      - [x] B6 child stderr whitelist exactly matches design or records a cited valid
       deviation with test evidence.
 
-      - [ ] B7 / VT47 is PROVEN or explicitly classified as design-authorized supplemental
+      - [x] B7 / VT47 is PROVEN or explicitly classified as design-authorized supplemental
       proof with non-blocking rationale; it is not left silently UNPROVEN.
 
-      - [ ] VT42-VT48 rows are re-audited with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
+      - [x] VT42-VT48 rows are re-audited with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
       taxonomy.
 
-      - [ ] No-change report confirms no PersonaSpec/opifex/shared schema changes
+      - [x] No-change report confirms no PersonaSpec/opifex/shared schema changes
       and no legacy fallback/raw `@<id>`/prompt catalogue/sidecars/widget dashboard.
 
-      - [ ] Closure-path table includes `gate_open_allowed: true|false` and gate open
+      - [x] Closure-path table includes `gate_open_allowed: true|false` and gate open
       is true only when every blocker-class row is PROVEN or design-authorized non-blocking.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
