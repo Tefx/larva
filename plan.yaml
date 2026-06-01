@@ -94087,5 +94087,9 @@ phases:
       gate_open_allowed: <true|false>
 
       reason: <why every blocker-class row is closed or why gate remains blocked>'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
     depends_on:
     - pi_postspec_conformance_blockers_b1_b7_fix_20260602
+    agent: spec-verifier
