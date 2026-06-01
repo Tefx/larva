@@ -86968,7 +86968,7 @@ phases:
       Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_runtime_smoke_20260601
     name: Extend Pi extension runtime smoke for renderer-safe tool result shape
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: local-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87048,6 +87048,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T09:18:58.053012+00:00'
+    done_at: '2026-06-01T09:26:47.304410+00:00'
+    evidence: 'Merged isolated smoke commit `484edde` to main as `c854644`. Updated
+      `scripts/pi-extension-runtime-smoke.mjs` and `tests/shell/test_pi_extension_real_runtime.py`
+      only. Refs confirmation cited prior smoke limitation (boolean-only renderer-safe
+      checks) and updated `tool-result-renderer-shape` scenario plus adapter wrapper
+      in `contrib/pi-extension/larva.ts`. Runtime smoke now invokes registered `larva_subagent`
+      handler/execute through fixture harness and fail-closed asserts `ToolResult.content`
+      is an array with a text item and `details` preserves `task_id`, `persona_id`,
+      `status`, `result_text`, and `error` across success, failed-before-session/no-active-persona,
+      cancelled, and failed-after-allocation. Mainline verification: `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario tool-result-renderer-shape` exited green and showed all cases with
+      `rendererSafeContent: true` plus preserved details; `uv run python -m pytest
+      tests/shell/test_pi_extension_real_runtime.py::test_registered_larva_subagent_results_are_renderer_safe_toolresults
+      -q` passed; `uv run python -m pytest tests/shell/test_pi_extension_real_runtime.py
+      -q` passed (17 passed); `uv run invar guard` passed. All paths were fixture-backed;
+      no blockers. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_interactive_crash_proof_20260601
     name: Prove Pi interactive/RPC path no longer crashes on larva_subagent result
       rendering
