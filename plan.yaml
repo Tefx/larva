@@ -83432,7 +83432,7 @@ phases:
     agent: integration-verifier
   - id: pi-adapter-local-model-map-config-2026-06-01.docs
     name: docs
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: default
@@ -83596,6 +83596,59 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-05-31T19:01:43.023506+00:00'
+    done_at: '2026-06-01T01:40:47.625072+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi-adapter-local-model-map-config-2026-06-01.docs
+      into main as 684f436.
+
+
+      refs Read Confirmation:
+
+      - contrib/pi-extension/README.md — worker cited adapter-local model-map/tool-policy
+      docs: canonical `~/.pi/larva/model-map.json`, env override `LARVA_PI_MODEL_MAP_FILE`,
+      exact-before-prefix `prefix_rules`, `LARVA_MODEL_MAP_INVALID`, and `~/.pi/tool-policy.json`
+      as legacy fallback only.
+
+      - design/pi-coding-agent-integration.md — worker cited adapter-local model map/tool
+      policy without PersonaSpec/opifex changes, shared startup and `/larva-persona`
+      resolver behavior, env/new/legacy tool-policy order, and no auto-migration/user-file
+      writes.
+
+
+      Mainline final-state verification after merge:
+
+      - `grep -n "model-map.json\|LARVA_PI_MODEL_MAP_FILE\|prefix_rules\|LARVA_MODEL_MAP_INVALID\|LARVA_MODEL_UNAVAILABLE\|tool-policy.json\|LARVA_PI_TOOL_POLICY_FILE\|legacy
+      fallback\|wildcard\|regex\|fuzzy\|PersonaSpec schema" contrib/pi-extension/README.md
+      design/pi-coding-agent-integration.md` exited 0 and returned matching lines
+      for model-map path/env/schema/prefix rules, invalid/unavailable errors, tool-policy
+      env/canonical/legacy fallback, no wildcard/regex/fuzzy, and PersonaSpec schema
+      boundaries.
+
+      - `git show --stat --patch --format=short HEAD -- contrib/pi-extension/README.md
+      design/pi-coding-agent-integration.md` shows documentation-only changes in those
+      two files: 12 insertions, 10 deletions; changes clarify automatic guessing/vendor
+      guessing ban, Pi-specific PersonaSpec field ban, and Pi `modelRegistry.find(provider,
+      model_id)` wording.
+
+
+      Requirement Proof Matrix:
+
+      - DOC1 PROVEN: README/design cover path, env override, schema/example, exact-before-prefix,
+      literal longest prefix; worker JSON parse check reported ok.
+
+      - DOC2 PROVEN: README/design cover missing config and key/prefix miss fallback
+      plus `LARVA_MODEL_MAP_INVALID` and `LARVA_MODEL_UNAVAILABLE`.
+
+      - DOC3 PROVEN: README/design explicitly ban wildcard, regex, fuzzy matching,
+      automatic guessing, PersonaSpec schema changes, and Pi-specific PersonaSpec
+      fields.
+
+      - DOC4 PROVEN: README/design document canonical `~/.pi/larva/tool-policy.json`,
+      `LARVA_PI_TOOL_POLICY_FILE`, legacy fallback `~/.pi/tool-policy.json`, and no
+      auto-migration/user-file writes.
+
+
+      Checklist receipt: all six checklist items are [x]. Forbidden side effects:
+      none reported; branch touched only `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.'
   - id: pi-adapter-local-model-map-config-2026-06-01.gate
     name: gate
     status: pending
