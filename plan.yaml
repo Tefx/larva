@@ -84607,7 +84607,7 @@ phases:
   steps:
   - id: pi_persona_autocomplete_contract_docs_20260601
     name: Freeze autocomplete and model-map docs contract
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       agent_source: project
@@ -84667,6 +84667,20 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-01T09:49:55.170900+00:00'
+    done_at: '2026-06-01T09:53:45.343293+00:00'
+    evidence: Merged isolated docs commit `d86f91b` to main as `8dcf863`. Updated
+      only `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.
+      Refs confirmation quoted docs passages for trigger/delegation (`/larva-persona
+      <query>` Tab completion and non-target delegation to Pi base provider), matching/ranking
+      (case-insensitive substring, prefix first, stable `larva list --json` order),
+      cache/in-flight (process-local parsed-list cache, shared in-flight request,
+      no disk cache, no prefetch, resettable/testable), model-map (exact mappings
+      then `openrouter/` prefix coverage, no unlisted guessing), and non-goals (no
+      PersonaSpec/opifex changes, no config mutation, no fuzzy/regex/wildcard/guessing,
+      no prompt catalogue dump). Raw diff/status included in subagent evidence; mainline
+      `git diff --check` produced no output and `uv run invar guard` passed. No product
+      code, tests, runtime config, schema/opifex, dependency, or `~/.pi/**` changes.
+      Checklist receipt all PROVEN and toggled before completion.
   - id: pi_persona_autocomplete_impl_20260601
     name: Complete Pi persona autocomplete substring cache implementation
     status: pending
