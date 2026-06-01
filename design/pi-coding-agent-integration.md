@@ -392,6 +392,20 @@ named with `LARVA_PI_TOOL_POLICY_FILE`. The adapter must not auto-migrate,
 rewrite, merge, or create user policy files, and there is no compatibility window
 or background migration daemon.
 
+Operator migration is explicit and one-time:
+
+- Move or copy the intended legacy `~/.pi/tool-policy.json` content to the
+  canonical `~/.pi/larva/tool-policy.json`, then remove the old file after
+  confirming the canonical file is active.
+- Use `LARVA_PI_TOOL_POLICY_FILE=~/.pi/tool-policy.json` only when an operator
+  intentionally chooses that non-canonical file for a test, temporary rollout, or
+  local adapter experiment. The env var is an explicit override, not an automatic
+  fallback signal.
+- If both canonical and legacy files exist during migration, fail the migration
+  check and report both paths to the operator. Do not merge the two files, do not
+  overwrite either file, and do not infer precedence between conflicting policy
+  files.
+
 Changed requirement traceability:
 
 | requirement_id | source_ref + key passage | obligation | owning_step_id | evidence_field | status | non_intersection_or_escalation |

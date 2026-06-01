@@ -151,6 +151,20 @@ override behavior. The extension must not auto-migrate, rewrite, merge, or creat
 user policy files, and there is no compatibility window or background migration
 daemon.
 
+Operator migration guidance:
+
+- If you still have `~/.pi/tool-policy.json`, move or copy its intended contents
+  once to `~/.pi/larva/tool-policy.json`, then remove the old file after
+  verifying the new canonical file is in use.
+- If you intentionally need the old path for a test, temporary rollout, or local
+  adapter experiment, set `LARVA_PI_TOOL_POLICY_FILE=~/.pi/tool-policy.json` so
+  the non-canonical path is explicit. Do not rely on the extension to discover it
+  as a fallback.
+- If both `~/.pi/larva/tool-policy.json` and `~/.pi/tool-policy.json` exist during
+  migration, treat that as an operator conflict: stop, report the two paths, and
+  choose one policy file manually. Do not merge, overwrite, or infer precedence
+  between the two files.
+
 This file is adapter-local Larva-Pi configuration. It is not a canonical
 PersonaSpec field, is not interpreted by opifex, and does not change the meaning
 of PersonaSpec `capabilities` or `can_spawn`.
