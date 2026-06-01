@@ -90724,3 +90724,14 @@ phases:
   depends_on:
   - pi-postspec-editor-prompt-2026-06-02
   - meta.gate
+- id: pi-postspec-finalization-2026-06-02
+  name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
+  status: locked
+  gate: Final gate opens only when all commit 4616008 requirements have positive proof
+    or explicit non-intersection, supplemental Pi extension tests and autocomplete
+    smoke tests run/skip/xfail according to documented policy, ctx.ui.addAutocompleteProvider
+    liveness is proven before editor autocomplete support is claimed, docs remain
+    synchronized, and independent deep review finds no blocker-class gaps.
+  depends_on:
+  - pi-postspec-subagent-ux-2026-06-02
+  - meta.gate
