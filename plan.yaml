@@ -86458,7 +86458,7 @@ phases:
       before completion.'
   - id: pi_tool_policy_no_legacy_runtime_guard_20260601
     name: Verify no-fallback runtime behavior and invar guard
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT:
 
       Independent phase-check protecting `pi-tool-policy-no-legacy-2026-06-01.gate`.
@@ -86535,6 +86535,22 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T08:42:51.076877+00:00'
+    done_at: '2026-06-01T08:47:56.972171+00:00'
+    evidence: 'Independent verify-only runtime guard completed in isolated worktree;
+      no files changed and no merge was required. Refs confirmation covered `src/larva/shell/pi.py`,
+      `contrib/pi-extension/larva.ts`, `tests/shell/test_pi_launcher_contract.py`,
+      `tests/shell/test_pi_extension_contract.py`, and `contrib/pi-extension/test-tool-policy-paths.mjs`.
+      Subagent verdict PASS with `gate_open_allowed: true`, `orchestrator_action_hint:
+      COMPLETE`, `blockers: []`, `product_files_modified: false`, and behavioral proof
+      register R1-R6 all PROVEN. Mainline verification: `uv run python -m pytest tests/shell/test_pi_launcher_contract.py
+      -q` passed (35 passed); `node contrib/pi-extension/test-tool-policy-paths.mjs`
+      passed full matrix (`env-override`, `new-path-exists`, `both-present-conflict`,
+      `old-only-no-env-is-empty`, `explicit-env-old-path`, `no-file-empty`, final
+      `tool-policy paths: PASS`); `uv run invar guard` passed with JSON status `passed`.
+      Static scan evidence from verifier confirmed launcher default `canonical_only`,
+      extension candidates `env_override_only_else_canonical_only`, and remaining
+      legacy references limited to conflict detection / explicit-only metadata, not
+      implicit fallback. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_no_legacy_gate_20260601
     name: Gate Pi tool-policy no-legacy cutover
     status: pending
