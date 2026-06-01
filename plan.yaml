@@ -91793,7 +91793,15 @@ phases:
       or bytes.
 
       </risk_probes>'
-    verification: '- [ ] larva_subagent ToolResult wrapper mirrors task_id/persona_id/status/result_text/error
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] larva_subagent ToolResult wrapper mirrors task_id/persona_id/status/result_text/error
       exactly in details and top-level metadata, with isError derived from status.
 
       - [ ] Every non-null task_id result content includes the documented resume footer;
