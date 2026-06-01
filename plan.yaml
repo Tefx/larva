@@ -86375,7 +86375,7 @@ phases:
       receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_operator_migration_proof_20260601
     name: Prove one-time operator migration semantics
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT:
 
       Provide runtime/operator proof for direct migration semantics without introducing
@@ -86441,6 +86441,21 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T08:30:55.363477+00:00'
+    done_at: '2026-06-01T08:42:21.414940+00:00'
+    evidence: 'Applied isolated commit `87e6cf480777ecec2253294d79c540b7c6616db4`
+      and committed mainline as `6f77a3d`. Added fixture-only migration proof script
+      `contrib/pi-extension/prove-tool-policy-migration.mjs`. Mainline verification:
+      `node contrib/pi-extension/prove-tool-policy-migration.mjs` passed and emitted
+      scenario matrix covering old-only, both-files conflict, canonical-only, and
+      absent-both. Old-only fixture ended with old file absent and canonical file
+      present with preserved content. Both-files fixture reported `LARVA_TOOL_POLICY_MIGRATION_CONFLICT`
+      with action `none`, old and canonical still present, and canonical content unchanged.
+      Proof mutation scope was tempdir fixtures only; actual local check showed `/Users/tefx/.pi/larva`
+      exists but contains only `child-sessions` and `model-map.json`, distinguishing
+      fixture proof from local operator state. Additional mainline verification: `node
+      contrib/pi-extension/test-tool-policy-paths.mjs` passed full no-legacy path
+      matrix; `uv run invar guard` passed. Checklist receipt all PROVEN and toggled
+      before completion.'
   - id: pi_tool_policy_no_legacy_runtime_guard_20260601
     name: Verify no-fallback runtime behavior and invar guard
     status: pending
