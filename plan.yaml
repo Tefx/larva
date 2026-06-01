@@ -86669,7 +86669,7 @@ phases:
     claimed_at: '2026-06-01T11:09:57.375463+00:00'
   - id: pi_model_map_draft_live_cli_proof_20260601
     name: Verify real Pi and registry runtime proof for model-map draft helper
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -86819,6 +86819,8 @@ phases:
     depends_on:
     - pi_model_map_draft_impl_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T11:10:19.782981+00:00'
   - id: pi_model_map_draft_spec_guard_20260601
     name: Verify spec conformance and invar guard for model-map draft helper
     status: pending
