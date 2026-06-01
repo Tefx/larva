@@ -87365,25 +87365,25 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the approved design sections for Pi data source
+      - [x] refs confirmation cites the approved design sections for Pi data source
       authority, stdout/stderr redirect safety, unresolved failure, and verification
       targets.
 
-      - [ ] Focused regression proof shows inventory rows emitted on Pi stderr are
+      - [x] Focused regression proof shows inventory rows emitted on Pi stderr are
       consumed when the Pi command exits 0.
 
-      - [ ] Real or recorded command-channel evidence explains how stdout and stderr
+      - [x] Real or recorded command-channel evidence explains how stdout and stderr
       are interpreted without treating success-stderr inventory as fatal.
 
-      - [ ] Helper success path still emits parseable raw draft JSON on stdout only,
+      - [x] Helper success path still emits parseable raw draft JSON on stdout only,
       with reports/warnings on stderr.
 
-      - [ ] Controlled unresolved/malformed cases remain fail-closed with `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      - [x] Controlled unresolved/malformed cases remain fail-closed with `LARVA_PI_MODEL_MAP_UNRESOLVED`
       and no guessed provider mapping.
 
-      - [ ] No personal scaffold path read and no provider preference table is introduced.
+      - [x] No personal scaffold path read and no provider preference table is introduced.
 
-      - [ ] Implementation evidence identifies the exact tests/commands run and any
+      - [x] Implementation evidence identifies the exact tests/commands run and any
       remaining live proof delegated to `pi_model_map_draft_live_cli_retest_20260601`.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
