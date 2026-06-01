@@ -91345,7 +91345,7 @@ phases:
       \ true\n- orchestrator_action_hint: COMPLETE\n- verdict: PASS"
 - id: pi-postspec-editor-prompt-2026-06-02
   name: Pi Post-Spec Editor UX and Prompt Overlay 2026-06-02
-  status: in_progress
+  status: done
   gate: Phase opens only when /larva-persona completion, selector behavior, process-local
     cache/in-flight sharing, @persona:<id> mention autocomplete, Pi file-reference
     preservation, and Larva-managed prompt overlay are implemented/proven without
@@ -91928,7 +91928,7 @@ phases:
       none'
   - id: pi_postspec_editor_prompt_gate_20260602
     name: Gate active-persona editor UX and prompt overlay
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -92022,9 +92022,119 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T17:43:41.243410+00:00'
+    done_at: '2026-06-01T17:54:23.513178+00:00'
+    evidence: 'status: SUCCESS
+
+      gate_task_id: ses_17bb5e27affeGAxCwd2vWgjGdI
+
+      supplemental_blind_liveness_task_id: ses_17bb0f92effeZ5wRRaJ0Y9hmG6
+
+      merge_result: branch had no code changes; `git merge --squash vectl/step-pi_postspec_editor_prompt_gate_20260602`
+      reported already up to date.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — reviewed requirements for ctx.ui.addAutocompleteProvider-gated
+      editor autocomplete, @persona:<id> mention-only behavior, Pi file-reference
+      preservation, raw @<id> delegation, and before_agent_start marker overlay preserving
+      Pi chained prompt/default identity/provider payload.
+
+      - contrib/pi-extension/README.md — reviewed runtime gate requirements for /larva-persona
+      Tab completion, @persona mention autocomplete, supplemental runtime evidence
+      beyond source-token checks, and prompt identity composition.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: none
+
+      - no_change_reason: gate review plus supplemental blind liveness verification
+      only; gate worktree and mainline status were clean.
+
+
+      ## Gate Decision Basis
+
+      - evidence_reviewed: implementation commit 2e92613, focused editor/prompt tests,
+      Pi extension contract/runtime suites, runtime smoke commands, autocomplete smokes,
+      supplemental ctx.ui.addAutocompleteProvider/mention/prompt probes, and supplemental
+      blind Mode D liveness checks.
+
+      - requirement_mapping: gate-reviewer mapped every editor/prompt/CLI/runtime
+      requirement to PROVEN evidence, including editor hook liveness, /larva-persona
+      completion values, forced/regular tab parity, case-insensitive/prefix-first
+      ordering, delegation/null-on-failure, process-local cache/in-flight dedupe,
+      @persona mention merge/dedupe/delegation/no side effects, prompt overlay preservation/idempotence,
+      and Pi RPC command registration/execution.
+
+      - runtime_liveness_review: accepted real Pi RPC and executable runtime probes;
+      source-token/build/type evidence was not substituted for behavior.
+
+      - hard_constraint_review: no raw @<id> completion, no prompt catalogue injection,
+      no mention side effect, no Pi identity rewrite/context loss.
+
+      - CLI surface matrix: gate-reviewer provided surface snapshot and matrix for
+      pi --extension/-e, /larva-persona command, argument completer, and editor autocomplete
+      provider; no dangling/unimplemented/no-handler regression observed.
+
+      - supplemental blind liveness: blind-tester Mode D verified `pi --version` 0.78.0,
+      availability, get-commands, slash-status, startup-status, and tab-force/tab-regular
+      smokes; verdict PASS, blocking_status CLOSED, gate_open_allowed true. Blind
+      tester noted public smoke has no direct prompt-content dump; this is non-blocking
+      because gate/runtime proof included dedicated supplemental prompt overlay content
+      preservation probes.
+
+      - gate_decision: OPEN
+
+      - unresolved_obligations: []
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+      tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` → exit 0; 75 passed in 26.71s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario availability && node
+      scripts/pi-extension-runtime-smoke.mjs --scenario get-commands && node scripts/pi-extension-runtime-smoke.mjs
+      --scenario slash-status --persona ok && node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-force --prefix vectl && node scripts/pi-extension-autocomplete-smoke.mjs
+      --case tab-regular --prefix vectl` → exit 0; Pi available with extension flag,
+      command surface includes larva-persona, slash-status succeeds, tab smokes return
+      expected vectl persona IDs and exact shape.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Behavioral proof / closure fields
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - uncertainty_sources: [] after combining gate-reviewer evidence, prior client-runtime-verifier
+      prompt-overlay proof, and supplemental blind liveness.
+
+
+      ## Checklist receipt
+
+      All six checklist obligations were toggled by orchestrator: refs confirmation,
+      no-change/receipts/blockers, upstream tests/implementation/runtime proof satisfaction,
+      per-requirement gate evidence mapping, runtime proof not substituted by source/build/type
+      evidence, and explicit OPEN decision with no unresolved obligations.
+
+
+      ## Gaps / blockers
+
+      none'
 - id: pi-postspec-subagent-ux-2026-06-02
   name: Pi Post-Spec Subagent Result, Sessions, and Rendering UX 2026-06-02
-  status: locked
+  status: pending
   gate: Phase opens only when larva_subagent wrapper mirrors task_id/persona_id/status/result_text/error
     in details and top-level metadata, isError derives from semantic status, non-null
     task_id results include the visible resume footer, optional larva_subagent_sessions(limit?)
