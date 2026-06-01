@@ -85992,7 +85992,7 @@ phases:
   steps:
   - id: pi_tool_policy_no_legacy_contract_20260601
     name: Freeze no-legacy Pi tool-policy contract
-    status: claimed
+    status: done
     description: 'ACCEPTED CONTRACT ARTIFACT:
 
       Codify the changed requirement for Pi tool-policy path resolution across launcher,
@@ -86080,6 +86080,20 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-01T08:10:44.657271+00:00'
+    done_at: '2026-06-01T08:22:00.492393+00:00'
+    evidence: 'Merged isolated branch `vectl/step-pi_tool_policy_no_legacy_contract_20260601`
+      via squash commit `0a25195` after preserving pre-existing documentation checkpoint
+      `5433b1b`. Subagent evidence: refs confirmed for all seven refs; R1-R6 requirement
+      coverage PROVEN; checklist receipt all PROVEN; contract/doc/test artifacts updated
+      to codify no-legacy Pi tool-policy requirement. Mainline verification: `uv run
+      invar guard` passed; `uv run python -m pytest tests/shell/test_pi_extension_contract.py::test_tool_policy_path_contract_rejects_implicit_legacy_fallback
+      -q` passed; `node contrib/pi-extension/test-tool-policy-paths.mjs --case new-path-exists`
+      passed; `node contrib/pi-extension/test-tool-policy-paths.mjs --case explicit-env-old-path`
+      passed; expected-red `old-only-no-env-is-empty` failed with actual old fallback
+      still active (downstream implementation gap); expected-red launcher canonical-path
+      test failed with actual `/Users/tefx/.pi/tool-policy.json` (downstream implementation
+      gap); `git diff --check` passed. Orchestrator toggled all verification checklist
+      items from checklist_receipt before completion.'
   - id: pi_tool_policy_no_legacy_tests_20260601
     name: Add expected-red no-fallback policy tests
     status: pending
