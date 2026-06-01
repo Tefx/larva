@@ -92638,37 +92638,37 @@ phases:
       - Verify truncation evidence includes adversarial ANSI/control/Unicode inputs.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step including VT46, and `NOT READ: <reason>`
       only for legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Runtime evidence exercises larva_subagent success or documented environment-limited
+      - [x] Runtime evidence exercises larva_subagent success or documented environment-limited
       substitute plus failed/cancelled/error paths.
 
-      - [ ] Runtime evidence shows visible resume footer in content[0].text for non-null
+      - [x] Runtime evidence shows visible resume footer in content[0].text for non-null
       task_id.
 
-      - [ ] Runtime evidence or supplemental harness shows larva_subagent_sessions
+      - [x] Runtime evidence or supplemental harness shows larva_subagent_sessions
       valid/invalid limit and details.sessions-only shape.
 
-      - [ ] Runtime/smoke evidence shows renderCall/onUpdate/renderResult artifacts
+      - [x] Runtime/smoke evidence shows renderCall/onUpdate/renderResult artifacts
       and parent footer preservation.
 
-      - [ ] VT46 runtime/smoke evidence shows collapsed renderResult final view with
+      - [x] VT46 runtime/smoke evidence shows collapsed renderResult final view with
       persona and terminal state.
 
-      - [ ] VT46 runtime/smoke evidence shows expanded renderResult final view with
+      - [x] VT46 runtime/smoke evidence shows expanded renderResult final view with
       persona id, mode, full task, task_id when known, final status, error if any,
       final output, and resume footer.
 
-      - [ ] VT46 runtime/smoke evidence shows no parent `larva:` footer overwrite
+      - [x] VT46 runtime/smoke evidence shows no parent `larva:` footer overwrite
       and no widget dashboard.
 
-      - [ ] Raw command output and artifacts are included.'
+      - [x] Raw command output and artifacts are included.'
     evidence_template: '## refs Read Confirmation
 
       For each ref in this step, include one bullet with the exact key passage used
