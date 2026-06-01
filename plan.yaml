@@ -93051,7 +93051,7 @@ phases:
       none'
 - id: pi-postspec-finalization-2026-06-02
   name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
-  status: pending
+  status: in_progress
   gate: Final gate opens only when all commit 4616008 requirements have positive proof
     or explicit non-intersection, supplemental Pi extension tests and autocomplete
     smoke tests run/skip/xfail according to documented policy, ctx.ui.addAutocompleteProvider
@@ -93063,7 +93063,7 @@ phases:
   steps:
   - id: pi_postspec_full_spec_conformance_20260602
     name: Full commit 4616008 Pi spec conformance audit
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: full-plan-check
@@ -93171,6 +93171,8 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-06-01T18:47:33.833071+00:00'
   - id: pi_postspec_full_runtime_gate_20260602
     name: Run supplemental Pi runtime, autocomplete smoke, contract tests, and invar
       guard
