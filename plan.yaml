@@ -86968,7 +86968,7 @@ phases:
       Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_runtime_smoke_20260601
     name: Extend Pi extension runtime smoke for renderer-safe tool result shape
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: local-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87046,6 +87046,8 @@ phases:
     depends_on:
     - pi_subagent_toolresult_adapter_impl_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T09:18:58.053012+00:00'
   - id: pi_subagent_toolresult_interactive_crash_proof_20260601
     name: Prove Pi interactive/RPC path no longer crashes on larva_subagent result
       rendering
