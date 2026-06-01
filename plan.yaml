@@ -90700,6 +90700,244 @@ phases:
   depends_on:
   - pi-subagent-sessionfile-protocol-2026-06-01
   - meta.gate
+  steps:
+  - id: pi_postspec_launcher_config_traceability_20260602
+    name: Trace commit 4616008 launcher and config requirements
+    status: pending
+    description: 'step_type: contract
+
+      agent_source: project
+
+      PROOF ARTIFACT: Requirement-to-checklist traceability matrix for launcher/package/env,
+      model-map, model-map draft helper, and tool-policy rules introduced or clarified
+      by commit 4616008.
+
+
+      BOUNDING BOX: design/pi-coding-agent-integration.md Launch/Persona runtime projection/Tool
+      policy/Verification targets; contrib/pi-extension/README.md Launching Pi/Adapter-local
+      model map/Adapter-local tool policy.
+
+
+      REQUIREMENT TRACEABILITY MATRIX seed rows: PI4616008-LAUNCH-ENV, PI4616008-MODEL-MAP,
+      PI4616008-DRAFT, PI4616008-TOOL-POLICY. Complete rows with source_ref, obligation,
+      owning_step_id, checklist_item, evidence_field, status, and disposition.
+
+
+      <side_effect_budget>
+
+      Allowed: inspect repo/spec state and produce a traceability/proof matrix. Forbidden:
+      product code changes, user dotfile writes, PersonaSpec/opifex schema changes,
+      compatibility aliases, legacy fallback reintroduction.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Distinguish operator migration guidance from extension runtime behavior; runtime
+      must not probe legacy ~/.pi/tool-policy.json unless explicitly named.
+
+      - Confirm env override paths are absolute and adapter-local, not hidden settings
+      fallbacks.
+
+      - Confirm already-done plan evidence does not rely on superseded legacy fallback
+      semantics.
+
+      </risk_probes>'
+    verification: '- [ ] Matrix cites key passages from both docs/spec refs for every
+      launcher/config requirement family.
+
+      - [ ] Every commit 4616008 launcher/config requirement is marked OWNED, DEFERRED
+      with non-intersection, EXCLUDED with authority, or AMBIGUOUS with escalation.
+
+      - [ ] No row uses pre-existing/out-of-scope as a disposition.
+
+      - [ ] Matrix identifies which old Pi phases are covered and which residual implementation/proof
+      remains.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    agent: software-architect
+  - id: pi_postspec_launcher_config_residual_impl_20260602
+    name: Complete residual launcher/config semantics from commit 4616008
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE: Launcher/package/env and Pi extension adapter-local config behavior
+      match commit 4616008. If the traceability step proves a requirement is already
+      fully implemented, this step may be completed as proof-closure with exact file/test
+      evidence; otherwise complete residual implementation within existing surfaces.
+
+
+      BOUNDING BOX: Python launcher/shell surfaces for `larva pi` and `larva pi-model-map
+      draft`; contrib/pi-extension/larva.ts; existing Pi extension tests and smoke
+      scripts.
+
+
+      CONSTRAINTS:
+
+      - Preserve PersonaSpec/opifex shared schema; do not add aliases or accept malformed
+      shared input.
+
+      - Do not write user Pi settings, dotfiles, filesystem sidecars, lock files,
+      or registry file reads by the Pi extension.
+
+      - Do not restore implicit legacy ~/.pi/tool-policy.json fallback; explicit absolute
+      LARVA_PI_TOOL_POLICY_FILE override remains allowed.
+
+      - Launcher must not parse tool-policy/model-map content; extension owns parsing/validation.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Any
+      changed behavior must process real inputs and preserve existing runtime surfaces.
+
+
+      <side_effect_budget>
+
+      Allowed: modify bounded launcher/extension/tests needed for commit 4616008 config
+      semantics. Forbidden: PersonaSpec/opifex schema changes, hidden Pi settings
+      fallback, dotfile writes, legacy fallback, compatibility aliases, personal scaffold
+      model maps.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Same code path must be used for startup persona and /larva-persona switching
+      model-map resolution.
+
+      - Draft helper output channels must remain redirect-safe: draft JSON on stdout,
+      human report on stderr or --json envelope.
+
+      - Missing configured policy/model-map and invalid configured policy/model-map
+      must retain distinct error semantics.
+
+      </risk_probes>'
+    verification: '- [ ] launcher_env_matrix shows real Pi bin, extension flag/entry,
+      Larva CLI argv, interactive flag, and explicit config overrides only.
+
+      - [ ] model_map_matrix covers exact hit, longest literal prefix, same-length
+      conflict -> LARVA_MODEL_MAP_INVALID, missing file fallback, invalid config fail-closed,
+      unavailable mapped target.
+
+      - [ ] draft_helper_matrix covers registry + pi offline inventory, no personal
+      scaffolds/provider guessing, unresolved reporting, redirect-safe output channels.
+
+      - [ ] tool_policy_matrix covers canonical default only, explicit absolute override
+      only, old-path-only no fallback, both-files operator migration guidance not
+      runtime probing.
+
+      - [ ] No PersonaSpec/opifex shared schema change, malformed shared input acceptance,
+      compatibility alias, sidecar, lock file, or hidden Pi settings fallback is introduced.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_launcher_config_traceability_20260602
+    agent: frontend-engineer
+  - id: pi_postspec_launcher_config_runtime_verify_20260602
+    name: Verify launcher/config runtime and invar guard
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      Independence Level: L1
+
+      PROOF ARTIFACT: Independent runtime/test evidence for the launcher/config requirement
+      matrix. This check protects the pi-postspec-launcher-config gate and downstream
+      Pi extension phases.
+
+
+      <side_effect_budget>
+
+      Allowed: run tests, smoke scripts, and invar guard; inspect outputs. Forbidden:
+      product code edits, dotfile writes, skipping real-Pi failures as environmental
+      without captured availability evidence.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Mock-heavy tests do not prove runtime path selection; require at least one
+      shell/runtime receipt where available.
+
+      - Real Pi absence may skip only with captured binary/extension-flag availability
+      evidence.
+
+      - Check stale plan evidence from pre-4616008 phases is not reused without revalidating
+      changed rules.
+
+      </risk_probes>'
+    verification: '- [ ] Raw output from targeted launcher/model-map/tool-policy tests
+      is included.
+
+      - [ ] Raw output from supplemental Pi runtime tests or documented skip/xfail
+      availability evidence is included.
+
+      - [ ] Raw output from invar guard for changed files is included.
+
+      - [ ] Behavioral proof register marks each launcher/config requirement PROVEN
+      or BLOCKED with closure path.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_launcher_config_residual_impl_20260602
+    agent: integration-verifier
+  - id: pi_postspec_launcher_config_gate_20260602
+    name: Gate launcher/config post-spec conformance
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+      DECISION ARTIFACT: Gate review for commit 4616008 launcher/config conformance.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence and inspect repo state. Forbidden: code edits, accepting
+      generic pass claims, approving unresolved requirements without non-intersection
+      evidence.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Gate must reject legacy tool-policy fallback, hidden Pi settings fallback,
+      and personal dotfile/model scaffold dependencies.
+
+      - Gate must require positive proof for absolute env override semantics.
+
+      - Gate must ensure no PersonaSpec/opifex shared surface was changed for adapter-local
+      config.
+
+      </risk_probes>'
+    verification: '- [ ] All phase steps completed with refs confirmation and raw
+      evidence.
+
+      - [ ] Requirement matrix has no ORPHAN_REQUIREMENT rows for launcher/config
+      scope.
+
+      - [ ] Behavioral proof register has every OWNED requirement PROVEN or BLOCKED
+      with explicit remediation path.
+
+      - [ ] Gate decision basis rejects sampled/no-blocker-only evidence and records
+      OPEN or BLOCKED.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_launcher_config_traceability_20260602
+    - pi_postspec_launcher_config_residual_impl_20260602
+    - pi_postspec_launcher_config_runtime_verify_20260602
+    agent: gate-reviewer
 - id: pi-postspec-editor-prompt-2026-06-02
   name: Pi Post-Spec Editor UX and Prompt Overlay 2026-06-02
   status: locked
