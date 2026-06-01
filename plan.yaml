@@ -90486,29 +90486,29 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       will be rejected):
 
-      - [ ] Refs confirmation includes key passages from changed implementation and
+      - [x] Refs confirmation includes key passages from changed implementation and
       regression harnesses.
 
-      - [ ] Focused regression/smoke output shows fresh child `sessionFile` missing
+      - [x] Focused regression/smoke output shows fresh child `sessionFile` missing
       before prompt is accepted only when absolute `.jsonl` under childSessionRoot.
 
-      - [ ] Negative regression output shows resume `task_id` missing file remains
+      - [x] Negative regression output shows resume `task_id` missing file remains
       rejected.
 
-      - [ ] Negative regression output shows relative path, wrong suffix, outside-root,
+      - [x] Negative regression output shows relative path, wrong suffix, outside-root,
       and existing symlink escape are rejected.
 
-      - [ ] Real Pi child `get_state`/spawn proof is included when available; if unavailable,
+      - [x] Real Pi child `get_state`/spawn proof is included when available; if unavailable,
       exact environment blocker is recorded and focused local protocol proof is present.
 
-      - [ ] Repo checks include `invar guard` or the project-canonical guard command
+      - [x] Repo checks include `invar guard` or the project-canonical guard command
       plus focused TypeScript/Python runtime smoke commands, with raw stdout/stderr
       and exit codes.
 
-      - [ ] Decision basis maps every requirement row to PROVEN/BLOCKED and blocks
+      - [x] Decision basis maps every requirement row to PROVEN/BLOCKED and blocks
       on any unresolved runtime, authority, ToolResult, or root-escape proof gap.
 
-      - [ ] No personal scaffold files were read or required during verification.'
+      - [x] No personal scaffold files were read or required during verification.'
     evidence_template: '## Gate / Runtime Verification Report
 
       **Reviewer**: gate-reviewer (independent of frontend-engineer implementation)
