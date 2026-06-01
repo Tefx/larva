@@ -93887,7 +93887,7 @@ phases:
       none'
   - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -94095,3 +94095,40 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-06-01T19:14:17.659952+00:00'
+    done_at: '2026-06-01T19:24:43.336618+00:00'
+    evidence: "status: SUCCESS\nsummary: Re-audit PASS. B1-B7 and VT42-VT48 closed;\
+      \ full Pi post-spec suite green; gate_open_allowed true; blockers empty.\nrefs_confirmation:\n\
+      \  - design/pi-coding-agent-integration.md: cited VT42-VT48, B5/B6, and hard\
+      \ non-goal passages.\n  - contrib/pi-extension/README.md: cited runtime proof\
+      \ policy, slash/status, autocomplete proof, sessions helper, and explicit non-goals.\n\
+      checklist_receipt: all 12 verification checklist items toggled to complete via\
+      \ deterministic vectl_check from subagent receipt.\nworker_receipts:\n  - full\
+      \ conformance audit: `uv run --group dev pytest tests/shell/test_pi_extension_contract.py\
+      \ tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ tests/shell/test_pi_postspec_subagent_ux_expected_red.py -q -rx` exit 0; `79\
+      \ passed in 31.19s`.\n  - B2 slash-status runtime smoke: `node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario slash-status --persona ok` exit 0; Pi available/RPC supported;\
+      \ `statusText: \"larva: ok\"`; notify `Larva persona active: ok`.\n  - B3 failure-path\
+      \ runtime smoke: `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path`\
+      \ exit 0; Larva error notifications observed for `LARVA_PERSONA_NOT_FOUND`;\
+      \ no timeout blocker.\n  - B4 sessions helper: targeted pytest exit 0; `1 passed,\
+      \ 3 deselected`; invalid limit/success/no-sidecar/no-scan/no-alias/details-only\
+      \ behavior PROVEN.\n  - B5 tool enumeration atomicity: targeted pytest exit\
+      \ 0; `3 passed, 50 deselected`; failure maps to `LARVA_TOOL_ENUMERATION_FAILED`,\
+      \ preserves prior state.\n  - B6 child stderr whitelist: targeted pytest exit\
+      \ 0; `1 passed, 47 deselected`; whitelist matches design.\n  - B7/VT47 autocomplete:\
+      \ autocomplete smoke commands exit 0; editor autocomplete pytest `1 passed`;\
+      \ runtime autocomplete gate `8 passed`; supplemental mention-token probe confirms\
+      \ canonical/delegated behavior.\n  - VT46 renderResult proof: covered by full\
+      \ suite/postspec subagent UX tests; collapsed/expanded view, resume footer,\
+      \ parent footer preservation, no widget dashboard PROVEN.\n  - no-change report:\
+      \ `git status --short`, `git diff --name-only`, and `git diff --cached --name-only`\
+      \ empty; schema/forbidden-surface greps found no blocker-class changes.\n  -\
+      \ invar guard in worker: `uv run --group dev invar guard --changed` passed with\
+      \ no changed files.\nbehavioral_proof_register: B1-B7 and VT42-VT48 all status\
+      \ PROVEN / taxonomy CONFORMS / closure_path none / gate_decision_basis CONFORMS.\n\
+      mainline_reconciliation:\n  - merge: `git merge --squash vectl/step-pi_postspec_conformance_blockers_b1_b7_reaudit_20260602`\
+      \ returned `Already up to date. (nothing to squash)` because audit was read-only\
+      \ and branch had no product diff.\n  - mainline verification: `uv run --group\
+      \ dev invar guard --changed` passed; no changed files.\ngaps: none\nblockers:\
+      \ []"
