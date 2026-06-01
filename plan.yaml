@@ -84090,7 +84090,7 @@ phases:
       no artifacts.'
   - id: pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
     name: Fix dotfiles alias drift blocking Pi model-map gate
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -84281,6 +84281,67 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-01T02:00:44.522741+00:00'
+    done_at: '2026-06-01T02:06:21.940332+00:00'
+    evidence: 'WORKTREE_MERGED: Larva isolated branch had no Larva tree delta; `git
+      merge --squash vectl/step-pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift`
+      reported already up to date / nothing to squash. External dotfiles final state
+      verified against `/Users/tefx/dotfiles/agent/models.yaml`; no new dotfiles commit
+      was required because the file now matches committed dotfiles HEAD 61f73e99044da26a21976ad8cd5c2cd0de66dac5.
+
+
+      refs Read Confirmation:
+
+      - `/Users/tefx/dotfiles/agent/models.yaml` — worker and orchestrator verified
+      presence of restored alias/comment lines, Pi template mappings, `openrouter/`
+      prefix rule, and `# Intentionally unmapped: ollama-cloud/kimi-k2.6:cloud.`
+
+
+      Mainline/external final-state verification:
+
+      - `git -C /Users/tefx/dotfiles/agent status --short -- models.yaml` output:
+      empty.
+
+      - `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output: empty.
+
+      - `git -C /Users/tefx/dotfiles/agent show --stat --patch --format=short HEAD
+      -- models.yaml` shows dotfiles HEAD 61f73e9 with only the Pi model-map template
+      commit (19 insertions) containing four exact mappings, `openrouter/` prefix
+      rule, operator copy instruction, and intentional Kimi unmapped note.
+
+      - Inventory command over `/Users/tefx/dotfiles/agent/models.yaml` returned PRESENT
+      for `# glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`,
+      `gpt53codexspark: openai/gpt-5.3-codex-spark`, `gpt54: openai/gpt-5.5`.
+
+      - Inventory returned PRESENT for four exact Pi mappings: `openai/gpt-5.5 ->
+      openai-codex/gpt-5.5`, `ollama-cloud/glm-5.1 -> openrouter/z-ai/glm-5.1`, `ollama-cloud/kimi-k2.5
+      -> openrouter/moonshotai/kimi-k2.5`, `ollama-cloud/minimax-m2.7 -> openrouter/minimax/minimax-m2.7`.
+
+      - Inventory returned PRESENT for `openrouter/` prefix template and PRESENT for
+      `# Intentionally unmapped: ollama-cloud/kimi-k2.6:cloud.`; active JSON mapping
+      key `"ollama-cloud/kimi-k2.6:cloud":` is absent.
+
+      - `git status --short` in Larva main output: empty. `git -C /Users/tefx/Projects/opifex
+      status --short` output: empty.
+
+
+      Requirement Proof Matrix:
+
+      - B1_ALIAS_DRIFT PROVEN: four unrelated alias/comment lines are present and
+      dotfiles `models.yaml` diff is empty.
+
+      - PI_TEMPLATE_PRESERVE PROVEN: Pi template exact mappings and prefix rule remain
+      exactly present.
+
+      - KIMI_UNMAPPED PROVEN: intentional unmapped note present and no active mapping
+      for `ollama-cloud/kimi-k2.6:cloud`.
+
+      - NO_RUNTIME_WRITES PROVEN: no Larva or opifex changes; worker reported `~/.pi`
+      audit with no recent writes and orchestrator observed no forbidden repo changes.
+
+
+      Checklist receipt: all eight checklist items are [x]. Root cause: unrelated
+      dotfiles working-copy alias drift, not Pi model-map source/template work. Forbidden
+      side effects: none.'
   - id: pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
     name: Focused regate for dotfiles alias drift
     status: pending
