@@ -90867,6 +90867,49 @@ phases:
 
       - [ ] No PersonaSpec/opifex shared schema change, malformed shared input acceptance,
       compatibility alias, sidecar, lock file, or hidden Pi settings fallback is introduced.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none`>
+
+      - no_change_reason: <required when no files changed/proof-closure only>
+
+
+      ## Implementation / Proof-Closure Receipt
+
+      - traceability_rows_satisfied: <matrix rows closed by this step>
+
+      - launcher_env_matrix: <evidence or artifact ref>
+
+      - model_map_matrix: <evidence or artifact ref>
+
+      - draft_helper_matrix: <evidence or artifact ref>
+
+      - tool_policy_matrix: <evidence or artifact ref>
+
+      - forbidden_side_effect_absence: <evidence for no schema changes, aliases, sidecars,
+      lock files, hidden fallback, or malformed shared input acceptance>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines and exit codes, if any>
+
+      - raw_outputs_or_artifacts: <raw stdout/stderr/artifact refs>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
