@@ -92539,8 +92539,16 @@ phases:
       surfaces.
 
       </risk_probes>'
-    verification: '- [ ] Reviews completed evidence for launcher/config, editor/prompt,
-      subagent UX, spec conformance, runtime gate, docs sync.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Reviews completed evidence for launcher/config, editor/prompt, subagent
+      UX, spec conformance, runtime gate, docs sync.
 
       - [ ] Decision basis maps every OWNED requirement to positive proof or BLOCKED
       remediation.
