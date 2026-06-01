@@ -86508,19 +86508,19 @@ phases:
       this phase gate.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Raw stdout from focused Python launcher tests shows no-fallback matrix
+      - [x] Raw stdout from focused Python launcher tests shows no-fallback matrix
       green.
 
-      - [ ] Raw stdout from focused extension path tests shows no-fallback matrix
+      - [x] Raw stdout from focused extension path tests shows no-fallback matrix
       green.
 
-      - [ ] Static scan confirms no implicit legacy fallback wording/path-order remains
+      - [x] Static scan confirms no implicit legacy fallback wording/path-order remains
       in runtime code or metadata.
 
-      - [ ] Raw stdout from `invar guard` or canonical project guard command shows
+      - [x] Raw stdout from `invar guard` or canonical project guard command shows
       green.
 
-      - [ ] Behavioral proof register closes R1-R6 as PROVEN or records blocking remediation.'
+      - [x] Behavioral proof register closes R1-R6 as PROVEN or records blocking remediation.'
     refs:
     - src/larva/shell/pi.py
     - contrib/pi-extension/larva.ts
