@@ -87215,6 +87215,10 @@ phases:
       - [ ] Spec conformance and invar guard evidence are reviewed and blocker-class
       drift has remediation ownership.
 
+      - [ ] Fail-closed inventory retest `pi_model_map_draft_fail_closed_inventory_retest_20260601`
+      is reviewed and proves empty stdout+stderr, whitespace-only output, and unparseable
+      successful Pi output return `LARVA_PI_MODELS_UNAVAILABLE`.
+
       - [ ] Gate decision basis maps every requirement row to PROVEN or a blocking
       closure path; sampled/no-blocker claims are rejected.
 
@@ -87263,6 +87267,8 @@ phases:
     - pi_model_map_draft_live_cli_channel_fix_20260601
     - pi_model_map_draft_live_cli_retest_20260601
     - pi_model_map_draft_spec_guard_20260601
+    - pi_model_map_draft_fail_closed_inventory_fix_20260601
+    - pi_model_map_draft_fail_closed_inventory_retest_20260601
     agent: gate-reviewer
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
     name: Fix live Pi inventory output-channel seam
