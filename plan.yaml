@@ -84582,7 +84582,7 @@ phases:
       side effects; no artifacts modified.'
 - id: pi-model-map-runtime-and-autocomplete-2026-06-01
   name: Pi Persona Autocomplete Substring Cache and Model Map Proof 2026-06-01
-  status: locked
+  status: pending
   gate: 'Phase accepted only when docs, implementation, tests, runtime model-map proof,
     client/runtime autocomplete proof, invar guard, and independent gate evidence
     show: case-insensitive substring persona matching; prefix matches ranked before
@@ -86661,7 +86661,7 @@ phases:
       `passed`. Checklist receipt all PROVEN and toggled before completion.'
 - id: pi-subagent-toolresult-crash-fix-2026-06-01
   name: Pi larva_subagent ToolResult Crash Fix 2026-06-01
-  status: in_progress
+  status: done
   gate: Phase accepted only when Pi-facing larva_subagent handler/execute return renderer-safe
     ToolResult objects with content arrays on success, failed-before-session, failed-after-allocation,
     and cancelled paths; semantic LarvaSubagentResult remains preserved as details/metadata;
@@ -87385,7 +87385,7 @@ phases:
       all commands passed. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_gate_20260601
     name: Gate Pi larva_subagent ToolResult crash fix
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check; protects downstream phases `pi-model-map-runtime-and-autocomplete-2026-06-01`
@@ -87493,3 +87493,21 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T09:39:34.720852+00:00'
+    done_at: '2026-06-01T09:48:51.854957+00:00'
+    evidence: 'Independent gate-reviewer returned `headline: PASS`, `verdict: PASS`,
+      `gate_decision: OPEN`, `gate_open_allowed: true`, `blocking_status: CLOSED`,
+      `blockers: []`, with no file changes. Refs confirmation covered all code/test/docs
+      refs: `contrib/pi-extension/larva.ts`, `scripts/pi-extension-runtime-smoke.mjs`,
+      `tests/shell/test_pi_extension_contract.py`, `tests/shell/test_pi_extension_real_runtime.py`,
+      `contrib/pi-extension/README.md`, and `design/pi-coding-agent-integration.md`.
+      Gate decision basis reviewed red-test R1-R4, adapter R1-R4, docs R1-R3, smoke
+      R1-R2, runtime proof R1-R3, and repo verify R1-R3. Positive proof register all
+      PROVEN: expected-red then green, all status paths renderer-safe, metadata preserved,
+      runtime crash absent, docs specific, guard/repo green. Mainline final verification:
+      `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      passed and showed renderer-safe content/details for success, failed-before-session,
+      cancelled, and failed-after-allocation; `uv run python -m pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_real_runtime.py -q` passed (65 passed); `uv run
+      invar guard` passed. Gate opened only because all blocker-class behavioral obligations
+      were PROVEN and uncertainty_sources was empty. Checklist receipt all PROVEN
+      and toggled before completion.'
