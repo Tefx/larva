@@ -92342,6 +92342,47 @@ phases:
 
       - [ ] Any doc changes preserve commit 4616008 authority or cite why authority
       changed.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <docs paths changed, or `none`>
+
+      - no_change_reason: <required when no docs changed/no-op sync>
+
+
+      ## Documentation Sync Receipt
+
+      - docs_checked: <README/design sections checked>
+
+      - implementation_evidence_compared: <runtime/proof artifacts compared>
+
+      - corrections_made: <doc changes or `none` with rationale>
+
+      - non_goals_preserved: <raw @<id>, prompt catalogue, legacy fallback, sidecars,
+      provenance guarantees, unsupported hooks>
+
+      - vt46_doc_consistency: <whether docs accurately describe collapsed/expanded
+      renderResult, resume footer, parent footer, and no-dashboard behavior, or `not
+      documented` with rationale>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines and exit codes, if any>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
