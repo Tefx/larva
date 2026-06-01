@@ -84841,7 +84841,7 @@ phases:
     agent: integration-verifier
   - id: pi_model_map_runtime_proof_20260601
     name: Verify user-local Pi model-map runtime targets
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: local-check
@@ -84916,6 +84916,8 @@ phases:
     depends_on:
     - pi_persona_autocomplete_contract_docs_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T09:54:24.102802+00:00'
   - id: pi_persona_autocomplete_gate_20260601
     name: Gate Pi persona autocomplete and model-map proof
     status: pending
