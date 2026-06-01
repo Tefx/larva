@@ -92328,7 +92328,15 @@ phases:
       other.
 
       </risk_probes>'
-    verification: '- [ ] Raw output from Pi contract tests is included.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step including VT46, and `NOT READ: <reason>`
+      only for legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Raw output from Pi contract tests is included.
 
       - [ ] Raw output from supplemental real runtime tests is included, with skip/xfail
       reasons only when environment evidence supports them.
