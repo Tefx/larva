@@ -85056,7 +85056,7 @@ phases:
       complete.'
   - id: pi_persona_autocomplete_gate_20260601
     name: Gate Pi persona autocomplete and model-map proof
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -85123,6 +85123,8 @@ phases:
     - pi_persona_autocomplete_runtime_tests_20260601
     - pi_model_map_openrouter_prefix_retest_20260601
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T10:27:57.983335+00:00'
   - id: pi_model_map_openrouter_prefix_cleanup_20260601
     name: Cleanup redundant OpenRouter Gemini exact model-map entry
     status: done
