@@ -85941,7 +85941,7 @@ phases:
       error: ""'
   - id: pi_model_map_draft_red_tests_20260601
     name: Add expected-red fixture tests for Pi model-map draft helper
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -86123,6 +86123,132 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-01T10:45:29.192994+00:00'
+    done_at: '2026-06-01T10:53:22.501843+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## Expected-Red Test Receipt
+
+      - changed_files: `tests/shell/test_pi_model_map_draft_contract.py`
+
+      - branch_commit_hash: `19eb2e5eff65c001a8d1bd5b589e7c3abb4803a3`
+
+      - main_merge_commit: `ec751ee`
+
+      - command: `uv run pytest tests/shell/test_pi_model_map_draft_contract.py`
+
+      - exit_code: 1 (expected red)
+
+      - raw_stdout: 15 collected tests all failed against the current `pi-model-map
+      draft is not yet implemented` CLI stub, including dedup/stable output, exact
+      mapping preservation/removal, invalid exact target unresolved, prefix preservation/stale/invalid/conflict,
+      ambiguity without hard-coded preferences, malformed/no-candidate paths, redirect-safe
+      stdout, optional `--json`, `--write`, and invalid model-map fail-closed cases.
+
+      - expected_failures: 15/15 tests fail because product implementation is still
+      stubbed.
+
+      - downstream_implementation_owner: `pi_model_map_draft_impl_20260601`
+
+
+      ## refs Read Confirmation
+
+      - `design/pi-model-map-draft-helper.md` — key sections read: Deduplication and
+      merge policy, Candidate discovery policy, Draft output contract, Error model,
+      CLI contract, and exact external-facing fixture shapes.
+
+      - `tests/shell/test_pi_launcher_contract.py` — launcher contract mock/subprocess
+      fixture style reviewed.
+
+      - `tests/shell/test_pi_extension_contract.py` — Pi extension contract-test style
+      reviewed.
+
+      - `src/larva/shell/pi.py` — pass-through/error-shape boundary reviewed to avoid
+      real Pi.
+
+      - `INVAR.md` — Core vs Shell/no-I/O rules reviewed.
+
+
+      ## Fixture Matrix
+
+      - dedup/merge: `test_duplicate_registry_model_grouping_and_stable_sorted_exact_output`
+      — red.
+
+      - merge/exact mappings: `test_valid_existing_exact_mapping_preservation`, `test_stale_exact_mapping_removal_reporting`,
+      `test_invalid_existing_exact_target_reporting` — red.
+
+      - prefix findings: `test_valid_existing_prefix_rule_preservation`, `test_stale_prefix_rule_reporting_removal`,
+      `test_invalid_prefix_target_reporting`, `test_same_length_prefix_conflict_rejection`
+      — red.
+
+      - ambiguity/no preference: `test_ambiguous_candidates_without_hard_coded_preferences`
+      — red.
+
+      - malformed/no candidate/non-interactive unresolved: `test_malformed_source_model`,
+      `test_no_candidate_manual_skip_path`, invalid exact/prefix/ambiguous cases —
+      red.
+
+      - redirect-safe stdout: `test_redirect_safe_stdout_raw_json_only` — red.
+
+      - optional json/write/error: `test_optional_json_envelope_behavior`, `test_write_filesystem_behavior`,
+      `test_invalid_existing_model_map_fail_closed` — red.
+
+
+      ## Spec Fixture Shape Proof
+
+      - Pi inventory rows use exact TSV-like provider/model_id columns only: `PROVIDER\tMODEL_ID`
+      with provider/model rows; no personal scaffold.
+
+      - existing model-map JSON uses exact top-level keys `models` and `prefix_rules`
+      with entries containing only `provider` and `model_id`.
+
+      - raw draft JSON assertions inspect only `models` and `prefix_rules` runtime
+      map keys.
+
+      - optional JSON envelope assertions inspect Larva envelope `data`/`data.draft`.
+
+      - CLI args exercised: `pi-model-map draft`, `--non-interactive`, `--model-map`,
+      `--json`, `--write`, and `--output`.
+
+      - no convenience fields: no fixture/assertion uses hidden `fuzzy`, `priority`,
+      `aliases`, regex/wildcard, or personal scaffold fields.
+
+      - no personal scaffold input: tests use only `tmp_path`, mocks, fake executable
+      path, and in-memory facade summaries; no `~/.pi` or `/Users/tefx/dotfiles/agent/models.yaml`
+      access.
+
+
+      ## Mainline verification
+
+      - `uv run pytest tests/shell/test_pi_model_map_draft_contract.py` exit 1 with
+      15 expected failures matching the stub gap.
+
+      - `uv run invar guard` exit 0: status passed; errors 0; warnings 0; infos 0;
+      doctest passed.
+
+      - `git diff --check` exit 0; `git status --porcelain` clean.
+
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      observed_result: red
+
+      failure_alignment: tests demand approved draft-helper behavior while current
+      implementation deliberately returns `pi-model-map draft is not yet implemented`;
+      failure exactly identifies the downstream implementation gap.
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false
+
+
+      ## checklist_receipt
+
+      All five checklist items were PROVEN and toggled with `vectl_check` before completion.'
   - id: pi_model_map_draft_impl_20260601
     name: Complete Pi model-map draft helper implementation
     status: pending
