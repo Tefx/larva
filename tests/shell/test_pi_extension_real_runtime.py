@@ -232,13 +232,18 @@ def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> No
     cases = payload["runtime"]["toolResultCases"]
     assertions = payload["runtime"]["assertions"]
 
+    assert cases["success"]["status"] == "success"
+    assert cases["success"]["result_text"] == "child final text"
+    assert cases["success"]["details"]["result_text"] == "child final text"
     assert cases["failedBeforeSession"]["status"] == "failed"
     assert cases["failedBeforeSession"]["error"]["code"] == "LARVA_NO_ACTIVE_PERSONA"
+    assert cases["failedBeforeSession"]["details"]["error"]["code"] == "LARVA_NO_ACTIVE_PERSONA"
     assert cases["cancelled"]["status"] == "cancelled"
     assert cases["failedAfterAllocation"]["status"] == "failed"
     assert cases["failedAfterAllocation"]["task_id"].endswith("allocated.jsonl")
 
     assert assertions == {
+        "success": True,
         "failedBeforeSession": True,
         "cancelled": True,
         "failedAfterAllocation": True,

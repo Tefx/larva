@@ -259,7 +259,36 @@ async function main() {
       task_id: failedAfterTaskId,
     });
 
+    const successRoot = await mkdtemp(join(tmpdir(), "larva-pi-success-"));
+    const successTaskId = join(successRoot, "success.jsonl");
+    await writeFile(successTaskId, "", "utf8");
+    const fakeChild = join(successRoot, "fake-child.mjs");
+    await writeFile(fakeChild, `
+      import { createInterface } from "node:readline";
+      const sessionFile = ${JSON.stringify(successTaskId)};
+      const rl = createInterface({ input: process.stdin });
+      rl.on("line", (line) => {
+        const message = JSON.parse(line);
+        if (message.type === "get_state") process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { sessionFile } }) + "\\n");
+        if (message.type === "prompt") {
+          process.stdout.write(JSON.stringify({ id: message.id, success: true, data: {} }) + "\\n");
+          process.stdout.write(JSON.stringify({ type: "agent_end" }) + "\\n");
+        }
+        if (message.type === "get_last_assistant_text") {
+          process.stdout.write(JSON.stringify({ id: message.id, success: true, data: { text: "child final text" } }) + "\\n");
+          process.exit(0);
+        }
+      });
+    `, "utf8");
+    await runtimeHarness(evidence, {
+      initialPersona: "ok",
+      envOverrides: { LARVA_PI_CHILD_SESSION_DIR: successRoot, LARVA_PI_REAL_BIN: process.execPath, LARVA_PI_EXTENSION_FLAG: fakeChild },
+    });
+    const successTool = evidence.runtime.larvaSubagent;
+    const success = await successTool.execute("call-success", { persona_id: "child", task: "finish" });
+
     evidence.runtime.toolResultCases = {
+      success,
       failedBeforeSession,
       cancelled,
       failedAfterAllocation,
@@ -267,9 +296,6 @@ async function main() {
     evidence.runtime.assertions = Object.fromEntries(
       Object.entries(evidence.runtime.toolResultCases).map(([name, result]) => [name, hasRendererSafeTextContent(result)]),
     );
-    evidence.runtime.infeasible = {
-      success: "EXCLUDED_OR_DEFERRED: deterministic success requires a child Pi RPC process or a product-owned injection seam; this expected-red step is constrained to tests/fixtures and must not change larva.ts.",
-    };
   } else if (scenario === "tool-call-block") {
     await runtimeHarness(evidence);
     const result = await evidence.runtime.toolCallHandler?.({ toolName: "bash" });

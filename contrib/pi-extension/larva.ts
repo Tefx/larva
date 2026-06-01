@@ -88,6 +88,12 @@ export type LarvaSubagentResult = {
   result_text: string;
   error: LarvaError | null;
 };
+type PiTextContent = { type: "text"; text: string };
+type LarvaSubagentToolResult = LarvaSubagentResult & {
+  content: PiTextContent[];
+  details: LarvaSubagentResult;
+  isError: boolean;
+};
 
 type ModelRegistry = { find?: (provider: string, modelId: string) => unknown | Promise<unknown> };
 type CommandOptions = {
@@ -131,7 +137,7 @@ type PiApi = {
   getAllTools?: () => unknown[] | Promise<unknown[]>;
   setActiveTools?: (tools: string[]) => boolean | void | Promise<boolean | void>;
   registerCommand?: ((name: string, options: CommandOptions) => void) | ((command: LegacyCommandDefinition) => void);
-  registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentResult>) => void;
+  registerTool?: (tool: ToolDefinition<LarvaSubagentInput, LarvaSubagentToolResult>) => void;
   on?: (event: "before_agent_start" | "tool_call" | "session_start" | string, handler: (payload: unknown, ctx?: PiContext) => unknown) => void;
 };
 type PiContext = PiApi & {
@@ -709,6 +715,21 @@ function success(task_id: string, persona_id: string, result_text: string): Larv
   return { task_id, persona_id, status: "success", result_text, error: null };
 }
 
+function larvaSubagentResultText(result: LarvaSubagentResult): string {
+  if (result.status === "success") return result.result_text || "Larva subagent completed without final assistant text.";
+  if (result.error) return `${result.error.code}: ${result.error.message}`;
+  return result.status === "cancelled" ? "Larva subagent was cancelled." : "Larva subagent failed.";
+}
+
+function wrapLarvaSubagentToolResult(result: LarvaSubagentResult): LarvaSubagentToolResult {
+  return {
+    ...result,
+    content: [{ type: "text", text: larvaSubagentResultText(result) }],
+    details: result,
+    isError: result.status !== "success",
+  };
+}
+
 function normalizeString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -1082,10 +1103,10 @@ export async function initializeExtension(ctx: PiContext, pi: PiApi = ctx): Prom
     description: "Spawn or resume one Larva persona child Pi session and return its final assistant text.",
     inputSchema: subagentSchema,
     parameters: subagentSchema,
-    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }),
+    handler: (input: LarvaSubagentInput) => larva_subagent(input, { env, abortSignal: ctx.abortSignal ?? ctx.signal }).then(wrapLarvaSubagentToolResult),
     execute: (_toolCallId, input, signal, _onUpdate, toolCtx) => {
       const runtimeCtx = withRuntimeEnv(toolCtx ?? ctx, env);
-      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal });
+      return larva_subagent(input, { env: currentEnv(runtimeCtx), abortSignal: signal ?? runtimeCtx.signal ?? runtimeCtx.abortSignal }).then(wrapLarvaSubagentToolResult);
     },
   });
   pi.on?.("session_start", async (_payload: unknown, eventCtx?: PiContext) => {
