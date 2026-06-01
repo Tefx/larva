@@ -86060,15 +86060,15 @@ phases:
       old path.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Contract matrix includes every user requirement R1-R6 with owning downstream
+      - [x] Contract matrix includes every user requirement R1-R6 with owning downstream
       step and evidence field.
 
-      - [ ] Contract explicitly rejects legacy fallback, auto-migration daemon, compatibility
+      - [x] Contract explicitly rejects legacy fallback, auto-migration daemon, compatibility
       window, and auto-merge.
 
-      - [ ] Contract preserves explicit `LARVA_PI_TOOL_POLICY_FILE` override behavior.
+      - [x] Contract preserves explicit `LARVA_PI_TOOL_POLICY_FILE` override behavior.
 
-      - [ ] Evidence cites key passages or observed symbols from each ref.'
+      - [x] Evidence cites key passages or observed symbols from each ref.'
     refs:
     - src/larva/shell/pi.py
     - contrib/pi-extension/larva.ts
