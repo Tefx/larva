@@ -87951,25 +87951,25 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation includes key passages from design/pi-model-map-draft-helper.md:61-63
+      - [x] refs confirmation includes key passages from design/pi-model-map-draft-helper.md:61-63
       and 132-136 plus relevant INVAR/AGENTS Shell/Core rules.
 
-      - [ ] Implementation evidence shows empty stdout+stderr no longer returns `Success([])`
+      - [x] Implementation evidence shows empty stdout+stderr no longer returns `Success([])`
       and instead returns `LARVA_PI_MODELS_UNAVAILABLE`.
 
-      - [ ] Regression test covers successful Pi command with empty stdout and empty
+      - [x] Regression test covers successful Pi command with empty stdout and empty
       stderr.
 
-      - [ ] Regression test covers successful Pi command with whitespace-only output.
+      - [x] Regression test covers successful Pi command with whitespace-only output.
 
-      - [ ] Regression or focused proof covers unparseable successful Pi output.
+      - [x] Regression or focused proof covers unparseable successful Pi output.
 
-      - [ ] Existing parseable stderr inventory behavior remains green.
+      - [x] Existing parseable stderr inventory behavior remains green.
 
-      - [ ] Raw stdout JSON contract and stderr human-report contract remain green
+      - [x] Raw stdout JSON contract and stderr human-report contract remain green
       for successful draft output.
 
-      - [ ] No personal scaffold path, provider preference table, hidden alias inference,
+      - [x] No personal scaffold path, provider preference table, hidden alias inference,
       or speculative draft behavior is introduced.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-model-map-draft-helper.md — key passage or \"NOT READ:\
