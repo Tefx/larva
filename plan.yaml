@@ -87846,7 +87846,7 @@ phases:
       Commit hash(es): none — read-only live retest'
   - id: pi_model_map_draft_fail_closed_inventory_fix_20260601
     name: Fix fail-closed Pi inventory parsing for draft helper
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       priority: HIGH
@@ -87989,6 +87989,8 @@ phases:
     depends_on:
     - pi_model_map_draft_spec_guard_20260601
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-01T11:56:44.728969+00:00'
   - id: pi_model_map_draft_fail_closed_inventory_retest_20260601
     name: Retest fail-closed Pi inventory spec guard
     status: pending
