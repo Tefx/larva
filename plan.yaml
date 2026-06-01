@@ -86805,25 +86805,25 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites Architecture basis, CLI contract, Data sources,
+      - [x] refs confirmation cites Architecture basis, CLI contract, Data sources,
       Draft output contract, and Verification targets.
 
-      - [ ] Raw output from real `pi --list-models --offline` or exact BLOCKED environment
+      - [x] Raw output from real `pi --list-models --offline` or exact BLOCKED environment
       proof is included.
 
-      - [ ] Raw CLI receipt for `larva pi-model-map draft` shows default stdout is
+      - [x] Raw CLI receipt for `larva pi-model-map draft` shows default stdout is
       parseable raw model-map JSON and stderr is separate.
 
-      - [ ] Current registry-used model evidence is included from the real helper/registry
+      - [x] Current registry-used model evidence is included from the real helper/registry
       path.
 
-      - [ ] A controlled non-interactive unresolved/malformed case returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      - [x] A controlled non-interactive unresolved/malformed case returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
       without guessing.
 
-      - [ ] If `--write` is exercised, it writes only to a temp/explicit path and
+      - [x] If `--write` is exercised, it writes only to a temp/explicit path and
       the file shape matches the Pi extension runtime schema.
 
-      - [ ] Behavioral proof register marks live runtime obligations PROVEN/BLOCKED
+      - [x] Behavioral proof register marks live runtime obligations PROVEN/BLOCKED
       with closure paths; fixture-only evidence is not accepted as live proof.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
