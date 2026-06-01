@@ -85869,6 +85869,15 @@ phases:
       - guard evidence collected: <satisfied/failed/blocked/unobserved>
 
       - doc drift checked: <satisfied/failed/blocked/unobserved>'
+    refs:
+    - design/pi-model-map-draft-helper.md
+    - src/larva/shell/pi.py
+    - src/larva/shell/cli.py
+    - contrib/pi-extension/README.md
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - INVAR.md
+    - AGENTS.md
     depends_on:
     - pi_model_map_draft_impl_20260601
     - pi_model_map_draft_fixture_retest_20260601
