@@ -87146,7 +87146,7 @@ phases:
     agent: client-runtime-verifier
   - id: pi_subagent_toolresult_docs_20260601
     name: Document semantic LarvaSubagentResult versus Pi ToolResult wrapper
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -87230,6 +87230,8 @@ phases:
     depends_on:
     - pi_subagent_toolresult_adapter_impl_20260601
     agent: doc-reviewer
+    claimed_by: doc-reviewer
+    claimed_at: '2026-06-01T09:18:50.437605+00:00'
   - id: pi_subagent_toolresult_repo_verify_20260601
     name: Verify repo tests and invar guard after larva_subagent ToolResult fix
     status: pending
