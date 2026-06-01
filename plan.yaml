@@ -91222,6 +91222,267 @@ phases:
   depends_on:
   - pi-postspec-editor-prompt-2026-06-02
   - meta.gate
+  steps:
+  - id: pi_postspec_subagent_ux_red_tests_20260602
+    name: Add expected-red subagent sessions and rendering contract tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+      PROOF ARTIFACT: Behavior-defining tests for commit 4616008 larva_subagent ToolResult
+      wrapper, visible resume footer, optional sessions helper, rendering/progress
+      hooks, and truncation bounds.
+
+
+      SCOPE:
+
+      - ToolResult wrapper requires task_id/persona_id/status/result_text/error in
+      details and matching top-level metadata for larva_subagent; isError derives
+      from semantic status.
+
+      - Non-null task_id content[0].text includes visible resume footer; null task_id
+      has no footer.
+
+      - Optional larva_subagent_sessions(limit?) default 10/max 25, invalid limit
+      LARVA_BAD_INPUT, newest-first process-local capped 25 retained entries, sessions
+      only under details.sessions, no filesystem scan/sidecar/provenance/aliases.
+
+      - renderCall/onUpdate/renderResult are row-local only; parent larva footer remains
+      parent persona state.
+
+      - Visible previews strip ANSI, replace newlines/control chars with one space,
+      count Unicode NFC-normalized code points, and include ellipsis inside 120/80/200-character
+      bounds.
+
+
+      <side_effect_budget>
+
+      Allowed: add/update tests, fixtures, and smoke harnesses. Forbidden: product
+      implementation logic, filesystem sidecars, lock files, widget dashboards, alias
+      resume handles.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Ensure details remains canonical semantic payload while top-level mirrors
+      are Pi runtime metadata only.
+
+      - Ensure sessions helper does not become a second resume authority or weaken
+      path-based resume validation.
+
+      - Ensure progress updates do not stream full child logs/transcripts into parent
+      context.
+
+      </risk_probes>'
+    verification: '- [ ] Tests are limited to tests/fixtures/smoke harnesses and do
+      not modify product implementation code.
+
+      - [ ] Tests cover success, failed-before-session, failed-after-allocation, cancelled,
+      and policy-denied-no-LarvaSubagentResult paths where applicable.
+
+      - [ ] Tests cover sessions helper valid/invalid limits, cap/eviction/newest-first,
+      no top-level sessions, no filesystem scan/sidecar/last alias.
+
+      - [ ] Tests cover renderCall/onUpdate/renderResult and deterministic visible-character
+      bounds including ANSI/control/Unicode/ellipsis cases.
+
+      - [ ] Expected failures or exposed gaps point to pi_postspec_subagent_ux_impl_20260602.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    agent: frontend-engineer
+  - id: pi_postspec_subagent_ux_impl_20260602
+    name: Complete larva_subagent sessions helper and row rendering UX
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE: larva_subagent and optional larva_subagent_sessions(limit?) match
+      commit 4616008 adapter-local ToolResult, resume visibility, recent-session,
+      rendering, progress, and truncation contracts.
+
+
+      BOUNDING BOX:
+
+      - contrib/pi-extension/larva.ts
+
+      - contrib/pi-extension runtime/unit smoke scripts
+
+      - tests/shell/test_pi_extension_contract.py and tests/shell/test_pi_extension_real_runtime.py
+
+
+      CONSTRAINTS:
+
+      - Do not add filesystem sidecars, lock files, provenance files, filesystem scans,
+      aliases like last, worktree isolation, or job scheduling.
+
+      - Do not change semantic LarvaSubagentResult or opifex/shared schemas.
+
+      - Do not add top-level sessions to larva_subagent_sessions; sessions live only
+      under details.sessions.
+
+      - Do not overwrite parent larva:<persona-id> footer with child progress; subagent
+      visibility is row-local.
+
+      - Do not stream full child logs/transcripts into parent context.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable.
+
+
+      <side_effect_budget>
+
+      Allowed: bounded Pi extension and tests for subagent result/session/rendering
+      behavior. Forbidden: sidecars, lock files, filesystem scans, aliases, widget
+      dashboards, schema changes.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Concurrent same-task resume busy tracking must remain process-local active
+      set, not filesystem locks.
+
+      - Recent-session index is advisory UX only and clears on parent restart; resume
+      validation remains path-based.
+
+      - Visible truncation must count normalized code points, not display columns
+      or bytes.
+
+      </risk_probes>'
+    verification: '- [ ] larva_subagent ToolResult wrapper mirrors task_id/persona_id/status/result_text/error
+      exactly in details and top-level metadata, with isError derived from status.
+
+      - [ ] Every non-null task_id result content includes the documented resume footer;
+      null task_id results do not imply resume.
+
+      - [ ] larva_subagent_sessions(limit?) behavior matches default/max/invalid/cap/newest-first/details-only/no-sidecar/no-scan/no-alias
+      requirements.
+
+      - [ ] renderCall/onUpdate/renderResult produce row-local persona/mode/task/task_id/status/error/output
+      visibility without changing parent footer.
+
+      - [ ] Preview/truncation helper strips ANSI, collapses controls/newlines, NFC-normalizes,
+      counts code points, and keeps ellipsis inside 120/80/200 bounds.
+
+      - [ ] Child Pi RPC/session behavior and resume validation from the design doc
+      remain unchanged.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_subagent_ux_red_tests_20260602
+    agent: frontend-engineer
+  - id: pi_postspec_subagent_ux_runtime_proof_20260602
+    name: Prove subagent ToolResult, session helper, and rendering runtime behavior
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      Independence Level: L2
+
+      PROOF ARTIFACT: Runtime/supplemental Pi evidence that larva_subagent result
+      rendering and sessions helper are observable and contract-correct.
+
+
+      <side_effect_budget>
+
+      Allowed: run Pi extension contract/runtime tests, smoke scripts, and capture
+      terminal/RPC/TUI artifacts. Forbidden: code edits or treating source inspection
+      as runtime liveness.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Verify renderer-safe failure/cancel paths, not only success.
+
+      - Verify session helper evidence comes from process-local observed sessions,
+      not filesystem scan.
+
+      - Verify truncation evidence includes adversarial ANSI/control/Unicode inputs.
+
+      </risk_probes>'
+    verification: '- [ ] Runtime evidence exercises larva_subagent success or documented
+      environment-limited substitute plus failed/cancelled/error paths.
+
+      - [ ] Runtime evidence shows visible resume footer in content[0].text for non-null
+      task_id.
+
+      - [ ] Runtime evidence or supplemental harness shows larva_subagent_sessions
+      valid/invalid limit and details.sessions-only shape.
+
+      - [ ] Runtime/smoke evidence shows renderCall/onUpdate/renderResult artifacts
+      and parent footer preservation.
+
+      - [ ] Raw command output and artifacts are included.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_subagent_ux_impl_20260602
+    agent: client-runtime-verifier
+  - id: pi_postspec_subagent_ux_gate_20260602
+    name: Gate subagent sessions and rendering UX
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      review_depth: THOROUGH
+
+      DECISION ARTIFACT: Gate review for commit 4616008 larva_subagent result/session/rendering
+      deltas.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence and inspect repo state. Forbidden: code edits, accepting
+      generic pass claims, approving helper behavior that scans filesystem or weakens
+      resume validation.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Gate must reject missing top-level/details mirror parity or isError not derived
+      from semantic status.
+
+      - Gate must reject any session helper top-level sessions field, sidecar, filesystem
+      scan, provenance proof, or last alias.
+
+      - Gate must reject rendering that replaces parent larva footer or introduces
+      a dashboard outside row-local custom rendering.
+
+      </risk_probes>'
+    verification: '- [ ] All subagent UX requirements have positive evidence or explicit
+      blocking remediation.
+
+      - [ ] Runtime proof is present for user-observable ToolResult/rendering surfaces;
+      source-only proof is insufficient.
+
+      - [ ] Gate decision basis maps each requirement to evidence and OPEN/BLOCKED
+      decision.
+
+      - [ ] Forbidden side effects are explicitly checked absent.'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
+    depends_on:
+    - pi_postspec_subagent_ux_red_tests_20260602
+    - pi_postspec_subagent_ux_impl_20260602
+    - pi_postspec_subagent_ux_runtime_proof_20260602
+    agent: gate-reviewer
 - id: pi-postspec-finalization-2026-06-02
   name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
   status: locked
