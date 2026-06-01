@@ -86316,25 +86316,25 @@ phases:
       \ preference heuristic.\n</risk_probes>"
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation includes key design passages for command boundary, sources,
+      - [x] refs confirmation includes key design passages for command boundary, sources,
       merge, candidates, output channels, errors, and architecture basis.
 
-      - [ ] Focused fixture tests from `pi_model_map_draft_red_tests_20260601` now
+      - [x] Focused fixture tests from `pi_model_map_draft_red_tests_20260601` now
       pass green for deterministic logic.
 
-      - [ ] Implementation scan shows no `/Users/tefx/dotfiles/agent/models.yaml`
+      - [x] Implementation scan shows no `/Users/tefx/dotfiles/agent/models.yaml`
       or provider-family preference table is used as input logic.
 
-      - [ ] Core/Shell boundary evidence shows all I/O remains in Shell and any Core
+      - [x] Core/Shell boundary evidence shows all I/O remains in Shell and any Core
       helpers have @pre/@post contracts plus doctests.
 
-      - [ ] Manual or automated CLI receipt demonstrates default stdout is parseable
+      - [x] Manual or automated CLI receipt demonstrates default stdout is parseable
       raw draft JSON and human reports/warnings are on stderr.
 
-      - [ ] Non-interactive unresolved/malformed behavior returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      - [x] Non-interactive unresolved/malformed behavior returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
       rather than guessing.
 
-      - [ ] `--write` writes only runtime-compatible `models` and `prefix_rules` JSON,
+      - [x] `--write` writes only runtime-compatible `models` and `prefix_rules` JSON,
       without report metadata.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
