@@ -84951,22 +84951,29 @@ phases:
       DECISION ARTIFACT: independent gate review for the phase. Consume all requirement
       matrices and evidence. This gate protects Pi runtime/autocomplete completion
       and model-map runtime correctness. Positive raw evidence is required; absence
-      of defects is insufficient.
+      of defects is insufficient. The prior failed `pi_model_map_runtime_proof_20260601`
+      is closed only through `pi_model_map_openrouter_prefix_cleanup_20260601` and
+      `pi_model_map_openrouter_prefix_retest_20260601`; gate review must use the retest
+      as the direct model-map proof dependency and must not approve R3 from the failed
+      original evidence alone.
 
 
       <side_effect_budget>Allowed: read plan evidence, repo files, docs, and run read-only
       verification if needed. Forbidden: code/docs/tests/runtime config/plan lifecycle
-      mutations.</side_effect_budget>
+      mutations; forbidden to read `/Users/tefx/dotfiles/agent/models.yaml` or personal
+      scaffold inventory for model-map adjudication.</side_effect_budget>
 
       <risk_probes>- Reject source-inspection-only autocomplete proof. - Check no
       disk cache, aliases, prompt injection, fuzzy/regex/wildcard matching, or model
       guessing. - Check docs/implementation/tests/runtime proof agree on exact mappings
-      and prefix precedence.</risk_probes>'
+      and prefix precedence. - Check `openrouter/google/gemini-3.1-pro-preview` and
+      the other two named Gemini OpenRouter personas resolve via `source: "prefix"`,
+      not exact entries.</risk_probes>'
     verification: '- [ ] refs confirmation quotes docs and implementation passages
       reviewed.
 
       - [ ] All prior phase steps have checklist receipts with no blocker-class unobserved
-      items.
+      items, including cleanup and retest receipts for the model-map blocker.
 
       - [ ] Every OWNED requirement row is PROVEN or has explicit blocking remediation.
 
@@ -84976,11 +84983,15 @@ phases:
       - [ ] Client/runtime autocomplete liveness is proven by command/provider smoke
       evidence with non-blank candidate output and delegation proof.
 
-      - [ ] Model-map exact entries and `openrouter/` prefix coverage are proven against
-      Pi-listed targets; no model guessing is introduced.
+      - [ ] Model-map exact GPT/GLM/Kimi/Minimax entries and `openrouter/` prefix
+      coverage are proven against Pi-listed targets; no model guessing is introduced.
 
-      - [ ] Gate rejects source-token-only proof, generic pass claims, or docs/implementation/test
-      mismatches.
+      - [ ] R3 is proven by retest evidence showing all three named Gemini OpenRouter
+      personas resolve via `source: "prefix"`, including `openrouter/google/gemini-3.1-pro-preview`,
+      and the exact OpenRouter Gemini key is absent.
+
+      - [ ] Gate rejects source-token-only proof, generic pass claims, failed-original-only
+      R3 proof, or docs/implementation/test mismatches.
 
       - [ ] Final OPEN/BLOCKED decision includes requirement-level decision basis
       and closure path for unresolved items.'
@@ -84992,7 +85003,7 @@ phases:
     - pi_persona_autocomplete_contract_docs_20260601
     - pi_persona_autocomplete_impl_20260601
     - pi_persona_autocomplete_runtime_tests_20260601
-    - pi_model_map_runtime_proof_20260601
+    - pi_model_map_openrouter_prefix_retest_20260601
     agent: gate-reviewer
   - id: pi_model_map_openrouter_prefix_cleanup_20260601
     name: Cleanup redundant OpenRouter Gemini exact model-map entry
