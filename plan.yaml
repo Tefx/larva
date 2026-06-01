@@ -90161,7 +90161,7 @@ phases:
   steps:
   - id: fix-fresh-child-sessionfile-validation
     name: Fix fresh child sessionFile validation split
-    status: claimed
+    status: done
     description: "step_type: implementation\nwork_type: defect_repair\nagent_source:\
       \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
       \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
@@ -90306,6 +90306,126 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T12:43:53.232620+00:00'
+    done_at: '2026-06-01T12:55:39.424163+00:00'
+    evidence: 'Implementation completed and merged to main.
+
+
+      ## Root cause
+
+      Real Pi `get_state` can return a fresh child `data.sessionFile` before the `.jsonl`
+      file exists. The previous fresh path used strict `validateTaskId()`, which is
+      correct for user-provided resume `task_id` but incorrectly rejected freshly
+      allocated child session paths before prompt.
+
+
+      ## refs Read Confirmation
+
+      - contrib/pi-extension/larva.ts — `validateTaskId()` strictly validates resume
+      paths; `runChildSequence()` fresh path previously validated child `sessionFile`
+      with strict resume logic; `larva_subagent()` prevalidates user-provided `task_id`.
+
+      - scripts/pi-extension-runtime-smoke.mjs — runtime harness registers `larva_subagent`,
+      validates ToolResult renderer shape, and covers subagent success/error/cancelled
+      paths.
+
+      - tests/shell/test_pi_extension_real_runtime.py — `_run_runtime_scenario()`
+      executes Node runtime smoke; existing tests assert ToolResult shape and `LARVA_NO_ACTIVE_PERSONA`.
+
+      - tests/shell/test_pi_extension_contract.py — pins `can_spawn`, `LARVA_NO_ACTIVE_PERSONA`,
+      resume taxonomy, `switch_session`, child RPC sequencing, and final text behavior.
+
+      - INVAR.md — guard required after changes; Shell owns file/subprocess/env I/O;
+      Core contracts apply only to Core changes.
+
+      - AGENTS.md — NOT READ in isolated worktree; file absent.
+
+
+      ## Implementation Receipt
+
+      changed_files:
+
+      - contrib/pi-extension/larva.ts
+
+      - scripts/pi-extension-runtime-smoke.mjs
+
+      - tests/shell/test_pi_extension_real_runtime.py
+
+
+      helper_split_summary:
+
+      - Strict resume validation remains in `validateTaskId()` and still requires
+      existing readable `.jsonl` under childSessionRoot.
+
+      - Fresh child validation now uses `validateFreshChildSessionFile()` for `get_state
+      -> data.sessionFile`: absolute path, canonical parent under childSessionRoot,
+      `.jsonl` suffix, true missing path accepted only when no filesystem entry exists,
+      and any existing entry must canonicalize/read as a regular file under root.
+
+      - Hardened with `lstat()` so dangling symlinks are not treated as missing and
+      are rejected.
+
+
+      ## Merge and commits
+
+      - Worker commits: d6f42d9 `fix pi fresh child session validation`, 9cccab6 `harden
+      fresh session symlink validation`.
+
+      - Main merge commit: f650a28 `[vectl] fix fresh child sessionFile validation`.
+
+
+      ## Regression Evidence
+
+      - child_missing_before_prompt_regression: `node scripts/pi-extension-runtime-smoke.mjs
+      --scenario fresh-session-validation` exit 0; `freshMissingBeforePrompt.status=success`,
+      `missingBeforePrompt=true`, `createdDuringPrompt=true`, final text `fresh child
+      final text`.
+
+      - strict_resume_regression: same smoke; missing user-provided resume `task_id`
+      failed with `LARVA_SESSION_NOT_FOUND`; `resumeSpawned=false`.
+
+      - path_escape_regression: same smoke; `relative`, `wrongSuffix`, `outsideRoot`,
+      `symlinkEscape`, and `danglingSymlinkEscape` all failed with `LARVA_CHILD_PROTOCOL_FAILED`.
+
+      - authority_toolresult_regression: `tests/shell/test_pi_extension_real_runtime.py`
+      and `tests/shell/test_pi_extension_contract.py` passed, preserving `LARVA_NO_ACTIVE_PERSONA`,
+      `can_spawn`, and ToolResult shape.
+
+
+      ## Mainline Verification
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario fresh-session-validation`
+      exit 0; assertions: freshMissingBeforePromptAccepted=true, strictResumeMissingRejected=true,
+      invalidFreshRejected=true, authorityAndToolResultPreserved=true.
+
+      - `PYTHONPATH=src .venv/bin/python -m pytest tests/shell/test_pi_extension_real_runtime.py
+      -q` exit 0: 22 passed.
+
+      - `PYTHONPATH=src .venv/bin/python -m pytest tests/shell/test_pi_extension_contract.py
+      -q` exit 0: 48 passed.
+
+      - `.venv/bin/invar guard` exit 0: status=passed, errors=0, warnings=0; no changed
+      files after commit.
+
+      - Full-scan `invar_invar_guard(changed=false)` run_id=grd_ae7b9b0f0b9e49b8adc11c68
+      completed ok=true, errors=0, warnings=5, infos=7, files_checked=43.
+
+      - Real Pi probe: `pi -e contrib/pi-extension/larva.ts --mode rpc --session-dir
+      $HOME/.pi/larva/child-sessions --offline` with `LARVA_PI_INITIAL_PERSONA_ID=turing`
+      and `LARVA_CLI_ARGV_JSON=[uv,run,larva]` returned `responseSuccess=true`, a
+      `sessionFile` under root, and `existedBeforePrompt=false`, proving the real
+      pre-prompt missing-file behavior covered by the fix.
+
+
+      ## Checklist Receipt
+
+      All seven implementation checklist items returned PROVEN and were toggled by
+      orchestrator.
+
+
+      product_implementation_files_modified: true
+
+      personal scaffold files read: false; `/Users/tefx/dotfiles/agent/models.yaml`
+      was not read.'
   - id: verify-gate-sessionfile-protocol
     name: Verify and gate sessionFile protocol fix
     status: pending
