@@ -13,12 +13,13 @@ The integration projects Larva personas into Pi at runtime. It does not change
 the canonical `PersonaSpec` shape and does not make Larva a workspace sandbox,
 task scheduler, or general Pi permission platform.
 
-The integration owns four runtime behaviors:
+The integration owns five runtime behaviors:
 
 1. start Pi with an optional active Larva persona;
 2. switch the active persona in-place during a Pi session;
 3. apply persona-specific model-map and tool rules;
-4. spawn a child Pi session as a Larva persona through one subagent tool.
+4. spawn a child Pi session as a Larva persona through one subagent tool;
+5. surface canonical persona mention autocomplete in Pi's interactive editor.
 
 ## Rationale
 
@@ -162,18 +163,26 @@ The command supports argument completion for persona ids.
 
 Completion target behavior:
 
-- TUI/editor completion is Tab-driven through Pi's command completer and narrow
-  `ctx.ui.addAutocompleteProvider` integration when available.
+- The supported editor-autocomplete target is Pi interactive TUI with a runtime
+  UI context that exposes `ctx.ui.addAutocompleteProvider`. TUI/editor completion
+  is Tab-driven through Pi's command completer and that narrow hook integration.
+- In non-TUI modes, or when `ctx.ui.addAutocompleteProvider` is unavailable, the
+  extension does not provide editor autocomplete; it keeps the command-level
+  `/larva-persona` completer only and delegates or returns `null` for editor
+  autocomplete.
 - The narrow provider handles only `/larva-persona <query>` editor input; all
   other editor input delegates to Pi's base provider so global and file
   completion remain Pi-owned.
 - The `/larva-persona` completer performs case-insensitive substring matching over
   persona ids. Prefix matches rank before non-prefix substring matches; remaining
   order follows `larva list --json`.
-- The completer should cache parsed list results in process memory with a short
-  bounded TTL and share an in-flight list request between concurrent completion
-  calls. It must not write cache files, prefetch the persona list before a
-  completion or selector needs it, or inject the persona catalogue into prompts.
+- The completer should cache parsed list results in process memory with an
+  implementation-defined bounded TTL and share an in-flight list request between
+  concurrent completion calls. The chosen TTL must be deterministic in tests by
+  using an injectable clock or equivalent test hook; tests must prove cache hit,
+  expiry, and in-flight sharing behavior without waiting on wall-clock time. It
+  must not write cache files, prefetch the persona list before a completion or
+  selector needs it, or inject the persona catalogue into prompts.
 - Tests must be able to reset the process-local completion cache and shared
   in-flight request state without touching disk.
 - This is not fuzzy matching: no edit distance, wildcard, regex, nearest-persona
@@ -207,6 +216,60 @@ effect. The command returns a user-visible error with one of these stable codes:
 `LARVA_BAD_INPUT`, `LARVA_PERSONA_NOT_FOUND`, `LARVA_MODEL_UNAVAILABLE`,
 `LARVA_POLICY_INVALID`, or `LARVA_TOOL_ENUMERATION_FAILED`.
 
+### Persona mentions
+
+The Pi extension supports canonical persona mentions in the interactive TUI
+editor:
+
+```text
+@persona:<persona-id>
+```
+
+This is a mention-only UX feature. It is not a command and has no automatic
+runtime side effect. A mention does not switch the active parent persona, does not
+force a `larva_subagent` tool call, and does not inject the mentioned persona's
+prompt or full PersonaSpec into the parent context. The parent agent should treat
+it as user intent/context and decide normally whether calling `larva_subagent` is
+useful.
+
+Autocomplete target behavior:
+
+- Persona mention editor autocomplete is available only when the interactive TUI
+  runtime exposes `ctx.ui.addAutocompleteProvider`; otherwise, Larva does not add
+  mention autocomplete and leaves Pi-owned editor behavior unchanged.
+- The provider may surface persona candidates only for the token classes in the
+  table below.
+- Candidate ids come from the same `larva list --json` bridge and process-local
+  completion cache used by `/larva-persona`.
+- Matching and ordering follow `/larva-persona`: case-insensitive substring
+  matching, prefix matches first, then registry order.
+- When persona candidates and Pi file-reference candidates are both present, the
+  provider preserves Pi's file-reference candidates in their original order,
+  appends Larva `@persona:<id>` candidates after them, and removes exact
+  duplicate insertion `value`s across the merged list by keeping the first
+  candidate.
+- Larva candidate `value` and dedupe identity are exactly `@persona:<id>`. Any
+  trailing space or suffix after insertion is Pi UI behavior outside the Larva
+  candidate value.
+- Candidate descriptions may show persona description or model.
+- Unrelated `@...` editor input delegates to Pi's base provider, preserving
+  Pi-owned `@` file references. When raw `@` suggestions are shown, persona
+  candidates must not replace Pi-owned file-reference suggestions wholesale.
+
+Deterministic mention-token classification:
+
+| Token shape | Larva behavior |
+| --- | --- |
+| `@` | Show persona candidates after Pi file-reference candidates. |
+| Prefix of literal `@persona:` such as `@p`, `@pe`, `@per`, `@persona` | Show namespace/persona candidates. |
+| `@persona:<query>` | Match persona ids using `<query>`. |
+| Id-like or file-like raw short forms such as `@py`, `@python`, `@doc`, `@python-senior`, `@foo/bar` | Delegate only to Pi file-reference completion. |
+
+The raw short form `@<id>` is reserved for a later usability pass. It is not part
+of the first target because it can conflict with Pi's built-in file-reference
+syntax. Id-like raw short-form prefixes must not trigger Larva persona matching
+until short form is explicitly implemented.
+
 ### UI status
 
 In Pi interactive UI, the extension always sets a footer/status entry:
@@ -223,6 +286,11 @@ larva: none
 
 Print mode may not render this status. JSON/RPC clients may receive UI events and
 choose how to display them.
+
+Subagent execution details are shown in the `larva_subagent` tool row through
+custom tool rendering and partial updates. They do not replace this footer status:
+`larva: <persona-id>` continues to mean the active parent persona.
+
 
 ## Persona runtime projection
 
@@ -263,13 +331,36 @@ adapter-local tool policy. Canonical optional fields such as `model_params` and
 to apply them.
 
 Prompt projection uses Pi's `before_agent_start` extension hook. On each agent
-turn, the extension returns a `systemPrompt` equal to Pi's current chained system
-prompt plus the committed Larva persona prompt and a low-noise watermark. This
-composes with Pi's existing prompt instead of replacing user/project context.
+turn, the extension returns a `systemPrompt` that keeps Pi's current chained
+system prompt intact and wraps it with Larva-managed identity blocks. This
+preserves Pi's tool list, guidelines, documentation notes, project context,
+skills, date, and working directory while making the active Larva persona the
+primary identity.
+
+The prompt shape is:
+
+```text
+<!-- larva:identity-policy:begin -->
+Active Larva persona is the primary identity. Pi's generic coding-assistant
+wording describes the runtime harness and tools only.
+<!-- larva:identity-policy:end -->
+
+<current Pi chained system prompt, unchanged>
+
+<!-- larva:active-persona:begin -->
+<!-- larva-spec: <persona-id>@<spec-digest> -->
+<committed PersonaSpec prompt text>
+Use Larva MCP or the larva CLI (`larva`, fallback `uvx larva`) to discover and
+resolve personas when needed.
+<!-- larva:active-persona:end -->
+```
 
 Prompt injection must be idempotent. If the incoming `event.systemPrompt` already
-contains a previous Larva watermark block, the extension replaces that block for
-the current committed envelope instead of appending a second copy.
+contains previous Larva-managed identity or active-persona blocks, the extension
+removes only those marker-bounded blocks before adding the current committed
+envelope. It must not match or rewrite Pi's default identity sentence, rebuild
+Pi's prompt builder from `systemPromptOptions`, or modify provider-specific
+request payloads to make persona identity work.
 
 Model projection uses Pi's documented `pi.setModel(model)` API. The PersonaSpec
 `model` string stays canonical Larva data; Pi-provider aliases are adapter-local
@@ -278,7 +369,8 @@ Larva-Pi configuration only.
 Adapter-local model map:
 
 - canonical path: `~/.pi/larva/model-map.json`;
-- env override: `LARVA_PI_MODEL_MAP_FILE`; when set, read only that path;
+- env override: `LARVA_PI_MODEL_MAP_FILE`; when set, it must be an absolute path
+  and the extension reads only that path;
 - no PersonaSpec schema change and no opifex shared-contract change.
 
 Model-map shape:
@@ -325,20 +417,25 @@ non-empty. This supports current Larva model strings such as
 `openrouter/google/gemini-3.1-pro-preview`. Missing slash, empty provider, or
 empty model id maps to `LARVA_MODEL_UNAVAILABLE`.
 
-Runtime-map completion policy:
+Runtime-map draft helper policy:
 
-- Generate the local runtime map from the current Larva registry,
-  `/Users/tefx/dotfiles/agent/models.yaml`, and `pi --list-models --offline`.
-- Add exact entries only for verified Pi provider/model targets. Do not silently
-  map to unlisted providers or model ids.
-- For `openai/gpt-*`, prefer `openai-codex/<same-id>` when listed by Pi; fall
-  back to `openrouter/openai/<same-id>` only when the Codex target is absent and
-  OpenRouter lists the target.
-- `openrouter/*` remains a literal prefix rule, not a generated list of exact
-  entries.
-- Adapter-local `ollama-cloud/*` mappings may use explicit verified families:
-  `glm-*` to `openrouter/z-ai/*`, `kimi-*` to `openrouter/moonshotai/*`, and
-  `minimax-*` to `openrouter/minimax/*`.
+- Use `larva pi-model-map draft` to build a redirect-safe draft from current
+  Larva registry summaries, `pi --list-models --offline`, and an optional
+  existing model-map file.
+- The helper must not read personal scaffold files or apply provider-family
+  preference tables. It may choose automatically only when the Pi inventory
+  leaves exactly one target candidate.
+- Add exact mappings only when the target provider/model id is present in Pi's
+  offline registry. If no verified unique target exists, report the source model
+  as unresolved instead of guessing.
+- Existing exact mappings are preserved only when the source model is still used
+  and the target appears in the current Pi inventory.
+- Existing literal prefix rules may be preserved only when they cover current
+  registry models, map them to current Pi targets, and do not conflict with
+  another same-length prefix rule.
+- The written `model-map.json` contains only runtime-compatible `models` and
+  `prefix_rules`; report metadata belongs on stderr or in the CLI `--json`
+  envelope.
 
 Current verified model-map example:
 
@@ -362,7 +459,7 @@ Current verified model-map example:
 rule. The old `ollama-cloud/kimi-k2.6:cloud` spelling is not mapped unless an
 exact entry is added and verified against Pi's registry.
 
-The watermark example:
+The active persona block contains the low-noise watermark:
 
 ```html
 <!-- larva-spec: python-senior@abc123 -->
@@ -385,7 +482,7 @@ This keeps context use bounded when the registry contains many personas.
 `~/.pi/larva/tool-policy.json` is the canonical Larva-Pi adapter file. It is not a canonical
 PersonaSpec field and is not interpreted by opifex.
 
-`LARVA_PI_TOOL_POLICY_FILE` remains the env override. Resolution order:
+`LARVA_PI_TOOL_POLICY_FILE` remains the absolute-path env override. Resolution order:
 
 1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
 2. Else use only `~/.pi/larva/tool-policy.json`; missing file means empty policy
@@ -402,14 +499,18 @@ Operator migration is explicit and one-time:
 - Move or copy the intended legacy `~/.pi/tool-policy.json` content to the
   canonical `~/.pi/larva/tool-policy.json`, then remove the old file after
   confirming the canonical file is active.
-- Use `LARVA_PI_TOOL_POLICY_FILE=~/.pi/tool-policy.json` only when an operator
+- Use `LARVA_PI_TOOL_POLICY_FILE` set to the absolute legacy path (for example,
+  the shell-expanded value of `$HOME/.pi/tool-policy.json`) only when an operator
   intentionally chooses that non-canonical file for a test, temporary rollout, or
   local adapter experiment. The env var is an explicit override, not an automatic
   fallback signal.
 - If both canonical and legacy files exist during migration, fail the migration
-  check and report both paths to the operator. Do not merge the two files, do not
-  overwrite either file, and do not infer precedence between conflicting policy
-  files.
+  check and report both paths to the operator. This is operator migration guidance
+  or a dedicated migration check, not extension/runtime probing. The extension
+  runtime must not read legacy `~/.pi/tool-policy.json` unless that exact file is
+  explicitly named by `LARVA_PI_TOOL_POLICY_FILE`; do not merge the two files, do
+  not overwrite either file, and do not infer precedence between conflicting
+  policy files at runtime.
 
 Changed requirement traceability:
 
@@ -538,7 +639,7 @@ There is no `ask` action.
 
 ### Public tool
 
-The extension registers one custom tool:
+The extension registers the primary child-session custom tool:
 
 ```text
 larva_subagent(persona_id, task, task_id?)
@@ -556,6 +657,123 @@ Bad input returns `status: "failed"` with `LARVA_BAD_INPUT`; it does not create 
 resume a child process. For these pre-session failures, public `task_id` is
 `null`. `persona_id` in the result is the requested target id only after it passed
 basic non-empty string validation; otherwise it is an empty string.
+
+### Recent sessions helper
+
+For medium-frequency subagent reuse, the extension may expose one small read-only
+helper:
+
+```text
+larva_subagent_sessions(limit?)
+```
+
+Input contract:
+
+- `limit`: optional positive integer; default `10`; maximum `25`.
+- Invalid `limit` values return `status: "failed"` with `LARVA_BAD_INPUT` and do
+  not inspect the filesystem.
+
+Pi-facing ToolResult contract:
+
+- Success returns exactly the adapter-local ToolResult wrapper below. The recent
+  sessions array lives under `details.sessions`; there is no top-level
+  `sessions` field.
+
+```json
+{
+  "content": [{"type": "text", "text": "Recent Larva subagent sessions: ..."}],
+  "details": {
+    "status": "success",
+    "sessions": [
+      {
+        "task_id": "/absolute/path/to/child-session.jsonl",
+        "persona_id": "turing",
+        "last_status": "cancelled",
+        "sequence": 12
+      }
+    ],
+    "error": null
+  },
+  "isError": false
+}
+```
+
+- Invalid `limit` returns the same wrapper shape with `details.status` set to
+  `"failed"`, `details.sessions` set to `[]`, `details.error` set to
+  `{"code": "LARVA_BAD_INPUT", "message": "limit must be an integer from 1 to 25."}`,
+  `content[0].text` set to
+  `LARVA_BAD_INPUT: limit must be an integer from 1 to 25.`, and `isError:
+  true`.
+
+The helper returns recent child sessions observed by the current parent Pi
+extension process, newest first by process-local sequence number. Each item
+contains only UX/recovery metadata:
+
+```json
+{
+  "task_id": "/absolute/path/to/child-session.jsonl",
+  "persona_id": "turing",
+  "last_status": "cancelled",
+  "sequence": 12
+}
+```
+
+This helper is not a second resume mechanism. It does not scan the filesystem,
+write sidecar files, infer provenance, expose a `last` alias, or weaken
+`larva_subagent(task_id=...)` validation. It is a process-local memory index of
+sessions already seen by this parent extension. If the helper returns multiple
+plausible sessions, the caller must ask the user which exact `task_id` to resume.
+
+
+### Runtime visibility
+
+`larva_subagent` uses Pi custom-tool rendering and partial updates so users can
+see which child persona is running and what it is doing without waiting for the
+final result.
+
+P0 call display:
+
+- Implement `renderCall` for the tool row.
+- Collapsed call display shows `larva_subagent -> <persona_id> [new|resume]` and
+  a bounded task preview of at most 120 visible characters; longer previews end
+  with `...`.
+- Resume calls additionally show an abbreviated `task_id` path of at most 80
+  visible characters; longer paths keep the filename suffix and start with
+  `...`.
+- Visible preview limits count Unicode NFC-normalized code points after stripping
+  ANSI escape sequences and replacing newlines/control characters with a single
+  space. If text is truncated, the ellipsis is included inside the stated bound.
+  They do not count display columns or grapheme clusters.
+- The actual tool name remains `larva_subagent`; display text is not a protocol
+  name and must not be parsed as one.
+
+P1 running updates:
+
+- `execute` emits partial ToolResult updates through Pi's `onUpdate` callback.
+- Partial updates carry adapter-local render details: target `persona_id`,
+  new/resume mode, task preview, current phase, and `task_id` once known.
+- Partial update text is bounded to at most 200 visible characters per update.
+- Coarse phases are enough: `starting`, `session_ready`, `prompt_sent`,
+  `waiting_for_child`, `collecting_final_text`, then terminal `success`,
+  `failed`, or `cancelled`.
+- Partial update content is small status text for UI/model safety. The parent
+  extension must not stream full child logs or full child transcript into the
+  parent context.
+
+P2 result rendering:
+
+- Implement `renderResult` for final and partial results.
+- Collapsed final result shows persona and terminal state, for example
+  `turing completed`, `turing cancelled`, or `turing failed`.
+- Expanded final result shows persona id, new/resume mode, full task, `task_id`
+  when known, final status, error if any, final output, and the visible resume
+  footer.
+- The parent `larva: <persona-id>` footer status remains the parent persona
+  status. Subagent visibility belongs to the tool row, not to a separate global
+  status override.
+- Do not add a widget dashboard or custom UI overlay for the first target; the
+  tool row is sufficient and keeps the design small.
+
 
 ### Spawn authority
 
@@ -608,8 +826,8 @@ metadata or argv inspection.
 Environment:
 
 - `LARVA_PI_INITIAL_PERSONA_ID=<child persona id>`
-- `LARVA_PI_MODEL_MAP_FILE=<model-map override path>` only when an override is set
-- `LARVA_PI_TOOL_POLICY_FILE=<policy override path>` only when an override is set
+- `LARVA_PI_MODEL_MAP_FILE=<absolute model-map override path>` only when an override is set
+- `LARVA_PI_TOOL_POLICY_FILE=<absolute policy override path>` only when an override is set
 - `LARVA_PI_PARENT_PERSONA_ID=<parent persona id>`
 - `LARVA_PI_REAL_BIN=<resolved real Pi executable>`
 - `LARVA_PI_EXTENSION_FLAG=<-e or --extension>`
@@ -694,6 +912,11 @@ around that payload so Pi can render the tool output safely:
 ```json
 {
   "content": [{"type": "text", "text": "..."}],
+  "task_id": "/absolute/path/to/child-session.jsonl",
+  "persona_id": "doc-reviewer",
+  "status": "success",
+  "result_text": "...",
+  "error": null,
   "details": {
     "task_id": "/absolute/path/to/child-session.jsonl",
     "persona_id": "doc-reviewer",
@@ -706,24 +929,37 @@ around that payload so Pi can render the tool output safely:
 ```
 
 The wrapper is adapter-local and does not define a new shared Larva/opifex schema.
-The machine-readable child-session fields `task_id`, `persona_id`, `status`,
-`result_text`, and `error` remain preserved in `details` and may also be mirrored
-as top-level metadata for Pi/runtime consumers. `status` is the semantic domain
-status; Pi `isError` is a renderer/tool-call flag derived from `status !==
-"success"` and must not be treated as a replacement status enum.
+For `larva_subagent`, the machine-readable child-session fields `task_id`,
+`persona_id`, `status`, `result_text`, and `error` are required both in `details`
+and as top-level metadata with exactly matching values. `details` remains the
+canonical semantic payload location; the top-level mirrors are for Pi/runtime
+consumers only and must not be added to the `larva_subagent_sessions` helper as a
+top-level `sessions` field. `status` is the semantic domain status; Pi `isError`
+is a renderer/tool-call flag derived from `status !== "success"` and must not be
+treated as a replacement status enum.
 
 `task_id` is canonically the child Pi session file path. It is the only public
 resume handle.
 
-For failures before any child session path exists, `task_id` is `null`:
+For failures before any child session path exists, the wrapper mirrors and
+`details` both use `task_id: null`:
 
 ```json
 {
+  "content": [{"type": "text", "text": "LARVA_BAD_INPUT: task must be a non-empty string."}],
   "task_id": null,
   "persona_id": "",
   "status": "failed",
   "result_text": "",
-  "error": {"code": "LARVA_BAD_INPUT", "message": "task must be a non-empty string."}
+  "error": {"code": "LARVA_BAD_INPUT", "message": "task must be a non-empty string."},
+  "details": {
+    "task_id": null,
+    "persona_id": "",
+    "status": "failed",
+    "result_text": "",
+    "error": {"code": "LARVA_BAD_INPUT", "message": "task must be a non-empty string."}
+  },
+  "isError": true
 }
 ```
 
@@ -782,6 +1018,7 @@ Initial stable error codes:
 - `LARVA_NO_ACTIVE_PERSONA`
 - `LARVA_SPAWN_NOT_ALLOWED`
 - `LARVA_PERSONA_NOT_FOUND`
+- `LARVA_MODEL_MAP_INVALID`
 - `LARVA_MODEL_UNAVAILABLE`
 - `LARVA_POLICY_INVALID`
 - `LARVA_TOOL_ENUMERATION_FAILED`
@@ -792,6 +1029,48 @@ Initial stable error codes:
 - `LARVA_CHILD_START_FAILED`
 - `LARVA_CHILD_PROTOCOL_FAILED`
 - `LARVA_CHILD_CANCELLED`
+
+#### Visible resume footer
+
+Whenever `LarvaSubagentResult.task_id` is non-null, the Pi-facing ToolResult
+`content[0].text` includes a short resume footer after the human-readable result
+or error text:
+
+```text
+---
+Larva subagent session:
+persona_id: <persona_id>
+task_id: <absolute child session .jsonl path>
+reuse: pass this exact task_id to larva_subagent
+```
+
+The footer is presentation-only. It does not alter `result_text`, does not add a
+new semantic field, and does not replace the machine-readable `details.task_id`.
+If `task_id` is `null`, the wrapper must not show a resume footer or imply the
+run can be resumed.
+
+
+#### Adapter-local progress details
+
+Final `details` preserve the semantic `LarvaSubagentResult` fields. Partial
+updates may use an adapter-local progress details shape for rendering while the
+child is running:
+
+```json
+{
+  "persona_id": "turing",
+  "mode": "new",
+  "task_preview": "explain why self-attention matters...",
+  "phase": "waiting_for_child",
+  "task_id": "/absolute/path/to/child-session.jsonl"
+}
+```
+
+This progress shape is UI-only. It is not a new shared Larva/opifex schema and it
+must not relax the final result contract. Once execution finalizes, the ToolResult
+`details` again preserve the semantic `task_id`, `persona_id`, `status`,
+`result_text`, and `error` fields.
+
 
 ### Error mapping
 
@@ -966,6 +1245,22 @@ child work starts, return `failed` with the closest stable code (`LARVA_BAD_INPU
 limits output but still returns assistant text through RPC, preserve that text in
 `result_text`; do not classify truncation by semantic judgment. Parent abort must
 still propagate as defined in Abort.
+
+#### Recent session index
+
+In addition to the active-task set, the parent extension may keep a bounded
+process-local recent-session index for `larva_subagent_sessions(limit?)`. The
+index records only child sessions the parent extension has already observed
+through `larva_subagent` results: canonical `task_id`, requested `persona_id`,
+latest status, and monotonic process-local sequence number. It retains at most 25
+entries; when a new entry exceeds that bound, the oldest retained entry is
+evicted.
+
+The recent-session index is not durable state. Parent Pi restart clears it. It
+must not be backed by sidecar files, lock files, or a filesystem scan. Normal
+resume validation remains path-based and is performed only by
+`larva_subagent(task_id=...)`.
+
 
 ## Launcher contract
 
@@ -1142,6 +1437,28 @@ type LarvaSubagentResult = {
   result_text: string;
   error: LarvaError | null;
 };
+
+type LarvaAutocompleteRequest = {
+  text: string;
+  query: string;
+  cursor: number | null;
+  trigger: "tab" | "force" | "unknown";
+  baseProvider: LarvaAutocompleteBaseProvider | null;
+};
+
+type LarvaAutocompleteCandidate = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
+type LarvaAutocompleteBaseProvider = (
+  request: LarvaAutocompleteRequest,
+) => Promise<LarvaAutocompleteCandidate[] | null> | LarvaAutocompleteCandidate[] | null;
+
+type LarvaAutocompleteProvider = (
+  request: LarvaAutocompleteRequest,
+) => Promise<LarvaAutocompleteCandidate[] | null> | LarvaAutocompleteCandidate[] | null;
 ```
 
 Command and hook contracts:
@@ -1151,12 +1468,46 @@ Command and hook contracts:
 - `/larva-persona` with no argument opens a selector only when
   `LARVA_PI_INTERACTIVE_TUI=1`. RPC `ctx.hasUI`, print mode, and JSON mode return
   `LARVA_BAD_INPUT` without changing state.
+- Pi editor autocomplete uses the optional `ctx.ui.addAutocompleteProvider` hook
+  when the runtime UI context exposes it. The adapter-local provider contract is
+  `LarvaAutocompleteProvider`. Request fields are current editor `text`, current
+  completion `query`, nullable `cursor` when Pi does not supply one, `trigger`,
+  and nullable `baseProvider`. Larva consumes only `text`, `query`, `cursor`,
+  `trigger`, `baseProvider`, and persona ids from `larva list --json`; it must not
+  depend on private Pi fields.
+- Autocomplete candidates use `LarvaAutocompleteCandidate`: insertion `value`,
+  visible `label`, and optional `description`. `/larva-persona` candidates insert
+  the persona id; mention candidate `value` is exactly `@persona:<id>`. Any
+  trailing space or suffix after insertion is Pi UI behavior outside the Larva
+  candidate value.
+- Autocomplete nullable return behavior is part of the contract. Returning `null`
+  means “no Larva candidates/no handled completion” and must not be treated as an
+  error. If `baseProvider` is present, unrelated input returns the base provider's
+  result unchanged; if it is absent, unrelated input returns `null`.
+- Autocomplete delegate/merge behavior is part of the contract. Non-`/larva-persona`
+  slash-command input and unrelated `@...` input delegate to Pi's base provider.
+  For persona mentions, the provider asks the base provider first when present;
+  Pi file-reference candidates stay first in their original order; persona
+  candidates are appended after them. A duplicate is an exact same insertion
+  `value` across the merged Pi+Larva list; duplicates are removed by keeping the
+  first candidate.
+- Runtime verification must prove the tested supported Pi build exposes
+  `ctx.ui.addAutocompleteProvider` before claiming editor-autocomplete support.
+- If `ctx.ui.addAutocompleteProvider` is unavailable, the extension keeps the
+  command-level `/larva-persona` completer and omits Larva editor autocomplete
+  for both `/larva-persona` editor input and persona mentions.
+  If persona listing fails or returns malformed JSON, the autocomplete provider
+  returns the base provider result when one was requested for that input, else
+  `null`; it must not throw through the Pi TUI. Base provider failures remain
+  Pi-owned and must not be converted into Larva errors.
 - Initial `--persona` commit runs during extension initialization before first
   prompt, selector, or `larva: none` status.
 - Prompt injection uses Pi `before_agent_start` and returns a composed
   `systemPrompt`; it never replaces Pi's project/user context wholesale.
-- Prompt injection is idempotent: an existing Larva watermark block is replaced,
-  not duplicated.
+- Prompt injection is idempotent: existing Larva-managed blocks bounded by
+  `larva:identity-policy` and `larva:active-persona` markers are removed before
+  current blocks are added, and no unbounded Pi identity text is matched or
+  rewritten.
 - Model switching resolves PersonaSpec `model` through the adapter-local model map
   first: exact `models[spec.model]`, then longest literal `prefix_rules` match.
   Same-length matching prefix conflict, invalid JSON, invalid schema, or invalid
@@ -1182,7 +1533,11 @@ Command and hook contracts:
 - `larva_subagent` accepts `LarvaSubagentInput` and produces a semantic
   `LarvaSubagentResult` only when the custom tool handler is actually invoked;
   the registered Pi `handler`/`execute` return the Pi-facing ToolResult wrapper
-  with text `content`, preserved `details`, and `isError` derived from status.
+  with text `content`, required matching top-level/details semantic fields, and
+  `isError` derived from status.
+- `LarvaSubagentInput.task_id`, when present, is an absolute child Pi `.jsonl`
+  session path under the child session root. Resume validation is path-based and
+  does not require sidecar or provenance metadata.
 - Extension initialization reads only `LARVA_PI_INITIAL_PERSONA_ID`,
   `LARVA_PI_MODEL_MAP_FILE`, `LARVA_PI_TOOL_POLICY_FILE`, `LARVA_PI_CHILD_SESSION_DIR`,
   `LARVA_PI_PARENT_PERSONA_ID`, `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`,
@@ -1307,14 +1662,14 @@ architecture_basis:
 
   source_of_truth_matrix:
     PersonaSpec schema: "opifex canonical contract"
-    persona registry contents: "Larva CLI argv prefix supplied by launcher in LARVA_CLI_ARGV_JSON"
+    persona registry contents: "Larva persona registry; accessed by Pi extension through the launcher-supplied LARVA_CLI_ARGV_JSON CLI argv prefix"
     active Pi persona: "Pi extension session-local committed envelope"
     Pi executable: "LARVA_PI_REAL_BIN discovered by launcher"
     Pi extension flag: "LARVA_PI_EXTENSION_FLAG selected by launcher from Pi help"
     Pi extension entry: "LARVA_PI_EXTENSION_ENTRY absolute bundled extension path resolved by launcher"
     Pi interactive classification: "Launcher scan of forwarded pi_args for exact print/json/mode markers"
-    Pi model map: "~/.pi/larva/model-map.json or LARVA_PI_MODEL_MAP_FILE override, adapter-local, parsed only by Pi extension"
-    Pi tool rules: "~/.pi/larva/tool-policy.json or explicit LARVA_PI_TOOL_POLICY_FILE override only; no implicit legacy ~/.pi/tool-policy.json fallback; adapter-local, parsed only by Pi extension"
+    Pi model map: "~/.pi/larva/model-map.json or absolute LARVA_PI_MODEL_MAP_FILE override, adapter-local, parsed only by Pi extension"
+    Pi tool rules: "~/.pi/larva/tool-policy.json or explicit absolute LARVA_PI_TOOL_POLICY_FILE override only; no implicit legacy ~/.pi/tool-policy.json fallback; adapter-local, parsed only by Pi extension"
     Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each persona commit"
     child session root: "~/.pi/larva/child-sessions or absolute LARVA_PI_CHILD_SESSION_DIR test override"
     child session identity: "Pi child session file path returned as task_id"
@@ -1340,7 +1695,10 @@ architecture_basis:
     projection: "before_agent_start prompt composition + pi.setModel(model), committed at launch/switch/child startup"
     policy: "allow/deny filtering over current Pi model-facing tool baseline; missing policy equals baseline; prior Larva restrictions do not carry; unknown policy tool names ignored; setActiveTools plus tool_call enforcement"
     persona_bridge: "LARVA_CLI_ARGV_JSON + resolve/list suffix, fallback larva/uvx only when env is absent"
-    subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked"
+    subagent: "larva_subagent(persona_id, task, task_id?) -> LarvaSubagentResult only when the tool handler is invoked; Pi ToolResult wrapper mirrors semantic fields at top level and details; visible footer includes persona_id and exact task_id when task_id is non-null"
+    subagent_sessions_helper: "optional larva_subagent_sessions(limit?: positive int = 10, max 25) -> newest-first process-local recent sessions from an index capped at 25 entries; invalid limit returns LARVA_BAD_INPUT; no filesystem scan, sidecar, alias, or provenance proof"
+    subagent_tool_rendering: "renderCall shows persona, new/resume mode, bounded task preview, and abbreviated task_id for resumes; visible bounds count Unicode NFC-normalized code points with ellipsis inside the bound; onUpdate emits bounded row-local phases; renderResult supports collapsed and expanded final views without overriding parent larva footer"
+    persona_mentions: "interactive editor autocomplete requires ctx.ui.addAutocompleteProvider and inserts canonical @persona:<id>; mention-only with no persona switch, no automatic larva_subagent call, and no prompt/spec injection; raw @, @p, and @persona may show persona candidates while preserving Pi file-reference suggestions"
     child_rpc: "<real-pi-bin> <extension-flag> <extension-entry> --mode rpc --session-dir <child root>, child fatal stderr before RPC readiness, then prompt/switch_session/get_state/get_last_assistant_text with string final text"
     resume: "task_id is a readable .jsonl child session path under child root; task is appended through RPC prompt; child persona id is re-resolved from current registry"
 
@@ -1350,6 +1708,7 @@ architecture_basis:
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
+    recent_session_index: "In-memory newest-first process-local index of up to 25 child sessions observed by one parent Pi extension process; advisory only"
 
   transport_boundary_rules:
     - "Larva CLI/facade/MCP surfaces remain the persona source; Pi extension does not read registry files directly."
@@ -1367,12 +1726,14 @@ architecture_basis:
       - "Larva persona registry remains owned by Larva."
       - "Pi extension keeps only session-local committed envelope state."
       - "Parent Pi extension keeps a process-local active-task set for same-task resume exclusion."
+      - "Parent Pi extension keeps a process-local recent-session index capped at 25 entries only for optional resume UX."
     lifecycle_ordering:
       - "Launcher preflights Larva-owned arguments, extension path, real Pi executable, extension flag, Larva CLI argv prefix, interactive classification, and initial persona id only."
       - "Extension parses active-target policy shape, selects model, enumerates the current Pi model-facing tool baseline, applies target policy, ignores missing policy tool names, sets active tools, and commits persona envelope only after checks pass."
       - "Child extension performs child persona/model/policy initialization before replying to get_state."
       - "Subagent child process discovers sessionFile via RPC get_state and validates it before exposing task_id."
       - "Resume marks task_id active before starting the child process and clears it after completion, failure, or cancellation."
+      - "Subagent row progress is updated only through the current tool row lifecycle: renderCall before execution, onUpdate during execution, and renderResult for final/expanded display."
     coordination_mechanisms:
       - "Selected Pi extension flag for parent and child extension loading."
       - "Launcher-provided Pi extension entry path for parent and child extension loading."
@@ -1383,15 +1744,18 @@ architecture_basis:
       - "Pi RPC JSONL for child sessions."
       - "Child stderr fatal-startup line before RPC readiness."
       - "In-memory active-task set for same-parent same-task resume exclusion."
-    wiring_strategy: "Explicit launcher environment plus selected Pi extension flag registration."
-    governance_owner: "Larva shell owns launcher; Pi extension owns runtime projection, tool-policy parsing, and active-task state."
+      - "In-memory recent-session index capped at 25 entries for optional larva_subagent_sessions(limit?) helper."
+      - "Pi custom-tool row renderer for bounded subagent call, progress, and result visibility."
+      - "Pi editor autocomplete provider for canonical @persona:<id> mentions while preserving Pi file-reference suggestions; unavailable when ctx.ui.addAutocompleteProvider is absent."
+    wiring_strategy: "Explicit launcher environment plus selected Pi extension flag registration; row-local rendering and editor autocomplete stay inside the Pi extension."
+    governance_owner: "Larva shell owns launcher; Pi extension owns runtime projection, tool-policy parsing, active-task state, recent-session index, subagent row rendering, and persona mention autocomplete."
 
   shared_abstractions:
     shared_types:
       - name: "PersonaSpec"
-        owner_module: "larva.core / opifex contract"
+        owner_module: "opifex contract"
         consumers: ["Pi extension", "Larva CLI/MCP"]
-        rationale: "Canonical persona identity, prompt, model, capabilities, can_spawn."
+        rationale: "Canonical persona identity, prompt, model, capabilities, and can_spawn; Larva consumes, validates, and projects it but does not co-own canonical meaning."
       - name: "PersonaEnvelope"
         owner_module: "contrib/pi-extension"
         consumers: ["persona switch", "prompt/model projection", "child startup"]
@@ -1406,8 +1770,12 @@ architecture_basis:
         rationale: "Stable machine-readable failure shape for tests and RPC clients."
       - name: "LarvaSubagentResult"
         owner_module: "contrib/pi-extension"
-        consumers: ["larva_subagent semantic result", "Pi ToolResult wrapper details"]
-        rationale: "Minimal semantic result shape: task_id, persona_id, status, result_text, error. Pi handler/execute wrap it with renderer-safe content and isError; no semantic result is produced when tool_call blocks the tool before handler invocation."
+        consumers: ["larva_subagent semantic result", "Pi ToolResult wrapper details", "Pi ToolResult top-level mirrors"]
+        rationale: "Minimal semantic result shape: task_id, persona_id, status, result_text, error. Pi handler/execute wrap it with renderer-safe content, matching top-level/details fields, and isError; no semantic result is produced when tool_call blocks the tool before handler invocation."
+      - name: "LarvaSubagentSessionSummary"
+        owner_module: "contrib/pi-extension"
+        consumers: ["optional larva_subagent_sessions helper", "resume UX"]
+        rationale: "Small process-local UX/recovery shape capped at 25 retained entries: task_id, persona_id, last_status, sequence. It is not resume authority."
     shared_protocols: []
     shared_utilities: "N/A: no utility should be shared until implementation proves duplication."
     decision: "Only types that cross command/tool/session boundaries are shared; internals stay local."
@@ -1429,7 +1797,9 @@ architecture_basis:
     - surface: "Pi slash command"
       scope: "/larva-persona completion, selector, status/error messages"
     - surface: "Pi custom tool"
-      scope: "larva_subagent tool description and result shape"
+      scope: "larva_subagent tool description, optional larva_subagent_sessions helper, visible resume footer, renderCall/onUpdate/renderResult row display, and result shape"
+    - surface: "Pi interactive editor autocomplete"
+      scope: "canonical @persona:<id> mention candidates, raw @ and partial namespace suggestions, no automatic side effects, and preservation of Pi file-reference suggestions"
 
   runtime_surfaces:
     - surface: "CLI"
@@ -1441,8 +1811,76 @@ architecture_basis:
 
   open_questions: []
 
-  readiness: "READY_FOR_PLANNING"
+  readiness: "READY"
 ```
+
+
+### Architecture basis change notes
+
+Subagent reuse visibility delta:
+
+- `larva_subagent_sessions(limit?)` is a Pi-adapter-owned read-only helper surface
+  backed only by parent-extension process memory and capped at 25 retained
+  entries.
+- The recent-session index belongs to the same state stratum as the existing
+  parent-extension active-task set, but it is advisory UX state, not resume
+  authority.
+- The visible resume footer and top-level ToolResult mirrors are Pi ToolResult
+  presentation/runtime metadata. They must not change the semantic
+  `LarvaSubagentResult`, `details.task_id`, or path-based resume validation.
+- The no-sidecar and no-filesystem-scan transport boundary remains unchanged.
+
+
+Subagent runtime visibility delta:
+
+- `renderCall`, `onUpdate`, and `renderResult` are Pi-adapter presentation
+  concerns owned by `contrib/pi-extension`.
+- Runtime progress state is adapter-local and row-local: target persona, new vs
+  resume mode, task preview, current phase, and allocated `task_id` when known.
+- Bounded previews count Unicode NFC-normalized code points after ANSI/control
+  cleanup, with ellipsis counted inside the visible-character bound.
+- Final semantic results stay `LarvaSubagentResult`; partial progress details may
+  use an adapter-local rendering shape but must not become a shared Larva/opifex
+  contract.
+- The parent `larva: <persona-id>` status remains parent persona state; subagent
+  status is rendered in the `larva_subagent` tool row.
+- No custom widget dashboard, filesystem-backed monitor, or full child log stream
+  is part of the first target.
+
+
+Persona mention UX delta:
+
+- `@persona:<id>` is a Pi-adapter-owned interactive editor mention surface backed
+  by the same persona list bridge as `/larva-persona` completion and available
+  only when the runtime UI exposes `ctx.ui.addAutocompleteProvider`.
+- The mention is semantic context only. It does not switch active persona, force
+  `larva_subagent`, or inject the mentioned persona prompt/spec.
+- Runtime authority remains unchanged: only explicit `/larva-persona` switches the
+  parent persona, and only explicit model tool use invokes `larva_subagent`.
+- The autocomplete provider may surface persona candidates for raw `@`, partial
+  canonical namespace tokens, and `@persona:<query>` input, but it must delegate
+  unrelated `@...` input to Pi's base provider and preserve Pi-owned file
+  reference suggestions.
+- The raw short form `@<id>` is reserved for future evaluation and is not part of
+  this implementation target. Id-like raw short-form prefixes such as `@doc`,
+  `@python`, and `@python-senior` must not trigger Larva persona matching and
+  must delegate to Pi file-reference completion until short form is explicitly
+  implemented.
+
+
+Prompt identity overlay delta:
+
+- Persona identity projection is Larva-adapter-owned prompt composition in
+  `before_agent_start`, not a Pi prompt-builder replacement.
+- The Pi chained system prompt remains the source of truth for tools, guidelines,
+  Pi documentation notes, project context, skills, date, and working directory.
+- Larva owns only marker-bounded identity blocks:
+  `larva:identity-policy` and `larva:active-persona`.
+- Idempotence is achieved by removing previous Larva-managed blocks only; the
+  adapter must not match or rewrite Pi's generic identity sentence.
+- Provider-specific payload rewrite is out of scope for persona identity; the
+  effective Pi session prompt should remain inspectable through Pi's system prompt
+  surfaces.
 
 ## Verification targets
 
@@ -1471,8 +1909,9 @@ Implementation gates must prove these observable behaviors:
    committed persona id.
 8. With no active persona, interactive status is set to `larva: none`.
 9. `before_agent_start` composes Pi's existing system prompt with the committed
-   Larva prompt and watermark; it does not replace project/user context wholesale
-   and it replaces an existing Larva watermark block instead of duplicating it.
+   Larva identity-policy and active-persona blocks; it does not replace
+   project/user context wholesale and it removes only previous Larva-managed
+   marker-bounded blocks instead of duplicating them.
 10. Launcher mode detection sets `LARVA_PI_INTERACTIVE_TUI=0` for exact `-p`,
     exact `--print`, exact `--json`, `--mode rpc|print|json|sdk`, missing/empty or
     unknown `--mode`, and conflicting mode/print markers; it sets `1` when no
@@ -1524,13 +1963,14 @@ Implementation gates must prove these observable behaviors:
 23. Public `task_id` paths outside the canonical child session root are rejected
     with `LARVA_BAD_INPUT`.
 24. Successful `larva_subagent` returns a Pi-facing ToolResult wrapper with text
-    `content`, `details` preserving semantic `status: "success"`, public
-    `task_id`, string final assistant `result_text`, `error: null`, and
-    `isError: false`.
+    `content`, top-level metadata and `details` preserving matching semantic
+    `status: "success"`, public `task_id`, string final assistant `result_text`,
+    `persona_id`, `error: null`, and `isError: false`.
 25. Failed `larva_subagent` after session allocation returns renderer-safe text
-    `content`, public `task_id` when known in preserved metadata/details, a
-    non-null `{code, message}` error object, and `isError: true`; pre-session
-    failures such as no active parent persona also include text `content`.
+    `content`, matching top-level metadata and `details` with public `task_id`
+    when known, a non-null `{code, message}` error object, and `isError: true`;
+    pre-session failures such as no active parent persona also include text
+    `content` and matching top-level/details fields.
 26. Child startup uses `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
     `LARVA_PI_EXTENSION_ENTRY`, not bare `pi` or derived extension-entry paths;
     uses Pi RPC `get_state`, validates `data.sessionFile` as a readable `.jsonl`
@@ -1588,6 +2028,71 @@ Implementation gates must prove these observable behaviors:
     usability judgment. `LARVA_CHILD_PROTOCOL_FAILED` is reserved for malformed,
     failed, text-missing, null-text, or non-string-text RPC responses.
 
+42. Any `larva_subagent` ToolResult with non-null `task_id` includes a visible
+    resume footer in `content[0].text` containing `persona_id`, exact `task_id`,
+    and an instruction to pass that `task_id` back to `larva_subagent`. Results
+    with `task_id: null` do not show a resume footer.
+43. `larva_subagent_sessions(limit?)`, if exposed, accepts only an optional
+    positive integer `limit` with default `10` and maximum `25`; invalid values
+    return a Pi-facing ToolResult with `isError: true`, `details.status` set to
+    `"failed"`, `details.sessions` set to `[]`, and `details.error.code` set to
+    `"LARVA_BAD_INPUT"`; its `content[0].text` is
+    `LARVA_BAD_INPUT: limit must be an integer from 1 to 25.`. On success it
+    returns `isError: false` with `details.status` set to `"success"`,
+    `details.sessions` containing newest-first process-local recent-session
+    entries already observed by this parent extension, and `details.error: null`;
+    the process-local index retains at most 25 entries and evicts the oldest
+    retained entry when a new entry exceeds that bound; the response has no top-level
+    `sessions` field. It does not scan the filesystem, write sidecar metadata,
+    create a `last` alias, or relax normal `task_id` resume validation.
+
+44. `larva_subagent` custom rendering uses `renderCall` to show target
+    `persona_id`, new/resume mode, and a task preview bounded to 120 visible
+    characters in the tool row; resume calls also show an abbreviated `task_id`
+    path bounded to 80 visible characters. The protocol tool name
+    remains `larva_subagent`. Tests must prove deterministic visible-character
+    counting for these bounds, including ANSI stripping, newline/control
+    replacement, Unicode NFC-normalized code-point counting, and ellipsis
+    placement counted inside the 120- and 80-character limits.
+45. During execution, `larva_subagent` emits partial updates through Pi `onUpdate`
+    with bounded progress details: persona id, new/resume mode, phase, task
+    preview, and `task_id` once allocated. Partial update text is bounded to 200
+    visible characters per update and does not stream full child logs or full
+    child transcripts into parent context. Tests must prove deterministic
+    visible-character counting for the 200-character bound, including ANSI
+    stripping, newline/control replacement, Unicode NFC-normalized code-point
+    counting, and ellipsis placement counted inside the limit.
+46. `renderResult` supports collapsed and expanded final views. Collapsed view
+    shows persona and terminal state; expanded view shows persona id, mode, full
+    task, `task_id` when known, final status, error if any, final output, and the
+    resume footer. Subagent rendering does not overwrite the parent `larva:`
+    footer status or add a widget dashboard.
+
+47. Interactive TUI autocomplete requires a runtime UI context exposing
+    `ctx.ui.addAutocompleteProvider`; runtime proof must show the tested Pi build
+    exposes that hook before claiming editor-autocomplete support. With that hook,
+    persona mentions may surface candidates on raw `@`, partial canonical
+    namespace tokens, and `@persona:<query>` input.
+    It returns canonical `@persona:<id>` candidates from the same persona list
+    bridge/cache as `/larva-persona`, preserves the documented matching order,
+    keeps Pi file-reference candidates in their original order before appended
+    persona candidates, removes exact duplicate insertion `value`s across the
+    merged list by keeping the first candidate, delegates unrelated `@...` input
+    to Pi's base provider, and preserves Pi-owned file-reference suggestions when
+    raw `@` suggestions are shown. It does not offer raw short-form `@<id>`
+    persona candidates. A submitted `@persona:<id>` mention has no automatic side
+    effect: it does not switch personas, force `larva_subagent`, or inject the
+    mentioned persona prompt/spec.
+
+48. Prompt projection uses Larva-managed overlay blocks rather than Pi default
+    prompt string matching. The effective prompt preserves the incoming Pi
+    chained system prompt unchanged between `larva:identity-policy` and
+    `larva:active-persona` blocks, removes only previous Larva-managed marker
+    blocks for idempotence, includes the active `larva-spec` watermark and
+    committed PersonaSpec prompt, and does not rebuild Pi's prompt from
+    `systemPromptOptions` or modify provider-specific request payloads for
+    persona identity.
+
 ## Implementation handoff
 
 Suggested order:
@@ -1598,9 +2103,11 @@ Suggested order:
    `LARVA_PI_EXTENSION_FLAG`, `LARVA_PI_EXTENSION_ENTRY`, `LARVA_CLI_ARGV_JSON`,
    `LARVA_PI_INTERACTIVE_TUI`, and any explicit adapter config path overrides
    without parsing policy or model-map content.
-2. Add the Pi extension command for active persona state, completion, UI status,
-   persona resolve/list through `LARVA_CLI_ARGV_JSON`, model switch through
-   `pi.setModel`, and snapshot prompt composition through `before_agent_start`.
+2. Add the Pi extension command and editor UX for active persona state:
+   `/larva-persona` completion/selector, canonical `@persona:<id>` mention
+   autocomplete, UI status, persona resolve/list through `LARVA_CLI_ARGV_JSON`,
+   model switch through `pi.setModel`, and Larva-managed prompt overlay/sandwich
+   composition through `before_agent_start`.
 3. Add adapter-local model-map resolution inside the Pi extension without changing
    PersonaSpec or opifex contracts.
 4. Add canonical `~/.pi/larva/tool-policy.json` parsing and tool-call blocking
@@ -1610,7 +2117,10 @@ Suggested order:
 5. Add `larva_subagent` backed by one child Pi RPC process per invocation using
    `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
    `LARVA_PI_EXTENSION_ENTRY`, the child session root, public `task_id` path
-   validation, process-local same-`task_id` busy tracking, and `task_id` resume.
+   validation, process-local same-`task_id` busy tracking, `task_id` resume,
+   visible resume footer, optional `larva_subagent_sessions(limit?)` helper,
+   `renderCall`, `onUpdate` progress phases, and collapsed/expanded
+   `renderResult`.
 6. Add documentation and verification tests for the behaviors listed above.
 
 Watch for:
@@ -1618,6 +2128,17 @@ Watch for:
 - Do not import Pi-specific policy concepts into PersonaSpec validation.
 - Do not silently continue with a half-switched persona/model/policy state.
 - Do not dump persona registries into the system prompt.
+- Do not match or rewrite Pi's default identity sentence; remove only
+  Larva-managed marker blocks for prompt idempotence.
+- Do not rebuild Pi's prompt builder from `systemPromptOptions`; preserve Pi's
+  chained system prompt as the operational context.
+- Do not use provider-specific request payload rewriting for persona identity.
+- Do not treat `@persona:<id>` as an automatic command, persona switch, forced
+  subagent invocation, or prompt/spec injection.
+- Do not intercept Pi-owned `@` file references; raw `@`, `@p`, and `@persona`
+  may show persona candidates, but unrelated `@...` editor input must delegate to
+  Pi's base provider and raw `@` suggestions must preserve Pi file-reference
+  suggestions.
 - Do not build worktree isolation or a job scheduler in this feature.
 - Do not mutate Pi JSONL session files for Larva provenance.
 - Do not write Pi settings files as a hidden fallback for extension loading.
