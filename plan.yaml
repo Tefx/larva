@@ -86357,7 +86357,7 @@ phases:
       receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_operator_migration_proof_20260601
     name: Prove one-time operator migration semantics
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT:
 
       Provide runtime/operator proof for direct migration semantics without introducing
@@ -86421,6 +86421,8 @@ phases:
     - pi_tool_policy_no_legacy_contract_20260601
     - pi_tool_policy_no_legacy_docs_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T08:30:55.363477+00:00'
   - id: pi_tool_policy_no_legacy_runtime_guard_20260601
     name: Verify no-fallback runtime behavior and invar guard
     status: pending
