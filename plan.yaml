@@ -91869,7 +91869,84 @@ phases:
       - [ ] Runtime/smoke evidence shows renderCall/onUpdate/renderResult artifacts
       and parent footer preservation.
 
+      - [ ] VT46 runtime/smoke evidence shows collapsed renderResult final view with
+      persona and terminal state.
+
+      - [ ] VT46 runtime/smoke evidence shows expanded renderResult final view with
+      persona id, mode, full task, task_id when known, final status, error if any,
+      final output, and resume footer.
+
+      - [ ] VT46 runtime/smoke evidence shows no parent `larva:` footer overwrite
+      and no widget dashboard.
+
       - [ ] Raw command output and artifacts are included.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for verifier>
+
+      - no_change_reason: <required; verifier should normally report no product changes>
+
+
+      ## Client Runtime Receipt
+
+      - surface_class: <Pi extension ToolResult/rendering/session helper surface>
+
+      - launch_command_target_version: <exact command/target/Pi version/build>
+
+      - toolresult_runtime_artifacts: <success/failure/cancel/error raw captures>
+
+      - sessions_runtime_artifacts: <valid/invalid limit and details.sessions-only
+      raw captures>
+
+      - render_runtime_artifacts: <renderCall/onUpdate/renderResult raw captures>
+
+      - raw_captures: <stdout/stderr/RPC/TUI/snapshot refs>
+
+
+      ## VT46 renderResult Runtime Evidence
+
+      - vt46_collapsed_final_view: <runtime/smoke artifact proving persona + terminal
+      state>
+
+      - vt46_expanded_persona_id: <runtime/smoke artifact>
+
+      - vt46_expanded_mode: <runtime/smoke artifact>
+
+      - vt46_expanded_full_task: <runtime/smoke artifact>
+
+      - vt46_expanded_task_id_when_known: <runtime/smoke artifact or explicit unavailable
+      case>
+
+      - vt46_expanded_final_status: <runtime/smoke artifact>
+
+      - vt46_expanded_error_if_any: <runtime/smoke artifact or no-error case>
+
+      - vt46_expanded_final_output: <runtime/smoke artifact>
+
+      - vt46_expanded_resume_footer: <runtime/smoke artifact>
+
+      - vt46_parent_larva_footer_preserved: <runtime/smoke artifact>
+
+      - vt46_no_widget_dashboard: <runtime/smoke artifact>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
