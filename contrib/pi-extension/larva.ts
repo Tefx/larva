@@ -154,12 +154,17 @@ type ParsedModel = { provider: string; modelId: string };
 type ModelMapResolution =
   | { kind: "mapped"; parsed: ParsedModel }
   | { kind: "fallback" };
+type PersonaListCache = { key: string; expiresAt: number; items: BridgeListItem[] } | null;
+type PersonaListInFlight = { key: string; promise: Promise<BridgeListItem[] | null> } | null;
 
 const CLI_TIMEOUT_MS = 10_000;
+const PERSONA_COMPLETION_CACHE_TTL_MS = 5_000;
 const LARVA_WATERMARK_RE = /\n?<!-- larva-spec:[\s\S]*?Use Larva MCP or the larva CLI \(`larva`, fallback `uvx larva`\) to discover and resolve personas when needed\.\n?/g;
 const DEFAULT_CHILD_SESSION_ROOT_SUFFIX = ".pi/larva/child-sessions";
 const state: ActiveState = { envelope: null, activeTools: new Set<string>() };
 const activeTaskIds: Set<string> = new Set<string>();
+let personaListCache: PersonaListCache = null;
+let personaListInFlight: PersonaListInFlight = null;
 
 const error = (code: LarvaErrorCode, message: string): LarvaError => ({ code, message });
 
@@ -394,19 +399,56 @@ function isPersonaSpec(value: unknown): value is PersonaSpec {
   );
 }
 
-export async function listPersonas(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[]> {
-  const result = await runLarvaCommand(currentEnv(ctx), ["list", "--json"]);
-  if (!result.ok) return [];
+function personaListCacheKey(env: RuntimeEnv): string {
+  return env.LARVA_CLI_ARGV_JSON ?? "larva-default-argv";
+}
+
+async function fetchPersonaList(env: RuntimeEnv): Promise<BridgeListItem[] | null> {
+  const result = await runLarvaCommand(env, ["list", "--json"]);
+  if (!result.ok) return null;
   try {
     const parsed = JSON.parse(result.stdout) as unknown;
     const data = isRecord(parsed) ? parsed.data : undefined;
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) return null;
     const items = data.map((item) => normalizeListItem(item));
-    if (items.some((item) => item === null)) return [];
+    if (items.some((item) => item === null)) return null;
     return items as BridgeListItem[];
   } catch {
-    return [];
+    return null;
   }
+}
+
+async function cachedPersonaList(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[] | null> {
+  const env = currentEnv(ctx);
+  const key = personaListCacheKey(env);
+  const now = Date.now();
+  if (personaListCache && personaListCache.key === key && personaListCache.expiresAt > now) return personaListCache.items;
+  if (personaListInFlight && personaListInFlight.key === key) return personaListInFlight.promise;
+  const promise = fetchPersonaList(env)
+    .then((items) => {
+      if (items !== null) {
+        personaListCache = { key, expiresAt: Date.now() + PERSONA_COMPLETION_CACHE_TTL_MS, items };
+      }
+      return items;
+    })
+    .finally(() => {
+      personaListInFlight = null;
+    });
+  personaListInFlight = { key, promise };
+  return promise;
+}
+
+export function resetPersonaCompletionCache(): void {
+  personaListCache = null;
+  personaListInFlight = null;
+}
+
+export async function listPersonas(ctx?: { env?: RuntimeEnv }): Promise<BridgeListItem[]> {
+  // Preserve list bridge fail-closed semantics: malformed data, including
+  // items.some((item) => item === null), returns [] to selectors/callers.
+  const items = await cachedPersonaList(ctx);
+  if (items === null) return [];
+  return items;
 }
 
 function normalizeListItem(item: unknown): BridgeListItem | null {
@@ -419,10 +461,20 @@ function normalizeListItem(item: unknown): BridgeListItem | null {
 }
 
 export async function completePersonaIds(prefix = "", ctx?: { env?: RuntimeEnv }): Promise<PiAutocompleteCandidate[]> {
-  const personas = await listPersonas(ctx);
-  return personas
-    .filter((persona) => persona.id.startsWith(prefix))
-    .map((persona) => ({
+  const personas = await cachedPersonaList(ctx);
+  if (personas === null) return [];
+  const query = prefix.toLocaleLowerCase();
+  const ranked = personas
+    .map((persona, index) => ({ persona, index, idLower: persona.id.toLocaleLowerCase() }))
+    .filter((entry) => entry.idLower.includes(query))
+    .sort((left, right) => {
+      const leftPrefix = left.idLower.startsWith(query);
+      const rightPrefix = right.idLower.startsWith(query);
+      if (leftPrefix !== rightPrefix) return leftPrefix ? -1 : 1;
+      return left.index - right.index;
+    });
+  return ranked
+    .map(({ persona }) => ({
       value: persona.id,
       label: persona.id,
       description: persona.description ?? persona.model,
