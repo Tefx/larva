@@ -90,11 +90,22 @@ const cases = {
   "new-path-exists": async () => {
     const canonical = await runPolicyCase("canonical-exists", async (paths) => {
       await writeFile(paths.canonical, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
-      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { allow: ["read"] } } }), "utf8");
     });
     assert.equal(canonical.result.ok, true);
     assert.deepEqual(canonical.activeTools, ["bash"]);
     console.log("new-path-exists PASS canonical activeTools", JSON.stringify(canonical.activeTools));
+  },
+  "both-present-conflict": async () => {
+    const conflict = await runPolicyCase("both-present-conflict", async (paths) => {
+      await writeFile(paths.canonical, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
+      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["bash"] } } }), "utf8");
+    });
+    assert.equal(conflict.result.ok, false);
+    assert.equal(conflict.result.error.code, "LARVA_POLICY_INVALID");
+    assert.deepEqual(conflict.activeTools, undefined);
+    assert.equal(await exists(conflict.paths.canonical), true);
+    assert.equal(await exists(conflict.paths.legacy), true);
+    console.log("both-present-conflict PASS conflict reported without merge or overwrite");
   },
   "old-only-no-env-is-empty": async () => {
     const legacy = await runPolicyCase("old-only-no-env-is-empty", async (paths) => {

@@ -147,6 +147,80 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
     assert Path(child_env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
     assert child_env["LARVA_PI_LAUNCHED"] == "1"
 
+
+def test_launcher_absent_policy_env_ignores_legacy_tool_policy_path(
+    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
+):
+    """Absent env must not select legacy ``~/.pi/tool-policy.json`` implicitly."""
+    home = tmp_path / "home"
+    legacy = home / ".pi" / "tool-policy.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text('{"personas":{"known":{"deny":["bash"]}}}', encoding="utf-8")
+    canonical = home / ".pi" / "larva" / "tool-policy.json"
+
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("LARVA_PI_TOOL_POLICY_FILE", raising=False)
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(canonical.resolve())
+    assert env["LARVA_PI_TOOL_POLICY_FILE"] != str(legacy.resolve())
+
+
+def test_launcher_absent_policy_env_selects_canonical_tool_policy_path(
+    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
+):
+    """Absent env selects canonical ``~/.pi/larva/tool-policy.json`` when present."""
+    home = tmp_path / "home"
+    canonical = home / ".pi" / "larva" / "tool-policy.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('{"personas":{"known":{"allow":["bash"]}}}', encoding="utf-8")
+
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("LARVA_PI_TOOL_POLICY_FILE", raising=False)
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(canonical.resolve())
+
+
+def test_launcher_explicit_policy_env_honors_legacy_tool_policy_path(
+    mock_shutil_which, mock_subprocess_run, fake_pi_executable, tmp_path, monkeypatch
+):
+    """Legacy path remains valid only when explicitly named by env override."""
+    home = tmp_path / "home"
+    legacy = home / ".pi" / "tool-policy.json"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text('{"personas":{"known":{"deny":["bash"]}}}', encoding="utf-8")
+    canonical = home / ".pi" / "larva" / "tool-policy.json"
+    canonical.parent.mkdir(parents=True)
+    canonical.write_text('{"personas":{"known":{"allow":["bash"]}}}', encoding="utf-8")
+
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("LARVA_PI_TOOL_POLICY_FILE", str(legacy))
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi", "--persona", "known"], facade=_make_facade(), stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+
+    env = mock_subprocess_run.call_args[1].get("env", os.environ)
+    assert env["LARVA_PI_TOOL_POLICY_FILE"] == str(legacy)
+
 def test_launcher_missing_persona(
     mock_shutil_which, mock_subprocess_run, tmp_path
 ):
