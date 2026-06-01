@@ -86812,7 +86812,7 @@ phases:
       all accepted and toggled before completion.'
   - id: pi_subagent_toolresult_adapter_impl_20260601
     name: Complete Pi adapter-boundary ToolResult wrapper for larva_subagent
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -86946,6 +86946,26 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T09:06:43.483957+00:00'
+    done_at: '2026-06-01T09:18:12.175370+00:00'
+    evidence: 'Merged isolated commit `271556fcfe2a02a130ab696796f22ef8fcaffb05` to
+      main as `a8384f9`. Implementation added a small Pi-boundary wrapper in `contrib/pi-extension/larva.ts`:
+      exported semantic `LarvaSubagentResult` remains the domain payload, while registered
+      `larva_subagent.handler` and `execute` now wrap results with `content: [{type:
+      "text", text: ...}]`, `details` containing the original semantic payload, top-level
+      semantic fields, and `isError` for failed/cancelled paths. Protected expected-red
+      tests were made green without weakening assertions; smoke/test additions cover
+      success, failed-before-session, cancelled, and failed-after-allocation. Deviation
+      accepted: contract_gap in smoke/test fixtures only to add deterministic success-path
+      proof required by this implementation step. No Pi renderer patch, no new dependency/framework,
+      no shared schema change. Mainline verification: `uv run python -m pytest tests/shell/test_pi_extension_real_runtime.py::test_registered_larva_subagent_results_are_renderer_safe_toolresults
+      -q` passed; `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      showed success/failedBeforeSession/cancelled/failedAfterAllocation all with
+      renderer-safe `content`, preserved `details`, and correct `isError`; `uv run
+      python -m pytest tests/shell/test_pi_extension_real_runtime.py -q` passed (17
+      passed); `uv run python -m pytest tests/shell/test_pi_extension_contract.py
+      -q` passed (48 passed); `uv run invar guard` passed. Refs confirmation cited
+      current raw return path and Pi renderer `result.content.filter` expectation.
+      Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_runtime_smoke_20260601
     name: Extend Pi extension runtime smoke for renderer-safe tool result shape
     status: pending
