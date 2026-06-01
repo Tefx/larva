@@ -84582,7 +84582,7 @@ phases:
       side effects; no artifacts modified.'
 - id: pi-model-map-runtime-and-autocomplete-2026-06-01
   name: Pi Persona Autocomplete Substring Cache and Model Map Proof 2026-06-01
-  status: in_progress
+  status: done
   gate: 'Phase accepted only when docs, implementation, tests, runtime model-map proof,
     client/runtime autocomplete proof, invar guard, and independent gate evidence
     show: case-insensitive substring persona matching; prefix matches ranked before
@@ -85056,7 +85056,7 @@ phases:
       complete.'
   - id: pi_persona_autocomplete_gate_20260601
     name: Gate Pi persona autocomplete and model-map proof
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -85125,6 +85125,153 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T10:27:57.983335+00:00'
+    done_at: '2026-06-01T10:35:57.285020+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - `contrib/pi-extension/README.md`: READ. Key passages reviewed: model-map exact-first/literal-prefix-only
+      rules and no fuzzy/regex/guessing; OpenRouter models covered by literal `openrouter/`
+      prefix and named Gemini examples; autocomplete behavior.
+
+      - `design/pi-coding-agent-integration.md`: READ. Key passages reviewed: `/larva-persona`
+      command supports argument completion; narrow TUI provider delegates non-`/larva-persona`
+      input; matching/ranking/cache/no-fuzzy rules.
+
+      - `contrib/pi-extension/larva.ts`: READ. Key passages reviewed: model-map parser/exact/prefix
+      resolution; completion cache/in-flight state; case-insensitive substring and
+      prefix-first stable sort; narrow provider delegation/fail-closed behavior.
+
+
+      ## Gate Evidence Completeness
+
+      Required evidence families present and sufficient. Gate reviewer reran read-only
+      autocomplete Node probes, pytest autocomplete runtime tests, model-map JSON
+      resolution validation, `pi --list-models --offline`, `git diff --check`, `git
+      status`, and `uv run invar guard`; all completed successfully with exit code
+      0.
+
+      - Node ordering: provider/command values `["DevOps","devrel","qa-dev","backend-dev"]`,
+      substring/case/prefix/stable/shared-path booleans true.
+
+      - Node cache/inflight: overlap count 1, cache reuse count 1, `inFlightDedupeProven`
+      and `cacheReuseProven` true.
+
+      - Node delegation/failure: non-larva input delegated to base provider with `file.txt`;
+      list failure/malformed returned null; no crash.
+
+      - Node fixture shape: candidate keys only `[description,label,value]`; no alias/fuzzy/regex/wildcard
+      fields true.
+
+      - Pytest: `8 passed, 13 deselected`.
+
+      - Model-map JSON: required exact GPT/GLM/Kimi/Minimax entries present; `prefix_rules`
+      includes literal `openrouter/`; `openrouter_exact_entries: []`; all three named
+      Gemini OpenRouter inputs resolve with `source: "prefix"`.
+
+      - `pi --list-models --offline`: output includes `openai-codex gpt-5.5`, `openrouter
+      z-ai/glm-5.1`, `openrouter moonshotai/kimi-k2.6`, `openrouter minimax/minimax-m2.7`,
+      `openrouter google/gemini-3.1-pro-preview`, `openrouter google/gemini-3.1-flash-lite`,
+      and `openrouter google/gemini-3.5-flash`.
+
+      - `uv run invar guard`: passed, errors 0, warnings 0, doctest passed.
+
+      - `git status --short --branch`: only branch line; no file changes.
+
+
+      ## Requirement Decision Basis
+
+      - refs confirmation quotes docs and implementation passages: PROVEN.
+
+      - prior phase receipts including cleanup/retest: PROVEN.
+
+      - every OWNED requirement row: PROVEN.
+
+      - raw Node/pytest/pi-list/JSON/docs-status/invar outputs: PROVEN.
+
+      - client/runtime autocomplete liveness: PROVEN.
+
+      - model-map exact GPT/GLM/Kimi/Minimax and OpenRouter prefix coverage: PROVEN.
+
+      - R3 retest direct dependency closes prior failed proof: PROVEN.
+
+      - source-token-only/generic/failed-original-only proof rejected: PROVEN by runtime
+      reruns plus cleanup/retest evidence.
+
+      - final decision basis and closure path: PROVEN.
+
+
+      ## Blocker Ledger
+
+      blockers: []
+
+      should_fix: []
+
+      suggestions: []
+
+      tech_debt: []
+
+
+      ## behavioral_proof_register
+
+      - R-autocomplete-substring-case-prefix-order: PROVEN by Node `substring-case-ordering
+      --prefix DEV` provider and command values plus booleans true.
+
+      - R-autocomplete-cache-inflight: PROVEN by Node `cache-inflight` overlap/cache
+      counts 1 and booleans true.
+
+      - R-autocomplete-delegation-failclosed: PROVEN by Node `delegation-failure --prefix
+      vectl` delegated true, base item returned, failure/malformed null.
+
+      - R-autocomplete-shape-no-alias-fuzzy-regex: PROVEN by Node `fixture-shape`
+      candidate keys only value/label/description and no alias/fuzzy/regex/wildcard
+      fields.
+
+      - R-runtime-tests: PROVEN by pytest autocomplete runtime `8 passed`.
+
+      - R-model-map-required-exacts: PROVEN by JSON validation and Pi offline list
+      mapped targets.
+
+      - R-openrouter-prefix: PROVEN by literal `openrouter/` prefix rule and empty
+      `openrouter_exact_entries`.
+
+      - R3-gemini-prefix-retest: PROVEN by all three named Gemini OpenRouter inputs
+      resolving via `source: "prefix"`, including `openrouter/google/gemini-3.1-pro-preview`.
+
+      - R-invar: PROVEN by `uv run invar guard` pass.
+
+      - R-readonly-clean-worktree: PROVEN by clean git status and `git diff --check`
+      no output.
+
+
+      gate_decision: OPEN
+
+      gate_open_allowed: true
+
+      verdict: PASS
+
+      blockers: []
+
+      orchestrator_action_hint: COMPLETE
+
+      uncertainty_sources: []
+
+
+      ## checklist_receipt
+
+      All nine checklist items were PROVEN and toggled with `vectl_check` before completion.
+
+
+      step_intent: gate
+
+      expected_result: green
+
+      observed_result: green
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — read-only gate'
   - id: pi_model_map_openrouter_prefix_cleanup_20260601
     name: Cleanup redundant OpenRouter Gemini exact model-map entry
     status: done
@@ -85551,7 +85698,7 @@ phases:
       product_implementation_files_modified: false'
 - id: pi-model-map-draft-helper-2026-06-01
   name: Pi Model-Map Draft Helper 2026-06-01
-  status: locked
+  status: pending
   gate: 'Phase accepted only when contract/test/implementation/runtime evidence proves:
     larva pi-model-map draft queries real Pi offline inventory and real Larva registry;
     fixture tests cover deterministic deduplication, merge, prefix findings, malformed
