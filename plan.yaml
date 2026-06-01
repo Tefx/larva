@@ -85700,6 +85700,12 @@ phases:
       - redirect-safe stdout proven: <satisfied/failed/blocked/unobserved>
 
       - unresolved non-interactive failure proven: <satisfied/failed/blocked/unobserved>'
+    refs:
+    - design/pi-model-map-draft-helper.md
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/README.md
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_real_runtime.py
     depends_on:
     - pi_model_map_draft_impl_20260601
     agent: integration-verifier
