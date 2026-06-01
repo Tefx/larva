@@ -93742,3 +93742,207 @@ phases:
       | <path> |'
     depends_on:
     - pi_postspec_full_spec_conformance_20260602
+  - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
+    name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
+    status: pending
+    description: 'step_type: verification
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      verification_scope: full-plan-check
+
+      Independence Level: L1
+
+      agent_source: default
+
+
+      As an INDEPENDENT SPEC VERIFIER, rerun the full Pi post-spec conformance audit
+      after `pi_postspec_conformance_blockers_b1_b7_fix_20260602` and determine whether
+      B1-B7 and VT42-VT48 are closed. Finding remaining issues is a successful audit
+      artifact, but gate opening remains forbidden unless blocker-class obligations
+      are PROVEN or explicitly design-authorized non-blocking with closure paths.
+
+
+      PROOF ARTIFACT:
+
+      A full conformance re-audit using the same taxonomy: CONFORMS / DIVERGES / PARTIAL
+      / NEEDS_TEST / NOT_FOUND / AMBIGUOUS_SPEC / SPEC_POSSIBLY_STALE.
+
+
+      RE-AUDIT SCOPE:
+
+      - B1-B7 closure from the failed `pi_postspec_full_spec_conformance_20260602`
+      audit.
+
+      - VT42-VT48 requirement family, including slash-status commit proof, failure-path
+      Larva notifications, `larva_subagent_sessions(limit?)`, tool enumeration failure
+      semantics, child stderr whitelist semantics, VT47 editor-autocomplete runtime
+      hook proof/supplemental classification, and VT48 hard non-goals.
+
+      - No-change report for PersonaSpec/opifex/shared schema and hard-forbidden legacy
+      surfaces.
+
+
+      <side_effect_budget>
+
+      Allowed: run conformance audit commands, runtime smokes, probes, and inspect
+      repo/docs/evidence. Forbidden: implementation edits, doc edits, changing taxonomy,
+      approving sampled evidence, or treating timeout absence as positive proof without
+      raw output.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Re-audit must verify atomicity of `getAllTools` failure handling, not only
+      the error code string.
+
+      - Runtime proof must include observed status/notify outputs or a design-authorized
+      supplemental/non-blocking classification for true environment limits.
+
+      - Gate opening requires closure-path table; NEEDS_TEST/UNPROVEN rows cannot
+      be bypassed silently.
+
+      </risk_probes>
+
+
+      Behavioral proof register required fields for each blocker/VT row: `requirement_ref`,
+      `behavior_claim`, `runtime_proof_expected`, `evidence_ref`, `status`, `closure_path`,
+      `gate_decision_basis`.'
+    verification: '- [ ] `## refs Read Confirmation` cites key passages for VT42-VT48
+      and every blocker-specific rule used in the verdict.
+
+      - [ ] Full conformance audit is rerun with raw commands and raw stdout/stderr
+      captured.
+
+      - [ ] B1 full conformance suite result is green, or each expected-xfail has
+      exact authority, reason, and closure path.
+
+      - [ ] B2 slash-status runtime smoke includes status commit and notify proof
+      without timeouts.
+
+      - [ ] B3 failure-path runtime smoke includes Larva error notification proof
+      without timeouts.
+
+      - [ ] B4 sessions helper contract proves invalid limit, success, no sidecar,
+      no scan, no alias, and details-only behavior without timeout.
+
+      - [ ] B5 `getAllTools` failure maps to `LARVA_TOOL_ENUMERATION_FAILED`, does
+      not commit empty active tools, and preserves prior active-tool state.
+
+      - [ ] B6 child stderr whitelist exactly matches design or records a cited valid
+      deviation with test evidence.
+
+      - [ ] B7 / VT47 is PROVEN or explicitly classified as design-authorized supplemental
+      proof with non-blocking rationale; it is not left silently UNPROVEN.
+
+      - [ ] VT42-VT48 rows are re-audited with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE
+      taxonomy.
+
+      - [ ] No-change report confirms no PersonaSpec/opifex/shared schema changes
+      and no legacy fallback/raw `@<id>`/prompt catalogue/sidecars/widget dashboard.
+
+      - [ ] Closure-path table includes `gate_open_allowed: true|false` and gate open
+      is true only when every blocker-class row is PROVEN or design-authorized non-blocking.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-coding-agent-integration.md — <key passages for VT42-VT48 and B1-B7
+      rules>
+
+      - contrib/pi-extension/README.md — <key passages for runtime proof commands/behavior
+      and supplemental proof policy>
+
+
+      If no refs were provided, state: "No refs for this step."
+
+
+      ## No-Change Report
+
+      - PersonaSpec/opifex/shared schema changed: <yes/no + evidence>
+
+      - legacy fallback/raw @<id>/prompt catalogue/sidecars/widget dashboard introduced:
+      <yes/no + evidence>
+
+      - implementation/doc changes since fix: <paths or none>
+
+
+      ## Raw Verification Commands
+
+      ```text
+
+      <full conformance audit commands and raw stdout/stderr>
+
+      <slash-status smoke raw output>
+
+      <failure-path smoke raw output>
+
+      <sessions helper contract raw output>
+
+      <getAllTools failure probe raw output>
+
+      <child stderr whitelist probe raw output>
+
+      <VT47 proof raw output or supplemental proof artifact>
+
+      ```
+
+
+      ## Requirements Register and Taxonomy
+
+      | requirement_id | source_ref + key passage | obligation | evidence_ref | verdict
+      |
+
+      | --- | --- | --- | --- | --- |
+
+      | B1 | <ref> | <obligation> | <artifact> | <CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE>
+      |
+
+      | B2 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | B3 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | B4 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | B5 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | B6 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | B7/VT47 | <ref> | <obligation> | <artifact> | <verdict> |
+
+      | VT42-VT48 | <ref> | <obligation> | <artifact> | <verdict> |
+
+
+      ## Closure-Path Table
+
+      | item | behavior_claim | runtime_proof_expected | evidence_ref | status | closure_path
+      | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1 | <claim> | <proof> | <artifact> | <PROVEN/NEEDS_TEST/UNPROVEN/BLOCKED>
+      | <path> | <basis> |
+
+      | B2 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+      | B3 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+      | B4 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+      | B5 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+      | B6 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+      | B7/VT47 | <claim> | <proof> | <artifact> | <status> | <path> | <basis> |
+
+
+      ## Gate Decision
+
+      gate_open_allowed: <true|false>
+
+      reason: <why every blocker-class row is closed or why gate remains blocked>'
+    depends_on:
+    - pi_postspec_conformance_blockers_b1_b7_fix_20260602
