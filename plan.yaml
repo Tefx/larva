@@ -92358,7 +92358,7 @@ phases:
       implementation step.'
   - id: pi_postspec_subagent_ux_impl_20260602
     name: Complete larva_subagent sessions helper and row rendering UX
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -92531,6 +92531,82 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T18:06:36.070240+00:00'
+    done_at: '2026-06-01T18:22:29.042208+00:00'
+    evidence: 'status: SUCCESS
+
+      worker_task_ids: [ses_17ba0f906ffedOkk0cEeIipnLV, ses_17b98b9c9ffeFSJRjvOZqJCvcA]
+
+      worker_commits: [d9a06dc, d4fd366]
+
+      mainline_commits: [137241e, 6ad0ab8]
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — used VT46/runtime requirements for
+      process-local `larva_subagent_sessions(limit?)`, row-local renderCall/onUpdate/renderResult,
+      collapsed/expanded final result views, parent footer preservation, and no dashboard
+      surface.
+
+      - contrib/pi-extension/README.md — used ToolResult wrapper mirror fields, resume
+      footer for non-null task_id, sessions helper default/max/invalid/details-only
+      behavior, no sidecars/scans/aliases, and rendering/progress UX constraints.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: contrib/pi-extension/larva.ts
+
+      - no_change: plan.yaml, `.git/vectl/claims.json`, shared schemas, test contract
+      artifacts, sidecar/provenance/lock files.
+
+
+      ## Implementation Receipt
+
+      - ToolResult wrapper/resume footer/sessions/render hooks/VT46/truncation: upstream
+      expected-red tests now pass green.
+
+      - Forbidden side effects: implementation changed only `contrib/pi-extension/larva.ts`;
+      no sidecars, filesystem scans, schema changes, aliases, or widget dashboard
+      introduced.
+
+      - Mainline remediation: first mainline verification exposed failure-path UI
+      evidence regression; remediation root cause was persona switch failure path
+      emitted notify-only UI requests. Fixed by emitting status via `setStatus` before
+      failure notification while preserving error notify behavior.
+
+      - deviation_records: []
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q` → exit 0; 4 passed in 10.19s.
+
+      - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` → exit 0; 70 passed in 41.94s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path` → exit
+      0; uiRequests include `setStatus` events with `statusKey`/`statusText` and expected
+      failure notifications for missing/unparseable personas.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Checklist receipt
+
+      All twelve checklist obligations were toggled by orchestrator: refs confirmation,
+      changed-files/receipts/gaps, ToolResult mirror/isError, resume footer non-null/null
+      behavior, sessions helper behavior, renderCall/onUpdate/renderResult row-local
+      visibility, VT46 collapsed/expanded final views, parent footer preservation,
+      no widget dashboard, preview/truncation bounds, and child Pi RPC/session/resume
+      validation unchanged.
+
+
+      ## Gaps / blockers
+
+      none'
   - id: pi_postspec_subagent_ux_runtime_proof_20260602
     name: Prove subagent ToolResult, session helper, and rendering runtime behavior
     status: pending
