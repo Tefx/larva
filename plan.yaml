@@ -85931,3 +85931,552 @@ phases:
     both-files conflict, no auto-merge, and no long-term fallback; invar guard passes.'
   depends_on:
   - pi-adapter-local-model-map-config-2026-06-01
+  steps:
+  - id: pi_tool_policy_no_legacy_contract_20260601
+    name: Freeze no-legacy Pi tool-policy contract
+    status: pending
+    description: 'ACCEPTED CONTRACT ARTIFACT:
+
+      Codify the changed requirement for Pi tool-policy path resolution across launcher,
+      extension, docs, tests, and operator migration proof.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user requirement: no legacy fallback | Runtime MUST NOT read `~/.pi/tool-policy.json`
+      unless explicitly set via `LARVA_PI_TOOL_POLICY_FILE` | pi_tool_policy_no_fallback_python_impl_20260601,
+      pi_tool_policy_no_fallback_extension_impl_20260601 | no implicit legacy read
+      | runtime_path_matrix | OWNED | n/a |
+
+      | R2 | user requirement: canonical default | Env absent defaults to `~/.pi/larva/tool-policy.json`
+      only | pi_tool_policy_no_fallback_extension_impl_20260601 | canonical-only default
+      | extension_path_matrix | OWNED | n/a |
+
+      | R3 | user requirement: launcher env behavior | Launcher must preserve explicit
+      env override and otherwise not force old path; acceptable choices: do not set
+      env by default or set canonical only | pi_tool_policy_no_fallback_python_impl_20260601
+      | launcher env semantics | launcher_env_matrix | OWNED | n/a |
+
+      | R4 | user requirement: direct migration/operator proof | Old-only local state
+      moves to canonical and removes old; both-files conflict fails/reports without
+      merge/overwrite | pi_tool_policy_operator_migration_proof_20260601 | migration/conflict
+      proof | migration_report | OWNED | n/a |
+
+      | R5 | user requirement: docs | Docs state old path unsupported after migration,
+      not fallback | pi_tool_policy_no_legacy_docs_20260601 | docs no fallback | docs_diff_summary
+      | OWNED | n/a |
+
+      | R6 | user requirement: tests | Tests prove old-only absent env does NOT apply
+      old policy; canonical applies; explicit env old applies | pi_tool_policy_no_legacy_tests_20260601,
+      pi_tool_policy_no_legacy_runtime_guard_20260601 | no-fallback tests | test_matrix
+      | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      Refs and likely touched files are `src/larva/shell/pi.py`, `contrib/pi-extension/larva.ts`,
+      Pi extension README/design docs, and Pi launcher/extension tests. This contract
+      supersedes the done phase text that planned legacy fallback; do not edit completed
+      work.
+
+
+      <side_effect_budget>
+
+      Allowed: update repo contracts/tests/docs to express no-legacy semantics. Forbidden:
+      product implementation logic, user home file mutation, background migration
+      daemon, compatibility window, auto-merge of both policy files, or compatibility
+      aliases.
+
+
+      <risk_probes>
+
+      - Verify no stale mention of legacy fallback remains in docs or extension metadata.
+
+      - Verify launcher does not reintroduce old path by setting `LARVA_PI_TOOL_POLICY_FILE`
+      implicitly.
+
+      - Verify explicit env override remains strict and can intentionally point at
+      old path.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Contract matrix includes every user requirement R1-R6 with owning downstream
+      step and evidence field.
+
+      - [ ] Contract explicitly rejects legacy fallback, auto-migration daemon, compatibility
+      window, and auto-merge.
+
+      - [ ] Contract preserves explicit `LARVA_PI_TOOL_POLICY_FILE` override behavior.
+
+      - [ ] Evidence cites key passages or observed symbols from each ref.'
+    refs:
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - contrib/pi-extension/test-tool-policy-paths.mjs
+    agent: software-architect
+  - id: pi_tool_policy_no_legacy_tests_20260601
+    name: Add expected-red no-fallback policy tests
+    status: pending
+    description: 'PROOF ARTIFACT:
+
+      Add behavior-defining tests before implementation changes. This is a pre-implementation
+      test-definition step: red is expected until no-legacy implementation lands.
+
+
+      Scope:
+
+      - Python launcher contract tests in `tests/shell/test_pi_launcher_contract.py`.
+
+      - Extension path tests in `tests/shell/test_pi_extension_contract.py` and/or
+      `contrib/pi-extension/test-tool-policy-paths.mjs`.
+
+
+      Required test matrix:
+
+      - absent env + only `~/.pi/tool-policy.json` present => old policy is NOT selected/applied.
+
+      - absent env + canonical `~/.pi/larva/tool-policy.json` present => canonical
+      policy selected/applied.
+
+      - explicit `LARVA_PI_TOOL_POLICY_FILE=~/.pi/tool-policy.json` => old path honored
+      only because explicit env override was set.
+
+      - both old and canonical files present in migration/operator proof fixture =>
+      conflict reported; no merge/overwrite.
+
+
+      step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+
+      <side_effect_budget>
+
+      Allowed: test files/fixtures only. Forbidden: production code changes, mutation
+      of real `~/.pi` files, or weakening existing Pi runtime tests.
+
+
+      <risk_probes>
+
+      - Confirm tests fail for the current legacy-fallback behavior for the right
+      reason.
+
+      - Confirm fixtures do not include convenience env overrides in the absent-env
+      cases.
+
+      - Confirm no test encodes fallback as acceptable debt.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Modified files are limited to tests/fixtures for this step.
+
+      - [ ] Test matrix covers absent-env old-only rejection, absent-env canonical
+      acceptance, and explicit-env old-path acceptance.
+
+      - [ ] Red proof shows the current implementation exposes the no-legacy gap before
+      implementation changes.
+
+      - [ ] No real user home files are modified.'
+    refs:
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - contrib/pi-extension/test-tool-policy-paths.mjs
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    agent: integration-verifier
+  - id: pi_tool_policy_no_fallback_python_impl_20260601
+    name: Complete launcher no-fallback tool-policy env behavior
+    status: pending
+    description: 'TARGET STATE:
+
+      `src/larva/shell/pi.py` no longer defaults `LARVA_PI_TOOL_POLICY_FILE` to `~/.pi/tool-policy.json`.
+      The launcher preserves explicit user override behavior. When no override exists,
+      it either leaves `LARVA_PI_TOOL_POLICY_FILE` unset so the extension uses canonical
+      default, or sets it only to `~/.pi/larva/tool-policy.json`.
+
+
+      Complete the implementation within existing launcher boundaries. Do not add
+      compatibility fallback or long-term migration logic.
+
+
+      Known current issues to remove:
+
+      - `_tool_policy_file` defaults to `Path.home() / ".pi" / "tool-policy.json"`.
+
+      - launcher always writes `child_env[LARVA_PI_TOOL_POLICY_FILE_ENV] = _tool_policy_file(environ).unwrap()`.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; behavior
+      must vary based on env override presence.
+
+
+      <side_effect_budget>
+
+      Allowed: modify `src/larva/shell/pi.py` and necessary launcher-adjacent test
+      fixtures only. Forbidden: reading old path absent explicit env, auto-moving
+      user files, compatibility aliases, or touching opifex/shared PersonaSpec surfaces.
+
+
+      <risk_probes>
+
+      - Explicit env override to old path remains accepted because it is user-directed.
+
+      - Absent env does not cause launcher to force the old path into child env.
+
+      - Invar Core/Shell rules remain respected; this is Shell path behavior.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] `src/larva/shell/pi.py` has no absent-env default to `~/.pi/tool-policy.json`.
+
+      - [ ] Explicit `LARVA_PI_TOOL_POLICY_FILE` override is preserved unchanged,
+      including if user points it at old path.
+
+      - [ ] Focused launcher tests cover absent-env and explicit-env behavior.
+
+      - [ ] No product code attempts long-term fallback, auto-migration, or merge.'
+    refs:
+    - src/larva/shell/pi.py
+    - tests/shell/test_pi_launcher_contract.py
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    - pi_tool_policy_no_legacy_tests_20260601
+    agent: python-senior
+  - id: pi_tool_policy_no_fallback_extension_impl_20260601
+    name: Complete extension canonical-only tool-policy path behavior
+    status: pending
+    description: 'TARGET STATE:
+
+      `contrib/pi-extension/larva.ts` resolves tool policy to canonical `~/.pi/larva/tool-policy.json`
+      only when `LARVA_PI_TOOL_POLICY_FILE` is absent. `toolPolicyPathCandidates`,
+      `selectedToolPolicyPath`, and metadata/documented path order must not express
+      legacy fallback.
+
+
+      Complete implementation within the existing extension interfaces; do not add
+      a compatibility window or automatic migration.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable; the
+      exported path behavior must be exercised by tests.
+
+
+      <side_effect_budget>
+
+      Allowed: modify `contrib/pi-extension/larva.ts` and extension path tests/fixtures.
+      Forbidden: reading `~/.pi/tool-policy.json` absent explicit env, adding background
+      migration, or silently resolving both-file conflicts.
+
+
+      <risk_probes>
+
+      - `toolPolicyPathCandidates` does not return legacy path unless driven by explicit
+      env override.
+
+      - `selectedToolPolicyPath` does not do canonical-if-exists-else-legacy.
+
+      - Extension metadata no longer says legacy fallback is in the order.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Absent-env extension default is exactly canonical `~/.pi/larva/tool-policy.json`.
+
+      - [ ] Old-only absent-env fixture does not apply/select old policy.
+
+      - [ ] Explicit-env old path fixture is honored only because env override was
+      set.
+
+      - [ ] Metadata/path-order text in code no longer advertises legacy fallback.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - contrib/pi-extension/test-tool-policy-paths.mjs
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    - pi_tool_policy_no_legacy_tests_20260601
+    agent: frontend-engineer
+  - id: pi_tool_policy_no_legacy_docs_20260601
+    name: Update Pi docs to unsupported-old-path semantics
+    status: pending
+    description: 'CONFORMANCE ARTIFACT:
+
+      Update Pi user/operator documentation to state that `~/.pi/tool-policy.json`
+      is unsupported after migration and is not a fallback path. Document canonical
+      path `~/.pi/larva/tool-policy.json`, explicit `LARVA_PI_TOOL_POLICY_FILE` override,
+      and conflict behavior for operator migration.
+
+
+      Docs must not claim "must not auto-migrate" as a reason to keep fallback. They
+      must instead state: no long-term fallback; migrate explicitly or set env override
+      intentionally.
+
+
+      <side_effect_budget>
+
+      Allowed: modify `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.
+      Forbidden: changing code/tests or inventing daemon/background migration features.
+
+
+      <risk_probes>
+
+      - Search docs for stale "legacy fallback", "fallback order", and old path as
+      default.
+
+      - Ensure explicit override text cannot be misread as automatic fallback.
+
+      - Ensure both-files conflict says fail/report, not merge.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Docs name canonical path as default and old path as unsupported unless
+      explicitly configured via env.
+
+      - [ ] Docs include one-time migration/conflict operator guidance.
+
+      - [ ] Docs contain no remaining legacy fallback wording for Pi tool policy.
+
+      - [ ] Docs do not introduce background migration, compatibility window, or auto-merge.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    agent: doc-reviewer
+  - id: pi_tool_policy_operator_migration_proof_20260601
+    name: Prove one-time operator migration semantics
+    status: pending
+    description: 'PROOF ARTIFACT:
+
+      Provide runtime/operator proof for direct migration semantics without introducing
+      long-term fallback. Use a safe dry-run/fixture equivalent by default; actual
+      local file move is allowed only if explicitly authorized by the operator in
+      the execution context.
+
+
+      Required scenarios:
+
+      - old-only: `~/.pi/tool-policy.json` exists and canonical `~/.pi/larva/tool-policy.json`
+      does not => move old to canonical and leave no old file.
+
+      - both-files: old and canonical both exist => fail/report conflict; do not merge
+      or overwrite.
+
+      - canonical-only: no action needed.
+
+      - absent both: no action needed.
+
+
+      This step is not an implementation of a background migration daemon. It is an
+      operator proof/checklist for current local state and a fixture-level proof that
+      the migration rule is safe.
+
+
+      <side_effect_budget>
+
+      Allowed: safe temp-directory fixtures; optional explicit operator-authorized
+      move of `/Users/tefx/.pi/tool-policy.json` to `/Users/tefx/.pi/larva/tool-policy.json`.
+      Forbidden: silent overwrite, silent merge, runtime fallback, or user-home mutation
+      without explicit operator authorization.
+
+
+      <risk_probes>
+
+      - If actual local old-only state is still present, report whether operator authorized
+      the move.
+
+      - If both files exist, stop with conflict evidence and require user decision.
+
+      - Verify old file absent after an authorized move or fixture move.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Migration proof covers old-only, both-files conflict, canonical-only,
+      and absent-both scenarios.
+
+      - [ ] Proof uses safe fixtures unless actual operator authorization is explicitly
+      recorded.
+
+      - [ ] Old-only proof ends with canonical file present and old file absent.
+
+      - [ ] Both-files proof reports conflict without merge/overwrite.
+
+      - [ ] Evidence distinguishes fixture proof from actual local `/Users/tefx/.pi`
+      state.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    - pi_tool_policy_no_legacy_docs_20260601
+    agent: integration-verifier
+  - id: pi_tool_policy_no_legacy_runtime_guard_20260601
+    name: Verify no-fallback runtime behavior and invar guard
+    status: pending
+    description: 'PROOF ARTIFACT:
+
+      Independent phase-check protecting `pi-tool-policy-no-legacy-2026-06-01.gate`.
+      Verify the real launcher/extension path behavior after implementation and docs
+      updates.
+
+
+      verification_scope: phase-check
+
+      Independence Level: L2, because this crosses Python launcher and TypeScript
+      extension seams.
+
+
+      Behavioral proof register required with fields: requirement_ref, behavior_claim,
+      runtime_proof_expected, evidence_ref, status, closure_path, gate_decision_basis.
+
+
+      Required runtime/test evidence:
+
+      - absent env + only old file present does NOT apply/select old policy.
+
+      - absent env + canonical file present applies/selects canonical policy.
+
+      - explicit env override to old path applies/selects old policy because override
+      is explicit.
+
+      - launcher does not force old path into `LARVA_PI_TOOL_POLICY_FILE` by default.
+
+      - extension metadata/path candidates no longer list legacy fallback.
+
+      - `invar guard` passes via project canonical command family.
+
+
+      <side_effect_budget>
+
+      Allowed: run tests, temp fixtures, static scans, invar guard. Forbidden: code/docs
+      edits, actual user-home mutation, or accepting missing runtime proof as pass.
+
+
+      <risk_probes>
+
+      - Mock-heavy tests are insufficient unless paired with seam-level path proof.
+
+      - Verify both Python and extension sides agree on canonical default.
+
+      - Treat any stale fallback doc/code path as blocker-class because it intersects
+      this phase gate.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Raw stdout from focused Python launcher tests shows no-fallback matrix
+      green.
+
+      - [ ] Raw stdout from focused extension path tests shows no-fallback matrix
+      green.
+
+      - [ ] Static scan confirms no implicit legacy fallback wording/path-order remains
+      in runtime code or metadata.
+
+      - [ ] Raw stdout from `invar guard` or canonical project guard command shows
+      green.
+
+      - [ ] Behavioral proof register closes R1-R6 as PROVEN or records blocking remediation.'
+    refs:
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - contrib/pi-extension/test-tool-policy-paths.mjs
+    depends_on:
+    - pi_tool_policy_no_fallback_python_impl_20260601
+    - pi_tool_policy_no_fallback_extension_impl_20260601
+    - pi_tool_policy_no_legacy_docs_20260601
+    - pi_tool_policy_operator_migration_proof_20260601
+    agent: integration-verifier
+  - id: pi_tool_policy_no_legacy_gate_20260601
+    name: Gate Pi tool-policy no-legacy cutover
+    status: pending
+    description: 'DECISION ARTIFACT:
+
+      As an INDEPENDENT REVIEWER, decide whether the Pi tool-policy no-legacy cutover
+      can open. This gate protects downstream Pi model-map/autocomplete and draft-helper
+      work from inheriting stale fallback semantics.
+
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - Phase changes cross-language runtime path semantics and user/operator file
+      behavior.
+
+      - Prior completed phase explicitly planned the opposite legacy fallback behavior.
+
+      - User home state may contain old-only policy file, so fixture vs actual proof
+      must be clearly distinguished.
+
+
+      Gate decision basis must review the traceability matrix R1-R6, implementation
+      evidence, docs evidence, operator migration proof, runtime no-fallback proof,
+      and invar guard output.
+
+
+      BLOCK if:
+
+      - absent-env runtime can still read/apply `~/.pi/tool-policy.json`.
+
+      - launcher implicitly sets `LARVA_PI_TOOL_POLICY_FILE` to old path.
+
+      - docs/code metadata still advertise legacy fallback.
+
+      - migration proof lacks old-only move or both-files conflict coverage.
+
+      - invar guard is missing or red.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence, run lightweight confirmatory scans/tests if needed.
+      Forbidden: code/docs edits or user-home mutation.
+
+
+      <risk_probes>
+
+      - Check for sampled-evidence approval; every R1-R6 row needs positive proof.
+
+      - Check for provenance/disposition errors: "pre-existing old local file" is
+      not a disposition.
+
+      - Check that explicit override old-path acceptance is not confused with fallback
+      acceptance.'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] Gate decision basis maps each R1-R6 row to positive evidence or blocker
+      remediation.
+
+      - [ ] Confirms no implicit legacy fallback remains in runtime code, extension
+      metadata, tests, or docs.
+
+      - [ ] Confirms operator migration evidence is safe and conflict-aware.
+
+      - [ ] Confirms invar guard evidence is present and green.
+
+      - [ ] Final decision is OPEN only if blocker-class runtime/docs/test obligations
+      are PROVEN.'
+    refs:
+    - src/larva/shell/pi.py
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_tool_policy_no_legacy_contract_20260601
+    - pi_tool_policy_no_legacy_tests_20260601
+    - pi_tool_policy_no_fallback_python_impl_20260601
+    - pi_tool_policy_no_fallback_extension_impl_20260601
+    - pi_tool_policy_no_legacy_docs_20260601
+    - pi_tool_policy_operator_migration_proof_20260601
+    - pi_tool_policy_no_legacy_runtime_guard_20260601
+    agent: gate-reviewer
