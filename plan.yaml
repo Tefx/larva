@@ -87267,32 +87267,32 @@ phases:
       \ not checked-in fixtures or legacy docs.\n</risk_probes>"
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the approved design sections governing the gate
+      - [x] refs confirmation cites the approved design sections governing the gate
       decision.
 
-      - [ ] Every phase step has specific evidence, checklist receipts, and no unresolved
+      - [x] Every phase step has specific evidence, checklist receipts, and no unresolved
       blocker-class gaps.
 
-      - [ ] Fixture unit-test proof is green and covers deterministic merge/candidate/output/error
+      - [x] Fixture unit-test proof is green and covers deterministic merge/candidate/output/error
       cases.
 
-      - [ ] Live runtime proof includes real `pi --list-models --offline` evidence
+      - [x] Live runtime proof includes real `pi --list-models --offline` evidence
       and current registry evidence, or blocks with exact environment cause.
 
-      - [ ] Redirect-safe stdout, stderr reports, non-interactive unresolved failure,
+      - [x] Redirect-safe stdout, stderr reports, non-interactive unresolved failure,
       optional --json semantics if implemented, and --write shape are positively proven.
 
-      - [ ] Spec conformance and invar guard evidence are reviewed and blocker-class
+      - [x] Spec conformance and invar guard evidence are reviewed and blocker-class
       drift has remediation ownership.
 
-      - [ ] Fail-closed inventory retest `pi_model_map_draft_fail_closed_inventory_retest_20260601`
+      - [x] Fail-closed inventory retest `pi_model_map_draft_fail_closed_inventory_retest_20260601`
       is reviewed and proves empty stdout+stderr, whitespace-only output, and unparseable
       successful Pi output return `LARVA_PI_MODELS_UNAVAILABLE`.
 
-      - [ ] Gate decision basis maps every requirement row to PROVEN or a blocking
+      - [x] Gate decision basis maps every requirement row to PROVEN or a blocking
       closure path; sampled/no-blocker claims are rejected.
 
-      - [ ] Final decision is OPEN or BLOCKED with concrete reasons.'
+      - [x] Final decision is OPEN or BLOCKED with concrete reasons.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-model-map-draft-helper.md — <key passages or NOT READ:\
       \ reason>\n\n## Gate Review Report\n**Reviewer**: gate-reviewer (independent\
