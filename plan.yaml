@@ -87521,7 +87521,7 @@ phases:
       Commit hash(es): `56d19d00c3b0dcdcd510ab79728ca50ef2cdc7a7`'
   - id: pi_model_map_draft_live_cli_retest_20260601
     name: Retest live Pi current-registry model-map draft proof
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -87645,6 +87645,8 @@ phases:
     depends_on:
     - pi_model_map_draft_live_cli_channel_fix_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T11:32:55.163193+00:00'
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
   status: done
