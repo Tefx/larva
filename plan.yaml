@@ -93284,13 +93284,21 @@ phases:
       final view, expanded final view fields, resume footer behavior, parent `larva:`
       footer preservation, and no-widget-dashboard prohibition.
 
-      - [ ] Raw output from B1-B7 regression-relevant runtime/probe commands confirms
-      no conformance blocker reappeared.
+      - [ ] Raw output from B1-B7 regression-relevant runtime/probe commands is included
+      and supports one explicit disposition: either no conformance blocker reappeared,
+      or blocker(s) reappeared with closure path and explicit remediation step IDs
+      (`pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602` and `pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602`
+      or a later concrete owner).
 
       - [ ] Raw output from invar guard is included.
 
       - [ ] Behavioral proof register maps all runtime-sensitive requirements to PROVEN/BLOCKED
-      statuses.'
+      statuses and gives every BLOCKED item a closure path.
+
+      - [ ] Gate decision artifact explicitly records `gate_open_allowed: false` when
+      any blocker exists; failed audit evidence may complete this audit step only
+      as a blocked-evidence artifact and must not open or weaken downstream/final
+      gates.'
     evidence_template: '## refs Read Confirmation
 
       For each ref in this step, include one bullet with the exact key passage used
