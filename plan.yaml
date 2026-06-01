@@ -90700,3 +90700,15 @@ phases:
   depends_on:
   - pi-subagent-sessionfile-protocol-2026-06-01
   - meta.gate
+- id: pi-postspec-editor-prompt-2026-06-02
+  name: Pi Post-Spec Editor UX and Prompt Overlay 2026-06-02
+  status: locked
+  gate: Phase opens only when /larva-persona completion, selector behavior, process-local
+    cache/in-flight sharing, @persona:<id> mention autocomplete, Pi file-reference
+    preservation, and Larva-managed prompt overlay are implemented/proven without
+    prompt catalogue injection, raw @<id> support, persona auto-switch, forced larva_subagent,
+    Pi default identity sentence rewrites, Pi prompt-builder replacement, or provider
+    payload rewrite.
+  depends_on:
+  - pi-postspec-launcher-config-2026-06-02
+  - meta.gate
