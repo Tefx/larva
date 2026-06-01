@@ -145,6 +145,10 @@ def _parse_pi_inventory(text: str) -> Result[list[PiModelInventoryItem], CliFail
         if parts[0].lower() == "provider" and parts[1].lower() in {"model_id", "model"}:
             continue
         rows.add((parts[0], parts[1]))
+    if not rows:
+        return Failure(
+            _failure(LARVA_PI_MODELS_UNAVAILABLE, "pi model inventory output is not parseable").unwrap()
+        )
     return Success([{"provider": provider, "model_id": model_id} for provider, model_id in sorted(rows)])
 
 

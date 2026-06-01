@@ -111,7 +111,7 @@ def test_stale_exact_mapping_removal_reporting(fake_pi_bin, mock_subprocess_run,
     Existing model-map:
     - stale exact mapping removal/reporting
     """
-    mock_subprocess_run.return_value.stdout = b"PROVIDER\tMODEL_ID\n"
+    mock_subprocess_run.return_value.stdout = b"PROVIDER\tMODEL_ID\nopenai\tgpt-4o\n"
     facade = _make_facade([])
     
     map_file = tmp_path / "model-map.json"
@@ -197,7 +197,7 @@ def test_stale_prefix_rule_reporting_removal(fake_pi_bin, mock_subprocess_run, t
     Existing model-map:
     - stale prefix rule reporting/removal
     """
-    mock_subprocess_run.return_value.stdout = b"PROVIDER\tMODEL_ID\n"
+    mock_subprocess_run.return_value.stdout = b"PROVIDER\tMODEL_ID\nopenai\tgpt-4o\n"
     facade = _make_facade([])
     
     map_file = tmp_path / "model-map.json"
@@ -402,6 +402,65 @@ def test_successful_pi_inventory_rows_on_stderr_are_consumed(fake_pi_bin, mock_s
     }
     assert "PROVIDER" not in stdout.getvalue()
     assert "pi-model-map draft report:" in stderr.getvalue()
+
+
+@pytest.mark.parametrize(
+    ("stdout_bytes", "stderr_bytes"),
+    [
+        (b"", b""),
+        (b" \n\t\n", b"  \n"),
+    ],
+)
+def test_successful_pi_inventory_without_rows_fails_closed(
+    fake_pi_bin,
+    mock_subprocess_run,
+    stdout_bytes,
+    stderr_bytes,
+):
+    """
+    Pi inventory fail-closed policy:
+    - successful `pi --list-models --offline` output with no provider/model rows
+      is not sufficient evidence for a draft.
+    - failure must not emit raw draft JSON on stdout.
+    """
+    mock_subprocess_run.return_value.stdout = stdout_bytes
+    mock_subprocess_run.return_value.stderr = stderr_bytes
+    facade = _make_facade([
+        {"id": "a", "description": "", "spec_digest": "", "model": "openai/gpt-4o"}
+    ])
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi-model-map", "draft", "--non-interactive"], facade=facade, stdout=stdout, stderr=stderr)
+
+    assert code != 0
+    assert stdout.getvalue() == ""
+    assert "LARVA_PI_MODELS_UNAVAILABLE" in stderr.getvalue()
+
+
+def test_successful_pi_inventory_unparseable_output_fails_closed(fake_pi_bin, mock_subprocess_run):
+    """
+    Pi inventory fail-closed policy:
+    - successful command output that cannot expose provider/model_id columns
+      returns LARVA_PI_MODELS_UNAVAILABLE instead of a speculative draft.
+    """
+    mock_subprocess_run.return_value.stdout = b"PROVIDER\tMODEL_ID\nnot-enough-columns\n"
+    mock_subprocess_run.return_value.stderr = b""
+    facade = _make_facade([
+        {"id": "a", "description": "", "spec_digest": "", "model": "openai/gpt-4o"}
+    ])
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi-model-map", "draft", "--non-interactive"], facade=facade, stdout=stdout, stderr=stderr)
+
+    assert code != 0
+    assert stdout.getvalue() == ""
+    assert "LARVA_PI_MODELS_UNAVAILABLE" in stderr.getvalue()
 
 
 def test_optional_json_envelope_behavior(fake_pi_bin, mock_subprocess_run, tmp_path):
