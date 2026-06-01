@@ -86096,7 +86096,7 @@ phases:
       items from checklist_receipt before completion.'
   - id: pi_tool_policy_no_legacy_tests_20260601
     name: Add expected-red no-fallback policy tests
-    status: pending
+    status: claimed
     description: 'PROOF ARTIFACT:
 
       Add behavior-defining tests before implementation changes. This is a pre-implementation
@@ -86167,6 +86167,8 @@ phases:
     depends_on:
     - pi_tool_policy_no_legacy_contract_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T08:22:42.548303+00:00'
   - id: pi_tool_policy_no_fallback_python_impl_20260601
     name: Complete launcher no-fallback tool-policy env behavior
     status: pending
