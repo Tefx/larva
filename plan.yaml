@@ -87456,25 +87456,25 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites all relevant code/test/docs refs or explicit NOT
+      - [x] refs confirmation cites all relevant code/test/docs refs or explicit NOT
       READ reasons.
 
-      - [ ] Decision basis reviews requirement-to-checklist matrix rows R1-R4/R1-R3
+      - [x] Decision basis reviews requirement-to-checklist matrix rows R1-R4/R1-R3
       from all phase steps.
 
-      - [ ] Positive proof shows expected-red tests existed before implementation
+      - [x] Positive proof shows expected-red tests existed before implementation
       and are green after implementation.
 
-      - [ ] Positive proof shows success, failure-before-session, failed-after-allocation
+      - [x] Positive proof shows success, failure-before-session, failed-after-allocation
       where feasible, and cancelled paths are renderer-safe or have explicit blocker
       ownership.
 
-      - [ ] Positive runtime proof shows no `getTextOutput`/`content.filter` uncaughtException
+      - [x] Positive runtime proof shows no `getTextOutput`/`content.filter` uncaughtException
       in Pi interactive/RPC render path.
 
-      - [ ] Docs and guard/repo test receipts are specific, raw, and complete.
+      - [x] Docs and guard/repo test receipts are specific, raw, and complete.
 
-      - [ ] Final decision is OPEN only if all blocker-class behavioral obligations
+      - [x] Final decision is OPEN only if all blocker-class behavioral obligations
       are PROVEN or have explicit non-intersection evidence.'
     refs:
     - contrib/pi-extension/larva.ts
