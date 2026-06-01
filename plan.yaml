@@ -94484,19 +94484,19 @@ phases:
       explicit environment-supported non-blocking disposition.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per authoritative ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`,
       `tests/shell/test_pi_reported_failures_expected_red.py`, `tests/shell/test_pi_extension_contract.py`,
       `contrib/pi-extension/larva.ts`) and key passages or `NOT READ: <reason>`.
 
-      - [ ] Raw output from broad Pi contract command is included and green: `./.venv/bin/python
+      - [x] Raw output from broad Pi contract command is included and green: `./.venv/bin/python
       -m pytest tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_contract.py
       tests/shell/test_pi_model_map.py tests/shell/test_pi_model_map_draft_contract.py
       tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
       tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_reported_failures_expected_red.py
       -v`.
 
-      - [ ] Raw output from B1-B7 regression probe command is included and green:
+      - [x] Raw output from B1-B7 regression probe command is included and green:
       `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim
       tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path
       tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag
@@ -94506,22 +94506,22 @@ phases:
       tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors
       tests/shell/test_pi_reported_failures_expected_red.py -v`.
 
-      - [ ] Raw output from supplemental Pi runtime test is included and green: `./.venv/bin/python
+      - [x] Raw output from supplemental Pi runtime test is included and green: `./.venv/bin/python
       -m pytest tests/shell/test_pi_extension_real_runtime.py -v`.
 
-      - [ ] Raw output from autocomplete smoke proof is included and remains green
+      - [x] Raw output from autocomplete smoke proof is included and remains green
       or has environment-supported non-blocking disposition.
 
-      - [ ] Raw output from VT46 targeted proof is included and remains green or has
+      - [x] Raw output from VT46 targeted proof is included and remains green or has
       environment-supported non-blocking disposition.
 
-      - [ ] Raw output from `invar guard` is included and green.
+      - [x] Raw output from `invar guard` is included and green.
 
-      - [ ] Behavioral proof register includes `blockers: []` and `gate_open_allowed:
+      - [x] Behavioral proof register includes `blockers: []` and `gate_open_allowed:
       true`, with no `NEEDS_TEST`, `UNPROVEN`, or `UNCERTAIN_BLOCKING` blocker-class
       rows.
 
-      - [ ] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
+      - [x] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
     evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
       \ retest)\n**Scope**: initial startup tool enumerator fail-closed blocker and\
       \ Pi finalization runtime proof\n**Independence Level**: L2\n\n## refs Read\
