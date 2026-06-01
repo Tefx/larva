@@ -90703,7 +90703,7 @@ phases:
   steps:
   - id: pi_postspec_launcher_config_traceability_20260602
     name: Trace commit 4616008 launcher and config requirements
-    status: claimed
+    status: done
     description: 'step_type: contract
 
       agent_source: project
@@ -90802,6 +90802,52 @@ phases:
     agent: software-architect
     claimed_by: software-architect
     claimed_at: '2026-06-01T16:47:06.105436+00:00'
+    done_at: '2026-06-01T16:52:06.122249+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — Read by software-architect in isolated worktree. Key passages cited: launcher/extension\
+      \ loading and env contract (design lines 102-118, 1300-1318), model-map canonical/override/resolution\
+      \ rules (lines 369-412), draft helper rules (lines 420-438), tool-policy canonical/no-legacy/runtime-vs-migration\
+      \ rules (lines 482-513).\n- contrib/pi-extension/README.md — Read by software-architect\
+      \ in isolated worktree. Key passages cited: launcher env and no settings fallback\
+      \ (README lines 21-32), model-map canonical path/absolute override/resolution\
+      \ (lines 40-84), draft helper policy (lines 86-104), tool-policy canonical path/no\
+      \ implicit legacy read/operator-only migration (lines 118-154).\n\n## Changed\
+      \ Files / No-Change Report\n- changed_files: none\n- no_change_reason: Contract/proof\
+      \ artifact step only; side-effect budget allowed inspection and proof matrix\
+      \ production and forbade product code changes, user dotfile writes, schema changes,\
+      \ compatibility aliases, and legacy fallback reintroduction.\n- worktree_status:\
+      \ clean\n- merge_result: `git merge --squash vectl/step-pi_postspec_launcher_config_traceability_20260602`\
+      \ reported already up to date / nothing to squash.\n\n## Requirement Traceability\
+      \ Receipt\n- matrix_artifact: completed in subagent evidence with rows for PI4616008-LAUNCH-ENV,\
+      \ PI4616008-MODEL-MAP, PI4616008-DRAFT, PI4616008-TOOL-POLICY.\n- requirements_covered:\
+      \ launcher/package/env behavior; adapter-local model-map runtime behavior; model-map\
+      \ draft helper behavior; adapter-local tool-policy runtime/migration boundary\
+      \ behavior.\n- dispositions:\n  - OWNED: 3 — launch/env, model-map runtime,\
+      \ and tool-policy have named design handoff phases or existing step IDs in the\
+      \ spec.\n  - DEFERRED: 1 — draft helper requires a dedicated helper implementation/proof\
+      \ step and does not block runtime resolver ownership.\n  - EXCLUDED: 0\n  -\
+      \ AMBIGUOUS: 0\n- old_pi_phases_covered: design handoff phase 1 covers launcher/package/env;\
+      \ phase 3 covers runtime model-map resolver; phase 4 covers tool-policy parsing/blocking\
+      \ and no implicit legacy fallback; existing tool-policy phases named in design\
+      \ lines 519-524 cover no-fallback implementation/docs/tests/migration proof/runtime\
+      \ guard.\n- residual_implementation_or_proof: draft helper dedicated helper\
+      \ step; launcher/env absolute adapter-local overrides and no settings-write\
+      \ proof; tool-policy no implicit legacy `~/.pi/tool-policy.json` probe proof;\
+      \ review of already-done evidence for no superseded legacy fallback semantics.\n\
+      \n## Verification Receipts\n- checklist_receipt:\n  - refs Read Confirmation\
+      \ with bullets/key passages: satisfied\n  - changed-files/no-change report plus\
+      \ receipts/gaps: satisfied\n  - matrix cites both docs/spec refs for every launcher/config\
+      \ family: satisfied\n  - every commit 4616008 launcher/config requirement dispositioned:\
+      \ satisfied\n  - no row uses pre-existing/out-of-scope as disposition: satisfied\n\
+      \  - matrix identifies old Pi phase coverage and residual implementation/proof:\
+      \ satisfied\n- commands_or_queries from worker: read required refs; additional\
+      \ reads on design/README relevant sections; grep for model-map/tool-policy/pi-model-map/verification/launcher/env\
+      \ markers; `git status --short --branch`; `git show --stat --oneline --name-only\
+      \ 4616008`; `git show --unified=40 ... 4616008`.\n- orchestrator verification:\
+      \ checklist toggled with `vectl_vectl_check`; main worktree `git status --short`\
+      \ clean; step worktree status clean; `vectl_validate(check_refs=true)` returned\
+      \ 0 errors with known 63 historical missing-ref warnings.\n- gaps_or_blockers:\
+      \ none for this contract/proof step."
   - id: pi_postspec_launcher_config_residual_impl_20260602
     name: Complete residual launcher/config semantics from commit 4616008
     status: pending
