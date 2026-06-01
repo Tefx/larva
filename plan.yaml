@@ -84683,7 +84683,7 @@ phases:
       Checklist receipt all PROVEN and toggled before completion.
   - id: pi_persona_autocomplete_impl_20260601
     name: Complete Pi persona autocomplete substring cache implementation
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       tags: ["integration"]
@@ -84765,6 +84765,22 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T09:54:35.454133+00:00'
+    done_at: '2026-06-01T10:02:02.301571+00:00'
+    evidence: 'Merged isolated implementation commit `ffc299182519e5916dcafffe33ef7bb6b8520d7c`
+      to main as `2f88a46`. Changed only `contrib/pi-extension/larva.ts`. Implemented
+      process-local persona list cache with 5s TTL, shared in-flight list promise
+      keyed by Larva argv context, lazy fetch through completion/list paths, fail-closed
+      malformed/list-error handling, resetPersonaCompletionCache, and prefix-first
+      case-insensitive substring ranking preserving registry order. Preserved existing
+      Pi command completer / narrow TUI provider delegation for non-`/larva-persona`
+      input and added no fuzzy/regex/wildcard/alias/prompt-injection behavior. Boundary
+      proof: no docs/tests/runtime config/deps/schema/opifex/model-map resolver changes.
+      Mainline verification: `uv run python -m pytest tests/shell/test_pi_extension_contract.py
+      -q` passed (48 passed); `uv run python -m pytest tests/shell/test_pi_extension_real_runtime.py
+      -k autocomplete -q` passed (4 passed, 13 deselected); autocomplete smoke cases
+      `tab-force`, `tab-regular`, `delegate-other-input`, and `list-failure` passed
+      with expected outputs; `git diff --check` produced no output; `uv run invar
+      guard` passed. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_persona_autocomplete_runtime_tests_20260601
     name: Add and run Pi autocomplete runtime tests
     status: pending
