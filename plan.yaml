@@ -84601,3 +84601,354 @@ phases:
     explicit evidence that a new user authorization is required.'
   depends_on:
   - pi-adapter-local-model-map-config-2026-06-01
+  steps:
+  - id: pi_persona_autocomplete_contract_docs_20260601
+    name: Freeze autocomplete and model-map docs contract
+    status: pending
+    description: 'step_type: contract
+
+      agent_source: project
+
+
+      ACCEPTED CONTRACT ARTIFACT: verify/adopt existing uncommitted docs edits in
+      `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`
+      as the phase contract.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user request/docs Pi autocomplete | Tab/Pi completer drives `/larva-persona`;
+      non-target input delegates to base provider | pi_persona_autocomplete_contract_docs_20260601
+      | docs state trigger/delegation | docs_contract.trigger_delegation | OWNED |
+      n/a |
+
+      | R2 | user request/docs matching | case-insensitive arbitrary substring; prefix
+      hits first; stable `larva list --json` order otherwise | pi_persona_autocomplete_contract_docs_20260601
+      | docs state matching/ranking | docs_contract.matching | OWNED | n/a |
+
+      | R3 | architecture_basis cache | process-local parsed-list cache, shared in-flight
+      request, no disk cache, no prefetch | pi_persona_autocomplete_contract_docs_20260601
+      | docs state cache rules | docs_contract.cache | OWNED | n/a |
+
+      | R4 | user request model map | exact mappings + `openrouter/` prefix rule;
+      no Pi-unlisted guessing | pi_persona_autocomplete_contract_docs_20260601 | docs
+      state model-map contract | docs_contract.model_map | OWNED | n/a |
+
+      | R5 | transport rules | no PersonaSpec/opifex/dependency/runtime-config mutation
+      | pi_persona_autocomplete_contract_docs_20260601 | non-goals preserved | docs_contract.non_goals
+      | OWNED | n/a |
+
+
+      <side_effect_budget>Allowed: docs-only edits to `contrib/pi-extension/README.md`
+      and `design/pi-coding-agent-integration.md`. Forbidden: product code, tests,
+      `~/.pi/**`, schema/opifex, dependency changes.</side_effect_budget>
+
+      <risk_probes>- Docs must not imply prompt injection, hidden aliases, fuzzy/edit-distance/regex/wildcard
+      matching, disk cache, or model guessing. - Docs must distinguish exact mappings
+      from `openrouter/` prefix coverage. - Docs must say cache is process-local/resettable/testable.</risk_probes>'
+    verification: '- [ ] refs confirmation quotes docs passages for trigger/delegation,
+      matching/ranking, cache/in-flight, model-map, and non-goals.
+
+      - [ ] Docs already match or are minimally synced to every matrix row.
+
+      - [ ] Raw diff/status for the two docs files is included.
+
+      - [ ] No product code, tests, runtime config, schema/opifex, or dependency file
+      changes are made.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    agent: doc-reviewer
+  - id: pi_persona_autocomplete_impl_20260601
+    name: Complete Pi persona autocomplete substring cache implementation
+    status: pending
+    description: 'step_type: implementation
+
+      tags: ["integration"]
+
+      agent_source: project
+
+
+      TARGET STATE: complete `contrib/pi-extension/larva.ts` only so `/larva-persona`
+      candidates come from `larva list --json`, match persona ids by case-insensitive
+      arbitrary substring, rank prefix matches before other substring matches, and
+      preserve registry order within each group. Add process-local parsed-list cache
+      plus shared in-flight list request, lazy initialization, fail-closed list errors,
+      and resettable/testable state. Preserve Tab/Pi provider path and delegate non-`/larva-persona`
+      input to Pi base provider.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | contract-docs R1 | provider trigger/delegation preserved | pi_persona_autocomplete_impl_20260601
+      | delegation implemented | impl.delegation | OWNED | n/a |
+
+      | R2 | contract-docs R2 | substring/case/prefix-first stable order | pi_persona_autocomplete_impl_20260601
+      | matching implemented | impl.matching | OWNED | n/a |
+
+      | R3 | contract-docs R3 | in-memory cache + in-flight dedupe only | pi_persona_autocomplete_impl_20260601
+      | cache implemented | impl.cache | OWNED | n/a |
+
+      | R4 | contract-docs R5 | no schema/opifex/deps/model guessing | pi_persona_autocomplete_impl_20260601
+      | boundary diff clean | impl.boundary | OWNED | n/a |
+
+
+      CONSTRAINTS: no fuzzy/edit-distance/regex/wildcard matching, aliases, prompt
+      injection, disk cache, startup prefetch, new dependencies, PersonaSpec/opifex
+      changes, docs/tests edits, or `~/.pi/**` writes. Do not change model-map resolver
+      to guess Pi-unlisted models.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Logic
+      must process inputs and produce output varying by inputs; `_Runtime*`/`_Stub*`/`_Placeholder*`
+      classes do not satisfy acceptance.
+
+
+      <side_effect_budget>Allowed: `contrib/pi-extension/larva.ts` only. Forbidden:
+      docs/tests/runtime config/deps/schema/opifex/disk cache writes.</side_effect_budget>
+
+      <risk_probes>- Stable order must be original registry index, not alphabetic.
+      - Concurrent completions must share one in-flight list promise, not merely reuse
+      after resolution. - Delegation must hold for all non-target input paths.</risk_probes>
+
+
+      ## Gate Preview (what the gate WILL reject)
+
+      1. Source-token-only proof without tests/runtime output. 2. Regex/wildcard/fuzzy/edit-distance/alias
+      behavior. 3. Disk cache or startup blocking prefetch.'
+    verification: '- [ ] refs confirmation quotes relevant implementation/docs passages.
+
+      - [ ] Diff is limited to `contrib/pi-extension/larva.ts`.
+
+      - [ ] Matching implements case-insensitive substring and prefix-first stable
+      registry-order ranking.
+
+      - [ ] Cache is process-local memory with shared in-flight request; no disk cache
+      or prefetch.
+
+      - [ ] Non-`/larva-persona` input delegates to base provider; no prompt injection.
+
+      - [ ] No PersonaSpec/opifex/dependency/model-guessing changes.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_persona_autocomplete_contract_docs_20260601
+    agent: frontend-engineer
+  - id: pi_persona_autocomplete_runtime_tests_20260601
+    name: Add and run Pi autocomplete runtime tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      agent_source: project
+
+
+      PROOF ARTIFACT: update/add focused Node and pytest smoke coverage after implementation.
+      Provide raw outputs for substring matching, case-insensitivity, prefix-first
+      ordering, cache reuse, in-flight dedupe, delegation for other input, list failure
+      fail-closed behavior, and `invar guard`.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | contract-docs R2 | substring + case-insensitive tests | pi_persona_autocomplete_runtime_tests_20260601
+      | substring/case output | tests.substring_case | OWNED | n/a |
+
+      | R2 | contract-docs R2 | prefix-first stable-order tests | pi_persona_autocomplete_runtime_tests_20260601
+      | ordering output | tests.ordering | OWNED | n/a |
+
+      | R3 | contract-docs R3 | cache + concurrent in-flight dedupe tests | pi_persona_autocomplete_runtime_tests_20260601
+      | cache output | tests.cache_inflight | OWNED | n/a |
+
+      | R4 | contract-docs R1/R3 | delegate-other-input and list failure fail-closed
+      tests | pi_persona_autocomplete_runtime_tests_20260601 | delegation/failure
+      output | tests.delegation_failure | OWNED | n/a |
+
+      | R5 | AGENTS Invar | `invar guard` run | pi_persona_autocomplete_runtime_tests_20260601
+      | guard output | tests.invar_guard | OWNED | n/a |
+
+
+      Spec-Fixture Conformance: at least one persona-list fixture must use the exact
+      documented `larva list --json` shape with no convenience aliases or fuzzy helper
+      fields.
+
+
+      <side_effect_budget>Allowed: tests/harness files under `contrib/pi-extension/`
+      and existing repo test locations for Pi extension smoke coverage. Forbidden:
+      product changes, docs, `~/.pi/**`, schema/opifex, dependency changes.</side_effect_budget>
+
+      <risk_probes>- Balance mocks with at least one real provider/command-path smoke
+      when available. - Prove concurrent in-flight dedupe by list invocation count
+      during overlap. - Prove fail-closed does not guess aliases or stale data unexpectedly.</risk_probes>'
+    verification: '- [ ] refs confirmation quotes implementation/docs passages used
+      to derive tests.
+
+      - [ ] Raw Node output covers substring, case, prefix-first stable order, cache
+      reuse, and in-flight dedupe.
+
+      - [ ] Raw pytest or existing repo smoke output covers Pi extension/autocomplete
+      behavior where applicable.
+
+      - [ ] Raw failure-path output covers `larva list --json` error fail-closed behavior.
+
+      - [ ] Raw delegation output covers non-`/larva-persona` input to base provider.
+
+      - [ ] Raw `invar guard` output is included.
+
+      - [ ] Fixture evidence includes exact `larva list --json` shape and no hidden
+      alias/fuzzy/regex/wildcard assumption.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_persona_autocomplete_impl_20260601
+    agent: integration-verifier
+  - id: pi_model_map_runtime_proof_20260601
+    name: Verify user-local Pi model-map runtime targets
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: local-check
+
+      agent_source: project
+
+
+      PROOF ARTIFACT: read-only verification of `/Users/tefx/.pi/larva/model-map.json`
+      after the user-authorized local write. Validate current JSON and prove targets
+      against `pi --list-models --offline`; do not write runtime config or add runtime
+      code that guesses unavailable models.
+
+
+      Requirement-to-checklist traceability matrix:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user request exact map | `openai/gpt-5.5` -> `openai-codex` / `gpt-5.5`
+      | pi_model_map_runtime_proof_20260601 | GPT mapping verified | model_map.exact_gpt
+      | OWNED | n/a |
+
+      | R2 | user request exact map | GLM/Kimi/Minimax map to specified OpenRouter
+      model ids | pi_model_map_runtime_proof_20260601 | exact OpenRouter mappings
+      verified | model_map.exact_openrouter | OWNED | n/a |
+
+      | R3 | user request prefix | `openrouter/` prefix -> provider `openrouter`,
+      empty model-id prefix; covers three named Gemini personas | pi_model_map_runtime_proof_20260601
+      | prefix coverage verified | model_map.prefix | OWNED | n/a |
+
+      | R4 | architecture_basis source of truth | Pi offline list contains target
+      providers/models; GPT prefers Codex when listed | pi_model_map_runtime_proof_20260601
+      | Pi excerpts included | model_map.pi_models | OWNED | n/a |
+
+      | R5 | runtime_contract | no writes and no model guessing | pi_model_map_runtime_proof_20260601
+      | no-write/no-guess evidence | model_map.no_write_no_guess | OWNED | n/a |
+
+
+      <side_effect_budget>Allowed: read `/Users/tefx/.pi/larva/model-map.json`, `/Users/tefx/dotfiles/agent/models.yaml`,
+      docs, and run read-only list/JSON validation commands. Forbidden: any writes
+      under `/Users/tefx/.pi/**`, repo edits, resolver changes, registry changes,
+      guessed model additions.</side_effect_budget>
+
+      <risk_probes>- Exact entries must win before prefix rules. - OpenRouter Gemini
+      coverage must come from prefix rule, not guessed per-model entries. - Pi availability
+      evidence must be current raw output, not stale notes.</risk_probes>'
+    verification: '- [ ] refs confirmation records docs/config/runtime file passages
+      or unread reasons.
+
+      - [ ] Raw JSON validation output for `/Users/tefx/.pi/larva/model-map.json`
+      is included.
+
+      - [ ] Exact entries verified for `openai/gpt-5.5`, `ollama-cloud/glm-5.1`, `ollama-cloud/kimi-k2.6`,
+      and `ollama-cloud/minimax-m2.7`.
+
+      - [ ] Prefix rule verified for `openrouter/` and the three named Gemini OpenRouter
+      personas.
+
+      - [ ] Raw `pi --list-models --offline` excerpts show target availability and
+      Codex preference basis for GPT.
+
+      - [ ] Evidence states no writes occurred and no runtime guessing was added or
+      relied on.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - /Users/tefx/.pi/larva/model-map.json
+    - /Users/tefx/dotfiles/agent/models.yaml
+    depends_on:
+    - pi_persona_autocomplete_contract_docs_20260601
+    agent: integration-verifier
+  - id: pi_persona_autocomplete_gate_20260601
+    name: Gate Pi persona autocomplete and model-map proof
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check
+
+      agent_source: project
+
+      review_depth: THOROUGH
+
+
+      DECISION ARTIFACT: independent gate review for the phase. Consume all requirement
+      matrices and evidence. This gate protects Pi runtime/autocomplete completion
+      and model-map runtime correctness. Positive raw evidence is required; absence
+      of defects is insufficient.
+
+
+      <side_effect_budget>Allowed: read plan evidence, repo files, docs, and run read-only
+      verification if needed. Forbidden: code/docs/tests/runtime config/plan lifecycle
+      mutations.</side_effect_budget>
+
+      <risk_probes>- Reject source-inspection-only autocomplete proof. - Check no
+      disk cache, aliases, prompt injection, fuzzy/regex/wildcard matching, or model
+      guessing. - Check docs/implementation/tests/runtime proof agree on exact mappings
+      and prefix precedence.</risk_probes>'
+    verification: '- [ ] refs confirmation quotes docs and implementation passages
+      reviewed.
+
+      - [ ] All prior phase steps have checklist receipts with no blocker-class unobserved
+      items.
+
+      - [ ] Every OWNED requirement row is PROVEN or has explicit blocking remediation.
+
+      - [ ] Raw Node, pytest, `pi --list-models --offline`, JSON validation, docs
+      diff/status, and `invar guard` outputs are present and sufficient.
+
+      - [ ] Client/runtime autocomplete liveness is proven by command/provider smoke
+      evidence with non-blank candidate output and delegation proof.
+
+      - [ ] Model-map exact entries and `openrouter/` prefix coverage are proven against
+      Pi-listed targets; no model guessing is introduced.
+
+      - [ ] Gate rejects source-token-only proof, generic pass claims, or docs/implementation/test
+      mismatches.
+
+      - [ ] Final OPEN/BLOCKED decision includes requirement-level decision basis
+      and closure path for unresolved items.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_persona_autocomplete_contract_docs_20260601
+    - pi_persona_autocomplete_impl_20260601
+    - pi_persona_autocomplete_runtime_tests_20260601
+    - pi_model_map_runtime_proof_20260601
+    agent: gate-reviewer
