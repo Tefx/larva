@@ -86661,7 +86661,7 @@ phases:
       `passed`. Checklist receipt all PROVEN and toggled before completion.'
 - id: pi-subagent-toolresult-crash-fix-2026-06-01
   name: Pi larva_subagent ToolResult Crash Fix 2026-06-01
-  status: pending
+  status: in_progress
   gate: Phase accepted only when Pi-facing larva_subagent handler/execute return renderer-safe
     ToolResult objects with content arrays on success, failed-before-session, failed-after-allocation,
     and cancelled paths; semantic LarvaSubagentResult remains preserved as details/metadata;
@@ -86673,7 +86673,7 @@ phases:
   steps:
   - id: pi_subagent_toolresult_red_tests_20260601
     name: Add expected-red renderer-safe larva_subagent result tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -86786,6 +86786,8 @@ phases:
     - tests/shell/test_pi_extension_real_runtime.py
     - scripts/pi-extension-runtime-smoke.mjs
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T08:58:37.930925+00:00'
   - id: pi_subagent_toolresult_adapter_impl_20260601
     name: Complete Pi adapter-boundary ToolResult wrapper for larva_subagent
     status: pending
