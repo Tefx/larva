@@ -87846,7 +87846,7 @@ phases:
       Commit hash(es): none — read-only live retest'
   - id: pi_model_map_draft_fail_closed_inventory_fix_20260601
     name: Fix fail-closed Pi inventory parsing for draft helper
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       priority: HIGH
@@ -87991,6 +87991,118 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-01T11:56:44.728969+00:00'
+    done_at: '2026-06-01T12:03:04.660386+00:00'
+    evidence: 'Implementation merged and mainline verified.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-model-map-draft-helper.md — lines 61-63 require Pi offline inventory
+      from `pi --list-models --offline`, first two columns provider/model_id, and
+      fail-closed behavior when output is not parseable; lines 132-136 require parsing
+      only Pi output evidence and no hidden aliases.
+
+      - src/larva/shell/pi_model_map_cli.py — `_parse_successful_pi_inventory` combines
+      stdout/stderr inventory sources; `_parse_pi_inventory` previously returned `Success([...])`
+      when no rows were parsed.
+
+      - tests/shell/test_pi_model_map_draft_contract.py — existing tests cover redirect-safe
+      stdout, stderr inventory rows, optional JSON envelope, and shell command behavior
+      via mocked subprocess.run.
+
+      - tests/shell/test_pi_model_map.py — placeholder/related model-map test; focused
+      draft tests are in `test_pi_model_map_draft_contract.py`.
+
+      - INVAR.md — Shell may perform subprocess/filesystem I/O and returns Result[T,
+      E]; Core requires contracts/doctests/no I/O. Change stayed in Shell.
+
+      - AGENTS.md — NOT READ in isolated worktree because file absent; execution rules
+      were supplied in prompt/context.
+
+
+      ## Fix Receipt
+
+      changed_files:
+
+      - src/larva/shell/pi_model_map_cli.py
+
+      - tests/shell/test_pi_model_map_draft_contract.py
+
+
+      fail_closed_cases:
+
+      - empty_stdout_empty_stderr: PROVEN by `test_successful_pi_inventory_without_rows_fails_closed[-]`;
+      stderr contains `LARVA_PI_MODELS_UNAVAILABLE`, stdout empty.
+
+      - whitespace_only_output: PROVEN by `test_successful_pi_inventory_without_rows_fails_closed[
+      \n\t\n-  \n]`; stderr contains `LARVA_PI_MODELS_UNAVAILABLE`, stdout empty.
+
+      - unparseable_success_output: PROVEN by `test_successful_pi_inventory_unparseable_output_fails_closed`;
+      stderr contains `LARVA_PI_MODELS_UNAVAILABLE`, stdout empty.
+
+      channel_contract: PROVEN by `test_redirect_safe_stdout_raw_json_only` and `test_successful_pi_inventory_rows_on_stderr_are_consumed`;
+      success stdout remains raw JSON and report remains stderr.
+
+      forbidden_paths_scan: PROVEN by worker scan output `NO_FORBIDDEN_PERSONAL_PATH_OR_PROVIDER_PREF_SCAN_MATCHES`;
+      no personal scaffold path/provider preference/hidden alias strings introduced.
+
+
+      Worker commands:
+
+      - `PYTHONPATH=src .venv/bin/python -m pytest -vv tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_without_rows_fails_closed
+      tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_unparseable_output_fails_closed
+      tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_rows_on_stderr_are_consumed
+      tests/shell/test_pi_model_map_draft_contract.py::test_redirect_safe_stdout_raw_json_only`
+      exit 0; 5 passed.
+
+      - `PYTHONPATH=src .venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_model_map.py` exit 0; 20 passed.
+
+      - `invar_guard changed=true path=. strict=false` exit 0; status=passed, files_checked=1,
+      errors=0, warnings=0.
+
+      - forbidden-pattern scan over changed files exit 0; `NO_FORBIDDEN_PERSONAL_PATH_OR_PROVIDER_PREF_SCAN_MATCHES`.
+
+      - worker commit: d7af6e0f3ea94dfe6a15ee486e4bb5a602c30301.
+
+
+      Mainline merge:
+
+      - squash merge committed on main as 29a26d4 `[vectl] step-pi_model_map_draft_fail_closed_inventory_fix_20260601
+      completed`.
+
+
+      Mainline final-state verification:
+
+      - `uv run pytest -vv tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_without_rows_fails_closed
+      tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_unparseable_output_fails_closed
+      tests/shell/test_pi_model_map_draft_contract.py::test_successful_pi_inventory_rows_on_stderr_are_consumed
+      tests/shell/test_pi_model_map_draft_contract.py::test_redirect_safe_stdout_raw_json_only`
+      exit 0: 5 passed.
+
+      - `uv run pytest tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_model_map.py`
+      exit 0: 20 passed.
+
+      - `uv run invar guard` exit 0 with status=passed, errors=0, warnings=0; no changed
+      files after commit.
+
+
+      Positive Proof Coverage:
+
+      - B1_FAIL_CLOSED_UNPARSEABLE_PI_OUTPUT: PROVEN — implementation now fails with
+      `LARVA_PI_MODELS_UNAVAILABLE` when successful Pi output contains no provider/model
+      rows; tests cover empty, whitespace-only, and unparseable successful output.
+
+      - CHANNEL_CONTRACT_PRESERVED: PROVEN — success-channel tests pass and fail-closed
+      tests assert stdout is empty on failure.
+
+      - NO_PERSONAL_OR_PROVIDER_PREFS: PROVEN — changed-file scan found no personal
+      scaffold path, `models.yaml`, provider preference, hidden alias, or hard-coded
+      provider strings.
+
+
+      Checklist receipt: all eight checklist items returned PROVEN by worker and were
+      toggled by orchestrator.'
   - id: pi_model_map_draft_fail_closed_inventory_retest_20260601
     name: Retest fail-closed Pi inventory spec guard
     status: pending
