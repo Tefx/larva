@@ -92134,7 +92134,7 @@ phases:
       none'
 - id: pi-postspec-subagent-ux-2026-06-02
   name: Pi Post-Spec Subagent Result, Sessions, and Rendering UX 2026-06-02
-  status: pending
+  status: in_progress
   gate: Phase opens only when larva_subagent wrapper mirrors task_id/persona_id/status/result_text/error
     in details and top-level metadata, isError derives from semantic status, non-null
     task_id results include the visible resume footer, optional larva_subagent_sessions(limit?)
@@ -92147,7 +92147,7 @@ phases:
   steps:
   - id: pi_postspec_subagent_ux_red_tests_20260602
     name: Add expected-red subagent sessions and rendering contract tests
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -92286,6 +92286,8 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T17:55:50.028889+00:00'
   - id: pi_postspec_subagent_ux_impl_20260602
     name: Complete larva_subagent sessions helper and row rendering UX
     status: pending
