@@ -93408,7 +93408,7 @@ phases:
       gaps: none beyond blocker now owned by remediation steps."
   - id: pi_postspec_docs_sync_20260602
     name: Synchronize Pi docs after implementation proof
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -93503,6 +93503,42 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-01T19:58:51.229831+00:00'
+    done_at: '2026-06-01T20:05:03.543740+00:00'
+    evidence: "status: SUCCESS\nsummary: Synchronized Pi docs after startup tool enumeration\
+      \ fix; docs now match implementation/runtime proof and preserve non-goals.\n\
+      refs_confirmation:\n  - design/pi-coding-agent-integration.md: read launch/tool\
+      \ policy, autocomplete, persona mention non-goals, VT46 renderResult, and verification\
+      \ target sections; stale initial startup fatal enumerator wording found and\
+      \ corrected.\n  - contrib/pi-extension/README.md: read adapter-local tool policy,\
+      \ autocomplete smoke, mention non-goals, VT46/renderResult, and explicit unsupported\
+      \ guarantees; added operator/runtime paragraph distinguishing startup-tolerant\
+      \ absent/unsupported enumerator behavior from strict switch failure semantics.\n\
+      changed_files:\n  - design/pi-coding-agent-integration.md\n  - contrib/pi-extension/README.md\n\
+      worker_commit: b7bc5b3\nauthority_preservation: Commit 4616008 Pi integration\
+      \ authority preserved; changes are narrow post-proof semantic sync and do not\
+      \ alter opifex/PersonaSpec/shared authority.\nworker_verification:\n  - `git\
+      \ diff --check -- design/pi-coding-agent-integration.md contrib/pi-extension/README.md`:\
+      \ exit 0.\n  - targeted contract proof: exit 0; `2 passed, 47 deselected`.\n\
+      \  - autocomplete smoke commands: exit 0; tab-force/tab-regular/delegate/list-failure\
+      \ all returned expected output.\n  - commit hooks: INVAR.md protection passed;\
+      \ Invar Guard skipped no files to check.\nmainline_reconciliation:\n  - merge_commit:\
+      \ 7675861\n  - `git diff --check HEAD~1..HEAD -- design/pi-coding-agent-integration.md\
+      \ contrib/pi-extension/README.md`: exit 0.\n  - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py\
+      \ -k \"initial_active_tool_update_failure_degrades_startup_and_allows_later_switch\
+      \ or initial_unsupported_tool_enumerator_uses_empty_baseline_but_switch_failures_remain_atomic\"\
+      \ -q`: exit 0; `2 passed, 47 deselected in 0.47s`.\n  - node autocomplete smoke\
+      \ tab-force/tab-regular/delegate/list-failure: all exit 0 with expected values/delegation/noCrash.\n\
+      \  - `uv run --group dev invar guard --changed`: passed; 0 errors/warnings/infos.\n\
+      doc_sync_receipt:\n  - README and design doc requirements match implementation\
+      \ evidence and runtime proof: PROVEN.\n  - Troubleshooting/test commands accurate:\
+      \ PROVEN by smoke command execution.\n  - Explicit non-goals preserved: raw\
+      \ @<id>, prompt catalogue injection, legacy fallback, sidecars, provenance guarantees,\
+      \ unsupported hooks remain disallowed.\n  - VT46 docs still describe collapsed/expanded\
+      \ renderResult, parent footer preservation, and no widget dashboard.\n  - Autocomplete\
+      \ docs distinguish supported `ctx.ui.addAutocompleteProvider` behavior from\
+      \ unsupported-hook fallback.\nchecklist_receipt: all 6 verification checklist\
+      \ items toggled complete via deterministic vectl_check.\nblockers: []\ngaps:\
+      \ []"
   - id: pi_postspec_deep_review_20260602
     name: Independent deep review of Pi post-spec implementation
     status: pending
