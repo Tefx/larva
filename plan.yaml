@@ -94189,7 +94189,7 @@ phases:
       \ []"
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602
     name: Fix initial startup tool enumerator fail-closed blocker
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -94375,6 +94375,50 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T19:49:09.964999+00:00'
+    done_at: '2026-06-01T19:50:30.480321+00:00'
+    evidence: "status: SUCCESS\nsummary: Fixed initial startup tool enumerator fail-closed\
+      \ blocker while preserving B5 genuine enumeration/update failure atomicity.\n\
+      refs_confirmation:\n  - design/pi-coding-agent-integration.md: read startup/tool\
+      \ policy and B5 atomic switch semantics; noted contradiction for absent/unsupported\
+      \ startup surface resolved in favor of this remediation step while preserving\
+      \ genuine failure semantics.\n  - contrib/pi-extension/README.md: read adapter-local\
+      \ tool policy and atomic switch preservation requirements.\n  - tests/shell/test_pi_reported_failures_expected_red.py:\
+      \ read targeted regression requiring `enumerateTools` not to keep direct fail-closed\
+      \ `pi.getAllTools?.()`, non-array message, or `LARVA_TOOL_ENUMERATION_FAILED`\
+      \ for absent/unsupported startup enumeration.\n  - tests/shell/test_pi_extension_contract.py:\
+      \ read B5/static tests and runtime startup/switch atomicity tests.\n  - contrib/pi-extension/larva.ts:\
+      \ read implementation surface for optional `getAllTools`/`setActiveTools`, `enumerateTools`,\
+      \ `commitPersona`, and `initializeSession`.\nchanged_files:\n  - contrib/pi-extension/larva.ts\n\
+      \  - tests/shell/test_pi_extension_contract.py\nforbidden_schema_opifex_shared_changes:\
+      \ none\nworker_commit: de675b362ed01f2b803572d44e495b72ba875a25\nmainline_merge_commit:\
+      \ 9dd1730\nimplementation_summary: Added startup-tolerant tool baseline handling\
+      \ for initial session initialization so absent/unsupported startup enumeration\
+      \ degrades to empty baseline; preserved strict `commitPersona`/switch behavior\
+      \ so genuine `getAllTools` or `setActiveTools` failures still return `LARVA_TOOL_ENUMERATION_FAILED`,\
+      \ avoid empty active-tool commits, and preserve prior envelope/tool state.\n\
+      deviation_records: []\nworker_verification:\n  - targeted_failing_test: exit\
+      \ 0; `1 passed in 0.07s`.\n  - broad_pi_contract_command: exit 0; `122 passed\
+      \ in 7.00s`.\n  - b1_b7_regression_probe: exit 0; `29 passed in 0.16s`.\n  -\
+      \ b5_atomicity_proof: exit 0; `7 passed in 0.48s`; confirms startup TypeError\
+      \ uses empty baseline while later switch returns `LARVA_TOOL_ENUMERATION_FAILED`\
+      \ and preserves startup envelope.\n  - invar_guard: passed with 0 errors/warnings/infos.\n\
+      mainline_final_state_verification:\n  - `uv run --group dev pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator\
+      \ -v`: exit 0; `1 passed in 0.08s`.\n  - `uv run --group dev pytest tests/shell/test_pi_launcher_contract.py\
+      \ tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py\
+      \ tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ tests/shell/test_pi_postspec_subagent_ux_expected_red.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`: exit 0; `122 passed\
+      \ in 6.77s`.\n  - `uv run --group dev pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`: exit 0; `29 passed\
+      \ in 0.17s`.\n  - `uv run --group dev invar guard --changed`: passed; 0 errors/warnings/infos.\n\
+      checklist_receipt: all 8 verification checklist items toggled complete via deterministic\
+      \ vectl_check.\nblockers: []\ngaps: []"
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     name: Retest initial startup tool enumerator fail-closed blocker
     status: pending
