@@ -94307,24 +94307,24 @@ phases:
       emit `LARVA_TOOL_ENUMERATION_FAILED` for unsupported startup enumeration.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per authoritative ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`,
       `tests/shell/test_pi_reported_failures_expected_red.py`, `tests/shell/test_pi_extension_contract.py`,
       `contrib/pi-extension/larva.ts`) and key passages or `NOT READ: <reason>`.
 
-      - [ ] Evidence lists changed files and confirms no opifex/schema/shared contract
+      - [x] Evidence lists changed files and confirms no opifex/schema/shared contract
       files were changed.
 
-      - [ ] Targeted failing test is green: `./.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator
+      - [x] Targeted failing test is green: `./.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator
       -v`.
 
-      - [ ] Broad Pi contract command is green: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py
+      - [x] Broad Pi contract command is green: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py
       tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py tests/shell/test_pi_model_map_draft_contract.py
       tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
       tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_reported_failures_expected_red.py
       -v`.
 
-      - [ ] B1-B7 regression probe command is green: `./.venv/bin/python -m pytest
+      - [x] B1-B7 regression probe command is green: `./.venv/bin/python -m pytest
       tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim
       tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path
       tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag
@@ -94334,13 +94334,13 @@ phases:
       tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors
       tests/shell/test_pi_reported_failures_expected_red.py -v`.
 
-      - [ ] B5 atomicity proof shows genuine `getAllTools`/active-tool update failures
+      - [x] B5 atomicity proof shows genuine `getAllTools`/active-tool update failures
       still map to `LARVA_TOOL_ENUMERATION_FAILED`, do not commit empty active tools,
       and preserve prior active-tool state.
 
-      - [ ] Raw `invar guard` output is included and green.
+      - [x] Raw `invar guard` output is included and green.
 
-      - [ ] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
+      - [x] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
       \ reason>\n- contrib/pi-extension/README.md — <key passage or NOT READ: reason>\n\
