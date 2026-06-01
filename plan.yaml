@@ -93566,7 +93566,7 @@ phases:
     agent: gate-reviewer
   - id: pi_postspec_conformance_blockers_b1_b7_fix_20260602
     name: Batched fix for Pi post-spec conformance blockers B1-B7
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       work_type: defect_repair
@@ -93793,6 +93793,98 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T19:00:42.354934+00:00'
+    done_at: '2026-06-01T19:12:31.250773+00:00'
+    evidence: 'status: SUCCESS
+
+      worker_task_id: ses_17b6f9b48fferHHKTRqNscWkWz
+
+      worker_commit: 2b5934a
+
+      mainline_commit: 5dfe86f
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — used VT39 child stderr whitelist,
+      VT42-VT48 final runtime/UX requirements, getAllTools failure semantics, sessions
+      helper constraints, autocomplete proof boundaries, and runtime proof obligations.
+
+      - contrib/pi-extension/README.md — used runtime smoke/status behavior, helper
+      contract, documented commands, supplemental proof boundaries, and operator/runtime
+      non-goals.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: contrib/pi-extension/larva.ts; tests/shell/test_pi_extension_contract.py
+
+      - forbidden_surfaces_unchanged: PersonaSpec/opifex/shared schemas, legacy fallback,
+      raw @<id>, prompt catalogue injection, sidecars, widget dashboard, compatibility
+      aliases.
+
+
+      ## Batched Fix Receipt
+
+      - B1: full conformance suite green; mainline `uv run --group dev pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_real_runtime.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+      tests/shell/test_pi_postspec_subagent_ux_expected_red.py -q -rx` → 79 passed.
+
+      - B2: slash-status smoke now produces prompt success, `setStatus` larva ok,
+      and notify `Larva persona active: ok` without prompt timeout.
+
+      - B3: failure-path smoke now produces prompt success responses and Larva error
+      notifications without timeout.
+
+      - B4: sessions helper targeted test passes; no sidecar/no scan/no alias/details-only
+      behavior covered.
+
+      - B5: getAllTools failure maps to `LARVA_TOOL_ENUMERATION_FAILED` atomically;
+      worker probe confirmed no empty active-tools commit and prior state preserved.
+
+      - B6: child stderr whitelist aligned with design-authorized family; targeted
+      whitelist test passed and `LARVA_MODEL_MAP_INVALID` absent.
+
+      - B7: VT47 supplemental proof passed with non-blocking design-authorized classification;
+      autocomplete smoke tab-force passed with expected persona IDs.
+
+      - root_cause_summary: fixed child process/stream cleanup causing timeouts, fail-closed
+      tool enumeration handling, and undocumented child stderr whitelist mapping.
+
+      - deviation_records: []
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q -rx` → exit 0; 79 passed in 31.47s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario slash-status --persona
+      ok && node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path` →
+      exit 0; slash-status and failure-path both returned successful prompt responses
+      with expected status/notify evidence.
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py::test_larva_subagent_sessions_helper_contract_limits_index_and_no_aliases
+      tests/shell/test_pi_extension_contract.py::test_child_stderr_startup_error_whitelist
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py::test_persona_mentions_autocomplete_tokens_merge_dedupe_and_no_side_effects
+      -q` → exit 0; 3 passed.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl && uv run --group dev invar guard --changed` → exit 0; autocomplete exact
+      shape passed and guard status passed.
+
+
+      ## Checklist receipt
+
+      All nine checklist obligations were toggled by orchestrator: refs confirmation,
+      green full conformance suite, slash-status proof, failure-path proof, sessions
+      helper no-timeout/details-only behavior, getAllTools atomic error mapping, child
+      stderr whitelist, VT47 proof classification, and forbidden side-effect absence.
+
+
+      ## Gaps / blockers
+
+      none'
   - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
     status: pending
