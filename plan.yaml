@@ -94421,7 +94421,7 @@ phases:
       \ vectl_check.\nblockers: []\ngaps: []"
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     name: Retest initial startup tool enumerator fail-closed blocker
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: retest_green
@@ -94566,3 +94566,5 @@ phases:
     depends_on:
     - pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T19:50:52.151728+00:00'
