@@ -86420,17 +86420,17 @@ phases:
       - Verify old file absent after an authorized move or fixture move.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Migration proof covers old-only, both-files conflict, canonical-only,
+      - [x] Migration proof covers old-only, both-files conflict, canonical-only,
       and absent-both scenarios.
 
-      - [ ] Proof uses safe fixtures unless actual operator authorization is explicitly
+      - [x] Proof uses safe fixtures unless actual operator authorization is explicitly
       recorded.
 
-      - [ ] Old-only proof ends with canonical file present and old file absent.
+      - [x] Old-only proof ends with canonical file present and old file absent.
 
-      - [ ] Both-files proof reports conflict without merge/overwrite.
+      - [x] Both-files proof reports conflict without merge/overwrite.
 
-      - [ ] Evidence distinguishes fixture proof from actual local `/Users/tefx/.pi`
+      - [x] Evidence distinguishes fixture proof from actual local `/Users/tefx/.pi`
       state.'
     refs:
     - contrib/pi-extension/README.md
