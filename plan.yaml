@@ -86182,7 +86182,7 @@ phases:
       all PROVEN and toggled before completion.'
   - id: pi_tool_policy_no_fallback_python_impl_20260601
     name: Complete launcher no-fallback tool-policy env behavior
-    status: claimed
+    status: done
     description: 'TARGET STATE:
 
       `src/larva/shell/pi.py` no longer defaults `LARVA_PI_TOOL_POLICY_FILE` to `~/.pi/tool-policy.json`.
@@ -86241,6 +86241,14 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-01T08:30:42.642004+00:00'
+    done_at: '2026-06-01T08:39:31.898113+00:00'
+    evidence: 'Applied isolated commit `88a13cec9c57794f743288041a76365e708c1e99`
+      and committed mainline as `ef9122c`. Implementation changed `src/larva/shell/pi.py`
+      to use canonical `~/.pi/larva/tool-policy.json` by default while preserving
+      explicit `LARVA_PI_TOOL_POLICY_FILE` override unchanged. Mainline verification:
+      `uv run python -m pytest tests/shell/test_pi_launcher_contract.py -q` passed
+      (35 passed); `uv run invar guard` passed. Checklist receipt all PROVEN and toggled
+      before completion.'
   - id: pi_tool_policy_no_fallback_extension_impl_20260601
     name: Complete extension canonical-only tool-policy path behavior
     status: done
