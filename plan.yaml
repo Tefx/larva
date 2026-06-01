@@ -91201,7 +91201,7 @@ phases:
       - invar guard raw output: satisfied\n- behavioral proof register: satisfied"
   - id: pi_postspec_launcher_config_gate_20260602
     name: Gate launcher/config post-spec conformance
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -91292,6 +91292,8 @@ phases:
     - pi_postspec_launcher_config_residual_impl_20260602
     - pi_postspec_launcher_config_runtime_verify_20260602
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T17:10:34.121067+00:00'
 - id: pi-postspec-editor-prompt-2026-06-02
   name: Pi Post-Spec Editor UX and Prompt Overlay 2026-06-02
   status: locked
