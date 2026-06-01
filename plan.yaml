@@ -93541,7 +93541,7 @@ phases:
       \ []"
   - id: pi_postspec_deep_review_20260602
     name: Independent deep review of Pi post-spec implementation
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -93657,6 +93657,8 @@ phases:
     depends_on:
     - pi_postspec_docs_sync_20260602
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T20:05:23.949419+00:00'
   - id: pi_postspec_conformance_blockers_b1_b7_fix_20260602
     name: Batched fix for Pi post-spec conformance blockers B1-B7
     status: done
