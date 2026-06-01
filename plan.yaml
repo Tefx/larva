@@ -92134,7 +92134,7 @@ phases:
       none'
 - id: pi-postspec-subagent-ux-2026-06-02
   name: Pi Post-Spec Subagent Result, Sessions, and Rendering UX 2026-06-02
-  status: in_progress
+  status: done
   gate: Phase opens only when larva_subagent wrapper mirrors task_id/persona_id/status/result_text/error
     in details and top-level metadata, isError derives from semantic status, non-null
     task_id results include the visible resume footer, optional larva_subagent_sessions(limit?)
@@ -92829,7 +92829,7 @@ phases:
       none'
   - id: pi_postspec_subagent_ux_gate_20260602
     name: Gate subagent sessions and rendering UX
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -92947,9 +92947,111 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T18:32:11.589599+00:00'
+    done_at: '2026-06-01T18:46:20.633747+00:00'
+    evidence: 'status: SUCCESS
+
+      gate_task_id: ses_17b89bce1ffehTbyzFyk1S1Jrd
+
+      blind_liveness_retry_task_id: ses_17b81131fffePcvBtf9ziu5OMJ
+
+      merge_result: branch had no code changes; `git merge --squash vectl/step-pi_postspec_subagent_ux_gate_20260602`
+      reported already up to date.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — reviewed VT46 requirements for renderResult
+      collapsed/expanded final views, parent `larva:` footer preservation, no widget
+      dashboard, ToolResult mirror parity, `isError` semantics, visible resume footer,
+      and sessions helper details-only process-local behavior.
+
+      - contrib/pi-extension/README.md — reviewed renderer-safe ToolResult wrapper,
+      mirrored top-level/details fields, visible resume footer, `larva_subagent_sessions`
+      details-only/no sidecar/no scan/no provenance/no `last` alias, and bounded row-local
+      rendering/progress.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: none
+
+      - no_change_reason: gate review and supplemental blind liveness only.
+
+
+      ## Gate Decision Basis
+
+      - gate_decision: OPEN
+
+      - unresolved_obligations: []
+
+      - gate-reviewer mapped ToolResult mirror/isError, resume footer, sessions helper
+      shape/non-goals, renderCall/onUpdate/renderResult, VT46 collapsed/expanded views,
+      parent footer preservation, no dashboard, runtime proof, and forbidden side
+      effects to PROVEN evidence.
+
+      - supplemental blind Mode D initially found a sessions-helper timeout; this
+      was classified TRANSIENT after immediate orchestrator reruns passed and blind
+      retry passed full UX suite (4 passed), targeted sessions helper test (1 passed),
+      contract/runtime suite (70 passed), and failure-path smoke. Blocking status
+      closed.
+
+
+      ## Tool Surface / Runtime Proof
+
+      - Surface snapshot included `/larva-persona`, `larva_subagent` handler/execute/renderCall/renderResult,
+      and `larva_subagent_sessions` handler/execute with valid limit schema.
+
+      - Executability matrix showed no dangling/unimplemented/no-handler surfaces.
+
+      - Runtime proof included expected-red green tests, contract/runtime suite, failure-path
+      smoke, supplemental Node harness/probe evidence, and blind retry liveness.
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q` → exit 0; 4 passed in 7.72s.
+
+      - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` → exit 0; 70 passed in 35.83s.
+
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario failure-path` → exit
+      0; setStatus statusKey/statusText and expected error notify events present.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Behavioral proof / closure fields
+
+      - verdict: PASS
+
+      - blockers: []
+
+      - gate_open_allowed: true
+
+      - orchestrator_action_hint: COMPLETE
+
+      - uncertainty_sources: deterministic fake-child runtime tests cover the deepest
+      child-session terminal paths; live Pi smoke covers extension load/UI request
+      path. This is non-blocking because the plan requested supplemental runtime evidence
+      and gate-reviewer/blind retry accepted it.
+
+
+      ## Checklist receipt
+
+      All seven checklist obligations were toggled by orchestrator: refs confirmation,
+      no-change/receipts/gaps, all UX requirements positive evidence, runtime proof
+      not source-only, requirement-to-evidence gate mapping and OPEN decision, VT46
+      collapsed/expanded/footer/no-dashboard mapping, and forbidden side effects absent.
+
+
+      ## Gaps / blockers
+
+      none'
 - id: pi-postspec-finalization-2026-06-02
   name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
-  status: locked
+  status: pending
   gate: Final gate opens only when all commit 4616008 requirements have positive proof
     or explicit non-intersection, supplemental Pi extension tests and autocomplete
     smoke tests run/skip/xfail according to documented policy, ctx.ui.addAutocompleteProvider
