@@ -86284,7 +86284,7 @@ phases:
     agent: frontend-engineer
   - id: pi_tool_policy_no_legacy_docs_20260601
     name: Update Pi docs to unsupported-old-path semantics
-    status: claimed
+    status: done
     description: 'CONFORMANCE ARTIFACT:
 
       Update Pi user/operator documentation to state that `~/.pi/tool-policy.json`
@@ -86331,6 +86331,15 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-01T08:22:34.151249+00:00'
+    done_at: '2026-06-01T08:28:28.524108+00:00'
+    evidence: 'Merged isolated branch `vectl/step-pi_tool_policy_no_legacy_docs_20260601`
+      via squash commit `978f259`. Evidence: refs read and docs updated in `contrib/pi-extension/README.md`
+      and `design/pi-coding-agent-integration.md` to name canonical `~/.pi/larva/tool-policy.json`,
+      explicit `LARVA_PI_TOOL_POLICY_FILE` override, one-time migration/conflict behavior,
+      and no implicit fallback. Mainline verification: canonical anchor search over
+      both docs returned expected matches; stale/problematic fallback wording search
+      returned no matches (exit 1 as expected); `uv run invar guard` passed. Checklist
+      receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_operator_migration_proof_20260601
     name: Prove one-time operator migration semantics
     status: pending
