@@ -90850,7 +90850,7 @@ phases:
       \ none for this contract/proof step."
   - id: pi_postspec_launcher_config_residual_impl_20260602
     name: Complete residual launcher/config semantics from commit 4616008
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -90982,6 +90982,74 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T16:52:40.171488+00:00'
+    done_at: '2026-06-01T17:03:01.811768+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — Worker read required design ref and cited launcher extension/no-settings\
+      \ fallback, absolute adapter config overrides, model-map resolver, draft helper\
+      \ redirect-safe/no-guessing rules, and tool-policy no implicit legacy path runtime\
+      \ behavior.\n- contrib/pi-extension/README.md — Worker read required README\
+      \ ref and cited launcher env propagation, model-map startup/switch shared resolver,\
+      \ draft helper output contract, and tool-policy canonical/explicit override/no\
+      \ legacy fallback rules.\n\n## Changed Files / No-Change Report\n- changed_files:\n\
+      \  - src/larva/shell/pi.py\n  - contrib/pi-extension/larva.ts\n  - tests/shell/test_pi_launcher_contract.py\n\
+      \  - contrib/pi-extension/test-tool-policy-paths.mjs\n  - contrib/pi-extension/test-model-map-runtime.mjs\n\
+      - worker_commit: 71b74d6 pi: tighten launcher config semantics\n- mainline_squash_commit:\
+      \ fe47e8c [vectl] step-pi_postspec_launcher_config_residual_impl_20260602 completed\n\
+      \n## Implementation / Proof-Closure Receipt\n- traceability_rows_satisfied:\n\
+      \  - PI4616008-LAUNCH-ENV: PROVEN — launcher preserves explicit config overrides\
+      \ only, validates relative overrides before launch, passes real Pi bin/extension\
+      \ flag/entry/CLI argv/interactive flag.\n  - PI4616008-MODEL-MAP: PROVEN — resolver\
+      \ covers exact-before-prefix, longest literal prefix/slash preservation, same-length\
+      \ conflict -> LARVA_MODEL_MAP_INVALID, missing/key-miss fallback, invalid config\
+      \ fail-closed, unavailable mapped target, startup/switch shared path.\n  - PI4616008-DRAFT:\
+      \ PROVEN — draft helper tests cover registry + offline Pi inventory, redirect-safe\
+      \ stdout/stderr, no provider guessing/scaffolds, unresolved reporting.\n  -\
+      \ PI4616008-TOOL-POLICY: PROVEN — runtime legacy-path probing removed; extension\
+      \ defaults only to canonical path and accepts legacy only via explicit absolute\
+      \ env override.\n- launcher_env_matrix: PROVEN for real Pi bin, extension flag/entry,\
+      \ Larva CLI argv, interactive flag, explicit config overrides only, relative\
+      \ overrides rejected before launch, and no settings writes.\n- model_map_matrix:\
+      \ PROVEN for exact hit, longest literal prefix, same-length conflict, missing\
+      \ file fallback, invalid config fail-closed, relative override invalid, mapped\
+      \ unavailable, startup persona and slash switch shared resolver path.\n- draft_helper_matrix:\
+      \ PROVEN for registry + Pi offline inventory, no hard-coded preferences/scaffolds,\
+      \ unresolved reporting, redirect-safe output channels, and --json envelope behavior.\n\
+      - tool_policy_matrix: PROVEN for canonical default only, explicit absolute override\
+      \ only, old-path-only no fallback, both-files migration guidance not runtime\
+      \ probing, relative override invalid, and no migration/write/merge.\n- forbidden_side_effect_absence:\
+      \ no PersonaSpec/opifex schema files changed; no compatibility aliases; no sidecar/lock\
+      \ file behavior; no hidden Pi settings fallback; no implicit legacy tool-policy\
+      \ runtime probe remains.\n- CLI Executability Matrix:\n  - `larva pi`: top-level\
+      \ help lists command; handler dispatch exists; --help exit 0; fake Pi smoke\
+      \ exit 0 with -e, extension entry, forwarded --version, explicit overrides.\n\
+      \  - `larva pi-model-map draft`: top-level/subcommand help works; parser dispatch\
+      \ exists; --help exit 0; draft contract tests green.\n\n## Mainline Verification\
+      \ Receipts\n- `uv run --group dev pytest tests/shell/test_pi_launcher_contract.py\
+      \ -q` → exit 0, 37 passed.\n- `node contrib/pi-extension/test-tool-policy-paths.mjs`\
+      \ → exit 0, tool-policy paths PASS.\n- `node contrib/pi-extension/test-model-map-runtime.mjs`\
+      \ → exit 0, model-map runtime PASS.\n- `uv run --group dev pytest tests/shell/test_pi_model_map_draft_contract.py\
+      \ tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ -q` → exit 0, 72 passed.\n- `node contrib/pi-extension/test-model-map-unit.mjs`\
+      \ → exit 0, model-map unit PASS.\n- `uv run --group dev pytest tests/shell/test_pi_extension_real_runtime.py\
+      \ -q` → exit 0, 22 passed.\n- `uv run --group dev larva pi --help && uv run\
+      \ --group dev larva pi-model-map draft --help && uv run --group dev larva --help`\
+      \ → exit 0, relevant surfaces listed.\n- `uv run --group dev invar guard --changed`\
+      \ → passed, errors=0.\n- `git status --short` before completion → clean.\n\n\
+      ## Checklist Receipt\n- refs Read Confirmation: satisfied\n- changed-files/no-change\
+      \ report, verification receipts, gaps/blockers: satisfied\n- launcher_env_matrix:\
+      \ satisfied\n- model_map_matrix: satisfied\n- draft_helper_matrix: satisfied\n\
+      - tool_policy_matrix: satisfied\n- forbidden side effects absent: satisfied\n\
+      \n## Deviation Records\n- test_error: tests/shell/test_pi_launcher_contract.py\
+      \ updated launcher env assertions to require no default `LARVA_PI_TOOL_POLICY_FILE`\
+      \ injection and added relative override rejection tests; reason: refs state\
+      \ launcher passes policy env only for explicit override and extension resolves\
+      \ canonical default itself; impact: aligns tests with operator contract.\n-\
+      \ test_error: contrib/pi-extension/test-tool-policy-paths.mjs both-files runtime\
+      \ case now proves canonical-only runtime behavior without legacy probing instead\
+      \ of expecting runtime conflict failure; reason: refs say both-files conflict\
+      \ is migration guidance/dedicated check, not extension runtime probing; impact:\
+      \ prevents implicit legacy path read while preserving explicit override.\n\n\
+      gaps_or_blockers: none"
   - id: pi_postspec_launcher_config_runtime_verify_20260602
     name: Verify launcher/config runtime and invar guard
     status: pending
