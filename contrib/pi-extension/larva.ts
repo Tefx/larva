@@ -1118,8 +1118,9 @@ export const __contract_examples = {
   toolPolicyPathContract: {
     canonicalPath: "~/.pi/larva/tool-policy.json",
     envOverride: "LARVA_PI_TOOL_POLICY_FILE",
-    order: "env override only, else canonical path if exists, else legacy ~/.pi/tool-policy.json if exists, else canonical missing means empty policy",
-    noMigration: "do not auto-migrate or write user files",
+    order: "env override only, else canonical ~/.pi/larva/tool-policy.json only; never read legacy ~/.pi/tool-policy.json implicitly",
+    explicitLegacyOnly: "legacy ~/.pi/tool-policy.json is valid only when explicitly named by LARVA_PI_TOOL_POLICY_FILE",
+    noMigration: "do not auto-migrate, merge, rewrite, create user files, or provide a compatibility window",
   } satisfies Record<string, string>,
 };
 

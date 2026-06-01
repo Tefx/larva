@@ -447,6 +447,19 @@ def test_policy_validation_boundary_and_active_target_shape() -> None:
     assert '"ask"' not in source
 
 
+def test_tool_policy_path_contract_rejects_implicit_legacy_fallback() -> None:
+    source = _source()
+    _assert_tokens(
+        source,
+        "toolPolicyPathContract",
+        "~/.pi/larva/tool-policy.json",
+        "LARVA_PI_TOOL_POLICY_FILE",
+        "never read legacy ~/.pi/tool-policy.json implicitly",
+        "explicitLegacyOnly",
+        "do not auto-migrate, merge, rewrite, create user files, or provide a compatibility window",
+    )
+
+
 def test_policy_filtering_ignores_unknown_tools_and_deny_wins() -> None:
     source = _source()
     _assert_tokens(source, "filterPolicyTools", "deny", "allow", "getAllTools")

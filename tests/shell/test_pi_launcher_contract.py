@@ -77,7 +77,7 @@ def test_launcher_invokes_real_pi_with_expected_args_and_env(
     assert env.get("LARVA_PI_EXTENSION_FLAG") == "-e"
     assert env.get("LARVA_PI_EXTENSION_ENTRY") == cmd[2]
     assert env.get("LARVA_PI_LAUNCHED") == "1"
-    assert env.get("LARVA_PI_TOOL_POLICY_FILE", "").endswith("/.pi/tool-policy.json")
+    assert env.get("LARVA_PI_TOOL_POLICY_FILE", "").endswith("/.pi/larva/tool-policy.json")
     assert Path(env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
     assert "LARVA_CLI_ARGV_JSON" in env
 
@@ -143,7 +143,7 @@ def test_launcher_child_process_receives_env_contract(tmp_path, monkeypatch):
     assert child_env["LARVA_PI_EXTENSION_ENTRY"] == payload["argv"][1]
     assert child_env["LARVA_CLI_ARGV_JSON"]
     assert child_env["LARVA_PI_INTERACTIVE_TUI"] == "1"
-    assert child_env["LARVA_PI_TOOL_POLICY_FILE"].endswith("/.pi/tool-policy.json")
+    assert child_env["LARVA_PI_TOOL_POLICY_FILE"].endswith("/.pi/larva/tool-policy.json")
     assert Path(child_env["LARVA_PI_TOOL_POLICY_FILE"]).is_absolute()
     assert child_env["LARVA_PI_LAUNCHED"] == "1"
 

@@ -383,12 +383,25 @@ PersonaSpec field and is not interpreted by opifex.
 `LARVA_PI_TOOL_POLICY_FILE` remains the env override. Resolution order:
 
 1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
-2. Else if `~/.pi/larva/tool-policy.json` exists, use it.
-3. Else if legacy `~/.pi/tool-policy.json` exists, use that legacy fallback.
-4. Else pass/use the new canonical path; missing file means empty policy as today.
+2. Else use only `~/.pi/larva/tool-policy.json`; missing file means empty policy
+   as today.
 
-The adapter must not auto-migrate, rewrite, or create user policy files.
-`~/.pi/tool-policy.json` is a legacy fallback only.
+The adapter must not read legacy `~/.pi/tool-policy.json` implicitly. That old
+path is unsupported after operator migration and is valid only when explicitly
+named with `LARVA_PI_TOOL_POLICY_FILE`. The adapter must not auto-migrate,
+rewrite, merge, or create user policy files, and there is no compatibility window
+or background migration daemon.
+
+Changed requirement traceability:
+
+| requirement_id | source_ref + key passage | obligation | owning_step_id | evidence_field | status | non_intersection_or_escalation |
+| --- | --- | --- | --- | --- | --- | --- |
+| R1 | user requirement: no legacy fallback | Runtime MUST NOT read `~/.pi/tool-policy.json` unless explicitly set via `LARVA_PI_TOOL_POLICY_FILE`. | `pi_tool_policy_no_fallback_python_impl_20260601`, `pi_tool_policy_no_fallback_extension_impl_20260601` | `runtime_path_matrix` | OWNED | n/a |
+| R2 | user requirement: canonical default | Env absent defaults to `~/.pi/larva/tool-policy.json` only. | `pi_tool_policy_no_fallback_extension_impl_20260601` | `extension_path_matrix` | OWNED | n/a |
+| R3 | user requirement: launcher env behavior | Launcher must preserve explicit env override and otherwise not force old path; acceptable choices: do not set env by default or set canonical only. | `pi_tool_policy_no_fallback_python_impl_20260601` | `launcher_env_matrix` | OWNED | n/a |
+| R4 | user requirement: direct migration/operator proof | Old-only local state moves to canonical and removes old; both-files conflict fails/reports without merge/overwrite. | `pi_tool_policy_operator_migration_proof_20260601` | `migration_report` | OWNED | n/a |
+| R5 | user requirement: docs | Docs state old path unsupported after migration, not fallback. | `pi_tool_policy_no_legacy_docs_20260601` | `docs_diff_summary` | OWNED | n/a |
+| R6 | user requirement: tests | Tests prove old-only absent env does NOT apply old policy; canonical applies; explicit env old applies. | `pi_tool_policy_no_legacy_tests_20260601`, `pi_tool_policy_no_legacy_runtime_guard_20260601` | `test_matrix` | OWNED | n/a |
 
 The policy is keyed by canonical persona id. It expresses Pi tool rules for that
 persona.
@@ -1249,7 +1262,7 @@ architecture_basis:
     Pi extension entry: "LARVA_PI_EXTENSION_ENTRY absolute bundled extension path resolved by launcher"
     Pi interactive classification: "Launcher scan of forwarded pi_args for exact print/json/mode markers"
     Pi model map: "~/.pi/larva/model-map.json or LARVA_PI_MODEL_MAP_FILE override, adapter-local, parsed only by Pi extension"
-    Pi tool rules: "~/.pi/larva/tool-policy.json or LARVA_PI_TOOL_POLICY_FILE override, with legacy ~/.pi/tool-policy.json fallback, adapter-local, parsed only by Pi extension"
+    Pi tool rules: "~/.pi/larva/tool-policy.json or explicit LARVA_PI_TOOL_POLICY_FILE override only; no implicit legacy ~/.pi/tool-policy.json fallback; adapter-local, parsed only by Pi extension"
     Pi runtime tool baseline: "Current Pi model-facing tools enumerated by the extension at each persona commit"
     child session root: "~/.pi/larva/child-sessions or absolute LARVA_PI_CHILD_SESSION_DIR test override"
     child session identity: "Pi child session file path returned as task_id"
@@ -1281,7 +1294,7 @@ architecture_basis:
 
   state_strata:
     canonical_state: "PersonaSpec and registry entries managed by Larva"
-    adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides and legacy tool-policy fallback"
+    adapter_config_state: "~/.pi/larva/model-map.json and ~/.pi/larva/tool-policy.json, plus explicit env overrides; no implicit legacy tool-policy fallback"
     session_state: "Committed persona id/spec digest/model/tool policy inside one Pi extension process"
     child_session_state: "Pi session JSONL file used as public task_id"
     child_busy_state: "In-memory active-task set inside one parent Pi extension process"
@@ -1535,8 +1548,9 @@ Suggested order:
 3. Add adapter-local model-map resolution inside the Pi extension without changing
    PersonaSpec or opifex contracts.
 4. Add canonical `~/.pi/larva/tool-policy.json` parsing and tool-call blocking
-   inside the Pi extension, including legacy `~/.pi/tool-policy.json` fallback,
-   `pi.setActiveTools(filteredTools)`, and `tool_call` interception.
+   inside the Pi extension, explicitly excluding implicit legacy
+   `~/.pi/tool-policy.json` fallback, with `pi.setActiveTools(filteredTools)` and
+   `tool_call` interception.
 5. Add `larva_subagent` backed by one child Pi RPC process per invocation using
    `LARVA_PI_REAL_BIN`, `LARVA_PI_EXTENSION_FLAG`, and
    `LARVA_PI_EXTENSION_ENTRY`, the child session root, public `task_id` path

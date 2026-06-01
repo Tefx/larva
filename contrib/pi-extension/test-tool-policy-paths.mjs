@@ -96,13 +96,22 @@ const cases = {
     assert.deepEqual(canonical.activeTools, ["bash"]);
     console.log("new-path-exists PASS canonical activeTools", JSON.stringify(canonical.activeTools));
   },
-  "legacy-fallback": async () => {
-    const legacy = await runPolicyCase("legacy-fallback", async (paths) => {
+  "old-only-no-env-is-empty": async () => {
+    const legacy = await runPolicyCase("old-only-no-env-is-empty", async (paths) => {
       await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
     });
     assert.equal(legacy.result.ok, true);
-    assert.deepEqual(legacy.activeTools, ["bash"]);
-    console.log("legacy-fallback PASS legacy activeTools", JSON.stringify(legacy.activeTools));
+    assert.deepEqual(legacy.activeTools, ["read", "bash"]);
+    console.log("old-only-no-env-is-empty PASS legacy ignored activeTools", JSON.stringify(legacy.activeTools));
+  },
+  "explicit-env-old-path": async () => {
+    const explicitLegacy = await runPolicyCase("explicit-env-old-path", async (paths, env) => {
+      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
+      env.LARVA_PI_TOOL_POLICY_FILE = paths.legacy;
+    });
+    assert.equal(explicitLegacy.result.ok, true);
+    assert.deepEqual(explicitLegacy.activeTools, ["bash"]);
+    console.log("explicit-env-old-path PASS explicit legacy activeTools", JSON.stringify(explicitLegacy.activeTools));
   },
   "no-file-empty": async () => {
     const noFile = await runPolicyCase("no-file-canonical-empty", async () => undefined);

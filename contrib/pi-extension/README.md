@@ -141,13 +141,15 @@ Persona-specific Pi tool filtering is configured at the canonical path:
 Set `LARVA_PI_TOOL_POLICY_FILE` to override the path. Resolution order is:
 
 1. If `LARVA_PI_TOOL_POLICY_FILE` is set, use only that path.
-2. Else if `~/.pi/larva/tool-policy.json` exists, use it.
-3. Else if legacy `~/.pi/tool-policy.json` exists, use that legacy fallback.
-4. Else pass/use the new canonical path; a missing file means empty policy as
-   today.
+2. Else use only `~/.pi/larva/tool-policy.json`; a missing file means empty
+   policy as today.
 
-The extension must not auto-migrate, rewrite, or create user policy files.
-`~/.pi/tool-policy.json` is a legacy fallback only.
+The extension must not read legacy `~/.pi/tool-policy.json` implicitly. That old
+path is unsupported after operator migration. It is valid only when explicitly
+named with `LARVA_PI_TOOL_POLICY_FILE`, which preserves strict test/operator
+override behavior. The extension must not auto-migrate, rewrite, merge, or create
+user policy files, and there is no compatibility window or background migration
+daemon.
 
 This file is adapter-local Larva-Pi configuration. It is not a canonical
 PersonaSpec field, is not interpreted by opifex, and does not change the meaning
