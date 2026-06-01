@@ -91520,7 +91520,7 @@ phases:
       \ none"
   - id: pi_postspec_editor_prompt_impl_20260602
     name: Complete active-persona editor UX and prompt overlay
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -91663,6 +91663,63 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T17:24:51.236697+00:00'
+    done_at: '2026-06-01T17:34:55.900182+00:00'
+    evidence: 'status: SUCCESS
+
+      mainline_commit: 2e92613
+
+      worker_branch_commit: 16d00ec
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — used as authoritative Pi post-spec
+      editor UX contract: active persona editor completion, no prompt catalogue dumping,
+      marker-bounded prompt overlay preserving Pi prompt context, and no raw @<id>
+      persona support.
+
+      - contrib/pi-extension/README.md — used as operator/runtime contract for supported/unsupported
+      Pi extension modes, command completion and runtime smoke expectations.
+
+
+      ## Changed files
+
+      - contrib/pi-extension/larva.ts — implemented active-persona editor UX and marker-bounded
+      prompt overlay; branch diff 120 insertions / 15 deletions.
+
+
+      ## Mainline verification receipts after squash merge
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_editor_prompt_expected_red.py
+      -v` → exit 0; 5 passed in 1.14s.
+
+      - `uv run --group dev pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` → exit 0; 70 passed in 25.98s.
+
+      - `node scripts/pi-extension-autocomplete-smoke.mjs --case tab-force --prefix
+      vectl && node scripts/pi-extension-autocomplete-smoke.mjs --case tab-regular
+      --prefix vectl && node scripts/pi-extension-autocomplete-smoke.mjs --case delegate-other-input
+      && node scripts/pi-extension-autocomplete-smoke.mjs --case list-failure` → exit
+      0; tab-force/tab-regular returned vectl-planner and vectl-reviewer exact-shape
+      persona IDs; delegate-other-input preserved file.txt base completion; list-failure
+      returned null without crash.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Checklist receipt
+
+      All seven verification checklist items were toggled by orchestrator from frontend-engineer
+      evidence before completion: refs confirmation, changed-files/receipts/gaps,
+      command completion semantics, @persona token/file-reference behavior, no mention
+      submission side effects, marker-bounded prompt overlay preservation, and ctx.ui.addAutocompleteProvider
+      supported/unsupported runtime evidence.
+
+
+      ## Gaps / blockers
+
+      none'
   - id: pi_postspec_editor_prompt_runtime_proof_20260602
     name: Prove editor autocomplete liveness and prompt overlay runtime behavior
     status: pending
