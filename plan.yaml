@@ -86279,14 +86279,14 @@ phases:
       - Extension metadata no longer says legacy fallback is in the order.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Absent-env extension default is exactly canonical `~/.pi/larva/tool-policy.json`.
+      - [x] Absent-env extension default is exactly canonical `~/.pi/larva/tool-policy.json`.
 
-      - [ ] Old-only absent-env fixture does not apply/select old policy.
+      - [x] Old-only absent-env fixture does not apply/select old policy.
 
-      - [ ] Explicit-env old path fixture is honored only because env override was
+      - [x] Explicit-env old path fixture is honored only because env override was
       set.
 
-      - [ ] Metadata/path-order text in code no longer advertises legacy fallback.'
+      - [x] Metadata/path-order text in code no longer advertises legacy fallback.'
     refs:
     - contrib/pi-extension/larva.ts
     - tests/shell/test_pi_extension_contract.py
