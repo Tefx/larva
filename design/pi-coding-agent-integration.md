@@ -164,13 +164,18 @@ Completion target behavior:
 
 - TUI/editor completion is Tab-driven through Pi's command completer and narrow
   `ctx.ui.addAutocompleteProvider` integration when available.
+- The narrow provider handles only `/larva-persona <query>` editor input; all
+  other editor input delegates to Pi's base provider so global and file
+  completion remain Pi-owned.
 - The `/larva-persona` completer performs case-insensitive substring matching over
   persona ids. Prefix matches rank before non-prefix substring matches; remaining
   order follows `larva list --json`.
 - The completer should cache parsed list results in process memory with a short
   bounded TTL and share an in-flight list request between concurrent completion
-  calls. It must not write cache files or inject the persona catalogue into
-  prompts.
+  calls. It must not write cache files, prefetch the persona list before a
+  completion or selector needs it, or inject the persona catalogue into prompts.
+- Tests must be able to reset the process-local completion cache and shared
+  in-flight request state without touching disk.
 - This is not fuzzy matching: no edit distance, wildcard, regex, nearest-persona
   guessing, or hidden aliases.
 

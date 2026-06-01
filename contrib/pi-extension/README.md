@@ -268,8 +268,11 @@ Performance target:
 - The provider should cache the parsed `larva list --json` result in memory for a
   short bounded TTL and share an in-flight list request between concurrent
   completion calls.
-- The cache is process-local only. Do not write completion cache files and do not
-  inject the persona catalogue into prompts.
+- The cache is a process-local parsed-list cache only. Do not write completion
+  cache files, prefetch the persona list before a completion or selector needs it,
+  or inject the persona catalogue into prompts.
+- Tests must be able to reset the process-local completion cache and shared
+  in-flight request state without touching disk.
 - If `larva list --json` fails or returns malformed JSON, the provider returns
   `null` and does not throw through the Pi TUI.
 
