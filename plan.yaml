@@ -85087,31 +85087,31 @@ phases:
       and prefix precedence. - Check `openrouter/google/gemini-3.1-pro-preview` and
       the other two named Gemini OpenRouter personas resolve via `source: "prefix"`,
       not exact entries.</risk_probes>'
-    verification: '- [ ] refs confirmation quotes docs and implementation passages
+    verification: '- [x] refs confirmation quotes docs and implementation passages
       reviewed.
 
-      - [ ] All prior phase steps have checklist receipts with no blocker-class unobserved
+      - [x] All prior phase steps have checklist receipts with no blocker-class unobserved
       items, including cleanup and retest receipts for the model-map blocker.
 
-      - [ ] Every OWNED requirement row is PROVEN or has explicit blocking remediation.
+      - [x] Every OWNED requirement row is PROVEN or has explicit blocking remediation.
 
-      - [ ] Raw Node, pytest, `pi --list-models --offline`, JSON validation, docs
+      - [x] Raw Node, pytest, `pi --list-models --offline`, JSON validation, docs
       diff/status, and `invar guard` outputs are present and sufficient.
 
-      - [ ] Client/runtime autocomplete liveness is proven by command/provider smoke
+      - [x] Client/runtime autocomplete liveness is proven by command/provider smoke
       evidence with non-blank candidate output and delegation proof.
 
-      - [ ] Model-map exact GPT/GLM/Kimi/Minimax entries and `openrouter/` prefix
+      - [x] Model-map exact GPT/GLM/Kimi/Minimax entries and `openrouter/` prefix
       coverage are proven against Pi-listed targets; no model guessing is introduced.
 
-      - [ ] R3 is proven by retest evidence showing all three named Gemini OpenRouter
+      - [x] R3 is proven by retest evidence showing all three named Gemini OpenRouter
       personas resolve via `source: "prefix"`, including `openrouter/google/gemini-3.1-pro-preview`,
       and the exact OpenRouter Gemini key is absent.
 
-      - [ ] Gate rejects source-token-only proof, generic pass claims, failed-original-only
+      - [x] Gate rejects source-token-only proof, generic pass claims, failed-original-only
       R3 proof, or docs/implementation/test mismatches.
 
-      - [ ] Final OPEN/BLOCKED decision includes requirement-level decision basis
+      - [x] Final OPEN/BLOCKED decision includes requirement-level decision basis
       and closure path for unresolved items.'
     refs:
     - contrib/pi-extension/README.md
