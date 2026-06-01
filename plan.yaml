@@ -87264,7 +87264,7 @@ phases:
     agent: gate-reviewer
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
     name: Fix live Pi inventory output-channel seam
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       failure_provenance: introduced_or_exposed_by_live_runtime
@@ -87436,6 +87436,8 @@ phases:
     depends_on:
     - pi_model_map_draft_live_cli_proof_20260601
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-01T11:25:42.052483+00:00'
   - id: pi_model_map_draft_live_cli_retest_20260601
     name: Retest live Pi current-registry model-map draft proof
     status: pending
