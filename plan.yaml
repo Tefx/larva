@@ -92147,7 +92147,7 @@ phases:
   steps:
   - id: pi_postspec_subagent_ux_red_tests_20260602
     name: Add expected-red subagent sessions and rendering contract tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -92288,6 +92288,74 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T17:55:50.028889+00:00'
+    done_at: '2026-06-01T18:05:39.724693+00:00'
+    evidence: 'status: SUCCESS
+
+      semantic_completion: EXPECTED_RED_ACCEPTED
+
+      worker_task_id: ses_17bab0795ffeNXqHPRkStt0u3f
+
+      worker_commit: cbc75fbf2655a43fb2bb4e13ba554bf8e907f391
+
+      mainline_commit: 1618ad2
+
+
+      ## refs Read Confirmation
+
+      - design/pi-coding-agent-integration.md — used ToolResult wrapper, visible resume
+      footer, sessions/rendering/progress, and VT46 renderResult requirements.
+
+      - contrib/pi-extension/README.md — used larva_subagent custom tool, row-local
+      rendering/progress, session helper limit/cap/no-sidecar/no-alias behavior, and
+      UX/runtime expectations.
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+
+      - no_change_reason: n/a
+
+      - scope_guard: merged branch changed only one expected-red test file; no product
+      implementation files modified.
+
+
+      ## Expected-Red Test Receipt
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q` after mainline merge → expected red; 4 failed; EXIT_STATUS=1.
+
+      - Failure alignment: failures expose declared downstream implementation gaps:
+      missing visible resume footer for non-null task_id results, missing `larva_subagent_sessions`
+      helper, missing `renderCall`/`renderResult` hooks and visible-preview bounds,
+      and missing VT46 collapsed/expanded final render views.
+
+      - Downstream implementation owner: pi_postspec_subagent_ux_impl_20260602.
+
+
+      ## Mainline final-state verification
+
+      - `uv run --group dev pytest tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      -q` → expected red; 4 failed; EXIT_STATUS=1. Matched intended gaps and did not
+      fail for infrastructure/runtime reasons.
+
+      - `uv run --group dev invar guard --changed` → exit 0; status passed, files_checked
+      0, errors 0.
+
+
+      ## Checklist receipt
+
+      All ten checklist obligations were toggled by orchestrator: refs confirmation
+      including VT46, changed-files/receipts/gaps, test-only scope, lifecycle paths,
+      sessions helper behavior, render hooks/truncation bounds, VT46 collapsed/expanded
+      final views, parent footer/no dashboard guard, and expected failures pointing
+      to `pi_postspec_subagent_ux_impl_20260602`.
+
+
+      ## Gaps / blockers
+
+      none for this test-definition step; red failures are expected and owned by downstream
+      implementation step.'
   - id: pi_postspec_subagent_ux_impl_20260602
     name: Complete larva_subagent sessions helper and row rendering UX
     status: pending
