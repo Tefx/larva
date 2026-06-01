@@ -87072,21 +87072,21 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation includes key passages from design, INVAR/AGENTS invariant,
+      - [x] refs confirmation includes key passages from design, INVAR/AGENTS invariant,
       and contrib/pi-extension README if read.
 
-      - [ ] Spec conformance table covers every row from the phase requirement-to-checklist
+      - [x] Spec conformance table covers every row from the phase requirement-to-checklist
       matrix with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE.
 
-      - [ ] Drift findings include exact file:line and severity.
+      - [x] Drift findings include exact file:line and severity.
 
-      - [ ] `invar guard` or the repo-canonical guard command is run and raw output
+      - [x] `invar guard` or the repo-canonical guard command is run and raw output
       is included.
 
-      - [ ] Any `NEEDS_TEST`, `UNPROVEN`, or `DIVERGES` item has a remediation or
+      - [x] Any `NEEDS_TEST`, `UNPROVEN`, or `DIVERGES` item has a remediation or
       explicit non-intersection path before gate.
 
-      - [ ] Documentation drift in contrib/pi-extension/README.md is either updated
+      - [x] Documentation drift in contrib/pi-extension/README.md is either updated
       by implementation or flagged as blocking.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
