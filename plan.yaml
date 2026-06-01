@@ -94189,7 +94189,7 @@ phases:
       \ []"
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602
     name: Fix initial startup tool enumerator fail-closed blocker
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -94373,6 +94373,8 @@ phases:
     depends_on:
     - pi_postspec_full_runtime_gate_20260602
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T19:49:09.964999+00:00'
   - id: pi_postspec_initial_startup_tool_enumerator_failclosed_retest_20260602
     name: Retest initial startup tool enumerator fail-closed blocker
     status: pending
