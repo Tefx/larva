@@ -91358,7 +91358,7 @@ phases:
   steps:
   - id: pi_postspec_editor_prompt_red_tests_20260602
     name: Add expected-red editor autocomplete and prompt overlay contract tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -91470,6 +91470,54 @@ phases:
     agent: frontend-engineer
     claimed_by: frontend-engineer
     claimed_at: '2026-06-01T17:18:20.775777+00:00'
+    done_at: '2026-06-01T17:24:20.048377+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — Worker read required ref and cited `/larva-persona` cache/delegation/no\
+      \ prompt catalogue injection, canonical `@persona:<id>` mention-only autocomplete/Pi\
+      \ file-reference preservation/raw-short-form non-support, and before_agent_start\
+      \ marker-bounded prompt sandwich/Pi prompt preservation/no provider payload\
+      \ rewrite.\n- contrib/pi-extension/README.md — Worker read required ref and\
+      \ cited prompt idempotence, `/larva-persona` cache/failure semantics, and `@persona:<id>`\
+      \ mention-only token behavior/Pi file-reference preservation/no side effects.\n\
+      \n## Changed Files / No-Change Report\n- changed_files:\n  - tests/shell/test_pi_postspec_editor_prompt_expected_red.py\n\
+      - worker_commit: 3260f06 test: add Pi editor prompt expected-red contracts\n\
+      - mainline_squash_commit: 4892292 [vectl] step-pi_postspec_editor_prompt_red_tests_20260602\
+      \ completed\n- product_implementation_files_modified: no\n\n## Expected-Red\
+      \ Test Receipt\n- test_scope_guard: only a pytest expected-red contract file\
+      \ under tests/shell was added; no product implementation, schema, prompt/extension\
+      \ production logic, user dotfiles, plan, or orchestrator state files modified.\n\
+      - expected_failures_or_exposed_gaps:\n  - missing deterministic injectable persona-completion\
+      \ clock/test hook exports;\n  - missing `createLarvaPersonaMentionAutocompleteProvider`\
+      \ / mention provider installation;\n  - prompt overlay lacks marker-bounded\
+      \ `larva:identity-policy` and `larva:active-persona` sandwich/idempotence behavior.\n\
+      \  - downstream implementation owner: `pi_postspec_editor_prompt_impl_20260602`.\n\
+      - already_green_rows: unsupported `ctx.ui.addAutocompleteProvider` path keeps\
+      \ `/larva-persona` command completion alive; source guard does not show forbidden\
+      \ prompt-builder/provider-payload rewrite shortcuts.\n- fixture_spec_citations:\
+      \ design lines 164-185, 221-271, 333-363; README lines 252-305, 323-359.\n\n\
+      ## Mainline Verification Receipts\n- `uv run --group dev python -m py_compile\
+      \ tests/shell/test_pi_postspec_editor_prompt_expected_red.py` → exit 0.\n- `uv\
+      \ run --group dev pytest tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ -v` → expected red, exit 1; collected 5 tests, 3 failed and 2 passed. Failures\
+      \ match intended gaps:\n  - clock hooks `setPersonaCompletionClock`, `advancePersonaCompletionClock`,\
+      \ `resetPersonaCompletionClock` missing;\n  - mention autocomplete factory undefined;\n\
+      \  - prompt overlay identity/active-persona blocks missing.\n- `uv run --group\
+      \ dev invar guard --changed` → passed, errors=0.\n- `git status --short` before\
+      \ completion → clean.\n\n## Verification Receipts\n- checklist_receipt:\n  -\
+      \ refs Read Confirmation: satisfied\n  - changed-files/no-change report, verification\
+      \ receipts, gaps/blockers: satisfied\n  - tests limited to tests/fixtures/smoke\
+      \ harnesses and no product implementation code: satisfied\n  - `/larva-persona`\
+      \ cache hit/expiry/in-flight/list failure/no prompt catalogue injection: satisfied\
+      \ by expected-red test.\n  - `@`, `@p`/`@persona` namespace partials, `@persona:<query>`,\
+      \ raw `@<id>` non-support, Pi file-reference preservation, no mention side effects:\
+      \ satisfied by expected-red test.\n  - prompt overlay block shape/idempotence/Pi\
+      \ prompt preservation/no Pi identity/provider payload rewriting: satisfied by\
+      \ expected-red/source guard tests.\n  - expected failures recorded and point\
+      \ to implementation step: satisfied\n- step_intent: test_define_red\n- expected_result:\
+      \ red\n- observed_result: red\n- failure_alignment: match; nonzero pytest failure\
+      \ corresponds to declared pre-implementation gaps, not infra failure.\n- verdict:\
+      \ PASS\n- blockers: []\n- orchestrator_action_hint: COMPLETE\n- gaps_or_blockers:\
+      \ none"
   - id: pi_postspec_editor_prompt_impl_20260602
     name: Complete active-persona editor UX and prompt overlay
     status: pending
