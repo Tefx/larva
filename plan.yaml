@@ -90152,7 +90152,7 @@ phases:
       and toggled before completion.'
 - id: pi-subagent-sessionfile-protocol-2026-06-01
   name: Pi larva_subagent SessionFile Protocol Fix 2026-06-01
-  status: pending
+  status: in_progress
   gate: Phase gate opens only when focused regression/runtime proof shows the fresh
     child sessionFile path is accepted before prompt without weakening root escape,
     relative-path, resume-task_id, authority, or ToolResult invariants.
@@ -90161,7 +90161,7 @@ phases:
   steps:
   - id: fix-fresh-child-sessionfile-validation
     name: Fix fresh child sessionFile validation split
-    status: pending
+    status: claimed
     description: "step_type: implementation\nwork_type: defect_repair\nagent_source:\
       \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
       \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
@@ -90304,6 +90304,8 @@ phases:
 
       - unobserved: <checklist item ids>'
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T12:43:53.232620+00:00'
   - id: verify-gate-sessionfile-protocol
     name: Verify and gate sessionFile protocol fix
     status: pending
