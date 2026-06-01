@@ -104,6 +104,7 @@ def _emit_result(
 ) -> CliExitCode:
     if isinstance(result, Success):
         command_result = result.unwrap()
+        stderr.write(command_result.get("stderr", ""))
         if as_json:
             stdout.write(_json_line(command_result.get("json", {"data": None})).unwrap())
         else:

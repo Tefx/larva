@@ -80,53 +80,33 @@ Resolution rules:
 - Startup persona application and `/larva-persona` switching must use the same
   resolver path.
 
-Runtime-map completion policy:
+Runtime-map draft helper policy:
 
-- Build `~/.pi/larva/model-map.json` from observed Larva registry models,
-  `/Users/tefx/dotfiles/agent/models.yaml`, and `pi --list-models --offline`.
+- Use `larva pi-model-map draft` to build a redirect-safe draft from current
+  Larva registry summaries, `pi --list-models --offline`, and an optional existing
+  model-map file.
+- The helper must not read personal scaffold files or apply provider-family
+  preference tables. It may choose automatically only when the Pi inventory leaves
+  exactly one target candidate.
 - Add exact mappings only when the target provider/model id is present in Pi's
-  offline registry. If no verified target exists, leave the model unmapped so the
-  failure is explicit.
-- For `openai/gpt-*`, prefer `openai-codex/<same-id>` when Pi lists it; only fall
-  back to `openrouter/openai/<same-id>` when the Codex target is unavailable and
-  the OpenRouter target is listed.
-- `openrouter/*` models are covered by the literal `openrouter/` prefix rule and
-  do not need one exact entry per model.
-- Known adapter-local aliases may be mapped only after exact Pi registry proof:
-  `ollama-cloud/glm-*` to `openrouter/z-ai/*`, `ollama-cloud/kimi-*` to
-  `openrouter/moonshotai/*`, and `ollama-cloud/minimax-*` to
-  `openrouter/minimax/*`.
-
-Current verified example for the active local registry/dotfiles inventory:
-
-```json
-{
-  "models": {
-    "ollama-cloud/glm-5.1": { "provider": "openrouter", "model_id": "z-ai/glm-5.1" },
-    "ollama-cloud/kimi-k2.6": { "provider": "openrouter", "model_id": "moonshotai/kimi-k2.6" },
-    "ollama-cloud/minimax-m2.7": { "provider": "openrouter", "model_id": "minimax/minimax-m2.7" },
-    "openai/gpt-5.5": { "provider": "openai-codex", "model_id": "gpt-5.5" }
-  },
-  "prefix_rules": [
-    { "from_prefix": "openrouter/", "to_provider": "openrouter", "to_model_id_prefix": "" }
-  ]
-}
-```
-
-`openrouter/google/gemini-3.1-pro-preview`,
-`openrouter/google/gemini-3.1-flash-lite`, and
-`openrouter/google/gemini-3.5-flash` are covered by the literal `openrouter/`
-prefix rule. The old `ollama-cloud/kimi-k2.6:cloud` spelling is not mapped unless
-an exact entry is added and verified against Pi's registry.
+  offline registry. If no verified unique target exists, report the source model
+  as unresolved instead of guessing.
+- Existing exact mappings are preserved only when the source model is still used
+  and the target appears in the current Pi inventory.
+- Existing literal prefix rules may be preserved only when they cover current
+  registry models, map them to current Pi targets, and do not conflict with another
+  same-length prefix rule.
+- The written `model-map.json` contains only runtime-compatible `models` and
+  `prefix_rules`; report metadata belongs on stderr or in the CLI `--json`
+  envelope.
 
 Contract verification cases for the implementation step:
 
-- Exact aliases in the example resolve through `models` before any prefix rule is
-  considered.
-- `openrouter/*` model ids preserve embedded slashes after the `openrouter/`
-  prefix is stripped.
+- Exact aliases resolve through `models` before any prefix rule is considered.
+- Prefix rules preserve embedded slashes after the matched literal prefix is
+  stripped.
 - Two matching prefix rules with the same `from_prefix` length fail closed with
-  `LARVA_MODEL_MAP_INVALID`.
+  `LARVA_MODEL_MAP_INVALID` at runtime and are rejected by the draft helper.
 - Startup persona application and `/larva-persona` switching use the same model
   resolver and the same unavailable-model error projection.
 
