@@ -86920,22 +86920,22 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT (must-green after implementation):
 
-      - [ ] refs confirmation cites the current raw return path and Pi renderer `content`
+      - [x] refs confirmation cites the current raw return path and Pi renderer `content`
       expectation.
 
-      - [ ] Expected-red tests from `pi_subagent_toolresult_red_tests_20260601` now
+      - [x] Expected-red tests from `pi_subagent_toolresult_red_tests_20260601` now
       pass without weakening assertions.
 
-      - [ ] Success result proof shows `content` array with text plus preserved `details`/metadata
+      - [x] Success result proof shows `content` array with text plus preserved `details`/metadata
       fields.
 
-      - [ ] Failure-before-session proof shows renderer-safe `content` plus error
+      - [x] Failure-before-session proof shows renderer-safe `content` plus error
       indication.
 
-      - [ ] Failed-after-allocation and cancelled paths are covered by tests or explicit
+      - [x] Failed-after-allocation and cancelled paths are covered by tests or explicit
       fixture-backed proof.
 
-      - [ ] Diff evidence shows no Pi renderer patch, no new broad framework, and
+      - [x] Diff evidence shows no Pi renderer patch, no new broad framework, and
       semantic `LarvaSubagentResult` still exists as domain payload.'
     refs:
     - contrib/pi-extension/larva.ts
