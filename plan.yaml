@@ -85094,21 +85094,21 @@ phases:
       This is a narrowly authorized operator-local config cleanup step, not repo implementation.
       Completion requires a real before/after JSON change only to the model-map file
       and evidence that the redundant key no longer exists.'
-    verification: '- [ ] Before evidence includes raw JSON excerpt containing the
+    verification: '- [x] Before evidence includes raw JSON excerpt containing the
       exact key `openrouter/google/gemini-3.1-pro-preview` and the before checksum
       of `/Users/tefx/.pi/larva/model-map.json`.
 
-      - [ ] Cleanup removes exactly the redundant exact key `openrouter/google/gemini-3.1-pro-preview`
+      - [x] Cleanup removes exactly the redundant exact key `openrouter/google/gemini-3.1-pro-preview`
       or otherwise makes that target resolve by the literal `openrouter/` prefix rule
       without adding another exact Gemini replacement.
 
-      - [ ] After evidence includes raw JSON excerpt showing the exact key is absent
+      - [x] After evidence includes raw JSON excerpt showing the exact key is absent
       and the after checksum of `/Users/tefx/.pi/larva/model-map.json`.
 
-      - [ ] Required exact GPT/GLM/Kimi/Minimax mappings remain present and unchanged
+      - [x] Required exact GPT/GLM/Kimi/Minimax mappings remain present and unchanged
       in the after JSON.
 
-      - [ ] Evidence lists the write set as only `/Users/tefx/.pi/larva/model-map.json`
+      - [x] Evidence lists the write set as only `/Users/tefx/.pi/larva/model-map.json`
       and attests that `/Users/tefx/dotfiles/agent/models.yaml` plus personal scaffold
       inventory were not read.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
