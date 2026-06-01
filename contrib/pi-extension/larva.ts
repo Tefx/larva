@@ -698,6 +698,7 @@ async function notifyPersonaSwitchResult(ctx: PiContext, result: PersonaSwitchRe
     await notify(ctx, `Larva persona active: ${result.envelope.persona_id}`, "info");
     return;
   }
+  await setStatus(ctx);
   await notify(ctx, `Larva persona switch failed: ${result.error.code}: ${result.error.message}`, "error");
 }
 
