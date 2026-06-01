@@ -92427,11 +92427,72 @@ phases:
       - [ ] Decision basis maps every OWNED requirement to positive proof or BLOCKED
       remediation.
 
+      - [ ] VT46 decision basis confirms collapsed final view, expanded final view
+      fields, resume footer behavior, parent `larva:` footer preservation, and no-widget-dashboard
+      prohibition are PROVEN or BLOCKED with remediation.
+
       - [ ] No unresolved behavioral runtime, client-runtime, orphan requirement,
       or hard-constraint violation is bypassed.
 
       - [ ] Final decision is OPEN only if all blocker-class obligations are PROVEN
       or have explicit non-intersection evidence.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step,
+      including VT46 renderResult passages>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for deep review>
+
+      - no_change_reason: <required; deep review should normally report no product
+      changes>
+
+
+      ## Final Deep Review Decision Basis
+
+      - evidence_reviewed: <launcher/config, editor/prompt, subagent UX, spec conformance,
+      runtime gate, docs sync evidence refs>
+
+      - requirement_mapping: <every OWNED requirement mapped to positive proof or
+      BLOCKED remediation>
+
+      - client_runtime_review: <runtime/client evidence class separation and proof
+      refs>
+
+      - hard_constraint_review: <schema/aliases/malformed input/sidecars/legacy fallback/raw
+      @<id>/prompt catalogue checks>
+
+      - decision: <OPEN|BLOCKED>
+
+
+      ## VT46 renderResult Final Review
+
+      - vt46_collapsed_final_view: <evidence ref and PROVEN/BLOCKED status>
+
+      - vt46_expanded_fields: <evidence refs and PROVEN/BLOCKED status for persona
+      id, mode, full task, task_id when known, final status, error if any, final output,
+      resume footer>
+
+      - vt46_parent_larva_footer_preserved: <evidence ref and PROVEN/BLOCKED status>
+
+      - vt46_no_widget_dashboard: <evidence ref and PROVEN/BLOCKED status>
+
+      - vt46_closure_path: <required if any VT46 row is not PROVEN>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
