@@ -84452,30 +84452,30 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       alone will be rejected):
 
-      - [ ] Raw `git -C /Users/tefx/dotfiles/agent status --short -- models.yaml`
+      - [x] Raw `git -C /Users/tefx/dotfiles/agent status --short -- models.yaml`
       output is pasted.
 
-      - [ ] Raw `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is
+      - [x] Raw `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is
       pasted and interpreted against B1.
 
-      - [ ] Inventory evidence proves dotfiles alias semantics are preserved for `#
+      - [x] Inventory evidence proves dotfiles alias semantics are preserved for `#
       glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`, `gpt53codexspark:
       openai/gpt-5.3-codex-spark`, and `gpt54: openai/gpt-5.5`, or a reviewed accounting
       artifact explicitly owns the unrelated removals.
 
-      - [ ] Inventory evidence proves the four Pi exact mappings and `openrouter/`
+      - [x] Inventory evidence proves the four Pi exact mappings and `openrouter/`
       prefix template remain exactly present.
 
-      - [ ] Evidence confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
+      - [x] Evidence confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
       unmapped.
 
-      - [ ] Evidence confirms no writes under `~/.pi/**`, no Larva product-code changes,
+      - [x] Evidence confirms no writes under `~/.pi/**`, no Larva product-code changes,
       and no opifex contract changes occurred in the fix path.
 
-      - [ ] Existing model-map/runtime smoke commands are rerun if needed for non-intersection;
+      - [x] Existing model-map/runtime smoke commands are rerun if needed for non-intersection;
       otherwise the report includes an explicit non-intersection rationale.
 
-      - [ ] Gate decision includes `verdict`, `blockers`, `gate_open_allowed`, and
+      - [x] Gate decision includes `verdict`, `blockers`, `gate_open_allowed`, and
       `orchestrator_action_hint` with `DO_COMPLETE_ORIGINAL_BLOCKED_GATE_THEN_COMPLETE_REGATE`
       or equivalent only if B1 is proven closed.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
