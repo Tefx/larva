@@ -87237,7 +87237,7 @@ phases:
       \nCommit hashes: none — read-only verification/no file changes."
   - id: pi_model_map_draft_gate_20260601
     name: Gate Pi model-map draft helper
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale:\n  - Phase touches CLI output channels,\
       \ filesystem writes, external Pi runtime, and Core/Shell boundaries.\n  - Approved\
@@ -87340,6 +87340,8 @@ phases:
     - pi_model_map_draft_fail_closed_inventory_fix_20260601
     - pi_model_map_draft_fail_closed_inventory_retest_20260601
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T12:11:37.084521+00:00'
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
     name: Fix live Pi inventory output-channel seam
     status: done
