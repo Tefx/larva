@@ -93785,8 +93785,12 @@ phases:
 
       | B7 | <PROVEN/SUPPLEMENTAL_NON_BLOCKING/BLOCKED> | <artifact> | <gap/none>
       | <path> |'
+    refs:
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/README.md
     depends_on:
     - pi_postspec_full_spec_conformance_20260602
+    agent: frontend-engineer
   - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
     status: pending
