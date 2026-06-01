@@ -90907,29 +90907,29 @@ phases:
       must retain distinct error semantics.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] launcher_env_matrix shows real Pi bin, extension flag/entry, Larva CLI
+      - [x] launcher_env_matrix shows real Pi bin, extension flag/entry, Larva CLI
       argv, interactive flag, and explicit config overrides only.
 
-      - [ ] model_map_matrix covers exact hit, longest literal prefix, same-length
+      - [x] model_map_matrix covers exact hit, longest literal prefix, same-length
       conflict -> LARVA_MODEL_MAP_INVALID, missing file fallback, invalid config fail-closed,
       unavailable mapped target.
 
-      - [ ] draft_helper_matrix covers registry + pi offline inventory, no personal
+      - [x] draft_helper_matrix covers registry + pi offline inventory, no personal
       scaffolds/provider guessing, unresolved reporting, redirect-safe output channels.
 
-      - [ ] tool_policy_matrix covers canonical default only, explicit absolute override
+      - [x] tool_policy_matrix covers canonical default only, explicit absolute override
       only, old-path-only no fallback, both-files operator migration guidance not
       runtime probing.
 
-      - [ ] No PersonaSpec/opifex shared schema change, malformed shared input acceptance,
+      - [x] No PersonaSpec/opifex shared schema change, malformed shared input acceptance,
       compatibility alias, sidecar, lock file, or hidden Pi settings fallback is introduced.'
     evidence_template: '## refs Read Confirmation
 
