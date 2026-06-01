@@ -85941,7 +85941,7 @@ phases:
       error: ""'
   - id: pi_model_map_draft_red_tests_20260601
     name: Add expected-red fixture tests for Pi model-map draft helper
-    status: pending
+    status: claimed
     description: 'step_type: test
 
       step_intent: test_define_red
@@ -86121,6 +86121,8 @@ phases:
     depends_on:
     - pi_model_map_draft_contract_20260601
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-01T10:45:29.192994+00:00'
   - id: pi_model_map_draft_impl_20260601
     name: Complete Pi model-map draft helper implementation
     status: pending
