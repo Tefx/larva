@@ -90428,7 +90428,7 @@ phases:
       was not read.'
   - id: verify-gate-sessionfile-protocol
     name: Verify and gate sessionFile protocol fix
-    status: pending
+    status: claimed
     description: "step_type: gate\nverification_scope: phase-check\nagent_source:\
       \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
       \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
@@ -90591,3 +90591,5 @@ phases:
     depends_on:
     - fix-fresh-child-sessionfile-validation
     agent: gate-reviewer
+    claimed_by: software-architect
+    claimed_at: '2026-06-01T12:57:02.169955+00:00'
