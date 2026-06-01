@@ -90692,7 +90692,7 @@ phases:
       \ was not accessed.\n\n## Open Problems / Residual Risk\nnone"
 - id: pi-postspec-launcher-config-2026-06-02
   name: Pi Post-Spec Launcher and Adapter Config Conformance 2026-06-02
-  status: in_progress
+  status: done
   gate: Phase opens only when launcher/package/env contract and adapter-local model-map/tool-policy
     semantics match commit 4616008, including absolute env overrides, canonical ~/.pi/larva/*
     paths, LARVA_MODEL_MAP_INVALID, no implicit legacy tool-policy fallback, no PersonaSpec/opifex
@@ -91201,7 +91201,7 @@ phases:
       - invar guard raw output: satisfied\n- behavioral proof register: satisfied"
   - id: pi_postspec_launcher_config_gate_20260602
     name: Gate launcher/config post-spec conformance
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check
@@ -91294,9 +91294,58 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T17:10:34.121067+00:00'
+    done_at: '2026-06-01T17:17:30.927322+00:00'
+    evidence: "status: SUCCESS\n\n## refs Read Confirmation\n- design/pi-coding-agent-integration.md\
+      \ — Gate reviewer read required ref and cited no PersonaSpec shape changes,\
+      \ extension flag/no-settings fallback, launcher env, absolute env overrides,\
+      \ no implicit legacy tool-policy fallback. Blind tester also read and cited\
+      \ launcher detection/status/tool registration expectations.\n- contrib/pi-extension/README.md\
+      \ — Gate reviewer read required ref and cited launcher-owned env/no settings\
+      \ fallback, model-map absolute override, tool-policy env override-only/no auto-migration/no\
+      \ legacy fallback, and adapter-local policy. Blind tester cited runtime gate\
+      \ and extension flag/slash liveness requirements.\n\n## Changed Files / No-Change\
+      \ Report\n- changed_files: none\n- no_change_reason: gate review + blind liveness\
+      \ verification only; product/docs edits forbidden.\n- gate_worktree_status:\
+      \ clean\n- blind_worktree_status: clean\n- merge_result: both gate-review and\
+      \ blind-tester branches already up to date / nothing to squash.\n\n## Gate Decision\
+      \ Basis\n- evidence_reviewed: completed traceability, implementation, runtime\
+      \ verification receipts; implementation commit `fe47e8c`; specs in design/README;\
+      \ changed source/tests; independent gate reruns; blind Mode D liveness receipts.\n\
+      - matrix_review: PI4616008-LAUNCH-ENV PROVEN; PI4616008-MODEL-MAP PROVEN; PI4616008-DRAFT\
+      \ PROVEN for gate scope; PI4616008-TOOL-POLICY PROVEN; PI4616008-SHARED-SURFACE\
+      \ PROVEN. ORPHAN_REQUIREMENT rows: none.\n- behavioral_register_review: launcher\
+      \ extension loading/env PROVEN; absolute env override validation PROVEN; model-map\
+      \ resolver behavior PROVEN; tool-policy no legacy fallback PROVEN; draft helper\
+      \ contract PROVEN; PersonaSpec/opifex shared surface untouched PROVEN.\n- hard_constraint_review:\
+      \ legacy tool-policy fallback rejected by runtime proof (`old-only-no-env-is-empty\
+      \ PASS`); hidden Pi settings fallback rejected by launcher tests/source review;\
+      \ personal dotfile/model scaffold dependencies not found; absolute env override\
+      \ semantics proven; shared surface changes absent from implementation commit\
+      \ file list.\n- decision: OPEN\n\n## Blind Mode D Liveness\n- `uv run --group\
+      \ dev larva pi --help` → exit 0, usage shown.\n- `uv run --group dev larva pi-model-map\
+      \ draft --help` → exit 0, output includes --output/--model-map/--write/--non-interactive/--json.\n\
+      - `uv run --group dev larva --help` → exit 0, command list includes pi and pi-model-map.\n\
+      - `node scripts/pi-extension-runtime-smoke.mjs --scenario availability` → exit\
+      \ 0, Pi available true, helpExitCode 0, extensionFlag `-e`.\n- `node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario slash-status --persona ok` → exit 0, RPC supported, prompt success\
+      \ true, status `larva: none` then `larva: ok`.\n- `node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario tool-shape` → exit 0, registeredToolNames includes `larva_subagent`,\
+      \ required persona_id/task, optional task_id, has execute.\n- runtime_liveness:\
+      \ PASS\n- blockers: []\n\n## Mainline Verification Receipts\n- `vectl_validate(check_refs=true)`\
+      \ → 0 errors, known 63 historical missing-ref warnings.\n- mainline smoke probes:\
+      \ availability/slash-status/tool-shape all exit 0 with Pi availability or runtime\
+      \ shape evidence.\n- `git status --short` before completion → clean.\n\n## Verification\
+      \ Receipts\n- checklist_receipt:\n  - refs confirmation: satisfied\n  - changed-files/no-change\
+      \ report and receipts/gaps: satisfied\n  - all phase steps completed with refs\
+      \ confirmation and raw evidence: satisfied\n  - no orphan requirements for launcher/config\
+      \ scope: satisfied\n  - behavioral proof register has every owned requirement\
+      \ PROVEN or BLOCKED with closure path: satisfied; all owned rows PROVEN.\n \
+      \ - gate decision basis rejects sampled/no-blocker-only evidence and records\
+      \ OPEN/BLOCKED: satisfied, decision OPEN.\n- blockers: []\n- gate_open_allowed:\
+      \ true\n- orchestrator_action_hint: COMPLETE\n- verdict: PASS"
 - id: pi-postspec-editor-prompt-2026-06-02
   name: Pi Post-Spec Editor UX and Prompt Overlay 2026-06-02
-  status: locked
+  status: pending
   gate: Phase opens only when /larva-persona completion, selector behavior, process-local
     cache/in-flight sharing, @persona:<id> mention autocomplete, Pi file-reference
     preservation, and Larva-managed prompt overlay are implemented/proven without
