@@ -85524,3 +85524,149 @@ phases:
     depends_on:
     - pi_model_map_draft_impl_20260601
     agent: integration-verifier
+  - id: pi_model_map_draft_live_cli_proof_20260601
+    name: Verify real Pi and registry runtime proof for model-map draft helper
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      independence_level: L1
+
+      protected_gate: pi_model_map_draft_gate_20260601
+
+
+      PROOF ARTIFACT:
+
+      Run the actual CLI/runtime seam and collect real environment evidence that the
+      helper can see Pi offline model inventory and current Larva registry-used models.
+      This is the real-path companion to fixture tests.
+
+
+      Runtime surface: CLI
+
+      Entry point: `larva pi-model-map draft`
+
+      Minimum liveness proof:
+
+      - real `pi --list-models --offline` command evidence
+
+      - real Larva registry evidence through the helper path
+
+      - default dry-run command does not write by default
+
+      - stdout is raw draft JSON only and can be parsed/redirected
+
+      - stderr contains human report/warnings/unresolved summaries when present
+
+      - non-interactive unresolved/malformed failure is demonstrated with controlled
+      inputs/paths without guessing
+
+
+      ENV DECLARATION:
+
+      If Pi is not installed or `pi --list-models --offline` cannot run in the verifier
+      environment, return BLOCKED with exact missing command/environment evidence;
+      do not substitute fixture tests as runtime proof.
+
+
+      <side_effect_budget>
+
+      Allowed: read-only Pi inventory call, read-only registry listing, temporary
+      `--model-map`/`--output` paths for controlled CLI proof, optional writes only
+      to verifier-controlled temp paths. Forbidden: writes to real ~/.pi/larva/model-map.json
+      unless explicitly using a temp path or user-approved output; reading personal
+      scaffolds; mutating registry personas.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm the helper invokes the real Pi command rather than parsing stale docs
+      or fixtures.
+
+      - Confirm report text cannot contaminate redirected stdout JSON under warnings/unresolved
+      states.
+
+      - Confirm current registry proof is collected through Larva facade/CLI behavior,
+      not private registry file assumptions.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites Architecture basis, CLI contract, Data sources,
+      Draft output contract, and Verification targets.
+
+      - [ ] Raw output from real `pi --list-models --offline` or exact BLOCKED environment
+      proof is included.
+
+      - [ ] Raw CLI receipt for `larva pi-model-map draft` shows default stdout is
+      parseable raw model-map JSON and stderr is separate.
+
+      - [ ] Current registry-used model evidence is included from the real helper/registry
+      path.
+
+      - [ ] A controlled non-interactive unresolved/malformed case returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      without guessing.
+
+      - [ ] If `--write` is exercised, it writes only to a temp/explicit path and
+      the file shape matches the Pi extension runtime schema.
+
+      - [ ] Behavioral proof register marks live runtime obligations PROVEN/BLOCKED
+      with closure paths; fixture-only evidence is not accepted as live proof.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passages or NOT READ: reason>
+
+
+      ## Live Runtime Receipt
+
+      - pi_inventory_command: pi --list-models --offline
+
+      - pi_inventory_raw_stdout: <paste raw output or BLOCKED details>
+
+      - helper_command: <exact larva pi-model-map draft command>
+
+      - helper_stdout_raw: <paste stdout>
+
+      - helper_stderr_raw: <paste stderr>
+
+      - stdout_json_parse_result: <success/failure + parsed top-level keys>
+
+      - registry_model_evidence: <current registry-used models as seen by helper/facade
+      path>
+
+      - write_path_receipt: <temp path proof or not exercised>
+
+      - noninteractive_unresolved_receipt: <command/output/error code>
+
+
+      ## Behavioral Proof Register
+
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |
+      status | closure_path | gate_decision_basis |
+
+      | --- | --- | --- | --- | --- | --- | --- |
+
+      | design > Data sources | real Pi inventory observed | live CLI | <raw output>
+      | PROVEN/BLOCKED | <path> | <basis> |
+
+      | design > Draft output contract | stdout raw JSON only | live CLI | <stdout/stderr>
+      | PROVEN/BLOCKED | <path> | <basis> |
+
+
+      ## Checklist Receipt
+
+      - real Pi inventory proof collected: <satisfied/failed/blocked/unobserved>
+
+      - real registry proof collected: <satisfied/failed/blocked/unobserved>
+
+      - redirect-safe stdout proven: <satisfied/failed/blocked/unobserved>
+
+      - unresolved non-interactive failure proven: <satisfied/failed/blocked/unobserved>'
+    depends_on:
+    - pi_model_map_draft_impl_20260601
+    agent: integration-verifier
