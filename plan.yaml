@@ -85772,21 +85772,21 @@ phases:
       </risk_probes>"
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation includes key passages for Decision, CLI contract, Data
+      - [x] refs confirmation includes key passages for Decision, CLI contract, Data
       sources, Candidate discovery policy, Draft output contract, Error model, Architecture
       basis, and Verification targets.
 
-      - [ ] Contract artifacts define the top-level command, data/result shapes, source
+      - [x] Contract artifacts define the top-level command, data/result shapes, source
       authorities, error codes, and stdout/stderr/--json semantics without implementing
       runtime behavior.
 
-      - [ ] If `src/larva/core/pi_model_map.py` is introduced, every Core function
+      - [x] If `src/larva/core/pi_model_map.py` is introduced, every Core function
       stub has @pre/@post contracts and at least one doctest before later implementation.
 
-      - [ ] Contract explicitly forbids `/Users/tefx/dotfiles/agent/models.yaml` and
+      - [x] Contract explicitly forbids `/Users/tefx/dotfiles/agent/models.yaml` and
       provider-family preference tables.
 
-      - [ ] Requirement-to-checklist matrix is preserved or updated so every approved-design
+      - [x] Requirement-to-checklist matrix is preserved or updated so every approved-design
       requirement is owned by a later proof item.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
