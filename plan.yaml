@@ -87287,7 +87287,7 @@ phases:
       receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_repo_verify_20260601
     name: Verify repo tests and invar guard after larva_subagent ToolResult fix
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87370,6 +87370,19 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T09:33:13.445598+00:00'
+    done_at: '2026-06-01T09:38:59.643988+00:00'
+    evidence: 'Verify-only repo verification completed; no files changed and no merge
+      required. Refs confirmation cited focused Pi extension tests/smoke and `INVAR.md`
+      guard policy. Subagent and mainline verification both green: focused Pi extension
+      contract/runtime tests `uv run python -m pytest tests/shell/test_pi_extension_contract.py
+      tests/shell/test_pi_extension_real_runtime.py -q` passed (65 passed); updated
+      runtime smoke `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`
+      passed and exercised registered `larva_subagent` result shape with renderer-safe
+      content/details; repository shell command `uv run python -m pytest tests/shell
+      -q` passed (372 passed); canonical guard `uv run invar guard` passed with JSON
+      status `passed` and zero findings. Architecture baseline: no Core/Shell/Invar
+      regressions observed from adapter/doc changes. Failure disposition empty because
+      all commands passed. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_gate_20260601
     name: Gate Pi larva_subagent ToolResult crash fix
     status: pending
