@@ -192,6 +192,56 @@ function hasRendererSafeTextContent(result) {
     && result.content.some((item) => item?.type === "text" && typeof item.text === "string");
 }
 
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function assertLarvaSubagentToolResultShape(name, result) {
+  const failures = [];
+  if (!Array.isArray(result?.content)) {
+    failures.push("ToolResult.content must be an array");
+  }
+  const textItem = Array.isArray(result?.content)
+    ? result.content.find((item) => item?.type === "text" && typeof item.text === "string")
+    : null;
+  if (!textItem) {
+    failures.push("ToolResult.content must include a text item { type: 'text', text: string }");
+  }
+  if (!isRecord(result?.details)) {
+    failures.push("ToolResult.details must be a machine-readable metadata object");
+  } else {
+    for (const field of ["task_id", "persona_id", "status", "result_text", "error"]) {
+      if (!(field in result.details)) {
+        failures.push(`ToolResult.details missing semantic field ${field}`);
+      } else if (JSON.stringify(result.details[field]) !== JSON.stringify(result[field])) {
+        failures.push(`ToolResult.details.${field} does not preserve top-level ${field}`);
+      }
+    }
+    if (result.details.error !== null) {
+      if (!isRecord(result.details.error)) {
+        failures.push("ToolResult.details.error must be null or a structured error object");
+      } else {
+        if (typeof result.details.error.code !== "string") failures.push("ToolResult.details.error.code must be a string when present");
+        if (typeof result.details.error.message !== "string") failures.push("ToolResult.details.error.message must be a string when present");
+      }
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(`${name} larva_subagent ToolResult shape regression: ${failures.join("; ")}`);
+  }
+  return {
+    rendererSafeContent: true,
+    textItem,
+    detailsPreserve: {
+      task_id: result.details.task_id,
+      persona_id: result.details.persona_id,
+      status: result.details.status,
+      result_text: result.details.result_text,
+      error: result.details.error,
+    },
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.has("help")) {
@@ -294,7 +344,13 @@ async function main() {
       failedAfterAllocation,
     };
     evidence.runtime.assertions = Object.fromEntries(
-      Object.entries(evidence.runtime.toolResultCases).map(([name, result]) => [name, hasRendererSafeTextContent(result)]),
+      Object.entries(evidence.runtime.toolResultCases).map(([name, result]) => [
+        name,
+        {
+          hasRendererSafeTextContent: hasRendererSafeTextContent(result),
+          ...assertLarvaSubagentToolResultShape(name, result),
+        },
+      ]),
     );
   } else if (scenario === "tool-call-block") {
     await runtimeHarness(evidence);

@@ -220,12 +220,11 @@ def test_runtime_object_registers_larva_subagent_parameters_and_execute() -> Non
 
 
 def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> None:
-    """Expected-red: Pi renderer calls result.content.filter(...) on tool output.
+    """Pi renderer calls result.content.filter(...) on tool output.
 
     This invokes the registered ``larva_subagent`` handler/execute functions via
     the runtime smoke harness and requires a Pi ToolResult-style content array.
-    Current raw LarvaSubagentResult payloads omit ``content`` and are therefore
-    unsafe for Pi's renderer.
+    The smoke also preserves machine-readable semantic metadata in ``details``.
     """
 
     payload = _run_runtime_scenario("tool-result-renderer-shape")
@@ -242,12 +241,20 @@ def test_registered_larva_subagent_results_are_renderer_safe_toolresults() -> No
     assert cases["failedAfterAllocation"]["status"] == "failed"
     assert cases["failedAfterAllocation"]["task_id"].endswith("allocated.jsonl")
 
-    assert assertions == {
-        "success": True,
-        "failedBeforeSession": True,
-        "cancelled": True,
-        "failedAfterAllocation": True,
-    }
+    for case_name in ("success", "failedBeforeSession", "cancelled", "failedAfterAllocation"):
+        assertion = assertions[case_name]
+        case = cases[case_name]
+        assert assertion["hasRendererSafeTextContent"] is True
+        assert assertion["rendererSafeContent"] is True
+        assert assertion["textItem"]["type"] == "text"
+        assert isinstance(assertion["textItem"]["text"], str)
+        assert assertion["detailsPreserve"] == {
+            "task_id": case["task_id"],
+            "persona_id": case["persona_id"],
+            "status": case["status"],
+            "result_text": case["result_text"],
+            "error": case["error"],
+        }
 
 
 def test_runtime_tool_call_event_with_tool_name_blocks_with_reason() -> None:
