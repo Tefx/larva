@@ -85834,3 +85834,90 @@ phases:
     - pi_model_map_draft_impl_20260601
     - pi_model_map_draft_fixture_retest_20260601
     agent: spec-verifier
+  - id: pi_model_map_draft_gate_20260601
+    name: Gate Pi model-map draft helper
+    status: pending
+    description: "step_type: gate\nverification_scope: phase-check\nreview_depth:\
+      \ THOROUGH\nreview_depth_rationale:\n  - Phase touches CLI output channels,\
+      \ filesystem writes, external Pi runtime, and Core/Shell boundaries.\n  - Approved\
+      \ design forbids personal scaffold input and provider preference tables, both\
+      \ high-drift risks.\n  - Gate must reconcile fixture proof, live proof, spec\
+      \ conformance, and invar guard.\n\nDECISION ARTIFACT:\nAs an independent reviewer,\
+      \ decide whether the Pi model-map draft helper phase can open. The gate must\
+      \ review every prior evidence artifact and block on missing positive proof for\
+      \ any OWNED requirement.\n\nGate decision basis must include:\n- requirement/proof-obligation\
+      \ refs from design/pi-model-map-draft-helper.md\n- evidence refs from contract,\
+      \ expected-red tests, implementation, fixture-green retest, live CLI proof,\
+      \ spec/guard verification\n- requirement-to-checklist traceability rows reviewed\n\
+      - positive proof status for every OWNED requirement: PROVEN, UNPROVEN, NEEDS_TEST,\
+      \ BLOCKED\n- unresolved statuses and why each blocks or does not intersect remaining\
+      \ gates\n- final OPEN/BLOCK recommendation\n\nCross-cutting focus:\n- stdout/stderr\
+      \ redirect safety under success and warning/failure paths\n- no `/Users/tefx/dotfiles/agent/models.yaml`\
+      \ or personal scaffold reads\n- no hard-coded provider preferences or broad\
+      \ new prefix-rule invention\n- Pi extension remains runtime consumer only; helper\
+      \ owns setup-time drafting\n- Core/Shell invariant and invar guard status\n\
+      - real Pi inventory and current registry proof are not substituted by fixtures\n\
+      \n<side_effect_budget>\nAllowed: read-only review of phase evidence and plan\
+      \ decision. Forbidden: code edits, plan completion, lifecycle actions, accepting\
+      \ sampled evidence when the requirement matrix has unproven rows.\n</side_effect_budget>\n\
+      \n<risk_probes>\n- Attempt to falsify redirect safety by checking raw stdout\
+      \ snippets, not summaries.\n- Check that every ambiguous provider family uses\
+      \ the same evidence-filter policy.\n- Check that live proof uses current environment,\
+      \ not checked-in fixtures or legacy docs.\n</risk_probes>"
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the approved design sections governing the gate
+      decision.
+
+      - [ ] Every phase step has specific evidence, checklist receipts, and no unresolved
+      blocker-class gaps.
+
+      - [ ] Fixture unit-test proof is green and covers deterministic merge/candidate/output/error
+      cases.
+
+      - [ ] Live runtime proof includes real `pi --list-models --offline` evidence
+      and current registry evidence, or blocks with exact environment cause.
+
+      - [ ] Redirect-safe stdout, stderr reports, non-interactive unresolved failure,
+      optional --json semantics if implemented, and --write shape are positively proven.
+
+      - [ ] Spec conformance and invar guard evidence are reviewed and blocker-class
+      drift has remediation ownership.
+
+      - [ ] Gate decision basis maps every requirement row to PROVEN or a blocking
+      closure path; sampled/no-blocker claims are rejected.
+
+      - [ ] Final decision is OPEN or BLOCKED with concrete reasons.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-model-map-draft-helper.md — <key passages or NOT READ:\
+      \ reason>\n\n## Gate Review Report\n**Reviewer**: gate-reviewer (independent\
+      \ of phase implementation)\n**Phase**: pi-model-map-draft-helper-2026-06-01\n\
+      **Timestamp**: <ISO 8601>\n\n## Execution Review\n| Step ID | Status | Evidence\
+      \ Quality | Concerns |\n| --- | --- | --- | --- |\n| pi_model_map_draft_contract_20260601\
+      \ | <status> | <quality> | <notes> |\n| pi_model_map_draft_red_tests_20260601\
+      \ | <status> | <quality> | <notes> |\n| pi_model_map_draft_impl_20260601 | <status>\
+      \ | <quality> | <notes> |\n| pi_model_map_draft_fixture_retest_20260601 | <status>\
+      \ | <quality> | <notes> |\n| pi_model_map_draft_live_cli_proof_20260601 | <status>\
+      \ | <quality> | <notes> |\n| pi_model_map_draft_spec_guard_20260601 | <status>\
+      \ | <quality> | <notes> |\n\n## Gate Decision Basis\n| requirement_id | evidence_ref\
+      \ | status | unresolved_intersection | decision_basis |\n| --- | --- | --- |\
+      \ --- | --- |\n| R1 | <evidence> | PROVEN/UNPROVEN/NEEDS_TEST/BLOCKED | <yes/no\
+      \ + why> | <basis> |\n\n## Issues Identified\n| Severity | Description | Related\
+      \ Step | Blocking? | Required Action |\n| --- | --- | --- | --- | --- |\n\n\
+      ## Phase Assessment\n- [ ] All planned steps completed with acceptable evidence.\n\
+      - [ ] Fixture tests and doctests prove deterministic logic.\n- [ ] Real Pi +\
+      \ registry liveness proof is present or explicitly BLOCKED with closure path.\n\
+      - [ ] Redirect-safe channels and non-interactive unresolved behavior are proven.\n\
+      - [ ] No forbidden scaffold path/provider preference/provider-family table is\
+      \ accepted.\n- [ ] Invar guard and Core/Shell boundary are acceptable.\n\n##\
+      \ Gate Decision\n- [ ] OPEN: Phase passes gate, proceed.\n- [ ] BLOCKED: Issues\
+      \ must be resolved before proceeding.\n  - Blocking issues: <list>\n  - Required\
+      \ actions: <what needs to happen>"
+    depends_on:
+    - pi_model_map_draft_contract_20260601
+    - pi_model_map_draft_red_tests_20260601
+    - pi_model_map_draft_impl_20260601
+    - pi_model_map_draft_fixture_retest_20260601
+    - pi_model_map_draft_live_cli_proof_20260601
+    - pi_model_map_draft_spec_guard_20260601
+    agent: gate-reviewer
