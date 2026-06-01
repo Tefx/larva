@@ -87591,29 +87591,29 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites Architecture basis, CLI contract, Data sources,
+      - [x] refs confirmation cites Architecture basis, CLI contract, Data sources,
       Draft output contract, and Verification targets.
 
-      - [ ] Raw output from real `pi --list-models --offline` includes separate stdout/stderr
+      - [x] Raw output from real `pi --list-models --offline` includes separate stdout/stderr
       captures and demonstrates where inventory rows appear.
 
-      - [ ] Raw CLI receipt for `.venv/bin/larva pi-model-map draft --non-interactive`
+      - [x] Raw CLI receipt for `.venv/bin/larva pi-model-map draft --non-interactive`
       or documented canonical equivalent shows current-registry draft succeeds with
       parseable raw JSON stdout, OR unresolved causes are legitimate after non-empty
       inventory parsing is proven.
 
-      - [ ] Evidence explicitly proves the prior empty-inventory/stderr seam is closed,
+      - [x] Evidence explicitly proves the prior empty-inventory/stderr seam is closed,
       not bypassed by fixtures.
 
-      - [ ] Controlled raw stdout JSON separation probe passes.
+      - [x] Controlled raw stdout JSON separation probe passes.
 
-      - [ ] Controlled `--write` temp-path schema probe passes without writing to
+      - [x] Controlled `--write` temp-path schema probe passes without writing to
       real user Pi paths.
 
-      - [ ] Controlled malformed/unresolved fail-closed probe returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      - [x] Controlled malformed/unresolved fail-closed probe returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
       without guessing.
 
-      - [ ] Behavioral proof register marks live runtime obligations PROVEN/BLOCKED
+      - [x] Behavioral proof register marks live runtime obligations PROVEN/BLOCKED
       with closure paths; fixture-only evidence is rejected.'
     evidence_template: "## Verification Report\n**Tester**: integration-verifier (independent\
       \ of implementation)\n**Scope**: live Pi inventory + current-registry model-map\
