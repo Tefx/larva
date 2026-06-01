@@ -91407,28 +91407,28 @@ phases:
       and leaves Pi operational context byte-for-byte otherwise.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Tests are limited to tests/fixtures/smoke harnesses and do not modify
+      - [x] Tests are limited to tests/fixtures/smoke harnesses and do not modify
       product implementation code.
 
-      - [ ] Tests explicitly cover /larva-persona cache hit, expiry, in-flight sharing,
+      - [x] Tests explicitly cover /larva-persona cache hit, expiry, in-flight sharing,
       list failure null/delegate, and no prompt catalogue injection.
 
-      - [ ] Tests explicitly cover @, @p/@persona namespace partials, @persona:<query>,
+      - [x] Tests explicitly cover @, @p/@persona namespace partials, @persona:<query>,
       raw @<id> non-support, Pi file-reference preservation, and no side effects from
       mentions.
 
-      - [ ] Tests explicitly cover prompt overlay block shape, idempotence, Pi prompt
+      - [x] Tests explicitly cover prompt overlay block shape, idempotence, Pi prompt
       preservation, and forbidden Pi identity sentence/provider payload rewriting.
 
-      - [ ] Expected failures or exposed gaps are recorded and point to pi_postspec_editor_prompt_impl_20260602.'
+      - [x] Expected failures or exposed gaps are recorded and point to pi_postspec_editor_prompt_impl_20260602.'
     evidence_template: '## refs Read Confirmation
 
       For each ref in this step, include one bullet with the exact key passage used
