@@ -86096,7 +86096,7 @@ phases:
       items from checklist_receipt before completion.'
   - id: pi_tool_policy_no_legacy_tests_20260601
     name: Add expected-red no-fallback policy tests
-    status: claimed
+    status: done
     description: 'PROOF ARTIFACT:
 
       Add behavior-defining tests before implementation changes. This is a pre-implementation
@@ -86169,6 +86169,17 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T08:22:42.548303+00:00'
+    done_at: '2026-06-01T08:30:07.320695+00:00'
+    evidence: 'Applied isolated branch commit `845a5b71ed31c7618c4b46d1687d508eabbc4bf1`
+      via cherry-pick to preserve newer mainline docs, committed as `c2e137e`. EXPECTED_RED_ACCEPTED:
+      pre-implementation no-legacy tests added; observed red aligns with legacy fallback
+      implementation gap; no product implementation files modified. Mainline verification:
+      `uv run python -m pytest tests/shell/test_pi_launcher_contract.py -q` exited
+      1 with 4 aligned no-legacy failures and 31 passed; `node contrib/pi-extension/test-tool-policy-paths.mjs`
+      exited 1 with aligned both-present/old fallback failure after env-override and
+      canonical pass; `node contrib/pi-extension/test-tool-policy-paths.mjs --case
+      explicit-env-old-path` passed; `uv run invar guard` passed. Checklist receipt
+      all PROVEN and toggled before completion.'
   - id: pi_tool_policy_no_fallback_python_impl_20260601
     name: Complete launcher no-fallback tool-policy env behavior
     status: pending
