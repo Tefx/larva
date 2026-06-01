@@ -91084,22 +91084,22 @@ phases:
       changed rules.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Raw output from targeted launcher/model-map/tool-policy tests is included.
+      - [x] Raw output from targeted launcher/model-map/tool-policy tests is included.
 
-      - [ ] Raw output from supplemental Pi runtime tests or documented skip/xfail
+      - [x] Raw output from supplemental Pi runtime tests or documented skip/xfail
       availability evidence is included.
 
-      - [ ] Raw output from invar guard for changed files is included.
+      - [x] Raw output from invar guard for changed files is included.
 
-      - [ ] Behavioral proof register marks each launcher/config requirement PROVEN
+      - [x] Behavioral proof register marks each launcher/config requirement PROVEN
       or BLOCKED with closure path.'
     evidence_template: '## refs Read Confirmation
 
