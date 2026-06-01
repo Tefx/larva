@@ -208,8 +208,7 @@ function modelMapPath(env: RuntimeEnv): string {
 
 function toolPolicyPathCandidates(env: RuntimeEnv): string[] {
   if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) return [env.LARVA_PI_TOOL_POLICY_FILE];
-  const home = homeDir(env);
-  return [join(home, ".pi", "larva", "tool-policy.json"), join(home, ".pi", "tool-policy.json")];
+  return [join(homeDir(env), ".pi", "larva", "tool-policy.json")];
 }
 
 async function pathExists(file: string): Promise<boolean> {
@@ -222,11 +221,19 @@ async function pathExists(file: string): Promise<boolean> {
 }
 
 async function selectedToolPolicyPath(env: RuntimeEnv): Promise<string> {
-  const [canonicalOrOverride, legacy] = toolPolicyPathCandidates(env);
-  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined || !legacy) return canonicalOrOverride;
-  if (await pathExists(canonicalOrOverride)) return canonicalOrOverride;
-  if (await pathExists(legacy)) return legacy;
+  const [canonicalOrOverride] = toolPolicyPathCandidates(env);
   return canonicalOrOverride;
+}
+
+async function assertNoImplicitLegacyToolPolicyConflict(env: RuntimeEnv, canonicalPath: string): Promise<void> {
+  if (env.LARVA_PI_TOOL_POLICY_FILE !== undefined) return;
+  const legacyPath = join(homeDir(env), ".pi", "tool-policy.json");
+  if ((await pathExists(canonicalPath)) && (await pathExists(legacyPath))) {
+    throw error(
+      "LARVA_POLICY_INVALID",
+      `Conflicting Larva Pi tool policy files: ${canonicalPath} and ${legacyPath}. Set LARVA_PI_TOOL_POLICY_FILE explicitly or remove one file.`,
+    );
+  }
 }
 
 function assertOnlyKeys(value: Record<string, unknown>, keys: string[]): void {
@@ -559,6 +566,7 @@ async function loadPolicy(personaId: string, env: RuntimeEnv): Promise<PiToolPol
   const file = await selectedToolPolicyPath(env);
   void policyOverride;
   try {
+    await assertNoImplicitLegacyToolPolicyConflict(env, file);
     const raw = await readFile(file, "utf8").catch((readError: unknown) => {
       const code = isRecord(readError) ? readError.code : undefined;
       if (code === "ENOENT") return null;
@@ -578,7 +586,8 @@ async function loadPolicy(personaId: string, env: RuntimeEnv): Promise<PiToolPol
       allow: normalizePolicyArray(target.allow),
       deny: normalizePolicyArray(target.deny),
     };
-  } catch {
+  } catch (caught) {
+    if (isLarvaError(caught)) throw caught;
     throw error("LARVA_POLICY_INVALID", "Invalid Larva Pi tool policy");
   }
 }
