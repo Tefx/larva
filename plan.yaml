@@ -85713,7 +85713,7 @@ phases:
   steps:
   - id: pi_model_map_draft_contract_20260601
     name: Freeze Pi model-map draft helper contract
-    status: claimed
+    status: done
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - CLI parser shape/stub or acceptance notes for `larva pi-model-map draft\
       \ [--output PATH] [--write] [--non-interactive] [--model-map PATH]`\n  - TypedDict/type\
@@ -85830,6 +85830,115 @@ phases:
     agent: python-executor
     claimed_by: python-executor
     claimed_at: '2026-06-01T10:36:36.691911+00:00'
+    done_at: '2026-06-01T10:44:22.246000+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation (MANDATORY)
+
+      - `design/pi-model-map-draft-helper.md` — READ. Key passages covered Decision/top-level
+      command, CLI contract, Data sources, Candidate discovery policy, Draft output
+      contract, Error model, Architecture basis, and Verification targets. Design
+      pins top-level `larva pi-model-map draft`, forbids `/Users/tefx/dotfiles/agent/models.yaml`,
+      authorizes registry `facade.list()`, `pi --list-models --offline`, and existing
+      `--model-map`, forbids provider-family preference tables, defines stdout raw
+      draft JSON with stderr reports and optional `--json` envelope, and defines fail-closed
+      errors.
+
+      - `src/larva/shell/pi.py` — READ. Existing `larva pi` pass-through/launcher
+      boundary confirmed, supporting separate top-level `pi-model-map` command rather
+      than nesting under pass-through.
+
+      - `src/larva/shell/cli.py` — READ. Existing CLI dispatch and `pi` command routing
+      reviewed; contract adds separate `pi-model-map` command dispatch stub.
+
+      - `contrib/pi-extension/README.md` — READ. Canonical model-map path and prior
+      legacy helper text reviewed; approved design overrides any legacy `/Users/tefx/dotfiles/agent/models.yaml`
+      usage.
+
+      - `INVAR.md` — READ. Core/Shell rules reviewed: Core requires @pre/@post/doctest
+      and no I/O; Shell handles I/O.
+
+      - `AGENTS.md` — READ. Repository Invar discipline reviewed: write @pre/@post
+      contracts and doctest before Core functions; run invar guard.
+
+
+      ## Contract Receipt
+
+      - contract_surface: main commit `f088aa7` created `src/larva/core/pi_model_map.py`
+      with TypedDict data/result shapes and `draft_model_map` contract stub; created
+      `src/larva/shell/pi_model_map_cli.py` with `pi-model-map draft` failure-envelope
+      stub and named error codes; wired top-level `pi-model-map draft [--output PATH]
+      [--write] [--non-interactive] [--model-map PATH] [--json]` into `src/larva/shell/cli_parser.py`
+      and `src/larva/shell/cli.py`; added placeholder contract test `tests/shell/test_pi_model_map.py`.
+
+      - requirement_matrix_update: R1 top-level command PROVEN; R2/R3 implementation
+      source restrictions DEFERRED to implementation proof; R4/R5/R6/R7 fixture/channel/error
+      coverage DEFERRED to red-test/fixture-retest proof; R8 live CLI proof DEFERRED;
+      R9 Core/Invar PROVEN by contracts/doctest and guard.
+
+      - core_contract_status: `src/larva/core/pi_model_map.py` introduced with `@pre`,
+      `@post`, and a doctest for `draft_model_map`; no I/O imports added to Core.
+
+      - forbidden_authority_status: contract docstrings/error surface explicitly forbid
+      `/Users/tefx/dotfiles/agent/models.yaml` and provider-family preference tables
+      as authority.
+
+      - non_goals_preserved: no merge algorithm, subprocess/Pi inventory execution,
+      prompt loop, filesystem write implementation, daemon/cache, provider preference
+      table, PersonaSpec/opifex schema change, or finished mapping logic shipped.
+
+
+      ## Mainline verification
+
+      - `uv run pytest tests/shell/test_pi_model_map.py -q` exit 0: `1 passed`.
+
+      - `uv run pytest tests/shell/test_pi_extension_real_runtime.py -k autocomplete
+      -q` exit 0: `8 passed, 13 deselected`.
+
+      - `uv run invar guard` exit 0: status passed; errors 0; warnings 0; infos 0;
+      doctest passed.
+
+      - `git diff --check` exit 0: no output.
+
+      - `git status --porcelain` exit 0: clean.
+
+      - `uv run larva --help` exit 0: top-level command list includes `pi-model-map`.
+
+      - `uv run larva pi-model-map draft --help` exit 0: shows `draft` options `--output`,
+      `--model-map`, `--write`, `--non-interactive`, and `--json`.
+
+
+      ## Checklist Receipt
+
+      - refs confirmation includes required design and repo passages: PROVEN.
+
+      - contract artifacts define top-level command, data/result shapes, source authorities,
+      error codes, stdout/stderr/--json semantics without runtime business logic:
+      PROVEN.
+
+      - Core contract/doctest invariant preserved for introduced Core stub: PROVEN.
+
+      - contract forbids `/Users/tefx/dotfiles/agent/models.yaml` and provider-family
+      preference tables: PROVEN.
+
+      - requirement-to-checklist matrix ownership preserved/deferred to downstream
+      proof steps: PROVEN.
+
+
+      ## Isolation note
+
+      The execution agent unexpectedly committed the contract delta directly on `main`
+      instead of the isolated branch. Orchestrator verified the committed mainline
+      state, found it clean and non-regressive, and will remove the stale isolated
+      worktree/branch. Product completion evidence is tied to main commit `f088aa7`.
+
+
+      Commit hash(es): `f088aa7`
+
+      status: SUCCESS
+
+      error: ""'
   - id: pi_model_map_draft_red_tests_20260601
     name: Add expected-red fixture tests for Pi model-map draft helper
     status: pending
