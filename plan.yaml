@@ -87211,20 +87211,20 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the docs sections updated and adapter behavior
+      - [x] refs confirmation cites the docs sections updated and adapter behavior
       in code.
 
-      - [ ] Documentation clearly names `LarvaSubagentResult` as semantic/domain payload.
+      - [x] Documentation clearly names `LarvaSubagentResult` as semantic/domain payload.
 
-      - [ ] Documentation clearly names Pi-facing ToolResult wrapper with `content`
+      - [x] Documentation clearly names Pi-facing ToolResult wrapper with `content`
       text array.
 
-      - [ ] Documentation states machine-readable fields remain in `details`/metadata.
+      - [x] Documentation states machine-readable fields remain in `details`/metadata.
 
-      - [ ] Documentation states failure and cancelled paths also return renderer-safe
+      - [x] Documentation states failure and cancelled paths also return renderer-safe
       `content`.
 
-      - [ ] No unsupported Pi renderer patch or broad abstraction is documented.'
+      - [x] No unsupported Pi renderer patch or broad abstraction is documented.'
     refs:
     - contrib/pi-extension/README.md
     - design/pi-coding-agent-integration.md
