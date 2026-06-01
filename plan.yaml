@@ -91754,24 +91754,24 @@ phases:
       prompt text appears.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Runtime proof identifies surface class, launch command/target, tested
+      - [x] Runtime proof identifies surface class, launch command/target, tested
       Pi version/build, and whether ctx.ui.addAutocompleteProvider exists.
 
-      - [ ] Autocomplete smoke covers /larva-persona and @persona token classes with
+      - [x] Autocomplete smoke covers /larva-persona and @persona token classes with
       Pi file-reference preservation or documents unsupported-hook omission.
 
-      - [ ] Prompt overlay proof captures effective before_agent_start prompt shape
+      - [x] Prompt overlay proof captures effective before_agent_start prompt shape
       with Pi context preserved and marker blocks idempotent.
 
-      - [ ] Raw stdout/stderr/RPC/TUI captures or terminal snapshots are included;
+      - [x] Raw stdout/stderr/RPC/TUI captures or terminal snapshots are included;
       source inspection alone is insufficient.'
     evidence_template: '## refs Read Confirmation
 
