@@ -84994,6 +84994,131 @@ phases:
     - pi_persona_autocomplete_runtime_tests_20260601
     - pi_model_map_runtime_proof_20260601
     agent: gate-reviewer
+  - id: pi_model_map_openrouter_prefix_cleanup_20260601
+    name: Cleanup redundant OpenRouter Gemini exact model-map entry
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      work_type: proof_closure
+
+      TARGET STATE: `/Users/tefx/.pi/larva/model-map.json` no longer contains an exact
+      key for `openrouter/google/gemini-3.1-pro-preview`; that model target must resolve
+      through the literal `openrouter/` prefix rule. Required exact GPT/GLM/Kimi/Minimax
+      mappings proven by `pi_model_map_runtime_proof_20260601` remain byte-for-byte
+      semantically present and no unrelated config keys are changed.
+
+
+      BOUNDING BOX: operator-local Pi config only: `/Users/tefx/.pi/larva/model-map.json`.
+      Do not edit repository files or any other user-local files.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R3-openrouter-prefix | Failed proof `pi_model_map_runtime_proof_20260601`:
+      `OPENROUTER_EXACT_ENTRIES: ["openrouter/google/gemini-3.1-pro-preview"]`; requirement
+      says OpenRouter Gemini coverage must come from literal `openrouter/` prefix
+      rule, not guessed exact per-model entries. | Remove the redundant exact OpenRouter
+      Gemini entry or otherwise ensure it resolves via prefix. | pi_model_map_openrouter_prefix_cleanup_20260601
+      | `exact OpenRouter Gemini key absent after cleanup` | `removed_key`, `after_json_excerpt`,
+      `after_checksum` | OWNED | Blocks phase gate until retest proves prefix resolution.
+      |
+
+      | R1-required-exacts-preserved | Failed proof context: exact GPT/GLM/Kimi/Minimax
+      mappings were PROVEN and must stay intact. | Preserve all required exact GPT/GLM/Kimi/Minimax
+      mappings. | pi_model_map_openrouter_prefix_cleanup_20260601 | `required exact
+      mappings preserved` | `preserved_exact_mappings_diff_summary` | OWNED | Blocks
+      phase gate if altered. |
+
+      | R-safe-local-write | User remediation grant: may need narrowly authorized
+      operator-local config cleanup. | Write only `/Users/tefx/.pi/larva/model-map.json`;
+      no repo edits; no personal scaffold reads. | pi_model_map_openrouter_prefix_cleanup_20260601
+      | `side-effect budget honored` | `write_set`, `forbidden_read_attestation` |
+      OWNED | Blocks phase gate if violated. |
+
+
+      <side_effect_budget>Allowed: read and write only `/Users/tefx/.pi/larva/model-map.json`
+      for the minimal cleanup. Allowed: compute before/after checksums of that file.
+      Forbidden: repo edits, reads or writes of `/Users/tefx/dotfiles/agent/models.yaml`,
+      reads of personal scaffold inventory, model guessing, adding replacement per-model
+      Gemini exact entries, changing required exact GPT/GLM/Kimi/Minimax mappings,
+      and writing any file other than `/Users/tefx/.pi/larva/model-map.json`.</side_effect_budget>
+
+      <risk_probes>- Confirm cleanup removes the exact key rather than replacing it
+      with another guessed exact Gemini key. - Confirm exact GPT/GLM/Kimi/Minimax
+      mappings remain present after JSON normalization or write. - Confirm no personal
+      scaffold or dotfiles model inventory was consulted.</risk_probes>
+
+
+      ## Completion Criteria
+
+      This is a narrowly authorized operator-local config cleanup step, not repo implementation.
+      Completion requires a real before/after JSON change only to the model-map file
+      and evidence that the redundant key no longer exists.'
+    verification: '- [ ] Before evidence includes raw JSON excerpt containing the
+      exact key `openrouter/google/gemini-3.1-pro-preview` and the before checksum
+      of `/Users/tefx/.pi/larva/model-map.json`.
+
+      - [ ] Cleanup removes exactly the redundant exact key `openrouter/google/gemini-3.1-pro-preview`
+      or otherwise makes that target resolve by the literal `openrouter/` prefix rule
+      without adding another exact Gemini replacement.
+
+      - [ ] After evidence includes raw JSON excerpt showing the exact key is absent
+      and the after checksum of `/Users/tefx/.pi/larva/model-map.json`.
+
+      - [ ] Required exact GPT/GLM/Kimi/Minimax mappings remain present and unchanged
+      in the after JSON.
+
+      - [ ] Evidence lists the write set as only `/Users/tefx/.pi/larva/model-map.json`
+      and attests that `/Users/tefx/dotfiles/agent/models.yaml` plus personal scaffold
+      inventory were not read.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      No repo refs for this step. Operator-local target file only: `/Users/tefx/.pi/larva/model-map.json`.
+
+
+      ## Operator-Local Config Cleanup Receipt
+
+      - target_file: `/Users/tefx/.pi/larva/model-map.json`
+
+      - before_checksum: `<sha256>`
+
+      - before_json_excerpt: `<raw JSON excerpt containing openrouter/google/gemini-3.1-pro-preview>`
+
+      - removed_key: `openrouter/google/gemini-3.1-pro-preview`
+
+      - after_checksum: `<sha256>`
+
+      - after_json_excerpt: `<raw JSON excerpt showing exact key absent and openrouter/
+      prefix rule present>`
+
+      - preserved_exact_mappings_diff_summary: `<GPT/GLM/Kimi/Minimax exact mappings
+      unchanged>`
+
+      - write_set: [`/Users/tefx/.pi/larva/model-map.json`]
+
+      - forbidden_read_attestation: `Did not read /Users/tefx/dotfiles/agent/models.yaml
+      or personal scaffold inventory.`
+
+
+      ## Checklist Receipt
+
+      - [ ] before checksum and raw JSON excerpt captured
+
+      - [ ] exact redundant key removed
+
+      - [ ] required exact mappings preserved
+
+      - [ ] write set limited to one authorized file
+
+      - [ ] forbidden reads avoided'
+    depends_on:
+    - pi_model_map_runtime_proof_20260601
+    agent: general
 - id: pi-model-map-draft-helper-2026-06-01
   name: Pi Model-Map Draft Helper 2026-06-01
   status: locked
