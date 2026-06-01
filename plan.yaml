@@ -91469,6 +91469,44 @@ phases:
       - [ ] Runtime proof is not substituted by build/type/source evidence.
 
       - [ ] OPEN/BLOCKED decision is explicit with unresolved obligations listed.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for gate review>
+
+      - no_change_reason: <required; gate should normally report no product changes>
+
+
+      ## Gate Decision Basis
+
+      - evidence_reviewed: <tests/implementation/runtime artifacts reviewed>
+
+      - requirement_mapping: <each editor/prompt requirement mapped to positive evidence>
+
+      - runtime_liveness_review: <ctx.ui.addAutocompleteProvider support/unsupported-hook
+      proof reviewed>
+
+      - hard_constraint_review: <raw @<id>, prompt catalogue, mention side-effect,
+      Pi context preservation checks>
+
+      - decision: <OPEN|BLOCKED>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
