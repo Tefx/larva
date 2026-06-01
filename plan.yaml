@@ -84231,32 +84231,32 @@ phases:
     verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
       alone will be rejected):
 
-      - [ ] `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is pasted
+      - [x] `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is pasted
       and shows only Pi model-map source/template material plus the alias-drift remediation/accounting,
       or no delta.
 
-      - [ ] If `/Users/tefx/dotfiles/agent/models.yaml` is already committed in dotfiles,
+      - [x] If `/Users/tefx/dotfiles/agent/models.yaml` is already committed in dotfiles,
       `git -C /Users/tefx/dotfiles/agent show --stat --patch --format=short HEAD --
       models.yaml` output is pasted; otherwise explicitly state not committed and
       provide current diff/status evidence.
 
-      - [ ] Inventory output over `/Users/tefx/dotfiles/agent/models.yaml` proves
+      - [x] Inventory output over `/Users/tefx/dotfiles/agent/models.yaml` proves
       the four unrelated alias/comment lines are restored or reviewed/accounted: `#
       glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`, `gpt53codexspark:
       openai/gpt-5.3-codex-spark`, `gpt54: openai/gpt-5.5`.
 
-      - [ ] Inventory output proves the four Pi exact mappings remain exactly present.
+      - [x] Inventory output proves the four Pi exact mappings remain exactly present.
 
-      - [ ] Inventory output proves the `openrouter/` prefix template remains exactly
+      - [x] Inventory output proves the `openrouter/` prefix template remains exactly
       present and not shadowed by an unintended broader rule.
 
-      - [ ] Inventory output confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
+      - [x] Inventory output confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
       unmapped.
 
-      - [ ] Side-effect audit confirms no writes under `~/.pi/**`, no Larva product-code
+      - [x] Side-effect audit confirms no writes under `~/.pi/**`, no Larva product-code
       changes, and no `../opifex/**` contract changes.
 
-      - [ ] A concise root-cause note distinguishes unrelated alias drift from Pi
+      - [x] A concise root-cause note distinguishes unrelated alias drift from Pi
       model-map source/template work.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- `/Users/tefx/dotfiles/agent/models.yaml` — <key passage or relevant\
