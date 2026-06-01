@@ -90743,8 +90743,16 @@ phases:
       semantics.
 
       </risk_probes>'
-    verification: '- [ ] Matrix cites key passages from both docs/spec refs for every
-      launcher/config requirement family.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Matrix cites key passages from both docs/spec refs for every launcher/config
+      requirement family.
 
       - [ ] Every commit 4616008 launcher/config requirement is marked OWNED, DEFERRED
       with non-intersection, EXCLUDED with authority, or AMBIGUOUS with escalation.
