@@ -85698,7 +85698,7 @@ phases:
       product_implementation_files_modified: false'
 - id: pi-model-map-draft-helper-2026-06-01
   name: Pi Model-Map Draft Helper 2026-06-01
-  status: in_progress
+  status: done
   gate: 'Phase accepted only when contract/test/implementation/runtime evidence proves:
     larva pi-model-map draft queries real Pi offline inventory and real Larva registry;
     fixture tests cover deterministic deduplication, merge, prefix findings, malformed
@@ -87237,7 +87237,7 @@ phases:
       \nCommit hashes: none — read-only verification/no file changes."
   - id: pi_model_map_draft_gate_20260601
     name: Gate Pi model-map draft helper
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check\nreview_depth:\
       \ THOROUGH\nreview_depth_rationale:\n  - Phase touches CLI output channels,\
       \ filesystem writes, external Pi runtime, and Core/Shell boundaries.\n  - Approved\
@@ -87342,6 +87342,239 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T12:11:37.084521+00:00'
+    done_at: '2026-06-01T12:24:16.746450+00:00'
+    evidence: 'Gate opened after independent review plus supplemental blind Mode D
+      liveness.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-model-map-draft-helper.md — read; key passages: top-level `larva
+      pi-model-map draft` not under `larva pi`; no personal scaffold/provider preferences;
+      `pi --list-models --offline` source and fail-closed parseability; stdout/stderr
+      redirect contract and optional `--json`; real Pi/current-registry proof required.
+
+      - src/larva/shell/pi.py — read; `pi_command` preserves `larva pi` launcher/pass-through
+      boundary.
+
+      - src/larva/shell/cli.py — read; `argv_list[0] == "pi"` bypasses argparse and
+      calls `pi_command`; `pi-model-map` separately dispatches to `pi_model_map_command`.
+
+      - contrib/pi-extension/README.md — read; runtime model-map schema `models` +
+      `prefix_rules`; exact/prefix runtime resolution; helper policy forbids scaffold/provider
+      preferences/report metadata in written JSON.
+
+      - tests/shell/test_pi_launcher_contract.py — read; launcher pass-through/env
+      contract coverage.
+
+      - tests/shell/test_pi_extension_contract.py — read; extension runtime harness
+      and traceability context reviewed; not used as sole helper proof.
+
+      - tests/shell/test_pi_extension_real_runtime.py — read; real-runtime proof conventions
+      reviewed.
+
+      - INVAR.md — read; Core requires @pre/@post/doctest/no I/O; Shell owns I/O/subprocess/file
+      behavior.
+
+      - AGENTS.md — NOT READ in isolated worktree; explicit file-not-found reason
+      recorded.
+
+
+      ## Gate Review Report
+
+      Reviewer: gate-reviewer
+
+      Phase: pi-model-map-draft-helper-2026-06-01
+
+      Gate Decision: OPEN
+
+      verdict: PASS
+
+      blockers: []
+
+      blocking_status: CLOSED
+
+      proof_gap_status: NONE
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+
+      ## Execution Review Summary
+
+      - Contract: DONE; top-level command, source authorities, stdout/stderr/--json,
+      error codes, Core/Shell contracts verified.
+
+      - Expected-red tests: DONE; fixture matrix materialized and later green.
+
+      - Implementation: DONE; code reviewed and behavior rerun; no blocking concerns.
+
+      - Fixture retest: DONE; current focused suite `75 passed` including draft contract,
+      launcher contract, and real runtime tests.
+
+      - Live proof/channel fix/live retest: DONE; real Pi inventory/current registry/live
+      draft proof closed prior stderr inventory seam.
+
+      - Spec guard/fail-closed fix/fail-closed retest: DONE; B1 fail-closed parseability
+      blocker closed.
+
+      - Supplemental blind-tester Mode D liveness: PASS; independent CLI help, real
+      Pi, live draft, temp write, malformed error, isolated HOME probe all passed.
+
+
+      ## Gate Decision Basis
+
+      All material rows are PROVEN and gate impact OPEN:
+
+      - R1 top-level `larva pi-model-map draft`, not `larva pi`: proven by design,
+      `cli.py`, and help output.
+
+      - R2 Pi extension runtime consumer only: proven by design/README and helper
+      code placement.
+
+      - R3 no personal scaffold/provider-family preferences: proven by design, implementation
+      scans, and isolated HOME probe.
+
+      - R4 registry source via facade summaries: proven by implementation and current
+      registry CLI proof.
+
+      - R5 Pi inventory via real `pi --list-models --offline` and fail-closed parseability:
+      proven by live Pi proof and fail-closed tests.
+
+      - R6 existing map semantics and invalid map fail-closed: proven by fixture tests
+      and malformed `--json` probe.
+
+      - R7 dedup/stable merge/stale-invalid-conflict findings: proven by Core implementation
+      and fixture tests.
+
+      - R8 candidate discovery evidence filters; ambiguity/missing/malformed fail
+      closed: proven by Core logic and fixture tests.
+
+      - R9 redirect-safe stdout/stderr, optional `--json`, `--write`: proven by live
+      command, blind liveness, and fixture tests.
+
+      - R10 Core/Shell invariant and invar guard: proven by invar full scan ok=true/errors=0/files_checked=43.
+
+      - R11 live proof uses real Pi/current registry, not fixtures: proven by `pi
+      --list-models --offline`, `.venv/bin/larva list --json`, and live draft.
+
+      - R12 fail-closed empty/whitespace/unparseable successful Pi output: proven
+      by tests and retest.
+
+
+      ## CLI Surface Preservation
+
+      Surface snapshot:
+
+      - `.venv/bin/larva --help` exit 0 lists relevant commands including `pi` and
+      `pi-model-map`.
+
+      - `.venv/bin/larva pi-model-map draft --help` exit 0 lists `--output`, `--model-map`,
+      `--write`, `--non-interactive`, `--json`.
+
+      - `.venv/bin/larva pi --help` exit 0 preserves launcher help.
+
+
+      Executability matrix:
+
+      - `larva pi`: listed yes; handler `cli.py:281-299` + `pi.py:243-292`; help exit
+      0; pass-through not shadowed; PASS.
+
+      - `larva pi-model-map`: listed yes; parser `cli_parser.py:307-348`, dispatcher
+      `cli.py:330-342`; parent route reachable; PASS.
+
+      - `larva pi-model-map draft`: listed yes; handler `_draft_command` via `pi_model_map_cli.py`;
+      help exit 0; live smoke exit 0 with raw JSON stdout/report stderr; PASS.
+
+      No command removal, broken help surface, dangling route, or docs-only command
+      found.
+
+
+      ## Runtime/Liveness Evidence
+
+      Gate reviewer commands:
+
+      - `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_launcher_contract.py tests/shell/test_pi_extension_real_runtime.py
+      -q` exit 0: `75 passed in 26.93s`.
+
+      - `pi --list-models --offline` exit 0; parseable rows include `openai-codex
+      gpt-5.5`, `openrouter google/gemini-3.1-pro-preview`, `openrouter openai/gpt-5.5`.
+
+      - `.venv/bin/larva list --json` exit 0; current registry includes `openai/gpt-5.5`
+      and `openrouter/google/gemini-3.1-pro-preview`.
+
+      - `.venv/bin/larva pi-model-map draft --non-interactive` exit 0; stdout_len
+      253, stderr_len 184; stdout parses as runtime JSON with `models`/`prefix_rules`;
+      stderr report only.
+
+      - Temp `--write --output ... --model-map /Users/tefx/.pi/larva/model-map.json`
+      exit 0; stdout empty; written file exists; keys exactly `models,prefix_rules`;
+      no report metadata.
+
+      - Malformed `--json --model-map <bad.json>` exit 1; stdout structured `LARVA_PI_MODEL_MAP_INVALID`;
+      no draft JSON emitted.
+
+      - Isolated HOME/XDG smoke exit 1 with `LARVA_PI_MODELS_UNAVAILABLE`; output
+      did not mention `/Users/tefx/dotfiles/agent/models.yaml`.
+
+
+      Supplemental blind Mode D liveness:
+
+      - CLI help exposed `pi-model-map`; draft help showed documented options.
+
+      - Real Pi inventory command exit 0 with inventory rows on stderr.
+
+      - Non-interactive draft exit 0 with raw JSON stdout and report-only stderr.
+
+      - Temp write produced runtime JSON only.
+
+      - Malformed input failed closed with structured error.
+
+      - No observable personal scaffold path usage.
+
+
+      ## Invar/Core-Shell Evidence
+
+      - Full invar guard receipt: ok=true, errors=0, warnings=5, infos=7, files_checked=43,
+      review_suggested=false.
+
+      - Core pure planner has @pre/@post/doctests and deterministic transformations
+      only.
+
+      - Shell owns registry facade call, Pi subprocess, file read/write, prompt, rendering,
+      and Result patterns.
+
+
+      ## Defect Ledger
+
+      - D-NOTE-001: AGENTS.md absent in isolated worktree; non-blocking because read
+      failure was documented and execution constraints were supplied in prompt/context.
+
+      - D-WARN-001: historical extension docs/tests contain legacy examples/tokens;
+      non-blocking for helper gate because approved design supersedes them, README
+      helper policy is updated, and helper implementation/runtime proof has no provider-preference/personal-scaffold
+      usage.
+
+      No blocker or should-fix item remains.
+
+
+      ## Positive Proof Coverage
+
+      All gate checklist obligations are PROVEN: refs, phase evidence quality, fixture
+      coverage, live runtime/current registry proof, redirect-safe stdout/stderr/`--json`/`--write`/unresolved
+      behavior, spec conformance/invar evidence, fail-closed retest, requirement-row
+      mapping, and final OPEN decision.
+
+
+      Checklist receipt: all nine checklist items returned PROVEN by gate-reviewer
+      and were toggled by orchestrator.
+
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — read-only gate/no file changes.'
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
     name: Fix live Pi inventory output-channel seam
     status: done
