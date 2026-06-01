@@ -88105,7 +88105,7 @@ phases:
       toggled by orchestrator.'
   - id: pi_model_map_draft_fail_closed_inventory_retest_20260601
     name: Retest fail-closed Pi inventory spec guard
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -88245,6 +88245,144 @@ phases:
     agent: spec-verifier
     claimed_by: spec-verifier
     claimed_at: '2026-06-01T12:03:35.969660+00:00'
+    done_at: '2026-06-01T12:10:06.088399+00:00'
+    evidence: 'Read-only retest completed with semantic PASS and no product modifications.
+
+
+      ## refs Read Confirmation
+
+      - design/pi-model-map-draft-helper.md — lines 61-63 require `pi --list-models
+      --offline`, first two columns as provider/model_id, and fail closed if output
+      is not parseable; lines 86-97 require raw draft JSON on stdout and reports/warnings
+      on stderr; lines 132-136 forbid hidden alias inference and require failure rather
+      than speculative drafts when Pi output cannot be parsed; lines 456-474 require
+      fixture tests, real Pi proof, normal Python checks, and `invar guard`.
+
+      - src/larva/shell/pi_model_map_cli.py — `_load_pi_inventory` runs `pi --list-models
+      --offline`, projects command failure to `LARVA_PI_MODELS_UNAVAILABLE`, and `_parse_pi_inventory`
+      returns the same code for malformed/no-row output; `_draft_command` emits `_render_draft(...)`
+      to stdout on success and `_render_report(...)` to stderr.
+
+      - tests/shell/test_pi_model_map_draft_contract.py — includes B1 regressions:
+      `test_successful_pi_inventory_without_rows_fails_closed`, `test_successful_pi_inventory_unparseable_output_fails_closed`,
+      `test_successful_pi_inventory_rows_on_stderr_are_consumed`, and `test_redirect_safe_stdout_raw_json_only`.
+
+      - tests/shell/test_pi_model_map.py — related placeholder pass-through test.
+
+      - tests/shell/test_pi_extension_real_runtime.py — real runtime convention records
+      binary/extension flag, skips only when Pi absent/unusable, xfails unsupported
+      RPC surfaces, and does not hide plugin load failures.
+
+      - INVAR.md — Core/Shell boundary and `invar guard` requirements cited.
+
+      - AGENTS.md — NOT READ in isolated worktree; explicit file-not-found reason
+      recorded, and execution constraints were supplied in prompt/context.
+
+
+      ## Retest Receipt
+
+      commands and results:
+
+      - Focused B1/channel pytest: `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      -k ''successful_pi_inventory_without_rows_fails_closed or successful_pi_inventory_unparseable_output_fails_closed
+      or successful_pi_inventory_rows_on_stderr_are_consumed or redirect_safe_stdout_raw_json_only
+      or ambiguous_candidates_without_hard_coded_preferences or malformed_source_model''`
+      exit 0; 7 selected tests passed.
+
+      - Full scan invar guard: invar_invar_guard path `.vectl/worktrees/pi_model_map_draft_fail_closed_inventory_retest_20260601`,
+      changed=false; report ok=true, errors=0, warnings=5, infos=7, files_checked=43,
+      run_id=grd_89d59a85b6c84dadb6147044.
+
+      - Real Pi inventory probe: `/opt/homebrew/bin/pi --list-models --offline` exit
+      0; real inventory contained parseable provider/model rows.
+
+      - Live command probe: `.venv/bin/larva pi-model-map draft --non-interactive`
+      exit 0; stdout length 253, stderr length 184; stdout parsed as JSON with keys
+      `models,prefix_rules`, stderr contained report lines only.
+
+      - Fixture/live safety pytest: `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_model_map.py tests/shell/test_pi_extension_real_runtime.py`
+      exit 0; 41 passed in 24.60s.
+
+      - `git status --short` exit 0; no output.
+
+
+      ## Behavioral Proof Register
+
+      - B1 empty output: PROVEN — focused regression selected and passed; closure
+      path focused pytest; gate may open.
+
+      - B1 whitespace output: PROVEN — parametrized focused regression selected and
+      passed; closure path focused pytest; gate may open.
+
+      - B1 unparseable output: PROVEN — focused unparseable-output test selected and
+      passed; closure path focused pytest; gate may open.
+
+      - stderr inventory acceptance: PROVEN — `test_successful_pi_inventory_rows_on_stderr_are_consumed`
+      selected and passed; gate may open.
+
+      - stdout/stderr redirect safety: PROVEN — focused redirect-safe test passed
+      and live stdout parsed as JSON while stderr contained report lines; gate may
+      open.
+
+      - live Pi safety: PROVEN — real Pi inventory and live Larva draft both exited
+      0; stdout JSON parse ok; gate may open.
+
+      - forbidden fallback constraints: PROVEN — 41 related fixture/live tests passed
+      and forbidden-term source scan found no files; gate may open.
+
+      - GUARD_GREEN: PROVEN — guard ok=true, errors=0; gate may open.
+
+
+      ## Closure Fields
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      failure_alignment: none
+
+      verdict: PASS
+
+      blockers: []
+
+      product_implementation_files_modified: false
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      uncertainty_sources: AGENTS.md absent inside isolated worktree; not a blocker
+      because equivalent execution constraints were in task context and INVAR.md was
+      read.
+
+
+      ## Positive Proof Coverage
+
+      - Empty stdout+stderr fails closed: PROVEN.
+
+      - Whitespace-only output fails closed: PROVEN.
+
+      - Unparseable successful output fails closed: PROVEN.
+
+      - Stderr-only parseable inventory accepted: PROVEN.
+
+      - Raw stdout JSON/stderr report separation: PROVEN.
+
+      - invar guard green: PROVEN.
+
+      - Fixture/live safety no forbidden fallback regression: PROVEN.
+
+      - No worktree edits: PROVEN.
+
+
+      Checklist receipt: all nine checklist items returned PROVEN by worker and were
+      toggled by orchestrator.
+
+
+      Commit hashes: none — read-only verification/no file changes.'
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
   status: done
