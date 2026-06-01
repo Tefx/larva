@@ -93571,28 +93571,28 @@ phases:
       surfaces.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step including VT46, and `NOT READ: <reason>`
       only for legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Reviews completed evidence for launcher/config, editor/prompt, subagent
+      - [x] Reviews completed evidence for launcher/config, editor/prompt, subagent
       UX, spec conformance, runtime gate, docs sync.
 
-      - [ ] Decision basis maps every OWNED requirement to positive proof or BLOCKED
+      - [x] Decision basis maps every OWNED requirement to positive proof or BLOCKED
       remediation.
 
-      - [ ] VT46 decision basis confirms collapsed final view, expanded final view
+      - [x] VT46 decision basis confirms collapsed final view, expanded final view
       fields, resume footer behavior, parent `larva:` footer preservation, and no-widget-dashboard
       prohibition are PROVEN or BLOCKED with remediation.
 
-      - [ ] No unresolved behavioral runtime, client-runtime, orphan requirement,
+      - [x] No unresolved behavioral runtime, client-runtime, orphan requirement,
       or hard-constraint violation is bypassed.
 
-      - [ ] Final decision is OPEN only if all blocker-class obligations are PROVEN
+      - [x] Final decision is OPEN only if all blocker-class obligations are PROVEN
       or have explicit non-intersection evidence.'
     evidence_template: '## refs Read Confirmation
 
