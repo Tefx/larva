@@ -83823,7 +83823,7 @@ phases:
       none reported; branch touched only `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.'
   - id: pi-adapter-local-model-map-config-2026-06-01.gate
     name: gate
-    status: pending
+    status: claimed
     description: 'step_type: gate
 
       verification_scope: phase-check; protects any downstream Pi integration/finalization
@@ -84004,3 +84004,5 @@ phases:
     - pi-adapter-local-model-map-config-2026-06-01.runtime-tests
     - pi-adapter-local-model-map-config-2026-06-01.docs
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T01:50:55.794306+00:00'
