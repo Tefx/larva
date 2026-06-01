@@ -91586,30 +91586,30 @@ phases:
       context between Larva marker blocks.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] /larva-persona completion matches case-insensitive substring ordering,
+      - [x] /larva-persona completion matches case-insensitive substring ordering,
       cache TTL/expiry/in-flight sharing, selector/no-arg mode rules, and null/delegate
       behavior on list failure.
 
-      - [ ] @persona mention provider handles only documented token classes, preserves/merges
+      - [x] @persona mention provider handles only documented token classes, preserves/merges
       Pi file-reference candidates, dedupes by exact value, and never supports raw
       @<id> persona matching.
 
-      - [ ] Mention submission has no automatic persona switch, forced larva_subagent,
+      - [x] Mention submission has no automatic persona switch, forced larva_subagent,
       or prompt/spec injection.
 
-      - [ ] before_agent_start output includes marker-bounded larva:identity-policy
+      - [x] before_agent_start output includes marker-bounded larva:identity-policy
       and larva:active-persona blocks, preserves Pi prompt, removes only prior Larva
       blocks, and avoids Pi default identity sentence or provider payload rewrites.
 
-      - [ ] Runtime evidence or explicit unsupported-hook evidence is recorded for
+      - [x] Runtime evidence or explicit unsupported-hook evidence is recorded for
       ctx.ui.addAutocompleteProvider behavior.'
     evidence_template: '## refs Read Confirmation
 
