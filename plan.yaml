@@ -90158,3 +90158,149 @@ phases:
     relative-path, resume-task_id, authority, or ToolResult invariants.
   depends_on:
   - pi-model-map-draft-helper-2026-06-01
+  steps:
+  - id: fix-fresh-child-sessionfile-validation
+    name: Fix fresh child sessionFile validation split
+    status: pending
+    description: "step_type: implementation\nwork_type: defect_repair\nagent_source:\
+      \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
+      \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
+      \ evidence: larva_subagent retry LARVA_CHILD_PROTOCOL_FAILED due to fresh child\
+      \ sessionFile missing before prompt\n  - Boundary decision: strict resume task_id\
+      \ validation remains; fresh child sessionFile may be missing before prompt if\
+      \ absolute .jsonl under childSessionRoot\n  - AGENTS.md > Shared Contract Discipline\
+      \ and Invar architecture rules\n\ntouch_paths:\n  - contrib/pi-extension/larva.ts\n\
+      \  - scripts/pi-extension-runtime-smoke.mjs\n  - tests/shell/test_pi_extension_real_runtime.py\n\
+      harness_refs:\n  - scripts/pi-extension-runtime-smoke.mjs\n  - tests/shell/test_pi_extension_real_runtime.py\n\
+      authoritative_interface: \"runChildSequence get_state -> data.sessionFile; fresh\
+      \ child sessionFile must be absolute, canonical parent under childSessionRoot,\
+      \ .jsonl suffix, symlink-safe if it exists; user-provided resume task_id must\
+      \ continue to require an existing readable file.\"\n\nTARGET STATE:\nThe Pi\
+      \ extension distinguishes user-provided resume `task_id` validation from child-reported\
+      \ fresh `sessionFile` validation. Resume validation remains strict and requires\
+      \ an existing readable session file. Fresh child `sessionFile` validation accepts\
+      \ a not-yet-created absolute `.jsonl` path only when its canonical parent is\
+      \ under the configured child session root and any existing path cannot escape\
+      \ via symlink. `runChildSequence` can proceed to send `prompt` for a valid fresh\
+      \ child path that Pi creates after first message.\n\nBOUNDING BOX:\nStart in\
+      \ `contrib/pi-extension/larva.ts` around `runChildSequence`, `get_state`, `validateTaskId`,\
+      \ and prompt sending. Add focused regression coverage in `scripts/pi-extension-runtime-smoke.mjs`\
+      \ and/or `tests/shell/test_pi_extension_real_runtime.py` for the not-yet-created\
+      \ child `sessionFile` before prompt.\n\nCONSTRAINTS:\n- Do NOT weaken root escape\
+      \ protection.\n- Do NOT allow relative `sessionFile` or `task_id` paths.\n-\
+      \ Do NOT allow user-provided resume `task_id` to reference missing files.\n\
+      - Do NOT read personal scaffold files or user-local persona scaffolds while\
+      \ implementing or testing.\n- Preserve `LARVA_NO_ACTIVE_PERSONA` handling and\
+      \ `can_spawn` authority semantics.\n- Preserve `ToolResult` shape and existing\
+      \ larva_subagent response/error conventions.\n- Preserve strict validation semantics\
+      \ for externally/user-provided resume input; only child-reported fresh `sessionFile`\
+      \ gets the missing-before-prompt allowance.\n\n<side_effect_budget>\nAllowed:\
+      \ minimal TypeScript helper split in `contrib/pi-extension/larva.ts`; focused\
+      \ regression/runtime smoke updates in the listed harnesses; no broad refactor.\n\
+      Forbidden: relaxing resume validation, expanding file-system access beyond childSessionRoot,\
+      \ changing persona authority, changing ToolResult shape, reading personal scaffold\
+      \ files, or introducing unrelated Pi/model-map behavior changes.\n</side_effect_budget>\n\
+      \n<risk_probes>\n- Validate both missing fresh child sessionFile and malicious\
+      \ path variants: relative path, wrong suffix, parent outside root, and symlink\
+      \ escape when the file exists.\n- Confirm the strict resume path still rejects\
+      \ a missing file and still requires readability.\n- Confirm the fixed larva_subagent\
+      \ flow preserves `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`, and ToolResult success/error\
+      \ fields across retry/failure paths.\n</risk_probes>\n\nRequirement-to-Checklist\
+      \ Traceability Matrix:\n| requirement_id | source_ref + key passage | obligation\
+      \ | owning_step_id | checklist_item | evidence_field | status | non_intersection_or_escalation\
+      \ |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| R1 | User reproduction:\
+      \ real Pi get_state returned absolute `.jsonl` under root that did not exist\
+      \ before prompt | Fresh child sessionFile may be missing before prompt when\
+      \ under root and .jsonl | pi-subagent-sessionfile-protocol-2026-06-01.fix-fresh-child-sessionfile-validation\
+      \ | Fresh missing child path accepted | child_missing_before_prompt_regression\
+      \ | OWNED | Blocks this phase gate |\n| R2 | Boundary decision: preserve strict\
+      \ validation for user-provided resume task_id | Resume task_id missing file\
+      \ remains rejected | pi-subagent-sessionfile-protocol-2026-06-01.fix-fresh-child-sessionfile-validation\
+      \ | Resume missing path rejected | strict_resume_regression | OWNED | Blocks\
+      \ this phase gate |\n| R3 | Boundary decision: validate absolute path, canonical\
+      \ parent under root, `.jsonl`, symlink escape if file exists | Root/suffix/relative/symlink\
+      \ protections remain enforced | pi-subagent-sessionfile-protocol-2026-06-01.fix-fresh-child-sessionfile-validation\
+      \ | Root escape protections verified | path_escape_regression | OWNED | Blocks\
+      \ this phase gate |\n| R4 | Task constraints: preserve authority and ToolResult\
+      \ shape | `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`, and ToolResult conventions\
+      \ unchanged | pi-subagent-sessionfile-protocol-2026-06-01.fix-fresh-child-sessionfile-validation\
+      \ | Authority and ToolResult invariants preserved | authority_toolresult_regression\
+      \ | OWNED | Blocks this phase gate |\n\n## Completion Criteria (stub exclusion)\n\
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each\
+      \ deliverable MUST contain substantive logic that processes its inputs and produces\
+      \ outputs that vary based on those inputs.\n\n## Client/Runtime Surface Completion\
+      \ Criteria\nThis is a Pi extension runtime protocol step. Source-only completion\
+      \ is insufficient; regression evidence must exercise the protocol seam that\
+      \ receives child `get_state` sessionFile data before prompt.\n\n## Gate Preview\
+      \ (what the gate WILL reject)\n1. Any change that lets resume `task_id` accept\
+      \ a missing file.\n2. Any change that permits relative paths, wrong suffixes,\
+      \ parent/root escape, or symlink escape.\n3. Any regression to `LARVA_NO_ACTIVE_PERSONA`,\
+      \ `can_spawn`, or ToolResult shape.\n4. Evidence that only tests helper functions\
+      \ but never reproduces the child get_state-before-prompt path."
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      will be rejected):
+
+      - [ ] Refs confirmation includes key passages from `contrib/pi-extension/larva.ts`
+      and the chosen smoke/test harness.
+
+      - [ ] The implementation separates strict resume `task_id` validation from fresh
+      child `sessionFile` validation without broad refactor.
+
+      - [ ] Focused regression reproduces a child-reported absolute `.jsonl` path
+      under childSessionRoot that does not exist before prompt and confirms it is
+      accepted for the fresh child path.
+
+      - [ ] Regression coverage confirms user-provided resume `task_id` still rejects
+      a missing file.
+
+      - [ ] Regression coverage confirms relative paths, wrong suffix, parent/root
+      escape, and symlink escape when existing remain rejected.
+
+      - [ ] Evidence confirms `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`, and ToolResult
+      shape are preserved for larva_subagent success/error paths.
+
+      - [ ] No personal scaffold files were read or required by the implementation/tests.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - contrib/pi-extension/larva.ts — <key passage or NOT READ: reason>
+
+      - scripts/pi-extension-runtime-smoke.mjs — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage or NOT READ:
+      reason>
+
+
+      ## Implementation Receipt
+
+      - changed_files: <list>
+
+      - helper_split_summary: <strict resume helper vs fresh child sessionFile helper>
+
+      - no_personal_scaffold_files_read: <yes/no + evidence>
+
+
+      ## Regression Evidence
+
+      - child_missing_before_prompt_regression: <command/test + raw output>
+
+      - strict_resume_regression: <command/test + raw output>
+
+      - path_escape_regression: <relative/wrong suffix/outside root/symlink cases
+      + raw output>
+
+      - authority_toolresult_regression: <LARVA_NO_ACTIVE_PERSONA/can_spawn/ToolResult
+      evidence>
+
+
+      ## Checklist Receipt
+
+      - satisfied: <checklist item ids>
+
+      - failed: <checklist item ids>
+
+      - blocked: <checklist item ids>
+
+      - unobserved: <checklist item ids>'
+    agent: frontend-engineer
