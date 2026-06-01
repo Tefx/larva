@@ -91290,6 +91290,50 @@ phases:
 
       - [ ] Runtime evidence or explicit unsupported-hook evidence is recorded for
       ctx.ui.addAutocompleteProvider behavior.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none`>
+
+      - no_change_reason: <required when no files changed/proof-closure only>
+
+
+      ## Implementation Receipt
+
+      - command_completion_evidence: </larva-persona cache/selector/list-failure evidence>
+
+      - editor_provider_evidence: <@persona token classes, Pi file-reference preservation,
+      dedupe evidence>
+
+      - no_side_effects_evidence: <no raw @<id>, no auto-switch, no forced subagent,
+      no prompt/spec injection>
+
+      - prompt_overlay_evidence: <marker blocks, idempotence, Pi prompt preservation,
+      no provider payload rewrite>
+
+      - ctx_ui_addAutocompleteProvider_evidence: <runtime support or unsupported-hook
+      evidence>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines and exit codes, if any>
+
+      - raw_outputs_or_artifacts: <raw stdout/stderr/artifact refs>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
