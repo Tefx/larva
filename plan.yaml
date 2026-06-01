@@ -85961,6 +85961,16 @@ phases:
       \ Gate Decision\n- [ ] OPEN: Phase passes gate, proceed.\n- [ ] BLOCKED: Issues\
       \ must be resolved before proceeding.\n  - Blocking issues: <list>\n  - Required\
       \ actions: <what needs to happen>"
+    refs:
+    - design/pi-model-map-draft-helper.md
+    - src/larva/shell/pi.py
+    - src/larva/shell/cli.py
+    - contrib/pi-extension/README.md
+    - tests/shell/test_pi_launcher_contract.py
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - INVAR.md
+    - AGENTS.md
     depends_on:
     - pi_model_map_draft_contract_20260601
     - pi_model_map_draft_red_tests_20260601
