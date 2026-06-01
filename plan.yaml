@@ -93185,7 +93185,7 @@ phases:
 
       PROOF ARTIFACT: Consolidated raw runtime/test evidence before final gate. This
       is the nearest broad check for commands that downstream gate would otherwise
-      rerun.
+      rerun and now runs only after the B1-B7 conformance remediation re-audit.
 
 
       Required target families:
@@ -93198,6 +93198,9 @@ phases:
 
       - Autocomplete smoke: /larva-persona and @persona mention behavior, including
       ctx.ui.addAutocompleteProvider liveness or documented unsupported-hook evidence.
+
+      - B1-B7 regression continuity: confirm the re-audit did not leave blocker-class
+      runtime gaps before final runtime gate evidence is accepted.
 
       - Invar guard: changed files or full project command according to repo policy.
 
@@ -93221,11 +93224,13 @@ phases:
       - Contract tests and smoke tests are additive; one cannot substitute for the
       other.
 
+      - B1-B7 closure must remain intact under the broader runtime gate command family.
+
       </risk_probes>'
     verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
-      key passage citations used for this step including VT46, and `NOT READ: <reason>`
-      only for legitimately unread refs.
+      key passage citations used for this step including VT46 and B1-B7 runtime-sensitive
+      rules, and `NOT READ: <reason>` only for legitimately unread refs.
 
       - [ ] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
@@ -93241,6 +93246,9 @@ phases:
       - [ ] Raw output from VT46 renderResult runtime/smoke proof covers collapsed
       final view, expanded final view fields, resume footer behavior, parent `larva:`
       footer preservation, and no-widget-dashboard prohibition.
+
+      - [ ] Raw output from B1-B7 regression-relevant runtime/probe commands confirms
+      no conformance blocker reappeared.
 
       - [ ] Raw output from invar guard is included.
 
@@ -93304,7 +93312,7 @@ phases:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
     depends_on:
-    - pi_postspec_full_spec_conformance_20260602
+    - pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     agent: integration-verifier
   - id: pi_postspec_docs_sync_20260602
     name: Synchronize Pi docs after implementation proof
