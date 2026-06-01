@@ -107,11 +107,27 @@ def _load_pi_inventory() -> Result[list[PiModelInventoryItem], CliFailure]:
                 {"stderr": _decode_process_text(completed.stderr).unwrap()},
             ).unwrap()
         )
-    text = _decode_process_text(completed.stdout).unwrap()
-    parsed = _parse_pi_inventory(text)
+    parsed = _parse_successful_pi_inventory(
+        _decode_process_text(completed.stdout).unwrap(),
+        _decode_process_text(completed.stderr).unwrap(),
+    )
     if isinstance(parsed, Failure):
         return Failure(parsed.failure())
     return parsed
+
+
+# @shell_complexity: Pi success inventory may arrive on stdout or stderr depending on Pi version
+def _parse_successful_pi_inventory(
+    stdout: str,
+    stderr: str,
+) -> Result[list[PiModelInventoryItem], CliFailure]:
+    stdout_text = stdout.strip()
+    stderr_text = stderr.strip()
+    if stdout_text and stderr_text:
+        return _parse_pi_inventory(f"{stdout_text}\n{stderr_text}")
+    if stdout_text:
+        return _parse_pi_inventory(stdout_text)
+    return _parse_pi_inventory(stderr_text)
 
 
 # @shell_complexity: parser validates header, rows, and fail-closed malformed lines

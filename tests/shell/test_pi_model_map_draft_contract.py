@@ -375,6 +375,35 @@ def test_redirect_safe_stdout_raw_json_only(fake_pi_bin, mock_subprocess_run, tm
     assert "report" in stderr.getvalue().lower() or "draft" in stderr.getvalue().lower()
 
 
+def test_successful_pi_inventory_rows_on_stderr_are_consumed(fake_pi_bin, mock_subprocess_run):
+    """
+    Pi data source authority:
+    - successful `pi --list-models --offline` inventory rows may arrive on stderr;
+      those rows are evidence, not a fatal diagnostic channel.
+    - helper stdout remains raw draft JSON only on success.
+    """
+    mock_subprocess_run.return_value.stdout = b""
+    mock_subprocess_run.return_value.stderr = b"PROVIDER\tMODEL_ID\nopenai-codex\tgpt-5.5\n"
+    facade = _make_facade([
+        {"id": "a", "description": "", "spec_digest": "", "model": "openai/gpt-5.5"}
+    ])
+
+    import io
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+
+    code = run_cli(["pi-model-map", "draft", "--non-interactive"], facade=facade, stdout=stdout, stderr=stderr)
+    assert code == 0, f"Expected 0, got {code}. Stderr: {stderr.getvalue()}"
+    output = json.loads(stdout.getvalue())
+
+    assert output == {
+        "models": {"openai/gpt-5.5": {"provider": "openai-codex", "model_id": "gpt-5.5"}},
+        "prefix_rules": [],
+    }
+    assert "PROVIDER" not in stdout.getvalue()
+    assert "pi-model-map draft report:" in stderr.getvalue()
+
+
 def test_optional_json_envelope_behavior(fake_pi_bin, mock_subprocess_run, tmp_path):
     """
     Draft output contract:
@@ -444,4 +473,3 @@ def test_invalid_existing_model_map_fail_closed(fake_pi_bin, mock_subprocess_run
     code = run_cli(["pi-model-map", "draft", "--non-interactive", "--model-map", str(map_file)], facade=facade, stdout=stdout, stderr=stderr)
     assert code != 0
     assert "LARVA_PI_MODEL_MAP_INVALID" in stderr.getvalue()
-
