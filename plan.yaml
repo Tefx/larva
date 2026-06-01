@@ -85698,7 +85698,7 @@ phases:
       product_implementation_files_modified: false'
 - id: pi-model-map-draft-helper-2026-06-01
   name: Pi Model-Map Draft Helper 2026-06-01
-  status: pending
+  status: in_progress
   gate: 'Phase accepted only when contract/test/implementation/runtime evidence proves:
     larva pi-model-map draft queries real Pi offline inventory and real Larva registry;
     fixture tests cover deterministic deduplication, merge, prefix findings, malformed
@@ -85713,7 +85713,7 @@ phases:
   steps:
   - id: pi_model_map_draft_contract_20260601
     name: Freeze Pi model-map draft helper contract
-    status: pending
+    status: claimed
     description: "step_type: contract\ncontract_purity: ENFORCED\ncontract_outputs:\n\
       \  - CLI parser shape/stub or acceptance notes for `larva pi-model-map draft\
       \ [--output PATH] [--write] [--non-interactive] [--model-map PATH]`\n  - TypedDict/type\
@@ -85828,6 +85828,8 @@ phases:
     - INVAR.md
     - AGENTS.md
     agent: python-executor
+    claimed_by: python-executor
+    claimed_at: '2026-06-01T10:36:36.691911+00:00'
   - id: pi_model_map_draft_red_tests_20260601
     name: Add expected-red fixture tests for Pi model-map draft helper
     status: pending
