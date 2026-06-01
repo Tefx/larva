@@ -84599,10 +84599,11 @@ phases:
     input to Pi base provider. Runtime model-map work is verification-only for the
     existing user-authorized ~/.pi/larva/model-map.json unless an executor returns
     explicit evidence that a new user authorization is required. This phase is gated
-    behind pi-tool-policy-no-legacy-2026-06-01 so downstream Pi work cannot inherit
-    superseded legacy tool-policy fallback semantics.'
+    behind pi-subagent-toolresult-crash-fix-2026-06-01, which is gated behind pi-tool-policy-no-legacy-2026-06-01,
+    so downstream Pi work cannot inherit superseded legacy tool-policy fallback semantics
+    or renderer-unsafe larva_subagent custom-tool results.'
   depends_on:
-  - pi-tool-policy-no-legacy-2026-06-01
+  - pi-subagent-toolresult-crash-fix-2026-06-01
   steps:
   - id: pi_persona_autocomplete_contract_docs_20260601
     name: Freeze autocomplete and model-map docs contract
