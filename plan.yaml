@@ -87158,6 +87158,180 @@ phases:
     - pi_model_map_draft_live_cli_proof_20260601
     - pi_model_map_draft_spec_guard_20260601
     agent: gate-reviewer
+  - id: pi_model_map_draft_live_cli_channel_fix_20260601
+    name: Fix live Pi inventory output-channel seam
+    status: pending
+    description: 'step_type: implementation
+
+      failure_provenance: introduced_or_exposed_by_live_runtime
+
+      failure_disposition: blocking-now
+
+      agent_source: default
+
+
+      TARGET STATE:
+
+      Fix the Pi model-map draft helper so the real current-registry command can consume
+      actual `pi --list-models --offline` inventory when Pi emits provider/model inventory
+      rows on stderr instead of stdout, while preserving the approved stdout/stderr
+      contracts for `larva pi-model-map draft`.
+
+
+      BLOCKER TO CLOSE:
+
+      - B1: Real `pi --list-models --offline` exits 0 and emits inventory rows on
+      stderr; the helper currently parses stdout only, builds empty inventory, and
+      `.venv/bin/larva pi-model-map draft --non-interactive` exits 1 with `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      even though real Pi inventory includes targets such as `openai-codex gpt-5.5`.
+
+
+      SCOPE:
+
+      - `src/larva/shell/pi.py` and adjacent Pi invocation/parsing helpers needed
+      for real inventory capture.
+
+      - `src/larva/shell/cli.py` only if the helper/CLI seam must preserve redirect-safe
+      output behavior.
+
+      - Focused tests under `tests/shell/` proving stderr inventory parsing and stdout/stderr
+      separation.
+
+
+      CONSTRAINTS:
+
+      - Preserve default helper stdout as raw draft JSON only on success; human reports/warnings
+      remain stderr.
+
+      - Do not read personal scaffold files or `/Users/tefx/dotfiles/agent/models.yaml`.
+
+      - Do not introduce hard-coded provider-family preference tables or broad new
+      prefix-rule invention.
+
+      - Do not mutate the real registry or write to real Pi model-map paths during
+      implementation verification; use temp paths for write proof.
+
+      - Preserve Core/Shell invariant: shell code handles subprocess/I/O; Core code
+      remains contracted and I/O-free.
+
+
+      ## Root Cause vs Symptom
+
+      - Root cause: helper inventory capture assumes the real Pi inventory table is
+      on stdout only.
+
+      - Symptom: inventory is empty in the real environment and current-registry draft
+      fails unresolved despite installed Pi inventory containing required provider/model
+      targets.
+
+      - Why this fix is not surface-level: completion requires a real-channel contract
+      for Pi inventory parsing plus regression proof for stderr table input, not merely
+      accepting fixture inventory.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes actual Pi command
+      outputs and produces inventory candidates that vary based on those outputs.
+
+
+      <side_effect_budget>
+
+      Allowed: modify helper invocation/parsing and focused tests; execute read-only
+      Pi inventory commands and temp-path CLI checks. Forbidden: changing the public
+      draft JSON schema without spec authority; contaminating helper stdout with reports;
+      personal-file reads; provider preference bans; writes to real user Pi model-map
+      paths.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the fix consumes real Pi inventory rows from stderr without treating
+      all stderr as an error path.
+
+      - Verify malformed/unresolved fail-closed behavior still returns `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      and never guesses provider mappings.
+
+      - Verify stdout/stderr redirect safety for the helper is not weakened by consuming
+      Pi stderr internally.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the approved design sections for Pi data source
+      authority, stdout/stderr redirect safety, unresolved failure, and verification
+      targets.
+
+      - [ ] Focused regression proof shows inventory rows emitted on Pi stderr are
+      consumed when the Pi command exits 0.
+
+      - [ ] Real or recorded command-channel evidence explains how stdout and stderr
+      are interpreted without treating success-stderr inventory as fatal.
+
+      - [ ] Helper success path still emits parseable raw draft JSON on stdout only,
+      with reports/warnings on stderr.
+
+      - [ ] Controlled unresolved/malformed cases remain fail-closed with `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      and no guessed provider mapping.
+
+      - [ ] No personal scaffold path read and no provider preference table is introduced.
+
+      - [ ] Implementation evidence identifies the exact tests/commands run and any
+      remaining live proof delegated to `pi_model_map_draft_live_cli_retest_20260601`.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passage or NOT READ: reason>
+
+      - src/larva/shell/pi.py — <key passage or NOT READ: reason>
+
+      - src/larva/shell/cli.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_launcher_contract.py — <key passage or NOT READ: reason>
+
+      - tests/shell/test_pi_extension_real_runtime.py — <key passage or NOT READ:
+      reason>
+
+      - INVAR.md — <key passage or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+
+      ## Fix Receipt
+
+      - root_cause: <why stdout-only parsing failed against real Pi>
+
+      - changed_files: <list>
+
+      - stderr_inventory_regression: <command/test + raw output>
+
+      - stdout_stderr_contract_proof: <command/test + raw output>
+
+      - unresolved_fail_closed_proof: <command/test + raw output>
+
+      - personal_file_ban_check: <evidence>
+
+      - provider_preference_ban_check: <evidence>
+
+      - residual_live_proof_needed: <none or delegated to retest>
+
+
+      ## Checklist Receipt
+
+      - stderr inventory consumed: satisfied/failed/blocked + evidence
+
+      - helper stdout remains raw JSON only: satisfied/failed/blocked + evidence
+
+      - fail-closed unresolved preserved: satisfied/failed/blocked + evidence
+
+      - no forbidden paths/preferences: satisfied/failed/blocked + evidence'
+    depends_on:
+    - pi_model_map_draft_live_cli_proof_20260601
+    agent: python-senior
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
   status: done
