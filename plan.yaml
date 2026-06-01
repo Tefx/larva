@@ -87140,20 +87140,20 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the relevant adapter and smoke/runtime path.
+      - [x] refs confirmation cites the relevant adapter and smoke/runtime path.
 
-      - [ ] Exact launch/fixture command, environment assumptions, and Pi version/path
+      - [x] Exact launch/fixture command, environment assumptions, and Pi version/path
       are recorded.
 
-      - [ ] Terminal capture/log output shows `larva_subagent` result rendering path
+      - [x] Terminal capture/log output shows `larva_subagent` result rendering path
       reached for failure or simple result.
 
-      - [ ] Logs explicitly show absence of `getTextOutput`, `content.filter`, `Cannot
+      - [x] Logs explicitly show absence of `getTextOutput`, `content.filter`, `Cannot
       read properties of undefined`, and `uncaughtException` for this run.
 
-      - [ ] User-visible output is meaningful text from the ToolResult `content` item.
+      - [x] User-visible output is meaningful text from the ToolResult `content` item.
 
-      - [ ] Any unobserved live-interactive portion is listed with non-blocking/blocking
+      - [x] Any unobserved live-interactive portion is listed with non-blocking/blocking
       disposition and downstream owner.'
     refs:
     - contrib/pi-extension/larva.ts
