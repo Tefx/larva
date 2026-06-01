@@ -86553,7 +86553,7 @@ phases:
       implicit fallback. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_no_legacy_gate_20260601
     name: Gate Pi tool-policy no-legacy cutover
-    status: pending
+    status: claimed
     description: 'DECISION ARTIFACT:
 
       As an INDEPENDENT REVIEWER, decide whether the Pi tool-policy no-legacy cutover
@@ -86635,6 +86635,8 @@ phases:
     - pi_tool_policy_operator_migration_proof_20260601
     - pi_tool_policy_no_legacy_runtime_guard_20260601
     agent: gate-reviewer
+    claimed_by: gate-reviewer
+    claimed_at: '2026-06-01T08:48:31.424010+00:00'
 - id: pi-subagent-toolresult-crash-fix-2026-06-01
   name: Pi larva_subagent ToolResult Crash Fix 2026-06-01
   status: locked
