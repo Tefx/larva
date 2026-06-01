@@ -93887,7 +93887,7 @@ phases:
       none'
   - id: pi_postspec_conformance_blockers_b1_b7_reaudit_20260602
     name: Re-audit Pi post-spec conformance blockers B1-B7 and VT42-VT48
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       step_intent: retest_green
@@ -94093,3 +94093,5 @@ phases:
     depends_on:
     - pi_postspec_conformance_blockers_b1_b7_fix_20260602
     agent: spec-verifier
+    claimed_by: spec-verifier
+    claimed_at: '2026-06-01T19:14:17.659952+00:00'
