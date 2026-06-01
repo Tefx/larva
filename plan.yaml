@@ -86149,15 +86149,15 @@ phases:
       - Confirm no test encodes fallback as acceptable debt.'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] Modified files are limited to tests/fixtures for this step.
+      - [x] Modified files are limited to tests/fixtures for this step.
 
-      - [ ] Test matrix covers absent-env old-only rejection, absent-env canonical
+      - [x] Test matrix covers absent-env old-only rejection, absent-env canonical
       acceptance, and explicit-env old-path acceptance.
 
-      - [ ] Red proof shows the current implementation exposes the no-legacy gap before
+      - [x] Red proof shows the current implementation exposes the no-legacy gap before
       implementation changes.
 
-      - [ ] No real user home files are modified.'
+      - [x] No real user home files are modified.'
     refs:
     - tests/shell/test_pi_launcher_contract.py
     - tests/shell/test_pi_extension_contract.py
