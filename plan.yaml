@@ -90966,8 +90966,15 @@ phases:
       changed rules.
 
       </risk_probes>'
-    verification: '- [ ] Raw output from targeted launcher/model-map/tool-policy tests
-      is included.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] Raw output from targeted launcher/model-map/tool-policy tests is included.
 
       - [ ] Raw output from supplemental Pi runtime tests or documented skip/xfail
       availability evidence is included.
