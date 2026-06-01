@@ -85670,3 +85670,167 @@ phases:
     depends_on:
     - pi_model_map_draft_impl_20260601
     agent: integration-verifier
+  - id: pi_model_map_draft_spec_guard_20260601
+    name: Verify spec conformance and invar guard for model-map draft helper
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check
+
+      independence_level: L1
+
+      protected_gate: pi_model_map_draft_gate_20260601
+
+
+      CONFORMANCE ARTIFACT:
+
+      Independently verify implementation and docs against the approved design, then
+      require repository guard proof. This is not a generic test-pass step; it hunts
+      for drift between design requirements, code, CLI behavior, and documentation.
+
+
+      SCOPE:
+
+      - design/pi-model-map-draft-helper.md all requirement families
+
+      - src/larva/core/pi_model_map.py if present
+
+      - src/larva/shell/pi_model_map.py
+
+      - src/larva/shell/cli_parser.py
+
+      - src/larva/shell/cli.py
+
+      - tests/shell/ model-map draft tests
+
+      - contrib/pi-extension/README.md for conflicting legacy completion/model-map
+      policy
+
+      - INVAR/AGENTS Core/Shell invariant
+
+
+      FOCUS AREAS:
+
+      - character-exact CLI command and args
+
+      - exact model-map JSON shape
+
+      - redirect-safe stdout/stderr and optional --json envelope semantics
+
+      - error codes
+
+      - source authority: facade.list, pi --list-models --offline, --model-map/--output
+
+      - forbidden personal scaffold path
+
+      - no hard-coded provider preferences
+
+      - Core @pre/@post/doctest and Shell I/O boundary
+
+      - `invar guard` / repository guard command evidence
+
+
+      <side_effect_budget>
+
+      Allowed: read-only conformance audit and guard execution; no product code edits.
+      Forbidden: treating stale docs as authority over approved design; approving
+      unproven behavioral precedence without tests; accepting a guard run that omits
+      changed files.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Look for legacy docs that still imply manual-only or dotfiles-scaffold model-map
+      completion policy.
+
+      - Check whether tests prove behavior from the approved design rather than implementation
+      conveniences.
+
+      - Check guard output for vacuous contracts or Core I/O boundary violations.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation includes key passages from design, INVAR/AGENTS invariant,
+      and contrib/pi-extension README if read.
+
+      - [ ] Spec conformance table covers every row from the phase requirement-to-checklist
+      matrix with CONFORMS/DIVERGES/PARTIAL/NEEDS_TEST/NOT_FOUND/AMBIGUOUS_SPEC/SPEC_POSSIBLY_STALE.
+
+      - [ ] Drift findings include exact file:line and severity.
+
+      - [ ] `invar guard` or the repo-canonical guard command is run and raw output
+      is included.
+
+      - [ ] Any `NEEDS_TEST`, `UNPROVEN`, or `DIVERGES` item has a remediation or
+      explicit non-intersection path before gate.
+
+      - [ ] Documentation drift in contrib/pi-extension/README.md is either updated
+      by implementation or flagged as blocking.'
+    evidence_template: '## refs Read Confirmation (MANDATORY)
+
+      For each ref in this step:
+
+      - design/pi-model-map-draft-helper.md — <key passage or NOT READ: reason>
+
+      - INVAR.md — <key passage or NOT READ: reason>
+
+      - AGENTS.md — <key passage or NOT READ: reason>
+
+      - contrib/pi-extension/README.md — <key passage or NOT READ: reason>
+
+
+      ## Spec Conformance Report
+
+      **Phase**: pi-model-map-draft-helper-2026-06-01
+
+      **Spec source**: design/pi-model-map-draft-helper.md
+
+
+      ## Requirements Register
+
+      | R# | Spec Section | Requirement | Level | Checkable? |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Evidence Table
+
+      | R# | Spec Section | Requirement | Implementation/docs | Verdict | Notes |
+
+      | --- | --- | --- | --- | --- | --- |
+
+
+      Verdicts: CONFORMS | DIVERGES | PARTIAL | NEEDS_TEST | NOT_FOUND | AMBIGUOUS_SPEC
+      | SPEC_POSSIBLY_STALE
+
+
+      ## Guard Receipt
+
+      - command: <invar guard / canonical guard command>
+
+      - raw_stdout: <paste raw output>
+
+      - exit_code: <code>
+
+
+      ## Drift / Closure Paths
+
+      | issue | severity | file:line | closure_path | intersects_gate |
+
+      | --- | --- | --- | --- | --- |
+
+
+      ## Checklist Receipt
+
+      - spec table complete: <satisfied/failed/blocked/unobserved>
+
+      - guard evidence collected: <satisfied/failed/blocked/unobserved>
+
+      - doc drift checked: <satisfied/failed/blocked/unobserved>'
+    depends_on:
+    - pi_model_map_draft_impl_20260601
+    - pi_model_map_draft_fixture_retest_20260601
+    agent: spec-verifier
