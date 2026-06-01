@@ -90960,6 +90960,42 @@ phases:
 
       - [ ] Behavioral proof register marks each launcher/config requirement PROVEN
       or BLOCKED with closure path.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <list paths changed, or `none` expected for verifier>
+
+      - no_change_reason: <required; verifier should normally report no product changes>
+
+
+      ## Runtime/Test Receipt
+
+      - targeted_tests: <raw command lines, exit codes, stdout/stderr refs>
+
+      - supplemental_runtime: <raw command lines/output or skip/xfail availability
+      evidence>
+
+      - invar_guard: <raw command line, exit code, stdout/stderr>
+
+      - behavioral_proof_register: <requirement_ref | behavior_claim | evidence_ref
+      | status | closure_path | gate_decision_basis>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
