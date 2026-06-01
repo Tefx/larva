@@ -7,6 +7,11 @@ import assert from "node:assert/strict";
 const root = process.cwd();
 const extensionUrl = pathToFileURL(join(root, "contrib/pi-extension/larva.ts"));
 
+function selectedCase() {
+  const index = process.argv.indexOf("--case");
+  return index === -1 ? "all" : process.argv[index + 1];
+}
+
 async function importFresh(name) {
   return await import(`${extensionUrl.href}?policy=${encodeURIComponent(name)}-${Date.now()}-${Math.random()}`);
 }
@@ -70,35 +75,52 @@ async function runPolicyCase(name, arrange) {
   return { result, activeTools: activeToolCalls.at(-1), paths };
 }
 
-const override = await runPolicyCase("env-override", async (paths, env) => {
-  await writeFile(paths.override, JSON.stringify({ personas: { p: { deny: ["bash"] } } }), "utf8");
-  await writeFile(paths.canonical, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
-  env.LARVA_PI_TOOL_POLICY_FILE = paths.override;
-});
-assert.equal(override.result.ok, true);
-assert.deepEqual(override.activeTools, ["read"]);
-console.log("env override: PASS", JSON.stringify(override.activeTools));
+const cases = {
+  "env-override": async () => {
+    const override = await runPolicyCase("env-override", async (paths, env) => {
+      await writeFile(paths.override, JSON.stringify({ personas: { p: { deny: ["bash"] } } }), "utf8");
+      await writeFile(paths.canonical, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
+      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
+      env.LARVA_PI_TOOL_POLICY_FILE = paths.override;
+    });
+    assert.equal(override.result.ok, true);
+    assert.deepEqual(override.activeTools, ["read"]);
+    console.log("env-override PASS override only activeTools", JSON.stringify(override.activeTools));
+  },
+  "new-path-exists": async () => {
+    const canonical = await runPolicyCase("canonical-exists", async (paths) => {
+      await writeFile(paths.canonical, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
+      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { allow: ["read"] } } }), "utf8");
+    });
+    assert.equal(canonical.result.ok, true);
+    assert.deepEqual(canonical.activeTools, ["bash"]);
+    console.log("new-path-exists PASS canonical activeTools", JSON.stringify(canonical.activeTools));
+  },
+  "legacy-fallback": async () => {
+    const legacy = await runPolicyCase("legacy-fallback", async (paths) => {
+      await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
+    });
+    assert.equal(legacy.result.ok, true);
+    assert.deepEqual(legacy.activeTools, ["bash"]);
+    console.log("legacy-fallback PASS legacy activeTools", JSON.stringify(legacy.activeTools));
+  },
+  "no-file-empty": async () => {
+    const noFile = await runPolicyCase("no-file-canonical-empty", async () => undefined);
+    assert.equal(noFile.result.ok, true);
+    assert.deepEqual(noFile.activeTools, ["read", "bash"]);
+    assert.equal(await exists(noFile.paths.canonical), false);
+    assert.equal(await exists(noFile.paths.legacy), false);
+    console.log("no-file-empty PASS canonical missing empty policy", JSON.stringify(noFile.activeTools));
+  },
+};
 
-const canonical = await runPolicyCase("canonical-exists", async (paths) => {
-  await writeFile(paths.canonical, JSON.stringify({ personas: { p: { allow: ["bash"] } } }), "utf8");
-  await writeFile(paths.legacy, JSON.stringify({ personas: { p: { allow: ["read"] } } }), "utf8");
-});
-assert.equal(canonical.result.ok, true);
-assert.deepEqual(canonical.activeTools, ["bash"]);
-console.log("new canonical path exists: PASS", JSON.stringify(canonical.activeTools));
-
-const legacy = await runPolicyCase("legacy-fallback", async (paths) => {
-  await writeFile(paths.legacy, JSON.stringify({ personas: { p: { deny: ["read"] } } }), "utf8");
-});
-assert.equal(legacy.result.ok, true);
-assert.deepEqual(legacy.activeTools, ["bash"]);
-console.log("legacy fallback: PASS", JSON.stringify(legacy.activeTools));
-
-const noFile = await runPolicyCase("no-file-canonical-empty", async () => undefined);
-assert.equal(noFile.result.ok, true);
-assert.deepEqual(noFile.activeTools, ["read", "bash"]);
-assert.equal(await exists(noFile.paths.canonical), false);
-assert.equal(await exists(noFile.paths.legacy), false);
-console.log("no file => new canonical empty policy: PASS", JSON.stringify(noFile.activeTools));
-
-console.log("tool-policy paths: PASS");
+const choice = selectedCase();
+if (choice === "all") {
+  for (const name of Object.keys(cases)) await cases[name]();
+  console.log("tool-policy paths: PASS");
+} else if (cases[choice]) {
+  await cases[choice]();
+} else {
+  console.error(`unknown --case ${choice}`);
+  process.exit(2);
+}
