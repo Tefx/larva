@@ -82882,19 +82882,19 @@ phases:
       \ cover `ollama-cloud/kimi-k2.6:cloud`.\n- Confirm `openai/gpt-5.5` is no longer\
       \ treated as ambiguous; it maps to `openai-codex/gpt-5.5` per user decision.\n\
       </risk_probes>"
-    verification: "ACCEPTABLE RECEIPT:\n- [ ] Run `python3 - <<'PY'\nimport pathlib\n\
+    verification: "ACCEPTABLE RECEIPT:\n- [x] Run `python3 - <<'PY'\nimport pathlib\n\
       p=pathlib.Path('/Users/tefx/dotfiles/agent/models.yaml')\nfor i,line in enumerate(p.read_text().splitlines(),1):\n\
       \    if '/' in line:\n        print(f'{i}: {line}')\nPY` and include raw inventory\
-      \ output.\n- [ ] Run `pi --list-models --offline` and include excerpts for `openai-codex/gpt-5.5`,\
+      \ output.\n- [x] Run `pi --list-models --offline` and include excerpts for `openai-codex/gpt-5.5`,\
       \ `openrouter/z-ai/glm-5.1`, `openrouter/moonshotai/kimi-k2.5`, `openrouter/minimax/minimax-m2.7`,\
-      \ and `openrouter/google/gemini-3.1-pro-preview`.\n- [ ] Run `git -C /Users/tefx/dotfiles\
+      \ and `openrouter/google/gemini-3.1-pro-preview`.\n- [x] Run `git -C /Users/tefx/dotfiles\
       \ diff -- agent/models.yaml` and, if an adjacent template/generator file is\
-      \ used, `git -C /Users/tefx/dotfiles diff -- agent/`.\n- [ ] Diff/evidence includes\
+      \ used, `git -C /Users/tefx/dotfiles diff -- agent/`.\n- [x] Diff/evidence includes\
       \ the confirmed exact mappings and `openrouter/` prefix rule exactly; `ollama-cloud/kimi-k2.6:cloud`\
-      \ is not mapped.\n- [ ] Evidence states whether the follow-up execution path\
+      \ is not mapped.\n- [x] Evidence states whether the follow-up execution path\
       \ generates `~/.pi/larva/model-map.json` from checked-in dotfiles material or\
       \ requires the user/operator to copy the documented JSON template; no direct\
-      \ runtime user-file write is performed by this step.\n- [ ] Existing `models.yaml`\
+      \ runtime user-file write is performed by this step.\n- [x] Existing `models.yaml`\
       \ alias values remain semantically unchanged except for scoped model-map template\
       \ material."
     evidence_template: '## refs Read Confirmation (MANDATORY)
