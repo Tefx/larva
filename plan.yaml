@@ -93051,7 +93051,7 @@ phases:
       none'
 - id: pi-postspec-finalization-2026-06-02
   name: Pi Post-Spec Runtime Verification and Finalization 2026-06-02
-  status: in_progress
+  status: done
   gate: Final gate opens only when all commit 4616008 requirements have positive proof
     or explicit non-intersection, supplemental Pi extension tests and autocomplete
     smoke tests run/skip/xfail according to documented policy, ctx.ui.addAutocompleteProvider
@@ -93541,7 +93541,7 @@ phases:
       \ []"
   - id: pi_postspec_deep_review_20260602
     name: Independent deep review of Pi post-spec implementation
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: full-plan-check
@@ -93659,6 +93659,33 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T20:05:23.949419+00:00'
+    done_at: '2026-06-01T20:12:11.152783+00:00'
+    evidence: "status: SUCCESS\nverdict: PASS\nfinal_decision: OPEN\ngate_open_allowed:\
+      \ true\nsummary: Final independent Pi post-spec deep review recommends OPEN;\
+      \ blockers empty; no unresolved blocker-class proof gaps.\nrefs_confirmation:\n\
+      \  - design/pi-coding-agent-integration.md: read runtime behavior, startup tool\
+      \ enumeration, prompt hard constraints, tool policy, VT46 renderResult, and\
+      \ hard non-goal sections.\n  - contrib/pi-extension/README.md: read launcher/config,\
+      \ adapter-local tool policy, supplemental runtime gate, subagent rendering,\
+      \ VT46, and unsupported guarantees.\nchanged_files: none\nworker_commit: none\
+      \ — read-only review\nworker_verification:\n  - targeted runtime/UX command:\
+      \ exit 0; `75 passed in 29.92s`.\n  - all Pi tests: exit 0; `144 passed in 31.40s`.\n\
+      \  - autocomplete smoke: tab-force, tab-regular, delegate-other-input, and list-failure\
+      \ all exit 0.\n  - invar guard: passed with no changed files.\n  - git status\
+      \ in worker: clean branch.\npositive_requirement_coverage:\n  - launcher/config:\
+      \ PROVEN.\n  - editor/prompt: PROVEN.\n  - subagent UX and VT42-VT48 including\
+      \ VT46: PROVEN.\n  - startup tool enumerator remediation and B5 atomicity: PROVEN.\n\
+      \  - runtime/client evidence class separation: PROVEN.\n  - docs sync: PROVEN.\n\
+      \  - hard constraints / unsupported guarantees: PROVEN.\nVT46_decision_basis:\n\
+      \  - collapsed final view: PROVEN.\n  - expanded final view fields: PROVEN.\n\
+      \  - resume footer behavior: PROVEN.\n  - parent `larva:` footer preservation:\
+      \ PROVEN.\n  - no-widget-dashboard prohibition: PROVEN.\nblockers: []\ngaps:\
+      \ []\norphan_requirements: none found\nmainline_reconciliation:\n  - merge:\
+      \ `git merge --squash vectl/step-pi_postspec_deep_review_20260602` returned\
+      \ `Already up to date. (nothing to squash)` because review was read-only.\n\
+      \  - mainline verification: `uv run --group dev invar guard --changed` passed\
+      \ with no changed files.\nchecklist_receipt: all 7 verification checklist items\
+      \ toggled complete via deterministic vectl_check."
   - id: pi_postspec_conformance_blockers_b1_b7_fix_20260602
     name: Batched fix for Pi post-spec conformance blockers B1-B7
     status: done
