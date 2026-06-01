@@ -94134,3 +94134,189 @@ phases:
       \ and branch had no product diff.\n  - mainline verification: `uv run --group\
       \ dev invar guard --changed` passed; no changed files.\ngaps: none\nblockers:\
       \ []"
+  - id: pi_postspec_initial_startup_tool_enumerator_failclosed_fix_20260602
+    name: Fix initial startup tool enumerator fail-closed blocker
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      TARGET STATE: Initial persona startup and the `enumerateTools` startup path
+      must tolerate absent or unsupported Pi tool enumeration surfaces without leaving
+      `LARVA_TOOL_ENUMERATION_FAILED` in the fail-closed path, while genuine active-tool
+      enumeration/update failures required by B5 continue to fail atomically with
+      `LARVA_TOOL_ENUMERATION_FAILED`.
+
+
+      Failure evidence from `pi_postspec_full_runtime_gate_20260602`:
+
+      - Worker verdict: FAIL; gate_open_allowed: false.
+
+      - Failing test: `tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator`.
+
+      - Error fingerprint: assertion expects `LARVA_TOOL_ENUMERATION_FAILED` not to
+      remain in the initial persona startup/`enumerateTools` fail-closed path, but
+      it is still present.
+
+      - Broad Pi contract command failed: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_reported_failures_expected_red.py
+      -v` returned exit 1; 120 passed, 1 failed.
+
+      - B1-B7 regression probe command failed: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag
+      tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification
+      tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors
+      tests/shell/test_pi_reported_failures_expected_red.py -v` returned exit 1; 28
+      passed, 1 failed.
+
+      - Supplemental runtime tests passed: `tests/shell/test_pi_extension_real_runtime.py
+      -v` returned 22 passed.
+
+      - Autocomplete smoke passed; VT46 targeted proof passed; invar guard passed.
+
+
+      AUTHORITATIVE REFS TO READ:
+
+      - `design/pi-coding-agent-integration.md`
+
+      - `contrib/pi-extension/README.md`
+
+      - `tests/shell/test_pi_reported_failures_expected_red.py`
+
+      - `tests/shell/test_pi_extension_contract.py`
+
+      - `contrib/pi-extension/larva.ts`
+
+
+      BOUNDING BOX:
+
+      Start from the Pi extension tool enumeration/startup path and related tests:
+      `contrib/pi-extension/larva.ts`, `tests/shell/test_pi_reported_failures_expected_red.py`,
+      and `tests/shell/test_pi_extension_contract.py`. This bounding box does not
+      authorize schema, opifex, or shared contract changes.
+
+
+      CONSTRAINTS:
+
+      - Preserve B5 atomicity: genuine `getAllTools`/active-tool update failures still
+      map to `LARVA_TOOL_ENUMERATION_FAILED`.
+
+      - Preserve B5 atomicity: do not commit empty active tools on genuine enumeration/update
+      failure.
+
+      - Preserve B5 atomicity: preserve prior active-tool state on genuine enumeration/update
+      failure.
+
+      - Treat absent/unsupported startup enumeration surface differently from genuine
+      tool enumeration failure; startup must not fail closed solely because the surface
+      is absent/unsupported.
+
+      - Do not weaken launcher fatal startup error propagation covered by the B1-B7
+      regression probe.
+
+      - Do not change canonical schema, opifex contracts, shared surfaces, or unrelated
+      generated artifacts.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive logic that processes its inputs and produces
+      outputs that vary based on those inputs.
+
+
+      <side_effect_budget>
+
+      Allowed: narrowly change Pi extension startup/tool-enumeration handling and
+      directly related tests required to close this blocker. Forbidden: modifying
+      opifex/shared contract/schema files, weakening B1-B7 behavior, masking genuine
+      active-tool failures, committing empty active tools after failure, changing
+      unrelated Pi UX/autocomplete/VT46 behavior, or removing the failing regression
+      test.
+
+      </side_effect_budget>
+
+      <risk_probes>
+
+      - Distinguish absent/unsupported enumerator during initial persona startup from
+      real `getAllTools` or active-tool update failure; the former must not leave
+      `LARVA_TOOL_ENUMERATION_FAILED`, the latter must still do so.
+
+      - Verify atomicity after failure: previous active-tool state is preserved and
+      empty active tools are not committed.
+
+      - Search adjacent startup and enumeration paths so a sibling path does not still
+      emit `LARVA_TOOL_ENUMERATION_FAILED` for unsupported startup enumeration.
+
+      </risk_probes>'
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per authoritative ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`,
+      `tests/shell/test_pi_reported_failures_expected_red.py`, `tests/shell/test_pi_extension_contract.py`,
+      `contrib/pi-extension/larva.ts`) and key passages or `NOT READ: <reason>`.
+
+      - [ ] Evidence lists changed files and confirms no opifex/schema/shared contract
+      files were changed.
+
+      - [ ] Targeted failing test is green: `./.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator
+      -v`.
+
+      - [ ] Broad Pi contract command is green: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py
+      tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_extension_tool_policy_static.py tests/shell/test_pi_postspec_subagent_ux_expected_red.py
+      tests/shell/test_pi_postspec_editor_prompt_expected_red.py tests/shell/test_pi_reported_failures_expected_red.py
+      -v`.
+
+      - [ ] B1-B7 regression probe command is green: `./.venv/bin/python -m pytest
+      tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path
+      tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag
+      tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification
+      tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json
+      tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors
+      tests/shell/test_pi_reported_failures_expected_red.py -v`.
+
+      - [ ] B5 atomicity proof shows genuine `getAllTools`/active-tool update failures
+      still map to `LARVA_TOOL_ENUMERATION_FAILED`, do not commit empty active tools,
+      and preserve prior active-tool state.
+
+      - [ ] Raw `invar guard` output is included and green.
+
+      - [ ] checklist_receipt maps each checklist item to satisfied/failed/blocked/unobserved.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-coding-agent-integration.md — <key passage or NOT READ:\
+      \ reason>\n- contrib/pi-extension/README.md — <key passage or NOT READ: reason>\n\
+      - tests/shell/test_pi_reported_failures_expected_red.py — <key passage or NOT\
+      \ READ: reason>\n- tests/shell/test_pi_extension_contract.py — <key passage\
+      \ or NOT READ: reason>\n- contrib/pi-extension/larva.ts — <key passage or NOT\
+      \ READ: reason>\n\n## Changed Files\n- changed_files: <list>\n- forbidden_schema_opifex_shared_changes:\
+      \ <none or details>\n\n## Command Receipts\n- targeted_failing_test:\n  - command:\
+      \ `./.venv/bin/python -m pytest tests/shell/test_pi_reported_failures_expected_red.py::test_initial_persona_startup_does_not_fail_closed_on_absent_tool_enumerator\
+      \ -v`\n  - raw_output: <paste>\n  - exit_code: <code>\n- broad_pi_contract:\n\
+      \  - command: `./.venv/bin/python -m pytest tests/shell/test_pi_launcher_contract.py\
+      \ tests/shell/test_pi_extension_contract.py tests/shell/test_pi_model_map.py\
+      \ tests/shell/test_pi_model_map_draft_contract.py tests/shell/test_pi_extension_tool_policy_static.py\
+      \ tests/shell/test_pi_postspec_subagent_ux_expected_red.py tests/shell/test_pi_postspec_editor_prompt_expected_red.py\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`\n  - raw_output:\
+      \ <paste>\n  - exit_code: <code>\n- b1_b7_regression_probe:\n  - command: `./.venv/bin/python\
+      \ -m pytest tests/shell/test_pi_launcher_contract.py::test_launcher_path_discovery_skips_larva_shim\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_unsupported_path\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_extension_fallback_to_long_flag\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_interactive_tui_classification\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_bridge_list_uses_larva_cli_argv_json\
+      \ tests/shell/test_pi_launcher_contract.py::test_launcher_propagates_extension_fatal_startup_errors\
+      \ tests/shell/test_pi_reported_failures_expected_red.py -v`\n  - raw_output:\
+      \ <paste>\n  - exit_code: <code>\n- invar_guard:\n  - command: <exact command>\n\
+      \  - raw_output: <paste>\n  - exit_code: <code>\n\n## B5 Atomicity Proof\n-\
+      \ genuine_failure_maps_to_LARVA_TOOL_ENUMERATION_FAILED: <proof>\n- empty_active_tools_not_committed:\
+      \ <proof>\n- prior_active_tool_state_preserved: <proof>\n\n## checklist_receipt\n\
+      - <checklist item>: satisfied|failed|blocked|unobserved — <evidence ref>"
+    depends_on:
+    - pi_postspec_full_runtime_gate_20260602
+    agent: frontend-engineer
