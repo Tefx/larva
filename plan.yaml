@@ -86241,7 +86241,7 @@ phases:
     agent: python-senior
   - id: pi_tool_policy_no_fallback_extension_impl_20260601
     name: Complete extension canonical-only tool-policy path behavior
-    status: pending
+    status: claimed
     description: 'TARGET STATE:
 
       `contrib/pi-extension/larva.ts` resolves tool policy to canonical `~/.pi/larva/tool-policy.json`
@@ -86293,6 +86293,8 @@ phases:
     - pi_tool_policy_no_legacy_contract_20260601
     - pi_tool_policy_no_legacy_tests_20260601
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T08:30:33.651198+00:00'
   - id: pi_tool_policy_no_legacy_docs_20260601
     name: Update Pi docs to unsupported-old-path semantics
     status: done
