@@ -88194,26 +88194,26 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation includes key passages from approved design fail-closed
+      - [x] refs confirmation includes key passages from approved design fail-closed
       and output-channel sections plus INVAR/AGENTS guard rules.
 
-      - [ ] B1-focused proof shows empty stdout+stderr returns `LARVA_PI_MODELS_UNAVAILABLE`.
+      - [x] B1-focused proof shows empty stdout+stderr returns `LARVA_PI_MODELS_UNAVAILABLE`.
 
-      - [ ] B1-focused proof shows whitespace-only output returns `LARVA_PI_MODELS_UNAVAILABLE`.
+      - [x] B1-focused proof shows whitespace-only output returns `LARVA_PI_MODELS_UNAVAILABLE`.
 
-      - [ ] B1-focused proof shows unparseable successful Pi output returns `LARVA_PI_MODELS_UNAVAILABLE`.
+      - [x] B1-focused proof shows unparseable successful Pi output returns `LARVA_PI_MODELS_UNAVAILABLE`.
 
-      - [ ] Focused regression proof shows parseable stderr inventory remains accepted.
+      - [x] Focused regression proof shows parseable stderr inventory remains accepted.
 
-      - [ ] Raw stdout/stderr evidence or focused tests prove draft success still
+      - [x] Raw stdout/stderr evidence or focused tests prove draft success still
       emits redirect-safe raw JSON on stdout and human reports on stderr.
 
-      - [ ] `invar guard` or repo-canonical guard command raw output is green.
+      - [x] `invar guard` or repo-canonical guard command raw output is green.
 
-      - [ ] Fixture/live safety proof confirms no personal scaffold file, no provider
+      - [x] Fixture/live safety proof confirms no personal scaffold file, no provider
       preference table, no hidden alias inference, and no speculative draft success.
 
-      - [ ] Behavioral proof register maps B1 and related channel-safety rows to PROVEN/BLOCKED
+      - [x] Behavioral proof register maps B1 and related channel-safety rows to PROVEN/BLOCKED
       with closure path; gate cannot open with UNPROVEN B1.'
     evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
       \ step:\n- design/pi-model-map-draft-helper.md — key passage or \"NOT READ:\
