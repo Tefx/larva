@@ -91230,23 +91230,23 @@ phases:
       config.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step, and `NOT READ: <reason>` only for
       legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] All phase steps completed with refs confirmation and raw evidence.
+      - [x] All phase steps completed with refs confirmation and raw evidence.
 
-      - [ ] Requirement matrix has no ORPHAN_REQUIREMENT rows for launcher/config
+      - [x] Requirement matrix has no ORPHAN_REQUIREMENT rows for launcher/config
       scope.
 
-      - [ ] Behavioral proof register has every OWNED requirement PROVEN or BLOCKED
+      - [x] Behavioral proof register has every OWNED requirement PROVEN or BLOCKED
       with explicit remediation path.
 
-      - [ ] Gate decision basis rejects sampled/no-blocker-only evidence and records
+      - [x] Gate decision basis rejects sampled/no-blocker-only evidence and records
       OPEN or BLOCKED.'
     evidence_template: '## refs Read Confirmation
 
