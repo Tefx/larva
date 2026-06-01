@@ -91515,8 +91515,16 @@ phases:
       or loses Pi operational context.
 
       </risk_probes>'
-    verification: '- [ ] All checklist items from tests, implementation, and runtime
-      proof are satisfied or have blocking remediation.
+    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+      per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
+      key passage citations used for this step, and `NOT READ: <reason>` only for
+      legitimately unread refs.
+
+      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      and gaps/blockers with closure paths.
+
+      - [ ] All checklist items from tests, implementation, and runtime proof are
+      satisfied or have blocking remediation.
 
       - [ ] Gate decision basis maps every editor/prompt requirement to positive evidence.
 
