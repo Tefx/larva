@@ -84006,3 +84006,194 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T01:50:55.794306+00:00'
+  - id: pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+    name: Fix dotfiles alias drift blocking Pi model-map gate
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+      work_type: defect_repair
+
+
+      TARGET STATE:
+
+      Resolve the B1 semantic gate blocker in external dotfiles: `/Users/tefx/dotfiles/agent/models.yaml`
+      preserves the pre-existing alias/comment semantics for the unrelated aliases
+      while keeping the Pi model-map source/template material intact. This step is
+      a focused residual remediation after the blocked gate; it must not alter completed
+      Larva product work or runtime Pi files.
+
+
+      BOUNDING BOX:
+
+      - Authorized writable file: `/Users/tefx/dotfiles/agent/models.yaml`.
+
+      - Optional adjacent checked-in evidence only if strictly needed: `/Users/tefx/dotfiles/agent/`.
+
+      - Forbidden: Larva product code, canonical PersonaSpec schema/opifex contracts,
+      `~/.pi/**`, generated runtime files, and unrelated dotfiles areas.
+
+
+      REQUIREMENT-TO-CHECKLIST TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1_ALIAS_DRIFT | failed gate `pi-adapter-local-model-map-config-2026-06-01.gate`:
+      removed/dirty alias lines `# glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`,
+      `gpt53codexspark: openai/gpt-5.3-codex-spark`, `gpt54: openai/gpt-5.5` | Restore
+      those alias/comment lines or separately account for the unrelated dotfiles change
+      in a reviewed artifact so existing alias meanings are preserved. | pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+      | restore/account for the four unrelated alias semantic removals | alias_drift_resolution
+      | OWNED | Blocks current phase gate; no non-intersection available until resolved.
+      |
+
+      | PI_TEMPLATE_PRESERVE | phase contract/gate context: Pi model-map source/template
+      material must remain intact | Preserve the four Pi exact mappings and the `openrouter/`
+      prefix template exactly in `/Users/tefx/dotfiles/agent/models.yaml`. | pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+      | prove Pi mappings and prefix template remain exactly present | pi_template_inventory
+      | OWNED | Blocks current phase gate because remediation touches same dotfiles
+      source. |
+
+      | KIMI_UNMAPPED | phase contract/gate context: `ollama-cloud/kimi-k2.6:cloud`
+      remains intentionally unmapped | Confirm the intentionally unmapped Kimi model
+      remains unmapped after alias drift repair. | pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+      | confirm Kimi remains intentionally unmapped | unmapped_model_check | OWNED
+      | Non-regression row for gate B1 retest. |
+
+      | NO_RUNTIME_WRITES | planner/orchestrator scope: dotfiles source only, no Pi
+      runtime writes | Do not write `~/.pi/**` or Larva product/runtime files. | pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
+      | prove no `~/.pi` writes and no Larva product code changes | side_effect_audit
+      | OWNED | Required to prevent semantic fix from becoming runtime mutation. |
+
+
+      <constraints>
+
+      - Do NOT touch Larva product code, canonical PersonaSpec schema, opifex contracts,
+      or runtime files under `~/.pi`.
+
+      - Do NOT reinterpret or rename existing aliases beyond restoring/accounting
+      the listed unrelated drift.
+
+      - Do NOT weaken the Pi model-map source/template material already proven by
+      the phase.
+
+      - If the unrelated alias removals are intentionally owned elsewhere, record
+      a reviewed adjacent dotfiles evidence artifact rather than silently accepting
+      drift; the artifact must make the B1 gate decision possible.
+
+      </constraints>
+
+
+      <side_effect_budget>
+
+      Allowed side effects:
+
+      - Edit `/Users/tefx/dotfiles/agent/models.yaml` to restore/account for the unrelated
+      alias/comment semantic removals while preserving Pi template content.
+
+      - Optionally add/update adjacent checked-in evidence under `/Users/tefx/dotfiles/agent/`
+      only if needed to account for an intentional unrelated dotfiles change.
+
+      Strictly forbidden side effects:
+
+      - Any writes under `~/.pi/**`.
+
+      - Any Larva repository product-code, docs, config, schema, or runtime-file changes.
+
+      - Any changes to `../opifex/**` shared contract artifacts.
+
+      - Any unrelated dotfiles changes outside `/Users/tefx/dotfiles/agent/`.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the repair preserves alias semantics, not merely textual presence;
+      the aliases must still map to the same provider/model strings listed by the
+      gate.
+
+      - Verify the Pi `openrouter/` prefix template and exact mappings were not moved
+      into comments, duplicated ambiguously, or made shadowed by a broader alias rule.
+
+      - Verify no runtime/user-state mutation occurred in `~/.pi/**`; this must be
+      a source/dotfiles remediation only.
+
+      </risk_probes>
+
+
+      ## Gate Preview (what the focused regate WILL reject)
+
+      1. The four unrelated alias/comment removals remain unresolved or unaccounted.
+
+      2. Dotfiles diff contains unrelated deltas beyond Pi model-map source/template
+      material and the alias-drift remediation/accounting.
+
+      3. Any `~/.pi` runtime write occurs.
+
+      4. Larva product code or shared opifex contract files are touched.
+
+      5. Pi exact mappings, `openrouter/` prefix template, or the intentional Kimi
+      unmapped status regress.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION remediation step. Stub-only or narrative-only completion
+      is NOT acceptable. Evidence must include raw command output and inventory proving
+      the dotfiles semantic state.'
+    verification: 'ACCEPTABLE RECEIPT (minimum deterministic proof; narrative summaries
+      alone will be rejected):
+
+      - [ ] `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output is pasted
+      and shows only Pi model-map source/template material plus the alias-drift remediation/accounting,
+      or no delta.
+
+      - [ ] If `/Users/tefx/dotfiles/agent/models.yaml` is already committed in dotfiles,
+      `git -C /Users/tefx/dotfiles/agent show --stat --patch --format=short HEAD --
+      models.yaml` output is pasted; otherwise explicitly state not committed and
+      provide current diff/status evidence.
+
+      - [ ] Inventory output over `/Users/tefx/dotfiles/agent/models.yaml` proves
+      the four unrelated alias/comment lines are restored or reviewed/accounted: `#
+      glm51: zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`, `gpt53codexspark:
+      openai/gpt-5.3-codex-spark`, `gpt54: openai/gpt-5.5`.
+
+      - [ ] Inventory output proves the four Pi exact mappings remain exactly present.
+
+      - [ ] Inventory output proves the `openrouter/` prefix template remains exactly
+      present and not shadowed by an unintended broader rule.
+
+      - [ ] Inventory output confirms `ollama-cloud/kimi-k2.6:cloud` remains intentionally
+      unmapped.
+
+      - [ ] Side-effect audit confirms no writes under `~/.pi/**`, no Larva product-code
+      changes, and no `../opifex/**` contract changes.
+
+      - [ ] A concise root-cause note distinguishes unrelated alias drift from Pi
+      model-map source/template work.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- `/Users/tefx/dotfiles/agent/models.yaml` — <key passage or relevant\
+      \ alias/template snippet after repair, or `NOT READ: <reason>`>\n\n## B1 Alias\
+      \ Drift Resolution\n- alias_drift_resolution: <restored/accounted lines and\
+      \ rationale>\n- root_cause_note: <why this was unrelated drift and how it is\
+      \ now isolated>\n\n## Dotfiles Diff / Status Receipt\n- command: `git -C /Users/tefx/dotfiles/agent\
+      \ diff -- models.yaml`\n- raw_stdout: |\n    <paste output>\n- command_if_committed:\
+      \ `git -C /Users/tefx/dotfiles/agent show --stat --patch --format=short HEAD\
+      \ -- models.yaml`\n- raw_stdout_if_committed_or_reason: |\n    <paste output\
+      \ or state not committed>\n\n## Inventory Receipt\n- inventory_command: <exact\
+      \ command used over /Users/tefx/dotfiles/agent/models.yaml>\n- alias_drift_resolution:\
+      \ <evidence for the four listed aliases/comment>\n- pi_template_inventory: <evidence\
+      \ for four Pi exact mappings and openrouter/ prefix template>\n- unmapped_model_check:\
+      \ <evidence `ollama-cloud/kimi-k2.6:cloud` remains intentionally unmapped>\n\
+      \n## Side Effect Audit\n- no_pi_runtime_writes: <evidence no ~/.pi writes>\n\
+      - no_larva_product_changes: <evidence>\n- no_opifex_contract_changes: <evidence>\n\
+      \n## Checklist Receipt\n- checklist_receipt:\n  - satisfied: []\n  - failed:\
+      \ []\n  - blocked: []\n  - unobserved: []"
+    depends_on:
+    - pi-adapter-local-model-map-config-2026-06-01.gate
+    agent: software-architect
