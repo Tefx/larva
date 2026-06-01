@@ -87148,7 +87148,7 @@ phases:
     agent: client-runtime-verifier
   - id: pi_subagent_toolresult_docs_20260601
     name: Document semantic LarvaSubagentResult versus Pi ToolResult wrapper
-    status: claimed
+    status: done
     description: 'step_type: implementation
 
       agent_source: project
@@ -87234,6 +87234,19 @@ phases:
     agent: doc-reviewer
     claimed_by: doc-reviewer
     claimed_at: '2026-06-01T09:18:50.437605+00:00'
+    done_at: '2026-06-01T09:25:09.255463+00:00'
+    evidence: 'Merged isolated docs commit `4514d60e6ca4c0cd45f5ec4adeac8c35f0b874da`
+      to main as `e0b3c5a`. Updated only `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.
+      Refs confirmation cited updated docs sections and adapter behavior in `contrib/pi-extension/larva.ts`
+      (`LarvaSubagentResult` semantic fields, wrapper content/details/isError, registered
+      handler/execute wrapping). Documentation now clearly distinguishes semantic/domain
+      `LarvaSubagentResult` from adapter-local Pi-facing ToolResult wrapper, names
+      `content` text array, states `task_id`, `persona_id`, `status`, `result_text`,
+      and `error` remain preserved in `details`/metadata, and states failure/cancelled
+      paths also return renderer-safe `content`. Evidence and diff review found no
+      unsupported Pi renderer patch or broad abstraction documented. Mainline verification:
+      `git diff --check` produced no output; `uv run invar guard` passed. Checklist
+      receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_repo_verify_20260601
     name: Verify repo tests and invar guard after larva_subagent ToolResult fix
     status: pending
