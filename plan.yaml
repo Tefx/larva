@@ -86602,19 +86602,19 @@ phases:
       </risk_probes>'
     verification: 'ACCEPTABLE RECEIPT:
 
-      - [ ] refs confirmation cites the design verification targets and output/error
+      - [x] refs confirmation cites the design verification targets and output/error
       contracts.
 
-      - [ ] Focused fixture test command exits green and includes deduplication, merge,
+      - [x] Focused fixture test command exits green and includes deduplication, merge,
       prefix, ambiguity, malformed, redirect-safe stdout, non-interactive unresolved,
       and write/error cases.
 
-      - [ ] Doctests for any Core helper pass.
+      - [x] Doctests for any Core helper pass.
 
-      - [ ] Behavioral proof register maps each owned fixture requirement to PROVEN,
+      - [x] Behavioral proof register maps each owned fixture requirement to PROVEN,
       NEEDS_TEST, BLOCKED, or explicit non-intersection.
 
-      - [ ] Evidence explicitly states that real Pi availability is not proven here
+      - [x] Evidence explicitly states that real Pi availability is not proven here
       and is owned by `pi_model_map_draft_live_cli_proof_20260601`.'
     evidence_template: '## refs Read Confirmation (MANDATORY)
 
