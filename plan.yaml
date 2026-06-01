@@ -82645,7 +82645,7 @@ phases:
       COMPLETE, uncertainty_sources [].'
 - id: pi-adapter-local-model-map-config-2026-06-01
   name: Pi Adapter-Local Model Map and Tool Policy Config 2026-06-01
-  status: in_progress
+  status: done
   gate: Adapter-local Pi configuration is accepted only when the full controlled model-map
     language is specified, implemented, documented, and proven through runtime harness
     cases for exact hit, prefix hit, conflict invalid, missing config, invalid config,
@@ -84344,7 +84344,7 @@ phases:
       side effects: none.'
   - id: pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift
     name: Focused regate for dotfiles alias drift
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       step_intent: retest_green
@@ -84504,3 +84504,79 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T02:06:46.113224+00:00'
+    done_at: '2026-06-01T02:12:07.292644+00:00'
+    evidence: 'WORKTREE_MERGED: read-only regate branch had no Larva tree delta; `git
+      merge --squash vectl/step-pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift`
+      reported already up to date / nothing to squash.
+
+
+      Focused B1 Gate Decision:
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: DO_COMPLETE_ORIGINAL_BLOCKED_GATE_THEN_COMPLETE_REGATE
+      / COMPLETE
+
+      headline: PASS
+
+      proof_gap_status: NONE
+
+      blocking_status: CLOSED
+
+      uncertainty_sources: bounded historical `~/.pi` write uncertainty only; no current
+      target evidence of runtime map writes and regate was read-only.
+
+
+      refs Read Confirmation:
+
+      - `/Users/tefx/dotfiles/agent/models.yaml` — gate cited exact lines for `glm51`,
+      `# glm51: zai-coding-plan/glm-5.1`, `gpt53codex`, `gpt53codexspark`, `gpt54`,
+      the four Pi template exact mappings, `openrouter/` prefix rule, and `# Intentionally
+      unmapped: ollama-cloud/kimi-k2.6:cloud.`
+
+
+      Mainline/external final-state verification:
+
+      - `git -C /Users/tefx/dotfiles/agent status --short -- models.yaml` output:
+      empty.
+
+      - `git -C /Users/tefx/dotfiles/agent diff -- models.yaml` output: empty.
+
+      - Inventory command returned count=1 for all B1 alias/accounting lines: `# glm51:
+      zai-coding-plan/glm-5.1`, `gpt53codex: openai/gpt-5.3-codex`, `gpt53codexspark:
+      openai/gpt-5.3-codex-spark`, `gpt54: openai/gpt-5.5`.
+
+      - Inventory returned count=1 for all Pi template lines: exact mappings for `openai/gpt-5.5`,
+      `ollama-cloud/glm-5.1`, `ollama-cloud/kimi-k2.5`, `ollama-cloud/minimax-m2.7`,
+      plus `openrouter/` prefix rule.
+
+      - Inventory returned count=1 for intentionally unmapped Kimi note and `template_contains_kimi_k2_6_cloud:
+      False`.
+
+      - `git status --short` in Larva main output: empty; `git diff --name-status
+      main...HEAD` output: empty; `git -C /Users/tefx/Projects/opifex status --short`
+      output: empty.
+
+
+      Requirement Proof Rows:
+
+      - B1_ALIAS_DRIFT_REGATE PROVEN: clean dotfiles status/diff plus exact-line alias
+      inventory.
+
+      - PI_TEMPLATE_NONREGRESSION PROVEN: exact template mappings and prefix rule
+      present once each.
+
+      - NO_RUNTIME_OR_PRODUCT_WRITES PROVEN: no Larva/opifex changes; read-only regate;
+      no runtime target map exists per worker evidence.
+
+      - OPTIONAL_SMOKE_NONINTERSECTION EXCLUDED_OR_DEFERRED with valid rationale:
+      dotfiles diff empty, product/opifex paths unchanged, template lines intact;
+      runtime smoke would not add material proof for B1 closure.
+
+
+      Checklist receipt: all eight focused regate checklist items are [x]. No forbidden
+      side effects; no artifacts modified.'
