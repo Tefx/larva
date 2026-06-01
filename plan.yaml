@@ -86251,7 +86251,7 @@ phases:
       All five checklist items were PROVEN and toggled with `vectl_check` before completion.'
   - id: pi_model_map_draft_impl_20260601
     name: Complete Pi model-map draft helper implementation
-    status: pending
+    status: claimed
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/larva/core/pi_model_map.py\n\
       \    from_step: pi_model_map_draft_contract_20260601\n    tier: contract\n \
       \ - path: src/larva/shell/pi_model_map.py\n    from_step: pi_model_map_draft_contract_20260601\n\
@@ -86401,6 +86401,8 @@ phases:
     - pi_model_map_draft_contract_20260601
     - pi_model_map_draft_red_tests_20260601
     agent: python-senior
+    claimed_by: python-senior
+    claimed_at: '2026-06-01T10:53:52.058338+00:00'
   - id: pi_model_map_draft_fixture_retest_20260601
     name: Retest Pi model-map draft fixture suite green
     status: pending
