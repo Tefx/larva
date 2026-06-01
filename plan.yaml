@@ -92202,37 +92202,37 @@ phases:
       context.
 
       </risk_probes>'
-    verification: '- [ ] Evidence includes `## refs Read Confirmation` with one bullet
+    verification: '- [x] Evidence includes `## refs Read Confirmation` with one bullet
       per ref (`design/pi-coding-agent-integration.md`, `contrib/pi-extension/README.md`),
       key passage citations used for this step including VT46, and `NOT READ: <reason>`
       only for legitimately unread refs.
 
-      - [ ] Evidence includes changed-files/no-change report, verification receipts,
+      - [x] Evidence includes changed-files/no-change report, verification receipts,
       and gaps/blockers with closure paths.
 
-      - [ ] Tests are limited to tests/fixtures/smoke harnesses and do not modify
+      - [x] Tests are limited to tests/fixtures/smoke harnesses and do not modify
       product implementation code.
 
-      - [ ] Tests cover success, failed-before-session, failed-after-allocation, cancelled,
+      - [x] Tests cover success, failed-before-session, failed-after-allocation, cancelled,
       and policy-denied-no-LarvaSubagentResult paths where applicable.
 
-      - [ ] Tests cover sessions helper valid/invalid limits, cap/eviction/newest-first,
+      - [x] Tests cover sessions helper valid/invalid limits, cap/eviction/newest-first,
       no top-level sessions, no filesystem scan/sidecar/last alias.
 
-      - [ ] Tests cover renderCall/onUpdate/renderResult and deterministic visible-character
+      - [x] Tests cover renderCall/onUpdate/renderResult and deterministic visible-character
       bounds including ANSI/control/Unicode/ellipsis cases.
 
-      - [ ] VT46 collapsed renderResult final-view tests assert persona and terminal
+      - [x] VT46 collapsed renderResult final-view tests assert persona and terminal
       state are visible.
 
-      - [ ] VT46 expanded renderResult final-view tests assert persona id, mode, full
+      - [x] VT46 expanded renderResult final-view tests assert persona id, mode, full
       task, task_id when known, final status, error when any, final output, and resume
       footer are independently visible.
 
-      - [ ] VT46 tests assert renderResult does not overwrite the parent `larva:`
+      - [x] VT46 tests assert renderResult does not overwrite the parent `larva:`
       footer and does not introduce a widget dashboard.
 
-      - [ ] Expected failures or exposed gaps point to pi_postspec_subagent_ux_impl_20260602.'
+      - [x] Expected failures or exposed gaps point to pi_postspec_subagent_ux_impl_20260602.'
     evidence_template: '## refs Read Confirmation
 
       For each ref in this step, include one bullet with the exact key passage used
