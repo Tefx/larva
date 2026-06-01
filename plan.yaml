@@ -87768,6 +87768,151 @@ phases:
       product_implementation_files_modified: false
 
       Commit hash(es): none — read-only live retest'
+  - id: pi_model_map_draft_fail_closed_inventory_fix_20260601
+    name: Fix fail-closed Pi inventory parsing for draft helper
+    status: pending
+    description: 'step_type: implementation
+
+      priority: HIGH
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      The Pi model-map draft helper fails closed whenever the successful `pi --list-models
+      --offline` process output contains no parseable provider/model_id evidence.
+      Empty stdout+stderr, whitespace-only output, and otherwise unparseable successful
+      Pi inventory output must return `LARVA_PI_MODELS_UNAVAILABLE` instead of `Success([])`,
+      empty inventory, or draft success.
+
+
+      BOUNDING BOX:
+
+      - Primary implementation seam: `src/larva/shell/pi_model_map_cli.py` around
+      current inventory parsing and `Success([])` behavior near lines 134-148.
+
+      - Focused regression coverage: `tests/shell/test_pi_model_map_draft_contract.py`
+      and/or `tests/shell/test_pi_model_map.py`.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | --- | --- | --- | --- | --- | --- | --- | --- |
+
+      | B1_FAIL_CLOSED_UNPARSEABLE_PI_OUTPUT | design/pi-model-map-draft-helper.md:61-63
+      and 132-136 — Pi inventory source must parse provider/model_id evidence and
+      fail closed if output is not parseable | Empty/whitespace/unparseable successful
+      Pi output returns `LARVA_PI_MODELS_UNAVAILABLE`, not empty success | pi_model_map_draft_fail_closed_inventory_fix_20260601
+      | fail-closed empty/whitespace/unparseable inventory checklist items | fix_receipt.fail_closed_cases
+      | OWNED | Blocks phase gate until retest proves green |
+
+      | CHANNEL_CONTRACT_PRESERVED | design/pi-model-map-draft-helper.md:86-97 — stdout
+      contains only draft JSON or JSON envelope; human reports/warnings go to stderr
+      | Preserve redirect-safe stdout/stderr behavior while changing failure path
+      | pi_model_map_draft_fail_closed_inventory_fix_20260601 | stdout/stderr preservation
+      checklist item | fix_receipt.channel_contract | OWNED | Blocks phase gate until
+      retest proves no channel regression |
+
+      | NO_PERSONAL_OR_PROVIDER_PREFS | design/pi-model-map-draft-helper.md:65-67
+      and 132-136 — no personal `models.yaml`, no hidden provider aliases/preferences
+      | Fix must not introduce personal file reads, provider preference tables, or
+      speculative inference | pi_model_map_draft_fail_closed_inventory_fix_20260601
+      | no personal/provider preference checklist item | fix_receipt.forbidden_paths_scan
+      | OWNED | Blocks phase gate until retest proves absence |
+
+
+      CONSTRAINTS:
+
+      - Preserve the stderr inventory output-channel fix already completed by `pi_model_map_draft_live_cli_channel_fix_20260601`.
+
+      - Preserve default stdout raw draft JSON contract and optional `--json` envelope
+      semantics where present.
+
+      - Preserve unresolved/non-interactive behavior from the approved design.
+
+      - Do not read personal scaffold files such as `/Users/tefx/dotfiles/agent/models.yaml`.
+
+      - Do not add hard-coded provider preferences, hidden provider aliases, or broad
+      prefix inference.
+
+      - Keep Shell/Core boundaries compliant with INVAR/AGENTS; do not move subprocess
+      or filesystem I/O into Core.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. The
+      deliverable must contain substantive logic that distinguishes parseable Pi inventory
+      rows from empty, whitespace-only, and unparseable output and returns the documented
+      error code for failure cases.
+
+
+      <side_effect_budget>
+
+      Allowed: targeted edits to Pi inventory parse/failure handling and focused regression
+      tests. Forbidden: changing CLI command shape, changing successful draft JSON
+      schema, weakening stderr/stdout separation, adding personal-file fallback, adding
+      provider preference rules, or rewriting completed phase artifacts.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Check both stdout and stderr sources: prior live fix may rely on stderr inventory,
+      so fail-closed detection must not ignore parseable stderr rows.
+
+      - Check successful process with empty/whitespace output separately from nonzero
+      process failure; both should fail closed but evidence should distinguish them.
+
+      - Check that the failure path returns `LARVA_PI_MODELS_UNAVAILABLE` without
+      emitting draft JSON that could be mistaken for a valid model-map.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation includes key passages from design/pi-model-map-draft-helper.md:61-63
+      and 132-136 plus relevant INVAR/AGENTS Shell/Core rules.
+
+      - [ ] Implementation evidence shows empty stdout+stderr no longer returns `Success([])`
+      and instead returns `LARVA_PI_MODELS_UNAVAILABLE`.
+
+      - [ ] Regression test covers successful Pi command with empty stdout and empty
+      stderr.
+
+      - [ ] Regression test covers successful Pi command with whitespace-only output.
+
+      - [ ] Regression or focused proof covers unparseable successful Pi output.
+
+      - [ ] Existing parseable stderr inventory behavior remains green.
+
+      - [ ] Raw stdout JSON contract and stderr human-report contract remain green
+      for successful draft output.
+
+      - [ ] No personal scaffold path, provider preference table, hidden alias inference,
+      or speculative draft behavior is introduced.'
+    evidence_template: "## refs Read Confirmation (MANDATORY)\nFor each ref in this\
+      \ step:\n- design/pi-model-map-draft-helper.md — key passage or \"NOT READ:\
+      \ <reason>\"\n- src/larva/shell/pi_model_map_cli.py — key passage or \"NOT READ:\
+      \ <reason>\"\n- tests/shell/test_pi_model_map_draft_contract.py — key passage\
+      \ or \"NOT READ: <reason>\"\n- tests/shell/test_pi_model_map.py — key passage\
+      \ or \"NOT READ: <reason>\"\n- INVAR.md — key passage or \"NOT READ: <reason>\"\
+      \n- AGENTS.md — key passage or \"NOT READ: <reason>\"\n\n## Fix Receipt\n- changed_files:\
+      \ <paths>\n- fail_closed_cases:\n  - empty_stdout_empty_stderr: <test/proof\
+      \ and observed error code>\n  - whitespace_only_output: <test/proof and observed\
+      \ error code>\n  - unparseable_success_output: <test/proof and observed error\
+      \ code>\n- channel_contract: <raw stdout/stderr evidence or focused test names>\n\
+      - forbidden_paths_scan: <evidence no personal scaffold/provider preference/hidden\
+      \ alias behavior was added>\n- parseable_stderr_inventory_preserved: <test/proof>\n\
+      \n## Checklist Receipt\n- satisfied: <items>\n- failed: <items>\n- blocked:\
+      \ <items>\n- unobserved: <items>"
+    depends_on:
+    - pi_model_map_draft_spec_guard_20260601
+    agent: python-senior
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
   status: done
