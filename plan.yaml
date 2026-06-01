@@ -86251,7 +86251,7 @@ phases:
       All five checklist items were PROVEN and toggled with `vectl_check` before completion.'
   - id: pi_model_map_draft_impl_20260601
     name: Complete Pi model-map draft helper implementation
-    status: claimed
+    status: done
     description: "step_type: implementation\nupstream_artifacts:\n  - path: src/larva/core/pi_model_map.py\n\
       \    from_step: pi_model_map_draft_contract_20260601\n    tier: contract\n \
       \ - path: src/larva/shell/pi_model_map.py\n    from_step: pi_model_map_draft_contract_20260601\n\
@@ -86403,6 +86403,135 @@ phases:
     agent: python-senior
     claimed_by: python-senior
     claimed_at: '2026-06-01T10:53:52.058338+00:00'
+    done_at: '2026-06-01T11:09:20.569196+00:00'
+    evidence: 'status: SUCCESS
+
+
+      ## refs Read Confirmation
+
+      - `design/pi-model-map-draft-helper.md` — key design passages followed for top-level
+      command boundary, default raw JSON stdout, authorized sources (`facade.list()`,
+      `pi --list-models --offline`, optional existing model-map), exact/prefix preservation
+      rules, ambiguous/no/malformed non-interactive fail-closed behavior, no provider
+      preference tables or personal scaffold files, and write shape limited to `models`/`prefix_rules`.
+
+      - `src/larva/shell/pi.py` — `larva pi` pass-through launcher reviewed and preserved.
+
+      - `src/larva/shell/cli.py` — `run_cli` `pi` intercept reviewed; `pi-model-map`
+      dispatch routes to `pi_model_map_command`.
+
+      - `contrib/pi-extension/README.md` — runtime model-map schema and exact-first/prefix
+      resolution reviewed; legacy helper text updated to approved policy.
+
+      - `tests/shell/test_pi_launcher_contract.py` — launcher/pass-through regression
+      style reviewed and preserved.
+
+      - `tests/shell/test_pi_extension_contract.py` — runtime model-map resolver expectations
+      reviewed; shared/persona contracts untouched.
+
+      - `INVAR.md` — Core @pre/@post/doctest and no-I/O rules followed.
+
+      - `AGENTS.md` — not present in isolated worktree; repository AGENTS instructions
+      were present in session context and followed.
+
+
+      ## Implementation Receipt
+
+      - branch_commit: `3e4110394dc2edf0494432254fb3cfa684af38f9`
+
+      - main_merge_commit: `9e7ebf8`
+
+      - contract_artifacts_used: `src/larva/core/pi_model_map.py`, `src/larva/shell/pi_model_map_cli.py`,
+      `src/larva/shell/cli_parser.py`, `src/larva/shell/cli.py`, `tests/shell/test_pi_model_map_draft_contract.py`.
+
+      - changed_files: `src/larva/core/pi_model_map.py`, `src/larva/shell/pi_model_map_cli.py`,
+      `src/larva/shell/cli_runtime.py`, `contrib/pi-extension/README.md`.
+
+      - deviation_records: one accepted `contract_error` for `contrib/pi-extension/README.md`,
+      replacing old runtime-map completion policy text that referenced personal scaffold/provider
+      preferences with approved helper policy. Impact: docs now align with helper
+      behavior and forbidden inputs.
+
+      - implemented pure Core planning for registry model grouping, exact/prefix preservation/removal/conflict
+      reporting, candidate discovery, unresolved reporting, and stable output ordering.
+
+      - implemented Shell command behavior for facade registry summaries, Pi offline
+      inventory subprocess, existing map validation, interactive skip/manual/number
+      choices, `--write`, `--json`, redirect-safe stdout, and failure codes.
+
+      - preserved `larva pi` pass-through and existing CLI parser surface.
+
+
+      ## Mainline Deterministic Proof
+
+      - `.venv/bin/python -m pytest tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_launcher_contract.py -q` in worker: `50 passed`.
+
+      - On main after merge: `uv run pytest tests/shell/test_pi_model_map_draft_contract.py
+      tests/shell/test_pi_launcher_contract.py -q` exit 0: `50 passed`.
+
+      - On main after merge: `uv run invar guard` exit 0: status passed, errors 0,
+      warnings 0, doctest passed.
+
+      - On main after merge: `uv run python -m py_compile src/larva/core/pi_model_map.py
+      src/larva/shell/pi_model_map_cli.py src/larva/shell/cli_runtime.py` exit 0.
+
+      - On main after merge: `uv run larva --help` exit 0 and lists `pi-model-map`;
+      `uv run larva pi-model-map draft --help` exit 0 and lists `--output`, `--model-map`,
+      `--write`, `--non-interactive`, `--json`.
+
+      - On main after merge: `git diff --check` exit 0; `git status --porcelain` clean.
+
+
+      ## Safety Scans
+
+      - forbidden_source_scan: worker source scan found no `/Users/tefx/dotfiles/agent/models.yaml`,
+      `models.yaml`, or provider-preference strings in `src/**/*.py`.
+
+      - provider_preference_scan: implementation uses direct/wrapped/suffix evidence
+      filters only; no provider-family preference table.
+
+      - core_boundary_status: `src/larva/core/pi_model_map.py` has @pre/@post contracts
+      and doctests; no Core I/O imports/operations detected; Invar passed.
+
+      - stdout_stderr_receipt: fixture smoke with temp HOME/fake Pi/temp model-map
+      returned exit 0; stdout parsed as JSON with only `models` and `prefix_rules`;
+      stderr contained human report.
+
+      - noninteractive_unresolved_receipt: malformed source model smoke returned exit
+      1, empty stdout, stderr contained `LARVA_PI_MODEL_MAP_UNRESOLVED`.
+
+      - write_receipt: `--write --output <tmp>/out/map.json --model-map <tmp>/missing.json`
+      returned exit 0, stdout empty, written JSON keys exactly `models` and `prefix_rules`
+      with report metadata absent.
+
+
+      ## CLI Surface Preservation
+
+      | Command | Surface Listed? | Handler Exists? | --help Works? | Smoke Test |
+      Status |
+
+      | --- | --- | --- | --- | --- | --- |
+
+      | `larva pi` | yes | `run_cli` intercept + `pi_command` | yes | launcher contract
+      tests pass | PASS |
+
+      | `larva pi-model-map` | yes | `pi_model_map_command` | parent listed via top
+      help | draft tests cover dispatch | PASS |
+
+      | `larva pi-model-map draft` | yes | `_draft_command` | yes | temp fake Pi +
+      temp map raw JSON smoke | PASS |
+
+
+      ## checklist_receipt
+
+      All seven checklist items were PROVEN and toggled with `vectl_check` before
+      completion.
+
+
+      blockers: []
+
+      status: SUCCESS'
   - id: pi_model_map_draft_fixture_retest_20260601
     name: Retest Pi model-map draft fixture suite green
     status: pending
