@@ -86482,3 +86482,14 @@ phases:
     - pi_tool_policy_operator_migration_proof_20260601
     - pi_tool_policy_no_legacy_runtime_guard_20260601
     agent: gate-reviewer
+- id: pi-subagent-toolresult-crash-fix-2026-06-01
+  name: Pi larva_subagent ToolResult Crash Fix 2026-06-01
+  status: locked
+  gate: Phase accepted only when Pi-facing larva_subagent handler/execute return renderer-safe
+    ToolResult objects with content arrays on success, failed-before-session, failed-after-allocation,
+    and cancelled paths; semantic LarvaSubagentResult remains preserved as details/metadata;
+    runtime smoke and Pi interactive/RPC proof show no getTextOutput/content.filter
+    uncaughtException; docs distinguish semantic payload from Pi ToolResult wrapper;
+    repo tests and invar guard pass.
+  depends_on:
+  - pi-tool-policy-no-legacy-2026-06-01
