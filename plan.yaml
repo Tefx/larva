@@ -83260,7 +83260,7 @@ phases:
       no plan.yaml or runtime user files were modified by the worker.'
   - id: pi-adapter-local-model-map-config-2026-06-01.runtime-tests
     name: runtime_tests
-    status: claimed
+    status: done
     description: 'step_type: test
 
       step_intent: retest_green
@@ -83492,6 +83492,116 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T01:42:55.962569+00:00'
+    done_at: '2026-06-01T01:50:27.534739+00:00'
+    evidence: 'WORKTREE_MERGED: squash merged vectl/step-pi-adapter-local-model-map-config-2026-06-01.runtime-tests
+      into main as e964d03.
+
+
+      refs Read Confirmation:
+
+      - contrib/pi-extension/larva.ts — worker cited `resolvePiModel`, `LARVA_PI_MODEL_MAP_FILE`
+      / `~/.pi/larva/model-map.json`, exact-before-longest-prefix conflict behavior,
+      and `modelRegistry.find` lookup.
+
+      - tests/shell/test_pi_extension_contract.py — worker cited existing runtime-node
+      scaffolding for initializeExtension, `/larva-persona`, startup persona, and
+      static-token coverage.
+
+      - tests/shell/test_pi_extension_tool_policy_static.py — worker cited static
+      protection for `loadPolicy`, `filterPolicyTools`, rollback, baseline, and deny-wins
+      behavior.
+
+
+      Mainline final-state verification after merge:
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case exact-hit` exit
+      0: `exact-hit PASS openai-codex/gpt-5.5 modelRegistry.find [["openai-codex","gpt-5.5"]]`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case prefix-hit` exit
+      0: `prefix-hit PASS openrouter/google/gemini-3.1-pro-preview [["openrouter","google/gemini-3.1-pro-preview"]]`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case conflict-invalid`
+      exit 0: `conflict-invalid PASS LARVA_MODEL_MAP_INVALID ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case missing-config`
+      exit 0: `missing-config PASS first-slash fallback provider/model/with/slash
+      ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case invalid-config`
+      exit 0: `invalid-config PASS existing invalid file LARVA_MODEL_MAP_INVALID ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case mapped-unavailable`
+      exit 0: `mapped-unavailable PASS LARVA_MODEL_UNAVAILABLE valid-map registry-miss
+      ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case startup-persona`
+      exit 0: `startup-persona PASS shared resolver use openai-codex/gpt-5.5 ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch`
+      exit 0: `slash-switch PASS shared resolver use openrouter/google/gemini-3.1-pro-preview
+      ...`.
+
+      - `node contrib/pi-extension/test-model-map-runtime.mjs --case slash-switch-after-startup`
+      exit 0: `slash-switch-after-startup PASS no resolver divergence [["openai-codex","gpt-5.5"],["openrouter","google/gemini-3.1-pro-preview"]]`.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs --case env-override`
+      exit 0: `env-override PASS override only activeTools ["read"]`.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs --case new-path-exists`
+      exit 0: `new-path-exists PASS canonical activeTools ["bash"]`.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs --case legacy-fallback`
+      exit 0: `legacy-fallback PASS legacy activeTools ["bash"]`.
+
+      - `node contrib/pi-extension/test-tool-policy-paths.mjs --case no-file-empty`
+      exit 0: `no-file-empty PASS canonical missing empty policy ["read","bash"]`.
+
+      - `pi --list-models --offline` exit 0 and included required rows, including
+      `openai-codex gpt-5.5`, `openrouter google/gemini-3.1-pro-preview`, `openrouter
+      moonshotai/kimi-k2.5`, `openrouter minimax/minimax-m2.7`, and `openrouter z-ai/glm-5.1`.
+
+      - `uv run pytest tests/shell/test_pi_extension_contract.py tests/shell/test_pi_extension_tool_policy_static.py
+      -q` exit 0: 52 passed in 0.70s.
+
+      - `uv run invar guard` exit 0: status passed.
+
+
+      Semantic Closure Fields:
+
+      step_intent: retest_green
+
+      expected_result: green
+
+      observed_result: green
+
+      verdict: PASS
+
+      blockers: []
+
+      gate_open_allowed: true
+
+      orchestrator_action_hint: COMPLETE
+
+      product_implementation_files_modified: false; changed files are runtime harnesses
+      only: `contrib/pi-extension/test-model-map-runtime.mjs` and `contrib/pi-extension/test-tool-policy-paths.mjs`.
+
+
+      Requirement Proof Matrix:
+
+      - T1 PROVEN: all nine model-map runtime cases pass with raw outputs.
+
+      - T2 PROVEN: all four tool-policy path cases pass with raw outputs.
+
+      - T3 PROVEN: Pi offline liveness/model-list command exits 0; closest runtime
+      harnesses pass.
+
+      - T4 PROVEN: startup, slash switch, and slash-after-startup cases prove shared
+      resolver path/no divergence.
+
+
+      Checklist receipt: all fifteen checklist items are [x]. Forbidden side effects:
+      no dotfiles changes, no runtime `~/.pi` writes, no product behavior changes
+      beyond test harness support.'
   - id: pi-adapter-local-model-map-config-2026-06-01.docs
     name: docs
     status: done
