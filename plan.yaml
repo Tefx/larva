@@ -85981,7 +85981,7 @@ phases:
     agent: gate-reviewer
 - id: pi-tool-policy-no-legacy-2026-06-01
   name: Pi Tool Policy No-Legacy Path Cutover 2026-06-01
-  status: in_progress
+  status: done
   gate: 'Phase accepted only when Pi tool-policy runtime and documentation remove
     legacy fallback semantics: absent env uses only ~/.pi/larva/tool-policy.json;
     absent env with only ~/.pi/tool-policy.json does not apply policy; explicit LARVA_PI_TOOL_POLICY_FILE
@@ -86553,7 +86553,7 @@ phases:
       implicit fallback. Checklist receipt all PROVEN and toggled before completion.'
   - id: pi_tool_policy_no_legacy_gate_20260601
     name: Gate Pi tool-policy no-legacy cutover
-    status: claimed
+    status: done
     description: 'DECISION ARTIFACT:
 
       As an INDEPENDENT REVIEWER, decide whether the Pi tool-policy no-legacy cutover
@@ -86637,9 +86637,31 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T08:48:31.424010+00:00'
+    done_at: '2026-06-01T08:57:28.092362+00:00'
+    evidence: 'Independent gate-reviewer returned `headline: PASS`, `verdict: PASS`,
+      `gate_decision: OPEN`, `gate_open_allowed: true`, `blocking_status: CLOSED`,
+      `blockers: []`, `product_files_modified: false`, with refs confirmation for
+      `src/larva/shell/pi.py`, `contrib/pi-extension/larva.ts`, `contrib/pi-extension/README.md`,
+      and `design/pi-coding-agent-integration.md`. R1-R6 behavioral proof register
+      all PROVEN: R1 absent-env runtime cannot read/apply legacy old path; R2 launcher
+      does not implicitly set old path; R3 explicit old-path override is honored only
+      via env override; R4 docs/code metadata do not advertise fallback; R5 operator
+      migration proof covers old-only move and both-files conflict without merge/overwrite;
+      R6 guard green. Required additional blind-tester Mode D liveness probe also
+      returned PASS with `blocking_status: CLOSED`, `proof_gap_status: NONE`, `verdict:
+      PASS`, `blockers: []`, and matrix PROVEN for old-only absent-env ignored, canonical
+      absent-env applies, explicit old env applies only by explicit override, both-files
+      conflict no merge/overwrite, and no actual user-home mutation (tempdir fixture
+      scope + clean git status). No worktree changes; no merge required. Mainline
+      final verification: `uv run python -m pytest tests/shell/test_pi_launcher_contract.py
+      -q` passed (35 passed); `node contrib/pi-extension/test-tool-policy-paths.mjs`
+      passed all no-legacy path cases; `node contrib/pi-extension/prove-tool-policy-migration.mjs`
+      proved fixture old-only move, both-files conflict action none/canonical unchanged,
+      canonical-only, and absent-both; `uv run invar guard` passed with JSON status
+      `passed`. Checklist receipt all PROVEN and toggled before completion.'
 - id: pi-subagent-toolresult-crash-fix-2026-06-01
   name: Pi larva_subagent ToolResult Crash Fix 2026-06-01
-  status: locked
+  status: pending
   gate: Phase accepted only when Pi-facing larva_subagent handler/execute return renderer-safe
     ToolResult objects with content arrays on success, failed-before-session, failed-after-allocation,
     and cancelled paths; semantic LarvaSubagentResult remains preserved as details/metadata;
