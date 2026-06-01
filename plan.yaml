@@ -86736,7 +86736,7 @@ phases:
       Commit hash(es): none — read-only fixture retest'
   - id: pi_model_map_draft_live_cli_proof_20260601
     name: Verify real Pi and registry runtime proof for model-map draft helper
-    status: claimed
+    status: done
     description: 'step_type: verification
 
       verification_scope: phase-check
@@ -86888,6 +86888,107 @@ phases:
     agent: integration-verifier
     claimed_by: integration-verifier
     claimed_at: '2026-06-01T11:10:19.782981+00:00'
+    done_at: '2026-06-01T11:25:05.190191+00:00'
+    evidence: 'status: FAIL
+
+
+      ## refs Read Confirmation
+
+      - `design/pi-model-map-draft-helper.md` — architecture basis, CLI contract,
+      Data sources, Draft output contract, and Verification targets reviewed.
+
+      - `src/larva/shell/pi.py` — real Pi pass-through/launcher boundary reviewed.
+
+      - `contrib/pi-extension/README.md` — runtime model-map schema and exact/prefix
+      contract reviewed.
+
+      - `scripts/pi-extension-runtime-smoke.mjs` and `tests/shell/test_pi_extension_real_runtime.py`
+      — runtime proof style reviewed.
+
+
+      ## Live Runtime Receipt
+
+      - Real command `pi --list-models --offline` exit 0. stdout was empty; stderr
+      contained 273 inventory lines including provider/model rows such as `openai-codex
+      gpt-5.5`.
+
+      - Real registry evidence: `.venv/bin/larva list --json` exit 0; 62 personas,
+      2 distinct models; examples include `openrouter/google/gemini-3.1-pro-preview`
+      and `openai/gpt-5.5`.
+
+      - Real helper current-registry command `.venv/bin/larva pi-model-map draft --non-interactive`
+      exit 1; stdout empty; stderr ended with `LARVA_PI_MODEL_MAP_UNRESOLVED` and
+      reported unresolved `openai/gpt-5.5` / `openrouter/google/gemini-3.1-pro-preview`.
+
+      - Controlled temp dry-run with empty registry and explicit temp paths exit 0;
+      stdout parsed as JSON with top-level keys `models`, `prefix_rules`; report stayed
+      on stderr; no default write occurred.
+
+      - Controlled temp `--write` wrote only explicit temp path with schema keys `models`,
+      `prefix_rules`.
+
+      - Controlled malformed source model returned exit 1 with `LARVA_PI_MODEL_MAP_UNRESOLVED`
+      without guessing.
+
+
+      ## Blocking Finding
+
+      B1: Real Pi inventory command emits provider/model rows on stderr while helper
+      implementation parses only stdout. This causes empty inventory and live current-registry
+      draft failure despite real Pi inventory containing target rows.
+
+
+      ## Remediation Ownership
+
+      Planner added remediation path:
+
+      - `pi_model_map_draft_live_cli_channel_fix_20260601` — fix the live Pi inventory
+      output-channel seam.
+
+      - `pi_model_map_draft_live_cli_retest_20260601` — rerun live current-registry
+      proof after fix.
+
+      Downstream spec guard and gate dependencies were updated to require the new
+      retest.
+
+
+      ## Behavioral Proof Register
+
+      - Pi inventory command: PROVEN_WITH_SEAM_GAP — real Pi emits inventory on stderr;
+      closure path fix inventory channel handling.
+
+      - Current registry: PROVEN_PARTIAL — registry observed and helper report references
+      current models; closure path successful helper planning after fix.
+
+      - Default dry-run / raw stdout JSON / stderr separation: PROVEN_CONTROLLED.
+
+      - Noninteractive unresolved/malformed: PROVEN.
+
+      - Write schema: PROVEN_CONTROLLED.
+
+      - Live companion proof: FAIL — current-registry draft cannot complete until
+      channel seam fixed.
+
+
+      ## checklist_receipt
+
+      All seven checklist evidence items were observed and toggled with `vectl_check`;
+      live runtime obligation remains blocking with closure path above.
+
+
+      verdict: FAIL
+
+      blockers:
+
+      - B1: helper cannot consume real Pi offline inventory channel in this environment;
+      current registry live draft fails with `LARVA_PI_MODEL_MAP_UNRESOLVED`.
+
+      orchestrator_action_hint: DO_NOT_COMPLETE originally; remediation path created
+      before marking this verification artifact complete as blocker discovery.
+
+      product_implementation_files_modified: false
+
+      Commit hash(es): none — read-only live CLI proof'
   - id: pi_model_map_draft_spec_guard_20260601
     name: Verify spec conformance and invar guard for model-map draft helper
     status: pending
