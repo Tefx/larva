@@ -90152,7 +90152,7 @@ phases:
       and toggled before completion.'
 - id: pi-subagent-sessionfile-protocol-2026-06-01
   name: Pi larva_subagent SessionFile Protocol Fix 2026-06-01
-  status: in_progress
+  status: done
   gate: Phase gate opens only when focused regression/runtime proof shows the fresh
     child sessionFile path is accepted before prompt without weakening root escape,
     relative-path, resume-task_id, authority, or ToolResult invariants.
@@ -90428,7 +90428,7 @@ phases:
       was not read.'
   - id: verify-gate-sessionfile-protocol
     name: Verify and gate sessionFile protocol fix
-    status: claimed
+    status: done
     description: "step_type: gate\nverification_scope: phase-check\nagent_source:\
       \ default\nrefs:\n  - contrib/pi-extension/larva.ts\n  - scripts/pi-extension-runtime-smoke.mjs\n\
       \  - tests/shell/test_pi_extension_real_runtime.py\nspec_refs:\n  - User reproduction\
@@ -90593,3 +90593,91 @@ phases:
     agent: gate-reviewer
     claimed_by: software-architect
     claimed_at: '2026-06-01T12:57:02.169955+00:00'
+    done_at: '2026-06-01T13:01:55.650341+00:00'
+    evidence: "## Gate / Runtime Verification Report\n**Reviewer**: software-architect\
+      \ orchestrating independent `gate-reviewer` review\n**Independent reviewer task**:\
+      \ `ses_17cbd208dffexIou7NBOgU9GQ4`\n**Phase**: pi-subagent-sessionfile-protocol-2026-06-01\n\
+      **Gate decision**: OPEN / PASS\n\n### refs Read Confirmation\n- `contrib/pi-extension/larva.ts`\n\
+      \  - Lines 828-855: `validateTaskId()` requires absolute path, canonical parent\
+      \ under root, existing `realpath()`, `.jsonl` suffix, regular file, and read\
+      \ access. Missing resume file returns `LARVA_SESSION_NOT_FOUND`.\n  - Lines\
+      \ 857-890: `validateFreshChildSessionFile()` requires absolute child-reported\
+      \ path, canonical parent under childSessionRoot, `.jsonl` suffix, rejects parent/root\
+      \ escape, uses `lstat()` before allowing `ENOENT`, and validates existing entries\
+      \ by `realpath()`, root containment, suffix, regular file, and read access.\n\
+      \  - Lines 1097-1103: fresh child path calls `get_state`, extracts `data.sessionFile`,\
+      \ and validates with `validateFreshChildSessionFile()` before prompt.\n  - Lines\
+      \ 1137-1143: user-provided resume `task_id` stays on strict `validateTaskId()`\
+      \ before `canSpawn()` and child spawn.\n- `scripts/pi-extension-runtime-smoke.mjs`\n\
+      \  - Lines 389-401: fresh validation scenario creates a child-reported `fresh-created-on-prompt.jsonl`,\
+      \ records `missingBeforePrompt`, runs `larva_subagent`, then records `createdDuringPrompt`.\n\
+      \  - Lines 403-414: missing resume `task_id` scenario confirms no child spawn\
+      \ marker is created.\n  - Lines 416-445: invalid fresh variants cover relative\
+      \ path, wrong suffix, outside root, existing symlink escape, and dangling symlink\
+      \ escape.\n  - Lines 456-468: smoke assertions require `freshMissingBeforePromptAccepted`,\
+      \ `strictResumeMissingRejected`, `invalidFreshRejected`, and `authorityAndToolResultPreserved`\
+      \ all true.\n- `tests/shell/test_pi_extension_real_runtime.py`\n  - Lines 291-327:\
+      \ ToolResult shape and `LARVA_NO_ACTIVE_PERSONA` error/details preservation\
+      \ are asserted.\n  - Lines 329-358: fresh session split regression asserts missing-before-prompt\
+      \ success, missing resume failure with `LARVA_SESSION_NOT_FOUND`, invalid fresh\
+      \ variants fail with `LARVA_CHILD_PROTOCOL_FAILED`, and all four smoke assertions\
+      \ are true.\n\n## Commands / Tools Executed\n| command_or_tool | exit/status\
+      \ | raw stdout/stderr evidence |\n| --- | --- | --- |\n| `node scripts/pi-extension-runtime-smoke.mjs\
+      \ --scenario fresh-session-validation` | exit 0 | JSON output included `missingBeforePrompt:\
+      \ true`, `createdDuringPrompt: true`, `freshMissingBeforePrompt.status: success`,\
+      \ `freshMissingBeforePrompt.result_text: fresh child final text`, `strictResumeMissingRejected:\
+      \ true`, `invalidFreshRejected: true`, `authorityAndToolResultPreserved: true`,\
+      \ and invalid variants `relative`, `wrongSuffix`, `outsideRoot`, `symlinkEscape`,\
+      \ `danglingSymlinkEscape` all failed with `LARVA_CHILD_PROTOCOL_FAILED`. stderr\
+      \ empty. |\n| `PYTHONPATH=src .venv/bin/python -m pytest tests/shell/test_pi_extension_real_runtime.py\
+      \ -q` | exit 0 | `...................... [100%]` / `22 passed in 26.55s`. |\n\
+      | `PYTHONPATH=src .venv/bin/python -m pytest tests/shell/test_pi_extension_contract.py\
+      \ -q` | exit 0 | `................................................ [100%]` /\
+      \ `48 passed in 0.91s`. |\n| Real Pi RPC proof: `pi -e contrib/pi-extension/larva.ts\
+      \ --mode rpc --session-dir $HOME/.pi/larva/child-sessions --offline` with `LARVA_PI_INITIAL_PERSONA_ID=turing`\
+      \ and `LARVA_CLI_ARGV_JSON=[uv,run,larva]`, then `get_state` | exit 0 | JSON\
+      \ output: `root=/Users/tefx/.pi/larva/child-sessions`, `rootReal=/Users/tefx/.pi/larva/child-sessions`,\
+      \ `sessionFile=/Users/tefx/.pi/larva/child-sessions/2026-06-01T12-59-39-057Z_019e8344-b6b1-7e1e-b64c-31b968f302ba.jsonl`,\
+      \ `existedBeforePrompt=false`, `responseSuccess=true`, `stderr=\"\"`. |\n| `invar_invar_guard(path=/Users/tefx/Projects/larva,\
+      \ changed=false)` | complete / ok true | run_id `grd_da7cdf0df1da40ecb8da6d5d`:\
+      \ `errors=0`, `warnings=5`, `infos=7`, `files_checked=43`, `review_suggested=false`.\
+      \ |\n| `git status --short` | exit 0 | no output; working tree clean except\
+      \ vectl-managed plan state handled by vectl. |\n\n## Behavioral Proof Register\n\
+      | requirement_ref | behavior_claim | runtime_proof_expected | evidence_ref |\
+      \ status | closure_path | gate_decision_basis |\n| --- | --- | --- | --- | ---\
+      \ | --- | --- |\n| R1 | Fresh child sessionFile missing before prompt is accepted\
+      \ when absolute `.jsonl` under childSessionRoot | Focused smoke/test or real\
+      \ Pi get_state/spawn proof | `child_missing_before_prompt_regression` | PROVEN\
+      \ | none | Source lines 857-890 + 1097-1103 constrain fresh child path; smoke\
+      \ output has `missingBeforePrompt=true`, `createdDuringPrompt=true`, success;\
+      \ real Pi `get_state` returned `responseSuccess=true` with root-contained `.jsonl`\
+      \ and `existedBeforePrompt=false`. |\n| R2 | User-provided resume task_id missing\
+      \ file is rejected | Focused negative test | `strict_resume_regression` | PROVEN\
+      \ | none | Source lines 828-855 + 1137-1140 keep strict resume validation; smoke\
+      \ output has `missingResume.error.code=LARVA_SESSION_NOT_FOUND` and `resumeSpawned=false`;\
+      \ Python test file asserts same. |\n| R3 | Relative, wrong suffix, outside-root,\
+      \ and symlink escape paths are rejected | Focused negative tests | `path_escape_regression`\
+      \ | PROVEN | none | Source lines 857-890 reject non-absolute, wrong suffix,\
+      \ outside root, and symlink escape; smoke output shows all invalid variants\
+      \ failed with `LARVA_CHILD_PROTOCOL_FAILED`; Python test asserts variants list\
+      \ and error code/message. |\n| R4 | `LARVA_NO_ACTIVE_PERSONA`, `can_spawn`,\
+      \ and ToolResult shape are preserved | Focused smoke/assertions or runtime proof\
+      \ | `authority_toolresult_regression` | PROVEN | none | Fresh smoke assertion\
+      \ `authorityAndToolResultPreserved=true`; `test_registered_larva_subagent_results_are_renderer_safe_toolresults`\
+      \ preserves content/details and `LARVA_NO_ACTIVE_PERSONA`; contract tests passed\
+      \ 48/48 including `can_spawn` coverage. |\n\n## Independent Reviewer Result\n\
+      Independent `gate-reviewer` returned `Decision: OPEN ([PASS])` with R1-R4 all\
+      \ PROVEN, no drift/security blockers, and residual risk `none`. The reviewer\
+      \ also ran read-only focused commands: targeted `uv run pytest` exit 0 with\
+      \ `3 passed`, `node scripts/pi-extension-runtime-smoke.mjs --scenario fresh-session-validation`\
+      \ exit 0, and `node scripts/pi-extension-runtime-smoke.mjs --scenario tool-result-renderer-shape`\
+      \ exit 0. One attempted bare `pytest` command failed with exit 127 because `pytest`\
+      \ was not on PATH; this is not a product failure because project-local `.venv`/`uv\
+      \ run` pytest commands passed.\n\n## Protected Gate Outcome\n- Runtime behavioral\
+      \ evidence is present for fresh missing-before-prompt sessionFile acceptance.\n\
+      - Resume strictness is not weakened.\n- Root escape, wrong suffix, relative\
+      \ path, existing symlink escape, and dangling symlink escape are rejected.\n\
+      - Authority and ToolResult contracts are preserved.\n- Repo guard passed.\n\
+      - No code files were changed during gate verification.\n- Personal scaffold\
+      \ files were not read or required; `/Users/tefx/dotfiles/agent/models.yaml`\
+      \ was not accessed.\n\n## Open Problems / Residual Risk\nnone"
