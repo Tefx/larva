@@ -92358,7 +92358,7 @@ phases:
       implementation step.'
   - id: pi_postspec_subagent_ux_impl_20260602
     name: Complete larva_subagent sessions helper and row rendering UX
-    status: pending
+    status: claimed
     description: 'step_type: implementation
 
       agent_source: project
@@ -92529,6 +92529,8 @@ phases:
     depends_on:
     - pi_postspec_subagent_ux_red_tests_20260602
     agent: frontend-engineer
+    claimed_by: frontend-engineer
+    claimed_at: '2026-06-01T18:06:36.070240+00:00'
   - id: pi_postspec_subagent_ux_runtime_proof_20260602
     name: Prove subagent ToolResult, session helper, and rendering runtime behavior
     status: pending
