@@ -87287,7 +87287,7 @@ phases:
       receipt all PROVEN and toggled before completion.'
   - id: pi_subagent_toolresult_repo_verify_20260601
     name: Verify repo tests and invar guard after larva_subagent ToolResult fix
-    status: pending
+    status: claimed
     description: 'step_type: verification
 
       verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
@@ -87368,6 +87368,8 @@ phases:
     - pi_subagent_toolresult_interactive_crash_proof_20260601
     - pi_subagent_toolresult_docs_20260601
     agent: integration-verifier
+    claimed_by: integration-verifier
+    claimed_at: '2026-06-01T09:33:13.445598+00:00'
   - id: pi_subagent_toolresult_gate_20260601
     name: Gate Pi larva_subagent ToolResult crash fix
     status: pending
