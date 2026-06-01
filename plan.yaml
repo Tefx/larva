@@ -86493,3 +86493,708 @@ phases:
     repo tests and invar guard pass.
   depends_on:
   - pi-tool-policy-no-legacy-2026-06-01
+  steps:
+  - id: pi_subagent_toolresult_red_tests_20260601
+    name: Add expected-red renderer-safe larva_subagent result tests
+    status: pending
+    description: 'step_type: test
+
+      step_intent: test_define_red
+
+      expected_result: red
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Add targeted expected-red coverage proving the current registered Pi custom
+      tool result is renderer-unsafe before the adapter fix. The tests must call the
+      registered `larva_subagent.handler` and/or `larva_subagent.execute` through
+      the existing contract/runtime harness, without launching a long-running real
+      child session when fixture/mocked execution can deterministically exercise the
+      shape.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user report + Pi render-utils lines 35-40: `getTextOutput(result, showImages)`
+      reads `result.content.filter(...)` | Pi-facing tool result must include `content`
+      array | pi_subagent_toolresult_red_tests_20260601 | content-array expected-red
+      assertion added | red_test_output | OWNED | n/a |
+
+      | R2 | contrib/pi-extension/larva.ts lines 84-90 and 691-700 raw `LarvaSubagentResult`
+      | semantic result currently lacks renderer-safe wrapper | pi_subagent_toolresult_red_tests_20260601
+      | raw semantic payload reproduces missing `content` failure | failing_assertion
+      | OWNED | n/a |
+
+      | R3 | user report: `larva: none` / no active persona may fail immediately |
+      failed-before-session path must return renderer-safe shape | pi_subagent_toolresult_red_tests_20260601
+      | failure-before-session fixture asserts `content` and metadata | failure_before_session_case
+      | OWNED | n/a |
+
+      | R4 | architecture decision: success, failed-after-allocation, cancelled preserve
+      machine-readable fields | wrapper must cover success, failed-after-allocation,
+      and cancelled paths where feasible | pi_subagent_toolresult_red_tests_20260601
+      | path matrix includes success/failed/cancelled or documents infeasible path
+      fixture blocker | path_matrix | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      Start with `tests/shell/test_pi_extension_contract.py`, `tests/shell/test_pi_extension_real_runtime.py`,
+      and `scripts/pi-extension-runtime-smoke.mjs`. Do not replace broad Pi harnesses;
+      add the smallest assertions that expose the missing `content` contract.
+
+
+      CONSTRAINTS:
+
+      - Test-only scope: product implementation files must not be changed in this
+      step.
+
+      - Do not require a real long-running child subagent session for expected-red
+      shape proof.
+
+      - Do not weaken existing registration/name/schema assertions.
+
+
+      <side_effect_budget>
+
+      Allowed: modify/add tests and fixture-only smoke scenario assertions for `larva_subagent`
+      result shape. Forbidden: change `contrib/pi-extension/larva.ts` behavior, Pi
+      renderer code, shared PersonaSpec semantics, or global test harness policy.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify both `handler` and `execute` are covered because Pi spreads `event.result`
+      from execution into the interactive component.
+
+      - Verify failure-before-session/no-active-persona path, not only success, because
+      immediate failure still reaches Pi renderer.
+
+      - Verify assertions require `Array.isArray(result.content)` plus text element
+      shape, not just truthiness.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (expected-red; narrative summaries rejected):
+
+      - [ ] refs confirmation cites the Pi renderer `result.content.filter` expectation
+      and current raw `LarvaSubagentResult` return path.
+
+      - [ ] Test-only diff is limited to contract/runtime/smoke harness files or new
+      test fixtures.
+
+      - [ ] Registered `larva_subagent.handler` and/or `execute` is invoked through
+      the harness and asserts `content` is an array with at least one `{ type: "text",
+      text: ... }` item.
+
+      - [ ] Failure-before-session/no-active-persona path is covered and currently
+      fails because raw result lacks `content`.
+
+      - [ ] Success, failed-after-allocation, and cancelled cases are covered when
+      fixture-feasible; any infeasible case has an explicit blocker and downstream
+      owner.
+
+      - [ ] Raw expected-red output is pasted with failing assertion location and
+      no product-code changes.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    agent: integration-verifier
+  - id: pi_subagent_toolresult_adapter_impl_20260601
+    name: Complete Pi adapter-boundary ToolResult wrapper for larva_subagent
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      Pi-facing `larva_subagent.handler` and `larva_subagent.execute` return a renderer-safe
+      Pi ToolResult wrapper, while `LarvaSubagentResult` remains the semantic/domain
+      payload for child-session semantics and existing tests. The wrapper must include
+      at minimum `content: [{ type: "text", text: <summary or result_text> }]`, preserve
+      machine-readable `task_id`, `persona_id`, `status`, `result_text`, and `error`
+      in `details` or another Pi-supported metadata field, and mark failed/cancelled
+      paths in Pi-compatible error form.
+
+
+      Complete the adapter boundary in `contrib/pi-extension/larva.ts` by adding the
+      smallest wrapper function needed near the custom-tool registration or adjacent
+      adapter utilities. Do not redesign the semantic result, do not patch Pi renderer
+      defensively, and do not introduce a broad result abstraction unless the existing
+      Pi contract requires it.
+
+
+      UPSTREAM ARTIFACTS:
+
+      - `pi_subagent_toolresult_red_tests_20260601` — expected-red renderer-safety
+      tests are PROTECTED and define the regression.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | Pi render-utils `result.content.filter(...)` | Pi-facing output includes
+      `content` text array | pi_subagent_toolresult_adapter_impl_20260601 | green
+      tests prove content text item | content_shape_evidence | OWNED | n/a |
+
+      | R2 | architecture decision: keep semantic `LarvaSubagentResult` | semantic
+      fields are preserved in metadata and not erased | pi_subagent_toolresult_adapter_impl_20260601
+      | metadata/details assertion covers task_id/persona_id/status/result_text/error
+      | metadata_preservation | OWNED | n/a |
+
+      | R3 | architecture decision: failure/cancelled render instead of crash | failed
+      and cancelled paths include `content` and Pi-compatible error indication | pi_subagent_toolresult_adapter_impl_20260601
+      | failure/cancel path tests pass | error_path_evidence | OWNED | n/a |
+
+      | R4 | no over-engineering directive | adapter is small and local to Pi custom-tool
+      boundary | pi_subagent_toolresult_adapter_impl_20260601 | diff review shows
+      no new framework/broad abstraction | scope_guard | OWNED | n/a |
+
+
+      BOUNDING BOX:
+
+      Primary touch path is `contrib/pi-extension/larva.ts` around the `LarvaSubagentResult`
+      type, `larva_subagent(...)` return paths, and `larva_subagent` tool registration
+      (`handler`/`execute`). Related tests may be updated only to make expected-red
+      tests green.
+
+
+      CONSTRAINTS:
+
+      - Preserve `LarvaSubagentResult` as the domain/semantic payload.
+
+      - Preserve existing child-session resume handles and machine-readable fields.
+
+      - Do not modify `/opt/homebrew/.../@earendil-works/pi-coding-agent` renderer
+      code.
+
+      - Do not add new framework/dependency or broad result hierarchy.
+
+      - Failure-before-session (`LARVA_NO_ACTIVE_PERSONA`, `LARVA_SPAWN_NOT_ALLOWED`),
+      child protocol failures, failed-after-allocation, and cancelled results must
+      render safely.
+
+
+      ## Completion Criteria (stub exclusion)
+
+      This is an IMPLEMENTATION step. Stub-only completion is NOT acceptable. Each
+      deliverable MUST contain substantive adapter logic that processes the semantic
+      result and produces Pi-facing output that varies by status/error/result_text.
+
+
+      <side_effect_budget>
+
+      Allowed: local adapter wrapper and targeted test updates for Pi-facing `larva_subagent`
+      result shape. Forbidden: changing Larva shared contract schemas, altering persona
+      spawning semantics, patching Pi renderer, changing unrelated Pi tool policy/model-map/autocomplete
+      behavior, or broad refactors.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm error/cancelled paths do not return raw semantic objects through any
+      `handler` or `execute` branch.
+
+      - Confirm `details`/metadata remains machine-readable and not flattened only
+      into human text.
+
+      - Confirm the wrapper text is safe for Pi text rendering and does not rely on
+      ANSI/JSON mode side effects.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT (must-green after implementation):
+
+      - [ ] refs confirmation cites the current raw return path and Pi renderer `content`
+      expectation.
+
+      - [ ] Expected-red tests from `pi_subagent_toolresult_red_tests_20260601` now
+      pass without weakening assertions.
+
+      - [ ] Success result proof shows `content` array with text plus preserved `details`/metadata
+      fields.
+
+      - [ ] Failure-before-session proof shows renderer-safe `content` plus error
+      indication.
+
+      - [ ] Failed-after-allocation and cancelled paths are covered by tests or explicit
+      fixture-backed proof.
+
+      - [ ] Diff evidence shows no Pi renderer patch, no new broad framework, and
+      semantic `LarvaSubagentResult` still exists as domain payload.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    depends_on:
+    - pi_subagent_toolresult_red_tests_20260601
+    agent: frontend-engineer
+  - id: pi_subagent_toolresult_runtime_smoke_20260601
+    name: Extend Pi extension runtime smoke for renderer-safe tool result shape
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: local-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
+      and downstream Pi runtime phases.
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Extend `scripts/pi-extension-runtime-smoke.mjs` `tool-shape` or add a narrowly
+      named scenario so runtime smoke checks more than `hasExecute`: it must fixture-call
+      registered `larva_subagent` and assert Pi renderer-safe result shape (`content`
+      array with text item) plus machine-readable semantic metadata preservation.
+
+
+      This is a seam-level integration proof for the custom-tool adapter boundary.
+      Unit or string-registration checks alone are insufficient.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | scripts/pi-extension-runtime-smoke.mjs currently only checks `hasExecute`
+      | smoke must check renderer-safe returned value shape | pi_subagent_toolresult_runtime_smoke_20260601
+      | smoke scenario asserts `content` array/text item | smoke_output | OWNED |
+      n/a |
+
+      | R2 | architecture decision preserve handles | smoke must confirm details/metadata
+      carries task_id/persona_id/status/result_text/error when present | pi_subagent_toolresult_runtime_smoke_20260601
+      | metadata assertion appears in smoke | metadata_smoke | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: update runtime smoke script/scenario and supporting fixtures. Forbidden:
+      alter implementation behavior, skip existing smoke checks, or require live long-running
+      Pi sessions for this local-check smoke.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify the smoke invokes the registered tool entrypoint rather than only grepping
+      source text.
+
+      - Verify no-active-persona/failure fixture returns `content`, because this is
+      the most likely immediate crash path.
+
+      - Verify smoke failure messages name `content`/ToolResult shape so future regressions
+      are diagnosable.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the prior smoke limitation and updated scenario.
+
+      - [ ] Runtime smoke invokes registered `larva_subagent` execute/handler path
+      through fixture or harness.
+
+      - [ ] Smoke asserts `Array.isArray(result.content)` and a text item shape.
+
+      - [ ] Smoke asserts semantic metadata/details preservation for available fields.
+
+      - [ ] Raw smoke command output is pasted and exits green.
+
+      - [ ] If any path cannot be fixture-backed, blocker and downstream owner are
+      explicit.'
+    refs:
+    - scripts/pi-extension-runtime-smoke.mjs
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_subagent_toolresult_adapter_impl_20260601
+    agent: integration-verifier
+  - id: pi_subagent_toolresult_interactive_crash_proof_20260601
+    name: Prove Pi interactive/RPC path no longer crashes on larva_subagent result
+      rendering
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
+      and downstream Pi user-facing runtime phases.
+
+      Independence Level: L2 (user-facing TUI/runtime seam; independent from frontend
+      implementation).
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Launch or fixture-drive the closest available Pi interactive/RPC path that reaches
+      `ToolExecutionComponent`/tool-result rendering with `larva_subagent` returning
+      either a failure-before-session result or a simple fixture result. Prove the
+      runtime does not emit the reported `getTextOutput` / `content.filter` uncaughtException
+      and remains observable long enough to inspect output.
+
+
+      Client runtime liveness class: TUI/CLI interactive. Build/source/test evidence
+      alone is insufficient. If full live Pi interactive automation is unavailable,
+      use the narrowest fixture-backed Pi event/render path that exercises the same
+      result object shape expected by Pi''s renderer, and explicitly state what live
+      surface remains unobserved.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | user stack: `getTextOutput` at render-utils.js line 38 reading `content.filter`
+      | no uncaughtException on rendering larva_subagent result | pi_subagent_toolresult_interactive_crash_proof_20260601
+      | logs searched for `getTextOutput` and `content.filter` crash | crash_absence_log
+      | OWNED | n/a |
+
+      | R2 | user scenario: Pi asked to start `turing` subagent for simple question
+      | proof uses failure/simple result close to `larva_subagent` interactive flow
+      | pi_subagent_toolresult_interactive_crash_proof_20260601 | launched/fixture-backed
+      path documented | runtime_path | OWNED | n/a |
+
+      | R3 | failure-before-session/no active persona risk | immediate failure path
+      renders instead of crashing | pi_subagent_toolresult_interactive_crash_proof_20260601
+      | failure-before-session runtime evidence | failure_runtime_artifact | OWNED
+      | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: run Pi/fixture runtime commands and capture logs/screenshots/terminal
+      output. Forbidden: modify source, patch global Pi install, rely on mocks that
+      bypass the renderer result path, or require live credentials beyond documented
+      local Pi availability.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Confirm the proof reaches a renderer/updateResult-like path, not only direct
+      function unit tests.
+
+      - Confirm logs are searched for both `uncaughtException` and `Cannot read properties
+      of undefined (reading ''filter'')`.
+
+      - Confirm failure output is meaningful user-visible text, not blank or raw `[object
+      Object]`.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the relevant adapter and smoke/runtime path.
+
+      - [ ] Exact launch/fixture command, environment assumptions, and Pi version/path
+      are recorded.
+
+      - [ ] Terminal capture/log output shows `larva_subagent` result rendering path
+      reached for failure or simple result.
+
+      - [ ] Logs explicitly show absence of `getTextOutput`, `content.filter`, `Cannot
+      read properties of undefined`, and `uncaughtException` for this run.
+
+      - [ ] User-visible output is meaningful text from the ToolResult `content` item.
+
+      - [ ] Any unobserved live-interactive portion is listed with non-blocking/blocking
+      disposition and downstream owner.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - scripts/pi-extension-runtime-smoke.mjs
+    depends_on:
+    - pi_subagent_toolresult_adapter_impl_20260601
+    - pi_subagent_toolresult_runtime_smoke_20260601
+    agent: client-runtime-verifier
+  - id: pi_subagent_toolresult_docs_20260601
+    name: Document semantic LarvaSubagentResult versus Pi ToolResult wrapper
+    status: pending
+    description: 'step_type: implementation
+
+      agent_source: project
+
+
+      TARGET STATE:
+
+      Pi integration docs distinguish the semantic/domain `LarvaSubagentResult` from
+      the Pi-facing renderer-safe ToolResult wrapper returned by custom-tool `handler`/`execute`.
+      Docs must explain that Pi-facing results include `content` text for rendering
+      and preserve machine-readable child-session fields in `details` or equivalent
+      metadata.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | planning requirement: update README and/or design doc | docs distinguish
+      semantic payload vs Pi ToolResult wrapper | pi_subagent_toolresult_docs_20260601
+      | docs section updated with distinction | doc_diff_summary | OWNED | n/a |
+
+      | R2 | architecture decision: preserve machine-readable fields | docs name task_id/persona_id/status/result_text/error
+      metadata preservation | pi_subagent_toolresult_docs_20260601 | docs include
+      metadata field list | metadata_doc_evidence | OWNED | n/a |
+
+      | R3 | failure/cancelled crash prevention | docs mention failure/cancelled paths
+      still return `content` | pi_subagent_toolresult_docs_20260601 | docs include
+      failure/cancelled wrapper rule | failure_doc_evidence | OWNED | n/a |
+
+
+      CONSTRAINTS:
+
+      - Do not document a new public Larva schema or shared opifex contract.
+
+      - Do not imply Pi renderer should be patched defensively by Larva.
+
+      - Keep docs concise and aligned with the small adapter-boundary fix.
+
+
+      <side_effect_budget>
+
+      Allowed: update `contrib/pi-extension/README.md` and/or `design/pi-coding-agent-integration.md`.
+      Forbidden: code/test changes, shared contract schema changes, broad architecture
+      rewrites, or documenting unsupported fields.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify docs do not conflate domain `status` with Pi `isError` semantics.
+
+      - Verify docs explain failure-before-session/no-active-persona output shape.
+
+      - Verify docs avoid promising live child-session behavior not covered by implementation
+      proof.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites the docs sections updated and adapter behavior
+      in code.
+
+      - [ ] Documentation clearly names `LarvaSubagentResult` as semantic/domain payload.
+
+      - [ ] Documentation clearly names Pi-facing ToolResult wrapper with `content`
+      text array.
+
+      - [ ] Documentation states machine-readable fields remain in `details`/metadata.
+
+      - [ ] Documentation states failure and cancelled paths also return renderer-safe
+      `content`.
+
+      - [ ] No unsupported Pi renderer patch or broad abstraction is documented.'
+    refs:
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    - contrib/pi-extension/larva.ts
+    depends_on:
+    - pi_subagent_toolresult_adapter_impl_20260601
+    agent: doc-reviewer
+  - id: pi_subagent_toolresult_repo_verify_20260601
+    name: Verify repo tests and invar guard after larva_subagent ToolResult fix
+    status: pending
+    description: 'step_type: verification
+
+      verification_scope: phase-check; protects `pi-subagent-toolresult-crash-fix-2026-06-01.gate`
+      and downstream Pi phases.
+
+      Independence Level: L2 (cross-language Pi extension seam plus repo guard).
+
+      agent_source: project
+
+
+      PROOF ARTIFACT:
+
+      Run the focused Pi extension test suite, updated runtime smoke, and the repository
+      guard/test verification required by project policy. This step is a must-green
+      retest/verification step after implementation and docs.
+
+
+      REQUIREMENT TRACEABILITY MATRIX:
+
+      | requirement_id | source_ref + key passage | obligation | owning_step_id |
+      checklist_item | evidence_field | status | non_intersection_or_escalation |
+
+      | R1 | planning requirement: include repo tests | focused Pi extension tests
+      pass green | pi_subagent_toolresult_repo_verify_20260601 | raw test output pasted
+      | focused_tests | OWNED | n/a |
+
+      | R2 | planning requirement: include invar guard | `invar guard`/authoritative
+      guard command passes | pi_subagent_toolresult_repo_verify_20260601 | raw guard
+      output pasted | guard_output | OWNED | n/a |
+
+      | R3 | project AGENTS: core contracts/shell boundaries | no Core/Shell/Invar
+      regressions from adapter/doc changes | pi_subagent_toolresult_repo_verify_20260601
+      | guard/test report reviewed | architecture_baseline | OWNED | n/a |
+
+
+      <side_effect_budget>
+
+      Allowed: run verification commands and record failures. Forbidden: modify code/docs/tests;
+      if failures occur, report blocker-class findings for orchestrator remediation
+      rather than patching.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Verify updated expected-red tests are now green and not skipped/xfailed.
+
+      - Verify runtime smoke exercises result shape, not only registration.
+
+      - Verify guard command family matches project policy and failures are not dismissed
+      as pre-existing without gate-intersection analysis.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites focused tests/smoke and guard policy.
+
+      - [ ] Focused Pi extension contract/runtime tests pass with raw stdout/stderr.
+
+      - [ ] Updated Pi extension runtime smoke passes with raw stdout/stderr.
+
+      - [ ] Repository test command selected by project convention is run or explicit
+      scope rationale is provided.
+
+      - [ ] `invar guard` or canonical guard command passes with raw stdout/stderr.
+
+      - [ ] Any failure is reported with provenance and disposition; blocker-class
+      gate intersections have remediation owner.'
+    refs:
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - scripts/pi-extension-runtime-smoke.mjs
+    - INVAR.md
+    depends_on:
+    - pi_subagent_toolresult_adapter_impl_20260601
+    - pi_subagent_toolresult_runtime_smoke_20260601
+    - pi_subagent_toolresult_interactive_crash_proof_20260601
+    - pi_subagent_toolresult_docs_20260601
+    agent: integration-verifier
+  - id: pi_subagent_toolresult_gate_20260601
+    name: Gate Pi larva_subagent ToolResult crash fix
+    status: pending
+    description: 'step_type: gate
+
+      verification_scope: phase-check; protects downstream phases `pi-model-map-runtime-and-autocomplete-2026-06-01`
+      and `pi-model-map-draft-helper-2026-06-01`.
+
+      Independence: gate-reviewer is independent of frontend-engineer/doc-reviewer/integration-verifier/client-runtime-verifier
+      implementation and verification work.
+
+      review_depth: THOROUGH
+
+      review_depth_rationale:
+
+      - User-facing Pi interactive crash with uncaughtException.
+
+      - Cross-language TS extension + Python/MJS harness + Pi runtime seam.
+
+      - Output/result-shape mismatch can pass registration tests while crashing at
+      render time.
+
+
+      DECISION ARTIFACT:
+
+      Assess whether the phase closes the confirmed Pi `larva_subagent` interactive
+      crash without over-engineering or weakening semantic child-session contracts.
+      Finding issues is valuable; block if any renderer-safe shape, metadata preservation,
+      runtime-crash proof, docs, or guard evidence is missing.
+
+
+      Gate Preview (what this gate WILL reject):
+
+      1. Raw `LarvaSubagentResult` still returned from any Pi-facing `handler`/`execute`
+      path.
+
+      2. `content` added only on success while no-active-persona/failure/cancelled
+      paths can still crash.
+
+      3. Machine-readable `task_id`, `persona_id`, `status`, `result_text`, or `error`
+      lost from metadata.
+
+      4. Smoke tests still checking only `hasExecute`/registration rather than actual
+      result shape.
+
+      5. Runtime proof that does not search for `getTextOutput`, `content.filter`,
+      and `uncaughtException`.
+
+      6. Documentation that conflates semantic payload with Pi renderer ToolResult.
+
+
+      <side_effect_budget>
+
+      Allowed: read evidence, inspect diffs, run read-only checks if needed, and return
+      OPEN/BLOCKED verdict. Forbidden: modify code/docs/tests or mark unresolved blocker-class
+      issues as merely pre-existing/out-of-scope without non-intersection evidence.
+
+      </side_effect_budget>
+
+
+      <risk_probes>
+
+      - Reconstruct the exact user crash chain from tool execution result to Pi renderer
+      fallback.
+
+      - Check every status path has a ToolResult wrapper, not just the path covered
+      by one happy test.
+
+      - Confirm downstream Pi phases cannot inherit an unsafe custom-tool result contract.
+
+      </risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation cites all relevant code/test/docs refs or explicit NOT
+      READ reasons.
+
+      - [ ] Decision basis reviews requirement-to-checklist matrix rows R1-R4/R1-R3
+      from all phase steps.
+
+      - [ ] Positive proof shows expected-red tests existed before implementation
+      and are green after implementation.
+
+      - [ ] Positive proof shows success, failure-before-session, failed-after-allocation
+      where feasible, and cancelled paths are renderer-safe or have explicit blocker
+      ownership.
+
+      - [ ] Positive runtime proof shows no `getTextOutput`/`content.filter` uncaughtException
+      in Pi interactive/RPC render path.
+
+      - [ ] Docs and guard/repo test receipts are specific, raw, and complete.
+
+      - [ ] Final decision is OPEN only if all blocker-class behavioral obligations
+      are PROVEN or have explicit non-intersection evidence.'
+    refs:
+    - contrib/pi-extension/larva.ts
+    - scripts/pi-extension-runtime-smoke.mjs
+    - tests/shell/test_pi_extension_contract.py
+    - tests/shell/test_pi_extension_real_runtime.py
+    - contrib/pi-extension/README.md
+    - design/pi-coding-agent-integration.md
+    depends_on:
+    - pi_subagent_toolresult_red_tests_20260601
+    - pi_subagent_toolresult_adapter_impl_20260601
+    - pi_subagent_toolresult_runtime_smoke_20260601
+    - pi_subagent_toolresult_interactive_crash_proof_20260601
+    - pi_subagent_toolresult_docs_20260601
+    - pi_subagent_toolresult_repo_verify_20260601
+    agent: gate-reviewer
