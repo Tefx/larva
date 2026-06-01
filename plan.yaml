@@ -87157,6 +87157,8 @@ phases:
     - pi_model_map_draft_impl_20260601
     - pi_model_map_draft_fixture_retest_20260601
     - pi_model_map_draft_live_cli_proof_20260601
+    - pi_model_map_draft_live_cli_channel_fix_20260601
+    - pi_model_map_draft_live_cli_retest_20260601
     - pi_model_map_draft_spec_guard_20260601
     agent: gate-reviewer
   - id: pi_model_map_draft_live_cli_channel_fix_20260601
