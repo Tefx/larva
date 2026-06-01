@@ -83823,7 +83823,7 @@ phases:
       none reported; branch touched only `contrib/pi-extension/README.md` and `design/pi-coding-agent-integration.md`.'
   - id: pi-adapter-local-model-map-config-2026-06-01.gate
     name: gate
-    status: claimed
+    status: done
     description: 'step_type: gate
 
       verification_scope: phase-check; protects any downstream Pi integration/finalization
@@ -84006,6 +84006,88 @@ phases:
     agent: gate-reviewer
     claimed_by: gate-reviewer
     claimed_at: '2026-06-01T01:50:55.794306+00:00'
+    done_at: '2026-06-01T02:00:04.707131+00:00'
+    evidence: 'GATE_REVIEW_COMPLETED_WITH_BLOCKER_RESIDUALIZED. Read-only gate branch
+      had no tree delta; `git merge --squash vectl/step-pi-adapter-local-model-map-config-2026-06-01.gate`
+      reported already up to date / nothing to squash. Planner remediation created
+      fix steps: `pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift`
+      and `pi-adapter-local-model-map-config-2026-06-01.regate-dotfiles-alias-drift`.
+
+
+      Gate decision:
+
+      verdict: FAIL
+
+      headline: FAIL
+
+      proof_gap_status: BLOCKING
+
+      blocking_status: OPEN
+
+      gate_open_allowed: false
+
+      orchestrator_action_hint: DO_NOT_COMPLETE for phase gate opening; COMPLETE as
+      blocked-review artifact after remediation path creation.
+
+      blockers:
+
+      - B1: `/Users/tefx/dotfiles/agent/models.yaml` current external diff includes
+      unrelated alias semantic removals (`# glm51: zai-coding-plan/glm-5.1`, `gpt53codex:
+      openai/gpt-5.3-codex`, `gpt53codexspark: openai/gpt-5.3-codex-spark`, `gpt54:
+      openai/gpt-5.5`), so the gate could not confirm the dotfiles constraint "without
+      changing existing alias semantics".
+
+
+      refs Read Confirmation:
+
+      - contrib/pi-extension/larva.ts — gate cited path/env handling, exact-before-prefix
+      conflict behavior, shared resolver, `modelRegistry.find`, and tool-policy path
+      order.
+
+      - contrib/pi-extension/README.md — gate cited adapter-local model-map docs,
+      exact/literal prefix rules, fallback/error behavior, shared resolver, and canonical/legacy
+      tool-policy docs.
+
+      - design/pi-coding-agent-integration.md — gate cited model-map/path/env/shape/order/fail-closed/shared-resolver
+      rules plus tool-policy ownership/path order and source-of-truth boundaries.
+
+      - /Users/tefx/dotfiles/agent/models.yaml — gate cited current aliases and Pi
+      model-map template lines with four exact mappings, `openrouter/` prefix rule,
+      and intentionally unmapped `ollama-cloud/kimi-k2.6:cloud`.
+
+
+      Positive proof accepted by gate:
+
+      - Adapter-local contract / no canonical PersonaSpec or opifex mutation: PROVEN.
+
+      - Model-map exact `models`, literal `prefix_rules`, exact-before-prefix, longest-prefix,
+      same-length conflict invalid: PROVEN.
+
+      - Confirmed material: four exact mappings, `openrouter/` prefix, no `kimi-k2.6:cloud`
+      mapping: PROVEN.
+
+      - No runtime `~/.pi` writes in reviewed scope: PROVEN.
+
+      - Shared startup and slash resolver: PROVEN.
+
+      - Nine model-map runtime cases: PROVEN.
+
+      - Four tool-policy path runtime cases: PROVEN.
+
+      - Docs match implementation and mark legacy fallback: PROVEN.
+
+      - Pytest static/contract suite: PROVEN (52 passed).
+
+      - Invar guard: PROVEN (passed).
+
+      - Dotfiles no unrelated semantic changes: BLOCKED by B1 and now owned by `pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift`
+      with focused regate after.
+
+
+      Checklist receipt: all gate checklist items were reviewed and toggled; the dotfiles
+      checklist item is satisfied as a completed review with BLOCKED outcome and closure
+      path, not as an open gate. No forbidden side effects; read-only gate modified
+      no artifacts.'
   - id: pi-adapter-local-model-map-config-2026-06-01.fix-dotfiles-alias-drift
     name: Fix dotfiles alias drift blocking Pi model-map gate
     status: pending
