@@ -84743,19 +84743,19 @@ phases:
 
       1. Source-token-only proof without tests/runtime output. 2. Regex/wildcard/fuzzy/edit-distance/alias
       behavior. 3. Disk cache or startup blocking prefetch.'
-    verification: '- [ ] refs confirmation quotes relevant implementation/docs passages.
+    verification: '- [x] refs confirmation quotes relevant implementation/docs passages.
 
-      - [ ] Diff is limited to `contrib/pi-extension/larva.ts`.
+      - [x] Diff is limited to `contrib/pi-extension/larva.ts`.
 
-      - [ ] Matching implements case-insensitive substring and prefix-first stable
+      - [x] Matching implements case-insensitive substring and prefix-first stable
       registry-order ranking.
 
-      - [ ] Cache is process-local memory with shared in-flight request; no disk cache
+      - [x] Cache is process-local memory with shared in-flight request; no disk cache
       or prefetch.
 
-      - [ ] Non-`/larva-persona` input delegates to base provider; no prompt injection.
+      - [x] Non-`/larva-persona` input delegates to base provider; no prompt injection.
 
-      - [ ] No PersonaSpec/opifex/dependency/model-guessing changes.'
+      - [x] No PersonaSpec/opifex/dependency/model-guessing changes.'
     refs:
     - contrib/pi-extension/larva.ts
     - contrib/pi-extension/README.md
