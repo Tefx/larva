@@ -84835,8 +84835,8 @@ phases:
 
       PROOF ARTIFACT: read-only verification of `/Users/tefx/.pi/larva/model-map.json`
       after the user-authorized local write. Validate current JSON and prove targets
-      against `pi --list-models --offline`; do not write runtime config or add runtime
-      code that guesses unavailable models.
+      against `pi --list-models --offline`; do not write runtime config, read personal
+      scaffold files, or add runtime code that guesses unavailable models.
 
 
       Requirement-to-checklist traceability matrix:
@@ -84857,23 +84857,27 @@ phases:
       | prefix coverage verified | model_map.prefix | OWNED | n/a |
 
       | R4 | architecture_basis source of truth | Pi offline list contains target
-      providers/models; GPT prefers Codex when listed | pi_model_map_runtime_proof_20260601
+      providers/models; GPT target must be listed by Pi | pi_model_map_runtime_proof_20260601
       | Pi excerpts included | model_map.pi_models | OWNED | n/a |
 
-      | R5 | runtime_contract | no writes and no model guessing | pi_model_map_runtime_proof_20260601
-      | no-write/no-guess evidence | model_map.no_write_no_guess | OWNED | n/a |
+      | R5 | runtime_contract | no writes, no personal scaffold reads, and no model
+      guessing | pi_model_map_runtime_proof_20260601 | no-write/no-scaffold/no-guess
+      evidence | model_map.no_write_no_scaffold_no_guess | OWNED | n/a |
 
 
-      <side_effect_budget>Allowed: read `/Users/tefx/.pi/larva/model-map.json`, `/Users/tefx/dotfiles/agent/models.yaml`,
-      docs, and run read-only list/JSON validation commands. Forbidden: any writes
-      under `/Users/tefx/.pi/**`, repo edits, resolver changes, registry changes,
-      guessed model additions.</side_effect_budget>
+      <side_effect_budget>Allowed: read `/Users/tefx/.pi/larva/model-map.json`, Pi
+      extension docs/design refs, and run read-only list/JSON validation commands.
+      Forbidden: any writes under `/Users/tefx/.pi/**`, repo edits, resolver changes,
+      registry changes, guessed model additions, or reads from `/Users/tefx/dotfiles/agent/models.yaml`
+      / personal scaffold files.</side_effect_budget>
 
       <risk_probes>- Exact entries must win before prefix rules. - OpenRouter Gemini
       coverage must come from prefix rule, not guessed per-model entries. - Pi availability
-      evidence must be current raw output, not stale notes.</risk_probes>'
-    verification: '- [ ] refs confirmation records docs/config/runtime file passages
-      or unread reasons.
+      evidence must be current raw output, not stale notes or personal scaffold inventory.</risk_probes>'
+    verification: 'ACCEPTABLE RECEIPT:
+
+      - [ ] refs confirmation records docs/config/runtime file passages or unread
+      reasons.
 
       - [ ] Raw JSON validation output for `/Users/tefx/.pi/larva/model-map.json`
       is included.
@@ -84884,16 +84888,15 @@ phases:
       - [ ] Prefix rule verified for `openrouter/` and the three named Gemini OpenRouter
       personas.
 
-      - [ ] Raw `pi --list-models --offline` excerpts show target availability and
-      Codex preference basis for GPT.
+      - [ ] Raw `pi --list-models --offline` excerpts show target availability.
 
-      - [ ] Evidence states no writes occurred and no runtime guessing was added or
-      relied on.'
+      - [ ] Evidence states no writes occurred, no personal scaffold/model inventory
+      file was read, and no runtime guessing was added or relied on.'
     refs:
     - contrib/pi-extension/README.md
     - design/pi-coding-agent-integration.md
     - /Users/tefx/.pi/larva/model-map.json
-    - /Users/tefx/dotfiles/agent/models.yaml
+    - scripts/pi-extension-runtime-smoke.mjs
     depends_on:
     - pi_persona_autocomplete_contract_docs_20260601
     agent: integration-verifier
