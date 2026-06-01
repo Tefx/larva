@@ -11,6 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 SMOKE = ROOT / "scripts" / "pi-extension-autocomplete-smoke.mjs"
 RUNTIME_SMOKE = ROOT / "scripts" / "pi-extension-runtime-smoke.mjs"
+AUTOCOMPLETE_RUNTIME = ROOT / "contrib" / "pi-extension" / "test-autocomplete-runtime.mjs"
 
 
 def _run_autocomplete_case(case: str, *, prefix: str | None = None) -> dict[str, Any]:
@@ -23,6 +24,73 @@ def _run_autocomplete_case(case: str, *, prefix: str | None = None) -> dict[str,
     completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=5)
     assert completed.returncode == 0, completed.stderr
     return json.loads(completed.stdout)
+
+
+def _run_autocomplete_runtime_case(case: str, *, prefix: str | None = None) -> dict[str, Any]:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is required for Pi extension autocomplete runtime smoke")
+    command = [node, str(AUTOCOMPLETE_RUNTIME), "--case", case]
+    if prefix is not None:
+        command.extend(["--prefix", prefix])
+    completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=8)
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
+
+
+def test_autocomplete_substring_case_and_prefix_first_stable_order_runtime() -> None:
+    payload = _run_autocomplete_runtime_case("substring-case-ordering", prefix="DEV")
+
+    assert payload["providerValues"] == ["DevOps", "devrel", "qa-dev", "backend-dev"]
+    assert payload["commandValues"] == payload["providerValues"]
+    assert payload["substringCaseInsensitive"] is True
+    assert payload["prefixFirstStableOrder"] is True
+    assert payload["forcedAndCommandSharePath"] is True
+
+
+def test_autocomplete_cache_reuse_and_concurrent_inflight_dedupe_runtime() -> None:
+    payload = _run_autocomplete_runtime_case("cache-inflight")
+
+    assert payload["listInvocationCountDuringOverlap"] == 1
+    assert payload["listInvocationCountAfterCacheReuse"] == 1
+    assert payload["inFlightDedupeProven"] is True
+    assert payload["cacheReuseProven"] is True
+
+
+def test_autocomplete_delegation_and_failure_fail_closed_runtime() -> None:
+    payload = _run_autocomplete_runtime_case("delegation-failure", prefix="vectl")
+
+    assert payload["delegated"] is True
+    assert payload["calls"] == [["/not-larva vectl", "object"]]
+    assert payload["delegatedItems"] == [
+        {"value": "file.txt", "label": "file.txt", "description": "base file completion"}
+    ]
+    assert payload["failed"] is None
+    assert payload["malformed"] is None
+    assert payload["failClosedNoCrash"] is True
+
+
+def test_autocomplete_fixture_uses_documented_list_json_shape_without_alias_fields() -> None:
+    payload = _run_autocomplete_runtime_case("fixture-shape")
+
+    assert payload["exactDocumentedShape"] == {
+        "data": [
+            {
+                "id": "vectl-planner",
+                "description": "Plan with vectl",
+                "spec_digest": "sha256:vectl-planner",
+                "model": "openai/gpt-5.5",
+            },
+            {
+                "id": "vectl-reviewer",
+                "description": "Review with vectl",
+                "spec_digest": "sha256:vectl-reviewer",
+                "model": "openai/gpt-5.5",
+            },
+        ]
+    }
+    assert payload["candidateKeys"] == [["description", "label", "value"], ["description", "label", "value"]]
+    assert payload["noAliasFuzzyRegexWildcardFields"] is True
 
 
 @pytest.mark.parametrize("case,force", [("tab-force", True), ("tab-regular", False)])
