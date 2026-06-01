@@ -91166,6 +91166,41 @@ phases:
       preservation, and forbidden Pi identity sentence/provider payload rewriting.
 
       - [ ] Expected failures or exposed gaps are recorded and point to pi_postspec_editor_prompt_impl_20260602.'
+    evidence_template: '## refs Read Confirmation
+
+      For each ref in this step, include one bullet with the exact key passage used
+      or `NOT READ: <reason>` only when the ref was legitimately unavailable/unread:
+
+      - design/pi-coding-agent-integration.md — <key passage(s) used for this step>
+
+      - contrib/pi-extension/README.md — <key passage(s) used for this step>
+
+
+      ## Changed Files / No-Change Report
+
+      - changed_files: <test/fixture/smoke paths changed, or `none`>
+
+      - no_change_reason: <required when no files changed>
+
+
+      ## Expected-Red Test Receipt
+
+      - test_scope_guard: <evidence changes are limited to tests/fixtures/smoke harnesses>
+
+      - expected_failures_or_exposed_gaps: <gaps exposed and downstream implementation
+      owner>
+
+      - fixture_spec_citations: <spec-derived fixture/source passages used>
+
+
+      ## Verification Receipts
+
+      - checklist_receipt: <satisfied/failed/blocked/unobserved for each checklist
+      item>
+
+      - commands_run: <raw command lines, exit codes, stdout/stderr refs>
+
+      - gaps_blockers: <remaining gaps/blockers and closure path, or `none`>'
     refs:
     - design/pi-coding-agent-integration.md
     - contrib/pi-extension/README.md
